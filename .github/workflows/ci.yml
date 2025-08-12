@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    env:
+      COVERAGE_MIN: 60   # Minimum required line coverage percentage (adjust as needed)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore WileyWidget.sln
+
+      - name: Build
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test WileyWidget.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Install ReportGenerator
+        run: dotnet tool update --global dotnet-reportgenerator-globaltool
+
+      - name: Generate Coverage Report
+        run: reportgenerator -reports:**/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:TextSummary;Html
+
+      - name: Enforce Coverage Threshold
+        run: |
+          Write-Host "Enforcing minimum line coverage of $env:COVERAGE_MIN%"
+          $summaryFile = Join-Path CoverageReport 'Summary.txt'
+          if (-not (Test-Path $summaryFile)) { Write-Error "Coverage summary file not found: $summaryFile"; exit 1 }
+          $line = (Get-Content $summaryFile | Where-Object { $_ -match 'Line coverage' })
+          if (-not $line) { Write-Error "Could not find line coverage entry in summary"; exit 1 }
+          if ($line -match '([0-9]+\.?[0-9]*)%') { $pct = [double]$matches[1] } else { Write-Error "Failed to parse coverage percentage"; exit 1 }
+          Write-Host "Line coverage: $pct%"
+          if ($pct -lt [double]$env:COVERAGE_MIN) { Write-Error "Coverage ${pct}% is below required $env:COVERAGE_MIN%"; exit 1 }
+          Write-Host "Coverage threshold satisfied."
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: CoverageReport/**
+
+      - name: UI Smoke (placeholder)
+        run: |
+          echo "UI smoke test placeholder - integrate FlaUI/WinAppDriver later"
+
+      - name: Publish Coverage Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            **/TestResults/*/coverage.cobertura.xml
+            **/TestResults/*/*.trx
+
+      - name: Summary
+        if: success()
+        run: echo "Build & tests succeeded."

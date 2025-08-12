@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g., 0.1.0)'
+        required: true
+
+jobs:
+  create-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Update Version
+        run: |
+          $ver = '${{ github.event.inputs.version }}'
+          (Get-Content Directory.Build.targets) -replace '<Version>.*</Version>', "<Version>$ver</Version>" | Set-Content Directory.Build.targets
+          (Get-Content Directory.Build.targets) -replace '<FileVersion>.*</FileVersion>', "<FileVersion>$ver.0</FileVersion>" | Set-Content Directory.Build.targets
+          (Get-Content Directory.Build.targets) -replace '<InformationalVersion>.*</InformationalVersion>', "<InformationalVersion>$ver+ci</InformationalVersion>" | Set-Content Directory.Build.targets
+
+      - name: Build
+        run: dotnet build WileyWidget.sln --configuration Release
+
+      - name: Publish Artifacts
+        run: dotnet publish WileyWidget/WileyWidget.csproj -c Release -o publish /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:PublishTrimmed=false
+
+      - name: Archive
+        run: Compress-Archive -Path publish/* -DestinationPath WileyWidget-${{ github.event.inputs.version }}.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: WileyWidget v${{ github.event.inputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            WileyWidget-${{ github.event.inputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

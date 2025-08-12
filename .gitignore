@@ -1,0 +1,52 @@
+# .NET / WPF standard ignores
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+*.ide
+.vs/
+TestResults/
+*.cache
+*.log
+*.nupkg
+*.snupkg
+packages/
+
+# Logs / diagnostics
+logs/
+*.log
+
+# Publish artifacts
+publish/
+
+# Coverage
+coverage/
+CoverageReport/
+*.cobertura.xml
+
+# Tool state
+.sonarqube/
+.fleet/
+
+# Settings (leave example templates instead)
+*.user.settings
+
+# Sensitive local license key (place example in docs only)
+license.key
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+Desktop.ini
+*.DS_Store
+
+# Temporary / backup
+*.tmp
+*.bak
+*.old
+*.backup*
+*_backup*
