@@ -305,14 +305,76 @@ Future (Optional Enhancements)
 - Introduce analyzer set (.editorconfig rules) when complexity grows
 
 ## QuickBooks Online (Experimental Integration)
-Set environment variables (User scope) before running for OAuth PKCE flow:
+
+### 1. Environment Variables (set once, User scope)
 ```pwsh
 [Environment]::SetEnvironmentVariable('QBO_CLIENT_ID','<client-id>','User')
-[Environment]::SetEnvironmentVariable('QBO_CLIENT_SECRET','<client-secret>','User')  # optional when using PKCE public flow
+[Environment]::SetEnvironmentVariable('QBO_CLIENT_SECRET','<client-secret>','User')   # optional for public / PKCE-only flow
 [Environment]::SetEnvironmentVariable('QBO_REDIRECT_URI','http://localhost:8080/callback/','User')
-[Environment]::SetEnvironmentVariable('QBO_REALM_ID','<realm-id>','User')  # convenience; will be captured on first auth if omitted
+[Environment]::SetEnvironmentVariable('QBO_REALM_ID','<realm-id>','User')             # company (realm) id
 ```
-Then use QuickBooks tab (Customers / Invoices). Tokens persist in settings JSON (plain text). Remove them by deleting `%AppData%/WileyWidget/settings.json`.
+Close and reopen your shell (process must inherit the variables). Redirect URI must EXACTLY match what is configured in the Intuit developer portal.
+
+### 2. Manual Test Flow
+1. `dotnet run --project WileyWidget/WileyWidget.csproj`
+2. Open the "QuickBooks" tab.
+3. Click "Load Customers" (or "Load Invoices").
+4. If no tokens stored, the interactive OAuth flow (external browser) should occur; complete consent.
+5. After redirect completes and tokens are stored, click the buttons again – data should populate without another consent.
+
+Expected Columns:
+- Customers: Name, Email, Phone (auto-generated columns from Intuit `Customer` model)
+- Invoices: Number (DocNumber), Total (TotalAmt), Customer (CustomerRef.name), Due Date (DueDate)
+
+### 3. Token Persistence
+Tokens are saved in `%AppData%/WileyWidget/settings.json` under:
+```jsonc
+// excerpt
+{
+	"QboAccessToken": "...",
+	"QboRefreshToken": "...",
+	"QboTokenExpiry": "2025-08-12T12:34:56.789Z"
+}
+```
+Delete this file to force a fresh OAuth flow:
+```pwsh
+Remove-Item "$env:AppData\WileyWidget\settings.json" -ErrorAction SilentlyContinue
+```
+Token considered valid if:
+- `QboAccessToken` not blank AND
+- `QboTokenExpiry` > `UtcNow + 60s` (early refresh safety window)
+
+### 4. Troubleshooting
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| "QBO_CLIENT_ID not set" exception | Env var missing in new shell | Re-set variable (User scope) and reopen shell |
+| No customers/invoices and no error | Empty sandbox company | Add sample data in Intuit dashboard |
+| Repeated auth prompt | Tokens not written (settings file locked or crash) | Check logs, ensure `%AppData%/WileyWidget/settings.json` updates |
+| Refresh every click | `QboTokenExpiry` stayed default | Confirm refresh succeeded; inspect log for "QBO token refreshed" line |
+| Invoices empty but customers load | Filter (future) / realm mismatch | Verify `QBO_REALM_ID` matches company ID |
+| Unhandled invalid refresh token | Token revoked / expired | Delete settings file and re-authorize |
+
+### 5. Logs
+Open the latest log file to diagnose:
+```pwsh
+explorer %AppData%\WileyWidget\logs
+```
+Look for lines:
+- `QBO token refreshed (exp ...)`
+- `QBO customers fetch failed` / `QBO invoices fetch failed`
+- `Syncfusion license registered ...`
+
+### 6. Reset / Clean
+```pwsh
+taskkill /IM WileyWidget.exe /F 2>$null
+taskkill /IM testhost.exe /F 2>$null
+dotnet build WileyWidget.sln
+```
+
+### 7. Removing Tokens
+Just delete the settings file or manually blank the Qbo* entries; a new auth will occur on next fetch.
+
+> NOTE: Tokens are stored in plain text for early development convenience. Do NOT ship production builds without encrypting or using a secure credential store.
 
 ## Version Control Quick Start (Solo Flow)
 Daily minimal:
