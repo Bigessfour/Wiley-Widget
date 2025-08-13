@@ -1,5 +1,7 @@
 # WileyWidget
 
+![CI](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)
+
 Single-user WPF application scaffold (NET 9) using Syncfusion WPF controls (v30.2.x) with pragmatic tooling.
 
 ## Features
