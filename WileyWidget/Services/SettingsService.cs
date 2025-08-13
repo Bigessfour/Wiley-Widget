@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using WileyWidget.Models;
 
 namespace WileyWidget.Services;
 
@@ -8,16 +9,7 @@ namespace WileyWidget.Services;
 /// Persisted user-facing settings. Keep only values that must survive restarts; transient UI state stays in memory.
 /// Nullable primitives used to distinguish 'not yet set' from legitimate 0 values (e.g., window geometry).
 /// </summary>
-public class AppSettings
-{
-    // Stored theme uses Syncfusion canonical name (e.g., FluentDark, FluentLight)
-    public string Theme { get; set; } = "FluentDark";
-    public double? WindowWidth { get; set; }
-    public double? WindowHeight { get; set; }
-    public double? WindowLeft { get; set; }
-    public double? WindowTop { get; set; }
-    public bool? WindowMaximized { get; set; }
-}
+// AppSettings moved to Models/AppSettings.cs
 
 /// <summary>
 /// Simple singleton service for loading/saving <see cref="AppSettings"/> as JSON in AppData.
@@ -71,6 +63,14 @@ public sealed class SettingsService
             var loaded = JsonSerializer.Deserialize<AppSettings>(json);
             if (loaded != null)
                 Current = loaded;
+            // Migration: populate new Qbo* from legacy QuickBooks* if empty (first-run after upgrade).
+            if (string.IsNullOrWhiteSpace(Current.QboAccessToken) && !string.IsNullOrWhiteSpace(Current.QuickBooksAccessToken))
+            {
+                Current.QboAccessToken = Current.QuickBooksAccessToken;
+                Current.QboRefreshToken = Current.QuickBooksRefreshToken;
+                if (Current.QuickBooksTokenExpiresUtc.HasValue)
+                    Current.QboTokenExpiry = Current.QuickBooksTokenExpiresUtc.Value;
+            }
         }
         catch
         {

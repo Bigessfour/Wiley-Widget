@@ -19,7 +19,7 @@ namespace WileyWidget.UiTests;
 [TestFixture]
 public class UiSmokeTests
 {
-	private string _exePath = null!;
+	private string _exePath = string.Empty; // initialized in OneTimeSetup
 	private readonly List<int> _launchedPids = new();
 
 	[OneTimeSetUp]
@@ -45,8 +45,8 @@ public class UiSmokeTests
 	[Apartment(System.Threading.ApartmentState.STA)]
 	public void MainWindow_Launches_And_GridPresent()
 	{
-		Application? app = null;
-		UIA3Automation? automation = null;
+		Application app = null;
+		UIA3Automation automation = null;
 		try
 		{
 			var psi = new ProcessStartInfo(_exePath)

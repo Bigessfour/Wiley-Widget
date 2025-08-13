@@ -8,83 +8,83 @@ All repository files with their raw GitHub URLs (replace `REPO_OWNER/REPO_NAME` 
 
 ## Files
 
-- .editorconfig  
+- .editorconfig
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/.editorconfig
-- .gitignore  
+- .gitignore
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/.gitignore
-- CHANGELOG.md  
+- CHANGELOG.md
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/CHANGELOG.md
-- CONTRIBUTING.md  
+- CONTRIBUTING.md
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/CONTRIBUTING.md
-- Directory.Build.props  
+- Directory.Build.props
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/Directory.Build.props
-- Directory.Build.targets  
+- Directory.Build.targets
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/Directory.Build.targets
-- Fetchability.md  
+- Fetchability.md
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/Fetchability.md
-- README.md  
+- README.md
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/README.md
-- RELEASE_NOTES.md  
+- RELEASE_NOTES.md
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/RELEASE_NOTES.md
-- WileyWidget.sln  
+- WileyWidget.sln
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget.sln
-- msbuild.binlog (binary log example; typically not needed in source control if large)  
+- msbuild.binlog (binary log example; typically not needed in source control if large)
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/msbuild.binlog
 
 ### scripts/
-- scripts/build.ps1  
+- scripts/build.ps1
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/scripts/build.ps1
-- scripts/show-syncfusion-license.ps1  
+- scripts/show-syncfusion-license.ps1
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/scripts/show-syncfusion-license.ps1
-- scripts/pre-push  
+- scripts/pre-push
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/scripts/pre-push
 
 ### .github/workflows/
-- .github/workflows/ci.yml  
+- .github/workflows/ci.yml
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/.github/workflows/ci.yml
-- .github/workflows/release.yml  
+- .github/workflows/release.yml
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/.github/workflows/release.yml
 
 ### WileyWidget/
-- WileyWidget/WileyWidget.csproj  
+- WileyWidget/WileyWidget.csproj
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/WileyWidget.csproj
-- WileyWidget/App.xaml  
+- WileyWidget/App.xaml
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/App.xaml
-- WileyWidget/App.xaml.cs  
+- WileyWidget/App.xaml.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/App.xaml.cs
-- WileyWidget/AssemblyInfo.cs  
+- WileyWidget/AssemblyInfo.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/AssemblyInfo.cs
-- WileyWidget/AboutWindow.xaml  
+- WileyWidget/AboutWindow.xaml
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/AboutWindow.xaml
-- WileyWidget/AboutWindow.xaml.cs  
+- WileyWidget/AboutWindow.xaml.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/AboutWindow.xaml.cs
-- WileyWidget/MainWindow.xaml  
+- WileyWidget/MainWindow.xaml
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/MainWindow.xaml
-- WileyWidget/MainWindow.xaml.cs  
+- WileyWidget/MainWindow.xaml.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/MainWindow.xaml.cs
-- WileyWidget/LicenseKey.Private.sample.cs  
+- WileyWidget/LicenseKey.Private.sample.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/LicenseKey.Private.sample.cs
-- WileyWidget/Models/Widget.cs  
+- WileyWidget/Models/Widget.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/Models/Widget.cs
-- WileyWidget/Services/SettingsService.cs  
+- WileyWidget/Services/SettingsService.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/Services/SettingsService.cs
-- WileyWidget/ViewModels/MainViewModel.cs  
+- WileyWidget/ViewModels/MainViewModel.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/ViewModels/MainViewModel.cs
-- WileyWidget/signing/README.txt  
+- WileyWidget/signing/README.txt
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/signing/README.txt
 
 ### WileyWidget.Tests/
-- WileyWidget.Tests/WileyWidget.Tests.csproj  
+- WileyWidget.Tests/WileyWidget.Tests.csproj
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget.Tests/WileyWidget.Tests.csproj
-- WileyWidget.Tests/UnitTest1.cs  
+- WileyWidget.Tests/UnitTest1.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget.Tests/UnitTest1.cs
-- WileyWidget.Tests/SettingsServiceTests.cs  
+- WileyWidget.Tests/SettingsServiceTests.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget.Tests/SettingsServiceTests.cs
 
 ### WileyWidget.UiTests/
-- WileyWidget.UiTests/WileyWidget.UiTests.csproj  
+- WileyWidget.UiTests/WileyWidget.UiTests.csproj
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget.UiTests/WileyWidget.UiTests.csproj
-- WileyWidget.UiTests/Class1.cs  
+- WileyWidget.UiTests/Class1.cs
   Raw: https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget.UiTests/Class1.cs
 
 ## Notes

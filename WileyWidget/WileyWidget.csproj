@@ -26,6 +26,11 @@
     <PackageReference Include="Syncfusion.SfSkinManager.WPF" Version="30.2.4" />
     <PackageReference Include="Syncfusion.Tools.WPF" Version="30.2.4" />
   <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
+  <!-- No external QuickBooks SDK yet; using raw HTTP + PKCE. Add Intuit packages later if desired. -->
+  <!-- QuickBooks SDK packages (Step 2) - modern package IDs differ from older docs -->
+  <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
+  <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0" />
+  <PackageReference Include="Microsoft.Identity.Client" Version="4.64.0" />
   </ItemGroup>
 
 </Project>

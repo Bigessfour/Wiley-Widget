@@ -47,4 +47,25 @@ public class SettingsServiceTests
         Assert.That(badFiles.Length, Is.GreaterThanOrEqualTo(1));
         Assert.That(File.Exists(settingsPath), Is.True);
     }
+
+    [Test]
+    public void SaveThenLoad_PersistsQboTokens()
+    {
+        var now = DateTime.UtcNow.AddMinutes(55); // pretend expiry
+        SettingsService.Instance.Current.QboAccessToken = "access-123";
+        SettingsService.Instance.Current.QboRefreshToken = "refresh-456";
+        SettingsService.Instance.Current.QboTokenExpiry = now;
+        SettingsService.Instance.Save();
+
+        // Reset in-memory and reload from disk
+        SettingsService.Instance.ResetForTests();
+        SettingsService.Instance.Load();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(SettingsService.Instance.Current.QboAccessToken, Is.EqualTo("access-123"));
+            Assert.That(SettingsService.Instance.Current.QboRefreshToken, Is.EqualTo("refresh-456"));
+            Assert.That(SettingsService.Instance.Current.QboTokenExpiry, Is.EqualTo(now));
+        });
+    }
 }
