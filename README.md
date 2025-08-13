@@ -165,3 +165,52 @@ Future (Optional Enhancements)
 - Add pre-push git hook to run build+tests
 - Add code coverage threshold gate in CI
 - Introduce analyzer set (.editorconfig rules) when complexity grows
+
+## Version Control Quick Start (Solo Flow)
+Daily minimal:
+```pwsh
+git status
+git add .
+git commit -m "feat: describe change"
+git pull --rebase
+git push
+```
+
+Feature (risky) change:
+```pwsh
+git checkout -b feature/thing
+# edits
+git commit -m "feat: add thing"
+git checkout main
+git pull --rebase
+git merge --ff-only feature/thing
+git branch -d feature/thing
+git push
+```
+
+Undo helpers:
+- Discard unstaged file: `git checkout -- path`
+- Amend last commit message: `git commit --amend`
+- Revert a pushed commit: `git revert <hash>`
+
+Tag release:
+```pwsh
+git tag -a v0.1.0 -m "v0.1.0"
+git push --tags
+```
+
+## Optional Git Aliases
+Add to global config (`~/.gitconfig`):
+```pwsh
+git config --global alias.st status
+git config --global alias.co checkout
+git config --global alias.ci commit
+git config --global alias.br branch
+git config --global alias.lg "log --oneline --decorate --graph --all"
+```
+
+Then:
+```pwsh
+git st
+git lg
+```
