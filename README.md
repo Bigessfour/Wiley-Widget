@@ -57,6 +57,27 @@ License placement (choose one):
 
 **WARNING:** Never commit `license.key` or a hard‑coded key – both are ignored/avoidance reinforced via `.gitignore`.
 
+## License Verification
+Quick ways to confirm your Syncfusion license is actually registering:
+1. Environment variable present:
+	```pwsh
+	[System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','User')
+	```
+	Should output a 90+ char key (don’t echo in screen recordings).
+2. Script watch (streams detection + registration path):
+	```pwsh
+	pwsh ./scripts/show-syncfusion-license.ps1 -Watch
+	```
+	Look for: `Syncfusion license registered from environment variable.`
+3. Log inspection:
+	```pwsh
+	explorer %AppData%/WileyWidget/logs
+	```
+	Open today’s `app-*.log` and verify registration line.
+4. File fallback: drop a `license.key` beside the built `WileyWidget.exe` (use `license.sample.key` as format reference).
+
+If none of the above register, ensure the key hasn’t expired and you’re on a supported version (v30.2.4 here).
+
 ## Raw File References (machine-consumable)
 | Purpose | Raw URL (replace OWNER/REPO if forked) |
 |---------|----------------------------------------|
@@ -283,6 +304,16 @@ Future (Optional Enhancements)
 - Add code coverage threshold gate in CI
 - Introduce analyzer set (.editorconfig rules) when complexity grows
 
+## QuickBooks Online (Experimental Integration)
+Set environment variables (User scope) before running for OAuth PKCE flow:
+```pwsh
+[Environment]::SetEnvironmentVariable('QBO_CLIENT_ID','<client-id>','User')
+[Environment]::SetEnvironmentVariable('QBO_CLIENT_SECRET','<client-secret>','User')  # optional when using PKCE public flow
+[Environment]::SetEnvironmentVariable('QBO_REDIRECT_URI','http://localhost:8080/callback/','User')
+[Environment]::SetEnvironmentVariable('QBO_REALM_ID','<realm-id>','User')  # convenience; will be captured on first auth if omitted
+```
+Then use QuickBooks tab (Customers / Invoices). Tokens persist in settings JSON (plain text). Remove them by deleting `%AppData%/WileyWidget/settings.json`.
+
 ## Version Control Quick Start (Solo Flow)
 Daily minimal:
 ```pwsh
@@ -318,3 +349,47 @@ git push --tags
 
 ## Extra Git Aliases
 Moved to `CONTRIBUTING.md` to keep this lean.
+
+## Syncfusion License Verification
+
+To verify your Syncfusion Community License (v30.2.4) is correctly set up:
+
+1. **Check Environment Variable**:
+	```pwsh
+	[System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', 'User')
+	```
+
+   Should return a ~96+ character key (do NOT paste it in issues). If null/empty, it's not registered.
+
+2. **Run Inspection Script (live watch)**:
+	```pwsh
+	pwsh ./scripts/show-syncfusion-license.ps1 -Watch
+	```
+	Confirms detection source (env var vs file) and registration status in real-time.
+
+3. **Verify Logs** (app has run at least once):
+	```pwsh
+	explorer %AppData%\WileyWidget\logs
+	```
+	Open today's `app-YYYYMMDD.log` and look for:
+	```
+	Syncfusion license registered from environment variable.
+	```
+	(or `...from file` if using `license.key`).
+
+4. **Fallback (File Placement)**:
+	Place a `license.key` file beside `WileyWidget.exe` (same folder) containing ONLY the key text. See `license.sample.key` for format. Re-run the app or the watch script.
+
+5. **Troubleshooting**:
+	- Ensure the env var scope is `User` (not `Process` only) if launching from a new shell.
+	- Confirm no hidden BOM / whitespace in `license.key`.
+	- Multiple keys: only the first non-empty source is used (env var takes precedence over file).
+	- Upgrading Syncfusion: keep version compatibility (here pinned to `30.2.4`).
+
+If issues persist, re-set the env var and restart your terminal:
+
+```pwsh
+[System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','<your-key>','User')
+```
+
+
