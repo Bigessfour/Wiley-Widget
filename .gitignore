@@ -1,55 +1,52 @@
-# Prerequisites
-*.d
+# .NET / WPF standard ignores
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+*.ide
+.vs/
+TestResults/
+*.cache
+*.log
+*.nupkg
+*.snupkg
+packages/
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+# Logs / diagnostics
+logs/
+*.log
 
-# Linker output
-*.ilk
-*.map
-*.exp
+# Publish artifacts
+publish/
 
-# Precompiled Headers
-*.gch
-*.pch
+# Coverage
+coverage/
+CoverageReport/
+*.cobertura.xml
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
+# Tool state
+.sonarqube/
+.fleet/
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+# Settings (leave example templates instead)
+*.user.settings
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+# Sensitive local license key (place example in docs only)
+license.key
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
+# Rider / VS Code
+.idea/
+.vscode/
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+# OS
+Thumbs.db
+Desktop.ini
+*.DS_Store
 
-# debug information files
-*.dwo
+# Temporary / backup
+*.tmp
+*.bak
+*.old
+*.backup*
+*_backup*

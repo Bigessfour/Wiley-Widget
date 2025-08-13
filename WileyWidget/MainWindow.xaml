@@ -1,0 +1,64 @@
+﻿<Window x:Class="WileyWidget.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WileyWidget"
+        xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+        mc:Ignorable="d"
+        Title="Wiley Widget" Height="600" Width="1000">
+    <DockPanel>
+        <!-- Basic Ribbon (Syncfusion.Tools.WPF) - documented usage pattern -->
+    <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="MainRibbon">
+            <syncfusion:RibbonTab Caption="Home">
+                <syncfusion:RibbonBar Header="Clipboard">
+                    <syncfusion:RibbonButton Label="Copy" SizeForm="Large" />
+                    <syncfusion:RibbonButton Label="Paste" SizeForm="Large" />
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="View">
+                    <syncfusion:RibbonButton Label="Refresh" />
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Theme">
+                    <StackPanel Orientation="Horizontal">
+                        <syncfusion:RibbonButton Label="Fluent Dark" Click="OnFluentDark" />
+                        <syncfusion:RibbonButton Label="Fluent Light" Click="OnFluentLight" />
+                    </StackPanel>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Help">
+                    <syncfusion:RibbonButton Label="About" Click="OnAbout" />
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+        </syncfusion:Ribbon>
+
+        <!-- Data Grid (Syncfusion.SfGrid.WPF) -->
+        <DockPanel LastChildFill="True">
+            <syncfusion:SfDataGrid ItemsSource="{Binding Widgets}" AutoGenerateColumns="False" x:Name="Grid" AllowSorting="True" AllowFiltering="True" AllowResizingColumns="True" GridLinesVisibility="Horizontal" RowHeight="28" AlternationCount="2">
+                <syncfusion:SfDataGrid.Columns>
+                    <syncfusion:GridTextColumn HeaderText="Id" MappingName="Id" Width="70" />
+                    <syncfusion:GridTextColumn HeaderText="Name" MappingName="Name" />
+                    <syncfusion:GridTextColumn HeaderText="Category" MappingName="Category" />
+                    <syncfusion:GridNumericColumn HeaderText="Price" MappingName="Price" />
+                </syncfusion:SfDataGrid.Columns>
+            </syncfusion:SfDataGrid>
+            <StatusBar DockPanel.Dock="Bottom" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+                <StatusBarItem>
+                    <TextBlock>
+                        <Run Text="Items: "/><Run Text="{Binding Widgets.Count}" />
+                    </TextBlock>
+                </StatusBarItem>
+                <StatusBarItem>
+                    <TextBlock>
+                        <Run Text="Selected: "/>
+                        <Run Text="{Binding SelectedWidget.Name}" />
+                    </TextBlock>
+                </StatusBarItem>
+                <StatusBarItem>
+                    <TextBlock>
+                        <Run Text="Price: "/>
+                        <Run Text="{Binding SelectedWidget.Price}" />
+                    </TextBlock>
+                </StatusBarItem>
+            </StatusBar>
+        </DockPanel>
+    </DockPanel>
+</Window>
