@@ -27,41 +27,23 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+      - name: Install ReportGenerator (before build so script can emit HTML)
+        run: dotnet tool update --global dotnet-reportgenerator-globaltool
 
       - name: Build + Test (script)
         run: |
           $env:RUN_UI_TESTS='0'
           pwsh ./scripts/build.ps1 -Config Release
 
-      - name: Install ReportGenerator
-        run: dotnet tool update --global dotnet-reportgenerator-globaltool
-
-      - name: List Coverage Files
+      - name: List Coverage Files (post-script)
         run: |
-          Write-Host 'Listing discovered coverage.cobertura.xml files:'
+          Write-Host 'Listing coverage.cobertura.xml files produced by script:'
           $files = Get-ChildItem -Recurse -Filter coverage.cobertura.xml | Select-Object FullName, Length, LastWriteTime
-          if (-not $files) { Write-Host 'None found.' } else { $files | Format-Table | Out-String | Write-Host }
+          if (-not $files) { Write-Warning 'No coverage files found (script may have warned already).' } else { $files | Format-Table | Out-String | Write-Host }
 
-      - name: Generate Coverage Report (guarded)
+      - name: Ensure CoverageReport directory (placeholder if missing)
         run: |
-          $coverageFiles = Get-ChildItem -Recurse -Filter coverage.cobertura.xml | Select-Object -ExpandProperty FullName
-          if (-not $coverageFiles) {
-            Write-Host 'No coverage.cobertura.xml files found; skipping report generation.'
-            exit 0
-          }
-          reportgenerator -reports:**/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:TextSummary;Html
-
-      - name: Enforce Coverage Threshold
-        run: |
-          Write-Host "Enforcing minimum line coverage of $env:COVERAGE_MIN%"
-          $summaryFile = Join-Path CoverageReport 'Summary.txt'
-          if (-not (Test-Path $summaryFile)) { Write-Error "Coverage summary file not found: $summaryFile"; exit 1 }
-          $line = (Get-Content $summaryFile | Where-Object { $_ -match 'Line coverage' })
-          if (-not $line) { Write-Error "Could not find line coverage entry in summary"; exit 1 }
-          if ($line -match '([0-9]+\.?[0-9]*)%') { $pct = [double]$matches[1] } else { Write-Error "Failed to parse coverage percentage"; exit 1 }
-          Write-Host "Line coverage: $pct%"
-          if ($pct -lt [double]$env:COVERAGE_MIN) { Write-Error "Coverage ${pct}% is below required $env:COVERAGE_MIN%"; exit 1 }
-          Write-Host "Coverage threshold satisfied."
+          if (-not (Test-Path CoverageReport)) { New-Item -ItemType Directory -Path CoverageReport | Out-Null }
 
       - name: Upload Coverage Report
         if: always()
@@ -95,9 +77,9 @@ jobs:
         with:
           name: coverage
           path: |
-            **/TestResults/*/coverage.cobertura.xml
-            **/TestResults/*/*.trx
-            UiSmokeResults/*/*.trx
+            TestResults/**/coverage.cobertura.xml
+            TestResults/**/*.trx
+            UiSmokeResults/**/*.trx
 
       - name: Summary
         if: success()
