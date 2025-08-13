@@ -10,7 +10,8 @@ namespace WileyWidget.Services;
 /// </summary>
 public class AppSettings
 {
-    public string Theme { get; set; } = "Fluent Dark";
+    // Stored theme uses Syncfusion canonical name (e.g., FluentDark, FluentLight)
+    public string Theme { get; set; } = "FluentDark";
     public double? WindowWidth { get; set; }
     public double? WindowHeight { get; set; }
     public double? WindowLeft { get; set; }
@@ -27,15 +28,29 @@ public sealed class SettingsService
     private static readonly Lazy<SettingsService> _lazy = new(() => new SettingsService());
     public static SettingsService Instance => _lazy.Value;
 
-    private readonly string _root;
-    private readonly string _file;
+    private string _root;
+    private string _file;
 
     public AppSettings Current { get; private set; } = new();
 
     private SettingsService()
     {
-        _root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WileyWidget");
+        InitializePaths();
+    }
+
+    private void InitializePaths()
+    {
+        var overrideDir = Environment.GetEnvironmentVariable("WILEYWIDGET_SETTINGS_DIR");
+        _root = string.IsNullOrWhiteSpace(overrideDir)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WileyWidget")
+            : overrideDir;
         _file = Path.Combine(_root, "settings.json");
+    }
+
+    public void ResetForTests()
+    {
+        InitializePaths();
+        Current = new AppSettings();
     }
 
     /// <summary>

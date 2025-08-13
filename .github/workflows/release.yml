@@ -29,11 +29,11 @@ jobs:
       - name: Build
         run: dotnet build WileyWidget.sln --configuration Release
 
-      - name: Publish Artifacts
-        run: dotnet publish WileyWidget/WileyWidget.csproj -c Release -o publish /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:PublishTrimmed=false
+      - name: Publish Artifacts (Self-Contained win-x64)
+        run: dotnet publish WileyWidget/WileyWidget.csproj -c Release -o publish -r win-x64 /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:PublishTrimmed=false /p:SelfContained=true
 
       - name: Archive
-        run: Compress-Archive -Path publish/* -DestinationPath WileyWidget-${{ github.event.inputs.version }}.zip
+        run: Compress-Archive -Path publish/* -DestinationPath WileyWidget-${{ github.event.inputs.version }}-win-x64.zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -43,6 +43,6 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            WileyWidget-${{ github.event.inputs.version }}.zip
+            WileyWidget-${{ github.event.inputs.version }}-win-x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

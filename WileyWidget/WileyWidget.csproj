@@ -25,6 +25,7 @@
     <PackageReference Include="Syncfusion.SfGrid.WPF" Version="30.2.4" />
     <PackageReference Include="Syncfusion.SfSkinManager.WPF" Version="30.2.4" />
     <PackageReference Include="Syncfusion.Tools.WPF" Version="30.2.4" />
+  <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

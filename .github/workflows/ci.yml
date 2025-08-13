@@ -10,7 +10,7 @@ jobs:
   build-test:
     runs-on: windows-latest
     env:
-      COVERAGE_MIN: 60   # Minimum required line coverage percentage (adjust as needed)
+      COVERAGE_MIN: 70   # Minimum required line coverage percentage (bumped from 60)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,20 +28,28 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Restore
-        run: dotnet restore WileyWidget.sln
-
-      - name: Build
-        run: dotnet build WileyWidget.sln --configuration Release --no-restore
-
-      - name: Test
-        run: dotnet test WileyWidget.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+      - name: Build + Test (script)
+        run: |
+          $env:RUN_UI_TESTS='0'
+          pwsh ./scripts/build.ps1 -Config Release
 
       - name: Install ReportGenerator
         run: dotnet tool update --global dotnet-reportgenerator-globaltool
 
-      - name: Generate Coverage Report
-        run: reportgenerator -reports:**/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:TextSummary;Html
+      - name: List Coverage Files
+        run: |
+          Write-Host 'Listing discovered coverage.cobertura.xml files:'
+          $files = Get-ChildItem -Recurse -Filter coverage.cobertura.xml | Select-Object FullName, Length, LastWriteTime
+          if (-not $files) { Write-Host 'None found.' } else { $files | Format-Table | Out-String | Write-Host }
+
+      - name: Generate Coverage Report (guarded)
+        run: |
+          $coverageFiles = Get-ChildItem -Recurse -Filter coverage.cobertura.xml | Select-Object -ExpandProperty FullName
+          if (-not $coverageFiles) {
+            Write-Host 'No coverage.cobertura.xml files found; skipping report generation.'
+            exit 0
+          }
+          reportgenerator -reports:**/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:TextSummary;Html
 
       - name: Enforce Coverage Threshold
         run: |
@@ -62,9 +70,24 @@ jobs:
           name: coverage-report
           path: CoverageReport/**
 
-      - name: UI Smoke (placeholder)
+      - name: Upload Build Diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics
+          path: |
+            TestResults/msbuild.binlog
+            TestResults/MSBuildDebug/**
+            TestResults/MSBuildDebug.zip
+
+      - name: UI Smoke (Category=UiSmokeTests)
         run: |
-          echo "UI smoke test placeholder - integrate FlaUI/WinAppDriver later"
+          echo "Running UI smoke tests (Category=UiSmokeTests)"
+          taskkill /IM WileyWidget.exe /F || echo "No running WileyWidget.exe"
+          taskkill /IM testhost.exe /F || echo "No running testhost.exe"
+          taskkill /IM vstest.console.exe /F || echo "No running vstest.console.exe"
+          dotnet test WileyWidget.sln --configuration Release --no-build --filter Category=UiSmokeTests --results-directory UiSmokeResults --no-parallel /p:UseSharedCompilation=false
+          echo "UI smoke tests completed"
 
       - name: Publish Coverage Artifact
         if: always()
@@ -74,6 +97,7 @@ jobs:
           path: |
             **/TestResults/*/coverage.cobertura.xml
             **/TestResults/*/*.trx
+            UiSmokeResults/*/*.trx
 
       - name: Summary
         if: success()

@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-push hook: build + test + coverage gate. Abort push on failure.
+# Enable with: git config core.hooksPath scripts
+
+echo "pre-push: running build & tests..."
+pwsh ./scripts/build.ps1
+status=$?
+if [ $status -ne 0 ]; then
+  echo "pre-push: build/tests failed (exit $status)" 1>&2
+  echo "pre-push: inspect TestResults/ and possible %TEMP%/MSBuildTemp logs (MSB4166)." 1>&2
+  exit $status
+fi
+
+echo "pre-push: all checks passed"
+exit 0

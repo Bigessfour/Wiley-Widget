@@ -12,15 +12,48 @@ namespace WileyWidget;
 /// </summary>
 public partial class MainWindow : Window
 {
+    // Runtime toggle for dynamic column generation (kept non-const to avoid CS0162 unreachable warning when false).
+    private static readonly bool UseDynamicColumns = false; // set true to enable runtime column build
+
     public MainWindow()
     {
         InitializeComponent();
-    DataContext = new ViewModels.MainViewModel();
-    // Apply persisted theme or default
-    TryApplyTheme(SettingsService.Instance.Current.Theme);
-    RestoreWindowState();
-    Loaded += (_, _) => ApplyMaximized();
-    Closing += (_, _) => PersistWindowState();
+        DataContext = new ViewModels.MainViewModel();
+        // Apply persisted theme or default
+        TryApplyTheme(SettingsService.Instance.Current.Theme);
+        if (UseDynamicColumns)
+            BuildDynamicColumns();
+        RestoreWindowState();
+        Loaded += (_, _) => ApplyMaximized();
+        Closing += (_, _) => PersistWindowState();
+    UpdateThemeToggleVisuals();
+    }
+
+    /// <summary>
+    /// Dynamically builds text columns for each public property of the widget model when enabled.
+    /// Demonstration only – static XAML columns are preferred when shape is stable.
+    /// </summary>
+    private void BuildDynamicColumns()
+    {
+        try
+        {
+            var vm = DataContext as ViewModels.MainViewModel;
+            var items = vm?.Widgets;
+            if (items == null || items.Count == 0) return;
+            Grid.AutoGenerateColumns = false;
+            Grid.Columns.Clear();
+            var type = items[0].GetType();
+            foreach (var prop in type.GetProperties())
+            {
+                // Basic text columns for simplicity; extend mapping for numeric/date types as needed.
+                Grid.Columns.Add(new Syncfusion.UI.Xaml.Grid.GridTextColumn
+                {
+                    MappingName = prop.Name,
+                    HeaderText = prop.Name
+                });
+            }
+        }
+        catch { /* swallow for demo */ }
     }
 
     /// <summary>
@@ -30,33 +63,63 @@ public partial class MainWindow : Window
     {
         try
         {
-            SfSkinManager.SetTheme(this, new Theme(themeName));
+            var canonical = NormalizeTheme(themeName);
+            SfSkinManager.SetTheme(this, new Theme(canonical));
         }
         catch
         {
-            if (themeName != "Fluent Light")
+            if (themeName != "FluentLight")
             {
                 // Fallback
-                try { SfSkinManager.SetTheme(this, new Theme("Fluent Light")); } catch { /* ignore */ }
+                try { SfSkinManager.SetTheme(this, new Theme("FluentLight")); } catch { /* ignore */ }
             }
         }
+    }
+
+    private string NormalizeTheme(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "FluentDark";
+        raw = raw.Replace(" ", string.Empty); // allow "Fluent Dark" legacy
+        return raw switch
+        {
+            "FluentDark" => "FluentDark",
+            "FluentLight" => "FluentLight",
+            _ => "FluentDark" // default
+        };
     }
 
     /// <summary>Switch to Fluent Dark theme and persist choice.</summary>
     private void OnFluentDark(object sender, RoutedEventArgs e)
     {
-        TryApplyTheme("Fluent Dark");
-        SettingsService.Instance.Current.Theme = "Fluent Dark";
+    TryApplyTheme("FluentDark");
+    SettingsService.Instance.Current.Theme = "FluentDark";
         SettingsService.Instance.Save();
     Log.Information("Theme changed to {Theme}", "Fluent Dark");
+    UpdateThemeToggleVisuals();
     }
     /// <summary>Switch to Fluent Light theme and persist choice.</summary>
     private void OnFluentLight(object sender, RoutedEventArgs e)
     {
-        TryApplyTheme("Fluent Light");
-        SettingsService.Instance.Current.Theme = "Fluent Light";
+    TryApplyTheme("FluentLight");
+    SettingsService.Instance.Current.Theme = "FluentLight";
         SettingsService.Instance.Save();
     Log.Information("Theme changed to {Theme}", "Fluent Light");
+        UpdateThemeToggleVisuals();
+    }
+
+    private void UpdateThemeToggleVisuals()
+    {
+        var current = NormalizeTheme(SettingsService.Instance.Current.Theme);
+        if (BtnFluentDark != null)
+        {
+            BtnFluentDark.IsEnabled = current != "FluentDark";
+            BtnFluentDark.Label = current == "FluentDark" ? "✔ Fluent Dark" : "Fluent Dark";
+        }
+        if (BtnFluentLight != null)
+        {
+            BtnFluentLight.IsEnabled = current != "FluentLight";
+            BtnFluentLight.Label = current == "FluentLight" ? "✔ Fluent Light" : "Fluent Light";
+        }
     }
     /// <summary>Display modal About dialog with version information.</summary>
     private void OnAbout(object sender, RoutedEventArgs e)

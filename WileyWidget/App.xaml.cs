@@ -15,19 +15,125 @@ namespace WileyWidget;
 /// </summary>
 public partial class App : Application
 {
+	/// <summary>
+	/// WPF doc-compliant constructor: registers Syncfusion license BEFORE any controls are created.
+	/// Logging configured immediately after so registration path can still emit messages on subsequent calls.
+	/// </summary>
+	public App()
+	{
+		// Configure logging first so license registration path is logged.
+		ConfigureLogging();
+		Log.Information("=== Application Constructor (pre-license) ===");
+		RegisterSyncfusionLicense();
+		Log.Information("=== Application Constructor Initialized ===");
+	}
 	protected override void OnStartup(StartupEventArgs e)
 	{
-		// TODO: Replace the placeholder with your actual Syncfusion license key string.
-		// Documentation: https://help.syncfusion.com/common/essential-studio/licensing/how-to-register-in-an-application
-		// Example (DO NOT KEEP): SyncfusionLicenseProvider.RegisterLicense("YOUR LICENSE KEY");
-		// SyncfusionLicenseProvider.RegisterLicense("REPLACE_WITH_YOUR_LICENSE_KEY");
-		ConfigureLogging();
+		// License + logging already handled in constructor; calls here are intentionally omitted to avoid duplicate logs.
 		Log.Information("=== Application Startup ===");
-		TryLoadLicenseFromFile();
 		ConfigureGlobalExceptionHandling();
 		SettingsService.Instance.Load();
+		// Apply dark default early if none persisted (normalization happens in MainWindow).
+		if (string.IsNullOrWhiteSpace(SettingsService.Instance.Current.Theme))
+			SettingsService.Instance.Current.Theme = "FluentDark";
+		// Optional: in automated test scenarios we may want to auto-dismiss the Syncfusion trial dialog so processes exit cleanly.
+		if (string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_AUTOCLOSE_LICENSE"), "1", StringComparison.OrdinalIgnoreCase))
+		{
+			TryScheduleLicenseDialogAutoClose();
+		}
 		base.OnStartup(e);
 	}
+
+	/// <summary>
+	/// Schedules a dispatcher timer that scans for the Syncfusion trial license dialog and attempts to close it (used only in test automation modes).
+	/// </summary>
+	private void TryScheduleLicenseDialogAutoClose()
+	{
+		try
+		{
+			var timer = new System.Windows.Threading.DispatcherTimer
+			{
+				Interval = TimeSpan.FromMilliseconds(500)
+			};
+			int attempts = 0;
+			timer.Tick += (_, _) =>
+			{
+				try
+				{
+					attempts++;
+					for (int i = 0; i < System.Windows.Application.Current.Windows.Count; i++)
+					{
+						if (System.Windows.Application.Current.Windows[i] is Window w && w.Title.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase))
+						{
+							w.Close();
+							Log.Information("Auto-closed Syncfusion trial dialog (test mode).");
+							break;
+						}
+					}
+					if (attempts > 12) // ~6 seconds then stop
+					{
+						timer.Stop();
+					}
+				}
+				catch { }
+			};
+			timer.Start();
+		}
+		catch { }
+	}
+
+	protected override void OnExit(ExitEventArgs e)
+	{
+		try { Log.Information("=== Application Exit ==="); Log.CloseAndFlush(); } catch { }
+		base.OnExit(e);
+	}
+
+	/// <summary>
+	/// Registers the Syncfusion license using precedence: environment variable (SYNCFUSION_LICENSE_KEY) > side-by-side license.key file.
+	/// Falls back silently if neither is present so the app can still run in development (will show trial banner).
+	/// </summary>
+	private void RegisterSyncfusionLicense()
+	{
+		// 0. Optional embedded license hook (implemented in user-created partial file not committed).
+		// If the partial method returns true, registration succeeded and we skip other sources.
+		try
+		{
+			if (TryRegisterEmbeddedLicense())
+			{
+				Log.Information("Syncfusion license registered from embedded partial.");
+				return;
+			}
+		}
+		catch { /* ignore and continue */ }
+		// 1. Environment variable (User or Machine scope). User sets via: [System.Environment]::SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY","<key>","User")
+		try
+		{
+			var envKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+			if (!string.IsNullOrWhiteSpace(envKey))
+			{
+				SyncfusionLicenseProvider.RegisterLicense(envKey.Trim());
+				Log.Information("Syncfusion license registered from environment variable.");
+				return;
+			}
+			else
+			{
+				Log.Information("No SYNCFUSION_LICENSE_KEY environment variable set – attempting file fallback.");
+			}
+		}
+		catch { /* ignore and continue to file fallback */ }
+
+		// 2. File fallback
+		if (!TryLoadLicenseFromFile())
+		{
+			Log.Warning("Syncfusion license NOT registered (no env var, no license.key). Application will run in trial mode.");
+		}
+	}
+
+	/// <summary>
+	/// Partial hook allowing a private, untracked file (e.g. LicenseKey.Private.cs) to embed the license.
+	/// Return true if a key was registered. Default (no implementation) returns false.
+	/// </summary>
+	private partial bool TryRegisterEmbeddedLicense();
 
 	/// <summary>
 	/// Configure Serilog (daily rolling file in AppData, 7 file retention, enriched with process/thread/machine).
@@ -93,9 +199,9 @@ public partial class App : Application
 
 	/// <summary>
 	/// Attempts to load Syncfusion license from a side-by-side 'license.key' file; silent on failure to allow
-	/// development without a license while avoiding noisy user-facing errors.
+	/// development without a license while avoiding noisy user-facing errors (will show trial notice if unlicensed).
 	/// </summary>
-	private void TryLoadLicenseFromFile()
+	private bool TryLoadLicenseFromFile()
 	{
 		try
 		{
@@ -108,10 +214,12 @@ public partial class App : Application
 				{
 					SyncfusionLicenseProvider.RegisterLicense(key);
 					Log.Information("Syncfusion license loaded from file.");
+					return true;
 				}
 			}
 		}
 		catch { /* fail silent */ }
+		return false;
 	}
 }
 

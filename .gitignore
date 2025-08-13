@@ -34,6 +34,7 @@ CoverageReport/
 
 # Sensitive local license key (place example in docs only)
 license.key
+WileyWidget/LicenseKey.Private.cs
 
 # Rider / VS Code
 .idea/

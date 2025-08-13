@@ -20,8 +20,8 @@
                 </syncfusion:RibbonBar>
                 <syncfusion:RibbonBar Header="Theme">
                     <StackPanel Orientation="Horizontal">
-                        <syncfusion:RibbonButton Label="Fluent Dark" Click="OnFluentDark" />
-                        <syncfusion:RibbonButton Label="Fluent Light" Click="OnFluentLight" />
+                        <syncfusion:RibbonButton x:Name="BtnFluentDark" Label="Fluent Dark" Click="OnFluentDark" />
+                        <syncfusion:RibbonButton x:Name="BtnFluentLight" Label="Fluent Light" Click="OnFluentLight" />
                     </StackPanel>
                 </syncfusion:RibbonBar>
                 <syncfusion:RibbonBar Header="Help">
@@ -43,7 +43,7 @@
             <StatusBar DockPanel.Dock="Bottom" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
                 <StatusBarItem>
                     <TextBlock>
-                        <Run Text="Items: "/><Run Text="{Binding Widgets.Count}" />
+                        <Run Text="Items: "/><Run Text="{Binding Widgets.Count, Mode=OneWay}" />
                     </TextBlock>
                 </StatusBarItem>
                 <StatusBarItem>
