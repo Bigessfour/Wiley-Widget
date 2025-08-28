@@ -28,6 +28,7 @@ CoverageReport/
 # Tool state
 .sonarqube/
 .fleet/
+.trunk/
 
 # Settings (leave example templates instead)
 *.user.settings
