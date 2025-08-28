@@ -64,14 +64,18 @@ public partial class MainWindow : Window
         try
         {
             var canonical = NormalizeTheme(themeName);
+#pragma warning disable CA2000 // Dispose objects before losing scope - Theme objects are managed by SfSkinManager
             SfSkinManager.SetTheme(this, new Theme(canonical));
+#pragma warning restore CA2000 // Dispose objects before losing scope
         }
         catch
         {
             if (themeName != "FluentLight")
             {
                 // Fallback
+#pragma warning disable CA2000 // Dispose objects before losing scope - Theme objects are managed by SfSkinManager
                 try { SfSkinManager.SetTheme(this, new Theme("FluentLight")); } catch { /* ignore */ }
+#pragma warning restore CA2000 // Dispose objects before losing scope
             }
         }
     }

@@ -45,4 +45,14 @@
   <PackageReference Include="Microsoft.Identity.Client" Version="4.76.0" />
   </ItemGroup>
 
+  <!-- Exclude test files from main project build -->
+  <ItemGroup>
+    <Compile Remove="WileyWidget.Tests\**" />
+    <Compile Remove="WileyWidget.UiTests\**" />
+    <EmbeddedResource Remove="WileyWidget.Tests\**" />
+    <EmbeddedResource Remove="WileyWidget.UiTests\**" />
+    <None Remove="WileyWidget.Tests\**" />
+    <None Remove="WileyWidget.UiTests\**" />
+  </ItemGroup>
+
 </Project>
