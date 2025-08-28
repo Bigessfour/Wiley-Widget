@@ -19,6 +19,131 @@ Single-user WPF application scaffold (NET 9) using Syncfusion WPF controls (v30.
  - Status bar (item count + selected widget & price)
  - Theme change logging (recorded via Serilog)
 
+## PowerShell Development Environment
+
+This project includes a comprehensive PowerShell 7.5.2 compatible development environment with convenient aliases and functions.
+
+### Quick Start
+
+1. **Load the development profile**:
+   ```powershell
+   # From project root
+   . .\WileyWidget.Profile.ps1
+
+   # Or from scripts directory
+   . .\scripts\Load-WileyWidgetProfile.ps1
+   ```
+
+2. **Available commands**:
+   ```powershell
+   ww-build     # Build the project
+   ww-test      # Run tests
+   ww-run       # Start the application
+   ww-info      # Show project information
+   ww-license   # Check Syncfusion license
+   ww-edit-env  # Edit environment configuration
+   ww-reset     # Reset development environment
+   ```
+
+### Environment Configuration
+
+The project uses a `.env` file for environment variables:
+
+```env
+# Wiley Widget Environment Configuration
+WILEY_WIDGET_ROOT=C:\Path\To\Project
+WILEY_WIDGET_CONFIG=Release
+MSBUILDDEBUGPATH=C:\Temp\MSBuildDebug
+RUN_UI_TESTS=0
+SYNCFUSION_LICENSE_KEY=your_license_key_here
+```
+
+### Profile Features
+
+- **Approved Verbs**: All functions use Microsoft-approved PowerShell verbs
+- **CamelCase**: Consistent camelCase naming convention
+- **Error Handling**: Comprehensive error handling and verbose output
+- **Environment Management**: Automatic loading of `.env` configuration
+- **Build Integration**: Seamless integration with existing build scripts
+- **Help System**: Full PowerShell help documentation for all functions
+
+### Advanced Usage
+
+```powershell
+# Build with specific configuration
+Invoke-WileyWidgetBuild -Configuration Debug -Clean
+
+# Run tests with coverage
+Invoke-WileyWidgetTest -IncludeUITests -Coverage
+
+# Start application in background
+Start-WileyWidgetApplication -Configuration Release
+
+# Edit environment configuration
+Edit-WileyWidgetEnvironment
+```
+
+## GitHub MCP Server Integration
+
+WileyWidget includes GitHub Model Context Protocol (MCP) server integration for enhanced development workflows.
+
+### Quick Setup
+
+1. **Load the development profile**:
+   ```powershell
+   . .\WileyWidget.Profile.ps1
+   ```
+
+2. **Test MCP connection**:
+   ```powershell
+   .\scripts\Test-GitHub-MCP.ps1
+   ```
+
+3. **Migrate to remote server** (optional):
+   ```powershell
+   .\scripts\Migrate-MCP-To-Remote.ps1 -ServerUrl "https://your-mcp-server.com/github"
+   ```
+
+### Server Configuration Types
+
+#### Local Server (Default)
+- Runs via npx in VS Code
+- No external dependencies
+- Automatic startup with VS Code
+
+#### Remote Server Options
+- **HTTP/HTTPS**: Production deployments
+- **WebSocket**: Real-time collaboration
+- **Load Balanced**: High availability setups
+- **Docker**: Containerized deployments
+
+### Available Tools
+- Repository management
+- Issue tracking
+- Pull request management
+- File operations
+- Git operations
+- CI/CD pipeline management
+
+### Configuration Files
+- `scripts/GitHub-MCP-Setup.md` - Complete setup documentation
+- `scripts/Remote-MCP-Config-Template.env` - Remote server template
+- `scripts/Migrate-MCP-To-Remote.ps1` - Migration script
+- `.vscode/settings.json` - VS Code MCP configuration
+
+### Environment Variables
+```powershell
+# Required
+GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here
+
+# Optional (for remote servers)
+MCP_SERVER_URL=https://your-server.com/github
+MCP_API_KEY=your_api_key
+GITHUB_API_URL=https://api.github.com
+```
+
+See `scripts/GitHub-MCP-Setup.md` for detailed configuration options.
+
 ## Raw File References (machine-consumable)
 | Purpose | Raw URL (replace OWNER/REPO if forked) |
 |---------|----------------------------------------|
