@@ -8,7 +8,7 @@ This document provides comprehensive information about the xUnit testing environ
 
 ### Project Structure
 
-```
+```text
 WileyWidget.sln
 ├── WileyWidget.csproj (Main application)
 ├── WileyWidget.Tests\ (Unit tests)

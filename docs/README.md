@@ -64,7 +64,7 @@ This documentation provides comprehensive guidance for developing and maintainin
 
 ### Build Commands
 
-```pwsh
+````pwsh
 # Full build with tests
 pwsh ./scripts/build.ps1
 
@@ -72,25 +72,30 @@ pwsh ./scripts/build.ps1
 $env:RUN_UI_TESTS=1; pwsh ./scripts/build.ps1
 
 # Run specific test project
+```powershell
 dotnet test WileyWidget.Tests/WileyWidget.Tests.csproj
+````
+
 ```
 
 ## 📁 Project Structure
 
 ```
+
 WileyWidget/
-├── docs/                    # Documentation
-│   ├── development-guide.md # Comprehensive standards
-│   └── README.md           # This index
-├── scripts/                # Build automation
-├── WileyWidget/            # Main application
-│   ├── Models/            # Data structures
-│   ├── ViewModels/        # MVVM ViewModels
-│   ├── Services/          # Business logic
-│   └── Views/             # XAML UI files
-├── WileyWidget.Tests/     # Unit tests
-└── WileyWidget.UiTests/   # UI automation tests
-```
+├── docs/ # Documentation
+│ ├── development-guide.md # Comprehensive standards
+│ └── README.md # This index
+├── scripts/ # Build automation
+├── WileyWidget/ # Main application
+│ ├── Models/ # Data structures
+│ ├── ViewModels/ # MVVM ViewModels
+│ ├── Services/ # Business logic
+│ └── Views/ # XAML UI files
+├── WileyWidget.Tests/ # Unit tests
+└── WileyWidget.UiTests/ # UI automation tests
+
+````
 
 ## 🔗 Connection Methods & Configuration
 
@@ -109,7 +114,7 @@ WileyWidget supports multiple database connection methods for different environm
         "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
     }
 }
-```
+````
 
 **Setup Commands:**
 
