@@ -1,0 +1,316 @@
+{
+  "files": [
+    {
+      "sha256": "6dc3c2a36ec3a5f722bc80e9ef4f87d9fc565ae24ca87375e26f59d45f978b29",
+      "extension": ".editorconfig",
+      "path": ".editorconfig",
+      "size": 813,
+      "lastModified": "2025-08-13T00:01:38.5295825Z",
+      "tracked": true
+    },
+    {
+      "sha256": "46b5bedc67d5b87a5ed7f8ef5d15db5b9b21552d87952c1baa0aa596f1031fae",
+      "extension": ".md",
+      "path": "CHANGELOG.md",
+      "size": 321,
+      "lastModified": "2025-08-28T14:42:38.7615479Z",
+      "tracked": true
+    },
+    {
+      "sha256": "d9cc3a03dc05fc7ab7425381f0b21837e266ea868eaf8a4f8ba7c521eb59bcf1",
+      "extension": ".md",
+      "path": "CONTRIBUTING.md",
+      "size": 1278,
+      "lastModified": "2025-08-28T16:42:54.6078635Z",
+      "tracked": true
+    },
+    {
+      "sha256": "300d432056878d27f38ac05686bcd21438a7b924ef2653d6b4f199e04dcea744",
+      "extension": ".props",
+      "path": "Directory.Build.props",
+      "size": 154,
+      "lastModified": "2025-08-13T00:01:38.5405709Z",
+      "tracked": true
+    },
+    {
+      "sha256": "7d34d19488a32f66025bb8c806e24e169ea36ab8b2e74967fd13be27ec25e249",
+      "extension": ".targets",
+      "path": "Directory.Build.targets",
+      "size": 251,
+      "lastModified": "2025-08-13T00:01:38.5415840Z",
+      "tracked": true
+    },
+    {
+      "sha256": "057514ee5e07bb462a3e3322ca774758cbdc133ca6b7c181d51dadcd0bc35778",
+      "extension": ".md",
+      "path": "Fetchability-Resources-README.md",
+      "size": 4633,
+      "lastModified": "2025-08-28T17:30:44.0515473Z",
+      "tracked": false
+    },
+    {
+      "sha256": "f807c2a5ca24a072a9ebbf493e3ebf148e915632131041eebf1010cbf6ba1ba1",
+      "extension": ".json",
+      "path": "fetchability-resources.json",
+      "size": 10065,
+      "lastModified": "2025-08-28T17:30:31.2499687Z",
+      "tracked": false
+    },
+    {
+      "sha256": "1968b5a47a96c20d5baaa0d78ced545354093ba926c44603bd635f0dff8c1846",
+      "extension": ".md",
+      "path": "Fetchability.md",
+      "size": 5143,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "1154a97add55b816ac95407d44ff0ef4f5175286162a4273fc65d91bb18bbd73",
+      "extension": ".md",
+      "path": "README.md",
+      "size": 19874,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "e6588b1d9ff6b54d95de21abd10578ef780eddbe725e94e3db570d0841894519",
+      "extension": ".md",
+      "path": "RELEASE_NOTES.md",
+      "size": 631,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "81c1d9c40822e6f54ff2731afeaabc19a5bba82fb91fb8eae88e554deb5b9df4",
+      "extension": ".ps1",
+      "path": "scripts/build.ps1",
+      "size": 9694,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "7a20e1731cb8086dd75a2c7637b24f1b36c0dfc0252abeba0f0ee5b08522ec6a",
+      "extension": ".ps1",
+      "path": "scripts/ci-generate-manifest.ps1",
+      "size": 2649,
+      "lastModified": "2025-08-28T17:30:36.0711469Z",
+      "tracked": false
+    },
+    {
+      "sha256": "e3eb6943783b1b71c0f45940f2cfdffdd0dd0c7a52a4a5eee75108cacb426910",
+      "extension": ".ps1",
+      "path": "scripts/Generate-FetchabilityManifest.ps1",
+      "size": 7551,
+      "lastModified": "2025-08-28T17:30:21.2220561Z",
+      "tracked": false
+    },
+    {
+      "sha256": "8e2f551d18686d102674a3586400aea9c7b816bb024073c9f7db1bf8e1255534",
+      "extension": "",
+      "path": "scripts/pre-push",
+      "size": 461,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "7a6a8f58afc539cdd9fcd5a503692aaefbb8696d7df02b02b01ad01fec4b11f7",
+      "extension": ".ps1",
+      "path": "scripts/show-syncfusion-license.ps1",
+      "size": 3325,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "b802d322c5befd04981633c3e98cd07ff814054a7370aaa664530ff2457de495",
+      "extension": ".sln",
+      "path": "WileyWidget.sln",
+      "size": 4029,
+      "lastModified": "2025-08-13T00:01:38.5515837Z",
+      "tracked": true
+    },
+    {
+      "sha256": "fd5684c6e5e1bb1b418fc745130e5bb5911cbef5eb10ecbafa0dfbbb6197cf51",
+      "extension": ".cs",
+      "path": "WileyWidget.Tests/SettingsServiceTests.cs",
+      "size": 2554,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "af2e522fbc6f597f537298c3d4b085545b966f1feff432e154d590e1885f23d2",
+      "extension": ".cs",
+      "path": "WileyWidget.Tests/UnitTest1.cs",
+      "size": 2132,
+      "lastModified": "2025-08-13T00:01:38.5455761Z",
+      "tracked": true
+    },
+    {
+      "sha256": "d249590bc27ab08e8c8d191b0c85bb6d0d9aaf7ff9c79a9265ea47fe8927e8be",
+      "extension": ".csproj",
+      "path": "WileyWidget.Tests/WileyWidget.Tests.csproj",
+      "size": 962,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "5531b29b0bbc3b3773dfca54455fa2b18b588ea1f9233821c2676d22181b4a1d",
+      "extension": ".cs",
+      "path": "WileyWidget.UiTests/Class1.cs",
+      "size": 3385,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "97e8f8662e435b9c7e8eac792a7794659644062b96e2c262802e11e092868219",
+      "extension": ".csproj",
+      "path": "WileyWidget.UiTests/WileyWidget.UiTests.csproj",
+      "size": 926,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "3aed5c7ce2b0f92fc75714d1904c53f922097cc3b6e2fdd48deda7ca856ffd27",
+      "extension": ".xaml",
+      "path": "WileyWidget/AboutWindow.xaml",
+      "size": 899,
+      "lastModified": "2025-08-13T00:01:38.5525715Z",
+      "tracked": true
+    },
+    {
+      "sha256": "e4a2c27d48c2fa134f042fc849e675e07cdd34d57d9b7af236845f032748352b",
+      "extension": ".cs",
+      "path": "WileyWidget/AboutWindow.xaml.cs",
+      "size": 773,
+      "lastModified": "2025-08-13T00:01:38.5535889Z",
+      "tracked": true
+    },
+    {
+      "sha256": "155dbf63d54cc4d8e7d53bb0387d483237145fab79481911aa308da75434616e",
+      "extension": ".xaml",
+      "path": "WileyWidget/App.xaml",
+      "size": 414,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "2df477d435190fbcdf5cab163e92f06b16c9c386a10f3dbe848d2d5be4f30e91",
+      "extension": ".cs",
+      "path": "WileyWidget/App.xaml.cs",
+      "size": 7955,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "3fac2af92385f676e9a941befd23fe38f0a5fa6167d4a3a88f07e730c5595ca3",
+      "extension": ".cs",
+      "path": "WileyWidget/AssemblyInfo.cs",
+      "size": 643,
+      "lastModified": "2025-08-13T00:01:38.5575722Z",
+      "tracked": true
+    },
+    {
+      "sha256": "8c3495cb949ee389e26af19970a1e934959c1f7ae2c3133f4b8b7daa7c68ca49",
+      "extension": ".key",
+      "path": "WileyWidget/license.sample.key",
+      "size": 141,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "3b497f17e3289ddc96192ae8ba7047bc392e45668d99956e3344a708d2b43616",
+      "extension": ".cs",
+      "path": "WileyWidget/LicenseKey.Private.sample.cs",
+      "size": 910,
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "tracked": true
+    },
+    {
+      "sha256": "71d79a0d2bcd70fe67bd02ecf79a31fd5bc63c3464eea06b2d9cf6c42d66fa8e",
+      "extension": ".xaml",
+      "path": "WileyWidget/MainWindow.xaml",
+      "size": 5658,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "46cd729ce428437de1220f8f959b3fef4ee8bd6c1eef134ffddb67745c9e9536",
+      "extension": ".cs",
+      "path": "WileyWidget/MainWindow.xaml.cs",
+      "size": 6392,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "ed5fd11fb3bc7a701edbd243138ba9ed1ba8575ece4a64f9daad557653d3505c",
+      "extension": ".cs",
+      "path": "WileyWidget/Models/AppSettings.cs",
+      "size": 1337,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "0226a9882fb85151beefdabdc4bf5d14fc7a0ffb36fe73183b66669ddac339cc",
+      "extension": ".cs",
+      "path": "WileyWidget/Models/Widget.cs",
+      "size": 433,
+      "lastModified": "2025-08-13T00:01:38.5625765Z",
+      "tracked": true
+    },
+    {
+      "sha256": "a4a140f0f1786e1e4d513abd033a748f275df6eba0bcf4d77a822b0926480d0c",
+      "extension": ".cs",
+      "path": "WileyWidget/Services/QuickBooksService.cs",
+      "size": 5349,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "602efd942fced960476754ef0899a4f59bdce5bc0dec3106aa7feb61b1eda3d7",
+      "extension": ".cs",
+      "path": "WileyWidget/Services/SettingsService.cs",
+      "size": 3728,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "d9976c7d27eff5c339117a52c74caecf02bca203a46cbc378c185143901c8e81",
+      "extension": ".txt",
+      "path": "WileyWidget/signing/README.txt",
+      "size": 202,
+      "lastModified": "2025-08-13T00:01:38.5705759Z",
+      "tracked": true
+    },
+    {
+      "sha256": "b45e43eb6664fb07f1934d82148bab32ef3853a4b008822c34ddd555041d08de",
+      "extension": ".cs",
+      "path": "WileyWidget/ViewModels/MainViewModel.cs",
+      "size": 4269,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    },
+    {
+      "sha256": "1415db0dd7ac31d67b5b8f048ff4ca35d5d7cb4f912bbfac7f34bc56b90b8ad8",
+      "extension": ".csproj",
+      "path": "WileyWidget/WileyWidget.csproj",
+      "size": 1968,
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "tracked": true
+    }
+  ],
+  "metadata": {
+    "generator": "Generate-FetchabilityManifest.ps1",
+    "generatedAt": "2025-08-28T17:30:52.7888572Z",
+    "statistics": {
+      "trackedFiles": 33,
+      "untrackedFiles": 4,
+      "totalFiles": 37,
+      "totalSize": 121902.0
+    },
+    "repository": {
+      "isDirty": true,
+      "remoteUrl": "https://github.com/Bigessfour/Wiley-Widget.git",
+      "commitHash": "4b344f9f9750b99b56bd6ff730bebffe3e6275b1",
+      "branch": "main"
+    }
+  }
+}
