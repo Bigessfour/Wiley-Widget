@@ -1,0 +1,18 @@
+<Window x:Class="WileyWidget.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About WileyWidget" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <TextBlock Text="WileyWidget" FontSize="20" FontWeight="Bold" />
+        <TextBlock Grid.Row="1" x:Name="VersionText" Margin="0,8,0,0" />
+        <TextBlock Grid.Row="2" Text="(c) 2025 Your Company" Margin="0,8,0,0" />
+        <Button Grid.Row="3" Content="Close" Margin="0,16,0,0" HorizontalAlignment="Right" Width="80" Click="OnClose" />
+    </Grid>
+</Window>
