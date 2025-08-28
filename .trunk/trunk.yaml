@@ -19,7 +19,6 @@ lint:
   enabled:
     - actionlint@1.7.7
     - git-diff-check
-    - markdownlint@0.45.0
     - prettier@3.6.2
     - trufflehog@3.90.5
     - yamllint@1.37.1
