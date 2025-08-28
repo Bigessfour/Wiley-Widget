@@ -1,0 +1,82 @@
+{
+  "Build Scripts": {
+    "Output": "14 PowerShell script(s) found",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "Azure Account": {
+    "Output": "{\r\n  \"environmentName\": \"AzureCloud\",\r\n  \"homeTenantId\": \"cb097857-10d5-410b-8e09-6073de3ab035\",\r\n  \"id\": \"89c2076a-8c6f-41fe-b03c-850d46a57abf\",\r\n  \"isDefault\": true,\r\n  \"managedByTenants\": [],\r\n  \"name\": \"Azure subscription 1\",\r\n  \"state\": \"Enabled\",\r\n  \"tenantDefaultDomain\": \"bigessfourgmail500.onmicrosoft.com\",\r\n  \"tenantDisplayName\": \"Default Directory\",\r\n  \"tenantId\": \"cb097857-10d5-410b-8e09-6073de3ab035\",\r\n  \"user\": {\r\n    \"name\": \"bigessfour@gmail.com\",\r\n    \"type\": \"user\"\r\n  }\r\n}\r\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "GitHub CLI": {
+    "Output": "gh version 2.74.0 (2025-05-29)\nhttps://github.com/cli/cli/releases/tag/v2.74.0\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "Node.js": {
+    "Output": "v20.17.0\r\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "Azure CLI": {
+    "Output": "azure-cli                         2.76.0\r\n\r\ncore                              2.76.0\r\ntelemetry                          1.1.0\r\n\r\nDependencies:\r\nmsal                            1.33.0b1\r\nazure-mgmt-resource               23.3.0\r\n\r\nPython location 'C:\\Program Files\\Microsoft SDKs\\Azure\\CLI2\\python.exe'\r\nConfig directory 'C:\\Users\\biges\\.azure'\r\nExtensions directory 'C:\\Users\\biges\\.azure\\cliextensions'\r\n\r\nPython (Windows) 3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]\r\n\r\nLegal docs and information: aka.ms/AzureCliLegal\r\n\r\n\r\nYour CLI is up-to-date.\r\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "NPM": {
+    "Output": "10.8.2\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "Trunk CLI": {
+    "Output": "1.25.0\r\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "Trunk Config": {
+    "Output": "The property 'Count' cannot be found on this object. Verify that the property exists.",
+    "ExitCode": -1,
+    "Status": "ERROR"
+  },
+  "Trunk Check": {
+    "Output": "universal code checker\r\n\r\n\u001b[1musage\r\n  \u001b[0mtrunk check [flags] [paths...] [subcommand]\r\n\u001b[1m\r\nargs\r\n\u001b[0m  paths                       files or directories to check (if omitted, checks all changed files)\r\n\u001b[1m\r\nflags\r\n\u001b[0m  -h, --help                  usage information\r\n  -a, --all                   check all files instead of only changed files\r\n  -y, --fix                   automatically apply all fixes without prompting\r\n  -n, --no-fix                don't automatically apply fixes\r\n      --include-existing-autofixes,--show-existing\r\n                              show autofixes for existing issues\r\n      --ignore-git-state      run linters even if a merge, rebase, or revert is in progress\r\n      --force                 run on all files, even if ignored\r\n      --diff                  diff printing mode {none | compact | full}\r\n      --filter                comma separated list of linters and/or issue codes to include or exclude (use minus to exclude, e.g. '-eslint,-shellcheck/SC2301')\r\n      --exclude               shorthand for an inverse --filter\r\n      --ignore                Glob pattern to exclude files from linting (e.g. 'docs/**/*.md')\r\n      --cache                 cache lint results from previous runs (default 'true')\r\n  -j, --jobs                  number of concurrent jobs (does not affect background linting)\r\n      --sample                run each linter on N files (implies --no-fix and --all if no paths are given)\r\n      --upstream              upstream branch used to compute changed files (autodetected by default)\r\n      --scope                 scope of checks to run {all | security}\r\n      --print-failures        print any failures that occur (default on for --ci)\r\n      --index                 run linter on git-indexed files\r\n      --index-file            run linter on git-indexed files based on specified index\r\n      --commit-ref            commit ref to lint (instead of current working tree)\r\n      --commit-ref-from-pre-push\r\n                              commit ref to lint from the stdin of a pre-push git hook (instead of current working tree)\r\n      --version               the version\r\n      --monitor               enable the trunk daemon to monitor file changes in your repo\r\n      --ci                    run in continuous integration mode\r\n      --no-progress           don't show progress updates\r\n      --ci-progress           rate limit progress updates to every 30s (implied by --ci)\r\n      --action_timeout        timeout for downloads, lint runs, etc\r\n  -v, --verbose               output details about what's happening under the hood\r\n      --color                 enable/disable color output\r\n\u001b[1m\r\nupload flags\r\n\u001b[0m      --token                 trunk api token\r\n      --upload                upload lint results to the trunk web app\r\n      --series                series name for this upload (usually the branch)\r\n      --replace               overwrite previously uploaded check run if one exists\r\n\u001b[1m\r\nsubcommands\r\n\u001b[0m  github_annotate             upload a previously saved annotation file to github\r\n  enable                      enable linters\r\n  disable                     disable linters\r\n  list                        list all available linters\r\n\r\n\r\n\u001b[1mlearn more\u001b[0m\r\n  docs                        https://docs.trunk.io\r\n  help/feedback               https://slack.trunk.io\r\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "NuGet": {
+    "Output": "\n'nuget' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n",
+    "ExitCode": 1,
+    "Status": "FAIL"
+  },
+  "GitHub Actions": {
+    "Output": "2 workflow(s) found",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "VSTest": {
+    "Output": "\n'vstest.console.exe' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n",
+    "ExitCode": 1,
+    "Status": "FAIL"
+  },
+  "MSBuild": {
+    "Output": "\n'msbuild' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n",
+    "ExitCode": 1,
+    "Status": "FAIL"
+  },
+  "PowerShell": {
+    "Output": "PowerShell 7.5.2\r\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  "Git": {
+    "Output": "git version 2.49.0.windows.1\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  },
+  ".NET SDK": {
+    "Output": "9.0.304\r\n",
+    "ExitCode": 0,
+    "Status": "OK"
+  }
+}

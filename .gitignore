@@ -37,6 +37,11 @@ CoverageReport/
 license.key
 WileyWidget/LicenseKey.Private.cs
 
+# Environment variables (NEVER commit)
+.env
+.env.local
+.env.*.local
+
 # Rider / VS Code
 .idea/
 .vscode/

@@ -21,25 +21,25 @@ Updated WileyWidget CI/CD workflows to be more streamlined, standard, and effici
 ```yaml
 name: CI
 on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-    build:
-        runs-on: windows-latest
-        steps:
-            - Checkout
-            - Setup .NET
-            - Cache NuGet
-            - Trunk Check ⭐ (NEW)
-            - Restore
-            - Build
-            - Test
-            - Check Coverage
-            - Upload Artifacts
-            - Generate Fetchability
+  build:
+    runs-on: windows-latest
+    steps:
+      - Checkout
+      - Setup .NET
+      - Cache NuGet
+      - Trunk Check ⭐ (NEW)
+      - Restore
+      - Build
+      - Test
+      - Check Coverage
+      - Upload Artifacts
+      - Generate Fetchability
 ```
 
 #### Key Improvements
@@ -64,19 +64,19 @@ jobs:
 ```yaml
 name: Release
 on:
-    push:
-        tags: ["v*"]
+  push:
+    tags: ["v*"]
 
 jobs:
-    release:
-        runs-on: windows-latest
-        steps:
-            - Checkout
-            - Setup .NET
-            - Build Release
-            - Pack (NuGet)
-            - Create Release
-            - Upload Release Asset
+  release:
+    runs-on: windows-latest
+    steps:
+      - Checkout
+      - Setup .NET
+      - Build Release
+      - Pack (NuGet)
+      - Create Release
+      - Upload Release Asset
 ```
 
 #### Key Improvements

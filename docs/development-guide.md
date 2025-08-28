@@ -198,9 +198,9 @@ WileyWidget supports multiple database connection methods to accommodate differe
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
-    }
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
+  }
 }
 ```
 
@@ -238,9 +238,9 @@ AZURE_SQL_RETRY_ATTEMPTS=3
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+  }
 }
 ```
 
@@ -266,9 +266,9 @@ az sql db create --name "WileyWidgetDb" --resource-group "wileywidget-rg" --serv
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
+  }
 }
 ```
 
@@ -307,16 +307,16 @@ az ad sp create-for-rbac --name "wileywidget-sp" --role "Contributor" --scopes "
 The application automatically selects the appropriate connection method:
 
 1. **Environment Variables** (Highest Priority)
-    - Used when `AZURE_SQL_*` variables are present
-    - Supports all Azure connection methods
+   - Used when `AZURE_SQL_*` variables are present
+   - Supports all Azure connection methods
 
 2. **Configuration Files** (Medium Priority)
-    - `appsettings.Production.json` for production
-    - `appsettings.json` for development
+   - `appsettings.Production.json` for production
+   - `appsettings.json` for development
 
 3. **LocalDB Fallback** (Lowest Priority)
-    - Used when no Azure configuration is found
-    - Ensures application works offline
+   - Used when no Azure configuration is found
+   - Ensures application works offline
 
 ### Testing Database Connections
 
@@ -365,12 +365,12 @@ using (var connection = new SqlConnection(connectionString))
 ```json
 // appsettings.json
 {
-    "Database": {
-        "MaxPoolSize": 100,
-        "MinPoolSize": 5,
-        "ConnectionTimeout": 30,
-        "Pooling": true
-    }
+  "Database": {
+    "MaxPoolSize": 100,
+    "MinPoolSize": 5,
+    "ConnectionTimeout": 30,
+    "Pooling": true
+  }
 }
 ```
 
@@ -379,11 +379,11 @@ using (var connection = new SqlConnection(connectionString))
 ```json
 // appsettings.json
 {
-    "Database": {
-        "MaxRetryCount": 3,
-        "MaxRetryDelay": "00:00:30",
-        "EnableRetryOnFailure": true
-    }
+  "Database": {
+    "MaxRetryCount": 3,
+    "MaxRetryDelay": "00:00:30",
+    "EnableRetryOnFailure": true
+  }
 }
 ```
 
@@ -457,12 +457,12 @@ services.AddHealthChecks()
 ```json
 // appsettings.json
 {
-    "Logging": {
-        "LogLevel": {
-            "Microsoft.EntityFrameworkCore": "Warning",
-            "Microsoft.EntityFrameworkCore.Database.Command": "Information"
-        }
+  "Logging": {
+    "LogLevel": {
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
     }
+  }
 }
 ```
 

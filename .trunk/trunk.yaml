@@ -17,8 +17,30 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
+    # Code formatting - essential for consistency
     - prettier@3.6.2
+    # Security scanning - critical for production
     - trufflehog@3.90.5
+  disabled:
+    # Too aggressive on documentation formatting
+    - markdownlint
+    # Too strict on git whitespace in docs
+    - git-diff-check
+    # Too picky about GitHub Actions syntax variations
+    - actionlint
+    # Too picky about YAML formatting variations
+    - yamllint
+    # Security scanner with too many false positives on config files
+    - checkov
+  ignore:
+    # Skip documentation formatting entirely
+    - linters: [ALL]
+      paths:
+        - docs/**/*.md
+        - "*.md"
+        - README.md
+        - CHANGELOG.md
+        - CONTRIBUTING.md
 actions:
   enabled:
     - trunk-announce

@@ -127,9 +127,9 @@ The project uses a specific .NET SDK version to ensure consistency across develo
 
 ```json
 {
-    "sdk": {
-        "version": "8.0.413"
-    }
+  "sdk": {
+    "version": "8.0.413"
+  }
 }
 ```
 
@@ -401,7 +401,7 @@ The test environment is designed to work seamlessly with CI/CD pipelines:
 - name: Upload Coverage
   uses: codecov/codecov-action@v3
   with:
-      file: ./test-results/*/coverage.cobertura.xml
+    file: ./test-results/*/coverage.cobertura.xml
 ```
 
 ## Maintenance

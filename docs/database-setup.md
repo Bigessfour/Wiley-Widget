@@ -26,19 +26,19 @@ SQL Server LocalDB is required for development and testing. Choose one of the in
 #### Option 1: Install via SQL Server Express (Recommended)
 
 1. **Download SQL Server Express**:
-    - Go to: <https://www.microsoft.com/en-us/sql-server/sql-server-downloads>
-    - Download "SQL Server Express" (free edition)
+   - Go to: <https://www.microsoft.com/en-us/sql-server/sql-server-downloads>
+   - Download "SQL Server Express" (free edition)
 
 2. **Run the installer**:
-    - Select "Basic" installation type
-    - Choose default instance name (SQLEXPRESS)
-    - Complete the installation
+   - Select "Basic" installation type
+   - Choose default instance name (SQLEXPRESS)
+   - Complete the installation
 
 3. **Verify installation**:
-    ```powershell
-    sqllocaldb info
-    ```
-    Should show available LocalDB instances.
+   ```powershell
+   sqllocaldb info
+   ```
+   Should show available LocalDB instances.
 
 #### Option 2: Install via Chocolatey (Alternative)
 
@@ -58,8 +58,8 @@ sqllocaldb info
 #### Option 3: Manual Download (Offline)
 
 1. Download SqlLocalDB.msi from Microsoft:
-    - Search for "SQL Server LocalDB" on Microsoft Download Center
-    - Download the latest version (2022 recommended)
+   - Search for "SQL Server LocalDB" on Microsoft Download Center
+   - Download the latest version (2022 recommended)
 
 2. Install the MSI package
 
@@ -71,9 +71,9 @@ The application is pre-configured to use SQL Server LocalDB with the following c
 
 ```json
 {
-    "ConnectionStrings": {
-        "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
-    }
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
+  }
 }
 ```
 
@@ -213,14 +213,14 @@ AZURE_TENANT_ID=your-tenant-id
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-    },
-    "Database": {
-        "MaxRetryCount": "${AZURE_SQL_RETRY_ATTEMPTS}",
-        "MaxRetryDelay": "00:00:30",
-        "EnableRetryOnFailure": true
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+  },
+  "Database": {
+    "MaxRetryCount": "${AZURE_SQL_RETRY_ATTEMPTS}",
+    "MaxRetryDelay": "00:00:30",
+    "EnableRetryOnFailure": true
+  }
 }
 ```
 
@@ -292,9 +292,9 @@ az sql server ad-admin create `
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
+  }
 }
 ```
 
@@ -627,12 +627,12 @@ GO
 ```json
 // appsettings.json - Connection pool settings
 {
-    "Database": {
-        "MaxPoolSize": 100,
-        "MinPoolSize": 5,
-        "ConnectionTimeout": 30,
-        "Pooling": true
-    }
+  "Database": {
+    "MaxPoolSize": 100,
+    "MinPoolSize": 5,
+    "ConnectionTimeout": 30,
+    "Pooling": true
+  }
 }
 ```
 
@@ -689,12 +689,12 @@ az sql db show-connection-string `
 ```json
 // appsettings.json
 {
-    "Logging": {
-        "LogLevel": {
-            "Microsoft.EntityFrameworkCore": "Warning",
-            "Microsoft.EntityFrameworkCore.Database.Command": "Information"
-        }
+  "Logging": {
+    "LogLevel": {
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
     }
+  }
 }
 ```
 
@@ -853,9 +853,9 @@ For production deployment, update the connection string in `appsettings.Producti
 
 ```json
 {
-    "ConnectionStrings": {
-        "DefaultConnection": "Server=your-production-server;Database=WileyWidgetDb;User Id=your-user;Password=your-password;MultipleActiveResultSets=true"
-    }
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=your-production-server;Database=WileyWidgetDb;User Id=your-user;Password=your-password;MultipleActiveResultSets=true"
+  }
 }
 ```
 

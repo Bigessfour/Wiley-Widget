@@ -139,9 +139,9 @@ sqllocaldb info MSSQLLocalDB
 ```json
 // appsettings.json - Azure SQL Configuration
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+  }
 }
 ```
 
@@ -167,9 +167,9 @@ AZURE_TENANT_ID=your-tenant-id
 ```json
 // appsettings.json - Managed Identity Configuration
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;"
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;"
+  }
 }
 ```
 
@@ -303,12 +303,12 @@ $env:WILEY_WIDGET_DB_TIMEOUT=60
 ```json
 // appsettings.json - Performance Settings
 {
-    "Database": {
-        "MaxPoolSize": 100,
-        "MinPoolSize": 5,
-        "ConnectionTimeout": 30,
-        "CommandTimeout": 30
-    }
+  "Database": {
+    "MaxPoolSize": 100,
+    "MinPoolSize": 5,
+    "ConnectionTimeout": 30,
+    "CommandTimeout": 30
+  }
 }
 ```
 
@@ -317,11 +317,11 @@ $env:WILEY_WIDGET_DB_TIMEOUT=60
 ```json
 // appsettings.json - Retry Settings
 {
-    "Database": {
-        "MaxRetryCount": 3,
-        "MaxRetryDelay": "00:00:30",
-        "EnableRetryOnFailure": true
-    }
+  "Database": {
+    "MaxRetryCount": 3,
+    "MaxRetryDelay": "00:00:30",
+    "EnableRetryOnFailure": true
+  }
 }
 ```
 
@@ -365,12 +365,12 @@ az sql db show --resource-group "wileywidget-rg" --server "wileywidget-sql" --na
 ```json
 // appsettings.json - Logging
 {
-    "Logging": {
-        "LogLevel": {
-            "Microsoft.EntityFrameworkCore": "Warning",
-            "WileyWidget": "Information"
-        }
+  "Logging": {
+    "LogLevel": {
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "WileyWidget": "Information"
     }
+  }
 }
 ```
 

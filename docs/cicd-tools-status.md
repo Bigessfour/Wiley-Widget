@@ -63,10 +63,10 @@ The WileyWidget project has a comprehensive CI/CD toolchain successfully configu
 - **Directory**: `scripts\`
 - **Scripts**: 13 PowerShell automation scripts
 - **Key Scripts**:
-    - `build.ps1` - Main build process
-    - `setup-azure.ps1` - Azure infrastructure setup
-    - `update-firewall-ip.ps1` - Dynamic IP management
-    - `verify-cicd-tools.ps1` - Tool verification
+  - `build.ps1` - Main build process
+  - `setup-azure.ps1` - Azure infrastructure setup
+  - `update-firewall-ip.ps1` - Dynamic IP management
+  - `verify-cicd-tools.ps1` - Tool verification
 
 ## 🚀 CI/CD Pipeline Status
 

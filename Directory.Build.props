@@ -1,4 +1,10 @@
 <Project>
+  <!--
+    WileyWidget Build Configuration
+    See docs/development-guide.md for comprehensive development standards
+    See CONTRIBUTING.md for contribution guidelines
+    See .vscode/project-plan.md for True North vision and roadmap
+  -->
   <PropertyGroup>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Nullable>disable</Nullable>

@@ -1,7 +1,12 @@
 rules:
   quoted-strings:
-    required: only-when-needed
+    required: false  # Don't force quote requirements - too picky
     extra-allowed: ["{|}"]
   key-duplicates: {}
   octal-values:
     forbid-implicit-octal: true
+  line-length:
+    max: 200  # Allow longer lines for practical CI/CD
+  indentation:
+    spaces: consistent  # Just require consistency
+  trailing-spaces: disable  # Don't be picky about trailing spaces

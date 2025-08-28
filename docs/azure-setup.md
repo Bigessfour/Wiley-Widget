@@ -158,16 +158,16 @@ Update your `appsettings.json` to use environment variables:
 
 ```json
 {
-    "ConnectionStrings": {
-        "DefaultConnection": "%AZURE_SQL_CONNECTION_STRING%",
-        "LocalDB": "Server=(localdb)\\MSSQLLocalDB;Integrated Security=true;Database=WileyWidgetDB;"
-    },
-    "Azure": {
-        "SubscriptionId": "%AZURE_SUBSCRIPTION_ID%",
-        "ResourceGroup": "%AZURE_RESOURCE_GROUP%",
-        "SqlServer": "%AZURE_SQL_SERVER%",
-        "Database": "%AZURE_SQL_DATABASE%"
-    }
+  "ConnectionStrings": {
+    "DefaultConnection": "%AZURE_SQL_CONNECTION_STRING%",
+    "LocalDB": "Server=(localdb)\\MSSQLLocalDB;Integrated Security=true;Database=WileyWidgetDB;"
+  },
+  "Azure": {
+    "SubscriptionId": "%AZURE_SUBSCRIPTION_ID%",
+    "ResourceGroup": "%AZURE_RESOURCE_GROUP%",
+    "SqlServer": "%AZURE_SQL_SERVER%",
+    "Database": "%AZURE_SQL_DATABASE%"
+  }
 }
 ```
 

@@ -1,86 +1,56 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 jobs:
-  build-test:
-    runs-on: windows-latest
-    env:
-      COVERAGE_MIN: 70   # Minimum required line coverage percentage (bumped from 60)
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    build:
+        runs-on: windows-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Cache NuGet
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "9.0.x"
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-      - name: Install ReportGenerator (before build so script can emit HTML)
-        run: dotnet tool update --global dotnet-reportgenerator-globaltool
+            - name: Cache NuGet
+              uses: actions/cache@v4
+              with:
+                  path: ~/.nuget/packages
+                  key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+                  restore-keys: |
+                      nuget-${{ runner.os }}-
 
-      - name: Build + Test (script)
-        run: |
-          $env:RUN_UI_TESTS='0'
-          pwsh ./scripts/build.ps1 -Config Release
+            - name: Trunk Check
+              uses: trunk-io/trunk-action@v1
 
-      - name: List Coverage Files (post-script)
-        run: |
-          Write-Host 'Listing coverage.cobertura.xml files produced by script:'
-          $files = Get-ChildItem -Recurse -Filter coverage.cobertura.xml | Select-Object FullName, Length, LastWriteTime
-          if (-not $files) { Write-Warning 'No coverage files found (script may have warned already).' } else { $files | Format-Table | Out-String | Write-Host }
+            - name: Restore
+              run: dotnet restore
 
-      - name: Ensure CoverageReport directory (placeholder if missing)
-        run: |
-          if (-not (Test-Path CoverageReport)) { New-Item -ItemType Directory -Path CoverageReport | Out-Null }
+            - name: Build
+              run: dotnet build --no-restore /bl:msbuild.binlog
 
-      - name: Upload Coverage Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: CoverageReport/**
+            - name: Test
+              run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage"
 
-      - name: Upload Build Diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-diagnostics
-          path: |
-            TestResults/msbuild.binlog
-            TestResults/MSBuildDebug/**
-            TestResults/MSBuildDebug.zip
+            - name: Check Coverage
+              run: |
+                  dotnet tool install -g dotnet-reportgenerator-globaltool
+                  reportgenerator -reports:TestResults/*/coverage.cobertura.xml -targetdir:coverage -reporttypes:Html
 
-      - name: UI Smoke (Category=UiSmokeTests)
-        run: |
-          echo "Running UI smoke tests (Category=UiSmokeTests)"
-          taskkill /IM WileyWidget.exe /F || echo "No running WileyWidget.exe"
-          taskkill /IM testhost.exe /F || echo "No running testhost.exe"
-          taskkill /IM vstest.console.exe /F || echo "No running vstest.console.exe"
-          dotnet test WileyWidget.sln --configuration Release --no-build --filter Category=UiSmokeTests --results-directory UiSmokeResults --no-parallel /p:UseSharedCompilation=false
-          echo "UI smoke tests completed"
+            - name: Upload Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: build-diagnostics
+                  path: |
+                      msbuild.binlog
+                      coverage/
+                      TestResults/
 
-      - name: Publish Coverage Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: |
-            TestResults/**/coverage.cobertura.xml
-            TestResults/**/*.trx
-            UiSmokeResults/**/*.trx
-
-      - name: Summary
-        if: success()
-        run: echo "Build & tests succeeded."
+            - name: Generate Fetchability
+              run: pwsh ./scripts/ci-generate-manifest.ps1

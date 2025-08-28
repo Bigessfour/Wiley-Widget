@@ -22,9 +22,9 @@ WileyWidget supports multiple database connection methods to accommodate differe
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
-    }
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
+  }
 }
 ```
 
@@ -77,14 +77,14 @@ AZURE_SQL_RETRY_ATTEMPTS=3
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-    },
-    "Database": {
-        "MaxRetryCount": "${AZURE_SQL_RETRY_ATTEMPTS}",
-        "MaxRetryDelay": "00:00:30",
-        "EnableRetryOnFailure": true
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+  },
+  "Database": {
+    "MaxRetryCount": "${AZURE_SQL_RETRY_ATTEMPTS}",
+    "MaxRetryDelay": "00:00:30",
+    "EnableRetryOnFailure": true
+  }
 }
 ```
 
@@ -143,9 +143,9 @@ az sql server firewall-rule create --resource-group "wileywidget-rg" --server "w
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
+  }
 }
 ```
 
@@ -278,13 +278,13 @@ using (var connection = new SqlConnection(connectionString))
 
 ```json
 {
-    "Database": {
-        "MaxPoolSize": 100,
-        "MinPoolSize": 5,
-        "ConnectionTimeout": 30,
-        "CommandTimeout": 30,
-        "Pooling": true
-    }
+  "Database": {
+    "MaxPoolSize": 100,
+    "MinPoolSize": 5,
+    "ConnectionTimeout": 30,
+    "CommandTimeout": 30,
+    "Pooling": true
+  }
 }
 ```
 
@@ -292,12 +292,12 @@ using (var connection = new SqlConnection(connectionString))
 
 ```json
 {
-    "Database": {
-        "MaxRetryCount": 3,
-        "MaxRetryDelay": "00:00:30",
-        "EnableRetryOnFailure": true,
-        "RetryOnFailureDelay": "00:00:05"
-    }
+  "Database": {
+    "MaxRetryCount": 3,
+    "MaxRetryDelay": "00:00:30",
+    "EnableRetryOnFailure": true,
+    "RetryOnFailureDelay": "00:00:05"
+  }
 }
 ```
 
@@ -305,12 +305,12 @@ using (var connection = new SqlConnection(connectionString))
 
 ```json
 {
-    "Logging": {
-        "LogLevel": {
-            "Microsoft.EntityFrameworkCore": "Warning",
-            "Microsoft.EntityFrameworkCore.Database.Command": "Information"
-        }
+  "Logging": {
+    "LogLevel": {
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
     }
+  }
 }
 ```
 
@@ -625,19 +625,19 @@ public partial class App : Application
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureSql": "Server=your-server.database.windows.net;Database=your-database;Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
-    },
-    "AzureSql": {
-        "Server": "your-server.database.windows.net",
-        "Database": "your-database"
-    },
-    "Logging": {
-        "LogLevel": {
-            "Default": "Information",
-            "Microsoft.EntityFrameworkCore": "Warning"
-        }
+  "ConnectionStrings": {
+    "AzureSql": "Server=your-server.database.windows.net;Database=your-database;Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
+  },
+  "AzureSql": {
+    "Server": "your-server.database.windows.net",
+    "Database": "your-database"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.EntityFrameworkCore": "Warning"
     }
+  }
 }
 ```
 
@@ -648,9 +648,9 @@ For development, create a user secrets file:
 ```json
 // secrets.json (development only)
 {
-    "ConnectionStrings": {
-        "AzureSql": "Server=your-server.database.windows.net;Database=your-database;User Id=your-username;Password=your-password;Encrypt=True;TrustServerCertificate=False;"
-    }
+  "ConnectionStrings": {
+    "AzureSql": "Server=your-server.database.windows.net;Database=your-database;User Id=your-username;Password=your-password;Encrypt=True;TrustServerCertificate=False;"
+  }
 }
 ```
 
@@ -932,7 +932,7 @@ public class WidgetRepositoryTests
 ```json
 // Azure App Service application settings
 {
-    "AZURE_SQL_CONNECTIONSTRING": "Server=prod-server.database.windows.net;Database=prod-database;Authentication=Active Directory Managed Identity;"
+  "AZURE_SQL_CONNECTIONSTRING": "Server=prod-server.database.windows.net;Database=prod-database;Authentication=Active Directory Managed Identity;"
 }
 ```
 

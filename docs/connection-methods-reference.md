@@ -32,9 +32,9 @@ sqllocaldb start MSSQLLocalDB
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
-    }
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true"
+  }
 }
 ```
 
@@ -100,9 +100,9 @@ AZURE_SQL_RETRY_ATTEMPTS=3
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+  }
 }
 ```
 
@@ -169,9 +169,9 @@ az sql server ad-admin create --server "wileywidget-sql" --resource-group "wiley
 ```json
 // appsettings.json
 {
-    "ConnectionStrings": {
-        "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
-    }
+  "ConnectionStrings": {
+    "AzureConnection": "Server=${AZURE_SQL_SERVER};Database=${AZURE_SQL_DATABASE};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;"
+  }
 }
 ```
 
@@ -242,13 +242,13 @@ az login --service-principal --username $clientId --password $clientSecret --ten
 ```json
 // appsettings.json
 {
-    "Database": {
-        "MaxPoolSize": 100,
-        "MinPoolSize": 5,
-        "ConnectionTimeout": 30,
-        "CommandTimeout": 30,
-        "Pooling": true
-    }
+  "Database": {
+    "MaxPoolSize": 100,
+    "MinPoolSize": 5,
+    "ConnectionTimeout": 30,
+    "CommandTimeout": 30,
+    "Pooling": true
+  }
 }
 ```
 
@@ -257,12 +257,12 @@ az login --service-principal --username $clientId --password $clientSecret --ten
 ```json
 // appsettings.json
 {
-    "Database": {
-        "MaxRetryCount": 3,
-        "MaxRetryDelay": "00:00:30",
-        "EnableRetryOnFailure": true,
-        "RetryOnFailureDelay": "00:00:05"
-    }
+  "Database": {
+    "MaxRetryCount": 3,
+    "MaxRetryDelay": "00:00:30",
+    "EnableRetryOnFailure": true,
+    "RetryOnFailureDelay": "00:00:05"
+  }
 }
 ```
 
@@ -271,12 +271,12 @@ az login --service-principal --username $clientId --password $clientSecret --ten
 ```json
 // appsettings.json
 {
-    "Logging": {
-        "LogLevel": {
-            "Microsoft.EntityFrameworkCore": "Warning",
-            "Microsoft.EntityFrameworkCore.Database.Command": "Information"
-        }
+  "Logging": {
+    "LogLevel": {
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
     }
+  }
 }
 ```
 

@@ -1,48 +1,43 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version (e.g., 0.1.0)'
-        required: true
+    push:
+        tags: ["v*"]
 
 jobs:
-  create-release:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    release:
+        runs-on: windows-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "9.0.x"
 
-      - name: Update Version
-        run: |
-          $ver = '${{ github.event.inputs.version }}'
-          (Get-Content Directory.Build.targets) -replace '<Version>.*</Version>', "<Version>$ver</Version>" | Set-Content Directory.Build.targets
-          (Get-Content Directory.Build.targets) -replace '<FileVersion>.*</FileVersion>', "<FileVersion>$ver.0</FileVersion>" | Set-Content Directory.Build.targets
-          (Get-Content Directory.Build.targets) -replace '<InformationalVersion>.*</InformationalVersion>', "<InformationalVersion>$ver+ci</InformationalVersion>" | Set-Content Directory.Build.targets
+            - name: Build Release
+              run: dotnet build -c Release
 
-      - name: Build
-        run: dotnet build WileyWidget.sln --configuration Release
+            - name: Pack
+              run: dotnet pack -c Release --no-build
 
-      - name: Publish Artifacts (Self-Contained win-x64)
-        run: dotnet publish WileyWidget/WileyWidget.csproj -c Release -o publish -r win-x64 /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:PublishTrimmed=false /p:SelfContained=true
+            - name: Create Release
+              uses: actions/create-release@v1
+              with:
+                  tag_name: ${{ github.ref }}
+                  release_name: Release ${{ github.ref }}
+                  draft: false
+                  prerelease: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Archive
-        run: Compress-Archive -Path publish/* -DestinationPath WileyWidget-${{ github.event.inputs.version }}-win-x64.zip
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: WileyWidget v${{ github.event.inputs.version }}
-          draft: false
-          prerelease: false
-          files: |
-            WileyWidget-${{ github.event.inputs.version }}-win-x64.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Upload Release Asset
+              uses: actions/upload-release-asset@v1
+              with:
+                  upload_url: ${{ steps.create_release.outputs.upload_url }}
+                  asset_path: WileyWidget/bin/Release/*.nupkg
+                  asset_name: WileyWidget.nupkg
+                  asset_content_type: application/zip
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

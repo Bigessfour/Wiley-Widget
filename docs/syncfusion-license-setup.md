@@ -48,16 +48,16 @@ AZURE_SQL_RETRY_ATTEMPTS=3
 ### Configuration Priority
 
 1. **Environment Variables** (Highest Priority)
-    - `SYNCFUSION_LICENSE_KEY` environment variable
-    - Works across all connection methods
+   - `SYNCFUSION_LICENSE_KEY` environment variable
+   - Works across all connection methods
 
 2. **License File** (Medium Priority)
-    - `license.key` file in application directory
-    - Independent of database configuration
+   - `license.key` file in application directory
+   - Independent of database configuration
 
 3. **Embedded Code** (Lowest Priority)
-    - `LicenseKey.Private.cs` file
-    - Development only, never commit to source control
+   - `LicenseKey.Private.cs` file
+   - Development only, never commit to source control
 
 ## License Acquisition
 
@@ -71,14 +71,14 @@ AZURE_SQL_RETRY_ATTEMPTS=3
 ### Step 2: Download License Key
 
 1. **Community License (Free)**:
-    - Go to: <https://www.syncfusion.com/account/manage-license/communitylicense>
-    - Click "Get Community License"
-    - Copy the license key (format: starts with letter, ~90+ characters)
+   - Go to: <https://www.syncfusion.com/account/manage-license/communitylicense>
+   - Click "Get Community License"
+   - Copy the license key (format: starts with letter, ~90+ characters)
 
 2. **Commercial License**:
-    - Purchase a license from: <https://www.syncfusion.com/sales/license>
-    - Download from your account dashboard
-    - Use the provided license key
+   - Purchase a license from: <https://www.syncfusion.com/sales/license>
+   - Download from your account dashboard
+   - Use the provided license key
 
 ### Step 3: License Key Format
 
@@ -114,13 +114,13 @@ The application supports three registration methods (tried in order):
 
 1. **Create license.key file**:
 
-    ```
-    YOUR_LICENSE_KEY_HERE
-    ```
+   ```
+   YOUR_LICENSE_KEY_HERE
+   ```
 
 2. **Place the file**:
-    - Beside the executable: `WileyWidget.exe` → `license.key`
-    - Or in the application directory
+   - Beside the executable: `WileyWidget.exe` → `license.key`
+   - Or in the application directory
 
 **Advantages:**
 
@@ -132,23 +132,23 @@ The application supports three registration methods (tried in order):
 
 1. **Copy the sample file**:
 
-    ```powershell
-    Copy-Item LicenseKey.Private.sample.cs LicenseKey.Private.cs
-    ```
+   ```powershell
+   Copy-Item LicenseKey.Private.sample.cs LicenseKey.Private.cs
+   ```
 
 2. **Edit LicenseKey.Private.cs**:
-    ```csharp
-    private partial bool TryRegisterEmbeddedLicense()
-    {
-        string key = "YOUR_REAL_LICENSE_KEY_HERE";
-        if (!string.IsNullOrWhiteSpace(key))
-        {
-            Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(key.Trim());
-            return true;
-        }
-        return false;
-    }
-    ```
+   ```csharp
+   private partial bool TryRegisterEmbeddedLicense()
+   {
+       string key = "YOUR_REAL_LICENSE_KEY_HERE";
+       if (!string.IsNullOrWhiteSpace(key))
+       {
+           Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(key.Trim());
+           return true;
+       }
+       return false;
+   }
+   ```
 
 **⚠️ WARNING:** Never commit `LicenseKey.Private.cs` to version control!
 
@@ -188,20 +188,20 @@ pwsh ./scripts/show-syncfusion-license.ps1
 ### Common Issues
 
 1. **"Invalid license key"**
-    - Verify the key format (starts with letter, correct length)
-    - Check for typos or extra characters
-    - Ensure the key hasn't expired
+   - Verify the key format (starts with letter, correct length)
+   - Check for typos or extra characters
+   - Ensure the key hasn't expired
 
 2. **License not registering**
-    - Check application logs for error messages
-    - Verify environment variable scope (User vs Machine)
-    - Ensure license.key file is in the correct location
-    - Check file permissions
+   - Check application logs for error messages
+   - Verify environment variable scope (User vs Machine)
+   - Ensure license.key file is in the correct location
+   - Check file permissions
 
 3. **Trial dialog appears**
-    - License registration failed
-    - Check logs for specific error messages
-    - Verify key validity and format
+   - License registration failed
+   - Check logs for specific error messages
+   - Verify key validity and format
 
 ### Debug Commands
 
@@ -223,16 +223,16 @@ $content.Substring(0, 10) + "..." + $content.Substring($content.Length - 10)
 
 1. **Team License Key**:
 
-    ```powershell
-    # Set team license for all developers
-    [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', 'TEAM_LICENSE_KEY', 'Machine')
-    ```
+   ```powershell
+   # Set team license for all developers
+   [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', 'TEAM_LICENSE_KEY', 'Machine')
+   ```
 
 2. **Individual Keys**:
-    ```powershell
-    # Each developer sets their own key
-    [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', 'INDIVIDUAL_KEY', 'User')
-    ```
+   ```powershell
+   # Each developer sets their own key
+   [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', 'INDIVIDUAL_KEY', 'User')
+   ```
 
 ### CI/CD Pipeline
 
@@ -242,7 +242,7 @@ For automated builds, set the environment variable in your CI system:
 # GitHub Actions example
 - name: Set Syncfusion License
   run: |
-      [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', '${{ secrets.SYNCFUSION_LICENSE }}', 'Machine')
+    [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', '${{ secrets.SYNCFUSION_LICENSE }}', 'Machine')
   shell: pwsh
 ```
 
@@ -251,25 +251,25 @@ For automated builds, set the environment variable in your CI system:
 ### License Types
 
 1. **Community License**:
-    - Free for personal/educational use
-    - Valid for 1 year
-    - Limited to development environments
+   - Free for personal/educational use
+   - Valid for 1 year
+   - Limited to development environments
 
 2. **Commercial License**:
-    - Paid license for production use
-    - Perpetual or subscription-based
-    - Includes support and updates
+   - Paid license for production use
+   - Perpetual or subscription-based
+   - Includes support and updates
 
 ### License Renewal
 
 1. **Community License**:
-    - Renew annually from your Syncfusion account
-    - Update the license key in your environment
+   - Renew annually from your Syncfusion account
+   - Update the license key in your environment
 
 2. **Commercial License**:
-    - Automatic renewal (subscription)
-    - Manual renewal (perpetual)
-    - Update key when renewed
+   - Automatic renewal (subscription)
+   - Manual renewal (perpetual)
+   - Update key when renewed
 
 ## Security Best Practices
 
