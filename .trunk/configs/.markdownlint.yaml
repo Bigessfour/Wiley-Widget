@@ -1,0 +1,17 @@
+# Prettier friendly markdownlint config with relaxed rules for documentation
+extends: markdownlint/style/prettier
+
+# Disable problematic rules that are too strict for documentation
+rules:
+  # Allow code blocks without language specifiers (MD040)
+  MD040: false
+  # Allow emphasis instead of headings (MD036)
+  MD036: false
+  # Allow multiple headings with same content (MD024)
+  MD024: false
+  # Allow bare URLs (MD034)
+  MD034: false
+  # Allow trailing punctuation in headings (MD026)
+  MD026: false
+  # Allow heading level skips (MD001)
+  MD001: false
