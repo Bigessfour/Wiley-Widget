@@ -2,7 +2,12 @@ name: Release
 
 on:
     push:
-        tags: ["v*"]
+                  - name: Trunk Security Scan (Release)
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --ci --upload --series=release-${{ github.run_number }} --scope=security
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}: ["v*"]
     workflow_dispatch:
         inputs:
             tag_name:
@@ -42,7 +47,7 @@ jobs:
               with:
                   arguments: --ci --upload --series=release-${{ github.ref_name }} --scope=security
               env:
-                  TRUNK_TOKEN: ${{ secrets.TRUNK_TOKEN }}
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
 
             - name: Restore Dependencies
               run: dotnet restore
@@ -51,7 +56,18 @@ jobs:
               run: dotnet build -c Release --no-restore /bl:msbuild.binlog
 
             - name: Run Tests (Release)
-              run: dotnet test -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+              run: |
+                  # Run tests with JUnit XML output for Trunk
+                  dotnet test -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "junit;LogFileName=test-results.xml"
+
+            - name: Upload Test Results to Trunk Flaky Tests
+              if: always()  # Run even if tests fail
+              continue-on-error: true  # Don't fail the job if upload fails
+              uses: trunk-io/analytics-uploader@v1
+              with:
+                  junit-paths: "TestResults/*/test-results.xml"
+                  org-slug: ${{ secrets.TRUNK_ORG_URL_SLUG }}
+                  token: ${{ secrets.TRUNK_API_TOKEN }}
 
             - name: Pack Release
               run: dotnet pack -c Release --no-build -o ./artifacts

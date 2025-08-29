@@ -1,0 +1,226 @@
+# Merge Queue Compatible CI/CD Workflow
+# This workflow is optimized for Trunk Merge Queue integration
+
+name: CI/CD with Merge Queue Support
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    merge_group:  # Required for merge queues
+        branches: [main]
+    workflow_dispatch:
+        inputs:
+            run_full_security_scan:
+                description: 'Run full security scan (slower)'
+                required: false
+                default: false
+                type: boolean
+
+permissions:
+    contents: read
+    actions: read
+    security-events: write
+    pull-requests: write
+    checks: write
+    statuses: write  # Required for merge queue status reporting
+
+jobs:
+    # Pre-flight checks
+    preflight:
+        name: Preflight Checks
+        runs-on: windows-latest
+        outputs:
+            should_skip: ${{ steps.skip_check.outputs.should_skip }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Check for skip conditions
+              id: skip_check
+              run: |
+                  # Skip if only documentation changed
+                  $changed_files = git diff --name-only HEAD~1
+                  $only_docs = $changed_files | Where-Object { $_ -match '\.(md|txt|yml|yaml)$' -and $_ -notmatch 'src/' }
+
+                  if ($only_docs -and $changed_files.Count -eq $only_docs.Count) {
+                      Write-Host "Only documentation changed, skipping full CI"
+                      echo "should_skip=true" >> $env:GITHUB_OUTPUT
+                  } else {
+                      echo "should_skip=false" >> $env:GITHUB_OUTPUT
+                  }
+
+    # Quality checks (always run)
+    quality:
+        name: Code Quality
+        runs-on: windows-latest
+        needs: preflight
+        if: needs.preflight.outputs.should_skip != 'true'
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: '8.0.x'
+
+            - name: Setup Trunk
+              run: |
+                  # Ensure Trunk is properly configured
+                  .\scripts\trunk-maintenance.ps1 -Diagnose -Fix
+
+            - name: Trunk Security Scan
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --ci --upload --series=${{ github.ref_name }} --scope=security
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+
+            - name: Trunk Code Quality Scan
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --ci --upload --series=${{ github.ref_name }} --filter=psscriptanalyzer,prettier
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+
+            - name: Upload Quality Report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: quality-report-${{ github.run_number }}
+                  path: .trunk/out/
+
+    # Build and test
+    build-test:
+        name: Build & Test
+        runs-on: windows-latest
+        needs: [preflight, quality]
+        if: needs.preflight.outputs.should_skip != 'true'
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: '8.0.x'
+
+            - name: Restore Dependencies
+              run: dotnet restore WileyWidget.csproj
+
+            - name: Build
+              run: dotnet build --no-restore --configuration Release
+
+            - name: Run Tests
+              run: |
+                  # Run tests with JUnit XML output for Trunk
+                  dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx" --logger "junit;LogFileName=test-results.xml"
+                  Write-Host "Tests completed" -ForegroundColor Green
+
+            - name: Upload Test Results to Trunk Flaky Tests
+              if: always()  # Run even if tests fail
+              continue-on-error: true  # Don't fail the job if upload fails
+              uses: trunk-io/analytics-uploader@v1
+              with:
+                  junit-paths: "TestResults/*/test-results.xml"
+                  org-slug: ${{ secrets.TRUNK_ORG_URL_SLUG }}
+                  token: ${{ secrets.TRUNK_API_TOKEN }}
+
+            - name: Generate Coverage Report
+              run: |
+                  # Install report generator if needed
+                  dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.1.0
+
+                  # Generate HTML coverage report
+                  reportgenerator -reports:TestResults/*/coverage.cobertura.xml -targetdir:coverage -reporttypes:Html
+
+                  # Extract coverage percentage
+                  $coverageFile = "coverage/index.html"
+                  if (Test-Path $coverageFile) {
+                      $content = Get-Content $coverageFile -Raw
+                      $coverageMatch = $content | Select-String -Pattern '(\d+(?:\.\d+)?)%' -AllMatches
+                      if ($coverageMatch.Matches) {
+                          $coveragePercent = $coverageMatch.Matches[0].Groups[1].Value
+                          Write-Host "Test Coverage: $coveragePercent%" -ForegroundColor Green
+                          # Write coverage to GitHub output for status checks
+                          echo "coverage=$coveragePercent" >> $env:GITHUB_OUTPUT
+                      }
+                  }
+
+            - name: Upload Test Results
+              uses: actions/upload-artifact@v4
+              with:
+                  name: test-results-${{ github.run_number }}
+                  path: TestResults/
+
+            - name: Upload Coverage Report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-report-${{ github.run_number }}
+                  path: coverage/
+
+    # Security scan (optional full scan)
+    security-full:
+        name: Full Security Scan
+        runs-on: windows-latest
+        needs: [preflight, build-test]
+        if: |
+            needs.preflight.outputs.should_skip != 'true' &&
+            (github.event_name == 'workflow_dispatch' && github.event.inputs.run_full_security_scan == 'true')
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Trunk Full Security Scan
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --all --ci --upload --series=full-security-${{ github.run_number }}
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_TOKEN }}
+
+            - name: Upload Security Reports
+              uses: actions/upload-artifact@v4
+              with:
+                  name: security-report-${{ github.run_number }}
+                  path: .trunk/out/
+
+    # Package and deploy (only on main branch)
+    package-deploy:
+        name: Package & Deploy
+        runs-on: windows-latest
+        needs: [build-test, security-full]
+        if: |
+            needs.preflight.outputs.should_skip != 'true' &&
+            (github.ref == 'refs/heads/main' || github.event_name == 'merge_group')
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: '8.0.x'
+
+            - name: Pack Release
+              run: dotnet pack -c Release --no-build -o ./artifacts
+
+            - name: Generate Release Notes
+              run: |
+                  $tag = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { $env:GITHUB_EVENT_INPUTS_TAG_NAME }
+                  $changes = git log --oneline --pretty=format:"- %s" HEAD~1..HEAD
+                  $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                  $releaseNotes = "# Release $tag`n`n## Changes`n$changes`n`n## Build Information`n- Build Date: $date`n- .NET Version: 8.0.x`n- Target Framework: net8.0-windows`n`n## Quality Checks`n- ✅ Code Quality: Passed`n- ✅ Security Scan: Passed`n- ✅ Tests: Passed`n- ✅ Build: Successful`n- ✅ Coverage: ${{ needs.build-test.outputs.coverage }}%"
+                  $releaseNotes | Out-File -FilePath "RELEASE_NOTES.md" -Encoding UTF8
+
+            - name: Upload Release Package
+              uses: actions/upload-artifact@v4
+              with:
+                  name: release-package-${{ github.run_number }}
+                  path: artifacts/

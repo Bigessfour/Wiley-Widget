@@ -1,0 +1,441 @@
+# Comprehensive CI/CD Workflow with Trunk Integration
+# This workflow provides enterprise-grade CI/CD with Trunk quality assurance
+
+name: CI/CD with Trunk Quality Assurance
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    workflow_dispatch:
+        inputs:
+            run_full_security_scan:
+                description: 'Run full security scan (slower)'
+                required: false
+                default: false
+                type: boolean
+
+permissions:
+    contents: read
+    actions: read
+    security-events: write
+    pull-requests: write
+    checks: write
+
+jobs:
+    # Pre-flight checks
+    preflight:
+        name: Preflight Checks
+        runs-on: windows-latest
+        outputs:
+            should_skip: ${{ steps.skip_check.outputs.should_skip }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Check for skip conditions
+              id: skip_check
+              run: |
+                  # Skip if only documentation changed
+                  $changed_files = git diff --name-only HEAD~1
+                  $only_docs = $changed_files | Where-Object { $_ -match '\.(md|txt|yml|yaml)$' -and $_ -notmatch 'src/' }
+
+                  if ($only_docs -and $changed_files.Count -eq $only_docs.Count) {
+                      Write-Host "Only documentation changed, skipping full CI"
+                      echo "should_skip=true" >> $env:GITHUB_OUTPUT
+                  } else {
+                      echo "should_skip=false" >> $env:GITHUB_OUTPUT
+                  }
+
+    # Quality and security validation
+    quality:
+        name: Code Quality & Security
+        runs-on: windows-latest
+        needs: preflight
+        if: needs.preflight.outputs.should_skip != 'true'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: 8.0.x
+
+            - name: Cache NuGet
+              uses: actions/cache@v4
+              with:
+                  path: ~/.nuget/packages
+                  key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+                  restore-keys: |
+                      nuget-${{ runner.os }}-
+
+            - name: Setup Trunk
+              run: |
+                  # Ensure Trunk is properly configured
+                  .\scripts\trunk-maintenance.ps1 -Diagnose -Fix
+
+            - name: Trunk Security Scan
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --ci --upload --series=${{ github.ref_name }} --scope=security
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+              continue-on-error: ${{ github.event_name == 'pull_request' }}
+
+            - name: Trunk Code Quality Scan
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --ci --upload --series=${{ github.ref_name }} --filter=psscriptanalyzer,prettier
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+
+            - name: Full Security Scan (Manual Trigger)
+              if: github.event.inputs.run_full_security_scan == 'true'
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --all --ci --upload --series=full-security-${{ github.run_number }}
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+
+            - name: Quality Gate Check
+              run: |
+                  # Parse Trunk results and enforce quality gates
+                  $trunkOutput = trunk check --ci --print-failures
+                  $exitCode = $LASTEXITCODE
+
+                  # Count issues by severity
+                  $errors = ($trunkOutput | Select-String "error|Error" | Measure-Object).Count
+                  $warnings = ($trunkOutput | Select-String "warning|Warning" | Measure-Object).Count
+
+                  Write-Host "Quality Gate Results:" -ForegroundColor Cyan
+                  Write-Host "Errors: $errors" -ForegroundColor Red
+                  Write-Host "Warnings: $warnings" -ForegroundColor Yellow
+
+                  # Quality gates
+                  if ($errors -gt 0) {
+                      Write-Host "❌ Quality gate failed: $errors errors found" -ForegroundColor Red
+                      exit 1
+                  }
+
+                  if ($warnings -gt 50) {
+                      Write-Host "⚠️ High warning count: $warnings warnings" -ForegroundColor Yellow
+                  }
+
+                  Write-Host "✅ Quality gates passed" -ForegroundColor Green
+
+            - name: Generate Quality Report
+              run: |
+                  # Create comprehensive quality report
+                  trunk check --all --diff full --verbose > quality-report.txt
+
+                  # Add metadata
+                  $metadata = @{
+                      run_id = $env:GITHUB_RUN_ID
+                      run_number = $env:GITHUB_RUN_NUMBER
+                      branch = $env:GITHUB_REF_NAME
+                      commit = $env:GITHUB_SHA
+                      timestamp = Get-Date -Format "o"
+                      repository = $env:GITHUB_REPOSITORY
+                  } | ConvertTo-Json
+
+                  Add-Content -Path "quality-report.txt" -Value "`n--- METADATA ---`n$metadata"
+
+            - name: Upload Quality Report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: quality-report-${{ github.run_number }}
+                  path: quality-report.txt
+                  retention-days: 30
+
+    # Build and test
+    build:
+        name: Build & Test
+        runs-on: windows-latest
+        needs: [preflight, quality]
+        if: needs.preflight.outputs.should_skip != 'true'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: 8.0.x
+
+            - name: Cache NuGet
+              uses: actions/cache@v4
+              with:
+                  path: ~/.nuget/packages
+                  key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+                  restore-keys: |
+                      nuget-${{ runner.os }}-
+
+            - name: Restore Dependencies
+              run: dotnet restore
+
+            - name: Build (Release)
+              run: |
+                  dotnet build --no-restore --configuration Release /bl:msbuild.binlog /verbosity:minimal
+                  Write-Host "Build completed successfully" -ForegroundColor Green
+
+            - name: Run Tests
+              run: |
+                  # Run tests with both TRX and JUnit XML output for Trunk
+                  dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx" --logger "junit;LogFileName=test-results.xml"
+                  Write-Host "Tests completed" -ForegroundColor Green
+
+            - name: Upload Test Results to Trunk Flaky Tests
+              if: always()  # Run even if tests fail
+              continue-on-error: true  # Don't fail the job if upload fails
+              uses: trunk-io/analytics-uploader@v1
+              with:
+                  junit-paths: "TestResults/*/test-results.xml"
+                  org-slug: ${{ secrets.TRUNK_ORG_URL_SLUG }}
+                  token: ${{ secrets.TRUNK_API_TOKEN }}
+
+            - name: Generate Coverage Report
+              run: |
+                  # Install report generator if needed
+                  dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.1.0
+
+                  # Generate HTML coverage report
+                  reportgenerator -reports:TestResults/*/coverage.cobertura.xml -targetdir:coverage -reporttypes:Html
+
+                  # Extract coverage percentage
+                  $coverageFile = "coverage/index.html"
+                  if (Test-Path $coverageFile) {
+                      $content = Get-Content $coverageFile -Raw
+                      $coverageMatch = $content | Select-String -Pattern '(\d+(?:\.\d+)?)%' -AllMatches
+                      if ($coverageMatch.Matches) {
+                          $coverage = [double]$coverageMatch.Matches[0].Groups[1].Value
+                          Write-Host "Unit Test Coverage: $coverage%" -ForegroundColor Cyan
+
+                          # Coverage gate
+                          if ($coverage -lt 80) {
+                              Write-Host "::warning::Unit test coverage is below 80% threshold: $coverage%"
+                          } else {
+                              Write-Host "::notice::Unit test coverage meets threshold: $coverage%"
+                          }
+
+                          # Export for other jobs
+                          echo "coverage_percentage=$coverage" >> $env:GITHUB_OUTPUT
+                      }
+                  }
+
+            - name: Phase 1 Validation
+              run: |
+                  Write-Host "Running Phase 1 validation tests..." -ForegroundColor Cyan
+                  .\scripts\phase1-build-test.ps1 -SkipTests -CI
+              continue-on-error: true
+
+            - name: Generate Fetchability Manifest
+              run: .\scripts\ci-generate-manifest.ps1
+
+            - name: Upload Build Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: build-artifacts-${{ github.run_number }}
+                  path: |
+                      bin/Release/net8.0-windows/
+                      msbuild.binlog
+                      coverage/
+                      TestResults/
+                      fetchability-resources.json
+                      quality-report.txt
+                  retention-days: 30
+
+            - name: Upload Test Results
+              uses: actions/upload-artifact@v4
+              with:
+                  name: test-results-${{ github.run_number }}
+                  path: |
+                      **/*.trx
+                      TestResults/
+                  retention-days: 30
+
+    # Security analysis
+    security:
+        name: Security Analysis
+        runs-on: windows-latest
+        needs: [preflight, quality]
+        if: needs.preflight.outputs.should_skip != 'true'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Run Security Analysis
+              uses: github/super-linter/slim@v5
+              env:
+                  DEFAULT_BRANCH: main
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VALIDATE_ALL_CODEBASE: false
+                  VALIDATE_CSHARP: true
+                  VALIDATE_POWERSHELL: true
+
+            - name: Dependency Check
+              uses: dependency-check/Dependency-Check_Action@main
+              with:
+                  project: 'Wiley Widget'
+                  path: '.'
+                  format: 'ALL'
+                  args: >
+                      --enableRetired
+                      --enableExperimental
+                      --nvdValidForHours 24
+
+            - name: Upload Security Reports
+              uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: security-reports-${{ github.run_number }}
+                  path: |
+                      reports/
+                      dependency-check-report.html
+                  retention-days: 30
+
+    # Deployment preparation
+    deploy-prep:
+        name: Deployment Preparation
+        runs-on: windows-latest
+        needs: [build, security]
+        if: needs.preflight.outputs.should_skip != 'true' && github.ref == 'refs/heads/main'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Download Build Artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  name: build-artifacts-${{ github.run_number }}
+                  path: artifacts/
+
+            - name: Prepare Release Package
+              run: |
+                  # Create release package
+                  $releaseDir = "release-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+                  New-Item -ItemType Directory -Path $releaseDir
+
+                  # Copy build artifacts
+                  Copy-Item "artifacts/bin/Release/net8.0-windows/*" $releaseDir -Recurse
+
+                  # Copy configuration templates
+                  Copy-Item "appsettings.json" $releaseDir
+                  Copy-Item "appsettings.Production.json" $releaseDir
+
+                  # Copy deployment scripts
+                  Copy-Item "scripts/setup-*.ps1" $releaseDir
+
+                  # Create deployment manifest
+                  $manifest = @{
+                      version = $env:GITHUB_RUN_NUMBER
+                      commit = $env:GITHUB_SHA
+                      build_date = Get-Date -Format "o"
+                      quality_score = "passed"
+                      security_scan = "completed"
+                  } | ConvertTo-Json
+
+                  $manifest | Out-File "$releaseDir/deployment-manifest.json" -Encoding UTF8
+
+                  # Create archive
+                  Compress-Archive -Path $releaseDir -DestinationPath "wiley-widget-release.zip"
+
+            - name: Upload Release Package
+              uses: actions/upload-artifact@v4
+              with:
+                  name: release-package-${{ github.run_number }}
+                  path: wiley-widget-release.zip
+                  retention-days: 60
+
+    # Final status report
+    summary:
+        name: CI/CD Summary
+        runs-on: windows-latest
+        needs: [preflight, quality, build, security, deploy-prep]
+        if: always()
+        steps:
+            - name: Generate Summary Report
+              run: |
+                  Write-Host "🚀 CI/CD Pipeline Summary" -ForegroundColor Cyan
+                  Write-Host "=========================" -ForegroundColor Cyan
+
+                  # Pipeline status
+                  $status = if ($env:job_status -eq 'success') { "✅ SUCCESS" } else { "❌ FAILED" }
+                  Write-Host "Overall Status: $status" -ForegroundColor $(if ($status -match "SUCCESS") { "Green" } else { "Red" })
+
+                  # Individual job status
+                  Write-Host "`nJob Status:" -ForegroundColor Yellow
+                  Write-Host "Preflight: $(if ($needs.preflight.result -eq 'success') { '✅' } else { '❌' })"
+                  Write-Host "Quality: $(if ($needs.quality.result -eq 'success') { '✅' } else { '❌' })"
+                  Write-Host "Build: $(if ($needs.build.result -eq 'success') { '✅' } else { '❌' })"
+                  Write-Host "Security: $(if ($needs.security.result -eq 'success') { '✅' } else { '❌' })"
+                  Write-Host "Deploy Prep: $(if ($needs.deploy_prep.result -eq 'success') { '✅' } else { '❌' })"
+
+                  # Key metrics
+                  Write-Host "`nKey Metrics:" -ForegroundColor Yellow
+                  Write-Host "Run: #${{ github.run_number }}"
+                  Write-Host "Branch: ${{ github.ref_name }}"
+                  Write-Host "Commit: ${{ github.sha }}"
+                  Write-Host "Triggered by: ${{ github.actor }}"
+
+                  # Recommendations
+                  Write-Host "`nRecommendations:" -ForegroundColor Cyan
+                  if ($needs.quality.result -ne 'success') {
+                      Write-Host "• Review code quality issues" -ForegroundColor Yellow
+                  }
+                  if ($needs.security.result -ne 'success') {
+                      Write-Host "• Address security findings" -ForegroundColor Yellow
+                  }
+                  if ($needs.build.result -ne 'success') {
+                      Write-Host "• Fix build errors" -ForegroundColor Yellow
+                  }
+
+            - name: Create Summary Comment
+              if: github.event_name == 'pull_request'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const summary = `
+                      ## 🚀 CI/CD Pipeline Results
+
+                      **Status:** ${{ job.status === 'success' ? '✅ Passed' : '❌ Failed' }}
+
+                      ### Quality Checks
+                      - Code Quality: ${{ needs.quality.result === 'success' ? '✅' : '❌' }}
+                      - Security Scan: ${{ needs.security.result === 'success' ? '✅' : '❌' }}
+                      - Build & Test: ${{ needs.build.result === 'success' ? '✅' : '❌' }}
+
+                      ### Artifacts
+                      - [Build Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+                      - [Test Results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+                      - [Security Reports](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+                      ---
+                      *Generated by Wiley Widget CI/CD Pipeline*
+                      `;
+
+                      github.rest.issues.createComment({
+                          issue_number: context.issue.number,
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          body: summary
+                      });
+
+            - name: Notification on Failure
+              if: failure()
+              run: |
+                  Write-Host "❌ CI/CD Pipeline Failed" -ForegroundColor Red
+                  Write-Host "Check the logs above for detailed error information" -ForegroundColor Yellow
+                  Write-Host "Common solutions:" -ForegroundColor Cyan
+                  Write-Host "• Run '.\scripts\trunk-maintenance.ps1 -Diagnose -Fix' locally" -ForegroundColor White
+                  Write-Host "• Check for Windows-specific compatibility issues" -ForegroundColor White
+                  Write-Host "• Review security scan results for blocking issues" -ForegroundColor White

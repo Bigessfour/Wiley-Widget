@@ -39,7 +39,7 @@ jobs:
               with:
                   arguments: --ci --upload --series=${{ github.ref_name }}
               env:
-                  TRUNK_TOKEN: ${{ secrets.TRUNK_TOKEN }}
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
               continue-on-error: true  # Allow CI to continue even if some tools fail
 
             - name: Trunk Diagnostics
