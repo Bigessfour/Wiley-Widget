@@ -10,15 +10,15 @@ function Template-Function {
     param(
         [Parameter(Mandatory)]
         [string]$RequiredParam,
-        
+
         [Parameter()]
         [string]$OptionalParam = "DefaultValue"
     )
-    
+
     begin {
         Write-Verbose "Starting $($MyInvocation.MyCommand.Name)"
     }
-    
+
     process {
         try {
             if ($PSCmdlet.ShouldProcess($RequiredParam, "Perform Action")) {
@@ -31,7 +31,7 @@ function Template-Function {
             throw
         }
     }
-    
+
     end {
         Write-Verbose "Completed $($MyInvocation.MyCommand.Name)"
     }

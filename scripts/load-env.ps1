@@ -10,7 +10,7 @@ param(
 
 $envFile = Join-Path $PSScriptRoot ".." ".env"
 
-function Load-EnvironmentVariables {
+function Load-EnvironmentVariable {
     if (-not (Test-Path $envFile)) {
         Write-Host "❌ .env file not found at: $envFile" -ForegroundColor Red
         Write-Host "Create a .env file with your configuration variables." -ForegroundColor Yellow
@@ -38,7 +38,8 @@ function Load-EnvironmentVariables {
             # Remove quotes if present
             if ($value.StartsWith('"') -and $value.EndsWith('"')) {
                 $value = $value.Substring(1, $value.Length - 2)
-            } elseif ($value.StartsWith("'") -and $value.EndsWith("'")) {
+            }
+            elseif ($value.StartsWith("'") -and $value.EndsWith("'")) {
                 $value = $value.Substring(1, $value.Length - 2)
             }
 
@@ -46,7 +47,8 @@ function Load-EnvironmentVariables {
                 [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
                 $loadedCount++
                 Write-Host "  ✅ $key" -ForegroundColor Green
-            } catch {
+            }
+            catch {
                 Write-Host "  ❌ Failed to set $key : $($_.Exception.Message)" -ForegroundColor Red
                 $errorCount++
             }
@@ -62,7 +64,7 @@ function Load-EnvironmentVariables {
     return $loadedCount -gt 0
 }
 
-function Unload-EnvironmentVariables {
+function Unload-EnvironmentVariable {
     Write-Host "🧹 Unloading environment variables..." -ForegroundColor Cyan
 
     if (-not (Test-Path $envFile)) {
@@ -88,7 +90,8 @@ function Unload-EnvironmentVariables {
                 [System.Environment]::SetEnvironmentVariable($key, $null, "Process")
                 $unloadedCount++
                 Write-Host "  ✅ $key unloaded" -ForegroundColor Green
-            } catch {
+            }
+            catch {
                 Write-Host "  ❌ Failed to unload $key : $($_.Exception.Message)" -ForegroundColor Red
             }
         }
@@ -105,7 +108,8 @@ function Show-EnvironmentStatus {
     # Check .env file
     if (Test-Path $envFile) {
         Write-Host "✅ .env file found" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "❌ .env file not found" -ForegroundColor Red
         Write-Host "   Create .env file with your configuration" -ForegroundColor Yellow
         return
@@ -128,10 +132,12 @@ function Show-EnvironmentStatus {
         if (-not [string]::IsNullOrWhiteSpace($value)) {
             if ($value -like "*CHANGE_THIS*" -or $value -like "*YOUR_*") {
                 Write-Host "  ⚠️  $var = [PLACEHOLDER VALUE]" -ForegroundColor Yellow
-            } else {
+            }
+            else {
                 Write-Host "  ✅ $var = [SET]" -ForegroundColor Green
             }
-        } else {
+        }
+        else {
             Write-Host "  ❌ $var = [NOT SET]" -ForegroundColor Red
         }
     }
@@ -140,12 +146,13 @@ function Show-EnvironmentStatus {
     $azureConn = [System.Environment]::GetEnvironmentVariable("CONNECTIONSTRINGS__AZURECONNECTION", "Process")
     if (-not [string]::IsNullOrWhiteSpace($azureConn)) {
         Write-Host "  ✅ CONNECTIONSTRINGS__AZURECONNECTION = [SET]" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "  ❌ CONNECTIONSTRINGS__AZURECONNECTION = [NOT SET]" -ForegroundColor Red
     }
 }
 
-function Test-Connections {
+function Test-Connection {
     Write-Host "🔗 Testing Connections" -ForegroundColor Cyan
     Write-Host "=" * 50
 
@@ -176,10 +183,12 @@ function Test-Connections {
             }
 
             $connection.Close()
-        } catch {
+        }
+        catch {
             Write-Host "  ❌ Azure SQL connection failed: $($_.Exception.Message)" -ForegroundColor Red
         }
-    } else {
+    }
+    else {
         Write-Host "❌ Azure SQL configuration incomplete" -ForegroundColor Red
         Write-Host "   Missing: $(($server, $database, $user, $password | Where-Object { -not $_ }) -join ', ')" -ForegroundColor Yellow
     }
@@ -188,7 +197,8 @@ function Test-Connections {
     $syncfusionKey = [System.Environment]::GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", "Process")
     if (-not [string]::IsNullOrWhiteSpace($syncfusionKey) -and $syncfusionKey -notlike "*YOUR_*") {
         Write-Host "  ✅ Syncfusion license key configured" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "  ❌ Syncfusion license key not configured" -ForegroundColor Red
     }
 }
@@ -203,11 +213,14 @@ elseif ($TestConnections) { $action = "TestConnections" }
 
 if ($action -eq "Load") {
     Load-EnvironmentVariables
-} elseif ($action -eq "Unload") {
+}
+elseif ($action -eq "Unload") {
     Unload-EnvironmentVariables
-} elseif ($action -eq "Status") {
+}
+elseif ($action -eq "Status") {
     Show-EnvironmentStatus
-} elseif ($action -eq "TestConnections") {
+}
+elseif ($action -eq "TestConnections") {
     # Load variables first, then test
     if (Load-EnvironmentVariables) {
         Write-Host ""

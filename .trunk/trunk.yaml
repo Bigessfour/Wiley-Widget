@@ -21,6 +21,16 @@ lint:
     - prettier@3.6.2
     # Security scanning - critical for production
     - trufflehog@3.90.5
+    # .NET code quality and formatting
+    - dotnet-format@8.0.0
+    # PowerShell script analysis
+    - psscriptanalyzer@1.21.0
+    # Security vulnerability scanning
+    - semgrep@1.68.0
+    # License and dependency checking
+    - osv-scanner@1.7.4
+    # Git security scanning
+    - gitleaks@8.18.2
   disabled:
     # Too aggressive on documentation formatting
     - markdownlint
@@ -46,6 +56,16 @@ lint:
       paths:
         - .github/**/*.yml
         - .github/**/*.yaml
+    # Skip binary and generated files
+    - linters: [ALL]
+      paths:
+        - bin/
+        - obj/
+        - TestResults/
+        - coverage/
+        - "*.binlog"
+        - "*.exe"
+        - "*.dll"
 actions:
   enabled:
     - trunk-announce

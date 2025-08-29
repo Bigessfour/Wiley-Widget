@@ -16,10 +16,10 @@ param(
 # Configuration
 $Script:Config = @{
     SubscriptionId = $env:AZURE_SUBSCRIPTION_ID
-    ResourceGroup = "WileyWidget-RG"
-    SqlServer = $env:AZURE_SQL_SERVER
-    Database = $env:AZURE_SQL_DATABASE
-    SafeMode = $true  # Always true for novices
+    ResourceGroup  = "WileyWidget-RG"
+    SqlServer      = $env:AZURE_SQL_SERVER
+    Database       = $env:AZURE_SQL_DATABASE
+    SafeMode       = $true  # Always true for novices
 }
 
 # Logging function
@@ -77,7 +77,8 @@ function Get-AzureStatus {
     $rg = Invoke-AzureSafe "az group exists --name $($Script:Config.ResourceGroup)" "Check resource group existence"
     if ($rg -eq "true") {
         Write-SafeLog "Resource group '$($Script:Config.ResourceGroup)' exists" "SUCCESS"
-    } else {
+    }
+    else {
         Write-SafeLog "Resource group '$($Script:Config.ResourceGroup)' not found" "WARN"
     }
 
@@ -86,14 +87,15 @@ function Get-AzureStatus {
         $server = Invoke-AzureSafe "az sql server show --resource-group $($Script:Config.ResourceGroup) --name $($Script:Config.SqlServer.Split('.')[0]) --output json" "Check SQL server status"
         if ($server) {
             Write-SafeLog "SQL Server '$($Script:Config.SqlServer)' is available" "SUCCESS"
-        } else {
+        }
+        else {
             Write-SafeLog "SQL Server '$($Script:Config.SqlServer)' not found" "WARN"
         }
     }
 }
 
 # List Azure resources safely
-function Get-AzureResources {
+function Get-AzureResource {
     Write-SafeLog "Listing Azure resources (read-only)..." "INFO"
 
     # List resource groups
@@ -139,7 +141,8 @@ function Test-AzureDatabaseConnection {
         $reader.Close()
         $connection.Close()
 
-    } catch {
+    }
+    catch {
         Write-SafeLog "Connection failed: $($_.Exception.Message)" "ERROR"
     }
 }

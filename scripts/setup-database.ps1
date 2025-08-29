@@ -15,24 +15,27 @@ function Test-SqlLocalDB {
         if ($LASTEXITCODE -eq 0) {
             Write-Host "✅ SQL Server LocalDB is installed" -ForegroundColor Green
             return $true
-        } else {
+        }
+        else {
             Write-Host "❌ SQL Server LocalDB is not installed or not in PATH" -ForegroundColor Red
             return $false
         }
-    } catch {
+    }
+    catch {
         Write-Host "❌ SQL Server LocalDB is not installed or not accessible" -ForegroundColor Red
         return $false
     }
 }
 
 # Check LocalDB instances
-function Get-LocalDBInstances {
+function Get-LocalDBInstance {
     try {
         $instances = & sqllocaldb info
         Write-Host "Available LocalDB instances:" -ForegroundColor Yellow
         $instances | ForEach-Object { Write-Host "  - $_" -ForegroundColor Gray }
         return $instances
-    } catch {
+    }
+    catch {
         Write-Host "❌ Could not retrieve LocalDB instances" -ForegroundColor Red
         return $null
     }
@@ -51,7 +54,8 @@ function Test-DatabaseConnection {
         Write-Host "✅ Database connection successful" -ForegroundColor Green
         $connection.Close()
         return $true
-    } catch {
+    }
+    catch {
         Write-Host "❌ Database connection failed: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
@@ -96,11 +100,13 @@ if (-not $mssqlLocalDBExists) {
     try {
         & sqllocaldb create "MSSQLLocalDB"
         Write-Host "✅ MSSQLLocalDB instance created successfully" -ForegroundColor Green
-    } catch {
+    }
+    catch {
         Write-Host "❌ Failed to create MSSQLLocalDB instance: $($_.Exception.Message)" -ForegroundColor Red
         exit 1
     }
-} else {
+}
+else {
     Write-Host "✅ MSSQLLocalDB instance exists" -ForegroundColor Green
 }
 
@@ -111,10 +117,12 @@ try {
     $startOutput = & sqllocaldb start "MSSQLLocalDB" 2>&1
     if ($startOutput -match "LocalDB instance.*started") {
         Write-Host "✅ MSSQLLocalDB instance started successfully" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "ℹ️  MSSQLLocalDB instance may already be running" -ForegroundColor Yellow
     }
-} catch {
+}
+catch {
     Write-Host "❌ Failed to start MSSQLLocalDB instance: $($_.Exception.Message)" -ForegroundColor Red
 }
 
@@ -130,7 +138,8 @@ if (Test-DatabaseConnection -ConnectionString $connectionString) {
     Write-Host "  1. Run the application: dotnet run --project WileyWidget/WileyWidget.csproj" -ForegroundColor White
     Write-Host "  2. The database will be created automatically on first run" -ForegroundColor White
     Write-Host "  3. Check logs at: %APPDATA%\WileyWidget\logs" -ForegroundColor White
-} else {
+}
+else {
     Write-Host ""
     Write-Host "❌ Database connection test failed" -ForegroundColor Red
     Write-Host ""

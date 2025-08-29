@@ -2,13 +2,13 @@
 # Tests Azure SQL Database connection and basic operations
 
 param(
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$UseLocalDB,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [string]$ConnectionString,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$CreateTestData
 )
 
@@ -21,7 +21,7 @@ Write-Host "🧪 WileyWidget Azure Database Connectivity Test" -ForegroundColor 
 Write-Host "==============================================" -ForegroundColor Cyan
 
 # Function to load environment variables
-function Get-EnvironmentVariables {
+function Get-EnvironmentVariable {
     if (Test-Path $EnvFile) {
         $envVars = @{}
         Get-Content $EnvFile | Where-Object { $_ -match '^[^#].*=.*' } | ForEach-Object {
@@ -173,7 +173,7 @@ INSERT INTO Widgets (Name, Description, Price, UserId) VALUES
 }
 
 # Function to test database operations
-function Test-DatabaseOperations {
+function Test-DatabaseOperation {
     param([string]$ConnectionString)
 
     Write-Host "🔄 Testing database operations..." -ForegroundColor Yellow
@@ -245,11 +245,13 @@ try {
         # Test LocalDB connection
         if (Test-LocalDBConnection) {
             Write-Host "`n🎉 LocalDB connectivity test completed successfully!" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "`n❌ LocalDB connectivity test failed" -ForegroundColor Red
             exit 1
         }
-    } else {
+    }
+    else {
         # Test Azure connectivity
         $connectionString = $ConnectionString
 
@@ -274,7 +276,8 @@ try {
             Test-DatabaseOperations -ConnectionString $connectionString
 
             Write-Host "`n🎉 Azure SQL Database connectivity test completed successfully!" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "`n❌ Azure SQL Database connectivity test failed" -ForegroundColor Red
             exit 1
         }
@@ -283,7 +286,8 @@ try {
     # Test Azure CLI connectivity
     Test-AzureCLIConnectivity
 
-} catch {
+}
+catch {
     Write-Host "❌ An error occurred: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }

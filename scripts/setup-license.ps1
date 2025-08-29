@@ -41,7 +41,8 @@ function Set-LicenseEnvironmentVariable {
         # Refresh environment for current session
         $env:SYNCFUSION_LICENSE_KEY = $Key
         return $true
-    } catch {
+    }
+    catch {
         Write-Host "❌ Failed to set environment variable: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
@@ -59,14 +60,16 @@ function New-LicenseFile {
 
         if (Test-Path $exePath) {
             $licensePath = Join-Path (Split-Path $exePath) "license.key"
-        } else {
+        }
+        else {
             $licensePath = Join-Path $PSScriptRoot ".." "license.key"
         }
 
         $Key | Out-File -FilePath $licensePath -Encoding UTF8 -Force
         Write-Host "✅ License file created at: $licensePath" -ForegroundColor Green
         return $true
-    } catch {
+    }
+    catch {
         Write-Host "❌ Failed to create license file: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
@@ -82,7 +85,8 @@ function Get-LicenseStatus {
     if (-not [string]::IsNullOrWhiteSpace($envKey)) {
         Write-Host "✅ Environment variable set (User scope)" -ForegroundColor Green
         Write-Host "   Key starts with: $($envKey.Substring(0, [Math]::Min(10, $envKey.Length)))..." -ForegroundColor Gray
-    } else {
+    }
+    else {
         Write-Host "❌ No environment variable set" -ForegroundColor Red
     }
 
@@ -113,7 +117,8 @@ function Get-LicenseStatus {
     $embeddedPath = Join-Path $PSScriptRoot ".." "WileyWidget" "LicenseKey.Private.cs"
     if (Test-Path $embeddedPath) {
         Write-Host "✅ Embedded license file exists: $embeddedPath" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "ℹ️  No embedded license file (optional)" -ForegroundColor Yellow
     }
 }
@@ -127,7 +132,8 @@ function Remove-LicenseSetup {
     try {
         [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', $null, 'User')
         Write-Host "✅ Environment variable removed" -ForegroundColor Green
-    } catch {
+    }
+    catch {
         Write-Host "❌ Failed to remove environment variable: $($_.Exception.Message)" -ForegroundColor Red
     }
 
@@ -142,7 +148,8 @@ function Remove-LicenseSetup {
             try {
                 Remove-Item $path -Force
                 Write-Host "✅ License file removed: $path" -ForegroundColor Green
-            } catch {
+            }
+            catch {
                 Write-Host "❌ Failed to remove license file: $($_.Exception.Message)" -ForegroundColor Red
             }
         }
@@ -162,13 +169,15 @@ function Watch-LicenseRegistration {
             $processes = Get-Process -Name "WileyWidget" -ErrorAction SilentlyContinue
             if ($processes) {
                 Write-Host "$(Get-Date -Format 'HH:mm:ss') - WileyWidget process(es) running (PID: $($processes.Id -join ', '))" -ForegroundColor Green
-            } else {
+            }
+            else {
                 Write-Host "$(Get-Date -Format 'HH:mm:ss') - No WileyWidget processes running" -ForegroundColor Gray
             }
 
             Start-Sleep -Seconds 5
         }
-    } catch {
+    }
+    catch {
         Write-Host ""
         Write-Host "Watch mode stopped" -ForegroundColor Yellow
     }
@@ -233,14 +242,15 @@ Write-Host ""
 Write-Host "Setting up Syncfusion license..." -ForegroundColor Cyan
 
 # Setup based on choice or default to environment variable
-if ($choice -eq "2" -or $choice -eq $null) {
+if ($choice -eq "2" -or $null -eq $choice) {
     # Try environment variable first (preferred)
     if (Set-LicenseEnvironmentVariable -Key $LicenseKey) {
         Write-Host ""
         Write-Host "🎉 License setup completed successfully!" -ForegroundColor Green
         Write-Host ""
         Write-Host "The license will be automatically detected when you run the application." -ForegroundColor Cyan
-    } else {
+    }
+    else {
         # Fallback to file method
         Write-Host "Falling back to license file method..." -ForegroundColor Yellow
         if (New-LicenseFile -Key $LicenseKey) {
@@ -248,17 +258,20 @@ if ($choice -eq "2" -or $choice -eq $null) {
             Write-Host "🎉 License setup completed successfully!" -ForegroundColor Green
             Write-Host ""
             Write-Host "The license file will be automatically detected when you run the application." -ForegroundColor Cyan
-        } else {
+        }
+        else {
             Write-Host "❌ All license setup methods failed" -ForegroundColor Red
             exit 1
         }
     }
-} elseif ($choice -eq "1") {
+}
+elseif ($choice -eq "1") {
     # Force environment variable method
     if (Set-LicenseEnvironmentVariable -Key $LicenseKey) {
         Write-Host ""
         Write-Host "🎉 License setup completed successfully!" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "❌ Failed to set up license" -ForegroundColor Red
         exit 1
     }

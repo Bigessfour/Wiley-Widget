@@ -8,7 +8,7 @@ param(
     [string]$ServerName,
     [string]$DatabaseName,
     [string]$Username,
-    [string]$Password
+    [SecureString]$Password
 )
 
 Write-Host "🔗 WileyWidget Azure SQL Database Setup" -ForegroundColor Cyan
@@ -63,7 +63,7 @@ function Parse-ConnectionString {
     }
 
     return @{
-        Server = $server
+        Server   = $server
         Database = $database
         Username = $user
         Password = $pass
@@ -123,7 +123,8 @@ function Test-AzureConnection {
 
         $connection.Close()
         return $true
-    } catch {
+    }
+    catch {
         Write-Host "  ❌ Connection failed: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
@@ -142,13 +143,14 @@ switch ($action) {
     "TestConnection" {
         if ($ServerName -and $DatabaseName -and $Username -and $Password) {
             $details = @{
-                Server = $ServerName
+                Server   = $ServerName
                 Database = $DatabaseName
                 Username = $Username
                 Password = $Password
             }
             Test-AzureConnection -ConnectionDetails $details
-        } else {
+        }
+        else {
             Write-Host "❌ Please provide all connection parameters:" -ForegroundColor Red
             Write-Host "   -ServerName, -DatabaseName, -Username, -Password" -ForegroundColor Yellow
         }
@@ -156,7 +158,7 @@ switch ($action) {
     "UpdateEnvFile" {
         if ($ServerName -and $DatabaseName -and $Username -and $Password) {
             $details = @{
-                Server = $ServerName
+                Server   = $ServerName
                 Database = $DatabaseName
                 Username = $Username
                 Password = $Password
@@ -168,7 +170,8 @@ switch ($action) {
                 Write-Host "  2. Test connection: .\scripts\load-env.ps1 -TestConnections" -ForegroundColor White
                 Write-Host "  3. Run application: dotnet run --project WileyWidget/WileyWidget.csproj" -ForegroundColor White
             }
-        } else {
+        }
+        else {
             Write-Host "❌ Please provide all connection parameters:" -ForegroundColor Red
             Write-Host "   -ServerName, -DatabaseName, -Username, -Password" -ForegroundColor Yellow
         }

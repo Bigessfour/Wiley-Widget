@@ -10,12 +10,13 @@ $DocsPath = Join-Path $ProjectRoot "docs"
 $EnvFile = Join-Path $ProjectRoot ".env"
 
 # Function to check file existence
-function Test-FileExists {
+function Test-FileExist {
     param([string]$Path, [string]$Description)
     if (Test-Path $Path) {
         Write-Host "✅ $Description - Found" -ForegroundColor Green
         return $true
-    } else {
+    }
+    else {
         Write-Host "❌ $Description - Missing" -ForegroundColor Red
         return $false
     }
@@ -62,7 +63,8 @@ function Test-MCPServerExtension {
     if ($extension) {
         Write-Host "✅ Azure MCP Server Extension - Installed" -ForegroundColor Green
         return $true
-    } else {
+    }
+    else {
         Write-Host "❌ Azure MCP Server Extension - Not installed" -ForegroundColor Red
         return $false
     }
@@ -117,7 +119,8 @@ $overallStatus = $scriptsStatus -and $docsStatus -and $azureCLIStatus -and $envC
 
 if ($overallStatus) {
     Write-Host "✅ COMPLETE: All components are properly configured!" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "⚠️  PARTIAL: Some components need attention" -ForegroundColor Yellow
 }
 

@@ -9,6 +9,8 @@ on:
 permissions:
     contents: read
     actions: read
+    security-events: write  # Required for security scanning
+    pull-requests: write    # Required for annotations
 
 jobs:
     build:
@@ -16,6 +18,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0  # Full history for security scanning
 
             - name: Setup .NET
               uses: actions/setup-dotnet@v4
@@ -30,35 +34,66 @@ jobs:
                   restore-keys: |
                       nuget-${{ runner.os }}-
 
-            - name: Trunk Check
+            - name: Trunk Check (CI Mode)
               uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --ci --upload --series=${{ github.ref_name }}
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_TOKEN }}
 
-            - name: Restore
+            - name: Restore Dependencies
               run: dotnet restore
 
-            - name: Build
-              # cspell:disable-next-line
-              run: dotnet build --no-restore /bl:msbuild.binlog
+            - name: Build (with detailed logging)
+              run: dotnet build --no-restore /bl:msbuild.binlog /verbosity:minimal
 
-            - name: Test
-              run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage"
+            - name: Run Tests
+              run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
 
-            - name: Check Coverage
-              # cspell:disable
+            - name: Generate Coverage Report
               run: |
                   dotnet tool install -g dotnet-reportgenerator-globaltool
                   reportgenerator -reports:TestResults/*/coverage.cobertura.xml -targetdir:coverage -reporttypes:Html
-              # cspell:enable
 
-            - name: Upload Artifacts
+            - name: Check Test Coverage Threshold
+              run: |
+                  # Extract coverage percentage from coverage report
+                  $coverageFile = "coverage/index.html"
+                  if (Test-Path $coverageFile) {
+                      $content = Get-Content $coverageFile -Raw
+                      $coverageMatch = $content | Select-String -Pattern '(\d+(?:\.\d+)?)%' -AllMatches
+                      if ($coverageMatch.Matches) {
+                          $coverage = [double]$coverageMatch.Matches[0].Groups[1].Value
+                          Write-Host "Test Coverage: $coverage%"
+                          if ($coverage -lt 80) {
+                              Write-Host "::warning::Test coverage is below 80% threshold: $coverage%"
+                          } else {
+                              Write-Host "::notice::Test coverage meets threshold: $coverage%"
+                          }
+                      }
+                  }
+
+            - name: Generate Fetchability Manifest
+              run: pwsh ./scripts/ci-generate-manifest.ps1
+
+            - name: Upload Build Artifacts
               uses: actions/upload-artifact@v4
+              if: always()
               with:
-                  name: build-diagnostics
-                  # cspell:disable-next-line
+                  name: build-diagnostics-${{ github.run_number }}
                   path: |
                       msbuild.binlog
                       coverage/
                       TestResults/
+                      fetchability-resources.json
+                  retention-days: 30
 
-            - name: Generate Fetchability
-              run: pwsh ./scripts/ci-generate-manifest.ps1
+            - name: Upload Test Results
+              uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: test-results-${{ github.run_number }}
+                  path: |
+                      **/*.trx
+                      TestResults/
+                  retention-days: 30

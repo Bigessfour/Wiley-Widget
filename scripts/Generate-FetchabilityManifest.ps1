@@ -88,15 +88,15 @@ begin {
     function Get-GitInfo {
         $gitInfo = @{
             CommitHash = $null
-            Branch = $null
-            IsDirty = $false
-            RemoteUrl = $null
+            Branch     = $null
+            IsDirty    = $false
+            RemoteUrl  = $null
         }
 
         try {
             $gitInfo.CommitHash = & git rev-parse HEAD 2>$null
             $gitInfo.Branch = & git rev-parse --abbrev-ref HEAD 2>$null
-            
+
             # Check if repository is dirty
             $statusOutput = & git status --porcelain 2>$null
             $gitInfo.IsDirty = ($null -ne $statusOutput -and $statusOutput.Length -gt 0)
@@ -164,12 +164,12 @@ process {
 
             # Create file entry
             $fileEntry = @{
-                path = $relativePath.Replace("\", "/")  # Use forward slashes for consistency
-                sha256 = $sha256
-                size = $fileInfo.Length
+                path         = $relativePath.Replace("\", "/")  # Use forward slashes for consistency
+                sha256       = $sha256
+                size         = $fileInfo.Length
                 lastModified = $fileInfo.LastWriteTimeUtc.ToString("o")  # ISO 8601 format
-                tracked = $isTracked
-                extension = $fileInfo.Extension
+                tracked      = $isTracked
+                extension    = $fileInfo.Extension
             }
 
             $fileManifest += $fileEntry
@@ -186,21 +186,21 @@ process {
     $manifest = @{
         metadata = @{
             generatedAt = (Get-Date).ToUniversalTime().ToString("o")
-            generator = "Generate-FetchabilityManifest.ps1"
-            repository = @{
+            generator   = "Generate-FetchabilityManifest.ps1"
+            repository  = @{
                 commitHash = $gitInfo.CommitHash
-                branch = $gitInfo.Branch
-                isDirty = $gitInfo.IsDirty
-                remoteUrl = $gitInfo.RemoteUrl
+                branch     = $gitInfo.Branch
+                isDirty    = $gitInfo.IsDirty
+                remoteUrl  = $gitInfo.RemoteUrl
             }
-            statistics = @{
-                totalFiles = $fileManifest.Count
-                trackedFiles = ($fileManifest | Where-Object { $_.tracked }).Count
+            statistics  = @{
+                totalFiles     = $fileManifest.Count
+                trackedFiles   = ($fileManifest | Where-Object { $_.tracked }).Count
                 untrackedFiles = ($fileManifest | Where-Object { -not $_.tracked }).Count
-                totalSize = ($fileManifest | Measure-Object -Property size -Sum).Sum
+                totalSize      = ($fileManifest | Measure-Object -Property size -Sum).Sum
             }
         }
-        files = $fileManifest | Sort-Object -Property path
+        files    = $fileManifest | Sort-Object -Property path
     }
 
     # Write manifest to file
