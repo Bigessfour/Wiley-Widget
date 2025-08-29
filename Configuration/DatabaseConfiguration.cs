@@ -50,7 +50,7 @@ public static class DatabaseConfiguration
         });
 
         // Register repository
-        services.AddScoped<IWidgetRepository, WidgetRepository>();
+        services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
 
         return services;
     }

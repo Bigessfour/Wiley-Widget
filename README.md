@@ -1,9 +1,21 @@
-# WileyWidget
+# Wiley Widget: The Ultimate Small-Town Rate Revolution
+
+**Version:** 1.1 - Phase 1 Implementation Ready  
+**Status:** North Star Locked, Rule #1 Active  
+**Timeline:** 8-12 weeks to MVP  
+
+## 🎯 **Our True North Star Vision**
+
+We're building a sleek, AI-powered tool for small-town mayors to transform municipal enterprises (Water, Sewer, Trash, Apartments) into self-sustaining businesses. No more Stone Age rates—get real-time dashboards, "What If" scenario planning, and AI insights that even your Clerk will love.
+
+**Current Phase:** Phase 1 - Foundation & Data Backbone (1-2 weeks)
+
+---
 
 ## ⚠️ **STANDARD OPERATING PROCEDURES - READ FIRST**
 
 ### **Azure Safety Protocol (MANDATORY)**
-**ALL Azure operations must use the safe scripts. Direct Azure CLI commands are FORBIDDEN for novice users.**
+**ALL Azure operations must use the safe scripts. Direct Azure CLI commands are FORBIDDEN.**
 
 **🚨 CRITICAL SAFETY RULES:**
 - **ALWAYS use safe scripts** for Azure operations
@@ -27,26 +39,101 @@
 .\scripts\azure-safe-operations.ps1 -Operation list
 ```
 
-**❌ FORBIDDEN Direct Commands:**
-```bash
-# NEVER run these directly - use safe scripts instead
-az sql db delete
-az group delete
-az resource delete
-```
+---
 
-## Quick Start
+## 🚀 **Phase 1 Implementation Quick Start**
 
+### **Prerequisites**
 1. **Setup Database**: `pwsh ./scripts/setup-database.ps1` (installs SQL Server LocalDB)
 2. **Setup Environment**: `pwsh ./scripts/load-env.ps1 -Load` (loads secure environment variables)
 3. **Setup Syncfusion License**: `pwsh ./scripts/setup-license.ps1` (obtain and configure license)
 4. **Setup Azure Environment**: `pwsh ./scripts/azure-setup.ps1` (configures safe Azure operations)
-5. **Clone**: `git clone https://github.com/Bigessfour/Wiley-Widget.git`
-6. **Build & test**: `pwsh ./scripts/build.ps1` (set `RUN_UI_TESTS=1` env var to include UI smoke tests)
-7. **Run**: `dotnet run --project WileyWidget/WileyWidget.csproj`
-8. **Open logs**: `explorer %AppData%\WileyWidget\logs`
 
-Minimal enough that future-you won't hate past-you.
+### **Phase 1 Development Workflow**
+```powershell
+# 1. Clone and setup
+git clone https://github.com/Bigessfour/Wiley-Widget.git
+cd Wiley-Widget
+
+# 2. Build the project
+dotnet build WileyWidget.csproj
+
+# 3. Run EF migrations (Phase 1)
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+
+# 4. Test data connection
+dotnet run --project WileyWidget.csproj
+```
+
+### **Phase 1 Success Benchmarks**
+- ✅ **Database Connection:** Azure DB or LocalDB connects without errors
+- ✅ **Data Models:** Enterprise, BudgetInteraction, OverallBudget classes created
+- ✅ **CRUD Operations:** Can add/edit/delete enterprise data
+- ✅ **Performance:** Load time <2s for 100 records, memory <50MB
+
+---
+
+## 📋 **Project Structure**
+
+```
+WileyWidget/
+├── Models/           # Enterprise data models (Phase 1)
+├── Data/            # EF Core DbContext & Repositories
+├── ViewModels/      # MVVM view models (Phase 2)
+├── Views/          # XAML UI files (Phase 2)
+├── Services/       # Business logic & AI integration (Phase 3)
+├── scripts/        # Safe Azure operations & build scripts
+└── docs/           # North Star & implementation guides
+```
+
+---
+
+## 🛠️ **Development Guidelines**
+
+### **Rule #1: No Plan Changes Without Group Consensus**
+**ME, Grok-4, and Grok Fast Code-1 must ALL agree** to any plan changes. This prevents scope creep and keeps us focused.
+
+### **Code Standards**
+- **EF Core 8.x:** Use for all data operations
+- **CommunityToolkit.Mvvm:** For ViewModel bindings
+- **Syncfusion WPF 30.2.4:** For UI components
+- **No nullable reference types:** Per project guidelines
+- **Repository Pattern:** For data access abstraction
+
+### **Testing Strategy**
+- **Unit Tests:** NUnit for business logic
+- **Integration Tests:** Database operations
+- **UI Tests:** FlaUI for smoke tests
+- **Coverage Target:** 80% by Phase 4
+
+---
+
+## 📚 **Documentation**
+
+- **[North Star Roadmap](docs/wiley-widget-north-star-v1.1.md)** - Complete implementation plan
+- **[Contributing Guide](CONTRIBUTING.md)** - Development workflow
+- **[Azure Setup](docs/azure-setup.md)** - Safe Azure operations
+- **[Testing Guide](docs/TESTING.md)** - Testing standards
+
+---
+
+## 🎯 **Success Metrics**
+
+By Phase 4 completion:
+- ✅ Realistic rates covering operations + employees + quality services
+- ✅ "Aha!" moments from dashboards for city leaders
+- ✅ AI responses feel like helpful neighbors, not robots
+- ✅ Clerk says "This isn't total BS"
+- 🎯 **Bonus:** Version 1.0 released on GitHub
+
+---
+
+## 🤝 **Contributing**
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and standards.
+
+**Remember:** This is a hobby-paced project (8-12 weeks to MVP). Small wins, benchmarks, and no pressure—just building something that actually helps your town!
 
 ## Documentation
 

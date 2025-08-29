@@ -84,5 +84,5 @@ public class Widget
     /// <summary>
     /// Returns a display name combining name and SKU
     /// </summary>
-    public string DisplayName => string.IsNullOrEmpty(SKU) ? Name : $"{Name} ({SKU})";
+    public string DisplayName => string.IsNullOrWhiteSpace(SKU) ? Name : $"{Name} ({SKU})";
 }

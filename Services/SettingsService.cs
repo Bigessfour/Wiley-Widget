@@ -41,7 +41,7 @@ public sealed class SettingsService
 
     public void ResetForTests()
     {
-        InitializePaths();
+        // Don't call InitializePaths() as it would overwrite the test directory set via reflection
         Current = new AppSettings();
     }
 

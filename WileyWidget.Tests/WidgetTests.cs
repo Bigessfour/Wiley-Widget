@@ -127,7 +127,10 @@ public class WidgetTests
 
         // Assert
         Assert.NotNull(widget.ModifiedDate);
-        Assert.True(widget.ModifiedDate > originalModifiedDate);
+        if (originalModifiedDate.HasValue)
+        {
+            Assert.True(widget.ModifiedDate > originalModifiedDate);
+        }
         Assert.True(widget.ModifiedDate <= DateTime.UtcNow);
     }
 

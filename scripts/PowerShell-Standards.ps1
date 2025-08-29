@@ -1,10 +1,29 @@
-# PowerShell Coding Standards for WileyWidget Project
+﻿# PowerShell Coding Standards for WileyWidget Project
 # Add this to your PowerShell profile or source it in scripts
 
 # Preferred error handling approach
 $ErrorActionPreference = 'Stop'
 
 # Function template with proper parameter handling
+<#
+.SYNOPSIS
+Short description
+
+.DESCRIPTION
+Long description
+
+.PARAMETER RequiredParam
+Parameter description
+
+.PARAMETER OptionalParam
+Parameter description
+
+.EXAMPLE
+An example
+
+.NOTES
+General notes
+#>
 function Template-Function {
     [CmdletBinding(SupportsShouldProcess)]
     param(

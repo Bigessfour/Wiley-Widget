@@ -12,9 +12,19 @@ namespace WileyWidget.Data;
 public class AppDbContext : DbContext
 {
     /// <summary>
-    /// DbSet for Widget entities
+    /// DbSet for Enterprise entities (Water, Sewer, Trash, Apartments)
     /// </summary>
-    public DbSet<Widget> Widgets { get; set; }
+    public DbSet<Enterprise> Enterprises { get; set; }
+
+    /// <summary>
+    /// DbSet for BudgetInteraction entities (shared costs between enterprises)
+    /// </summary>
+    public DbSet<BudgetInteraction> BudgetInteractions { get; set; }
+
+    /// <summary>
+    /// DbSet for OverallBudget entities (municipal budget snapshots)
+    /// </summary>
+    public DbSet<OverallBudget> OverallBudgets { get; set; }
 
     /// <summary>
     /// Constructor for dependency injection
@@ -31,52 +41,133 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configure Widget entity
-        modelBuilder.Entity<Widget>(entity =>
+        // Configure Enterprise entity
+        modelBuilder.Entity<Enterprise>(entity =>
         {
             // Table name
-            entity.ToTable("Widgets");
+            entity.ToTable("Enterprises");
 
             // Primary key
-            entity.HasKey(w => w.Id);
+            entity.HasKey(e => e.Id);
 
             // Property configurations
-            entity.Property(w => w.Name)
+            entity.Property(e => e.Name)
                 .IsRequired()
                 .HasMaxLength(100);
 
-            entity.Property(w => w.Description)
-                .HasMaxLength(500);
-
-            entity.Property(w => w.Price)
+            entity.Property(e => e.CurrentRate)
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
 
-            entity.Property(w => w.Quantity)
-                .HasDefaultValue(0);
+            entity.Property(e => e.MonthlyExpenses)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
 
-            entity.Property(w => w.IsActive)
-                .HasDefaultValue(true);
+            entity.Property(e => e.MonthlyRevenue)
+                .HasColumnType("decimal(18,2)");
 
-            entity.Property(w => w.CreatedDate)
-                .HasDefaultValueSql("GETUTCDATE()")
-                .ValueGeneratedOnAdd();
+            entity.Property(e => e.CitizenCount)
+                .IsRequired();
 
-            entity.Property(w => w.ModifiedDate)
-                .ValueGeneratedOnUpdate();
-
-            entity.Property(w => w.Category)
-                .HasMaxLength(50);
-
-            entity.Property(w => w.SKU)
-                .HasMaxLength(20);
+            entity.Property(e => e.Notes)
+                .HasMaxLength(500);
 
             // Indexes for performance
-            entity.HasIndex(w => w.Name);
-            entity.HasIndex(w => w.Category);
-            entity.HasIndex(w => w.SKU).IsUnique();
-            entity.HasIndex(w => w.IsActive);
-            entity.HasIndex(w => w.CreatedDate);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // Configure BudgetInteraction entity
+        modelBuilder.Entity<BudgetInteraction>(entity =>
+        {
+            // Table name
+            entity.ToTable("BudgetInteractions");
+
+            // Primary key
+            entity.HasKey(bi => bi.Id);
+
+            // Foreign key relationships
+            entity.HasOne(bi => bi.PrimaryEnterprise)
+                .WithMany(e => e.BudgetInteractions)
+                .HasForeignKey(bi => bi.PrimaryEnterpriseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(bi => bi.SecondaryEnterprise)
+                .WithMany()
+                .HasForeignKey(bi => bi.SecondaryEnterpriseId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
+
+            // Property configurations
+            entity.Property(bi => bi.InteractionType)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(bi => bi.Description)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(bi => bi.MonthlyAmount)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(bi => bi.IsCost)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            entity.Property(bi => bi.Notes)
+                .HasMaxLength(300);
+
+            // Indexes for performance
+            entity.HasIndex(bi => bi.PrimaryEnterpriseId);
+            entity.HasIndex(bi => bi.SecondaryEnterpriseId);
+            entity.HasIndex(bi => bi.InteractionType);
+        });
+
+        // Configure OverallBudget entity
+        modelBuilder.Entity<OverallBudget>(entity =>
+        {
+            // Table name
+            entity.ToTable("OverallBudgets");
+
+            // Primary key
+            entity.HasKey(ob => ob.Id);
+
+            // Property configurations
+            entity.Property(ob => ob.SnapshotDate)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.Property(ob => ob.TotalMonthlyRevenue)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(ob => ob.TotalMonthlyExpenses)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(ob => ob.TotalMonthlyBalance)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(ob => ob.TotalCitizensServed)
+                .IsRequired();
+
+            entity.Property(ob => ob.AverageRatePerCitizen)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(ob => ob.Notes)
+                .HasMaxLength(500);
+
+            entity.Property(ob => ob.IsCurrent)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            // Ensure only one current budget snapshot
+            entity.HasIndex(ob => ob.IsCurrent)
+                .IsUnique()
+                .HasFilter("IsCurrent = 1");
+
+            // Indexes for performance
+            entity.HasIndex(ob => ob.SnapshotDate);
         });
     }
 
@@ -102,32 +193,18 @@ public class AppDbContext : DbContext
     }
 
     /// <summary>
-    /// Saves changes to the database with automatic timestamp updates
+    /// Saves changes to the database
     /// </summary>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // Update ModifiedDate for modified entities
-        foreach (var entry in ChangeTracker.Entries<Widget>()
-            .Where(e => e.State == EntityState.Modified))
-        {
-            entry.Entity.MarkAsModified();
-        }
-
         return await base.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
-    /// Saves changes to the database with automatic timestamp updates
+    /// Saves changes to the database
     /// </summary>
     public override int SaveChanges()
     {
-        // Update ModifiedDate for modified entities
-        foreach (var entry in ChangeTracker.Entries<Widget>()
-            .Where(e => e.State == EntityState.Modified))
-        {
-            entry.Entity.MarkAsModified();
-        }
-
         return base.SaveChanges();
     }
 }

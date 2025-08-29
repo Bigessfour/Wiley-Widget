@@ -8,7 +8,7 @@ namespace WileyWidget.Tests;
 /// <summary>
 /// Tests for the SettingsService singleton, file operations, and migration logic
 /// </summary>
-public class SettingsServiceTests : IDisposable
+public sealed class SettingsServiceTests : IDisposable
 {
     private readonly string _testDirectory;
     private readonly string _originalRoot;
@@ -28,6 +28,14 @@ public class SettingsServiceTests : IDisposable
         typeof(SettingsService)
             .GetField("_root", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
             .SetValue(SettingsService.Instance, _testDirectory);
+
+        // Also set the file path to point to the test directory
+        var fileField = typeof(SettingsService)
+            .GetField("_file", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (fileField != null)
+        {
+            fileField.SetValue(SettingsService.Instance, Path.Combine(_testDirectory, "settings.json"));
+        }
     }
 
     [Fact]
@@ -198,5 +206,7 @@ public class SettingsServiceTests : IDisposable
         typeof(SettingsService)
             .GetField("_root", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
             .SetValue(SettingsService.Instance, _originalRoot);
+
+        GC.SuppressFinalize(this);
     }
 }

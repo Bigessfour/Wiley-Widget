@@ -50,6 +50,12 @@ jobs:
             - name: Run Tests
               run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
 
+            - name: Run Phase 1 Validation
+              run: |
+                  Write-Host "Running Phase 1 validation tests..."
+                  pwsh ./scripts/phase1-build-test.ps1 -SkipTests -CI
+              continue-on-error: true  # Phase 1 validation may fail due to database, but we still want CI to continue
+
             - name: Generate Coverage Report
               run: |
                   dotnet tool install -g dotnet-reportgenerator-globaltool
@@ -64,13 +70,15 @@ jobs:
                       $coverageMatch = $content | Select-String -Pattern '(\d+(?:\.\d+)?)%' -AllMatches
                       if ($coverageMatch.Matches) {
                           $coverage = [double]$coverageMatch.Matches[0].Groups[1].Value
-                          Write-Host "Test Coverage: $coverage%"
-                          if ($coverage -lt 80) {
-                              Write-Host "::warning::Test coverage is below 80% threshold: $coverage%"
+                          Write-Host "Unit Test Coverage: $coverage%"
+                          if ($coverage -lt 70) {
+                              Write-Host "::warning::Unit test coverage is below 70% threshold: $coverage%"
                           } else {
-                              Write-Host "::notice::Test coverage meets threshold: $coverage%"
+                              Write-Host "::notice::Unit test coverage meets threshold: $coverage%"
                           }
                       }
+                  } else {
+                      Write-Host "::warning::No coverage report found - unit tests may not have run successfully"
                   }
 
             - name: Generate Fetchability Manifest

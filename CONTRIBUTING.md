@@ -1,18 +1,24 @@
-# Contributing (Solo-Friendly)
+# Contributing to Wiley Widget: The Small-Town Rate Revolution
 
-Pragmatic notes for future-you (or a curious passerby). Git aliases moved here from README to declutter.
+**Rule #1: NO PLAN CHANGES WITHOUT GROUP CONSENSUS** (ME, Grok-4, and Grok Fast Code-1) - This keeps us focused and prevents scope creep.
+
+## 🎯 **Our True North Star**
+
+We're building a sleek, AI-powered tool for small-town mayors to transform municipal enterprises (Water, Sewer, Trash, Apartments) into self-sustaining businesses. No more Stone Age rates—get real-time dashboards, "What If" scenario planning, and AI insights that even your Clerk will love.
+
+**Current Phase:** Phase 1 - Foundation & Data Backbone (1-2 weeks)
 
 ## 📋 **Essential Reading**
 
 ### **MANDATORY SAFETY PROCEDURES**
 - **[Standard Operating Procedures](docs/sop-azure-operations.md)**: **REQUIRED** - Azure safety protocols
+- **[North Star Roadmap](docs/wiley-widget-north-star-v1.1.md)**: **REQUIRED** - Complete vision and implementation plan
 - **[Azure Safety Guide](docs/azure-novice-guide.md)**: Safe Azure operations for all contributors
-- **[Azure Quick Reference](docs/azure-quick-reference.md)**: Daily operations checklist
 
 ### **Project Documentation**
 - **[Copilot Instructions](.vscode/copilot-instructions.md)**: AI assistant guidelines and project standards
-- **[Project Plan](.vscode/project-plan.md)**: Complete True North vision and roadmap
 - **[Development Guide](docs/development-guide.md)**: Comprehensive technical standards
+- **[Testing Guide](docs/TESTING.md)**: Testing standards and procedures
 
 ## 🚨 **CONTRIBUTOR SAFETY REQUIREMENTS**
 
@@ -21,8 +27,8 @@ Pragmatic notes for future-you (or a curious passerby). Git aliases moved here f
 
 **Required Reading:**
 - [ ] Standard Operating Procedures (docs/sop-azure-operations.md)
+- [ ] North Star Roadmap (docs/wiley-widget-north-star-v1.1.md)
 - [ ] Azure Safety Guide (docs/azure-novice-guide.md)
-- [ ] Copilot Azure Examples (docs/copilot-azure-examples.md)
 
 **Required Training:**
 - [ ] Safe script operations
@@ -30,21 +36,29 @@ Pragmatic notes for future-you (or a curious passerby). Git aliases moved here f
 - [ ] Emergency protocols
 - [ ] Backup procedures
 
-### **Azure Contribution Workflow**
+### **Phase 1 Development Workflow**
 ```powershell
-# 1. Check Azure status before contributing
-.\scripts\azure-safe-operations.ps1 -Operation status
+# 1. Check current status
+dotnet ef database update
 
-# 2. Create backup before any changes
+# 2. Create backup before changes
 .\scripts\azure-safe-operations.ps1 -Operation backup
 
-# 3. Test all operations with dry-run
-.\scripts\azure-safe-operations.ps1 -Operation [operation] -DryRun
+# 3. Make code changes (Enterprise models, DbContext, etc.)
+# 4. Test locally
+dotnet build WileyWidget.csproj
+dotnet run --project WileyWidget.csproj
 
-# 4. Execute only after testing
-.\scripts\azure-safe-operations.ps1 -Operation [operation]
+# 5. Create migration for schema changes
+dotnet ef migrations add [MigrationName]
 
-# 5. Verify after changes
+# 6. Test migration with dry-run
+.\scripts\azure-safe-operations.ps1 -Operation connect -DryRun
+
+# 7. Apply migration
+dotnet ef database update
+
+# 8. Verify data integrity
 .\scripts\azure-safe-operations.ps1 -Operation status
 ```
 

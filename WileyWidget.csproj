@@ -49,10 +49,13 @@
   <ItemGroup>
     <Compile Remove="WileyWidget.Tests\**" />
     <Compile Remove="WileyWidget.UiTests\**" />
+    <Compile Remove="WileyWidget.TestModels\**" />
     <EmbeddedResource Remove="WileyWidget.Tests\**" />
     <EmbeddedResource Remove="WileyWidget.UiTests\**" />
+    <EmbeddedResource Remove="WileyWidget.TestModels\**" />
     <None Remove="WileyWidget.Tests\**" />
     <None Remove="WileyWidget.UiTests\**" />
+    <None Remove="WileyWidget.TestModels\**" />
   </ItemGroup>
 
 </Project>

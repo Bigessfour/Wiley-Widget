@@ -12,6 +12,7 @@ plugins:
 # Many linters and tools depend on runtimes - configure them here. (https://docs.trunk.io/runtimes)
 runtimes:
   enabled:
+    - go@1.21.0
     - node@22.16.0
     - python@3.10.8
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
@@ -24,13 +25,13 @@ lint:
     # .NET code quality and formatting
     - dotnet-format@8.0.0
     # PowerShell script analysis
-    - psscriptanalyzer@1.21.0
+    - psscriptanalyzer@1.24.0
     # Security vulnerability scanning
-    - semgrep@1.68.0
+    - semgrep@1.133.0
     # License and dependency checking
-    - osv-scanner@1.7.4
+    - osv-scanner@2.2.2
     # Git security scanning
-    - gitleaks@8.18.2
+    - gitleaks@8.28.0
   disabled:
     # Too aggressive on documentation formatting
     - markdownlint
@@ -72,3 +73,7 @@ actions:
     - trunk-check-pre-push
     - trunk-fmt-pre-commit
     - trunk-upgrade-available
+tools:
+  enabled:
+    - pwsh@7.4.1
+    - converttosarif@1.0.0
