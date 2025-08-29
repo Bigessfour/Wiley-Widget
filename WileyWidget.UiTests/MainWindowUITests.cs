@@ -5,16 +5,15 @@ using FlaUI.UIA3;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using FlaUI.Core.Definitions;
+using System;
 
 namespace WileyWidget.UiTests;
 
 /// <summary>
-/// Basic UI tests for the MainWindow
-/// </summary>
+    /// Basic UI tests for the MainWindow
+    /// </summary>
 public class MainWindowUITests : IDisposable
 {
-    private Application _app;
-    private Window _mainWindow;
     private UIA3Automation _automation;
 
     public MainWindowUITests()
@@ -30,7 +29,27 @@ public class MainWindowUITests : IDisposable
 #pragma warning restore CA1416
     }
 
-    [Fact]
+    /// <summary>
+    /// Detects if running in a CI environment where desktop access is not available
+    /// </summary>
+    private static bool IsCIEnvironment()
+    {
+        // Check common CI environment variables
+        var ciIndicators = new[]
+        {
+            "CI",           // General CI indicator
+            "GITHUB_ACTIONS", // GitHub Actions
+            "BUILD_NUMBER", // Jenkins/Azure DevOps
+            "TRAVIS",       // Travis CI
+            "CIRCLECI",     // CircleCI
+            "GITLAB_CI",    // GitLab CI
+            "TF_BUILD",     // Azure DevOps
+            "APPVEYOR"      // AppVeyor
+        };
+
+        return ciIndicators.Any(indicator =>
+            !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(indicator)));
+    }    [Fact]
     public void UI_Test_Framework_IsConfigured()
     {
         // Skip if not on Windows
@@ -127,6 +146,12 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
+        // Skip in CI environments where desktop access is not available
+        if (IsCIEnvironment())
+        {
+            return;
+        }
+
         // Arrange
 #pragma warning disable CA1416 // Validate platform compatibility
         using var automation = new UIA3Automation();
@@ -139,7 +164,8 @@ public class MainWindowUITests : IDisposable
         Assert.NotNull(desktop);
 #pragma warning disable CA1416 // Validate platform compatibility
         Assert.True(desktop.IsAvailable);
-        Assert.Equal("Desktop", desktop.ClassName);
+        // Windows desktop class name is "#32769" not "Desktop"
+        Assert.Equal("#32769", desktop.ClassName);
 #pragma warning restore CA1416
     }
 
@@ -162,10 +188,10 @@ public class MainWindowUITests : IDisposable
         var textType = ControlType.Edit;
 #pragma warning restore CA1416
 
-        // Assert - ControlType is an enum, so we just verify the values are defined
-        Assert.True(buttonType != 0);
-        Assert.True(windowType != 0);
-        Assert.True(textType != 0);
+        // Assert - ControlType enum values are properly defined
+        Assert.True(Enum.IsDefined(typeof(ControlType), buttonType));
+        Assert.True(Enum.IsDefined(typeof(ControlType), windowType));
+        Assert.True(Enum.IsDefined(typeof(ControlType), textType));
     }
 
     [Fact(Skip = "Requires application to be built and available")]
@@ -237,15 +263,20 @@ public class MainWindowUITests : IDisposable
 
     public void Dispose()
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
         {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
 #pragma warning disable CA1416 // Validate platform compatibility
-            _automation?.Dispose();
+                _automation?.Dispose();
 #pragma warning restore CA1416
+            }
         }
-#pragma warning disable CA1416 // Validate platform compatibility
-        _app?.Close();
-        _app?.Dispose();
-#pragma warning restore CA1416
     }
 }

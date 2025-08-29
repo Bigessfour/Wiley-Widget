@@ -104,13 +104,18 @@ function Run-Diagnostic {
     if (Test-Path $TrunkConfigPath) {
         Write-Host "  ✅ Configuration file found" -ForegroundColor Green
 
-        # Check for Windows-incompatible tools
-        $config = Get-Content $TrunkConfigPath -Raw | ConvertFrom-Json
-        $windowsIncompatible = @("semgrep")
-        foreach ($tool in $windowsIncompatible) {
-            if ($config.lint.enabled -contains $tool) {
-                Write-Host "  ⚠️ $tool may not be compatible with Windows" -ForegroundColor Yellow
+        # Check for Windows-incompatible tools (skip detailed parsing for now)
+        try {
+            $configContent = Get-Content $TrunkConfigPath -Raw
+            $windowsIncompatible = @("semgrep")
+            foreach ($tool in $windowsIncompatible) {
+                if ($configContent -match "enabled:\s*$tool") {
+                    Write-Host "  ⚠️ $tool may not be compatible with Windows" -ForegroundColor Yellow
+                }
             }
+        }
+        catch {
+            Write-Host "  ⚠️ Could not parse configuration file" -ForegroundColor Yellow
         }
     }
     else {
@@ -392,7 +397,7 @@ foreach ($action in $actions) {
     try {
         switch ($action) {
             "Diagnose" { Run-Diagnostic }
-            "Fix"      { Fix-CommonIssues }
+            "Fix"      { Fix-CommonIssue }
             "Optimize" { Optimize-Configuration }
             "Update"   { Update-Tool }
             "Reset"    { Reset-Configuration }

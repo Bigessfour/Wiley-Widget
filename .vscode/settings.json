@@ -45,6 +45,10 @@
   "powershell.codeFormatting.useCorrectCasing": true,
   "powershell.integratedConsole.showOnStartup": false,
   "powershell.integratedConsole.focusConsoleOnExecute": false,
+  // Enhanced PowerShell Analysis Settings
+  "powershell.scriptAnalysis.enable": true,
+  "powershell.scriptAnalysis.runOnSave": true,
+  "powershell.scriptAnalysis.runOnOpen": true,
   // GitHub Copilot Configuration
   "github.copilot.enable": {
     "*": true,

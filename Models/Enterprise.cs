@@ -41,7 +41,10 @@ public class Enterprise
     /// Monthly revenue (calculated as CitizenCount * CurrentRate)
     /// </summary>
     [NotMapped]
-    public decimal MonthlyRevenue => CitizenCount * CurrentRate;
+    public decimal MonthlyRevenue
+    {
+        get { return CitizenCount * CurrentRate; }
+    }
 
     /// <summary>
     /// Number of citizens served by this enterprise
@@ -65,11 +68,17 @@ public class Enterprise
     /// Calculated property: Monthly deficit/surplus (Revenue - Expenses)
     /// </summary>
     [NotMapped]
-    public decimal MonthlyBalance => MonthlyRevenue - MonthlyExpenses;
+    public decimal MonthlyBalance
+    {
+        get { return MonthlyRevenue - MonthlyExpenses; }
+    }
 
     /// <summary>
     /// Calculated property: Break-even rate needed to cover expenses
     /// </summary>
     [NotMapped]
-    public decimal BreakEvenRate => CitizenCount > 0 ? MonthlyExpenses / CitizenCount : 0;
+    public decimal BreakEvenRate
+    {
+        get { return CitizenCount > 0 ? MonthlyExpenses / CitizenCount : 0; }
+    }
 }

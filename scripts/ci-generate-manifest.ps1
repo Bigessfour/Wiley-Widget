@@ -33,7 +33,7 @@ param(
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
-Write-Host "🤖 CI/CD: Generating fetchability manifest..." -ForegroundColor Cyan
+Write-Information "🤖 CI/CD: Generating fetchability manifest..." -InformationAction Continue
 
 try {
     # Generate the manifest using the wrapper script
@@ -49,23 +49,24 @@ try {
     }
 
     # Output summary for CI/CD logs
-    Write-Host "✅ CI/CD: Manifest generated successfully" -ForegroundColor Green
-    Write-Host "📊 Summary:" -ForegroundColor Cyan
-    Write-Host "   • Commit: $($manifest.metadata.repository.commitHash)" -ForegroundColor White
-    Write-Host "   • Branch: $($manifest.metadata.repository.branch)" -ForegroundColor White
-    Write-Host "   • Files: $($manifest.metadata.statistics.totalFiles)" -ForegroundColor White
-    Write-Host "   • Size: $([math]::Round($manifest.metadata.statistics.totalSize / 1MB, 2)) MB" -ForegroundColor White
+    Write-Information "✅ CI/CD: Manifest generated successfully" -InformationAction Continue
+    Write-Information "📊 Summary:" -InformationAction Continue
+    Write-Information "   • Commit: $($manifest.metadata.repository.commitHash)" -InformationAction Continue
+    Write-Information "   • Branch: $($manifest.metadata.repository.branch)" -InformationAction Continue
+    Write-Information "   • Files: $($manifest.metadata.statistics.totalFiles)" -InformationAction Continue
+    Write-Information "   • Size: $([math]::Round($manifest.metadata.statistics.totalSize / 1MB, 2)) MB" -InformationAction Continue
 
     # Set output variables for GitHub Actions
     if ($env:GITHUB_ACTIONS) {
-        Write-Host "::set-output name=manifest-path::$OutputPath"
-        Write-Host "::set-output name=file-count::$($manifest.metadata.statistics.totalFiles)"
-        Write-Host "::set-output name=commit-hash::$($manifest.metadata.repository.commitHash)"
+        Write-Information "::set-output name=manifest-path::$OutputPath" -InformationAction Continue
+        Write-Information "::set-output name=file-count::$($manifest.metadata.statistics.totalFiles)" -InformationAction Continue
+        Write-Information "::set-output name=commit-hash::$($manifest.metadata.repository.commitHash)" -InformationAction Continue
     }
 
-} catch {
+}
+catch {
     Write-Error "❌ CI/CD: Failed to generate manifest: $($_.Exception.Message)"
     exit 1
 }
 
-Write-Host "🎉 CI/CD: Fetchability manifest ready for deployment!" -ForegroundColor Green
+Write-Information "🎉 CI/CD: Fetchability manifest ready for deployment!" -InformationAction Continue

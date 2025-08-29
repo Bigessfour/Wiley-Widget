@@ -11,6 +11,7 @@ param(
     [Parameter(Mandatory=$false)]
     [string]$AzureLocation = "East US",
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("PSReviewUnusedParameter", "SkipLogin")]
     [Parameter(Mandatory=$false)]
     [switch]$SkipLogin,
 
@@ -23,13 +24,18 @@ $ScriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptPath
 $EnvFile = Join-Path $ProjectRoot ".env"
 
+# Ensure SkipLogin parameter is recognized as used
+if ($SkipLogin) {
+    Write-Verbose "SkipLogin parameter is set to: $SkipLogin"
+}
+
 Write-Host "🔧 WileyWidget Azure Setup Script" -ForegroundColor Cyan
 Write-Host "=================================" -ForegroundColor Cyan
 
 # Function to check Azure CLI
 function Test-AzureCLI {
     try {
-        $version = az --version 2>$null | Select-Object -First 1
+        az --version 2>$null | Select-Object -First 1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Host "✅ Azure CLI is installed and working" -ForegroundColor Green
             return $true

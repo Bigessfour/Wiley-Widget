@@ -1,6 +1,7 @@
-# Azure Safe Operations for Novices
+﻿# Azure Safe Operations for Novices
 # This script provides safe, programmatic Azure operations
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("PSReviewUnusedParameter", "Verbose")]
 param(
     [Parameter(Mandatory = $false)]
     [ValidateSet("status", "list", "connect", "backup", "restore", "safe-delete")]
@@ -22,9 +23,16 @@ $Script:Config = @{
     SafeMode       = $true  # Always true for novices
 }
 
+Write-SafeLog "Configuration loaded" "INFO" -VerboseOnly
+Write-SafeLog "Subscription ID: $($Script:Config.SubscriptionId)" "INFO" -VerboseOnly
+Write-SafeLog "Resource Group: $($Script:Config.ResourceGroup)" "INFO" -VerboseOnly
+Write-SafeLog "SQL Server: $($Script:Config.SqlServer)" "INFO" -VerboseOnly
+Write-SafeLog "Database: $($Script:Config.Database)" "INFO" -VerboseOnly
+Write-SafeLog "Safe Mode: $($Script:Config.SafeMode)" "INFO" -VerboseOnly
+
 # Logging function
 function Write-SafeLog {
-    param([string]$Message, [string]$Level = "INFO")
+    param([string]$Message, [string]$Level = "INFO", [switch]$VerboseOnly)
     $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $Color = switch ($Level) {
         "ERROR" { "Red" }
@@ -32,7 +40,12 @@ function Write-SafeLog {
         "SUCCESS" { "Green" }
         default { "White" }
     }
-    Write-Host "[$Timestamp] [$Level] $Message" -ForegroundColor $Color
+
+    if ($VerboseOnly -and -not $Verbose) {
+        return
+    }
+
+    Write-Information "[$Timestamp] [$Level] $Message" -InformationAction Continue
 }
 
 # Safe Azure CLI wrapper
@@ -42,18 +55,25 @@ function Invoke-AzureSafe {
     if ($DryRun) {
         Write-SafeLog "DRY RUN: Would execute: $Command" "INFO"
         Write-SafeLog "Purpose: $Description" "INFO"
+        Write-SafeLog "Command details: $Command" "INFO" -VerboseOnly
         return $true
     }
 
-    Write-SafeLog "Executing: $Description" "INFO"
+    Write-SafeLog "Full command: $Command" "INFO" -VerboseOnly
 
     try {
         $result = Invoke-Expression $Command
+        $result = Invoke-Expression $Command
         Write-SafeLog "Success: $Description" "SUCCESS"
+        if ($Verbose) {
+            Write-SafeLog "Result type: $($result.GetType().Name)" "INFO"
+        }
         return $result
     }
     catch {
+        Write-SafeLog "Executing: $Description" "INFO"
         Write-SafeLog "Failed: $Description - $($_.Exception.Message)" "ERROR"
+        Write-SafeLog "Exception details: $($_.Exception)" "ERROR" -VerboseOnly
         return $null
     }
 }

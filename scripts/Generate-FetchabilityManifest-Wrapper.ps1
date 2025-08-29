@@ -19,9 +19,9 @@ Push-Location $ProjectRoot
 
 try {
     if ($Verbose) {
-        Write-Host "Generating fetchability manifest..." -ForegroundColor Cyan
-        Write-Host "Project root: $ProjectRoot" -ForegroundColor Gray
-        Write-Host "Output path: $OutputPath" -ForegroundColor Gray
+        Write-Information "Generating fetchability manifest..." -InformationAction Continue
+        Write-Information "Project root: $ProjectRoot" -InformationAction Continue
+        Write-Information "Output path: $OutputPath" -InformationAction Continue
     }
 
     # Check if manifest exists and is recent (unless Force is specified)
@@ -29,7 +29,7 @@ try {
         $ManifestAge = (Get-Date) - (Get-Item $OutputPath).LastWriteTime
         if ($ManifestAge.TotalMinutes -lt 5) {
             if ($Verbose) {
-                Write-Host "Manifest is recent ($($ManifestAge.TotalMinutes.ToString("F1")) minutes old), skipping generation" -ForegroundColor Yellow
+                Write-Information "Manifest is recent ($($ManifestAge.TotalMinutes.ToString("F1")) minutes old), skipping generation" -InformationAction Continue
             }
             return
         }
@@ -40,15 +40,18 @@ try {
 
     if ($process.ExitCode -eq 0) {
         if ($Verbose) {
-            Write-Host "Manifest generated successfully" -ForegroundColor Green
+            Write-Information "Manifest generated successfully" -InformationAction Continue
         }
-    } else {
+    }
+    else {
         throw "Manifest generation failed with exit code $($process.ExitCode)"
     }
 
-} catch {
+}
+catch {
     Write-Error "Failed to generate fetchability manifest: $($_.Exception.Message)"
     exit 1
-} finally {
+}
+finally {
     Pop-Location
 }

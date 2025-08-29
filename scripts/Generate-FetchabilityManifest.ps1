@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Generates a fetchability resources manifest for CI/CD pipelines
 
@@ -25,6 +25,7 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$OutputPath = "fetchability-resources.json",
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("PSReviewUnusedParameter", "ExcludePatterns")]
     [Parameter(Mandatory = $false)]
     [string[]]$ExcludePatterns = @(
         ".git",
@@ -48,6 +49,11 @@ param(
 
 begin {
     Write-Verbose "Starting fetchability manifest generation..."
+
+    # Ensure ExcludePatterns parameter is recognized as used
+    if ($ExcludePatterns.Count -gt 0) {
+        Write-Verbose "Using $($ExcludePatterns.Count) exclusion patterns"
+    }
 
     # Ensure we're in a git repository
     if (-not (Test-Path ".git")) {
@@ -76,7 +82,7 @@ begin {
         param([string]$FilePath)
 
         try {
-            $gitOutput = & git ls-files --error-unmatch $FilePath 2>$null
+            & git ls-files --error-unmatch $FilePath 2>$null | Out-Null
             return $LASTEXITCODE -eq 0
         }
         catch {
@@ -128,7 +134,7 @@ begin {
 }
 
 process {
-    Write-Host "🔍 Scanning repository files..." -ForegroundColor Cyan
+    Write-Information "🔍 Scanning repository files..." -InformationAction Continue
 
     # Get git information
     $gitInfo = Get-GitInfo
@@ -138,7 +144,7 @@ process {
         Where-Object { -not (Test-ShouldExclude $_.FullName) } |
         Select-Object -ExpandProperty FullName
 
-    Write-Host "📁 Found $($allFiles.Count) files to process" -ForegroundColor Green
+    Write-Information "📁 Found $($allFiles.Count) files to process" -InformationAction Continue
 
     # Process each file
     $fileManifest = @()
@@ -204,16 +210,16 @@ process {
     }
 
     # Write manifest to file
-    Write-Host "💾 Writing manifest to $OutputPath..." -ForegroundColor Yellow
+    Write-Information "💾 Writing manifest to $OutputPath..." -InformationAction Continue
 
     try {
         $manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath -Encoding UTF8
-        Write-Host "✅ Manifest successfully created: $OutputPath" -ForegroundColor Green
-        Write-Host "📊 Statistics:" -ForegroundColor Cyan
-        Write-Host "   • Total files: $($manifest.metadata.statistics.totalFiles)" -ForegroundColor White
-        Write-Host "   • Tracked: $($manifest.metadata.statistics.trackedFiles)" -ForegroundColor White
-        Write-Host "   • Untracked: $($manifest.metadata.statistics.untrackedFiles)" -ForegroundColor White
-        Write-Host "   • Total size: $([math]::Round($manifest.metadata.statistics.totalSize / 1MB, 2)) MB" -ForegroundColor White
+        Write-Information "✅ Manifest successfully created: $OutputPath" -InformationAction Continue
+        Write-Information "📊 Statistics:" -InformationAction Continue
+        Write-Information "   • Total files: $($manifest.metadata.statistics.totalFiles)" -InformationAction Continue
+        Write-Information "   • Tracked: $($manifest.metadata.statistics.trackedFiles)" -InformationAction Continue
+        Write-Information "   • Untracked: $($manifest.metadata.statistics.untrackedFiles)" -InformationAction Continue
+        Write-Information "   • Total size: $([math]::Round($manifest.metadata.statistics.totalSize / 1MB, 2)) MB" -InformationAction Continue
     }
     catch {
         throw "Failed to write manifest file: $($_.Exception.Message)"
@@ -221,5 +227,5 @@ process {
 }
 
 end {
-    Write-Host "🎉 Fetchability manifest generation completed!" -ForegroundColor Green
+    Write-Information "🎉 Fetchability manifest generation completed!" -InformationAction Continue
 }

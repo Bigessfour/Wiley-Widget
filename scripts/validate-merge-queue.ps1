@@ -34,15 +34,36 @@ try {
 # Check 2: Branch Protection
 Write-Host "`n2. Checking Branch Protection..." -ForegroundColor Green
 try {
-    $protection = gh api repos/{owner}/{repo}/branches/main/protection 2>$null | ConvertFrom-Json
-    if ($protection.required_status_checks) {
-        $checks += "✅ Branch protection enabled"
-        $checks += "✅ Required status checks configured"
+    # Get repository information from git remote
+    $remoteUrl = git remote get-url origin 2>$null
+    if ($remoteUrl -match "github\.com[\/:]([^\/]+)\/(.+)\.git$") {
+        $owner = $matches[1]
+        $repo = $matches[2]
+        Write-Host "   Repository: $owner/$repo" -ForegroundColor Gray
+
+        $protection = gh api repos/$owner/$repo/branches/main/protection 2>$null | ConvertFrom-Json
+        if ($protection -and $protection.PSObject.Properties.Name -contains "required_status_checks") {
+            if ($protection.required_status_checks) {
+                $checks += "✅ Branch protection enabled"
+                $checks += "✅ Required status checks configured"
+            } else {
+                $errors += "❌ Branch protection enabled but no required status checks"
+            }
+        } elseif ($protection -and $protection.message -eq "Branch not protected") {
+            $errors += "❌ Branch protection not configured"
+        } else {
+            $errors += "❌ Branch protection status unknown"
+        }
     } else {
-        $errors += "❌ Branch protection not configured"
+        $errors += "❌ Cannot determine repository from git remote"
     }
 } catch {
-    $errors += "❌ Cannot check branch protection (repository may not exist)"
+    $errorMessage = $_.Exception.Message
+    if ($errorMessage -match "404" -or $errorMessage -match "Branch not protected") {
+        $errors += "❌ Branch protection not configured"
+    } else {
+        $errors += "❌ Cannot check branch protection (API error: $errorMessage)"
+    }
 }
 
 # Check 3: Workflow Files

@@ -1,7 +1,7 @@
 # WileyWidget Azure Setup Status and Next Steps
 
-Write-Host "🎯 WileyWidget Azure Integration Status Report" -ForegroundColor Cyan
-Write-Host "=============================================" -ForegroundColor Cyan
+Write-Information "🎯 WileyWidget Azure Integration Status Report" -InformationAction Continue
+Write-Information "=============================================" -InformationAction Continue
 
 # Configuration
 $ProjectRoot = "c:\Users\biges\Desktop\Wiley_Widget"
@@ -13,11 +13,11 @@ $EnvFile = Join-Path $ProjectRoot ".env"
 function Test-FileExist {
     param([string]$Path, [string]$Description)
     if (Test-Path $Path) {
-        Write-Host "✅ $Description - Found" -ForegroundColor Green
+        Write-Information "✅ $Description - Found" -InformationAction Continue
         return $true
     }
     else {
-        Write-Host "❌ $Description - Missing" -ForegroundColor Red
+        Write-Information "❌ $Description - Missing" -InformationAction Continue
         return $false
     }
 }
@@ -27,14 +27,14 @@ function Test-AzureCLIStatus {
     try {
         $account = az account show 2>$null | ConvertFrom-Json
         if ($account) {
-            Write-Host "✅ Azure CLI - Connected" -ForegroundColor Green
-            Write-Host "   • Subscription: $($account.name)" -ForegroundColor White
-            Write-Host "   • User: $($account.user.name)" -ForegroundColor White
+            Write-Information "✅ Azure CLI - Connected" -InformationAction Continue
+            Write-Information "   • Subscription: $($account.name)" -InformationAction Continue
+            Write-Information "   • User: $($account.user.name)" -InformationAction Continue
             return $true
         }
     }
     catch {
-        Write-Host "❌ Azure CLI - Not connected" -ForegroundColor Red
+        Write-Information "❌ Azure CLI - Not connected" -InformationAction Continue
         return $false
     }
     return $false
@@ -47,13 +47,13 @@ function Test-EnvironmentConfig {
         $azureVars = $envContent -split "`n" | Where-Object { $_ -match '^AZURE_.*=' }
 
         if ($azureVars.Count -gt 0) {
-            Write-Host "✅ Environment Configuration - Configured" -ForegroundColor Green
-            Write-Host "   • Found $($azureVars.Count) Azure environment variables" -ForegroundColor White
+            Write-Information "✅ Environment Configuration - Configured" -InformationAction Continue
+            Write-Information "   • Found $($azureVars.Count) Azure environment variables" -InformationAction Continue
             return $true
         }
     }
 
-    Write-Host "❌ Environment Configuration - Not configured" -ForegroundColor Red
+    Write-Information "❌ Environment Configuration - Not configured" -InformationAction Continue
     return $false
 }
 
@@ -61,18 +61,18 @@ function Test-EnvironmentConfig {
 function Test-MCPServerExtension {
     $extension = code --list-extensions 2>$null | Where-Object { $_ -eq "ms-azuretools.vscode-azure-mcp-server" }
     if ($extension) {
-        Write-Host "✅ Azure MCP Server Extension - Installed" -ForegroundColor Green
+        Write-Information "✅ Azure MCP Server Extension - Installed" -InformationAction Continue
         return $true
     }
     else {
-        Write-Host "❌ Azure MCP Server Extension - Not installed" -ForegroundColor Red
+        Write-Information "❌ Azure MCP Server Extension - Not installed" -InformationAction Continue
         return $false
     }
 }
 
 # Status checks
-Write-Host "`n📋 Component Status:" -ForegroundColor Yellow
-Write-Host "-------------------" -ForegroundColor Yellow
+Write-Information "`n📋 Component Status:" -InformationAction Continue
+Write-Information "-------------------" -InformationAction Continue
 
 # Check setup scripts
 $setupScripts = @(
@@ -104,53 +104,53 @@ foreach ($doc in $docs) {
 }
 
 # Check Azure components
-Write-Host "`n☁️  Azure Components:" -ForegroundColor Yellow
-Write-Host "-------------------" -ForegroundColor Yellow
+Write-Information "`n☁️  Azure Components:" -InformationAction Continue
+Write-Information "-------------------" -InformationAction Continue
 
 $azureCLIStatus = Test-AzureCLIStatus
 $envConfigStatus = Test-EnvironmentConfig
 $mcpStatus = Test-MCPServerExtension
 
 # Overall status
-Write-Host "`n🎯 Overall Status:" -ForegroundColor Yellow
-Write-Host "-----------------" -ForegroundColor Yellow
+Write-Information "`n🎯 Overall Status:" -InformationAction Continue
+Write-Information "-----------------" -InformationAction Continue
 
 $overallStatus = $scriptsStatus -and $docsStatus -and $azureCLIStatus -and $envConfigStatus -and $mcpStatus
 
 if ($overallStatus) {
-    Write-Host "✅ COMPLETE: All components are properly configured!" -ForegroundColor Green
+    Write-Information "✅ COMPLETE: All components are properly configured!" -InformationAction Continue
 }
 else {
-    Write-Host "⚠️  PARTIAL: Some components need attention" -ForegroundColor Yellow
+    Write-Information "⚠️  PARTIAL: Some components need attention" -InformationAction Continue
 }
 
 # Next steps
-Write-Host "`n🚀 Next Steps:" -ForegroundColor Yellow
-Write-Host "-------------" -ForegroundColor Yellow
+Write-Information "`n🚀 Next Steps:" -InformationAction Continue
+Write-Information "-------------" -InformationAction Continue
 
 if (-not $azureCLIStatus) {
-    Write-Host "1. 🔐 Login to Azure: az login" -ForegroundColor White
+    Write-Information "1. 🔐 Login to Azure: az login" -InformationAction Continue
 }
 
 if (-not $envConfigStatus) {
-    Write-Host "2. ⚙️  Run Azure setup: .\scripts\setup-azure.ps1" -ForegroundColor White
+    Write-Information "2. ⚙️  Run Azure setup: .\scripts\setup-azure.ps1" -InformationAction Continue
 }
 
 if (-not $mcpStatus) {
-    Write-Host "3. 🔌 Install MCP Server: code --install-extension ms-azuretools.vscode-azure-mcp-server" -ForegroundColor White
+    Write-Information "3. 🔌 Install MCP Server: code --install-extension ms-azuretools.vscode-azure-mcp-server" -InformationAction Continue
 }
 
-Write-Host "4. 🧪 Test connectivity: .\scripts\test-database-connection.ps1" -ForegroundColor White
-Write-Host "5. 🏗️  Build application: dotnet build WileyWidget.csproj" -ForegroundColor White
-Write-Host "6. ▶️  Run application: dotnet run --project WileyWidget.csproj" -ForegroundColor White
+Write-Information "4. 🧪 Test connectivity: .\scripts\test-database-connection.ps1" -InformationAction Continue
+Write-Information "5. 🏗️  Build application: dotnet build WileyWidget.csproj" -InformationAction Continue
+Write-Information "6. ▶️  Run application: dotnet run --project WileyWidget.csproj" -InformationAction Continue
 
 # Quick commands
-Write-Host "`n💡 Quick Commands:" -ForegroundColor Yellow
-Write-Host "-----------------" -ForegroundColor Yellow
+Write-Information "`n💡 Quick Commands:" -InformationAction Continue
+Write-Information "-----------------" -InformationAction Continue
 
-Write-Host "• Test Azure CLI: az account show" -ForegroundColor White
-Write-Host "• List resources: az resource list --output table" -ForegroundColor White
-Write-Host "• Check database: .\scripts\test-database-connection.ps1" -ForegroundColor White
-Write-Host "• View docs: Get-Content .\docs\azure-setup.md" -ForegroundColor White
+Write-Information "• Test Azure CLI: az account show" -InformationAction Continue
+Write-Information "• List resources: az resource list --output table" -InformationAction Continue
+Write-Information "• Check database: .\scripts\test-database-connection.ps1" -InformationAction Continue
+Write-Information "• View docs: Get-Content .\docs\azure-setup.md" -InformationAction Continue
 
-Write-Host "`n✨ Ready to build amazing things with WileyWidget and Azure!" -ForegroundColor Green
+Write-Information "`n✨ Ready to build amazing things with WileyWidget and Azure!" -InformationAction Continue
