@@ -36,8 +36,8 @@ Set-Location $repoRoot
 Write-Host "🤖 CI/CD: Generating fetchability manifest..." -ForegroundColor Cyan
 
 try {
-    # Generate the manifest
-    & "$PSScriptRoot\Generate-FetchabilityManifest.ps1" -OutputPath $OutputPath
+    # Generate the manifest using the wrapper script
+    & pwsh -ExecutionPolicy Bypass -File "$PSScriptRoot\Generate-FetchabilityManifest-Wrapper.ps1" -OutputPath $OutputPath -Verbose
 
     # Read and validate the manifest
     $manifest = Get-Content $OutputPath | ConvertFrom-Json
