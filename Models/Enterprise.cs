@@ -74,11 +74,63 @@ public class Enterprise
     }
 
     /// <summary>
+    /// Budget status indicator for visual display
+    /// </summary>
+    [NotMapped]
+    public string BudgetStatus
+    {
+        get
+        {
+            if (MonthlyBalance > 0)
+                return "Surplus";
+            else if (MonthlyBalance < 0)
+                return "Deficit";
+            else
+                return "Break-even";
+        }
+    }
+
+    /// <summary>
     /// Calculated property: Break-even rate needed to cover expenses
     /// </summary>
     [NotMapped]
     public decimal BreakEvenRate
     {
         get { return CitizenCount > 0 ? MonthlyExpenses / CitizenCount : 0; }
+    }
+
+    /// <summary>
+    /// Profit margin percentage
+    /// </summary>
+    [NotMapped]
+    public decimal ProfitMargin
+    {
+        get
+        {
+            if (MonthlyRevenue == 0) return 0;
+            return (MonthlyBalance / MonthlyRevenue) * 100;
+        }
+    }
+
+    /// <summary>
+    /// Revenue per citizen (efficiency metric)
+    /// </summary>
+    [NotMapped]
+    public decimal RevenuePerCitizen
+    {
+        get { return CitizenCount > 0 ? MonthlyRevenue / CitizenCount : 0; }
+    }
+
+    /// <summary>
+    /// Expense efficiency ratio (lower is better)
+    /// </summary>
+    [NotMapped]
+    public decimal ExpenseRatio
+    {
+        get
+        {
+            if (MonthlyRevenue == 0) return 0;
+            return (MonthlyExpenses / MonthlyRevenue) * 100;
+        }
     }
 }

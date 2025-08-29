@@ -49,7 +49,11 @@ public class MainWindowUITests : IDisposable
 
         return ciIndicators.Any(indicator =>
             !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(indicator)));
-    }    [Fact]
+    }
+
+    #region UI Framework Tests
+
+    [Fact]
     [Trait("Category", "UiSmokeTests")]
     public void UI_Test_Framework_IsConfigured()
     {
@@ -197,6 +201,401 @@ public class MainWindowUITests : IDisposable
         Assert.True(Enum.IsDefined(typeof(ControlType), textType));
     }
 
+    #endregion
+
+    #region Application Launch Tests
+
+    [Fact]
+    public void Application_CanBeLaunchedFromTestEnvironment()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Skip in CI environments
+        if (IsCIEnvironment())
+        {
+            return;
+        }
+
+        Application app = null;
+        UIA3Automation automation = null;
+
+        try
+        {
+            // Arrange
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
+                WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
+                UseShellExecute = true
+            };
+
+#pragma warning disable CA1416 // Validate platform compatibility
+            automation = new UIA3Automation();
+
+            // Act
+            app = Application.Launch(processStartInfo);
+            var mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+#pragma warning restore CA1416
+
+            // Assert
+            Assert.NotNull(app);
+            Assert.NotNull(mainWindow);
+#pragma warning disable CA1416 // Validate platform compatibility
+            Assert.True(mainWindow.IsAvailable);
+            Assert.Contains("Wiley Widget", mainWindow.Title);
+#pragma warning restore CA1416
+        }
+        finally
+        {
+            // Cleanup
+            try
+            {
+#pragma warning disable CA1416 // Validate platform compatibility
+                app?.Close();
+                automation?.Dispose();
+#pragma warning restore CA1416
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    #endregion
+
+    #region Main Window Tests
+
+    [Fact]
+    public void MainWindow_LoadsWithExpectedTitle()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Skip in CI environments
+        if (IsCIEnvironment())
+        {
+            return;
+        }
+
+        Application app = null;
+        UIA3Automation automation = null;
+        Window mainWindow = null;
+
+        try
+        {
+            // Arrange
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
+                WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
+                UseShellExecute = true
+            };
+
+#pragma warning disable CA1416 // Validate platform compatibility
+            automation = new UIA3Automation();
+            app = Application.Launch(processStartInfo);
+            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+#pragma warning restore CA1416
+
+            // Assert
+            Assert.NotNull(mainWindow);
+#pragma warning disable CA1416 // Validate platform compatibility
+            Assert.True(mainWindow.IsAvailable);
+            Assert.Equal("Wiley Widget", mainWindow.Title);
+#pragma warning restore CA1416
+        }
+        finally
+        {
+            // Cleanup
+            try
+            {
+#pragma warning disable CA1416 // Validate platform compatibility
+                mainWindow?.Close();
+                app?.Close();
+                automation?.Dispose();
+#pragma warning restore CA1416
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    [Fact]
+    public void MainWindow_HasExpectedDimensions()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Skip in CI environments
+        if (IsCIEnvironment())
+        {
+            return;
+        }
+
+        Application app = null;
+        UIA3Automation automation = null;
+        Window mainWindow = null;
+
+        try
+        {
+            // Arrange
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
+                WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
+                UseShellExecute = true
+            };
+
+#pragma warning disable CA1416 // Validate platform compatibility
+            automation = new UIA3Automation();
+            app = Application.Launch(processStartInfo);
+            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+
+            // Wait for window to be fully loaded
+            System.Threading.Thread.Sleep(2000);
+#pragma warning restore CA1416
+
+            // Assert
+#pragma warning disable CA1416 // Validate platform compatibility
+            var bounds = mainWindow.BoundingRectangle;
+            Assert.True(bounds.Width >= 800, $"Window width {bounds.Width} should be at least 800");
+            Assert.True(bounds.Height >= 500, $"Window height {bounds.Height} should be at least 500");
+#pragma warning restore CA1416
+        }
+        finally
+        {
+            // Cleanup
+            try
+            {
+#pragma warning disable CA1416 // Validate platform compatibility
+                mainWindow?.Close();
+                app?.Close();
+                automation?.Dispose();
+#pragma warning restore CA1416
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    #endregion
+
+    #region UI Element Tests
+
+    [Fact]
+    public void MainWindow_ContainsRibbonInterface()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Skip in CI environments
+        if (IsCIEnvironment())
+        {
+            return;
+        }
+
+        Application app = null;
+        UIA3Automation automation = null;
+        Window mainWindow = null;
+
+        try
+        {
+            // Arrange
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
+                WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
+                UseShellExecute = true
+            };
+
+#pragma warning disable CA1416 // Validate platform compatibility
+            automation = new UIA3Automation();
+            app = Application.Launch(processStartInfo);
+            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+
+            System.Threading.Thread.Sleep(2000); // Wait for UI to load
+
+            // Act - Find ribbon
+            var ribbon = mainWindow.FindFirstDescendant(cf => cf.ByClassName("Ribbon"));
+#pragma warning restore CA1416
+
+            // Assert
+            Assert.NotNull(ribbon);
+#pragma warning disable CA1416 // Validate platform compatibility
+            Assert.True(ribbon.IsEnabled);
+#pragma warning restore CA1416
+        }
+        finally
+        {
+            // Cleanup
+            try
+            {
+#pragma warning disable CA1416 // Validate platform compatibility
+                mainWindow?.Close();
+                app?.Close();
+                automation?.Dispose();
+#pragma warning restore CA1416
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    [Fact]
+    public void MainWindow_ContainsTabControl()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Skip in CI environments
+        if (IsCIEnvironment())
+        {
+            return;
+        }
+
+        Application app = null;
+        UIA3Automation automation = null;
+        Window mainWindow = null;
+
+        try
+        {
+            // Arrange
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
+                WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
+                UseShellExecute = true
+            };
+
+#pragma warning disable CA1416 // Validate platform compatibility
+            automation = new UIA3Automation();
+            app = Application.Launch(processStartInfo);
+            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+
+            System.Threading.Thread.Sleep(2000); // Wait for UI to load
+
+            // Act - Find tab control
+            var tabControl = mainWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.Tab));
+#pragma warning restore CA1416
+
+            // Assert
+            Assert.NotNull(tabControl);
+#pragma warning disable CA1416 // Validate platform compatibility
+            Assert.True(tabControl.IsEnabled);
+#pragma warning restore CA1416
+        }
+        finally
+        {
+            // Cleanup
+            try
+            {
+#pragma warning disable CA1416 // Validate platform compatibility
+                mainWindow?.Close();
+                app?.Close();
+                automation?.Dispose();
+#pragma warning restore CA1416
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    [Fact]
+    public void MainWindow_HasAllExpectedTabs()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Skip in CI environments
+        if (IsCIEnvironment())
+        {
+            return;
+        }
+
+        Application app = null;
+        UIA3Automation automation = null;
+        Window mainWindow = null;
+
+        try
+        {
+            // Arrange
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
+                WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
+                UseShellExecute = true
+            };
+
+#pragma warning disable CA1416 // Validate platform compatibility
+            automation = new UIA3Automation();
+            app = Application.Launch(processStartInfo);
+            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+
+            System.Threading.Thread.Sleep(2000); // Wait for UI to load
+
+            // Act - Find all tabs
+            var widgetsTab = mainWindow.FindFirstDescendant(cf => cf.ByName("Widgets"));
+            var enterprisesTab = mainWindow.FindFirstDescendant(cf => cf.ByName("Enterprises"));
+            var budgetTab = mainWindow.FindFirstDescendant(cf => cf.ByName("Budget Summary"));
+            var quickBooksTab = mainWindow.FindFirstDescendant(cf => cf.ByName("QuickBooks"));
+#pragma warning restore CA1416
+
+            // Assert
+            Assert.NotNull(widgetsTab);
+            Assert.NotNull(enterprisesTab);
+            Assert.NotNull(budgetTab);
+            Assert.NotNull(quickBooksTab);
+        }
+        finally
+        {
+            // Cleanup
+            try
+            {
+#pragma warning disable CA1416 // Validate platform compatibility
+                mainWindow?.Close();
+                app?.Close();
+                automation?.Dispose();
+#pragma warning restore CA1416
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    #endregion
+
+    #region Skipped Tests (for future implementation)
+
     [Fact(Skip = "Requires application to be built and available")]
     public void MainWindow_CanBeLaunched()
     {
@@ -263,6 +662,8 @@ public class MainWindowUITests : IDisposable
         Assert.True(buttons.Length >= 0); // At least some buttons expected
         */
     }
+
+    #endregion
 
     public void Dispose()
     {

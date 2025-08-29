@@ -1,18 +1,20 @@
-﻿<Window x:Class="WileyWidget.MainWindow"
+<Window x:Class="WileyWidget.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WileyWidget"
+        xmlns:converters="clr-namespace:WileyWidget.Converters"
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
         mc:Ignorable="d"
         Title="Wiley Widget" Height="600" Width="1000">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:BalanceToColorConverter x:Key="BalanceToColorConverter"/>
+        <converters:StatusToColorConverter x:Key="StatusToColorConverter"/>
     </Window.Resources>
     <DockPanel>
-        <!-- Basic Ribbon (Syncfusion.Tools.WPF) - documented usage pattern -->
-    <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="MainRibbon">
+        <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="MainRibbon">
             <syncfusion:RibbonTab Caption="Home">
                 <syncfusion:RibbonBar Header="Clipboard">
                     <syncfusion:RibbonButton Label="Copy" SizeForm="Large" />
@@ -39,11 +41,12 @@
             </syncfusion:RibbonTab>
         </syncfusion:Ribbon>
 
-        <!-- Data Grid (Syncfusion.SfGrid.WPF) -->
         <DockPanel LastChildFill="True">
             <TabControl>
                 <TabItem Header="Widgets">
-                    <syncfusion:SfDataGrid ItemsSource="{Binding Widgets}" SelectedItem="{Binding SelectedWidget, Mode=TwoWay}" AutoGenerateColumns="False" x:Name="Grid" AllowSorting="True" AllowFiltering="True" AllowResizingColumns="True" GridLinesVisibility="Horizontal" RowHeight="28" AlternationCount="2">
+                    <syncfusion:SfDataGrid ItemsSource="{Binding Widgets}" SelectedItem="{Binding SelectedWidget, Mode=TwoWay}" 
+                                         AutoGenerateColumns="False" x:Name="Grid" AllowSorting="True" AllowFiltering="True" 
+                                         AllowResizingColumns="True" GridLinesVisibility="Horizontal" RowHeight="28" AlternationCount="2">
                         <syncfusion:SfDataGrid.Columns>
                             <syncfusion:GridTextColumn HeaderText="Id" MappingName="Id" Width="70" />
                             <syncfusion:GridTextColumn HeaderText="Name" MappingName="Name" />
@@ -60,7 +63,9 @@
                             <Button Content="Save" Command="{Binding SaveEnterpriseCommand}" Margin="0,0,6,0"/>
                             <Button Content="Delete" Command="{Binding DeleteEnterpriseCommand}" Margin="0,0,6,0" Background="IndianRed" Foreground="White"/>
                         </StackPanel>
-                        <syncfusion:SfDataGrid ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" AutoGenerateColumns="False" AllowSorting="True" AllowFiltering="True" AllowResizingColumns="True" GridLinesVisibility="Horizontal" RowHeight="28" AlternationCount="2">
+                        <syncfusion:SfDataGrid ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" 
+                                             AutoGenerateColumns="False" AllowSorting="True" AllowFiltering="True" 
+                                             AllowResizingColumns="True" GridLinesVisibility="Horizontal" RowHeight="28" AlternationCount="2">
                             <syncfusion:SfDataGrid.Columns>
                                 <syncfusion:GridTextColumn HeaderText="Name" MappingName="Name" Width="200" />
                                 <syncfusion:GridNumericColumn HeaderText="Rate" MappingName="CurrentRate" Width="100" />
@@ -74,16 +79,111 @@
                     </DockPanel>
                 </TabItem>
                 <TabItem Header="Budget Summary">
-                    <StackPanel Margin="10">
-                        <TextBlock Text="Municipal Budget Overview" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
-                        <TextBlock Text="{Binding BudgetSummary}" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,20"/>
-                        <TextBlock Text="💡 Phase 2: UI Dashboards &amp; Basic Analytics" FontStyle="Italic" Foreground="Gray"/>
-                        <TextBlock Text="This tab shows real-time budget calculations from enterprise data." FontStyle="Italic" Foreground="Gray" Margin="0,5,0,0"/>
-                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="10">
+                            <TextBlock Text="Municipal Budget Dashboard" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                            
+                            <UniformGrid Columns="2" Rows="2" Margin="0,0,0,20">
+                                <Border Background="#E8F5E8" BorderBrush="#4CAF50" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                                    <StackPanel>
+                                        <TextBlock Text="Total Revenue" FontSize="14" FontWeight="SemiBold" Foreground="#2E7D32"/>
+                                        <TextBlock Text="{Binding BudgetMetrics.TotalRevenue, StringFormat=C2}" FontSize="20" FontWeight="Bold" Foreground="#1B5E20"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#FFEBEE" BorderBrush="#F44336" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                                    <StackPanel>
+                                        <TextBlock Text="Total Expenses" FontSize="14" FontWeight="SemiBold" Foreground="#C62828"/>
+                                        <TextBlock Text="{Binding BudgetMetrics.TotalExpenses, StringFormat=C2}" FontSize="20" FontWeight="Bold" Foreground="#B71C1C"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="{Binding BudgetMetrics.BalanceColor}" BorderBrush="{Binding BudgetMetrics.BalanceBorderColor}" 
+                                        BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                                    <StackPanel>
+                                        <TextBlock Text="Monthly Balance" FontSize="14" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding BudgetMetrics.MonthlyBalance, StringFormat=C2}" FontSize="20" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#E3F2FD" BorderBrush="#2196F3" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                                    <StackPanel>
+                                        <TextBlock Text="Citizens Served" FontSize="14" FontWeight="SemiBold" Foreground="#0D47A1"/>
+                                        <TextBlock Text="{Binding BudgetMetrics.TotalCitizens}" FontSize="20" FontWeight="Bold" Foreground="#0D47A1"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+
+                            <Border Background="{Binding BudgetMetrics.StatusBackground}" BorderBrush="{Binding BudgetMetrics.StatusBorder}" 
+                                    BorderThickness="2" CornerRadius="10" Margin="0,0,0,20" Padding="20">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding BudgetMetrics.StatusIcon}" FontSize="48" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding BudgetMetrics.StatusMessage}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                                    <TextBlock Text="{Binding BudgetMetrics.StatusDescription}" FontSize="14" HorizontalAlignment="Center" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <GroupBox Header="Revenue vs Expenses Overview" Margin="0,0,0,20">
+                                <syncfusion:SfChart Height="300" Margin="10">
+                                    <syncfusion:SfChart.PrimaryAxis>
+                                        <syncfusion:CategoryAxis/>
+                                    </syncfusion:SfChart.PrimaryAxis>
+                                    <syncfusion:SfChart.SecondaryAxis>
+                                        <syncfusion:NumericalAxis LabelFormat="C0"/>
+                                    </syncfusion:SfChart.SecondaryAxis>
+                                    <syncfusion:ColumnSeries ItemsSource="{Binding Enterprises}" XBindingPath="Name" YBindingPath="MonthlyRevenue" Label="Revenue" Interior="#4CAF50"/>
+                                    <syncfusion:ColumnSeries ItemsSource="{Binding Enterprises}" XBindingPath="Name" YBindingPath="MonthlyExpenses" Label="Expenses" Interior="#F44336"/>
+                                </syncfusion:SfChart>
+                            </GroupBox>
+
+                            <GroupBox Header="Enterprise Performance Details" Margin="0,0,0,20">
+                                <DataGrid ItemsSource="{Binding Enterprises}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10" AlternatingRowBackground="#F5F5F5">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Enterprise" Binding="{Binding Name}" Width="120"/>
+                                        <DataGridTextColumn Header="Citizens" Binding="{Binding CitizenCount}" Width="80"/>
+                                        <DataGridTextColumn Header="Rate ($)" Binding="{Binding CurrentRate, StringFormat=C2}" Width="80"/>
+                                        <DataGridTextColumn Header="Revenue ($)" Binding="{Binding MonthlyRevenue, StringFormat=C2}" Width="100"/>
+                                        <DataGridTextColumn Header="Expenses ($)" Binding="{Binding MonthlyExpenses, StringFormat=C2}" Width="100"/>
+                                        <DataGridTextColumn Header="Balance ($)" Binding="{Binding MonthlyBalance, StringFormat=C2}" Width="100">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{Binding MonthlyBalance, Converter={StaticResource BalanceToColorConverter}}"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Status" Binding="{Binding BudgetStatus}" Width="80">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{Binding BudgetStatus, Converter={StaticResource StatusToColorConverter}}"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </GroupBox>
+
+                            <GroupBox Header="Budget Insights &amp; Recommendations" Margin="0,0,0,20">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="{Binding BudgetInsights.MainInsight}" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Key Recommendations:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                    <ItemsControl ItemsSource="{Binding BudgetInsights.Recommendations}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Margin="0,2" Padding="8">
+                                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <TextBlock Text="💡 Phase 2: UI Dashboards &amp; Basic Analytics - COMPLETED" FontStyle="Italic" Foreground="Green" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Dashboard provides real-time budget analytics with visual indicators and actionable insights." FontStyle="Italic" Foreground="Gray" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
                 <TabItem Header="QuickBooks">
                     <DockPanel>
-                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4" >
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4">
                             <Button Content="Load Customers" Command="{Binding LoadQuickBooksCustomersAsyncCommand}" Margin="0,0,6,0"/>
                             <Button Content="Load Invoices" Command="{Binding LoadQuickBooksInvoicesAsyncCommand}" Margin="0,0,6,0"/>
                             <TextBlock Text="Busy" Foreground="OrangeRed" Visibility="{Binding QuickBooksBusy, Converter={StaticResource BoolToVis}}"/>
@@ -107,14 +207,12 @@
                 </StatusBarItem>
                 <StatusBarItem>
                     <TextBlock>
-                        <Run Text="Selected: "/>
-                        <Run Text="{Binding SelectedWidget.Name}" />
+                        <Run Text="Selected: "/><Run Text="{Binding SelectedWidget.Name}" />
                     </TextBlock>
                 </StatusBarItem>
                 <StatusBarItem>
                     <TextBlock>
-                        <Run Text="Price: "/>
-                        <Run Text="{Binding SelectedWidget.Price}" />
+                        <Run Text="Price: "/><Run Text="{Binding SelectedWidget.Price}" />
                     </TextBlock>
                 </StatusBarItem>
             </StatusBar>

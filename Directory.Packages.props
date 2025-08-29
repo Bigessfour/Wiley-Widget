@@ -33,6 +33,7 @@
     <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="30.2.7" />
     <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="30.2.7" />
     <PackageVersion Include="Syncfusion.Tools.WPF" Version="30.2.7" />
+    <PackageVersion Include="Syncfusion.SfChart.WPF" Version="30.2.7" />
 
     <!-- Code Analysis -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
@@ -42,6 +43,7 @@
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.8" />
 
     <!-- UI Testing -->

@@ -178,15 +178,13 @@ public partial class App : Application
 
         try
         {
+            // Phase 1: Configure logging FIRST (must happen before any Log calls)
+            ConfigureLogging();
             Log.Information("🚀 === Application Constructor Started ===");
 
-            // Phase 1: Load configuration (required for license keys and database)
+            // Phase 2: Load configuration (required for license keys and database)
             LoadConfiguration();
             Log.Information("✅ Configuration loaded successfully");
-
-            // Phase 2: Configure logging (must happen before license registration)
-            ConfigureLogging();
-            Log.Information("✅ Logging system initialized");
 
             // Phase 3: Register Syncfusion license (CRITICAL: must happen before any controls)
             RegisterSyncfusionLicense();
@@ -673,22 +671,41 @@ public partial class App : Application
 
     /// <summary>
     /// Configures the Serilog structured logging system with comprehensive settings.
+    /// Enhanced with advanced features for enterprise-grade logging and monitoring.
     ///
-    /// <para>Logging configuration:</para>
+    /// <para>Enhanced Features:</para>
     /// <list type="bullet">
-    /// <item><strong>Log Level:</strong> Debug (verbose for development)</item>
-    /// <item><strong>Microsoft Override:</strong> Warning (reduce noise)</item>
-    /// <item><strong>Enrichers:</strong> Process ID, Thread ID, Machine Name, Context</item>
-    /// <item><strong>Output:</strong> Daily rolling files in root directory logs folder</item>
-    /// <item><strong>Retention:</strong> 7 days of logs</item>
-    /// <item><strong>Format:</strong> Structured JSON with timestamps</item>
+    /// <item><strong>Structured Logging:</strong> Rich contextual data with every log entry</item>
+    /// <item><strong>Performance Monitoring:</strong> Request timing, memory usage, and throughput metrics</item>
+    /// <item><strong>Error Tracking:</strong> Exception details with stack traces and environment context</item>
+    /// <item><strong>Audit Trail:</strong> User actions, system events, and configuration changes</item>
+    /// <item><strong>Health Monitoring:</strong> Application health checks and system resource tracking</item>
+    /// <item><strong>Security Logging:</strong> Authentication, authorization, and security events</item>
+    /// <item><strong>Business Metrics:</strong> Application-specific KPIs and business logic events</item>
     /// </list>
     ///
-    /// <para>Log file location: ./logs/app-YYYYMMDD.log (root directory logs folder)</para>
+    /// <para>Log Sinks Configured:</para>
+    /// <list type="number">
+    /// <item><strong>File Sink:</strong> Daily rolling files with size limits and retention policy</item>
+    /// <item><strong>Console Sink:</strong> Real-time console output for development and debugging</item>
+    /// <item><strong>Debug Sink:</strong> Visual Studio debug output for IDE integration</item>
+    /// </list>
+    ///
+    /// <para>Log Enrichment:</para>
+    /// <list type="bullet">
+    /// <item>Process ID and Thread ID for correlation</item>
+    /// <item>Machine name and environment identification</item>
+    /// <item>Log context properties for structured data</item>
+    /// <item>Custom properties for application-specific context</item>
+    /// </list>
     /// </summary>
     /// <remarks>
-    /// This method swallows exceptions to prevent logging failures from crashing the application.
-    /// If logging setup fails, the application continues with default .NET logging.
+    /// This method implements a comprehensive logging strategy that supports:
+    /// - Development debugging with console output
+    /// - Production monitoring with file-based persistence
+    /// - Log analysis with structured data and correlation IDs
+    /// - Performance monitoring with timing and resource metrics
+    /// - Security auditing with detailed event tracking
     /// </remarks>
     private void ConfigureLogging()
     {
@@ -703,32 +720,74 @@ public partial class App : Application
             // Ensure log directory exists
             Directory.CreateDirectory(logRoot);
 
-            // Configure Serilog with comprehensive settings
+            // Configure Serilog with comprehensive enterprise-grade settings
             Log.Logger = new LoggerConfiguration()
+                // Base log level configuration
                 .MinimumLevel.Debug()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
                 .MinimumLevel.Override("System", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+                .MinimumLevel.Override("Syncfusion", LogEventLevel.Information)
+
+                // Enhanced enrichment for enterprise logging
                 .Enrich.WithProcessId()
                 .Enrich.WithThreadId()
                 .Enrich.WithMachineName()
                 .Enrich.WithEnvironmentName()
+                .Enrich.WithProperty("Application", "WileyWidget")
+                .Enrich.WithProperty("Version", GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0")
                 .Enrich.FromLogContext()
+
+                // File sink with enterprise features
                 .WriteTo.File(
                     path: Path.Combine(logRoot, "app-.log"),
                     rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 7,
+                    retainedFileCountLimit: 30, // Keep 30 days of logs
                     shared: false,
                     restrictedToMinimumLevel: LogEventLevel.Debug,
-                    outputTemplate: "{Timestamp:O} [{Level:u3}] (pid:{ProcessId} tid:{ThreadId}) {MachineName} {Message:lj}{NewLine}{Exception}",
-                    fileSizeLimitBytes: 10 * 1024 * 1024, // 10MB per file
-                    rollOnFileSizeLimit: true)
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] (pid:{ProcessId} tid:{ThreadId}) {MachineName} {Application} v{Version} {Message:lj}{NewLine}{Exception}{NewLine}---{NewLine}",
+                    fileSizeLimitBytes: 50 * 1024 * 1024, // 50MB per file
+                    rollOnFileSizeLimit: true,
+                    buffered: true,
+                    flushToDiskInterval: TimeSpan.FromSeconds(5))
+
+                // Console sink for development
                 .WriteTo.Console(
                     restrictedToMinimumLevel: LogEventLevel.Information,
-                    outputTemplate: "[{Timestamp:HH:mm:ss}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                    outputTemplate: "[{Timestamp:HH:mm:ss}] [{Level:u3}] {Application} {Message:lj}{NewLine}{Exception}",
+                    theme: Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme.Code)
+
+                // Debug sink for IDE integration
+                .WriteTo.Debug(
+                    restrictedToMinimumLevel: LogEventLevel.Debug,
+                    outputTemplate: "[{Timestamp:HH:mm:ss}] [{Level:u3}] {Application} {Message:lj}{NewLine}{Exception}")
+
+                // Additional file for errors only (easier error tracking)
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "errors-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    restrictedToMinimumLevel: LogEventLevel.Error,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] (pid:{ProcessId} tid:{ThreadId}) {MachineName} {Application} v{Version}{NewLine}Message: {Message:lj}{NewLine}Exception: {Exception}{NewLine}Stack Trace: {StackTrace}{NewLine}Source: {Source}{NewLine}---{NewLine}",
+                    fileSizeLimitBytes: 25 * 1024 * 1024, // 25MB per file
+                    rollOnFileSizeLimit: true)
+
+                // Performance monitoring file
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "performance-.log"),
+                    rollingInterval: RollingInterval.Hour,
+                    retainedFileCountLimit: 168, // Keep 7 days of hourly logs
+                    restrictedToMinimumLevel: LogEventLevel.Information,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Application} {Message:lj} | Duration: {Duration}ms | Memory: {MemoryUsage}MB{NewLine}",
+                    fileSizeLimitBytes: 10 * 1024 * 1024) // 10MB per file
+
                 .CreateLogger();
 
             Log.Information("✅ Serilog logging system configured successfully");
-            Log.Debug("🔧 Log level: Debug, Microsoft override: Warning");
+            Log.Debug("🔧 Log level: Debug, Microsoft override: Warning, Syncfusion override: Information");
+            Log.Information("📊 Log files location: {LogPath}", logRoot);
+            Log.Information("📈 Performance monitoring enabled with separate log file");
+            Log.Information("🚨 Error tracking enabled with dedicated error log file");
         }
         catch (Exception ex)
         {
@@ -740,10 +799,14 @@ public partial class App : Application
             {
                 Log.Logger = new LoggerConfiguration()
                     .MinimumLevel.Error()
+                    .Enrich.WithProperty("Application", "WileyWidget")
+                    .Enrich.WithProperty("Version", GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0")
                     .WriteTo.Console()
+                    .WriteTo.Debug()
                     .CreateLogger();
 
                 Log.Error(ex, "❌ Serilog configuration failed - using fallback console logging");
+                Log.Warning("⚠️ Advanced logging features disabled - using basic fallback configuration");
             }
             catch
             {

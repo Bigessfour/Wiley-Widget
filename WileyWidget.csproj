@@ -45,6 +45,7 @@
     <PackageReference Include="Syncfusion.SfGrid.WPF" />
     <PackageReference Include="Syncfusion.SfSkinManager.WPF" />
     <PackageReference Include="Syncfusion.Tools.WPF" />
+    <PackageReference Include="Syncfusion.SfChart.WPF" />
   <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
   <!-- No external QuickBooks SDK yet; using raw HTTP + PKCE. Add Intuit packages later if desired. -->
   <!-- QuickBooks SDK packages (Step 2) - modern package IDs differ from older docs -->
