@@ -1,19 +1,61 @@
 # WileyWidget
 
+## ⚠️ **STANDARD OPERATING PROCEDURES - READ FIRST**
+
+### **Azure Safety Protocol (MANDATORY)**
+**ALL Azure operations must use the safe scripts. Direct Azure CLI commands are FORBIDDEN for novice users.**
+
+**🚨 CRITICAL SAFETY RULES:**
+- **ALWAYS use safe scripts** for Azure operations
+- **NEVER run direct Azure CLI commands** without safe script alternatives
+- **ALWAYS test with `-DryRun`** before executing operations
+- **ALWAYS create backups** before making changes
+- **ALWAYS check status** before and after operations
+
+**✅ APPROVED Azure Operations:**
+```powershell
+# Check Azure status (safe, read-only)
+.\scripts\azure-safe-operations.ps1 -Operation status
+
+# Test database connection (safe, read-only)
+.\scripts\azure-safe-operations.ps1 -Operation connect
+
+# Create backup (safe, creates copy)
+.\scripts\azure-safe-operations.ps1 -Operation backup
+
+# List resources (safe, read-only)
+.\scripts\azure-safe-operations.ps1 -Operation list
+```
+
+**❌ FORBIDDEN Direct Commands:**
+```bash
+# NEVER run these directly - use safe scripts instead
+az sql db delete
+az group delete
+az resource delete
+```
+
 ## Quick Start
 
 1. **Setup Database**: `pwsh ./scripts/setup-database.ps1` (installs SQL Server LocalDB)
 2. **Setup Environment**: `pwsh ./scripts/load-env.ps1 -Load` (loads secure environment variables)
 3. **Setup Syncfusion License**: `pwsh ./scripts/setup-license.ps1` (obtain and configure license)
-4. **Clone**: `git clone https://github.com/Bigessfour/Wiley-Widget.git`
-5. **Build & test**: `pwsh ./scripts/build.ps1` (set `RUN_UI_TESTS=1` env var to include UI smoke tests)
-6. **Run**: `dotnet run --project WileyWidget/WileyWidget.csproj`
-7. **Open logs**: `explorer %AppData%\WileyWidget\logs`
+4. **Setup Azure Environment**: `pwsh ./scripts/azure-setup.ps1` (configures safe Azure operations)
+5. **Clone**: `git clone https://github.com/Bigessfour/Wiley-Widget.git`
+6. **Build & test**: `pwsh ./scripts/build.ps1` (set `RUN_UI_TESTS=1` env var to include UI smoke tests)
+7. **Run**: `dotnet run --project WileyWidget/WileyWidget.csproj`
+8. **Open logs**: `explorer %AppData%\WileyWidget\logs`
 
 Minimal enough that future-you won't hate past-you.
 
 ## Documentation
 
+### **Core Operating Procedures (MANDATORY READING)**
+- **[Azure Safety Protocol](docs/azure-novice-guide.md)**: **REQUIRED** - Safe Azure operations for all users
+- **[Standard Operating Procedures](docs/sop-azure-operations.md)**: Complete operational procedures
+- **[Copilot Azure Integration](docs/copilot-azure-examples.md)**: Safe AI-assisted Azure development
+
+### **Project Documentation**
 - **[Project Plan](.vscode/project-plan.md)**: True North vision and phased roadmap
 - **[Development Guide](docs/development-guide.md)**: Comprehensive development standards and best practices
 - **[Copilot Instructions](.vscode/copilot-instructions.md)**: AI assistant guidelines and project standards
@@ -37,6 +79,71 @@ Single-user WPF application scaffold (NET 9) using Syncfusion WPF controls (pinn
 - Logging: Serilog rolling files + basic enrichers; no structured sink beyond file yet
 - Nullable refs intentionally disabled for early simplicity
 - Next likely enhancements: richer UI automation, live theme switching via `SfSkinManager`, packaging/signing
+
+## Azure Setup
+
+### Prerequisites
+- Azure CLI installed (`winget install Microsoft.AzureCLI`)
+- Azure subscription with appropriate permissions
+- .NET 8.0 SDK
+
+### Quick Azure Setup
+
+1. **Configure Environment**:
+   ```powershell
+   # Copy and configure environment file
+   Copy-Item .env.example .env
+   # Edit .env with your Azure values
+   ```
+
+2. **Run Azure Setup Script**:
+   ```powershell
+   # Test Azure connection
+   .\scripts\azure-setup.ps1 -TestConnection
+
+   # Create Azure resources (optional)
+   .\scripts\azure-setup.ps1 -CreateResources
+
+   # Deploy database schema
+   .\scripts\azure-setup.ps1 -DeployDatabase
+   ```
+
+3. **Launch with Azure Configuration**:
+   ```powershell
+   # In VS Code, use "Launch WileyWidget (Azure)" debug configuration
+   # Or run with Azure environment
+   $env:ASPNETCORE_ENVIRONMENT = "Production"
+   dotnet run --project WileyWidget.csproj
+   ```
+
+### Azure Resources Created
+- **Resource Group**: `WileyWidget-RG`
+- **SQL Server**: Azure SQL Database server
+- **SQL Database**: `WileyWidgetDb` (S0 tier)
+- **Firewall Rules**: Configured for Azure services
+
+### Azure Development Tools
+- **VS Code Extensions**: Azure Account, Functions, Storage, App Service, Cosmos DB
+- **Debug Configurations**: Local and Azure-specific launch profiles
+- **Database Management**: SQL Server extension for Azure SQL
+- **Build Tasks**: Azure setup, connection testing, and deployment tasks
+
+### Environment Variables
+```env
+# Azure Configuration
+AZURE_SUBSCRIPTION_ID=your-subscription-id
+AZURE_TENANT_ID=your-tenant-id
+AZURE_SQL_SERVER=your-server.database.windows.net
+AZURE_SQL_DATABASE=WileyWidgetDb
+AZURE_SQL_USER=your-admin-user
+AZURE_SQL_PASSWORD=your-secure-password
+```
+
+### Troubleshooting
+- **Connection Issues**: Run `.\scripts\azure-setup.ps1 -TestConnection`
+- **Authentication**: Run `az login` to refresh Azure credentials
+- **Firewall**: Ensure your IP is allowed in Azure SQL firewall rules
+- **Extensions**: Restart VS Code after installing Azure extensions
 
 ## Setup Scripts
 

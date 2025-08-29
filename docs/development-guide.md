@@ -2,10 +2,79 @@
 
 ## 📋 **Related Documentation**
 
+### **MANDATORY SAFETY PROCEDURES**
+- **[Standard Operating Procedures](sop-azure-operations.md)**: **REQUIRED** - Azure safety protocols
+- **[Azure Safety Guide](azure-novice-guide.md)**: Safe Azure operations for all developers
+- **[Copilot Azure Integration](copilot-azure-examples.md)**: AI-assisted safe development
+
+### **Project Documentation**
 - **[Copilot Instructions](../.vscode/copilot-instructions.md)**: AI assistant guidelines and project standards
 - **[Project Plan](../.vscode/project-plan.md)**: True North vision and phased roadmap
 - **[Database Setup Guide](database-setup.md)**: SQL Server LocalDB installation and configuration
 - **[Syncfusion License Setup](syncfusion-license-setup.md)**: License acquisition and registration guide
+
+## 🚨 **AZURE OPERATIONS - STANDARD DEVELOPMENT WORKFLOW**
+
+### **MANDATORY: Azure Safety Protocol**
+**ALL Azure operations must follow the Standard Operating Procedures. Direct Azure CLI commands are FORBIDDEN.**
+
+#### **Daily Azure Workflow (MANDATORY)**
+```powershell
+# 1. Start of day - Check Azure status
+.\scripts\azure-safe-operations.ps1 -Operation status
+
+# 2. Before development work - Test connection
+.\scripts\azure-safe-operations.ps1 -Operation connect
+
+# 3. Before any changes - Create backup
+.\scripts\azure-safe-operations.ps1 -Operation backup
+
+# 4. Test any operation - ALWAYS use dry-run first
+.\scripts\azure-safe-operations.ps1 -Operation [operation] -DryRun
+
+# 5. Execute operation - Only after dry-run testing
+.\scripts\azure-safe-operations.ps1 -Operation [operation]
+
+# 6. End of day - Verify system status
+.\scripts\azure-safe-operations.ps1 -Operation status
+```
+
+#### **Approved Azure Operations**
+```powershell
+# ✅ SAFE OPERATIONS (use these only)
+.\scripts\azure-safe-operations.ps1 -Operation status    # Check system status
+.\scripts\azure-safe-operations.ps1 -Operation connect   # Test database connection
+.\scripts\azure-safe-operations.ps1 -Operation backup    # Create safe backup
+.\scripts\azure-safe-operations.ps1 -Operation list      # List resources
+```
+
+#### **FORBIDDEN Direct Commands**
+```bash
+# ❌ NEVER USE THESE - Use safe scripts instead
+az sql db delete
+az group delete
+az resource delete
+az sql db update
+```
+
+### **GitHub Copilot Chat Azure Integration**
+**MANDATORY: Use Copilot for Azure assistance following safety protocols**
+
+#### **Safe Copilot Questions**
+```
+✅ "How do I safely check my Azure database connection?"
+✅ "Show me how to create a backup using the safe script"
+✅ "Explain Azure Resource Groups in simple terms"
+✅ "What would happen if I run this command? Explain first"
+✅ "I'm new to Azure - help me understand [concept]"
+```
+
+#### **Copilot Azure Workflow**
+1. **Ask for safe alternatives** to direct commands
+2. **Request explanations** before running operations
+3. **Use dry-run examples** for testing
+4. **Follow safety protocols** in all responses
+5. **Provide learning context** for all concepts
 
 ## Project Overview
 

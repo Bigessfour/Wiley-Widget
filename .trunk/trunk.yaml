@@ -41,6 +41,11 @@ lint:
         - README.md
         - CHANGELOG.md
         - CONTRIBUTING.md
+    # Skip YAML formatting for GitHub workflows
+    - linters: [prettier]
+      paths:
+        - .github/**/*.yml
+        - .github/**/*.yaml
 actions:
   enabled:
     - trunk-announce

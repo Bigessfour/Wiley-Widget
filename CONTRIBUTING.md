@@ -4,9 +4,49 @@ Pragmatic notes for future-you (or a curious passerby). Git aliases moved here f
 
 ## 📋 **Essential Reading**
 
+### **MANDATORY SAFETY PROCEDURES**
+- **[Standard Operating Procedures](docs/sop-azure-operations.md)**: **REQUIRED** - Azure safety protocols
+- **[Azure Safety Guide](docs/azure-novice-guide.md)**: Safe Azure operations for all contributors
+- **[Azure Quick Reference](docs/azure-quick-reference.md)**: Daily operations checklist
+
+### **Project Documentation**
 - **[Copilot Instructions](.vscode/copilot-instructions.md)**: AI assistant guidelines and project standards
 - **[Project Plan](.vscode/project-plan.md)**: Complete True North vision and roadmap
 - **[Development Guide](docs/development-guide.md)**: Comprehensive technical standards
+
+## 🚨 **CONTRIBUTOR SAFETY REQUIREMENTS**
+
+### **MANDATORY: Azure Safety Certification**
+**ALL contributors must complete Azure safety training before making Azure-related changes.**
+
+**Required Reading:**
+- [ ] Standard Operating Procedures (docs/sop-azure-operations.md)
+- [ ] Azure Safety Guide (docs/azure-novice-guide.md)
+- [ ] Copilot Azure Examples (docs/copilot-azure-examples.md)
+
+**Required Training:**
+- [ ] Safe script operations
+- [ ] Dry-run procedures
+- [ ] Emergency protocols
+- [ ] Backup procedures
+
+### **Azure Contribution Workflow**
+```powershell
+# 1. Check Azure status before contributing
+.\scripts\azure-safe-operations.ps1 -Operation status
+
+# 2. Create backup before any changes
+.\scripts\azure-safe-operations.ps1 -Operation backup
+
+# 3. Test all operations with dry-run
+.\scripts\azure-safe-operations.ps1 -Operation [operation] -DryRun
+
+# 4. Execute only after testing
+.\scripts\azure-safe-operations.ps1 -Operation [operation]
+
+# 5. Verify after changes
+.\scripts\azure-safe-operations.ps1 -Operation status
+```
 
 ## Project Vision & Roadmap
 
@@ -46,8 +86,47 @@ Pragmatic notes for future-you (or a curious passerby). Git aliases moved here f
 
 ### Azure Integration
 
-- **Database**: Azure SQL with EF Core
-- **Authentication**: Azure.Identity (managed identity for production)
+#### **MANDATORY SAFETY PROTOCOLS**
+- **Safe Scripts Only**: All Azure operations must use approved safe scripts
+- **No Direct CLI**: Direct Azure CLI commands are FORBIDDEN for all contributors
+- **Dry Run Required**: Every operation must be tested before execution
+- **Backup Mandatory**: Automatic backups required before destructive operations
+
+#### **Approved Azure Operations**
+```powershell
+# ✅ SAFE OPERATIONS (use these only)
+.\scripts\azure-safe-operations.ps1 -Operation status    # Check system status
+.\scripts\azure-safe-operations.ps1 -Operation connect   # Test database connection
+.\scripts\azure-safe-operations.ps1 -Operation backup    # Create safe backup
+.\scripts\azure-safe-operations.ps1 -Operation list      # List resources
+```
+
+#### **FORBIDDEN Direct Commands**
+```bash
+# ❌ NEVER USE THESE - Use safe scripts instead
+az sql db delete
+az group delete
+az resource delete
+az sql db update
+```
+
+#### **GitHub Copilot Azure Integration**
+**MANDATORY: Use Copilot following safety protocols**
+
+**Safe Copilot Questions:**
+```
+✅ "How do I safely check my Azure database connection?"
+✅ "Show me how to create a backup using the safe script"
+✅ "Explain Azure Resource Groups in simple terms"
+✅ "What would happen if I run this command? Explain first"
+```
+
+**Prohibited Questions:**
+```
+❌ "Delete my Azure database"
+❌ "Run this az sql db delete command"
+❌ "Execute this Azure CLI command for me"
+```
 - **Security**: OAuth for QuickBooks Online, encrypted token storage
 
 ## Git Aliases (Optional)

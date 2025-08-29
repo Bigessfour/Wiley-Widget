@@ -139,6 +139,37 @@
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
 
+  // Azure Development Settings
+  "azureFunctions.deploySubpath": ".",
+  "azureFunctions.postDeployTask": "npm prune",
+  "azureFunctions.preDeployTask": "npm run build",
+  "azureFunctions.projectLanguage": "C#",
+  "azureFunctions.projectRuntime": "~4",
+  "azureFunctions.templateFilter": "Verified",
+
+  // Azure SQL Database Settings
+  "sql.databaseConnections": [
+    {
+      "connectionString": "Server=tcp:${env:AZURE_SQL_SERVER},1433;Database=${env:AZURE_SQL_DATABASE};User ID=${env:AZURE_SQL_USER};Password=${env:AZURE_SQL_PASSWORD};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
+      "name": "Azure SQL Database",
+      "providerName": "MSSQL"
+    }
+  ],
+
+  // Azure Resource Manager Template Settings
+  "azureResourceManagerTools.enableCodeLens": true,
+  "azureResourceManagerTools.enableParameterFileCodeLens": true,
+
+  // Azure Storage Settings
+  "azureStorage.accountFilter": [],
+  "azureStorage.containerFilter": [],
+  "azureStorage.resourceGroupFilter": "",
+
+  // Azure App Service Settings
+  "appService.defaultWebAppToDeploy": "",
+  "appService.deploySubpath": ".",
+  "appService.showBuildDuringDeployPrompt": true,
+
   // PowerShell formatting
   "powershell.codeFormatting.openBraceOnSameLine": true,
 
