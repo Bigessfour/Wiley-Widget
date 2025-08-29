@@ -1,636 +1,748 @@
 {
-  "files": [
-    {
-      "size": 5818,
-      "path": ".editorconfig",
-      "tracked": true,
-      "sha256": "86975ba2f9c1d68bc99f2252395929cf87fd41a48121a5cc29c154328d0cef2b",
-      "extension": ".editorconfig",
-      "lastModified": "2025-08-28T17:41:48.3392047Z"
-    },
-    {
-      "size": 2510,
-      "path": ".env",
-      "tracked": false,
-      "sha256": "2f8b2a754eb31990fb233dc4cbd95b818c30f773e095fcb6120a21d548cde5c2",
-      "extension": ".env",
-      "lastModified": "2025-08-28T18:47:44.9774868Z"
-    },
-    {
-      "size": 899,
-      "path": "AboutWindow.xaml",
-      "tracked": false,
-      "sha256": "3aed5c7ce2b0f92fc75714d1904c53f922097cc3b6e2fdd48deda7ca856ffd27",
-      "extension": ".xaml",
-      "lastModified": "2025-08-13T00:01:38.5525715Z"
-    },
-    {
-      "size": 773,
-      "path": "AboutWindow.xaml.cs",
-      "tracked": false,
-      "sha256": "e4a2c27d48c2fa134f042fc849e675e07cdd34d57d9b7af236845f032748352b",
-      "extension": ".cs",
-      "lastModified": "2025-08-13T00:01:38.5535889Z"
-    },
-    {
-      "size": 414,
-      "path": "App.xaml",
-      "tracked": false,
-      "sha256": "155dbf63d54cc4d8e7d53bb0387d483237145fab79481911aa308da75434616e",
-      "extension": ".xaml",
-      "lastModified": "2025-08-28T16:42:54.6085557Z"
-    },
-    {
-      "size": 11045,
-      "path": "App.xaml.cs",
-      "tracked": false,
-      "sha256": "1726018a84b64666a0ce9802e0b6d5c6455f9480126ac38417b033361cf9a3da",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T18:19:00.8512554Z"
-    },
-    {
-      "size": 1287,
-      "path": "appsettings.json",
-      "tracked": false,
-      "sha256": "dc3f0d1703cec9bd6d31433c916a2f4bbf572a1b2d5042f9a0d45117c3c95e83",
-      "extension": ".json",
-      "lastModified": "2025-08-28T18:19:00.8404043Z"
-    },
-    {
-      "size": 1465,
-      "path": "appsettings.Production.json",
-      "tracked": false,
-      "sha256": "be1f25785f39d94d8392a3f4184dca96d3b0d2016cfb65046a3a516441c3c6b9",
-      "extension": ".json",
-      "lastModified": "2025-08-28T18:19:00.8404043Z"
-    },
-    {
-      "size": 67088384,
-      "path": "AzureCLI.msi",
-      "tracked": false,
-      "sha256": "ae3dabf57ed654cb4430015ca6b9d553538f90628cedc9cea443bd06c619e112",
-      "extension": ".msi",
-      "lastModified": "2025-08-28T18:24:03.0722831Z"
-    },
-    {
-      "size": 321,
-      "path": "CHANGELOG.md",
-      "tracked": true,
-      "sha256": "46b5bedc67d5b87a5ed7f8ef5d15db5b9b21552d87952c1baa0aa596f1031fae",
-      "extension": ".md",
-      "lastModified": "2025-08-28T14:42:38.7615479Z"
-    },
-    {
-      "size": 6710,
-      "path": "cicd-results.json",
-      "tracked": false,
-      "sha256": "c8cf22d65293c861d43e1574515ad6d7b5d6dfa9524980358b9816819330afc2",
-      "extension": ".json",
-      "lastModified": "2025-08-28T18:36:43.1029469Z"
-    },
-    {
-      "size": 3544,
-      "path": "Configuration/DatabaseConfiguration.cs",
-      "tracked": false,
-      "sha256": "6626cf2d22d8a9cc6419f3946e8efd439efc958dac8a18b0069e9486445d349a",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:54:09.3124891Z"
-    },
-    {
-      "size": 3498,
-      "path": "CONTRIBUTING.md",
-      "tracked": true,
-      "sha256": "6874cd21085e7ab5c3929a694050e578fdc80a2e3bc96b175eb4136cef7027f8",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.4709325Z"
-    },
-    {
-      "size": 4049,
-      "path": "Data/AppDbContext.cs",
-      "tracked": false,
-      "sha256": "086239f796e16a7851315ef84ce8aa8d4be38b9950aec1be8377b66649353e50",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:54:09.3124891Z"
-    },
-    {
-      "size": 2079,
-      "path": "Data/AppDbContextFactory.cs",
-      "tracked": false,
-      "sha256": "364ebcd9a78544a1b6ffeff86fe9d1722231f6ec760bd98ae11e8d88770a251c",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:55:01.9569561Z"
-    },
-    {
-      "size": 1808,
-      "path": "Data/IWidgetRepository.cs",
-      "tracked": false,
-      "sha256": "ec966039deda01062d478aa2940f0f73a7c12b572794aac2748da21966cde2d7",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:54:09.3124891Z"
-    },
-    {
-      "size": 4639,
-      "path": "Data/WidgetRepository.cs",
-      "tracked": false,
-      "sha256": "e4f876d60953e495bbc33b4ed35caee9611ed10fe69b46150f9157de80f18cc7",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:54:09.3124891Z"
-    },
-    {
-      "size": 401,
-      "path": "Directory.Build.props",
-      "tracked": true,
-      "sha256": "3644b747b6fd25036854f191a5275a2fcb30769e44134f9c28a3ff6273e8b84b",
-      "extension": ".props",
-      "lastModified": "2025-08-28T17:44:53.4073627Z"
-    },
-    {
-      "size": 251,
-      "path": "Directory.Build.targets",
-      "tracked": true,
-      "sha256": "7d34d19488a32f66025bb8c806e24e169ea36ab8b2e74967fd13be27ec25e249",
-      "extension": ".targets",
-      "lastModified": "2025-08-13T00:01:38.5415840Z"
-    },
-    {
-      "size": 10938,
-      "path": "docs/azure-setup.md",
-      "tracked": false,
-      "sha256": "611b1face1f3778cdb044f2ee295958b5192c9a486319201836023b850ebaf05",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.4971832Z"
-    },
-    {
-      "size": 29171,
-      "path": "docs/azure-sql-integration.md",
-      "tracked": false,
-      "sha256": "5b1b9f05515d656badab561322496d10fa6514199bdb3de8900651bfa0b45a63",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.5168559Z"
-    },
-    {
-      "size": 5772,
-      "path": "docs/ci-cd-updates.md",
-      "tracked": false,
-      "sha256": "d636ada4826ea35797156db912e1fb2a87aeb0cbc0e21e18c1d7c0c71c358f26",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.5238116Z"
-    },
-    {
-      "size": 7702,
-      "path": "docs/cicd-documentation-summary.md",
-      "tracked": false,
-      "sha256": "228a2264823f35af3f1fe543ad2d13c9fe318ef844f0c873f493963fe34bac47",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.5302454Z"
-    },
-    {
-      "size": 11601,
-      "path": "docs/cicd-management-guide.md",
-      "tracked": false,
-      "sha256": "957d7a3d81b3693a0f226dacdc0d43552253899f620fe10c238c703145d87e25",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.5398074Z"
-    },
-    {
-      "size": 3870,
-      "path": "docs/cicd-quick-reference.md",
-      "tracked": false,
-      "sha256": "1248fe07621e2033512f90dbce09b7f0fc7747e6ccdc1edd513493263db78365",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.5452595Z"
-    },
-    {
-      "size": 5074,
-      "path": "docs/cicd-tools-status.md",
-      "tracked": false,
-      "sha256": "5186c3beddf89d8f1c4dae1a2db45ab418c58a37f93743a62cb039221f83e3a3",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.5466987Z"
-    },
-    {
-      "size": 5017,
-      "path": "docs/cicd-workflow-diagrams.md",
-      "tracked": false,
-      "sha256": "69bfe8b4808bc1f1bf0d6a3122c8734613db18953f30bef3aca69ec34450d53a",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.5593161Z"
-    },
-    {
-      "size": 13625,
-      "path": "docs/connection-methods-reference.md",
-      "tracked": false,
-      "sha256": "ec8619e32355b0750a713f5df26dc67f66d15086a670c33ed43ad418a57240d9",
-      "extension": ".md",
-      "lastModified": "2025-08-28T22:43:56.2828192Z"
-    },
-    {
-      "size": 22415,
-      "path": "docs/database-setup.md",
-      "tracked": false,
-      "sha256": "babc12c2d93dd27d9acead496489f9696755847f82afb4839e88cce887b1809f",
-      "extension": ".md",
-      "lastModified": "2025-08-28T22:47:15.6908135Z"
-    },
-    {
-      "size": 19160,
-      "path": "docs/development-guide.md",
-      "tracked": false,
-      "sha256": "f4d78f9c52e4da4b638c5efa637e58b8faa3d446a2d53708924d2cf61d47c250",
-      "extension": ".md",
-      "lastModified": "2025-08-28T22:45:20.5320835Z"
-    },
-    {
-      "size": 9319,
-      "path": "docs/firewall-policy-setup.md",
-      "tracked": false,
-      "sha256": "3420023d69530cb8eaf3f5edeca26c8b692f2cf8447191c36795fc7a54abfa46",
-      "extension": ".md",
-      "lastModified": "2025-08-28T22:45:41.3049073Z"
-    },
-    {
-      "size": 12271,
-      "path": "docs/README.md",
-      "tracked": false,
-      "sha256": "69a7fab602fb2b8458be4ebfb2a91900490672ae31b11cceeabbebb7eabab9ed",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.4893057Z"
-    },
-    {
-      "size": 8350,
-      "path": "docs/syncfusion-license-setup.md",
-      "tracked": false,
-      "sha256": "ac4ad2b83b507752246cced937d68e4c965295435a06fa68ed5972eabd2b65f0",
-      "extension": ".md",
-      "lastModified": "2025-08-28T22:46:28.3230310Z"
-    },
-    {
-      "size": 12839,
-      "path": "docs/TESTING.md",
-      "tracked": false,
-      "sha256": "333c523af60dcb3923552629d714bbeb2c366124bf989c188cfd16ed4a987ba7",
-      "extension": ".md",
-      "lastModified": "2025-08-28T23:08:18.0083534Z"
-    },
-    {
-      "size": 4633,
-      "path": "Fetchability-Resources-README.md",
-      "tracked": true,
-      "sha256": "057514ee5e07bb462a3e3322ca774758cbdc133ca6b7c181d51dadcd0bc35778",
-      "extension": ".md",
-      "lastModified": "2025-08-28T17:37:35.8446576Z"
-    },
-    {
-      "size": 10623,
-      "path": "fetchability-resources.json",
-      "tracked": true,
-      "sha256": "0aebe5e7d9473b6aa317da7a3070289e8bd738846192f4c66b99ffdb1dc1a3da",
-      "extension": ".json",
-      "lastModified": "2025-08-28T17:30:52.7800477Z"
-    },
-    {
-      "size": 5143,
-      "path": "Fetchability.md",
-      "tracked": true,
-      "sha256": "1968b5a47a96c20d5baaa0d78ced545354093ba926c44603bd635f0dff8c1846",
-      "extension": ".md",
-      "lastModified": "2025-08-28T16:42:54.6085557Z"
-    },
-    {
-      "size": 47,
-      "path": "global.json",
-      "tracked": false,
-      "sha256": "cf476bdc433bebf3f851d1178a4a841a45c4ba73dddeadc967ef9acc051756c7",
-      "extension": ".json",
-      "lastModified": "2025-08-28T23:00:56.7131365Z"
-    },
-    {
-      "size": 141,
-      "path": "license.sample.key",
-      "tracked": false,
-      "sha256": "8c3495cb949ee389e26af19970a1e934959c1f7ae2c3133f4b8b7daa7c68ca49",
-      "extension": ".key",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 910,
-      "path": "LicenseKey.Private.sample.cs",
-      "tracked": false,
-      "sha256": "3b497f17e3289ddc96192ae8ba7047bc392e45668d99956e3344a708d2b43616",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T16:42:54.6085557Z"
-    },
-    {
-      "size": 5658,
-      "path": "MainWindow.xaml",
-      "tracked": false,
-      "sha256": "71d79a0d2bcd70fe67bd02ecf79a31fd5bc63c3464eea06b2d9cf6c42d66fa8e",
-      "extension": ".xaml",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 6392,
-      "path": "MainWindow.xaml.cs",
-      "tracked": false,
-      "sha256": "46cd729ce428437de1220f8f959b3fef4ee8bd6c1eef134ffddb67745c9e9536",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 2808,
-      "path": "Migrations/20250828175508_InitialCreate.cs",
-      "tracked": false,
-      "sha256": "253bfc2daa423d91b6e436078fd32d33f83d849b1769f39fde76fea315e7bac0",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:55:08.1886183Z"
-    },
-    {
-      "size": 3254,
-      "path": "Migrations/20250828175508_InitialCreate.Designer.cs",
-      "tracked": false,
-      "sha256": "7d8bc844de2b6143880e1a89f688bfdd7f00ea71775b8777fdf468dbe6107c12",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:55:08.1886183Z"
-    },
-    {
-      "size": 3150,
-      "path": "Migrations/AppDbContextModelSnapshot.cs",
-      "tracked": false,
-      "sha256": "1501be35fdf5ee7deb5b296d70762edc4b7d08c75dd39be86dda4ec4e1fc8011",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:55:08.1886183Z"
-    },
-    {
-      "size": 1337,
-      "path": "Models/AppSettings.cs",
-      "tracked": false,
-      "sha256": "ed5fd11fb3bc7a701edbd243138ba9ed1ba8575ece4a64f9daad557653d3505c",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 2654,
-      "path": "Models/Widget.cs",
-      "tracked": false,
-      "sha256": "ae54b088ace64a9ec2009dfd318276a450ffff7d3d5c3da8bebe491132bd1302",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:54:09.3124891Z"
-    },
-    {
-      "size": 23592,
-      "path": "README.md",
-      "tracked": true,
-      "sha256": "ffb96a3f68b55425a1cf3fc704acc2422d2521bc6e4b880a9b373f174d1c6a9a",
-      "extension": ".md",
-      "lastModified": "2025-08-28T18:49:59.4782885Z"
-    },
-    {
-      "size": 631,
-      "path": "RELEASE_NOTES.md",
-      "tracked": true,
-      "sha256": "e6588b1d9ff6b54d95de21abd10578ef780eddbe725e94e3db570d0841894519",
-      "extension": ".md",
-      "lastModified": "2025-08-28T16:42:54.6085557Z"
-    },
-    {
-      "size": 9694,
-      "path": "scripts/build.ps1",
-      "tracked": true,
-      "sha256": "81c1d9c40822e6f54ff2731afeaabc19a5bba82fb91fb8eae88e554deb5b9df4",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 5940,
-      "path": "scripts/check-setup-status.ps1",
-      "tracked": false,
-      "sha256": "dae69c6e7919c60ab07de1f315df59622dd0ab9bdd2b8c85f07595cbc0e59170",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:26:44.0319348Z"
-    },
-    {
-      "size": 2649,
-      "path": "scripts/ci-generate-manifest.ps1",
-      "tracked": true,
-      "sha256": "7a20e1731cb8086dd75a2c7637b24f1b36c0dfc0252abeba0f0ee5b08522ec6a",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T17:37:35.8446576Z"
-    },
-    {
-      "size": 7551,
-      "path": "scripts/Generate-FetchabilityManifest.ps1",
-      "tracked": true,
-      "sha256": "e3eb6943783b1b71c0f45940f2cfdffdd0dd0c7a52a4a5eee75108cacb426910",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T17:37:35.8446576Z"
-    },
-    {
-      "size": 8709,
-      "path": "scripts/load-env.ps1",
-      "tracked": false,
-      "sha256": "4fc8ab13a95649f46a1ea26f8e02f2db028a2c08bcadec8ce2dc719aaa85ef3e",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:48:16.9859135Z"
-    },
-    {
-      "size": 461,
-      "path": "scripts/pre-push",
-      "tracked": true,
-      "sha256": "8e2f551d18686d102674a3586400aea9c7b816bb024073c9f7db1bf8e1255534",
-      "extension": "",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 3282,
-      "path": "scripts/quick-cicd-check.ps1",
-      "tracked": false,
-      "sha256": "4aeb548ec7f14d89c5e512878f48ec8d2894015bbb6d9bc8bdf3b08249a6cba9",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:37:42.4432250Z"
-    },
-    {
-      "size": 8546,
-      "path": "scripts/setup-azure-db.ps1",
-      "tracked": false,
-      "sha256": "aa3486a0240d796baddecff6ab4c1c9335c9c2f47b2330d4d62ac745e5cd8871",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:26:44.0269596Z"
-    },
-    {
-      "size": 9680,
-      "path": "scripts/setup-azure.ps1",
-      "tracked": false,
-      "sha256": "323be5fc2622e4c977887527c73fd8a589226f4b114c22803a24cf9c9d58b6f3",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:26:44.0427198Z"
-    },
-    {
-      "size": 5610,
-      "path": "scripts/setup-database.ps1",
-      "tracked": false,
-      "sha256": "1944f4049f4306d2a39f5eedbf820b93a2f2515daa130ed8bda9de430f43a291",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:12:40.1308614Z"
-    },
-    {
-      "size": 8564,
-      "path": "scripts/setup-liberal-firewall.ps1",
-      "tracked": false,
-      "sha256": "f4377fca9057f195cb197a3312f30ad3237ba47904aa9a17ac8974eb2d2ec1e6",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:32:56.2337187Z"
-    },
-    {
-      "size": 9547,
-      "path": "scripts/setup-license.ps1",
-      "tracked": false,
-      "sha256": "5c377d8ebaa1440dc0bb17c52cc9d37d9c3c14074c3dffe16810dd262842ef2b",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:12:40.1298594Z"
-    },
-    {
-      "size": 3325,
-      "path": "scripts/show-syncfusion-license.ps1",
-      "tracked": true,
-      "sha256": "7a6a8f58afc539cdd9fcd5a503692aaefbb8696d7df02b02b01ad01fec4b11f7",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 10165,
-      "path": "scripts/test-database-connection.ps1",
-      "tracked": false,
-      "sha256": "213ff9e3d3f5e89385238f0840a07eececec4aa206b1a1dc55ce1dfe96a27cfb",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:26:44.0417197Z"
-    },
-    {
-      "size": 6738,
-      "path": "scripts/update-firewall-ip.ps1",
-      "tracked": false,
-      "sha256": "478eec9d5ab5535f7bd02b5ed7b115c7027a776affccc37d222b2e2c5959e0bc",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:32:56.2347172Z"
-    },
-    {
-      "size": 10159,
-      "path": "scripts/verify-cicd-tools.ps1",
-      "tracked": false,
-      "sha256": "fc97e55cfce1948b59aa93ca9c3eefed76c7d79266a469d4a9aa8bc311117491",
-      "extension": ".ps1",
-      "lastModified": "2025-08-28T18:37:42.4432250Z"
-    },
-    {
-      "size": 5349,
-      "path": "Services/QuickBooksService.cs",
-      "tracked": false,
-      "sha256": "a4a140f0f1786e1e4d513abd033a748f275df6eba0bcf4d77a822b0926480d0c",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 3728,
-      "path": "Services/SettingsService.cs",
-      "tracked": false,
-      "sha256": "602efd942fced960476754ef0899a4f59bdce5bc0dec3106aa7feb61b1eda3d7",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T16:42:54.6182753Z"
-    },
-    {
-      "size": 202,
-      "path": "signing/README.txt",
-      "tracked": false,
-      "sha256": "d9976c7d27eff5c339117a52c74caecf02bca203a46cbc378c185143901c8e81",
-      "extension": ".txt",
-      "lastModified": "2025-08-13T00:01:38.5705759Z"
-    },
-    {
-      "size": 4274,
-      "path": "ViewModels/MainViewModel.cs",
-      "tracked": false,
-      "sha256": "f290404058c67aeaf95a8d7650cfb125b54e8321c6a4a0fd4c4ffdc4c9a9c7bb",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T17:54:09.3408851Z"
-    },
-    {
-      "size": 2852,
-      "path": "WileyWidget.csproj",
-      "tracked": false,
-      "sha256": "40b615584214d3b18c73a05f5519cbad369d276fa5db9d5a1dff50fcae69add1",
-      "extension": ".csproj",
-      "lastModified": "2025-08-28T23:07:17.4556022Z"
-    },
-    {
-      "size": 4017,
-      "path": "WileyWidget.sln",
-      "tracked": true,
-      "sha256": "b20219b3dafe4452ef9790f2801dea578db601493c2ae22107df9898fa343af7",
-      "extension": ".sln",
-      "lastModified": "2025-08-28T18:52:32.0061749Z"
-    },
-    {
-      "size": 0,
-      "path": "WileyWidget.Tests/DatabaseIntegrationTests.cs",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T23:12:48.9775743Z"
-    },
-    {
-      "size": 7224,
-      "path": "WileyWidget.Tests/SettingsServiceTests.cs",
-      "tracked": true,
-      "sha256": "1028f9c14aa3a7e9a905c1e46683abb3bfcd556720c4143951b01a5308f8e462",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T23:16:28.4642438Z"
-    },
-    {
-      "size": 6854,
-      "path": "WileyWidget.Tests/WidgetTests.cs",
-      "tracked": false,
-      "sha256": "82e6c1912119caee21e7c3cf5706443256dd6ecd7e6db17727b43cc9a7898240",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T23:16:28.4642438Z"
-    },
-    {
-      "size": 1365,
-      "path": "WileyWidget.Tests/WileyWidget.Tests.csproj",
-      "tracked": true,
-      "sha256": "f96526116edaeb67c7dd477be8a8b2298dcd45dd1b040b96badf216403eb1fd8",
-      "extension": ".csproj",
-      "lastModified": "2025-08-28T23:07:17.4539794Z"
-    },
-    {
-      "size": 7945,
-      "path": "WileyWidget.UiTests/MainWindowUITests.cs",
-      "tracked": false,
-      "sha256": "78c597c66f12444d23292fc63bd50ac640f641ebb6f127dcca6891b09f837eeb",
-      "extension": ".cs",
-      "lastModified": "2025-08-28T23:16:28.4642438Z"
-    },
-    {
-      "size": 1216,
-      "path": "WileyWidget.UiTests/WileyWidget.UiTests.csproj",
-      "tracked": true,
-      "sha256": "a89f656320786109984c9145ff354641501d2a246ff7d8956381c9bbfda1a061",
-      "extension": ".csproj",
-      "lastModified": "2025-08-28T23:07:17.4539794Z"
-    }
-  ],
   "metadata": {
+    "generatedAt": "2025-08-29T08:20:04.9297866Z",
     "generator": "Generate-FetchabilityManifest.ps1",
     "statistics": {
-      "trackedFiles": 19,
-      "totalFiles": 77,
-      "untrackedFiles": 58,
-      "totalSize": 67543638.0
+      "trackedFiles": 90,
+      "totalFiles": 91,
+      "untrackedFiles": 6,
+      "totalSize": 550161.0
     },
     "repository": {
+      "commitHash": "8c54f132bc9f4255df211d07f6c01975e7646f2a",
       "branch": "main",
-      "commitHash": "22a6b307bd02106a0a8b33e466c253f8ffb8efa8",
-      "remoteUrl": "https://github.com/Bigessfour/Wiley-Widget.git",
-      "isDirty": true
+      "isDirty": false,
+      "remoteUrl": "https://github.com/Bigessfour/Wiley-Widget.git"
+    }
+  },
+  "files": [
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lastModified": "2025-08-29T07:43:16.5574637Z",
+      "path": ".copilot-instructions.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 0
     },
-    "generatedAt": "2025-08-28T23:18:15.8690149Z"
-  }
+    {
+      "sha256": "6f3acc6e5edc6b1fb4333f3b69b61a56e4494d04214b73768bd9312b254bd250",
+      "lastModified": "2025-08-28T23:42:21.3634246Z",
+      "path": ".editorconfig",
+      "tracked": true,
+      "extension": ".editorconfig",
+      "size": 14537
+    },
+    {
+      "sha256": "2b64031a2f2da65e489ccf84c97f74dad1ebdc5b913fcb6e135bb0a5801b19a2",
+      "lastModified": "2025-08-29T08:03:05.6756341Z",
+      "path": ".env",
+      "tracked": false,
+      "extension": ".env",
+      "size": 785
+    },
+    {
+      "sha256": "2b64031a2f2da65e489ccf84c97f74dad1ebdc5b913fcb6e135bb0a5801b19a2",
+      "lastModified": "2025-08-29T08:04:13.2796564Z",
+      "path": ".env.example",
+      "tracked": true,
+      "extension": ".example",
+      "size": 785
+    },
+    {
+      "sha256": "3aed5c7ce2b0f92fc75714d1904c53f922097cc3b6e2fdd48deda7ca856ffd27",
+      "lastModified": "2025-08-13T00:01:38.5525715Z",
+      "path": "AboutWindow.xaml",
+      "tracked": true,
+      "extension": ".xaml",
+      "size": 899
+    },
+    {
+      "sha256": "e4a2c27d48c2fa134f042fc849e675e07cdd34d57d9b7af236845f032748352b",
+      "lastModified": "2025-08-13T00:01:38.5535889Z",
+      "path": "AboutWindow.xaml.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 773
+    },
+    {
+      "sha256": "155dbf63d54cc4d8e7d53bb0387d483237145fab79481911aa308da75434616e",
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "path": "App.xaml",
+      "tracked": true,
+      "extension": ".xaml",
+      "size": 414
+    },
+    {
+      "sha256": "1726018a84b64666a0ce9802e0b6d5c6455f9480126ac38417b033361cf9a3da",
+      "lastModified": "2025-08-28T18:19:00.8512554Z",
+      "path": "App.xaml.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 11045
+    },
+    {
+      "sha256": "dc3f0d1703cec9bd6d31433c916a2f4bbf572a1b2d5042f9a0d45117c3c95e83",
+      "lastModified": "2025-08-28T23:26:08.1153324Z",
+      "path": "appsettings.json",
+      "tracked": true,
+      "extension": ".json",
+      "size": 1287
+    },
+    {
+      "sha256": "21c953065f90fbbed50598e363c0b7f0b599c59128890c8a3b9cd4dcc6bd1dea",
+      "lastModified": "2025-08-28T23:26:52.5478639Z",
+      "path": "appsettings.Production.json",
+      "tracked": true,
+      "extension": ".json",
+      "size": 1342
+    },
+    {
+      "sha256": "84416cbb5025590b117f535228d3cbf1fbf629709d945ca43134078026eca00f",
+      "lastModified": "2025-08-29T08:14:16.3968907Z",
+      "path": "AZURE_SAFE_SETUP_COMPLETE.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 5363
+    },
+    {
+      "sha256": "428b7d9e0761b2831c077be1eb9babd9d2f3c371497cdd928a012241d42faa47",
+      "lastModified": "2025-08-29T08:16:43.9537266Z",
+      "path": "AZURE_SAFETY_INSTITUTIONALIZED.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 7950
+    },
+    {
+      "sha256": "43bb5bca355ec128583eb8555b22abad07109de59f50a3168c5f654eb167fc79",
+      "lastModified": "2025-08-29T08:04:13.2796564Z",
+      "path": "AZURE_SETUP_COMPLETE.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 3735
+    },
+    {
+      "sha256": "46b5bedc67d5b87a5ed7f8ef5d15db5b9b21552d87952c1baa0aa596f1031fae",
+      "lastModified": "2025-08-28T14:42:38.7615479Z",
+      "path": "CHANGELOG.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 321
+    },
+    {
+      "sha256": "c8cf22d65293c861d43e1574515ad6d7b5d6dfa9524980358b9816819330afc2",
+      "lastModified": "2025-08-28T18:36:43.1029469Z",
+      "path": "cicd-results.json",
+      "tracked": true,
+      "extension": ".json",
+      "size": 6710
+    },
+    {
+      "sha256": "6626cf2d22d8a9cc6419f3946e8efd439efc958dac8a18b0069e9486445d349a",
+      "lastModified": "2025-08-28T17:54:09.3124891Z",
+      "path": "Configuration/DatabaseConfiguration.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 3544
+    },
+    {
+      "sha256": "2ef5580e9d558a9e0a1352aeb663377ee33c126df7ffdfcc0265436faede23c8",
+      "lastModified": "2025-08-29T08:16:43.9537266Z",
+      "path": "CONTRIBUTING.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 6310
+    },
+    {
+      "sha256": "086239f796e16a7851315ef84ce8aa8d4be38b9950aec1be8377b66649353e50",
+      "lastModified": "2025-08-28T17:54:09.3124891Z",
+      "path": "Data/AppDbContext.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 4049
+    },
+    {
+      "sha256": "364ebcd9a78544a1b6ffeff86fe9d1722231f6ec760bd98ae11e8d88770a251c",
+      "lastModified": "2025-08-28T17:55:01.9569561Z",
+      "path": "Data/AppDbContextFactory.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 2079
+    },
+    {
+      "sha256": "ec966039deda01062d478aa2940f0f73a7c12b572794aac2748da21966cde2d7",
+      "lastModified": "2025-08-28T17:54:09.3124891Z",
+      "path": "Data/IWidgetRepository.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 1808
+    },
+    {
+      "sha256": "e4f876d60953e495bbc33b4ed35caee9611ed10fe69b46150f9157de80f18cc7",
+      "lastModified": "2025-08-28T17:54:09.3124891Z",
+      "path": "Data/WidgetRepository.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 4639
+    },
+    {
+      "sha256": "3644b747b6fd25036854f191a5275a2fcb30769e44134f9c28a3ff6273e8b84b",
+      "lastModified": "2025-08-28T17:44:53.4073627Z",
+      "path": "Directory.Build.props",
+      "tracked": true,
+      "extension": ".props",
+      "size": 401
+    },
+    {
+      "sha256": "7d34d19488a32f66025bb8c806e24e169ea36ab8b2e74967fd13be27ec25e249",
+      "lastModified": "2025-08-13T00:01:38.5415840Z",
+      "path": "Directory.Build.targets",
+      "tracked": true,
+      "extension": ".targets",
+      "size": 251
+    },
+    {
+      "sha256": "4d77409eabf595861042c8588b4ebbe4eb08606a526a56dfcdf9635e2db49988",
+      "lastModified": "2025-08-29T08:13:27.8041408Z",
+      "path": "docs/azure-novice-guide.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 5190
+    },
+    {
+      "sha256": "2619242a294e00bfe35447e8825d753b2ec52d742db727c285ff3cbc979e6bc6",
+      "lastModified": "2025-08-29T08:16:43.9537266Z",
+      "path": "docs/azure-quick-reference.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 4505
+    },
+    {
+      "sha256": "611b1face1f3778cdb044f2ee295958b5192c9a486319201836023b850ebaf05",
+      "lastModified": "2025-08-28T23:26:08.0105478Z",
+      "path": "docs/azure-setup.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 10938
+    },
+    {
+      "sha256": "5b1b9f05515d656badab561322496d10fa6514199bdb3de8900651bfa0b45a63",
+      "lastModified": "2025-08-28T23:26:08.0225603Z",
+      "path": "docs/azure-sql-integration.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 29171
+    },
+    {
+      "sha256": "d636ada4826ea35797156db912e1fb2a87aeb0cbc0e21e18c1d7c0c71c358f26",
+      "lastModified": "2025-08-28T23:26:08.0376300Z",
+      "path": "docs/ci-cd-updates.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 5772
+    },
+    {
+      "sha256": "228a2264823f35af3f1fe543ad2d13c9fe318ef844f0c873f493963fe34bac47",
+      "lastModified": "2025-08-28T18:49:59.5302454Z",
+      "path": "docs/cicd-documentation-summary.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 7702
+    },
+    {
+      "sha256": "957d7a3d81b3693a0f226dacdc0d43552253899f620fe10c238c703145d87e25",
+      "lastModified": "2025-08-28T18:49:59.5398074Z",
+      "path": "docs/cicd-management-guide.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 11601
+    },
+    {
+      "sha256": "1248fe07621e2033512f90dbce09b7f0fc7747e6ccdc1edd513493263db78365",
+      "lastModified": "2025-08-28T18:49:59.5452595Z",
+      "path": "docs/cicd-quick-reference.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 3870
+    },
+    {
+      "sha256": "5186c3beddf89d8f1c4dae1a2db45ab418c58a37f93743a62cb039221f83e3a3",
+      "lastModified": "2025-08-28T23:26:08.0473761Z",
+      "path": "docs/cicd-tools-status.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 5074
+    },
+    {
+      "sha256": "69bfe8b4808bc1f1bf0d6a3122c8734613db18953f30bef3aca69ec34450d53a",
+      "lastModified": "2025-08-28T18:49:59.5593161Z",
+      "path": "docs/cicd-workflow-diagrams.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 5017
+    },
+    {
+      "sha256": "ec8619e32355b0750a713f5df26dc67f66d15086a670c33ed43ad418a57240d9",
+      "lastModified": "2025-08-28T23:26:08.0586612Z",
+      "path": "docs/connection-methods-reference.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 13625
+    },
+    {
+      "sha256": "009ff019c31b9367df1bc21231d557894c6143b34c298a2619d36fcf770b69ec",
+      "lastModified": "2025-08-29T08:13:27.8071436Z",
+      "path": "docs/copilot-azure-examples.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 4585
+    },
+    {
+      "sha256": "babc12c2d93dd27d9acead496489f9696755847f82afb4839e88cce887b1809f",
+      "lastModified": "2025-08-28T23:26:08.0685784Z",
+      "path": "docs/database-setup.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 22415
+    },
+    {
+      "sha256": "1d42f100ad6eb933a69c2b99d4943151ecc900301114ad813ba5b2bf97efc46a",
+      "lastModified": "2025-08-29T08:16:43.9496163Z",
+      "path": "docs/development-guide.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 21772
+    },
+    {
+      "sha256": "3420023d69530cb8eaf3f5edeca26c8b692f2cf8447191c36795fc7a54abfa46",
+      "lastModified": "2025-08-28T22:45:41.3049073Z",
+      "path": "docs/firewall-policy-setup.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 9319
+    },
+    {
+      "sha256": "2c796a7b3c6f9aba9c21d98cd27f4e2c36016f149d5506be7cc4b438fded2282",
+      "lastModified": "2025-08-28T23:26:52.5478639Z",
+      "path": "docs/README.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 12197
+    },
+    {
+      "sha256": "a0cf17532f2f19aa4a06dd7da2800ff593ed2d883ac76d9484a1ab33a91edc51",
+      "lastModified": "2025-08-29T08:16:43.9496163Z",
+      "path": "docs/sop-azure-operations.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 9412
+    },
+    {
+      "sha256": "ac4ad2b83b507752246cced937d68e4c965295435a06fa68ed5972eabd2b65f0",
+      "lastModified": "2025-08-28T23:26:08.0820043Z",
+      "path": "docs/syncfusion-license-setup.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 8350
+    },
+    {
+      "sha256": "b86861ac18c9c2d2ac705d49c528622d87767efddae1da58f1d948568d3ac1f3",
+      "lastModified": "2025-08-28T23:26:52.5478639Z",
+      "path": "docs/TESTING.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 13905
+    },
+    {
+      "sha256": "057514ee5e07bb462a3e3322ca774758cbdc133ca6b7c181d51dadcd0bc35778",
+      "lastModified": "2025-08-28T17:37:35.8446576Z",
+      "path": "Fetchability-Resources-README.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 4633
+    },
+    {
+      "sha256": "7cec874e1892a031a4b69f18748ec0591e704769b58ed90ac9e4bd814f713c1c",
+      "lastModified": "2025-08-28T23:18:15.9250591Z",
+      "path": "fetchability-resources.json",
+      "tracked": true,
+      "extension": ".json",
+      "size": 21415
+    },
+    {
+      "sha256": "1968b5a47a96c20d5baaa0d78ced545354093ba926c44603bd635f0dff8c1846",
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "path": "Fetchability.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 5143
+    },
+    {
+      "sha256": "88bc83808f3a853b96bcf18729f1c12517d602117de79a90733f3f85cf80768d",
+      "lastModified": "2025-08-28T23:26:08.1237125Z",
+      "path": "global.json",
+      "tracked": true,
+      "extension": ".json",
+      "size": 49
+    },
+    {
+      "sha256": "8c3495cb949ee389e26af19970a1e934959c1f7ae2c3133f4b8b7daa7c68ca49",
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "path": "license.sample.key",
+      "tracked": true,
+      "extension": ".key",
+      "size": 141
+    },
+    {
+      "sha256": "3b497f17e3289ddc96192ae8ba7047bc392e45668d99956e3344a708d2b43616",
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "path": "LicenseKey.Private.sample.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 910
+    },
+    {
+      "sha256": "71d79a0d2bcd70fe67bd02ecf79a31fd5bc63c3464eea06b2d9cf6c42d66fa8e",
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "path": "MainWindow.xaml",
+      "tracked": true,
+      "extension": ".xaml",
+      "size": 5658
+    },
+    {
+      "sha256": "14fb998940dd3d88f14891492452777841f69d23938fbd49fb7d47fc7c7963e2",
+      "lastModified": "2025-08-28T23:47:32.4642082Z",
+      "path": "MainWindow.xaml.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 6766
+    },
+    {
+      "sha256": "253bfc2daa423d91b6e436078fd32d33f83d849b1769f39fde76fea315e7bac0",
+      "lastModified": "2025-08-28T17:55:08.1886183Z",
+      "path": "Migrations/20250828175508_InitialCreate.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 2808
+    },
+    {
+      "sha256": "7d8bc844de2b6143880e1a89f688bfdd7f00ea71775b8777fdf468dbe6107c12",
+      "lastModified": "2025-08-28T17:55:08.1886183Z",
+      "path": "Migrations/20250828175508_InitialCreate.Designer.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 3254
+    },
+    {
+      "sha256": "1501be35fdf5ee7deb5b296d70762edc4b7d08c75dd39be86dda4ec4e1fc8011",
+      "lastModified": "2025-08-28T17:55:08.1886183Z",
+      "path": "Migrations/AppDbContextModelSnapshot.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 3150
+    },
+    {
+      "sha256": "ed5fd11fb3bc7a701edbd243138ba9ed1ba8575ece4a64f9daad557653d3505c",
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "path": "Models/AppSettings.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 1337
+    },
+    {
+      "sha256": "ae54b088ace64a9ec2009dfd318276a450ffff7d3d5c3da8bebe491132bd1302",
+      "lastModified": "2025-08-28T17:54:09.3124891Z",
+      "path": "Models/Widget.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 2654
+    },
+    {
+      "sha256": "10f26473bd1bbd704824725d77641506307ddabe9510a2485ce43eb07963cd23",
+      "lastModified": "2025-08-29T08:16:43.9486145Z",
+      "path": "README.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 27322
+    },
+    {
+      "sha256": "e6588b1d9ff6b54d95de21abd10578ef780eddbe725e94e3db570d0841894519",
+      "lastModified": "2025-08-28T16:42:54.6085557Z",
+      "path": "RELEASE_NOTES.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 631
+    },
+    {
+      "sha256": "8d56d3373a695768ec1cf07f58c8ca6035dedddd5eb701d39974e620f152ec81",
+      "lastModified": "2025-08-29T08:13:27.8041408Z",
+      "path": "scripts/azure-safe-operations.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 8032
+    },
+    {
+      "sha256": "0991fd7fde5fd45305a0a44af599738578507f2bf8b176696839319e9e794626",
+      "lastModified": "2025-08-29T08:04:13.2796564Z",
+      "path": "scripts/azure-setup.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 4485
+    },
+    {
+      "sha256": "81c1d9c40822e6f54ff2731afeaabc19a5bba82fb91fb8eae88e554deb5b9df4",
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "path": "scripts/build.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 9694
+    },
+    {
+      "sha256": "dae69c6e7919c60ab07de1f315df59622dd0ab9bdd2b8c85f07595cbc0e59170",
+      "lastModified": "2025-08-28T18:26:44.0319348Z",
+      "path": "scripts/check-setup-status.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 5940
+    },
+    {
+      "sha256": "7a20e1731cb8086dd75a2c7637b24f1b36c0dfc0252abeba0f0ee5b08522ec6a",
+      "lastModified": "2025-08-28T17:37:35.8446576Z",
+      "path": "scripts/ci-generate-manifest.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 2649
+    },
+    {
+      "sha256": "18a77c1b695b5190e8fb893ed3e27eabdcc832940a2c0bb02321412c2f0b49a8",
+      "lastModified": "2025-08-29T08:14:16.3968907Z",
+      "path": "scripts/copilot-azure-integration.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 9873
+    },
+    {
+      "sha256": "e3eb6943783b1b71c0f45940f2cfdffdd0dd0c7a52a4a5eee75108cacb426910",
+      "lastModified": "2025-08-28T17:37:35.8446576Z",
+      "path": "scripts/Generate-FetchabilityManifest.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 7551
+    },
+    {
+      "sha256": "4fc8ab13a95649f46a1ea26f8e02f2db028a2c08bcadec8ce2dc719aaa85ef3e",
+      "lastModified": "2025-08-28T18:48:16.9859135Z",
+      "path": "scripts/load-env.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 8709
+    },
+    {
+      "sha256": "849979f8de01c6b43472219fdb7f9d0a9e0ad338f7e06df463d93f31866bfba7",
+      "lastModified": "2025-08-28T23:47:32.4642082Z",
+      "path": "scripts/PowerShell-Standards.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 1106
+    },
+    {
+      "sha256": "8e2f551d18686d102674a3586400aea9c7b816bb024073c9f7db1bf8e1255534",
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "path": "scripts/pre-push",
+      "tracked": true,
+      "extension": "",
+      "size": 461
+    },
+    {
+      "sha256": "4aeb548ec7f14d89c5e512878f48ec8d2894015bbb6d9bc8bdf3b08249a6cba9",
+      "lastModified": "2025-08-28T18:37:42.4432250Z",
+      "path": "scripts/quick-cicd-check.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 3282
+    },
+    {
+      "sha256": "aa3486a0240d796baddecff6ab4c1c9335c9c2f47b2330d4d62ac745e5cd8871",
+      "lastModified": "2025-08-28T18:26:44.0269596Z",
+      "path": "scripts/setup-azure-db.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 8546
+    },
+    {
+      "sha256": "323be5fc2622e4c977887527c73fd8a589226f4b114c22803a24cf9c9d58b6f3",
+      "lastModified": "2025-08-28T18:26:44.0427198Z",
+      "path": "scripts/setup-azure.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 9680
+    },
+    {
+      "sha256": "1944f4049f4306d2a39f5eedbf820b93a2f2515daa130ed8bda9de430f43a291",
+      "lastModified": "2025-08-28T18:12:40.1308614Z",
+      "path": "scripts/setup-database.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 5610
+    },
+    {
+      "sha256": "f4377fca9057f195cb197a3312f30ad3237ba47904aa9a17ac8974eb2d2ec1e6",
+      "lastModified": "2025-08-28T18:32:56.2337187Z",
+      "path": "scripts/setup-liberal-firewall.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 8564
+    },
+    {
+      "sha256": "5c377d8ebaa1440dc0bb17c52cc9d37d9c3c14074c3dffe16810dd262842ef2b",
+      "lastModified": "2025-08-28T18:12:40.1298594Z",
+      "path": "scripts/setup-license.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 9547
+    },
+    {
+      "sha256": "7a6a8f58afc539cdd9fcd5a503692aaefbb8696d7df02b02b01ad01fec4b11f7",
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "path": "scripts/show-syncfusion-license.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 3325
+    },
+    {
+      "sha256": "213ff9e3d3f5e89385238f0840a07eececec4aa206b1a1dc55ce1dfe96a27cfb",
+      "lastModified": "2025-08-28T18:26:44.0417197Z",
+      "path": "scripts/test-database-connection.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 10165
+    },
+    {
+      "sha256": "478eec9d5ab5535f7bd02b5ed7b115c7027a776affccc37d222b2e2c5959e0bc",
+      "lastModified": "2025-08-28T18:32:56.2347172Z",
+      "path": "scripts/update-firewall-ip.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 6738
+    },
+    {
+      "sha256": "fc97e55cfce1948b59aa93ca9c3eefed76c7d79266a469d4a9aa8bc311117491",
+      "lastModified": "2025-08-28T18:37:42.4432250Z",
+      "path": "scripts/verify-cicd-tools.ps1",
+      "tracked": true,
+      "extension": ".ps1",
+      "size": 10159
+    },
+    {
+      "sha256": "8d1141195396ef856bf5a6b1a1b42d49a2fd9200627ffc5ec06be8117d0e09f2",
+      "lastModified": "2025-08-29T07:59:04.2462182Z",
+      "path": "SECURITY.md",
+      "tracked": true,
+      "extension": ".md",
+      "size": 1313
+    },
+    {
+      "sha256": "a4a140f0f1786e1e4d513abd033a748f275df6eba0bcf4d77a822b0926480d0c",
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "path": "Services/QuickBooksService.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 5349
+    },
+    {
+      "sha256": "602efd942fced960476754ef0899a4f59bdce5bc0dec3106aa7feb61b1eda3d7",
+      "lastModified": "2025-08-28T16:42:54.6182753Z",
+      "path": "Services/SettingsService.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 3728
+    },
+    {
+      "sha256": "d9976c7d27eff5c339117a52c74caecf02bca203a46cbc378c185143901c8e81",
+      "lastModified": "2025-08-13T00:01:38.5705759Z",
+      "path": "signing/README.txt",
+      "tracked": true,
+      "extension": ".txt",
+      "size": 202
+    },
+    {
+      "sha256": "f290404058c67aeaf95a8d7650cfb125b54e8321c6a4a0fd4c4ffdc4c9a9c7bb",
+      "lastModified": "2025-08-28T17:54:09.3408851Z",
+      "path": "ViewModels/MainViewModel.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 4274
+    },
+    {
+      "sha256": "3861097b1e15c48a6c883570cbe34303af04860a173b7218ce854637981df562",
+      "lastModified": "2025-08-28T23:38:49.7181364Z",
+      "path": "WileyWidget.csproj",
+      "tracked": true,
+      "extension": ".csproj",
+      "size": 3240
+    },
+    {
+      "sha256": "b20219b3dafe4452ef9790f2801dea578db601493c2ae22107df9898fa343af7",
+      "lastModified": "2025-08-28T18:52:32.0061749Z",
+      "path": "WileyWidget.sln",
+      "tracked": true,
+      "extension": ".sln",
+      "size": 4017
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lastModified": "2025-08-28T23:12:48.9775743Z",
+      "path": "WileyWidget.Tests/DatabaseIntegrationTests.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 0
+    },
+    {
+      "sha256": "1028f9c14aa3a7e9a905c1e46683abb3bfcd556720c4143951b01a5308f8e462",
+      "lastModified": "2025-08-28T23:16:28.4642438Z",
+      "path": "WileyWidget.Tests/SettingsServiceTests.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 7224
+    },
+    {
+      "sha256": "82e6c1912119caee21e7c3cf5706443256dd6ecd7e6db17727b43cc9a7898240",
+      "lastModified": "2025-08-28T23:16:28.4642438Z",
+      "path": "WileyWidget.Tests/WidgetTests.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 6854
+    },
+    {
+      "sha256": "f96526116edaeb67c7dd477be8a8b2298dcd45dd1b040b96badf216403eb1fd8",
+      "lastModified": "2025-08-28T23:07:17.4539794Z",
+      "path": "WileyWidget.Tests/WileyWidget.Tests.csproj",
+      "tracked": true,
+      "extension": ".csproj",
+      "size": 1365
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lastModified": "2025-08-29T07:43:15.1605760Z",
+      "path": "WileyWidget.UiTests/MainWindowTests.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 0
+    },
+    {
+      "sha256": "78c597c66f12444d23292fc63bd50ac640f641ebb6f127dcca6891b09f837eeb",
+      "lastModified": "2025-08-28T23:16:28.4642438Z",
+      "path": "WileyWidget.UiTests/MainWindowUITests.cs",
+      "tracked": true,
+      "extension": ".cs",
+      "size": 7945
+    },
+    {
+      "sha256": "a89f656320786109984c9145ff354641501d2a246ff7d8956381c9bbfda1a061",
+      "lastModified": "2025-08-28T23:07:17.4539794Z",
+      "path": "WileyWidget.UiTests/WileyWidget.UiTests.csproj",
+      "tracked": true,
+      "extension": ".csproj",
+      "size": 1216
+    }
+  ]
 }
