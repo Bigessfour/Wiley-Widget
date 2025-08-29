@@ -813,3 +813,4 @@ If issues persist, re-set the env var and restart your terminal:
 ```pwsh
 [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','<your-key>','User')
 ```
+# Test commit for manifest generation
