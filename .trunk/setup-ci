@@ -1,6 +1,0 @@
-#!/bin/bash
-# Trunk CI setup script
-echo 'Setting up Trunk CI environment...'
-export TRUNK_TOKEN=$TRUNK_TOKEN
-export GITHUB_TOKEN=$GITHUB_TOKEN
-echo 'Trunk CI environment setup complete.'

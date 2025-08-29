@@ -1,0 +1,12 @@
+name: 'Trunk CI Setup'
+description: 'Set up Trunk CI environment'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Trunk CI Environment
+      shell: bash
+      run: |
+        echo 'Setting up Trunk CI environment...'
+        echo "TRUNK_TOKEN=$TRUNK_TOKEN" >> $GITHUB_ENV
+        echo "GITHUB_TOKEN=$GITHUB_TOKEN" >> $GITHUB_ENV
+        echo 'Trunk CI environment setup complete.'
