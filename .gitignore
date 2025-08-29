@@ -44,7 +44,11 @@ WileyWidget/LicenseKey.Private.cs
 
 # Rider / VS Code
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 
 # OS
 Thumbs.db
@@ -58,3 +62,9 @@ Desktop.ini
 *.backup*
 *_backup*
 *.msi
+
+# Installers and large binaries
+*.msi
+*.exe
+*.dmg
+*.pkg

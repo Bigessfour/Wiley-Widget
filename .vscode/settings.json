@@ -1,0 +1,150 @@
+{
+  // WileyWidget VS Code Workspace Settings
+  // See project-plan.md for True North vision and development roadmap
+  // See copilot-instructions.md for AI assistant guidelines
+  "cSpell.words": [
+    "AZURECONNECTION",
+    "biges",
+    "BSTR",
+    "CONNECTIONSTRING",
+    "CONNECTIONSTRINGS",
+    "fetchability",
+    "FIOS",
+    "GETUTCDATE",
+    "hyperthreading",
+    "LASTEXITCODE",
+    "localdb",
+    "MSBUILDDEBUGPATH",
+    "mssqllocaldb",
+    "Mvvm",
+    "nameof",
+    "NOLOGO",
+    "NVARCHAR",
+    "OPTOUT",
+    "pwsh",
+    "Serilog",
+    "snupkg",
+    "sonarqube",
+    "sqllocaldb",
+    "userprefs",
+    "Uverse",
+    "wileyadmin",
+    "WILEYWIDGET",
+    "winget",
+    "Xfinity"
+  ],
+  // PowerShell 7.5.2 Configuration
+  "powershell.powerShellDefaultVersion": "7.5.2",
+  "powershell.powerShellExePath": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+  "powershell.enableProfileLoading": true,
+  "powershell.enableReferencesCodeLens": true,
+  "powershell.enableScriptAnalysis": true,
+  "powershell.scriptAnalysis.settingsPath": ".vscode\\PSScriptAnalyzerSettings.psd1",
+  "powershell.codeFormatting.preset": "OTBS",
+  "powershell.codeFormatting.autoCorrectAliases": true,
+  "powershell.codeFormatting.useCorrectCasing": true,
+  "powershell.integratedConsole.showOnStartup": false,
+  "powershell.integratedConsole.focusConsoleOnExecute": false,
+  // GitHub Copilot Configuration
+  "github.copilot.enable": {
+    "*": true,
+    "powershell": true,
+    "plaintext": false,
+    "markdown": true,
+    "scminput": false
+  },
+  "github.copilot.advanced": {
+    "debug.overrideEngine": "gpt-4o",
+    "debug.overrideModel": "gpt-4o",
+    "length": 500,
+    "temperature": 0.1
+  },
+  // File Associations for PowerShell
+  "files.associations": {
+    "*.ps1": "powershell",
+    "*.psm1": "powershell",
+    "*.psd1": "powershell"
+  },
+  // PowerShell-specific settings
+  "editor.defaultFormatter": "ms-vscode.powershell",
+  "[powershell]": {
+    "editor.defaultFormatter": "ms-vscode.powershell",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true
+  },
+  // MCP (Model Context Protocol) Configuration
+  // Current: WebSocket Remote Server for real-time collaboration
+  "mcp": {
+    "servers": {
+      "github": {
+        "url": "wss://your-mcp-server.example.com/github",
+        "headers": {
+          "Authorization": "Bearer ${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+        },
+        "reconnect": true,
+        "reconnectInterval": 5000,
+        "timeout": 30000
+      }
+    }
+  },
+
+  // Alternative Remote Server Configurations (uncomment to use):
+  /*
+    // Option 1: HTTP Remote Server
+    "mcp": {
+        "servers": {
+            "github": {
+                "url": "https://your-mcp-server.example.com/github",
+                "headers": {
+                    "Authorization": "Bearer ${env:GITHUB_PERSONAL_ACCESS_TOKEN}",
+                    "X-API-Key": "${env:MCP_API_KEY}"
+                },
+                "timeout": 30000
+            }
+        }
+    },
+
+    // Option 2: WebSocket Remote Server
+    "mcp": {
+        "servers": {
+            "github": {
+                "url": "wss://your-mcp-server.example.com/github",
+                "headers": {
+                    "Authorization": "Bearer ${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+                },
+                "reconnect": true,
+                "reconnectInterval": 5000
+            }
+        }
+    },
+
+    // Option 3: Load Balanced Remote Servers
+    "mcp": {
+        "servers": {
+            "github": {
+                "urls": [
+                    "https://mcp-server-1.example.com/github",
+                    "https://mcp-server-2.example.com/github"
+                ],
+                "loadBalancing": "round-robin",
+                "headers": {
+                    "Authorization": "Bearer ${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+                }
+            }
+        }
+    */
+
+  // Enhanced context for C# development
+  "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+  "omnisharp.enableEditorConfigSupport": true,
+  "omnisharp.enableRoslynAnalyzers": true,
+
+  // PowerShell formatting
+  "powershell.codeFormatting.openBraceOnSameLine": true,
+
+  // XAML formatting
+  "xml.format.splitAttributes": "splitNewLine",
+
+  // Workspace-specific Copilot guidance
+  "github.copilot.chat.welcomeMessage": "Welcome to WileyWidget! This is a hobby WPF project focused on learning. I'll suggest practical patterns suitable for experimentation rather than production-level complexity."
+}
