@@ -19,7 +19,7 @@ public static class DatabaseConfiguration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Register DbContext with SQL Server
+        // Register DbContext with SQLite
         services.AddDbContext<AppDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
@@ -31,18 +31,13 @@ public static class DatabaseConfiguration
                     "Please check your appsettings.json or user secrets.");
             }
 
-            options.UseSqlServer(connectionString, sqlOptions =>
+            options.UseSqlite(connectionString, sqliteOptions =>
             {
-                // Configure SQL Server options
-                sqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(30),
-                    errorNumbersToAdd: null);
-
-                sqlOptions.CommandTimeout(30);
+                // Configure SQLite options
+                sqliteOptions.CommandTimeout(30);
 
                 // Enable query splitting for better performance with includes
-                sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             });
 
             // Configure logging and other options

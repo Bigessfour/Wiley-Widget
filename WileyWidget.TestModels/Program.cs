@@ -35,7 +35,7 @@ class Program
             services.AddDbContext<AppDbContext>(options =>
             {
                 var connectionString = configuration.GetConnectionString("DefaultConnection");
-                options.UseSqlServer(connectionString);
+                options.UseSqlite(connectionString);
                 options.EnableSensitiveDataLogging();
             });
 

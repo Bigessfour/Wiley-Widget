@@ -6,12 +6,12 @@ using WileyWidget.Services;
 using Intuit.Ipp.Data;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using WileyWidget.Data;
 
 namespace WileyWidget.ViewModels;
 
 /// <summary>
-/// Demonstration view model providing an in-memory list of widgets and a command to cycle selection.
-/// Serves as a template for future data-bound collections / CRUD patterns.
+/// Enhanced main view model providing widgets, QuickBooks integration, and enterprise management
 /// </summary>
 public partial class MainViewModel : ObservableObject
 {
@@ -26,6 +26,20 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<Customer> QuickBooksCustomers { get; } = new();
     public ObservableCollection<Invoice> QuickBooksInvoices { get; } = new();
+
+    // Enterprise management properties
+    private readonly EnterpriseViewModel _enterpriseViewModel;
+
+    public ObservableCollection<Enterprise> Enterprises => _enterpriseViewModel?.Enterprises ?? new();
+    public Enterprise SelectedEnterprise
+    {
+        get => _enterpriseViewModel?.SelectedEnterprise;
+        set
+        {
+            if (_enterpriseViewModel != null)
+                _enterpriseViewModel.SelectedEnterprise = value;
+        }
+    }
 
     /// <summary>Currently selected widget in the grid (null when none selected).</summary>
     [ObservableProperty]
@@ -79,42 +93,53 @@ public partial class MainViewModel : ObservableObject
         // Only initialize service if client id present.
         if (!string.IsNullOrWhiteSpace(cid))
             _qb = new QuickBooksService(SettingsService.Instance);
-    }
 
-    [ObservableProperty]
-    private bool quickBooksBusy;
-
-    [RelayCommand]
-    private async System.Threading.Tasks.Task LoadQuickBooksCustomersAsync()
-    {
-        if (_qb == null || QuickBooksBusy) return;
+        // Initialize enterprise management
         try
         {
-            QuickBooksBusy = true;
-            var items = await _qb.GetCustomersAsync();
-            QuickBooksCustomers.Clear();
-            foreach (var c in items) QuickBooksCustomers.Add(c);
+            var contextFactory = new AppDbContextFactory();
+            using var context = contextFactory.CreateDbContext(new string[0]);
+            var enterpriseRepository = new EnterpriseRepository(context);
+            _enterpriseViewModel = new EnterpriseViewModel(enterpriseRepository);
         }
-        finally
+        catch (Exception ex)
         {
-            QuickBooksBusy = false;
+            // Log error but don't fail - enterprise features will be disabled
+            Console.WriteLine($"Failed to initialize enterprise management: {ex.Message}");
+            _enterpriseViewModel = null;
         }
     }
 
     [RelayCommand]
-    private async System.Threading.Tasks.Task LoadQuickBooksInvoicesAsync()
+    private async System.Threading.Tasks.Task LoadEnterprisesAsync()
     {
-        if (_qb == null || QuickBooksBusy) return;
-        try
-        {
-            QuickBooksBusy = true;
-            var items = await _qb.GetInvoicesAsync();
-            QuickBooksInvoices.Clear();
-            foreach (var i in items) QuickBooksInvoices.Add(i);
-        }
-        finally
-        {
-            QuickBooksBusy = false;
-        }
+        if (_enterpriseViewModel != null)
+            await _enterpriseViewModel.LoadEnterprisesAsync();
     }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task AddEnterpriseAsync()
+    {
+        if (_enterpriseViewModel != null)
+            await _enterpriseViewModel.AddEnterpriseAsync();
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task SaveEnterpriseAsync()
+    {
+        if (_enterpriseViewModel != null)
+            await _enterpriseViewModel.SaveEnterpriseAsync();
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task DeleteEnterpriseAsync()
+    {
+        if (_enterpriseViewModel != null)
+            await _enterpriseViewModel.DeleteEnterpriseAsync();
+    }
+
+    /// <summary>
+    /// Gets the budget summary from enterprise data
+    /// </summary>
+    public string BudgetSummary => _enterpriseViewModel?.GetBudgetSummary() ?? "Enterprise data not available";
 }

@@ -187,6 +187,9 @@ jobs:
                   Write-Host "Build completed successfully" -ForegroundColor Green
 
             - name: Run Tests
+              env:
+                  RUN_UI_TESTS: 1  # Enable UI smoke tests
+                  COVERAGE_MIN: 70  # Minimum coverage threshold
               run: |
                   # Run tests with both TRX and JUnit XML output for Trunk
                   dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx" --logger "junit;LogFileName=test-results.xml"

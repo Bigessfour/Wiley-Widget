@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using Syncfusion.SfSkinManager; // Theme manager
 using Syncfusion.Windows.Shared; // Theme names (if needed)
+using Syncfusion.UI.Xaml.Grid; // Added for Grid controls
 using WileyWidget.Services;
 using Serilog;
 
@@ -26,7 +27,7 @@ public partial class MainWindow : Window
         RestoreWindowState();
         Loaded += (_, _) => ApplyMaximized();
         Closing += (_, _) => PersistWindowState();
-    UpdateThemeToggleVisuals();
+        UpdateThemeToggleVisuals();
     }
 
     /// <summary>
@@ -117,12 +118,12 @@ public partial class MainWindow : Window
         if (BtnFluentDark != null)
         {
             BtnFluentDark.IsEnabled = current != "FluentDark";
-            BtnFluentDark.Label = current == "FluentDark" ? "✔ Fluent Dark" : "Fluent Dark";
+            BtnFluentDark.Content = current == "FluentDark" ? "✔ Fluent Dark" : "Fluent Dark";
         }
         if (BtnFluentLight != null)
         {
             BtnFluentLight.IsEnabled = current != "FluentLight";
-            BtnFluentLight.Label = current == "FluentLight" ? "✔ Fluent Light" : "Fluent Light";
+            BtnFluentLight.Content = current == "FluentLight" ? "✔ Fluent Light" : "Fluent Light";
         }
     }
     /// <summary>Display modal About dialog with version information.</summary>

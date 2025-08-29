@@ -19,6 +19,8 @@ runtimes:
 lint:
   enabled:
     # Code formatting - essential for consistency
+    - shfmt@3.6.0
+    - gitleaks@8.28.0
     - prettier@3.6.2
     # Security scanning - critical for production
     - trufflehog@3.90.5

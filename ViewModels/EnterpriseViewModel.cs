@@ -44,7 +44,7 @@ public partial class EnterpriseViewModel : ObservableObject
     /// Loads all enterprises from the database
     /// </summary>
     [RelayCommand]
-    private async Task LoadEnterprisesAsync()
+    public async Task LoadEnterprisesAsync()
     {
         try
         {
@@ -72,7 +72,7 @@ public partial class EnterpriseViewModel : ObservableObject
     /// Adds a new enterprise
     /// </summary>
     [RelayCommand]
-    private async Task AddEnterpriseAsync()
+    public async Task AddEnterpriseAsync()
     {
         try
         {
@@ -100,7 +100,7 @@ public partial class EnterpriseViewModel : ObservableObject
     /// Saves changes to the selected enterprise
     /// </summary>
     [RelayCommand]
-    private async Task SaveEnterpriseAsync()
+    public async Task SaveEnterpriseAsync()
     {
         if (SelectedEnterprise == null) return;
 
@@ -120,7 +120,7 @@ public partial class EnterpriseViewModel : ObservableObject
     /// Deletes the selected enterprise
     /// </summary>
     [RelayCommand]
-    private async Task DeleteEnterpriseAsync()
+    public async Task DeleteEnterpriseAsync()
     {
         if (SelectedEnterprise == null) return;
 

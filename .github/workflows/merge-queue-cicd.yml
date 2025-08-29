@@ -117,9 +117,21 @@ jobs:
               run: dotnet build --no-restore --configuration Release
 
             - name: Run Tests
+              env:
+                  RUN_UI_TESTS: 1  # Enable UI smoke tests
+                  COVERAGE_MIN: 70  # Minimum coverage threshold
               run: |
-                  # Run tests with JUnit XML output for Trunk
-                  dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx" --logger "junit;LogFileName=test-results.xml"
+                  # Run unit tests with coverage
+                  dotnet test ./WileyWidget.Tests/WileyWidget.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit-tests.trx" --logger "junit;LogFileName=unit-tests.xml"
+                  
+                  # Run UI smoke tests (if enabled)
+                  if ($env:RUN_UI_TESTS -eq '1') {
+                      Write-Host "Running UI smoke tests..."
+                      dotnet test ./WileyWidget.UiTests/WileyWidget.UiTests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=ui-tests.trx" --logger "junit;LogFileName=ui-tests.xml" --filter "Category=UiSmokeTests"
+                  } else {
+                      Write-Host "Skipping UI tests (set RUN_UI_TESTS=1 to enable)"
+                  }
+                  
                   Write-Host "Tests completed" -ForegroundColor Green
 
             - name: Upload Test Results to Trunk Flaky Tests
@@ -131,24 +143,39 @@ jobs:
                   org-slug: ${{ secrets.TRUNK_ORG_URL_SLUG }}
                   token: ${{ secrets.TRUNK_API_TOKEN }}
 
-            - name: Generate Coverage Report
+            - name: Check Coverage Threshold
               run: |
-                  # Install report generator if needed
-                  dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.1.0
-
-                  # Generate HTML coverage report
-                  reportgenerator -reports:TestResults/*/coverage.cobertura.xml -targetdir:coverage -reporttypes:Html
-
-                  # Extract coverage percentage
-                  $coverageFile = "coverage/index.html"
-                  if (Test-Path $coverageFile) {
-                      $content = Get-Content $coverageFile -Raw
-                      $coverageMatch = $content | Select-String -Pattern '(\d+(?:\.\d+)?)%' -AllMatches
-                      if ($coverageMatch.Matches) {
-                          $coveragePercent = $coverageMatch.Matches[0].Groups[1].Value
-                          Write-Host "Test Coverage: $coveragePercent%" -ForegroundColor Green
-                          # Write coverage to GitHub output for status checks
-                          echo "coverage=$coveragePercent" >> $env:GITHUB_OUTPUT
+                  $coverageThreshold = [double]$env:COVERAGE_MIN
+                  if ($coverageThreshold -eq 0) { $coverageThreshold = 70.0 }
+                  
+                  # Find the most recent coverage file
+                  $coverageFiles = Get-ChildItem -Path TestResults -Filter coverage.cobertura.xml -Recurse -ErrorAction SilentlyContinue
+                  if ($coverageFiles) {
+                      $coverageFile = $coverageFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                      Write-Host "Found coverage file: $($coverageFile.FullName)"
+                      
+                      # Parse coverage percentage
+                      [xml]$xml = Get-Content -Raw -Path $coverageFile.FullName
+                      $lineRate = [double]$xml.coverage.'line-rate'
+                      $coveragePercent = [math]::Round($lineRate * 100, 2)
+                      
+                      Write-Host "Current line coverage: $coveragePercent%"
+                      Write-Host "Required threshold: $coverageThreshold%"
+                      
+                      if ($coveragePercent -lt $coverageThreshold) {
+                          Write-Host "::error::Coverage $coveragePercent% below threshold $coverageThreshold%"
+                          exit 1
+                      } else {
+                          Write-Host "::notice::Coverage $coveragePercent% meets threshold $coverageThreshold%"
+                      }
+                      
+                      # Set output for other jobs
+                      echo "coverage=$coveragePercent" >> $env:GITHUB_OUTPUT
+                  } else {
+                      Write-Host "::warning::No coverage file found"
+                      if ($coverageThreshold -gt 0) {
+                          Write-Host "::error::Coverage file missing but threshold required"
+                          exit 1
                       }
                   }
 

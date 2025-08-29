@@ -35,7 +35,7 @@ public class MainWindowUITests : IDisposable
     private static bool IsCIEnvironment()
     {
         // Check common CI environment variables
-        var ciIndicators = new[]
+        string[] ciIndicators = new[]
         {
             "CI",           // General CI indicator
             "GITHUB_ACTIONS", // GitHub Actions
@@ -50,6 +50,7 @@ public class MainWindowUITests : IDisposable
         return ciIndicators.Any(indicator =>
             !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(indicator)));
     }    [Fact]
+    [Trait("Category", "UiSmokeTests")]
     public void UI_Test_Framework_IsConfigured()
     {
         // Skip if not on Windows
@@ -76,6 +77,7 @@ public class MainWindowUITests : IDisposable
     }
 
     [Fact]
+    [Trait("Category", "UiSmokeTests")]
     public void UI_Test_Environment_IsReady()
     {
         // Skip if not on Windows
@@ -112,6 +114,7 @@ public class MainWindowUITests : IDisposable
     }
 
     [Fact]
+    [Trait("Category", "UiSmokeTests")]
     public void UI_Automation_CanEnumerateDesktopWindows()
     {
         // Skip if not on Windows
@@ -125,8 +128,8 @@ public class MainWindowUITests : IDisposable
         using var automation = new UIA3Automation();
 
         // Act - Get all top-level windows
-        var desktop = automation.GetDesktop();
-        var topLevelWindows = desktop.FindAllChildren(cf => cf.ByControlType(ControlType.Window));
+        AutomationElement desktop = automation.GetDesktop();
+        AutomationElement[] topLevelWindows = desktop.FindAllChildren(cf => cf.ByControlType(ControlType.Window));
 #pragma warning restore CA1416
 
         // Assert
@@ -157,7 +160,7 @@ public class MainWindowUITests : IDisposable
         using var automation = new UIA3Automation();
 
         // Act
-        var desktop = automation.GetDesktop();
+        AutomationElement desktop = automation.GetDesktop();
 #pragma warning restore CA1416
 
         // Assert
@@ -183,9 +186,9 @@ public class MainWindowUITests : IDisposable
         using var automation = new UIA3Automation();
 
         // Act - Test various control type access
-        var buttonType = ControlType.Button;
-        var windowType = ControlType.Window;
-        var textType = ControlType.Edit;
+        ControlType buttonType = ControlType.Button;
+        ControlType windowType = ControlType.Window;
+        ControlType textType = ControlType.Edit;
 #pragma warning restore CA1416
 
         // Assert - ControlType enum values are properly defined

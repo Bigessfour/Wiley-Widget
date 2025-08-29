@@ -30,21 +30,16 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 
         if (string.IsNullOrEmpty(connectionString))
         {
-            // Fallback to localdb for development
-            connectionString = "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true";
+            // Fallback to SQLite for development
+            connectionString = "Data Source=WileyWidget.db";
         }
 
         // Configure DbContext options
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
+        optionsBuilder.UseSqlite(connectionString, sqliteOptions =>
         {
-            sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null);
-
-            sqlOptions.CommandTimeout(30);
-            sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+            sqliteOptions.CommandTimeout(30);
+            sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
         });
 
         // Enable sensitive data logging in development

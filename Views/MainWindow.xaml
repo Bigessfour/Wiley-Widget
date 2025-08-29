@@ -52,6 +52,35 @@
                         </syncfusion:SfDataGrid.Columns>
                     </syncfusion:SfDataGrid>
                 </TabItem>
+                <TabItem Header="Enterprises">
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4">
+                            <Button Content="Load Enterprises" Command="{Binding LoadEnterprisesCommand}" Margin="0,0,6,0"/>
+                            <Button Content="Add Enterprise" Command="{Binding AddEnterpriseCommand}" Margin="0,0,6,0"/>
+                            <Button Content="Save" Command="{Binding SaveEnterpriseCommand}" Margin="0,0,6,0"/>
+                            <Button Content="Delete" Command="{Binding DeleteEnterpriseCommand}" Margin="0,0,6,0" Background="IndianRed" Foreground="White"/>
+                        </StackPanel>
+                        <syncfusion:SfDataGrid ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" AutoGenerateColumns="False" AllowSorting="True" AllowFiltering="True" AllowResizingColumns="True" GridLinesVisibility="Horizontal" RowHeight="28" AlternationCount="2">
+                            <syncfusion:SfDataGrid.Columns>
+                                <syncfusion:GridTextColumn HeaderText="Name" MappingName="Name" Width="200" />
+                                <syncfusion:GridNumericColumn HeaderText="Rate" MappingName="CurrentRate" Width="100" />
+                                <syncfusion:GridNumericColumn HeaderText="Citizens" MappingName="CitizenCount" Width="100" />
+                                <syncfusion:GridNumericColumn HeaderText="Expenses" MappingName="MonthlyExpenses" Width="120" />
+                                <syncfusion:GridNumericColumn HeaderText="Revenue" MappingName="MonthlyRevenue" Width="120" />
+                                <syncfusion:GridNumericColumn HeaderText="Balance" MappingName="MonthlyBalance" Width="120" />
+                                <syncfusion:GridTextColumn HeaderText="Notes" MappingName="Notes" Width="200" />
+                            </syncfusion:SfDataGrid.Columns>
+                        </syncfusion:SfDataGrid>
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="Budget Summary">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Municipal Budget Overview" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <TextBlock Text="{Binding BudgetSummary}" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,20"/>
+                        <TextBlock Text="💡 Phase 2: UI Dashboards &amp; Basic Analytics" FontStyle="Italic" Foreground="Gray"/>
+                        <TextBlock Text="This tab shows real-time budget calculations from enterprise data." FontStyle="Italic" Foreground="Gray" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </TabItem>
                 <TabItem Header="QuickBooks">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4" >
