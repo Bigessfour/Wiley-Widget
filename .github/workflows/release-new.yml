@@ -27,7 +27,7 @@ jobs:
             - name: Setup .NET
               uses: actions/setup-dotnet@v4
               with:
-                  dotnet-version: "9.0.x"
+                  dotnet-version: "8.0.x"
 
             - name: Cache NuGet
               uses: actions/cache@v4
@@ -61,7 +61,7 @@ jobs:
                   $tag = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { $env:GITHUB_EVENT_INPUTS_TAG_NAME }
                   $changes = git log --oneline --pretty=format:"- %s" HEAD~1..HEAD
                   $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-                  $releaseNotes = "# Release $tag`n`n## Changes`n$changes`n`n## Build Information`n- Build Date: $date`n- .NET Version: 9.0.x`n- Target Framework: net8.0-windows`n`n## Quality Checks`n- ✅ Code Quality: Passed`n- ✅ Security Scan: Passed`n- ✅ Tests: Passed`n- ✅ Build: Successful"
+                  $releaseNotes = "# Release $tag`n`n## Changes`n$changes`n`n## Build Information`n- Build Date: $date`n- .NET Version: 8.0.x`n- Target Framework: net8.0-windows`n`n## Quality Checks`n- ✅ Code Quality: Passed`n- ✅ Security Scan: Passed`n- ✅ Tests: Passed`n- ✅ Build: Successful"
                   $releaseNotes | Out-File -FilePath "RELEASE_NOTES.md" -Encoding UTF8
 
             - name: Create Release

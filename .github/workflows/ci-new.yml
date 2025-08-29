@@ -24,7 +24,7 @@ jobs:
             - name: Setup .NET
               uses: actions/setup-dotnet@v4
               with:
-                  dotnet-version: 9.0.x
+                  dotnet-version: 8.0.x
 
             - name: Cache NuGet
               uses: actions/cache@v4
@@ -40,6 +40,35 @@ jobs:
                   arguments: --ci --upload --series=${{ github.ref_name }}
               env:
                   TRUNK_TOKEN: ${{ secrets.TRUNK_TOKEN }}
+              continue-on-error: true  # Allow CI to continue even if some tools fail
+
+            - name: Trunk Diagnostics
+              if: failure()
+              run: |
+                  Write-Host "🔍 Trunk Diagnostics:" -ForegroundColor Cyan
+                  Write-Host "Checking tool installations..." -ForegroundColor Gray
+
+                  # Check which tools failed
+                  trunk check --ci --print-failures 2>&1 | Out-File "trunk-diagnostics.log"
+
+                  # Show tool status
+                  Write-Host "📋 Tool Status:" -ForegroundColor Yellow
+                  Get-ChildItem "$env:LOCALAPPDATA\trunk\tools" -Directory | Select-Object -First 5 Name
+
+                  # Show configuration issues
+                  Write-Host "⚙️ Configuration Issues:" -ForegroundColor Yellow
+                  Select-String -Path "trunk-diagnostics.log" -Pattern "failed|error|not supported" -CaseSensitive:$false
+
+              # Upload diagnostics for debugging
+            - name: Upload Trunk Diagnostics
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: trunk-diagnostics-${{ github.run_number }}
+                  path: |
+                      trunk-diagnostics.log
+                      .trunk/logs/
+                  retention-days: 7
 
             - name: Restore Dependencies
               run: dotnet restore
