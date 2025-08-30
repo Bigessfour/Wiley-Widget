@@ -10,7 +10,7 @@
     <LangVersion>latest</LangVersion>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-  <NoWarn>$(NoWarn);NETSDK1206;NU1605</NoWarn>
+  <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022</NoWarn>
   <!-- Signing placeholders (provide actual .snk and enable when ready) -->
   <SignAssembly>false</SignAssembly>
   <AssemblyOriginatorKeyFile>signing\WileyWidget.snk</AssemblyOriginatorKeyFile>

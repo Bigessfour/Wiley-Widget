@@ -118,7 +118,7 @@ jobs:
 
             - name: Run Tests
               env:
-                  RUN_UI_TESTS: 1  # Enable UI smoke tests
+                  RUN_UI_TESTS: 0  # Disable UI tests in CI (headless environment)
                   COVERAGE_MIN: 70  # Minimum coverage threshold
               run: |
                   # Run unit tests with coverage

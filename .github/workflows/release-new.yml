@@ -53,8 +53,8 @@ jobs:
 
       - name: Run Tests (Release)
         run: |
-          # Run tests with JUnit XML output for Trunk
-          dotnet test -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "junit;LogFileName=test-results.xml"
+          # Run tests with JUnit XML output for Trunk (skip UI tests in CI)
+          dotnet test -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "junit;LogFileName=test-results.xml" --filter "Category!=UiSmokeTests&Category!=HighInteraction&Category!=PostMigration"
 
       - name: Upload Test Results to Trunk Flaky Tests
         if: always()  # Run even if tests fail

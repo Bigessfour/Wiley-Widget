@@ -2,22 +2,18 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Collections.Generic;
 
-namespace WileyWidget.Models;
+namespace WileyWidgetTest;
 
 /// <summary>
 /// Represents a municipal enterprise (Water, Sewer, Trash, Apartments)
 /// </summary>
-public class Enterprise : IValidatableObject
+public class Enterprise
 {
-    #region Properties
-
     /// <summary>
     /// Unique identifier for the enterprise
     /// </summary>
     [Key]
-    [ConcurrencyCheck]
     public int Id { get; set; }
 
     /// <summary>
@@ -25,16 +21,14 @@ public class Enterprise : IValidatableObject
     /// </summary>
     [Required(ErrorMessage = "Enterprise name is required")]
     [StringLength(100, ErrorMessage = "Enterprise name cannot exceed 100 characters")]
-    [ConcurrencyCheck]
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Current rate charged per citizen (e.g., $5.00 per month for water)
     /// </summary>
     [Required(ErrorMessage = "Current rate is required")]
-    [Range(0, double.MaxValue, ErrorMessage = "Rates can't be negative, unless you're paying citizens!")]
+    [Range(0.01, 9999.99, ErrorMessage = "Rate must be between 0.01 and 9999.99")]
     [Column(TypeName = "decimal(18,2)")]
-    [ConcurrencyCheck]
     public decimal CurrentRate { get; set; }
 
     /// <summary>
@@ -43,7 +37,6 @@ public class Enterprise : IValidatableObject
     [Required(ErrorMessage = "Monthly expenses are required")]
     [Range(0, double.MaxValue, ErrorMessage = "Monthly expenses cannot be negative")]
     [Column(TypeName = "decimal(18,2)")]
-    [ConcurrencyCheck]
     public decimal MonthlyExpenses { get; set; }
 
     /// <summary>
@@ -60,7 +53,6 @@ public class Enterprise : IValidatableObject
     /// </summary>
     [Required(ErrorMessage = "Citizen count is required")]
     [Range(1, int.MaxValue, ErrorMessage = "Citizen count must be at least 1")]
-    [ConcurrencyCheck]
     public int CitizenCount { get; set; }
 
     /// <summary>
@@ -164,7 +156,7 @@ public class Enterprise : IValidatableObject
     /// <summary>
     /// QuickBooks Online Class ID for fund tracking
     /// </summary>
-    [StringLength(100)]
+    [StringLength(50)]
     public string? QboClassId { get; set; }
 
     /// <summary>
@@ -176,40 +168,4 @@ public class Enterprise : IValidatableObject
     /// Last sync timestamp with QuickBooks Online
     /// </summary>
     public DateTime? QboLastSync { get; set; }
-
-    #endregion
-
-    #region Calculated Properties
-    /// QBO sync: Because manual entries are for chumps.
-    /// </summary>
-    [NotMapped]
-    public bool SyncToQboReady => !string.IsNullOrEmpty(Name) && CurrentRate > 0;
-
-    #endregion
-
-    #region Methods
-
-    /// <summary>
-    /// Validates the enterprise data
-    /// </summary>
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-        if (Deficit < 0)
-        {
-            yield return new ValidationResult("Warning: Enterprise is operating at a deficit!", new[] { "Deficit" });
-        }
-    }
-
-    /// <summary>
-    /// Returns a string representation for debug logs
-    /// </summary>
-    /// <returns>Format: 'EnterpriseName: Deficit/Surplus $X.XX'</returns>
-    public override string ToString()
-    {
-        string status = MonthlyBalance >= 0 ? "Surplus" : "Deficit";
-        decimal amount = Math.Abs(MonthlyBalance);
-        return $"{Name}: {status} ${amount:F2}";
-    }
-
-    #endregion
 }

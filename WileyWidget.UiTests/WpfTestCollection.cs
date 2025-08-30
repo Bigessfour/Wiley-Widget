@@ -15,7 +15,7 @@ public class WpfTestCollection : ICollectionFixture<WpfTestFixture>
 /// WPF Test Fixture that sets up STA threading for WPF UI tests.
 /// This fixture ensures proper WPF initialization and cleanup.
 /// </summary>
-public class WpfTestFixture : IDisposable
+public sealed class WpfTestFixture : IDisposable
 {
     public WpfTestFixture()
     {

@@ -413,6 +413,10 @@ public partial class App : Application
             // Call base implementation last
             base.OnStartup(e);
 
+            // Set MainWindow since StartupUri is removed
+            this.MainWindow = new MainWindow();
+            this.MainWindow.Show();
+
             Log.Information("✅ === Application Startup Completed Successfully ===");
         }
         catch (Exception ex)

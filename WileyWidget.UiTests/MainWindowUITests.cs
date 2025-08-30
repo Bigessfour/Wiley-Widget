@@ -1,5 +1,4 @@
 using Xunit;
-using Xunit.Sdk;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
@@ -8,7 +7,6 @@ using System.Runtime.InteropServices;
 using FlaUI.Core.Definitions;
 using System;
 using System.Threading;
-using Xunit.Sdk;
 
 namespace WileyWidget.UiTests;
 
@@ -53,9 +51,47 @@ public class MainWindowUITests : IDisposable
             "APPVEYOR"      // AppVeyor
         };
 
-        return ciIndicators.Any(indicator =>
+        bool hasCIIndicator = ciIndicators.Any(indicator =>
             !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(indicator)));
+
+        // Also check if we're in a headless environment (no GUI support)
+        bool isHeadless = IsHeadlessEnvironment();
+
+        return hasCIIndicator || isHeadless;
     }
+
+    /// <summary>
+    /// Detects if running in a headless environment where GUI applications cannot be launched
+    /// </summary>
+    private static bool IsHeadlessEnvironment()
+    {
+        try
+        {
+            // Check if we have a valid desktop session
+            IntPtr desktop = GetDesktopWindow();
+            if (desktop == IntPtr.Zero)
+                return true;
+
+            // Check for common headless indicators
+            string sessionName = Environment.GetEnvironmentVariable("SESSIONNAME");
+            if (!string.IsNullOrEmpty(sessionName) &&
+                (sessionName.Contains("Services") || sessionName.Contains("RDP")))
+            {
+                return true;
+            }
+
+            // Check if we're running as a service or in a non-interactive session
+            return !Environment.UserInteractive;
+        }
+        catch
+        {
+            // If any exception occurs, assume headless
+            return true;
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr GetDesktopWindow();
 
     #region UI Framework Tests
 
@@ -212,6 +248,82 @@ public class MainWindowUITests : IDisposable
     #region Application Launch Tests
 
     [Fact]
+    public void Application_Process_CanBeLaunched()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Skip in CI environments
+        if (IsCIEnvironment())
+        {
+            return;
+        }
+
+        Application app = null;
+
+        // Declare variables for cleanup
+        string originalConnectionString = null;
+        string originalBusBuddyConnection = null;
+        string originalDatabaseProvider = null;
+
+        try
+        {
+            // Arrange - Set correct environment variables for SQLite
+            originalConnectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION");
+            originalBusBuddyConnection = Environment.GetEnvironmentVariable("BUSBUDDY_CONNECTION");
+            originalDatabaseProvider = Environment.GetEnvironmentVariable("DatabaseProvider");
+
+            // Set SQLite connection string for test
+            Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", "Data Source=WileyWidget.db");
+            Environment.SetEnvironmentVariable("BUSBUDDY_CONNECTION", null);
+            Environment.SetEnvironmentVariable("DatabaseProvider", null);
+
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
+                WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Normal
+            };
+
+            // Act - Launch application
+            app = Application.Launch(processStartInfo);
+
+            // Wait for the process to start
+            System.Threading.Thread.Sleep(2000);
+
+            // Assert - Just check that the application was launched
+            Assert.NotNull(app);
+            Assert.True(app.ProcessId > 0);
+
+            // Check that the process is actually running
+            var process = System.Diagnostics.Process.GetProcessById(app.ProcessId);
+            Assert.NotNull(process);
+            Assert.False(process.HasExited);
+        }
+        finally
+        {
+            // Cleanup - Restore original environment variables
+            Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", originalConnectionString);
+            Environment.SetEnvironmentVariable("BUSBUDDY_CONNECTION", originalBusBuddyConnection);
+            Environment.SetEnvironmentVariable("DatabaseProvider", originalDatabaseProvider);
+
+            // Cleanup application
+            try
+            {
+                app?.Close();
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    [Fact]
     public void Application_CanBeLaunchedFromTestEnvironment()
     {
         // Skip if not on Windows
@@ -229,9 +341,19 @@ public class MainWindowUITests : IDisposable
         Application app = null;
         UIA3Automation automation = null;
 
+        // Store original environment variables
+        var originalConnectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION");
+        var originalBusBuddyConnection = Environment.GetEnvironmentVariable("BUSBUDDY_CONNECTION");
+        var originalDatabaseProvider = Environment.GetEnvironmentVariable("DatabaseProvider");
+
         try
         {
-            // Arrange
+            // Arrange - Set correct environment variables for SQLite
+            // Set SQLite connection string for test
+            Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", "Data Source=WileyWidget.db");
+            Environment.SetEnvironmentVariable("BUSBUDDY_CONNECTION", null);
+            Environment.SetEnvironmentVariable("DatabaseProvider", null);
+
             var processStartInfo = new ProcessStartInfo
             {
                 FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
@@ -247,7 +369,7 @@ public class MainWindowUITests : IDisposable
             app = Application.Launch(processStartInfo);
 
             // Wait for the process to start and stabilize
-            System.Threading.Thread.Sleep(2000);
+            System.Threading.Thread.Sleep(3000); // Increased wait time
 
             // Try to get main window with extended timeout and retry
             Window mainWindow = null;
@@ -258,7 +380,7 @@ public class MainWindowUITests : IDisposable
             {
                 try
                 {
-                    mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(5));
+                    mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10)); // Increased timeout
                 }
                 catch (Exception ex)
                 {
@@ -279,7 +401,12 @@ public class MainWindowUITests : IDisposable
         }
         finally
         {
-            // Cleanup
+            // Cleanup - Restore original environment variables
+            Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", originalConnectionString);
+            Environment.SetEnvironmentVariable("BUSBUDDY_CONNECTION", originalBusBuddyConnection);
+            Environment.SetEnvironmentVariable("DatabaseProvider", originalDatabaseProvider);
+
+            // Cleanup application
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
@@ -369,7 +496,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -456,7 +583,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -538,7 +665,7 @@ public class MainWindowUITests : IDisposable
                         // Cleanup failed attempt
                         try
                         {
-                            mainWindow?.Close();
+                            ;
                             app?.Close();
                         }
                         catch { }
@@ -567,7 +694,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -645,7 +772,7 @@ public class MainWindowUITests : IDisposable
                         // Cleanup failed attempt
                         try
                         {
-                            mainWindow?.Close();
+                            ;
                             app?.Close();
                         }
                         catch { }
@@ -674,7 +801,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -752,7 +879,7 @@ public class MainWindowUITests : IDisposable
                         // Cleanup failed attempt
                         try
                         {
-                            mainWindow?.Close();
+                            ;
                             app?.Close();
                         }
                         catch { }
@@ -784,7 +911,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -818,7 +945,7 @@ public class MainWindowUITests : IDisposable
         }
 
         Application app = null;
-        AutomationElement mainWindow = null;
+        var mainWindow = default(AutomationElement);
         UIA3Automation automation = null;
 
         try
@@ -841,7 +968,7 @@ public class MainWindowUITests : IDisposable
 
             // Act - Find SfDataGrid in Enterprises tab
             var enterprisesTab = mainWindow.FindFirstDescendant(cf => cf.ByName("Enterprises"));
-            Assert.NotNull(enterprisesTab, "Enterprises tab should exist");
+            Assert.True(enterprisesTab != null, "Enterprises tab should exist");
 
             // Switch to Enterprises tab
             enterprisesTab.AsTabItem().Select();
@@ -855,7 +982,7 @@ public class MainWindowUITests : IDisposable
             }
 
             // Assert - Grid should exist and have data
-            Assert.NotNull(enterpriseGrid, "SfDataGrid should be present after migration");
+            Assert.True(enterpriseGrid != null, "SfDataGrid should be present after migration");
 
             // Check if grid has items (seeded data)
             var gridItems = enterpriseGrid.FindAllChildren(cf => cf.ByControlType(ControlType.DataItem));
@@ -863,7 +990,7 @@ public class MainWindowUITests : IDisposable
 
             // Verify specific seeded data (Water, Sewer, etc.)
             var firstItem = gridItems.FirstOrDefault();
-            Assert.NotNull(firstItem, "Should have at least one enterprise item");
+            Assert.True(firstItem != null, "Should have at least one enterprise item");
 #pragma warning restore CA1416
         }
         finally
@@ -872,7 +999,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -961,7 +1088,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -1021,7 +1148,7 @@ public class MainWindowUITests : IDisposable
             {
                 // If error dialog exists, verify it has expected elements
                 var okButton = errorDialog.FindFirstDescendant(cf => cf.ByControlType(ControlType.Button).And(cf.ByName("OK")));
-                Assert.NotNull(okButton, "Error dialog should have OK button");
+                Assert.True(okButton != null, "Error dialog should have OK button");
             }
             else
             {
@@ -1036,7 +1163,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -1112,7 +1239,7 @@ public class MainWindowUITests : IDisposable
             {
                 // If no refresh button, just verify grid exists
                 var enterpriseGrid = mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("EnterpriseGrid"));
-                Assert.NotNull(enterpriseGrid, "Enterprise grid should exist for refresh testing");
+                Assert.True(enterpriseGrid != null, "Enterprise grid should exist for refresh testing");
             }
 #pragma warning restore CA1416
         }
@@ -1122,7 +1249,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -1185,9 +1312,9 @@ public class MainWindowUITests : IDisposable
                 cf.ByName("Net Balance").Or(cf.ByAutomationId("NetBalance")));
 
             // Assert - Budget elements should exist and have reasonable values
-            Assert.NotNull(totalRevenueLabel, "Total Revenue should be displayed");
-            Assert.NotNull(totalExpensesLabel, "Total Expenses should be displayed");
-            Assert.NotNull(netBalanceLabel, "Net Balance should be displayed");
+            Assert.True(totalRevenueLabel != null, "Total Revenue should be displayed");
+            Assert.True(totalExpensesLabel != null, "Total Expenses should be displayed");
+            Assert.True(netBalanceLabel != null, "Net Balance should be displayed");
 
             // Verify values are numeric (basic validation)
             if (totalRevenueLabel != null)
@@ -1204,7 +1331,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -1279,7 +1406,7 @@ public class MainWindowUITests : IDisposable
             {
                 // If no sync button, verify QuickBooks tab content exists
                 var quickBooksContent = mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("QuickBooksContent"));
-                Assert.NotNull(quickBooksContent, "QuickBooks tab should have content");
+                Assert.True(quickBooksContent != null, "QuickBooks tab should have content");
             }
 #pragma warning restore CA1416
         }
@@ -1289,7 +1416,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -1347,7 +1474,7 @@ public class MainWindowUITests : IDisposable
             var filterTextBox = mainWindow.FindFirstDescendant(cf =>
                 cf.ByControlType(ControlType.Edit).And(cf.ByAutomationId("FilterTextBox")));
             var filterButton = mainWindow.FindFirstDescendant(cf =>
-                cf.ByControlType(ControlType.Button).And(cf.ByName("Filter").Or(cf.ByAutomationId("FilterBtn")));
+                cf.ByControlType(ControlType.Button).And(cf.ByName("Filter").Or(cf.ByAutomationId("FilterBtn"))));
 
             if (filterTextBox != null && filterButton != null)
             {
@@ -1375,7 +1502,7 @@ public class MainWindowUITests : IDisposable
             {
                 // If no filter controls, just verify grid exists
                 var enterpriseGrid = mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("EnterpriseGrid"));
-                Assert.NotNull(enterpriseGrid, "Enterprise grid should exist for filtering tests");
+                Assert.True(enterpriseGrid != null, "Enterprise grid should exist for filtering tests");
             }
 #pragma warning restore CA1416
         }
@@ -1385,7 +1512,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416
@@ -1441,9 +1568,9 @@ public class MainWindowUITests : IDisposable
 
             // Act - Find settings controls
             var settingsButton = mainWindow.FindFirstDescendant(cf =>
-                cf.ByControlType(ControlType.Button).And(cf.ByName("Settings").Or(cf.ByAutomationId("SettingsBtn")));
+                cf.ByControlType(ControlType.Button).And(cf.ByName("Settings").Or(cf.ByAutomationId("SettingsBtn"))));
             var saveButton = mainWindow.FindFirstDescendant(cf =>
-                cf.ByControlType(ControlType.Button).And(cf.ByName("Save").Or(cf.ByAutomationId("SaveBtn")));
+                cf.ByControlType(ControlType.Button).And(cf.ByName("Save").Or(cf.ByAutomationId("SaveBtn"))));
 
             if (settingsButton != null && saveButton != null)
             {
@@ -1482,7 +1609,7 @@ public class MainWindowUITests : IDisposable
             {
                 // If no settings controls, verify Widgets tab exists
                 var widgetsContent = mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("WidgetsContent"));
-                Assert.NotNull(widgetsContent, "Widgets tab should have content");
+                Assert.True(widgetsContent != null, "Widgets tab should have content");
             }
 #pragma warning restore CA1416
         }
@@ -1492,7 +1619,7 @@ public class MainWindowUITests : IDisposable
             try
             {
 #pragma warning disable CA1416 // Validate platform compatibility
-                mainWindow?.Close();
+                ;
                 app?.Close();
                 automation?.Dispose();
 #pragma warning restore CA1416

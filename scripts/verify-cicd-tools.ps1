@@ -19,8 +19,9 @@ function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logEntry = "[$timestamp] [$Level] $Message"
-    Write-Host $logEntry -ForegroundColor $(if ($Level -eq "ERROR") { "Red" } elseif ($Level -eq "WARN") { "Yellow" } else { "White" })
-    Add-Content $LogFile $logEntry
+    $color = if ($Level -eq "ERROR") { "Red" } elseif ($Level -eq "WARN") { "Yellow" } else { "White" }
+    Write-Host $logEntry -ForegroundColor $color
+    Add-Content "../$LogFile" $logEntry
 }
 
 function Test-Tool {
@@ -71,7 +72,7 @@ function Test-Tool {
 }
 
 # Clear previous log
-if (Test-Path $LogFile) { Clear-Content $LogFile }
+if (Test-Path "../$LogFile") { Clear-Content "../$LogFile" }
 
 Write-Log "Starting CI/CD Tools Verification"
 
@@ -95,12 +96,12 @@ Test-Tool "Azure Account" "az account show" -Required $false
 
 # Check Build Tools
 Write-Host "`n🔨 Build Tools:" -ForegroundColor Yellow
-Test-Tool "MSBuild" "msbuild /version" -Required $false
-Test-Tool "NuGet" "nuget help" "NuGet" -Required $false
+Test-Tool "MSBuild" "dotnet build --help" "dotnet build" -Required $false
+Test-Tool "NuGet" "dotnet nuget --help" "dotnet nuget" -Required $false
 
 # Check Testing Tools
 Write-Host "`n🧪 Testing Tools:" -ForegroundColor Yellow
-Test-Tool "VSTest" "vstest.console.exe /?" -Required $false
+Test-Tool "VSTest" "dotnet test --help" "dotnet test" -Required $false
 
 # Check GitHub Tools
 Write-Host "`n🐙 GitHub Tools:" -ForegroundColor Yellow
@@ -110,7 +111,7 @@ Test-Tool "GitHub CLI" "gh --version" "gh version" -Required $false
 Write-Host "`n⚙️  CI/CD Configuration:" -ForegroundColor Yellow
 
 # Check trunk.yaml
-$trunkConfig = ".\.trunk\trunk.yaml"
+$trunkConfig = "..\.trunk\trunk.yaml"
 if (Test-Path $trunkConfig) {
     Write-Host "  🔍 Trunk Configuration..." -NoNewline
     try {
@@ -137,7 +138,7 @@ if (Test-Path $trunkConfig) {
 }
 
 # Check GitHub Actions
-$githubWorkflows = ".\.github\workflows"
+$githubWorkflows = "..\.github\workflows"
 if (Test-Path $githubWorkflows) {
     $workflows = Get-ChildItem "$githubWorkflows\*.yml" -ErrorAction SilentlyContinue
     Write-Host "  🔍 GitHub Actions Workflows..." -NoNewline
@@ -160,7 +161,7 @@ if (Test-Path $githubWorkflows) {
 }
 
 # Check Scripts Directory
-$scriptsDir = ".\scripts"
+$scriptsDir = "..\scripts"
 if (Test-Path $scriptsDir) {
     $scripts = Get-ChildItem "$scriptsDir\*.ps1" -ErrorAction SilentlyContinue
     Write-Host "  🔍 Build Scripts..." -NoNewline
@@ -223,10 +224,10 @@ $endTime = Get-Date
 $duration = $endTime - $startTime
 
 Write-Host "`n⏱️  Verification completed in $([math]::Round($duration.TotalSeconds, 1)) seconds" -ForegroundColor Cyan
-Write-Host "📝 Detailed log saved to: $LogFile" -ForegroundColor Cyan
+Write-Host "📝 Detailed log saved to: ../$LogFile" -ForegroundColor Cyan
 
 Write-Log "Verification completed. Duration: $([math]::Round($duration.TotalSeconds, 1))s"
 
 # Export results for potential use by other scripts
-$results | ConvertTo-Json -Depth 3 | Out-File "cicd-results.json" -Encoding UTF8
-Write-Host "💾 Results exported to: cicd-results.json" -ForegroundColor Cyan
+$results | ConvertTo-Json -Depth 3 | Out-File "../cicd-results.json" -Encoding UTF8
+Write-Host "💾 Results exported to: ../cicd-results.json" -ForegroundColor Cyan

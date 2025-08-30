@@ -4,15 +4,13 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace WileyWidget.Models;
+namespace WileyWidgetTest;
 
 /// <summary>
 /// Represents interactions between enterprises (e.g., shared costs, dependencies)
 /// </summary>
 public class BudgetInteraction
 {
-    #region Properties
-
     /// <summary>
     /// Unique identifier for the budget interaction
     /// </summary>
@@ -48,7 +46,7 @@ public class BudgetInteraction
     /// Monthly cost/value of this interaction
     /// </summary>
     [Required(ErrorMessage = "Monthly amount is required")]
-    [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
+    [Range(0, double.MaxValue, ErrorMessage = "Monthly amount cannot be negative")]
     [Column(TypeName = "decimal(18,2)")]
     public decimal MonthlyAmount { get; set; }
 
@@ -83,12 +81,6 @@ public class BudgetInteraction
     public string? QboAccountId { get; set; }
 
     /// <summary>
-    /// QuickBooks Online Account Reference for shared costs
-    /// </summary>
-    [StringLength(100)]
-    public string? QboAccountRef { get; set; }
-
-    /// <summary>
     /// Sync status with QuickBooks Online
     /// </summary>
     public QboSyncStatus QboSyncStatus { get; set; } = QboSyncStatus.Pending;
@@ -97,10 +89,6 @@ public class BudgetInteraction
     /// Last sync timestamp with QuickBooks Online
     /// </summary>
     public DateTime? QboLastSync { get; set; }
-
-    #endregion
-
-    #region Methods
 
     /// <summary>
     /// Calculates the shared cost impact prorated across linked enterprises
@@ -124,6 +112,4 @@ public class BudgetInteraction
             return 0;
         }
     }
-
-    #endregion
 }

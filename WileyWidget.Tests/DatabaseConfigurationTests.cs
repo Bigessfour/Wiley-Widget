@@ -217,9 +217,10 @@ public class DatabaseConfigurationTests
     [Fact]
     public async Task EnsureDatabaseCreatedAsync_ErrorHandling_WithInvalidConnection()
     {
-        // Test error handling with invalid connection string
+        // Test error handling with truly invalid connection string
         var services = new ServiceCollection();
-        services.AddDbContext<AppDbContext>(options => options.UseSqlite("Data Source=nonexistent.db"));
+        services.AddDbContext<AppDbContext>(options => 
+            options.UseSqlite("Data Source=C:\\Invalid\\Path\\That\\Does\\Not\\Exist\\database.db"));
         services.AddScoped<DatabaseSeeder>();
         var serviceProvider = services.BuildServiceProvider();
 

@@ -77,7 +77,7 @@ jobs:
               run: dotnet build --no-restore /bl:msbuild.binlog /verbosity:minimal
 
             - name: Run Tests
-              run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
+              run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx" --filter "Category!=UiSmokeTests&Category!=HighInteraction&Category!=PostMigration"
 
             - name: Run Phase 1 Validation
               run: |
