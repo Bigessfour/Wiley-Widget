@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -88,4 +89,27 @@ public class BudgetInteraction
     /// Last sync timestamp with QuickBooks Online
     /// </summary>
     public DateTime? QboLastSync { get; set; }
+
+    /// <summary>
+    /// Calculates the shared cost impact prorated across linked enterprises
+    /// Returns the portion of MonthlyAmount allocated to each enterprise
+    /// </summary>
+    public decimal SharedCostImpact()
+    {
+        try
+        {
+            if (!IsCost)
+                return 0; // Only costs are shared, revenues are direct
+
+            int linkedCount = SecondaryEnterpriseId.HasValue ? 2 : 1;
+            
+            return MonthlyAmount / linkedCount;
+        }
+        catch (Exception ex)
+        {
+            // Hobby-proof: Return 0 on any calculation error
+            Console.WriteLine($"Error calculating shared cost impact: {ex.Message}");
+            return 0;
+        }
+    }
 }

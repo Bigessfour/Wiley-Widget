@@ -86,6 +86,13 @@ public class Enterprise
     }
 
     /// <summary>
+    /// Goal-oriented deficit calculation (Expenses - Revenue)
+    /// Because apartments shouldn't apartment your budget.
+    /// </summary>
+    [NotMapped]
+    public decimal Deficit => MonthlyExpenses - MonthlyRevenue;
+
+    /// <summary>
     /// Budget status indicator for visual display
     /// </summary>
     [NotMapped]
