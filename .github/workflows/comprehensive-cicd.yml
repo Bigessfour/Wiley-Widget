@@ -8,23 +8,23 @@ on:
         branches: [main]
     pull_request:
         branches: [main]
-    workflow_dispatch:
-        inputs:
-            run_full_security_scan:
-                description: 'Run full security scan (slower)'
-                required: false
-                default: false
-                type: boolean
-            skip_ui_tests:
-                description: 'Skip UI tests for faster execution'
-                required: false
-                default: false
-                type: boolean
-            emergency_mode:
-                description: 'Emergency mode - skip non-critical checks'
-                required: false
-                default: false
-                type: boolean
+    # workflow_dispatch:
+    #     inputs:
+    #         run_full_security_scan:
+    #             description: 'Run full security scan (slower)'
+    #             required: false
+    #             default: false
+    #             type: boolean
+    #         skip_ui_tests:
+    #             description: 'Skip UI tests for faster execution'
+    #             required: false
+    #             default: false
+    #             type: boolean
+    #         emergency_mode:
+    #             description: 'Emergency mode - skip non-critical checks'
+    #             required: false
+    #             default: false
+    #             type: boolean
 
 permissions:
     contents: read
