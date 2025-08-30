@@ -626,7 +626,7 @@ Output structured analysis with actionable insights.";
     {
         if (_enterpriseViewModel != null)
         {
-            _enterpriseViewModel.ExportForCpaAsync().ConfigureAwait(false);
+            _enterpriseViewModel.ExportForCpa();
         }
     }
 

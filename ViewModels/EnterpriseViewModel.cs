@@ -296,7 +296,7 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable
     /// <summary>
     /// Exports budget insights for CPA review
     /// </summary>
-    public async Task ExportForCpaAsync()
+    public void ExportForCpa()
     {
         try
         {
@@ -306,10 +306,10 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable
                          $"Recommendations:\n{string.Join("\n", BudgetInsights.Recommendations)}\n\n" +
                          $"Disclaimer: {BudgetInsights.Disclaimer}\n\n" +
                          $"This data has been logged for audit purposes.";
-            
+
             // Since this is WPF, use MessageBox
             MessageBox.Show(message, "CPA Export", MessageBoxButton.OK, MessageBoxImage.Information);
-            
+
             Log.Information("Budget insights exported for CPA review");
         }
         catch (Exception ex)

@@ -130,8 +130,12 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
-        // Skip in CI environments
-        if (Environment.GetEnvironmentVariable("CI") == "true") Assert.True(true, "Skipped in CI—headless hates UI.");
+        // Skip in CI environments - use comprehensive detection
+        if (IsCIEnvironment())
+        {
+            Assert.True(true, "Skipped in CI—headless environment detected. UI tests require desktop access.");
+            return;
+        }
 
         // Arrange & Act
 #pragma warning disable CA1416 // Validate platform compatibility
@@ -160,8 +164,12 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
-        // Skip in CI environments
-        if (Environment.GetEnvironmentVariable("CI") == "true") Assert.True(true, "Skipped in CI—headless hates UI.");
+        // Skip in CI environments - use comprehensive detection
+        if (IsCIEnvironment())
+        {
+            Assert.True(true, "Skipped in CI—headless environment detected. UI tests require desktop access.");
+            return;
+        }
 
         // Arrange & Act
         bool canCreateAutomation = false;
@@ -200,8 +208,12 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
-        // Skip in CI environments
-        if (Environment.GetEnvironmentVariable("CI") == "true") Assert.True(true, "Skipped in CI—headless hates UI.");
+        // Skip in CI environments - use comprehensive detection
+        if (IsCIEnvironment())
+        {
+            Assert.True(true, "Skipped in CI—headless environment detected. UI tests require desktop access.");
+            return;
+        }
 
         // Arrange
 #pragma warning disable CA1416 // Validate platform compatibility
@@ -230,8 +242,12 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
-        // Skip in CI environments where desktop access is not available
-        if (Environment.GetEnvironmentVariable("CI") == "true") Assert.True(true, "Skipped in CI—headless hates UI.");
+        // Skip in CI environments - use comprehensive detection
+        if (IsCIEnvironment())
+        {
+            Assert.True(true, "Skipped in CI—headless environment detected. UI tests require desktop access.");
+            return;
+        }
 
         // Arrange
 #pragma warning disable CA1416 // Validate platform compatibility
@@ -289,8 +305,12 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
-        // Skip in CI environments
-        if (Environment.GetEnvironmentVariable("CI") == "true") Assert.True(true, "Skipped in CI—headless hates UI.");
+        // Skip in CI environments - use comprehensive detection
+        if (IsCIEnvironment())
+        {
+            Assert.True(true, "Skipped in CI—headless environment detected. UI tests require desktop access.");
+            return;
+        }
 
         Application app = null;
 
@@ -360,8 +380,12 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
-        // Skip in CI environments
-        if (Environment.GetEnvironmentVariable("CI") == "true") Assert.True(true, "Skipped in CI—headless hates UI.");
+        // Skip in CI environments - use comprehensive detection
+        if (IsCIEnvironment())
+        {
+            Assert.True(true, "Skipped in CI—headless environment detected. UI tests require desktop access.");
+            return;
+        }
 
         Application app = null;
         UIA3Automation automation = null;
@@ -577,8 +601,12 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
-        // Skip in CI environments
-        if (Environment.GetEnvironmentVariable("CI") == "true") Assert.True(true, "Skipped in CI—headless hates UI.");
+        // Skip in CI environments - use comprehensive detection
+        if (IsCIEnvironment())
+        {
+            Assert.True(true, "Skipped in CI—headless environment detected. UI tests require desktop access.");
+            return;
+        }
 
         Application app = null;
         UIA3Automation automation = null;

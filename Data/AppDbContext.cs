@@ -55,6 +55,13 @@ public class AppDbContext : DbContext
     }
 
     /// <summary>
+    /// Parameterless constructor for testing purposes only
+    /// </summary>
+    protected AppDbContext()
+    {
+    }
+
+    /// <summary>
     /// Configures the model and relationships
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
