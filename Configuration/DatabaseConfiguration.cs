@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using System;
 using WileyWidget.Data;
 
 namespace WileyWidget.Configuration;
@@ -20,13 +21,17 @@ public static class DatabaseConfiguration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Register DbContext with SQLite
+        // Register DbContext with appropriate provider based on configuration
         services.AddDbContext<AppDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var databaseProvider = configuration["DatabaseProvider"] ?? 
+                                 configuration["Database:Provider"] ?? 
+                                 "SQLite";
             
-            // Log the connection string for debugging
+            // Log the connection string and provider for debugging
             Serilog.Log.Information("Database connection string: {ConnectionString}", connectionString);
+            Serilog.Log.Information("Database provider: {Provider}", databaseProvider);
 
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -35,11 +40,35 @@ public static class DatabaseConfiguration
                     "Please check your appsettings.json or user secrets.");
             }
 
-            options.UseSqlite(connectionString, sqliteOptions =>
+            // Configure the appropriate database provider
+            switch (databaseProvider.ToUpperInvariant())
             {
-                // Configure SQLite options
-                sqliteOptions.CommandTimeout(30);
-            });
+                case "SQLITE":
+                    options.UseSqlite(connectionString, sqliteOptions =>
+                    {
+                        // Configure SQLite options
+                        sqliteOptions.CommandTimeout(30);
+                    });
+                    break;
+                    
+                case "LOCALDB":
+                case "SQLSERVER":
+                    options.UseSqlServer(connectionString, sqlOptions =>
+                    {
+                        // Configure SQL Server options
+                        sqlOptions.CommandTimeout(30);
+                        sqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 3,
+                            maxRetryDelay: TimeSpan.FromSeconds(30),
+                            errorNumbersToAdd: null);
+                    });
+                    break;
+                    
+                default:
+                    throw new InvalidOperationException(
+                        $"Unsupported database provider: {databaseProvider}. " +
+                        "Supported providers: SQLite, LocalDB, SQLServer");
+            }
 
             // Configure logging and other options
             ConfigureDbContextOptions(options);
