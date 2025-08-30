@@ -76,6 +76,16 @@ public class Enterprise
     }
 
     /// <summary>
+    /// Calculated property: Monthly deficit (Expenses - Revenue)
+    /// Don't let deficits sneak up like unpaid trash bills.
+    /// </summary>
+    [NotMapped]
+    public decimal MonthlyDeficit
+    {
+        get { return MonthlyExpenses - MonthlyRevenue; }
+    }
+
+    /// <summary>
     /// Budget status indicator for visual display
     /// </summary>
     [NotMapped]
