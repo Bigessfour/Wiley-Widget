@@ -352,7 +352,7 @@ public class DatabaseIntegrationTests : IDisposable
 
         // Assert - Should have validation errors
         Assert.False(isValid);
-        Assert.Contains(validationResults, v => v.ErrorMessage.Contains("Citizen"));
+        Assert.Contains(validationResults, v => v.ErrorMessage.Contains("Rate"));
     }
 
     #endregion

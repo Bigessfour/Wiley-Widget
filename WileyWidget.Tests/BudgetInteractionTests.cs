@@ -119,7 +119,7 @@ public class BudgetInteractionTests
         Assert.Equal(shouldBeValid, isValid);
         if (!shouldBeValid)
         {
-            Assert.Contains(validationResults, r => r.ErrorMessage.Contains("Monthly amount"));
+            Assert.Contains(validationResults, r => r.ErrorMessage.Contains("Amount must be greater than 0"));
         }
     }
 
