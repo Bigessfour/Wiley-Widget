@@ -1,0 +1,794 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        targetNamespace="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+    <xs:element name="Window">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Window.Resources">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="BooleanToVisibilityConverter" />
+                            <xs:element name="BalanceToColorConverter" />
+                            <xs:element name="StatusToColorConverter" />
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="DockPanel">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="Ribbon">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="RibbonTab">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element
+                                                            name="RibbonBar"
+                                                            maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence minOccurs="0">
+                                                                <xs:element
+                                                                        name="RibbonButton"
+                                                                        minOccurs="0">
+                                                                    <xs:complexType>
+                                                                        <xs:attribute
+                                                                                name="Label"
+                                                                                use="required" />
+                                                                        <xs:attribute name="SizeForm" />
+                                                                        <xs:attribute name="Click" />
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element
+                                                                        name="StackPanel"
+                                                                        minOccurs="0">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element
+                                                                                    name="RibbonButton"
+                                                                                    maxOccurs="unbounded">
+                                                                                <xs:complexType>
+                                                                                    <xs:attribute
+                                                                                            name="Label"
+                                                                                            use="required" />
+                                                                                    <xs:attribute name="Click" />
+                                                                                    <xs:attribute name="ToolTip" />
+                                                                                    <xs:attribute name="Command" />
+                                                                                </xs:complexType>
+                                                                            </xs:element>
+                                                                        </xs:sequence>
+                                                                        <xs:attribute
+                                                                                name="Orientation"
+                                                                                use="required" />
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                            </xs:sequence>
+                                                            <xs:attribute
+                                                                    name="Header"
+                                                                    use="required" />
+                                                        </xs:complexType>
+                                                    </xs:element>
+                                                </xs:sequence>
+                                                <xs:attribute
+                                                        name="Caption"
+                                                        use="required" />
+                                            </xs:complexType>
+                                        </xs:element>
+                                    </xs:sequence>
+                                    <xs:attribute
+                                            name="DockPanel.Dock"
+                                            use="required" />
+                                </xs:complexType>
+                            </xs:element>
+                            <xs:element name="DockPanel">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="TabControl">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element
+                                                            name="TabItem"
+                                                            maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence minOccurs="0">
+                                                                <xs:element
+                                                                        name="SfDataGrid"
+                                                                        minOccurs="0">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="SfDataGrid.Columns">
+                                                                                <xs:complexType>
+                                                                                    <xs:sequence>
+                                                                                        <xs:element
+                                                                                                name="GridTextColumn"
+                                                                                                maxOccurs="unbounded">
+                                                                                            <xs:complexType>
+                                                                                                <xs:attribute
+                                                                                                        name="HeaderText"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="MappingName"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Width"
+                                                                                                        type="xs:integer" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                        <xs:element name="GridNumericColumn">
+                                                                                            <xs:complexType>
+                                                                                                <xs:attribute
+                                                                                                        name="HeaderText"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="MappingName"
+                                                                                                        use="required" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                    </xs:sequence>
+                                                                                </xs:complexType>
+                                                                            </xs:element>
+                                                                        </xs:sequence>
+                                                                        <xs:attribute
+                                                                                name="ItemsSource"
+                                                                                use="required" />
+                                                                        <xs:attribute
+                                                                                name="SelectedItem"
+                                                                                use="required" />
+                                                                        <xs:attribute
+                                                                                name="AutoGenerateColumns"
+                                                                                use="required" />
+                                                                        <xs:attribute
+                                                                                name="AllowSorting"
+                                                                                use="required" />
+                                                                        <xs:attribute
+                                                                                name="AllowFiltering"
+                                                                                use="required" />
+                                                                        <xs:attribute
+                                                                                name="AllowResizingColumns"
+                                                                                use="required" />
+                                                                        <xs:attribute
+                                                                                name="GridLinesVisibility"
+                                                                                use="required" />
+                                                                        <xs:attribute
+                                                                                name="RowHeight"
+                                                                                type="xs:integer"
+                                                                                use="required" />
+                                                                        <xs:attribute
+                                                                                name="AlternationCount"
+                                                                                type="xs:integer"
+                                                                                use="required" />
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element
+                                                                        name="DockPanel"
+                                                                        minOccurs="0">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="StackPanel">
+                                                                                <xs:complexType>
+                                                                                    <xs:sequence>
+                                                                                        <xs:element
+                                                                                                name="Button"
+                                                                                                maxOccurs="unbounded">
+                                                                                            <xs:complexType>
+                                                                                                <xs:attribute
+                                                                                                        name="Content"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Command"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Margin"
+                                                                                                        use="required"
+                                                                                                        fixed="0,0,6,0" />
+                                                                                                <xs:attribute name="Background" />
+                                                                                                <xs:attribute name="Foreground" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                        <xs:element
+                                                                                                name="TextBlock"
+                                                                                                minOccurs="0">
+                                                                                            <xs:complexType>
+                                                                                                <xs:attribute
+                                                                                                        name="Text"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Foreground"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Visibility"
+                                                                                                        use="required" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                    </xs:sequence>
+                                                                                    <xs:attribute
+                                                                                            name="Orientation"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="DockPanel.Dock"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="Margin"
+                                                                                            type="xs:integer"
+                                                                                            use="required" />
+                                                                                </xs:complexType>
+                                                                            </xs:element>
+                                                                            <xs:element
+                                                                                    name="SfDataGrid"
+                                                                                    minOccurs="0">
+                                                                                <xs:complexType>
+                                                                                    <xs:sequence>
+                                                                                        <xs:element name="SfDataGrid.Columns">
+                                                                                            <xs:complexType>
+                                                                                                <xs:sequence>
+                                                                                                    <xs:element
+                                                                                                            name="GridTextColumn"
+                                                                                                            maxOccurs="unbounded">
+                                                                                                        <xs:complexType>
+                                                                                                            <xs:attribute
+                                                                                                                    name="HeaderText"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="MappingName"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="Width"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                        </xs:complexType>
+                                                                                                    </xs:element>
+                                                                                                    <xs:element
+                                                                                                            name="GridNumericColumn"
+                                                                                                            maxOccurs="unbounded">
+                                                                                                        <xs:complexType>
+                                                                                                            <xs:attribute
+                                                                                                                    name="HeaderText"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="MappingName"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="Width"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                        </xs:complexType>
+                                                                                                    </xs:element>
+                                                                                                </xs:sequence>
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                    </xs:sequence>
+                                                                                    <xs:attribute
+                                                                                            name="ItemsSource"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="SelectedItem"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="AutoGenerateColumns"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="AllowSorting"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="AllowFiltering"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="AllowResizingColumns"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="GridLinesVisibility"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="RowHeight"
+                                                                                            type="xs:integer"
+                                                                                            use="required" />
+                                                                                    <xs:attribute
+                                                                                            name="AlternationCount"
+                                                                                            type="xs:integer"
+                                                                                            use="required" />
+                                                                                </xs:complexType>
+                                                                            </xs:element>
+                                                                            <xs:element
+                                                                                    name="TabControl"
+                                                                                    minOccurs="0">
+                                                                                <xs:complexType>
+                                                                                    <xs:sequence>
+                                                                                        <xs:element
+                                                                                                name="TabItem"
+                                                                                                maxOccurs="unbounded">
+                                                                                            <xs:complexType>
+                                                                                                <xs:sequence>
+                                                                                                    <xs:element name="SfDataGrid">
+                                                                                                        <xs:complexType>
+                                                                                                            <xs:attribute
+                                                                                                                    name="ItemsSource"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="AutoGenerateColumns"
+                                                                                                                    use="required" />
+                                                                                                        </xs:complexType>
+                                                                                                    </xs:element>
+                                                                                                </xs:sequence>
+                                                                                                <xs:attribute
+                                                                                                        name="Header"
+                                                                                                        use="required" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                    </xs:sequence>
+                                                                                </xs:complexType>
+                                                                            </xs:element>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element
+                                                                        name="ScrollViewer"
+                                                                        minOccurs="0">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="StackPanel">
+                                                                                <xs:complexType>
+                                                                                    <xs:sequence>
+                                                                                        <xs:element
+                                                                                                name="TextBlock"
+                                                                                                maxOccurs="unbounded">
+                                                                                            <xs:complexType>
+                                                                                                <xs:attribute
+                                                                                                        name="Text"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="FontSize"
+                                                                                                        type="xs:integer" />
+                                                                                                <xs:attribute name="FontWeight" />
+                                                                                                <xs:attribute name="Margin" />
+                                                                                                <xs:attribute
+                                                                                                        name="HorizontalAlignment"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute name="FontStyle" />
+                                                                                                <xs:attribute name="Foreground" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                        <xs:element name="UniformGrid">
+                                                                                            <xs:complexType>
+                                                                                                <xs:sequence>
+                                                                                                    <xs:element
+                                                                                                            name="Border"
+                                                                                                            maxOccurs="unbounded">
+                                                                                                        <xs:complexType>
+                                                                                                            <xs:sequence>
+                                                                                                                <xs:element name="StackPanel">
+                                                                                                                    <xs:complexType>
+                                                                                                                        <xs:sequence>
+                                                                                                                            <xs:element
+                                                                                                                                    name="TextBlock"
+                                                                                                                                    maxOccurs="unbounded">
+                                                                                                                                <xs:complexType>
+                                                                                                                                    <xs:attribute
+                                                                                                                                            name="Text"
+                                                                                                                                            use="required" />
+                                                                                                                                    <xs:attribute
+                                                                                                                                            name="FontSize"
+                                                                                                                                            type="xs:integer"
+                                                                                                                                            use="required" />
+                                                                                                                                    <xs:attribute
+                                                                                                                                            name="FontWeight"
+                                                                                                                                            use="required" />
+                                                                                                                                    <xs:attribute name="Foreground" />
+                                                                                                                                </xs:complexType>
+                                                                                                                            </xs:element>
+                                                                                                                        </xs:sequence>
+                                                                                                                    </xs:complexType>
+                                                                                                                </xs:element>
+                                                                                                            </xs:sequence>
+                                                                                                            <xs:attribute
+                                                                                                                    name="Background"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="BorderBrush"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="BorderThickness"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="CornerRadius"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="Margin"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="Padding"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                        </xs:complexType>
+                                                                                                    </xs:element>
+                                                                                                </xs:sequence>
+                                                                                                <xs:attribute
+                                                                                                        name="Columns"
+                                                                                                        type="xs:integer"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Rows"
+                                                                                                        type="xs:integer"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Margin"
+                                                                                                        use="required" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                        <xs:element name="Border">
+                                                                                            <xs:complexType>
+                                                                                                <xs:sequence>
+                                                                                                    <xs:element name="StackPanel">
+                                                                                                        <xs:complexType>
+                                                                                                            <xs:sequence>
+                                                                                                                <xs:element
+                                                                                                                        name="TextBlock"
+                                                                                                                        maxOccurs="unbounded">
+                                                                                                                    <xs:complexType>
+                                                                                                                        <xs:attribute
+                                                                                                                                name="Text"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute
+                                                                                                                                name="FontSize"
+                                                                                                                                type="xs:integer"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute
+                                                                                                                                name="HorizontalAlignment"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute name="FontWeight" />
+                                                                                                                        <xs:attribute name="Margin" />
+                                                                                                                        <xs:attribute name="TextWrapping" />
+                                                                                                                    </xs:complexType>
+                                                                                                                </xs:element>
+                                                                                                            </xs:sequence>
+                                                                                                            <xs:attribute
+                                                                                                                    name="HorizontalAlignment"
+                                                                                                                    use="required" />
+                                                                                                        </xs:complexType>
+                                                                                                    </xs:element>
+                                                                                                </xs:sequence>
+                                                                                                <xs:attribute
+                                                                                                        name="Background"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="BorderBrush"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="BorderThickness"
+                                                                                                        type="xs:integer"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="CornerRadius"
+                                                                                                        type="xs:integer"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Margin"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Padding"
+                                                                                                        type="xs:integer"
+                                                                                                        use="required" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                        <xs:element
+                                                                                                name="GroupBox"
+                                                                                                maxOccurs="unbounded">
+                                                                                            <xs:complexType>
+                                                                                                <xs:sequence minOccurs="0">
+                                                                                                    <xs:element
+                                                                                                            name="SfChart"
+                                                                                                            minOccurs="0">
+                                                                                                        <xs:complexType>
+                                                                                                            <xs:sequence>
+                                                                                                                <xs:element name="SfChart.PrimaryAxis">
+                                                                                                                    <xs:complexType>
+                                                                                                                        <xs:sequence>
+                                                                                                                            <xs:element name="CategoryAxis" />
+                                                                                                                        </xs:sequence>
+                                                                                                                    </xs:complexType>
+                                                                                                                </xs:element>
+                                                                                                                <xs:element name="SfChart.SecondaryAxis">
+                                                                                                                    <xs:complexType>
+                                                                                                                        <xs:sequence>
+                                                                                                                            <xs:element name="NumericalAxis">
+                                                                                                                                <xs:complexType>
+                                                                                                                                    <xs:attribute
+                                                                                                                                            name="LabelFormat"
+                                                                                                                                            use="required" />
+                                                                                                                                </xs:complexType>
+                                                                                                                            </xs:element>
+                                                                                                                        </xs:sequence>
+                                                                                                                    </xs:complexType>
+                                                                                                                </xs:element>
+                                                                                                                <xs:element
+                                                                                                                        name="ColumnSeries"
+                                                                                                                        maxOccurs="unbounded">
+                                                                                                                    <xs:complexType>
+                                                                                                                        <xs:attribute
+                                                                                                                                name="ItemsSource"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute
+                                                                                                                                name="XBindingPath"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute
+                                                                                                                                name="YBindingPath"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute
+                                                                                                                                name="Label"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute
+                                                                                                                                name="Interior"
+                                                                                                                                use="required" />
+                                                                                                                    </xs:complexType>
+                                                                                                                </xs:element>
+                                                                                                            </xs:sequence>
+                                                                                                            <xs:attribute
+                                                                                                                    name="Height"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="Margin"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                        </xs:complexType>
+                                                                                                    </xs:element>
+                                                                                                    <xs:element
+                                                                                                            name="DataGrid"
+                                                                                                            minOccurs="0">
+                                                                                                        <xs:complexType>
+                                                                                                            <xs:sequence>
+                                                                                                                <xs:element name="DataGrid.Columns">
+                                                                                                                    <xs:complexType>
+                                                                                                                        <xs:sequence>
+                                                                                                                            <xs:element
+                                                                                                                                    name="DataGridTextColumn"
+                                                                                                                                    maxOccurs="unbounded">
+                                                                                                                                <xs:complexType>
+                                                                                                                                    <xs:sequence minOccurs="0">
+                                                                                                                                        <xs:element
+                                                                                                                                                name="DataGridTextColumn.ElementStyle"
+                                                                                                                                                minOccurs="0">
+                                                                                                                                            <xs:complexType>
+                                                                                                                                                <xs:sequence>
+                                                                                                                                                    <xs:element name="Style">
+                                                                                                                                                        <xs:complexType>
+                                                                                                                                                            <xs:sequence>
+                                                                                                                                                                <xs:element
+                                                                                                                                                                        name="Setter"
+                                                                                                                                                                        maxOccurs="unbounded">
+                                                                                                                                                                    <xs:complexType>
+                                                                                                                                                                        <xs:attribute
+                                                                                                                                                                                name="Property"
+                                                                                                                                                                                use="required" />
+                                                                                                                                                                        <xs:attribute
+                                                                                                                                                                                name="Value"
+                                                                                                                                                                                use="required" />
+                                                                                                                                                                    </xs:complexType>
+                                                                                                                                                                </xs:element>
+                                                                                                                                                            </xs:sequence>
+                                                                                                                                                            <xs:attribute
+                                                                                                                                                                    name="TargetType"
+                                                                                                                                                                    use="required" />
+                                                                                                                                                        </xs:complexType>
+                                                                                                                                                    </xs:element>
+                                                                                                                                                </xs:sequence>
+                                                                                                                                            </xs:complexType>
+                                                                                                                                        </xs:element>
+                                                                                                                                    </xs:sequence>
+                                                                                                                                    <xs:attribute
+                                                                                                                                            name="Header"
+                                                                                                                                            use="required" />
+                                                                                                                                    <xs:attribute
+                                                                                                                                            name="Binding"
+                                                                                                                                            use="required" />
+                                                                                                                                    <xs:attribute
+                                                                                                                                            name="Width"
+                                                                                                                                            type="xs:integer"
+                                                                                                                                            use="required" />
+                                                                                                                                </xs:complexType>
+                                                                                                                            </xs:element>
+                                                                                                                        </xs:sequence>
+                                                                                                                    </xs:complexType>
+                                                                                                                </xs:element>
+                                                                                                            </xs:sequence>
+                                                                                                            <xs:attribute
+                                                                                                                    name="ItemsSource"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="AutoGenerateColumns"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="IsReadOnly"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="Margin"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                            <xs:attribute
+                                                                                                                    name="AlternatingRowBackground"
+                                                                                                                    use="required" />
+                                                                                                        </xs:complexType>
+                                                                                                    </xs:element>
+                                                                                                    <xs:element
+                                                                                                            name="StackPanel"
+                                                                                                            minOccurs="0">
+                                                                                                        <xs:complexType>
+                                                                                                            <xs:sequence>
+                                                                                                                <xs:element
+                                                                                                                        name="TextBlock"
+                                                                                                                        maxOccurs="unbounded">
+                                                                                                                    <xs:complexType>
+                                                                                                                        <xs:attribute
+                                                                                                                                name="Text"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute
+                                                                                                                                name="FontSize"
+                                                                                                                                type="xs:integer" />
+                                                                                                                        <xs:attribute name="TextWrapping" />
+                                                                                                                        <xs:attribute
+                                                                                                                                name="Margin"
+                                                                                                                                use="required" />
+                                                                                                                        <xs:attribute name="FontWeight" />
+                                                                                                                    </xs:complexType>
+                                                                                                                </xs:element>
+                                                                                                                <xs:element name="ItemsControl">
+                                                                                                                    <xs:complexType>
+                                                                                                                        <xs:sequence>
+                                                                                                                            <xs:element name="ItemsControl.ItemTemplate">
+                                                                                                                                <xs:complexType>
+                                                                                                                                    <xs:sequence>
+                                                                                                                                        <xs:element name="DataTemplate">
+                                                                                                                                            <xs:complexType>
+                                                                                                                                                <xs:sequence>
+                                                                                                                                                    <xs:element name="Border">
+                                                                                                                                                        <xs:complexType>
+                                                                                                                                                            <xs:sequence>
+                                                                                                                                                                <xs:element name="TextBlock">
+                                                                                                                                                                    <xs:complexType>
+                                                                                                                                                                        <xs:attribute
+                                                                                                                                                                                name="Text"
+                                                                                                                                                                                use="required" />
+                                                                                                                                                                        <xs:attribute
+                                                                                                                                                                                name="TextWrapping"
+                                                                                                                                                                                use="required" />
+                                                                                                                                                                        <xs:attribute
+                                                                                                                                                                                name="FontSize"
+                                                                                                                                                                                type="xs:integer"
+                                                                                                                                                                                use="required" />
+                                                                                                                                                                    </xs:complexType>
+                                                                                                                                                                </xs:element>
+                                                                                                                                                            </xs:sequence>
+                                                                                                                                                            <xs:attribute
+                                                                                                                                                                    name="Background"
+                                                                                                                                                                    use="required" />
+                                                                                                                                                            <xs:attribute
+                                                                                                                                                                    name="BorderBrush"
+                                                                                                                                                                    use="required" />
+                                                                                                                                                            <xs:attribute
+                                                                                                                                                                    name="BorderThickness"
+                                                                                                                                                                    type="xs:integer"
+                                                                                                                                                                    use="required" />
+                                                                                                                                                            <xs:attribute
+                                                                                                                                                                    name="CornerRadius"
+                                                                                                                                                                    type="xs:integer"
+                                                                                                                                                                    use="required" />
+                                                                                                                                                            <xs:attribute
+                                                                                                                                                                    name="Margin"
+                                                                                                                                                                    use="required" />
+                                                                                                                                                            <xs:attribute
+                                                                                                                                                                    name="Padding"
+                                                                                                                                                                    type="xs:integer"
+                                                                                                                                                                    use="required" />
+                                                                                                                                                        </xs:complexType>
+                                                                                                                                                    </xs:element>
+                                                                                                                                                </xs:sequence>
+                                                                                                                                            </xs:complexType>
+                                                                                                                                        </xs:element>
+                                                                                                                                    </xs:sequence>
+                                                                                                                                </xs:complexType>
+                                                                                                                            </xs:element>
+                                                                                                                        </xs:sequence>
+                                                                                                                        <xs:attribute
+                                                                                                                                name="ItemsSource"
+                                                                                                                                use="required" />
+                                                                                                                    </xs:complexType>
+                                                                                                                </xs:element>
+                                                                                                            </xs:sequence>
+                                                                                                            <xs:attribute
+                                                                                                                    name="Margin"
+                                                                                                                    type="xs:integer"
+                                                                                                                    use="required" />
+                                                                                                        </xs:complexType>
+                                                                                                    </xs:element>
+                                                                                                </xs:sequence>
+                                                                                                <xs:attribute
+                                                                                                        name="Header"
+                                                                                                        use="required" />
+                                                                                                <xs:attribute
+                                                                                                        name="Margin"
+                                                                                                        use="required" />
+                                                                                            </xs:complexType>
+                                                                                        </xs:element>
+                                                                                    </xs:sequence>
+                                                                                    <xs:attribute
+                                                                                            name="Margin"
+                                                                                            type="xs:integer"
+                                                                                            use="required" />
+                                                                                </xs:complexType>
+                                                                            </xs:element>
+                                                                        </xs:sequence>
+                                                                        <xs:attribute
+                                                                                name="VerticalScrollBarVisibility"
+                                                                                use="required" />
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                            </xs:sequence>
+                                                            <xs:attribute
+                                                                    name="Header"
+                                                                    use="required" />
+                                                        </xs:complexType>
+                                                    </xs:element>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+                                        <xs:element name="StatusBar">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element
+                                                            name="StatusBarItem"
+                                                            maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="TextBlock">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element
+                                                                                    name="Run"
+                                                                                    maxOccurs="unbounded">
+                                                                                <xs:complexType>
+                                                                                    <xs:attribute
+                                                                                            name="Text"
+                                                                                            use="required" />
+                                                                                </xs:complexType>
+                                                                            </xs:element>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+                                                </xs:sequence>
+                                                <xs:attribute
+                                                        name="DockPanel.Dock"
+                                                        use="required" />
+                                                <xs:attribute
+                                                        name="Background"
+                                                        use="required" />
+                                            </xs:complexType>
+                                        </xs:element>
+                                    </xs:sequence>
+                                    <xs:attribute
+                                            name="LastChildFill"
+                                            use="required" />
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+            <xs:attribute
+                    name="Title"
+                    use="required" />
+            <xs:attribute
+                    name="Height"
+                    type="xs:integer"
+                    use="required" />
+            <xs:attribute
+                    name="Width"
+                    type="xs:integer"
+                    use="required" />
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

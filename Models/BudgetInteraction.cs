@@ -1,3 +1,6 @@
+#nullable enable
+
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -8,6 +11,8 @@ namespace WileyWidget.Models;
 /// </summary>
 public class BudgetInteraction
 {
+    #region Properties
+
     /// <summary>
     /// Unique identifier for the budget interaction
     /// </summary>
@@ -43,6 +48,7 @@ public class BudgetInteraction
     /// Monthly cost/value of this interaction
     /// </summary>
     [Required(ErrorMessage = "Monthly amount is required")]
+    [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
     [Column(TypeName = "decimal(18,2)")]
     public decimal MonthlyAmount { get; set; }
 
@@ -68,5 +74,56 @@ public class BudgetInteraction
     /// Navigation property to secondary enterprise (optional)
     /// </summary>
     [ForeignKey("SecondaryEnterpriseId")]
-    public virtual Enterprise SecondaryEnterprise { get; set; }
+    public virtual Enterprise? SecondaryEnterprise { get; set; }
+
+    /// <summary>
+    /// QuickBooks Online Account ID for this interaction
+    /// </summary>
+    [StringLength(50)]
+    public string? QboAccountId { get; set; }
+
+    /// <summary>
+    /// QuickBooks Online Account Reference for shared costs
+    /// </summary>
+    [StringLength(100)]
+    public string? QboAccountRef { get; set; }
+
+    /// <summary>
+    /// Sync status with QuickBooks Online
+    /// </summary>
+    public QboSyncStatus QboSyncStatus { get; set; } = QboSyncStatus.Pending;
+
+    /// <summary>
+    /// Last sync timestamp with QuickBooks Online
+    /// </summary>
+    public DateTime? QboLastSync { get; set; }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>
+    /// Calculates the shared cost impact prorated across linked enterprises
+    /// Returns the portion of MonthlyAmount allocated to each enterprise
+    /// </summary>
+    public decimal SharedCostImpact()
+    {
+        try
+        {
+            if (!IsCost)
+                return 0; // Only costs are shared, revenues are direct
+
+            int linkedCount = SecondaryEnterpriseId.HasValue ? 2 : 1;
+            
+            return MonthlyAmount / linkedCount;
+        }
+        catch (Exception ex)
+        {
+            // Hobby-proof: Return 0 on any calculation error
+            Console.WriteLine($"Error calculating shared cost impact: {ex.Message}");
+            return 0;
+        }
+    }
+
+    #endregion
 }

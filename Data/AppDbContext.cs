@@ -63,9 +63,6 @@ public class AppDbContext : DbContext
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
 
-            entity.Property(e => e.MonthlyRevenue)
-                .HasColumnType("decimal(18,2)");
-
             entity.Property(e => e.CitizenCount)
                 .IsRequired();
 

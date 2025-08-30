@@ -29,7 +29,7 @@ if ($Clean) {
 # Build main project
 if (!$TestOnly) {
     Write-Host "🔨 Building main project..." -ForegroundColor Yellow
-    $buildResult = dotnet build "$projectDir\WileyWidget.csproj" --verbosity quiet
+    dotnet build "$projectDir\WileyWidget.csproj" --verbosity quiet | Out-Null
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ Main project build failed!" -ForegroundColor Red
@@ -43,7 +43,7 @@ if (!$SkipTests) {
     Write-Host "🧪 Building Phase 1 test project..." -ForegroundColor Yellow
 
     # Build test project
-    $testBuildResult = dotnet build "$phase1TestDir\WileyWidget.TestModels.csproj" --verbosity quiet
+    dotnet build "$phase1TestDir\WileyWidget.TestModels.csproj" --verbosity quiet | Out-Null
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ Phase 1 test build failed!" -ForegroundColor Red

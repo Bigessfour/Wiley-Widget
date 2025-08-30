@@ -2,7 +2,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WileyWidget.Data;
 
@@ -16,74 +15,174 @@ namespace WileyWidget.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.8")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("WileyWidget.Models.Widget", b =>
+            modelBuilder.Entity("WileyWidget.Models.BudgetInteraction", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Category")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsActive")
+                    b.Property<string>("InteractionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCost")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
-                    b.Property<DateTime?>("ModifiedDate")
-                        .ValueGeneratedOnUpdate()
-                        .HasColumnType("datetime2");
+                    b.Property<decimal>("MonthlyAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PrimaryEnterpriseId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("QboAccountId")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("QboLastSync")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("QboSyncStatus")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SecondaryEnterpriseId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InteractionType");
+
+                    b.HasIndex("PrimaryEnterpriseId");
+
+                    b.HasIndex("SecondaryEnterpriseId");
+
+                    b.ToTable("BudgetInteractions", (string)null);
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.Enterprise", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CitizenCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("CurrentRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MonthlyExpenses")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("TEXT");
 
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
 
-                    b.Property<int>("Quantity")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                    b.Property<string>("QboClassId")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
 
-                    b.Property<string>("SKU")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<DateTime?>("QboLastSync")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("QboSyncStatus")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Category");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
-                    b.HasIndex("CreatedDate");
+                    b.ToTable("Enterprises", (string)null);
+                });
 
-                    b.HasIndex("IsActive");
+            modelBuilder.Entity("WileyWidget.Models.OverallBudget", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
-                    b.HasIndex("Name");
+                    b.Property<decimal>("AverageRatePerCitizen")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.HasIndex("SKU")
+                    b.Property<bool>("IsCurrent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SnapshotDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("TotalCitizensServed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("TotalMonthlyBalance")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TotalMonthlyExpenses")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TotalMonthlyRevenue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsCurrent")
                         .IsUnique()
-                        .HasFilter("[SKU] IS NOT NULL");
+                        .HasFilter("IsCurrent = 1");
 
-                    b.ToTable("Widgets", (string)null);
+                    b.HasIndex("SnapshotDate");
+
+                    b.ToTable("OverallBudgets", (string)null);
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.BudgetInteraction", b =>
+                {
+                    b.HasOne("WileyWidget.Models.Enterprise", "PrimaryEnterprise")
+                        .WithMany("BudgetInteractions")
+                        .HasForeignKey("PrimaryEnterpriseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WileyWidget.Models.Enterprise", "SecondaryEnterprise")
+                        .WithMany()
+                        .HasForeignKey("SecondaryEnterpriseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("PrimaryEnterprise");
+
+                    b.Navigation("SecondaryEnterprise");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.Enterprise", b =>
+                {
+                    b.Navigation("BudgetInteractions");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,21 +1,9 @@
-# .NET / WPF standard ignores
+# Build artifacts and logs
+build/
 bin/
 obj/
-*.user
-*.suo
-*.userprefs
-*.ide
-.vs/
-TestResults/
-*.cache
 *.log
-*.nupkg
-*.snupkg
-packages/
-
-# Logs / diagnostics
-logs/
-*.log
+msbuild.binlog
 
 # Publish artifacts
 publish/

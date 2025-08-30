@@ -38,11 +38,11 @@ function Invoke-CopilotAzureHelp {
         [bool]$SafeMode = $true
     )
 
-    Write-Host "🤖 GitHub Copilot Azure Assistant" -ForegroundColor Cyan
-    Write-Host "=================================" -ForegroundColor Cyan
+    Write-Information "🤖 GitHub Copilot Azure Assistant" -InformationAction Continue
+    Write-Information "=================================" -InformationAction Continue
 
     if ($SafeMode) {
-        Write-Host "🛡️  SAFE MODE ENABLED - Prioritizing safety and education" -ForegroundColor Green
+        Write-Information "🛡️  SAFE MODE ENABLED - Prioritizing safety and education" -InformationAction Continue
     }
 
     # Generate safe Copilot prompts
@@ -84,54 +84,54 @@ function Invoke-CopilotAzureHelp {
     }
 
     # Display suggested prompts
-    Write-Host "`n💬 Suggested questions to ask GitHub Copilot Chat:" -ForegroundColor Yellow
-    Write-Host "================================================" -ForegroundColor Yellow
+    Write-Information "`n💬 Suggested questions to ask GitHub Copilot Chat:" -InformationAction Continue
+    Write-Information "================================================" -InformationAction Continue
 
     for ($i = 0; $i -lt $prompts.Count; $i++) {
-        Write-Host "$($i + 1). $($prompts[$i])" -ForegroundColor White
+        Write-Information "$($i + 1). $($prompts[$i])" -InformationAction Continue
     }
 
     # Show safe commands
-    Write-Host "`n🔧 Safe Azure Commands:" -ForegroundColor Green
-    Write-Host "=======================" -ForegroundColor Green
+    Write-Information "`n🔧 Safe Azure Commands:" -InformationAction Continue
+    Write-Information "=======================" -InformationAction Continue
 
-    Write-Host "# Check Azure status (safe, read-only)" -ForegroundColor Gray
-    Write-Host ".\scripts\azure-safe-operations.ps1 -Operation status`n" -ForegroundColor White
+    Write-Information "# Check Azure status (safe, read-only)" -InformationAction Continue
+    Write-Information ".\scripts\azure-safe-operations.ps1 -Operation status`n" -InformationAction Continue
 
-    Write-Host "# Test database connection (safe, read-only)" -ForegroundColor Gray
-    Write-Host ".\scripts\azure-safe-operations.ps1 -Operation connect`n" -ForegroundColor White
+    Write-Information "# Test database connection (safe, read-only)" -InformationAction Continue
+    Write-Information ".\scripts\azure-safe-operations.ps1 -Operation connect`n" -InformationAction Continue
 
-    Write-Host "# Create database backup (safe, creates copy)" -ForegroundColor Gray
-    Write-Host ".\scripts\azure-safe-operations.ps1 -Operation backup`n" -ForegroundColor White
+    Write-Information "# Create database backup (safe, creates copy)" -InformationAction Continue
+    Write-Information ".\scripts\azure-safe-operations.ps1 -Operation backup`n" -InformationAction Continue
 
-    Write-Host "# List all resources (safe, read-only)" -ForegroundColor Gray
-    Write-Host ".\scripts\azure-safe-operations.ps1 -Operation list`n" -ForegroundColor White
+    Write-Information "# List all resources (safe, read-only)" -InformationAction Continue
+    Write-Information ".\scripts\azure-safe-operations.ps1 -Operation list`n" -InformationAction Continue
 
     # Show dry run examples
-    Write-Host "🧪 Test ANY operation safely with -DryRun:" -ForegroundColor Cyan
-    Write-Host "==========================================" -ForegroundColor Cyan
-    Write-Host "# See what would happen (recommended for beginners)" -ForegroundColor Gray
-    Write-Host ".\scripts\azure-safe-operations.ps1 -Operation status -DryRun`n" -ForegroundColor White
+    Write-Information "🧪 Test ANY operation safely with -DryRun:" -InformationAction Continue
+    Write-Information "==========================================" -InformationAction Continue
+    Write-Information "# See what would happen (recommended for beginners)" -InformationAction Continue
+    Write-Information ".\scripts\azure-safe-operations.ps1 -Operation status -DryRun`n" -InformationAction Continue
 
     # Emergency help
-    Write-Host "🚨 If something goes wrong:" -ForegroundColor Red
-    Write-Host "===========================" -ForegroundColor Red
-    Write-Host "# Check what you have" -ForegroundColor Gray
-    Write-Host ".\scripts\azure-safe-operations.ps1 -Operation status`n" -ForegroundColor White
+    Write-Information "🚨 If something goes wrong:" -InformationAction Continue
+    Write-Information "===========================" -InformationAction Continue
+    Write-Information "# Check what you have" -InformationAction Continue
+    Write-Information ".\scripts\azure-safe-operations.ps1 -Operation status`n" -InformationAction Continue
 
-    Write-Host "# Ask Copilot for help" -ForegroundColor Gray
-    Write-Host "'Help! I think I broke something with Azure'`n" -ForegroundColor White
+    Write-Information "# Ask Copilot for help" -InformationAction Continue
+    Write-Information "'Help! I think I broke something with Azure'`n" -InformationAction Continue
 
     # Learning resources
-    Write-Host "📚 Learning Resources:" -ForegroundColor Magenta
-    Write-Host "=====================" -ForegroundColor Magenta
-    Write-Host "• Microsoft Learn: Azure Fundamentals" -ForegroundColor White
-    Write-Host "• Azure Documentation (filter for 'beginner')" -ForegroundColor White
-    Write-Host "• docs/azure-novice-guide.md (in your project)" -ForegroundColor White
-    Write-Host "• docs/copilot-azure-examples.md (examples)" -ForegroundColor White
+    Write-Information "📚 Learning Resources:" -InformationAction Continue
+    Write-Information "=====================" -InformationAction Continue
+    Write-Information "• Microsoft Learn: Azure Fundamentals" -InformationAction Continue
+    Write-Information "• Azure Documentation (filter for 'beginner')" -InformationAction Continue
+    Write-Information "• docs/azure-novice-guide.md (in your project)" -InformationAction Continue
+    Write-Information "• docs/copilot-azure-examples.md (examples)" -InformationAction Continue
 
-    Write-Host "`n💡 Pro Tip: Always ask Copilot to explain Azure concepts in simple terms!" -ForegroundColor Cyan
-    Write-Host "💡 Pro Tip: Use -DryRun for any operation you're unsure about!" -ForegroundColor Cyan
+    Write-Information "`n💡 Pro Tip: Always ask Copilot to explain Azure concepts in simple terms!" -InformationAction Continue
+    Write-Information "💡 Pro Tip: Use -DryRun for any operation you're unsure about!" -InformationAction Continue
 }
 
 function Get-AzureLearningPath {
@@ -143,8 +143,8 @@ function Get-AzureLearningPath {
         Displays a structured learning path for novice Azure developers
     #>
 
-    Write-Host "🚀 Azure Learning Path for Beginners" -ForegroundColor Cyan
-    Write-Host "===================================" -ForegroundColor Cyan
+    Write-Information "🚀 Azure Learning Path for Beginners" -InformationAction Continue
+    Write-Information "===================================" -InformationAction Continue
 
     $weeks = @(
         @{
@@ -206,32 +206,32 @@ function Get-AzureLearningPath {
     )
 
     foreach ($week in $weeks) {
-        Write-Host "`n📅 Week $($week.Week): $($week.Topic)" -ForegroundColor Yellow
-        Write-Host "Goals:" -ForegroundColor Green
+        Write-Information "`n📅 Week $($week.Week): $($week.Topic)" -InformationAction Continue
+        Write-Information "Goals:" -InformationAction Continue
         foreach ($goal in $week.Goals) {
-            Write-Host "  • $goal" -ForegroundColor White
+            Write-Information "  • $goal" -InformationAction Continue
         }
-        Write-Host "Practice Commands:" -ForegroundColor Cyan
+        Write-Information "Practice Commands:" -InformationAction Continue
         foreach ($command in $week.Commands) {
-            Write-Host "  • $command" -ForegroundColor Gray
+            Write-Information "  • $command" -InformationAction Continue
         }
     }
 
-    Write-Host "`n🎯 Remember:" -ForegroundColor Magenta
-    Write-Host "• Take your time - Azure isn't a race" -ForegroundColor White
-    Write-Host "• Always use safe scripts for important operations" -ForegroundColor White
-    Write-Host "• Ask Copilot to explain anything you don't understand" -ForegroundColor White
-    Write-Host "• Celebrate small victories!" -ForegroundColor White
+    Write-Information "`n🎯 Remember:" -InformationAction Continue
+    Write-Information "• Take your time - Azure isn't a race" -InformationAction Continue
+    Write-Information "• Always use safe scripts for important operations" -InformationAction Continue
+    Write-Information "• Ask Copilot to explain anything you don't understand" -InformationAction Continue
+    Write-Information "• Celebrate small victories!" -InformationAction Continue
 }
 
 # Export functions for use (commented out since this isn't a module)
 # Export-ModuleMember -Function Invoke-CopilotAzureHelp, Get-AzureLearningPath
 
-Write-Host "`n🤖 Copilot Azure Integration Loaded!" -ForegroundColor Green
-Write-Host "Available functions:" -ForegroundColor White
-Write-Host "• Invoke-CopilotAzureHelp - Get safe Azure assistance prompts" -ForegroundColor White
-Write-Host "• Get-AzureLearningPath - Show structured learning path" -ForegroundColor White
-Write-Host "`nUsage examples:" -ForegroundColor Cyan
-Write-Host "• Invoke-CopilotAzureHelp -Topic 'database'" -ForegroundColor Gray
-Write-Host "• Invoke-CopilotAzureHelp -Operation 'backup'" -ForegroundColor Gray
-Write-Host "• Get-AzureLearningPath" -ForegroundColor Gray
+Write-Information "`n🤖 Copilot Azure Integration Loaded!" -InformationAction Continue
+Write-Information "Available functions:" -InformationAction Continue
+Write-Information "• Invoke-CopilotAzureHelp - Get safe Azure assistance prompts" -InformationAction Continue
+Write-Information "• Get-AzureLearningPath - Show structured learning path" -InformationAction Continue
+Write-Information "`nUsage examples:" -InformationAction Continue
+Write-Information "• Invoke-CopilotAzureHelp -Topic 'database'" -InformationAction Continue
+Write-Information "• Invoke-CopilotAzureHelp -Operation 'backup'" -InformationAction Continue
+Write-Information "• Get-AzureLearningPath" -InformationAction Continue

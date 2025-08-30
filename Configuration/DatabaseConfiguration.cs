@@ -3,6 +3,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+using System;
 using WileyWidget.Data;
 
 namespace WileyWidget.Configuration;
@@ -19,10 +21,17 @@ public static class DatabaseConfiguration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Register DbContext with SQL Server
+        // Register DbContext with appropriate provider based on configuration
         services.AddDbContext<AppDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var databaseProvider = configuration["DatabaseProvider"] ?? 
+                                 configuration["Database:Provider"] ?? 
+                                 "SQLite";
+            
+            // Log the connection string and provider for debugging
+            Serilog.Log.Information("Database connection string: {ConnectionString}", connectionString);
+            Serilog.Log.Information("Database provider: {Provider}", databaseProvider);
 
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -31,19 +40,35 @@ public static class DatabaseConfiguration
                     "Please check your appsettings.json or user secrets.");
             }
 
-            options.UseSqlServer(connectionString, sqlOptions =>
+            // Configure the appropriate database provider
+            switch (databaseProvider.ToUpperInvariant())
             {
-                // Configure SQL Server options
-                sqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(30),
-                    errorNumbersToAdd: null);
-
-                sqlOptions.CommandTimeout(30);
-
-                // Enable query splitting for better performance with includes
-                sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-            });
+                case "SQLITE":
+                    options.UseSqlite(connectionString, sqliteOptions =>
+                    {
+                        // Configure SQLite options
+                        sqliteOptions.CommandTimeout(30);
+                    });
+                    break;
+                    
+                case "LOCALDB":
+                case "SQLSERVER":
+                    options.UseSqlServer(connectionString, sqlOptions =>
+                    {
+                        // Configure SQL Server options
+                        sqlOptions.CommandTimeout(30);
+                        sqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 3,
+                            maxRetryDelay: TimeSpan.FromSeconds(30),
+                            errorNumbersToAdd: null);
+                    });
+                    break;
+                    
+                default:
+                    throw new InvalidOperationException(
+                        $"Unsupported database provider: {databaseProvider}. " +
+                        "Supported providers: SQLite, LocalDB, SQLServer");
+            }
 
             // Configure logging and other options
             ConfigureDbContextOptions(options);
@@ -51,6 +76,9 @@ public static class DatabaseConfiguration
 
         // Register repository
         services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
+
+        // Register database seeder
+        services.AddScoped<DatabaseSeeder>();
 
         return services;
     }
@@ -76,16 +104,30 @@ public static class DatabaseConfiguration
     /// </summary>
     public static async Task EnsureDatabaseCreatedAsync(IServiceProvider serviceProvider)
     {
-        using var scope = serviceProvider.CreateScope();
+        var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
 
         try
         {
-            // Create database if it doesn't exist
-            await context.Database.EnsureCreatedAsync();
+            // For SQLite in-memory databases, skip migrations to avoid conflicts
+            var connectionString = context.Database.GetConnectionString();
+            var isInMemory = connectionString?.Contains(":memory:") == true ||
+                           connectionString?.Contains("DataSource=:memory:") == true;
 
-            // Apply any pending migrations
-            await context.Database.MigrateAsync();
+            if (isInMemory)
+            {
+                // For in-memory databases, just ensure created (no migrations)
+                await context.Database.EnsureCreatedAsync();
+            }
+            else
+            {
+                // For file-based databases, use migrations
+                await context.Database.MigrateAsync();
+            }
+
+            // Seed the database with sample data using the same context
+            await seeder.SeedAsync(context);
         }
         catch (Exception ex)
         {
@@ -96,6 +138,11 @@ public static class DatabaseConfiguration
             throw new InvalidOperationException(
                 "Failed to initialize database. Please check your connection string and database permissions.",
                 ex);
+        }
+        finally
+        {
+            // Dispose the scope after seeding is complete
+            scope.Dispose();
         }
     }
 }

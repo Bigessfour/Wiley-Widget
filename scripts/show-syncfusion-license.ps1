@@ -1,3 +1,4 @@
+[System.Diagnostics.CodeAnalysis.SuppressMessage("PSReviewUnusedParameter", "")]
 param(
   [switch]$Watch,
   [int]$IntervalSeconds = 5,
