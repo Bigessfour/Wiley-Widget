@@ -25,6 +25,11 @@ public class BudgetMetrics
     public decimal MonthlyBalance => TotalRevenue - TotalExpenses;
 
     /// <summary>
+    /// Monthly deficit (Expenses - Revenue) - because deficits don't hide like unpaid bills
+    /// </summary>
+    public decimal MonthlyDeficit => TotalExpenses - TotalRevenue;
+
+    /// <summary>
     /// Total number of citizens served across all enterprises
     /// </summary>
     public int TotalCitizens { get; set; }

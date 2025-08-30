@@ -178,11 +178,13 @@ public partial class EnterpriseViewModel : ObservableObject
         var totalRevenue = Enterprises.Sum(e => e.MonthlyRevenue);
         var totalExpenses = Enterprises.Sum(e => e.MonthlyExpenses);
         var totalBalance = totalRevenue - totalExpenses;
+        var totalDeficit = totalExpenses - totalRevenue;
         var totalCitizens = Enterprises.Sum(e => e.CitizenCount);
 
         return $"Total Revenue: ${totalRevenue:F2}\n" +
                $"Total Expenses: ${totalExpenses:F2}\n" +
                $"Monthly Balance: ${totalBalance:F2}\n" +
+               $"Monthly Deficit: ${totalDeficit:F2}\n" +
                $"Citizens Served: {totalCitizens}\n" +
                $"Status: {(totalBalance >= 0 ? "Surplus" : "Deficit")}";
     }
