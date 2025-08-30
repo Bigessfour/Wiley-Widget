@@ -61,7 +61,11 @@
                             <Button Content="Load Enterprises" Command="{Binding LoadEnterprisesCommand}" Margin="0,0,6,0"/>
                             <Button Content="Add Enterprise" Command="{Binding AddEnterpriseCommand}" Margin="0,0,6,0"/>
                             <Button Content="Save" Command="{Binding SaveEnterpriseCommand}" Margin="0,0,6,0"/>
-                            <Button Content="Delete" Command="{Binding DeleteEnterpriseCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeButton}"/>
+                            <Button Content="Delete" Command="{Binding DeleteEnterpriseCommand}" Margin="0,0,6,0"/>
+                            <Button Content="Test Config" Command="{Binding TestConfigurationCommand}" Margin="0,0,6,0" 
+                                    Background="#6B7280" Foreground="White" ToolTip="Test xAI API key configuration"/>
+                            <Button Content="Crunch with Grok" Command="{Binding CrunchWithGrokCommand}" Margin="0,0,6,0" 
+                                    Background="#10B981" Foreground="White" FontWeight="Bold" ToolTip="Analyze enterprises with AI"/>
                         </StackPanel>
                         <syncfusion:SfDataGrid ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" 
                                              AutoGenerateColumns="False" AllowSorting="True" AllowFiltering="True" 
@@ -69,10 +73,17 @@
                             <syncfusion:SfDataGrid.Columns>
                                 <syncfusion:GridTextColumn HeaderText="Name" MappingName="Name" Width="200" />
                                 <syncfusion:GridNumericColumn HeaderText="Rate" MappingName="CurrentRate" Width="100" />
-                                <syncfusion:GridNumericColumn HeaderText="Citizens" MappingName="CitizenCount" Width="100" />
+                                <syncfusion:GridNumericColumn HeaderText="Rate Payers" MappingName="CitizenCount" Width="100" />
                                 <syncfusion:GridNumericColumn HeaderText="Expenses" MappingName="MonthlyExpenses" Width="120" />
                                 <syncfusion:GridNumericColumn HeaderText="Revenue" MappingName="MonthlyRevenue" Width="120" />
                                 <syncfusion:GridNumericColumn HeaderText="Balance" MappingName="MonthlyBalance" Width="120" />
+                                <syncfusion:GridNumericColumn HeaderText="Deficit" MappingName="Deficit" Width="100">
+                                    <syncfusion:GridNumericColumn.ToolTipTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Notes}" TextWrapping="Wrap" MaxWidth="300"/>
+                                        </DataTemplate>
+                                    </syncfusion:GridNumericColumn.ToolTipTemplate>
+                                </syncfusion:GridNumericColumn>
                                 <syncfusion:GridTextColumn HeaderText="Notes" MappingName="Notes" Width="200" />
                             </syncfusion:SfDataGrid.Columns>
                         </syncfusion:SfDataGrid>
@@ -104,7 +115,7 @@
                                 </Border>
                                 <Border Style="{StaticResource DashboardCard}">
                                     <StackPanel>
-                                        <TextBlock Text="Citizens Served" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="Rate Payers Served" Style="{StaticResource CardTitle}"/>
                                         <TextBlock Text="{Binding BudgetMetrics.TotalCitizens}" Style="{StaticResource CardValue}"/>
                                     </StackPanel>
                                 </Border>
@@ -135,7 +146,7 @@
                                 <DataGrid ItemsSource="{Binding Enterprises}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10" Style="{StaticResource ThemeDataGrid}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Enterprise" Binding="{Binding Name}" Width="120"/>
-                                        <DataGridTextColumn Header="Citizens" Binding="{Binding CitizenCount}" Width="80"/>
+                                        <DataGridTextColumn Header="Rate Payers" Binding="{Binding CitizenCount}" Width="80"/>
                                         <DataGridTextColumn Header="Rate ($)" Binding="{Binding CurrentRate, StringFormat=C2}" Width="80"/>
                                         <DataGridTextColumn Header="Revenue ($)" Binding="{Binding MonthlyRevenue, StringFormat=C2}" Width="100"/>
                                         <DataGridTextColumn Header="Expenses ($)" Binding="{Binding MonthlyExpenses, StringFormat=C2}" Width="100"/>
@@ -158,7 +169,7 @@
                                 </DataGrid>
                             </GroupBox>
 
-                            <GroupBox Header="Budget Insights &amp; Recommendations" Margin="0,0,0,20">
+                                                        <GroupBox Header="Budget Insights &amp; Recommendations" Margin="0,0,0,20">
                                 <StackPanel Margin="10">
                                     <TextBlock Text="{Binding BudgetInsights.MainInsight}" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                     <TextBlock Text="Key Recommendations:" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -171,6 +182,12 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    <Border Background="#FFF3CD" BorderBrush="#FFEAA7" BorderThickness="1" CornerRadius="4" Margin="0,10,0,0" Padding="8">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding BudgetInsights.Disclaimer}" TextWrapping="Wrap" FontSize="12" Foreground="#856404"/>
+                                            <Button Content="Export for CPA Review" HorizontalAlignment="Center" Margin="0,8,0,0" Padding="8,4" Background="#007BFF" Foreground="White" BorderThickness="0" Command="{Binding ExportForCpaCommand}"/>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </GroupBox>
 
@@ -223,6 +240,107 @@
                             </TabItem>
                         </TabControl>
                     </DockPanel>
+                </TabItem>
+                <TabItem Header="Settings">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="20">
+                            <TextBlock Text="Application Settings" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
+                            
+                            <!-- Theme Settings -->
+                            <GroupBox Header="Appearance" Margin="0,0,0,20">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="Theme:" Margin="0,0,0,8"/>
+                                    <ComboBox x:Name="ThemeComboBox" SelectedItem="{Binding SelectedTheme, Mode=TwoWay}" Margin="0,0,0,10">
+                                        <ComboBoxItem Content="Fluent Dark"/>
+                                        <ComboBoxItem Content="Fluent Light"/>
+                                    </ComboBox>
+                                    <Button Content="Apply Theme" Click="OnApplyTheme" Margin="0,0,0,10"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- xAI API Configuration -->
+                            <GroupBox Header="xAI API Configuration" Margin="0,0,0,20">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="Configure your xAI API key for AI-powered budget analysis:" 
+                                             TextWrapping="Wrap" Margin="0,0,0,15"/>
+                                    
+                                    <!-- API Key Input -->
+                                    <TextBlock Text="API Key:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                    <PasswordBox x:Name="ApiKeyBox" Margin="0,0,0,5" 
+                                               ToolTip="Your xAI API key (kept secure and never logged)"/>
+                                    
+                                    <!-- API Key Status -->
+                                    <TextBlock x:Name="ApiKeyStatusText" Text="❌ No API key configured" 
+                                             Margin="0,0,0,15" FontWeight="SemiBold"/>
+                                    
+                                    <!-- Model Selection -->
+                                    <TextBlock Text="AI Model:" FontWeight="SemiBold" Margin="0,10,0,5"/>
+                                    <ComboBox x:Name="ModelComboBox" Margin="0,0,0,10">
+                                        <ComboBoxItem Content="grok-4-0709" IsSelected="True"/>
+                                        <ComboBoxItem Content="grok-4"/>
+                                    </ComboBox>
+                                    
+                                    <!-- Advanced Settings -->
+                                    <Expander Header="Advanced Settings" Margin="0,10,0,0">
+                                        <StackPanel Margin="10">
+                                            <TextBlock Text="Timeout (seconds):" Margin="0,0,0,5"/>
+                                            <TextBox x:Name="TimeoutTextBox" Text="30" Margin="0,0,0,10"/>
+                                            
+                                            <TextBlock Text="Cache TTL (minutes):" Margin="0,0,0,5"/>
+                                            <TextBox x:Name="CacheTtlTextBox" Text="30" Margin="0,0,0,10"/>
+                                            
+                                            <TextBlock Text="Daily Budget ($):" Margin="0,0,0,5"/>
+                                            <TextBox x:Name="DailyBudgetTextBox" Text="10.00" Margin="0,0,0,10"/>
+                                            
+                                            <TextBlock Text="Monthly Budget ($):" Margin="0,0,0,5"/>
+                                            <TextBox x:Name="MonthlyBudgetTextBox" Text="300.00" Margin="0,0,0,10"/>
+                                        </StackPanel>
+                                    </Expander>
+                                    
+                                    <!-- Action Buttons -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                                        <Button Content="Test API Key" Click="OnTestApiKey" 
+                                                Background="#10B981" Foreground="White" 
+                                                Margin="0,0,10,0" Padding="20,10"/>
+                                        <Button Content="Save Settings" Click="OnSaveSettings" 
+                                                Background="#3B82F6" Foreground="White" 
+                                                Margin="0,0,10,0" Padding="20,10"/>
+                                        <Button Content="Load Settings" Click="OnLoadSettings" 
+                                                Background="#6B7280" Foreground="White" 
+                                                Margin="0,0,10,0" Padding="20,10"/>
+                                        <Button Content="Remove API Key" Click="OnRemoveApiKey" 
+                                                Background="#EF4444" Foreground="White" 
+                                                Margin="0,0,10,0" Padding="20,10"/>
+                                        <Button Content="API Key Info" Click="OnShowApiKeyInfo" 
+                                                Background="#F59E0B" Foreground="White" 
+                                                Padding="20,10"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Status Display -->
+                                    <Border x:Name="StatusBorder" BorderBrush="#E5E7EB" BorderThickness="1" 
+                                           Margin="0,20,0,0" Padding="10" CornerRadius="5">
+                                        <TextBlock x:Name="StatusTextBlock" 
+                                                 Text="Ready to configure xAI API key. Click 'Load Settings' to see current configuration."
+                                                 TextWrapping="Wrap"/>
+                                    </Border>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Quick Start Guide -->
+                            <GroupBox Header="Quick Start Guide" Margin="0,0,0,20">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="New to xAI API keys?" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="1. Visit https://x.ai and create an account" Margin="0,0,0,5"/>
+                                    <TextBlock Text="2. Go to API Keys section in your profile" Margin="0,0,0,5"/>
+                                    <TextBlock Text="3. Generate a new API key" Margin="0,0,0,5"/>
+                                    <TextBlock Text="4. Copy the key and paste it above" Margin="0,0,0,5"/>
+                                    <TextBlock Text="5. Click 'Test API Key' to verify" Margin="0,0,0,15"/>
+                                    <Button Content="Open xAI API Key Guide" Click="OnOpenApiGuide" 
+                                           Background="#8B5CF6" Foreground="White" Padding="15,8"/>
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
             <StatusBar DockPanel.Dock="Bottom">

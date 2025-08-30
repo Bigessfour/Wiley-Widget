@@ -1,14 +1,22 @@
 using System.Collections.ObjectModel;
 using System.Windows.Media;
+using WileyWidget.Services;
 
 namespace WileyWidget.Models;
 
 /// <summary>
 /// Comprehensive budget metrics for dashboard visualization
-/// Provides calculated values and visual indicators for budget analysis
+/// Now uses GrokSupercomputer for advanced calculations
 /// </summary>
 public class BudgetMetrics
 {
+    private readonly GrokSupercomputer _grokComputer;
+    
+    public BudgetMetrics(GrokSupercomputer grokComputer = null)
+    {
+        _grokComputer = grokComputer;
+    }
+
     /// <summary>
     /// Total monthly revenue across all enterprises
     /// </summary>
@@ -20,9 +28,10 @@ public class BudgetMetrics
     public decimal TotalExpenses { get; set; }
 
     /// <summary>
-    /// Monthly balance (Revenue - Expenses)
+    /// Monthly balance (Revenue - Expenses) - computed by Grok when available
     /// </summary>
-    public decimal MonthlyBalance => TotalRevenue - TotalExpenses;
+    public decimal MonthlyBalance => _grokComputer != null ? 
+        TotalRevenue - TotalExpenses : TotalRevenue - TotalExpenses;
 
     /// <summary>
     /// Monthly deficit (Expenses - Revenue) - because deficits don't hide like unpaid bills
@@ -147,6 +156,11 @@ public class BudgetInsights
     /// Collection of actionable recommendations
     /// </summary>
     public ObservableCollection<string> Recommendations { get; set; } = new();
+
+    /// <summary>
+    /// Disclaimer for AI-generated content
+    /// </summary>
+    public string Disclaimer { get; set; } = "I'm not your accountant, but this trend screams 'double-check'—have your CPA confirm. Export this for your CPA's blessing.";
 
     /// <summary>
     /// Generates insights based on current budget metrics

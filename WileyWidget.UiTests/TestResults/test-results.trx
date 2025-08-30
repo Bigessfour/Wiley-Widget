@@ -1,685 +1,323 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TestRun id="809abd78-70c6-458a-961e-14133b2ba928" name="biges@MCKITRICK 2025-08-29 20:51:36" runUser="MCKITRICK\biges" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
-  <Times creation="2025-08-29T20:51:36.0275366-06:00" queuing="2025-08-29T20:51:36.0275369-06:00" start="2025-08-29T20:51:28.0406125-06:00" finish="2025-08-29T20:54:30.4306762-06:00" />
-  <TestSettings name="default" id="efe7daa5-da3d-484b-b17b-3869c928b6b8">
-    <Deployment runDeploymentRoot="biges_MCKITRICK_2025-08-29_20_51_36" />
+<TestRun id="45ae121f-3e7a-4195-94d4-f86208e05606" name="biges@MCKITRICK 2025-08-30 05:59:44" runUser="MCKITRICK\biges" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2025-08-30T05:59:44.2212619-06:00" queuing="2025-08-30T05:59:44.2212622-06:00" start="2025-08-30T05:59:36.3511460-06:00" finish="2025-08-30T06:00:16.1187963-06:00" />
+  <TestSettings name="default" id="4d2d8c63-2dfd-4dea-9c84-c22e562699d5">
+    <Deployment runDeploymentRoot="biges_MCKITRICK_2025-08-30_05_59_44" />
   </TestSettings>
   <Results>
-    <UnitTestResult executionId="95264d6a-4b7d-49a1-a120-2750f4a9034d" testId="5453a416-dc02-28ec-680e-024d268b61cd" testName="WileyWidget.UiTests.MainWindowUITests.TestEnterpriseGridRefreshButton_TriggersDataReload" computerName="MCKITRICK" duration="00:00:07.9830565" startTime="2025-08-29T20:53:05.1067347-06:00" endTime="2025-08-29T20:53:05.1067350-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="95264d6a-4b7d-49a1-a120-2750f4a9034d">
+    <UnitTestResult executionId="20988952-c236-4ffc-95b7-721329c4d0e7" testId="b784be1b-b728-44f4-8e70-095fc6250191" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface" computerName="MCKITRICK" duration="00:00:04.2193636" startTime="2025-08-30T05:59:48.4228913-06:00" endTime="2025-08-30T05:59:48.4228915-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="20988952-c236-4ffc-95b7-721329c4d0e7">
       <Output>
         <ErrorInfo>
-          <Message>System.Exception : Could not find process with id: 34808&#xD;
----- System.ArgumentException : Process with an Id of 34808 is not running.</Message>
-          <StackTrace>   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+          <Message>System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 97964&#xD;
+---- System.Exception : Could not find process with id: 97964&#xD;
+-------- System.ArgumentException : Process with an Id of 97964 is not running.</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 678&#xD;
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+----- Inner Stack Trace -----&#xD;
+   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
    at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
    at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
    at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
    at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
    at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
    at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.TestEnterpriseGridRefreshButton_TriggersDataReload() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 1121&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+   at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 644&#xD;
 ----- Inner Stack Trace -----&#xD;
    at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
    at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
         </ErrorInfo>
       </Output>
     </UnitTestResult>
-    <UnitTestResult executionId="cb3bcb72-4ad3-403d-a067-f8ff093fe690" testId="fba49196-ded9-4235-7a6e-d8bc3d32b0fa" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T20:53:40.7681204-06:00" endTime="2025-08-29T20:53:40.7681206-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="NotExecuted" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="cb3bcb72-4ad3-403d-a067-f8ff093fe690">
+    <UnitTestResult executionId="5355d54d-2114-409d-8d38-26e3f4552dcd" testId="759a79a0-c917-a9ba-b00f-8ffc9e102928" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs" computerName="MCKITRICK" duration="00:00:04.2349308" startTime="2025-08-30T06:00:16.0543582-06:00" endTime="2025-08-30T06:00:16.0543590-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5355d54d-2114-409d-8d38-26e3f4552dcd">
+      <Output>
+        <ErrorInfo>
+          <Message>System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 86900&#xD;
+---- System.Exception : Could not find process with id: 86900&#xD;
+-------- System.ArgumentException : Process with an Id of 86900 is not running.</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 892&#xD;
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+----- Inner Stack Trace -----&#xD;
+   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
+   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
+   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
+   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
+   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
+   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
+   at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 858&#xD;
+----- Inner Stack Trace -----&#xD;
+   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
+   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="722b6d0c-9a7a-4beb-a4d7-1869a1fc35a6" testId="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0" testName="WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment" computerName="MCKITRICK" duration="00:00:08.0662852" startTime="2025-08-30T06:00:02.7360920-06:00" endTime="2025-08-30T06:00:02.7360924-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="722b6d0c-9a7a-4beb-a4d7-1869a1fc35a6">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.NotNull() Failure: Value is null</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 396&#xD;
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="606d3cfe-cf5a-423c-a28f-1a59d11405d8" testId="9ab75ed6-d1cd-9d2c-d923-2c24a71bf80f" testName="WileyWidget.UiTests.MainWindowUITests.Application_Process_CanBeLaunched" computerName="MCKITRICK" duration="00:00:02.0177144" startTime="2025-08-30T05:59:54.6688991-06:00" endTime="2025-08-30T05:59:54.6688992-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="606d3cfe-cf5a-423c-a28f-1a59d11405d8">
+      <Output>
+        <ErrorInfo>
+          <Message>System.ArgumentException : Process with an Id of 43016 is not running.</Message>
+          <StackTrace>   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
+   at WileyWidget.UiTests.MainWindowUITests.Application_Process_CanBeLaunched() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 303&#xD;
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="0b6f3a87-16ce-4303-9d70-0200579b77d8" testId="c573233b-408e-6660-ac37-3cc6b7d50246" testName="WileyWidget.UiTests.MainWindowUITests.UI_Framework_Compatibility_Check" computerName="MCKITRICK" duration="00:00:00.0014982" startTime="2025-08-30T05:59:48.4239228-06:00" endTime="2025-08-30T05:59:48.4239230-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0b6f3a87-16ce-4303-9d70-0200579b77d8" />
+    <UnitTestResult executionId="1401dffe-e4e5-4828-bbeb-5f25edd23901" testId="fba49196-ded9-4235-7a6e-d8bc3d32b0fa" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-30T06:00:02.7369943-06:00" endTime="2025-08-30T06:00:02.7369946-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="NotExecuted" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1401dffe-e4e5-4828-bbeb-5f25edd23901">
       <Output>
         <ErrorInfo>
           <Message>Requires application to be built and available</Message>
         </ErrorInfo>
       </Output>
     </UnitTestResult>
-    <UnitTestResult executionId="7c0ef702-1615-46bf-a827-a4046054526e" testId="6d824502-df5d-0076-21f7-b7e50f627267" testName="WileyWidget.UiTests.MainWindowUITests.TestThemeSwitchAfterMigration_NoCrash" computerName="MCKITRICK" duration="00:00:07.5298350" startTime="2025-08-29T20:53:12.6361263-06:00" endTime="2025-08-29T20:53:12.6361265-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7c0ef702-1615-46bf-a827-a4046054526e">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Could not find process with id: 16484&#xD;
----- System.ArgumentException : Process with an Id of 16484 is not running.</Message>
-          <StackTrace>   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.TestThemeSwitchAfterMigration_NoCrash() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 957&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="b9757e29-dea8-4289-8be1-36f25bef3715" testId="b784be1b-b728-44f4-8e70-095fc6250191" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface" computerName="MCKITRICK" duration="00:00:26.4949049" startTime="2025-08-29T20:52:22.2617725-06:00" endTime="2025-08-29T20:52:22.2617728-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b9757e29-dea8-4289-8be1-36f25bef3715">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 145264&#xD;
----- System.Exception : Could not find process with id: 145264&#xD;
--------- System.ArgumentException : Process with an Id of 145264 is not running.</Message>
-          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 587&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 553&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="2a403784-41dd-4138-94bb-a539768ed572" testId="848d400a-3297-38f8-3511-ef5fc9699422" testName="WileyWidget.UiTests.MainWindowUITests.UI_Test_Environment_IsReady" computerName="MCKITRICK" duration="00:00:00.0004100" startTime="2025-08-29T20:52:22.2660750-06:00" endTime="2025-08-29T20:52:22.2660751-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2a403784-41dd-4138-94bb-a539768ed572" />
-    <UnitTestResult executionId="236b368d-1c5a-4957-8f99-6538d5dfe8d0" testId="c573233b-408e-6660-ac37-3cc6b7d50246" testName="WileyWidget.UiTests.MainWindowUITests.UI_Framework_Compatibility_Check" computerName="MCKITRICK" duration="00:00:00.0009401" startTime="2025-08-29T20:52:22.2623469-06:00" endTime="2025-08-29T20:52:22.2623470-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="236b368d-1c5a-4957-8f99-6538d5dfe8d0" />
-    <UnitTestResult executionId="77ac85a0-5efd-4ab1-8012-2b264338422e" testId="537d90bf-48c2-c9c5-26c3-81f991266950" testName="WileyWidget.UiTests.MainWindowUITests.TestDashboardAfterMigration_SfDataGridLoadsSeededData" computerName="MCKITRICK" duration="00:00:07.4601365" startTime="2025-08-29T20:51:55.7674600-06:00" endTime="2025-08-29T20:51:55.7674605-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="77ac85a0-5efd-4ab1-8012-2b264338422e">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Could not find process with id: 63152&#xD;
----- System.ArgumentException : Process with an Id of 63152 is not running.</Message>
-          <StackTrace>   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.TestDashboardAfterMigration_SfDataGridLoadsSeededData() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 873&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="ee2c6cd5-a129-4148-9ca3-8dc22b7c12c4" testId="be565b50-8d83-c276-947d-d5d13795c237" testName="WileyWidget.UiTests.MainWindowUITests.UI_Test_Framework_IsConfigured" computerName="MCKITRICK" duration="00:00:00.0030473" startTime="2025-08-29T20:53:20.2860982-06:00" endTime="2025-08-29T20:53:20.2860985-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ee2c6cd5-a129-4148-9ca3-8dc22b7c12c4" />
-    <UnitTestResult executionId="dcbcf6ce-d1e5-45b9-81e5-bcc06d4bec0a" testId="ec600a7a-5c74-e02e-f6b1-f548ec090790" testName="WileyWidget.UiTests.MainWindowUITests.TestBudgetSummaryCalculations_DisplayCorrectly" computerName="MCKITRICK" duration="00:00:07.1747704" startTime="2025-08-29T20:54:30.2249543-06:00" endTime="2025-08-29T20:54:30.2249545-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dcbcf6ce-d1e5-45b9-81e5-bcc06d4bec0a">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Could not find process with id: 148232&#xD;
----- System.ArgumentException : Process with an Id of 148232 is not running.</Message>
-          <StackTrace>   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.TestBudgetSummaryCalculations_DisplayCorrectly() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 1207&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="10b358ac-54b1-4655-b795-aeb48d11209c" testId="9b8797f9-7eae-a20c-6f76-1f24c45beaf5" testName="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanFindDesktop" computerName="MCKITRICK" duration="00:00:00.0058743" startTime="2025-08-29T20:54:23.0489160-06:00" endTime="2025-08-29T20:54:23.0489163-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="10b358ac-54b1-4655-b795-aeb48d11209c" />
-    <UnitTestResult executionId="2c62338e-e7e8-41f3-ae3b-c52791e02aef" testId="25873e8b-f59f-d8ac-65eb-b4d9c3d3470c" testName="WileyWidget.UiTests.MainWindowUITests.TestEnterpriseDataFiltering_WorksCorrectly" computerName="MCKITRICK" duration="00:00:07.9808952" startTime="2025-08-29T20:52:57.1230489-06:00" endTime="2025-08-29T20:52:57.1230492-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2c62338e-e7e8-41f3-ae3b-c52791e02aef">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Could not find process with id: 153828&#xD;
----- System.ArgumentException : Process with an Id of 153828 is not running.</Message>
-          <StackTrace>   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.TestEnterpriseDataFiltering_WorksCorrectly() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 1374&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="357b6d98-51bf-4c3d-bae8-fa67e32f9424" testId="6f52c8bd-0b67-323f-e5e8-33e4d9016f0a" testName="WileyWidget.UiTests.MainWindowUITests.TestWidgetConfiguration_SaveAndLoadSettings" computerName="MCKITRICK" duration="00:00:06.9930422" startTime="2025-08-29T20:51:36.0018086-06:00" endTime="2025-08-29T20:51:36.0018558-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="357b6d98-51bf-4c3d-bae8-fa67e32f9424">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Could not find process with id: 137368&#xD;
----- System.ArgumentException : Process with an Id of 137368 is not running.</Message>
-          <StackTrace>   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.TestWidgetConfiguration_SaveAndLoadSettings() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 1470&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="be5c96b6-9a75-41b4-9824-d57657457ac0" testId="f6d5f5bb-05c6-918d-ca59-9e31473e5112" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions" computerName="MCKITRICK" duration="00:00:15.2299264" startTime="2025-08-29T20:53:55.9972670-06:00" endTime="2025-08-29T20:53:55.9972674-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="be5c96b6-9a75-41b4-9824-d57657457ac0">
+    <UnitTestResult executionId="296d689a-290e-41f8-84f2-9db45f40c515" testId="f6d5f5bb-05c6-918d-ca59-9e31473e5112" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions" computerName="MCKITRICK" duration="00:00:09.0804721" startTime="2025-08-30T06:00:11.8163674-06:00" endTime="2025-08-30T06:00:11.8163676-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="296d689a-290e-41f8-84f2-9db45f40c515">
       <Output>
         <ErrorInfo>
           <Message>Assert.NotNull() Failure: Value is null</Message>
-          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 482&#xD;
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 573&#xD;
    at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
         </ErrorInfo>
       </Output>
     </UnitTestResult>
-    <UnitTestResult executionId="83cb4785-6af6-4f8f-ae13-063a868e69b4" testId="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0" testName="WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment" computerName="MCKITRICK" duration="00:00:12.5320056" startTime="2025-08-29T20:53:32.8192965-06:00" endTime="2025-08-29T20:53:32.8192968-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="83cb4785-6af6-4f8f-ae13-063a868e69b4">
-      <Output>
-        <ErrorInfo>
-          <Message>Assert.NotNull() Failure: Value is null</Message>
-          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 310&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="19115b7c-a398-4ae8-8aca-2c58e12dbfec" testId="759a79a0-c917-a9ba-b00f-8ffc9e102928" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs" computerName="MCKITRICK" duration="00:00:27.0444896" startTime="2025-08-29T20:54:23.0437760-06:00" endTime="2025-08-29T20:54:23.0437761-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="19115b7c-a398-4ae8-8aca-2c58e12dbfec">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 136004&#xD;
----- System.Exception : Could not find process with id: 136004&#xD;
--------- System.ArgumentException : Process with an Id of 136004 is not running.</Message>
-          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 801&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 767&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="f1987863-d253-4e41-9405-46f70aa49691" testId="f5cdd0f3-5d72-c55c-a00e-fa26592be8c5" testName="WileyWidget.UiTests.MainWindowUITests.TestQuickBooksSyncButton_InitiatesSyncProcess" computerName="MCKITRICK" duration="00:00:07.6467316" startTime="2025-08-29T20:53:20.2836518-06:00" endTime="2025-08-29T20:53:20.2836523-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f1987863-d253-4e41-9405-46f70aa49691">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Could not find process with id: 164968&#xD;
----- System.ArgumentException : Process with an Id of 164968 is not running.</Message>
-          <StackTrace>   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.TestQuickBooksSyncButton_InitiatesSyncProcess() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 1289&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="f905fb7d-fd52-439b-aa45-d3304cada9be" testId="8ccd3ba8-584e-e74e-cadd-221f276c8394" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl" computerName="MCKITRICK" duration="00:00:26.8776101" startTime="2025-08-29T20:52:49.1426940-06:00" endTime="2025-08-29T20:52:49.1426944-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f905fb7d-fd52-439b-aa45-d3304cada9be">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 88740&#xD;
----- System.Exception : Could not find process with id: 88740&#xD;
--------- System.ArgumentException : Process with an Id of 88740 is not running.</Message>
-          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 694&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 660&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="2a5b37e1-68a6-4777-aa44-78bec8f1f1f4" testId="2069c557-3fbb-0610-bc33-93106cab9382" testName="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanEnumerateDesktopWindows" computerName="MCKITRICK" duration="00:00:00.0659087" startTime="2025-08-29T20:51:48.3050654-06:00" endTime="2025-08-29T20:51:48.3050657-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2a5b37e1-68a6-4777-aa44-78bec8f1f1f4" />
-    <UnitTestResult executionId="75408609-5394-42ea-9841-e2c2e83319e2" testId="3866c083-a176-cae2-61ee-b71cb6185d2b" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle" computerName="MCKITRICK" duration="00:00:12.2422036" startTime="2025-08-29T20:51:48.2391197-06:00" endTime="2025-08-29T20:51:48.2391200-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="75408609-5394-42ea-9841-e2c2e83319e2">
-      <Output>
-        <ErrorInfo>
-          <Message>Assert.NotNull() Failure: Value is null</Message>
-          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 396&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="d95af4e4-7862-453f-8ecc-f612b13fe62c" testId="d24c625a-4776-73de-9e52-ebe2c9bfaa83" testName="WileyWidget.UiTests.MainWindowUITests.TestMigrationFailure_ShowsErrorDialog" computerName="MCKITRICK" duration="00:00:07.9471091" startTime="2025-08-29T20:53:40.7671033-06:00" endTime="2025-08-29T20:53:40.7671042-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d95af4e4-7862-453f-8ecc-f612b13fe62c">
-      <Output>
-        <ErrorInfo>
-          <Message>System.Exception : Could not find process with id: 136792&#xD;
----- System.ArgumentException : Process with an Id of 136792 is not running.</Message>
-          <StackTrace>   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-   at WileyWidget.UiTests.MainWindowUITests.TestMigrationFailure_ShowsErrorDialog() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 1047&#xD;
-   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
------ Inner Stack Trace -----&#xD;
-   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="7bdebf24-4daa-471c-8f21-78ce3a309db9" testId="9daec5f3-5b2a-58a6-e44e-972fdbc203a3" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T20:52:22.2651332-06:00" endTime="2025-08-29T20:52:22.2651336-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="NotExecuted" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7bdebf24-4daa-471c-8f21-78ce3a309db9">
+    <UnitTestResult executionId="89f0ff5f-1936-4e75-ba59-63fc81116790" testId="9daec5f3-5b2a-58a6-e44e-972fdbc203a3" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-30T05:59:48.4244522-06:00" endTime="2025-08-30T05:59:48.4244523-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="NotExecuted" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="89f0ff5f-1936-4e75-ba59-63fc81116790">
       <Output>
         <ErrorInfo>
           <Message>Requires application to be built and available</Message>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="412d8a26-ca21-4e40-b022-7cacd92e6168" testId="8ccd3ba8-584e-e74e-cadd-221f276c8394" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl" computerName="MCKITRICK" duration="00:00:04.2273426" startTime="2025-08-30T05:59:52.6515086-06:00" endTime="2025-08-30T05:59:52.6515088-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="412d8a26-ca21-4e40-b022-7cacd92e6168">
+      <Output>
+        <ErrorInfo>
+          <Message>System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 73532&#xD;
+---- System.Exception : Could not find process with id: 73532&#xD;
+-------- System.ArgumentException : Process with an Id of 73532 is not running.</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 785&#xD;
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+----- Inner Stack Trace -----&#xD;
+   at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+   at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
+   at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
+   at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
+   at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
+   at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
+   at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
+   at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 751&#xD;
+----- Inner Stack Trace -----&#xD;
+   at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
+   at FlaUI.Core.Application.FindProcess(Int32 processId)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="05721575-0ea1-4581-a9e5-c57b0687f51e" testId="9b8797f9-7eae-a20c-6f76-1f24c45beaf5" testName="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanFindDesktop" computerName="MCKITRICK" duration="00:00:00.0297198" startTime="2025-08-30T06:00:16.0813853-06:00" endTime="2025-08-30T06:00:16.0813856-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="05721575-0ea1-4581-a9e5-c57b0687f51e" />
+    <UnitTestResult executionId="56fc85e8-2de4-46c9-947d-dae900708cd4" testId="3866c083-a176-cae2-61ee-b71cb6185d2b" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle" computerName="MCKITRICK" duration="00:00:07.1764680" startTime="2025-08-30T05:59:44.2044899-06:00" endTime="2025-08-30T05:59:44.2045003-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="56fc85e8-2de4-46c9-947d-dae900708cd4">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.NotNull() Failure: Value is null</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 487&#xD;
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
         </ErrorInfo>
       </Output>
     </UnitTestResult>
   </Results>
   <TestDefinitions>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Test_Framework_IsConfigured" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="be565b50-8d83-c276-947d-d5d13795c237">
-      <Execution id="ee2c6cd5-a129-4148-9ca3-8dc22b7c12c4" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Test_Framework_IsConfigured" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.Application_Process_CanBeLaunched" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="9ab75ed6-d1cd-9d2c-d923-2c24a71bf80f">
+      <Execution id="606d3cfe-cf5a-423c-a28f-1a59d11405d8" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="Application_Process_CanBeLaunched" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="8ccd3ba8-584e-e74e-cadd-221f276c8394">
-      <Execution id="f905fb7d-fd52-439b-aa45-d3304cada9be" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_ContainsTabControl" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="8ccd3ba8-584e-e74e-cadd-221f276c8394">
+      <Execution id="412d8a26-ca21-4e40-b022-7cacd92e6168" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_ContainsTabControl" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.TestWidgetConfiguration_SaveAndLoadSettings" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="6f52c8bd-0b67-323f-e5e8-33e4d9016f0a">
-      <Execution id="357b6d98-51bf-4c3d-bae8-fa67e32f9424" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="TestWidgetConfiguration_SaveAndLoadSettings" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="fba49196-ded9-4235-7a6e-d8bc3d32b0fa">
+      <Execution id="1401dffe-e4e5-4828-bbeb-5f25edd23901" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_CanBeLaunched" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="fba49196-ded9-4235-7a6e-d8bc3d32b0fa">
-      <Execution id="cb3bcb72-4ad3-403d-a067-f8ff093fe690" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_CanBeLaunched" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanFindDesktop" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="9b8797f9-7eae-a20c-6f76-1f24c45beaf5">
+      <Execution id="05721575-0ea1-4581-a9e5-c57b0687f51e" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Automation_CanFindDesktop" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.TestBudgetSummaryCalculations_DisplayCorrectly" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="ec600a7a-5c74-e02e-f6b1-f548ec090790">
-      <Execution id="dcbcf6ce-d1e5-45b9-81e5-bcc06d4bec0a" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="TestBudgetSummaryCalculations_DisplayCorrectly" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="f6d5f5bb-05c6-918d-ca59-9e31473e5112">
+      <Execution id="296d689a-290e-41f8-84f2-9db45f40c515" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasExpectedDimensions" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanFindDesktop" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="9b8797f9-7eae-a20c-6f76-1f24c45beaf5">
-      <Execution id="10b358ac-54b1-4655-b795-aeb48d11209c" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Automation_CanFindDesktop" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="9daec5f3-5b2a-58a6-e44e-972fdbc203a3">
+      <Execution id="89f0ff5f-1936-4e75-ba59-63fc81116790" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasExpectedUIElements" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.TestMigrationFailure_ShowsErrorDialog" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="d24c625a-4776-73de-9e52-ebe2c9bfaa83">
-      <Execution id="d95af4e4-7862-453f-8ecc-f612b13fe62c" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="TestMigrationFailure_ShowsErrorDialog" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0">
+      <Execution id="722b6d0c-9a7a-4beb-a4d7-1869a1fc35a6" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="Application_CanBeLaunchedFromTestEnvironment" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="f6d5f5bb-05c6-918d-ca59-9e31473e5112">
-      <Execution id="be5c96b6-9a75-41b4-9824-d57657457ac0" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasExpectedDimensions" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="b784be1b-b728-44f4-8e70-095fc6250191">
+      <Execution id="20988952-c236-4ffc-95b7-721329c4d0e7" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_ContainsRibbonInterface" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.TestThemeSwitchAfterMigration_NoCrash" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="6d824502-df5d-0076-21f7-b7e50f627267">
-      <Execution id="7c0ef702-1615-46bf-a827-a4046054526e" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="TestThemeSwitchAfterMigration_NoCrash" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Framework_Compatibility_Check" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="c573233b-408e-6660-ac37-3cc6b7d50246">
+      <Execution id="0b6f3a87-16ce-4303-9d70-0200579b77d8" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Framework_Compatibility_Check" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Test_Environment_IsReady" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="848d400a-3297-38f8-3511-ef5fc9699422">
-      <Execution id="2a403784-41dd-4138-94bb-a539768ed572" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Test_Environment_IsReady" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="3866c083-a176-cae2-61ee-b71cb6185d2b">
+      <Execution id="56fc85e8-2de4-46c9-947d-dae900708cd4" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_LoadsWithExpectedTitle" />
     </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="9daec5f3-5b2a-58a6-e44e-972fdbc203a3">
-      <Execution id="7bdebf24-4daa-471c-8f21-78ce3a309db9" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasExpectedUIElements" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.TestEnterpriseDataFiltering_WorksCorrectly" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="25873e8b-f59f-d8ac-65eb-b4d9c3d3470c">
-      <Execution id="2c62338e-e7e8-41f3-ae3b-c52791e02aef" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="TestEnterpriseDataFiltering_WorksCorrectly" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0">
-      <Execution id="83cb4785-6af6-4f8f-ae13-063a868e69b4" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="Application_CanBeLaunchedFromTestEnvironment" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.TestQuickBooksSyncButton_InitiatesSyncProcess" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="f5cdd0f3-5d72-c55c-a00e-fa26592be8c5">
-      <Execution id="f1987863-d253-4e41-9405-46f70aa49691" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="TestQuickBooksSyncButton_InitiatesSyncProcess" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.TestEnterpriseGridRefreshButton_TriggersDataReload" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="5453a416-dc02-28ec-680e-024d268b61cd">
-      <Execution id="95264d6a-4b7d-49a1-a120-2750f4a9034d" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="TestEnterpriseGridRefreshButton_TriggersDataReload" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="b784be1b-b728-44f4-8e70-095fc6250191">
-      <Execution id="b9757e29-dea8-4289-8be1-36f25bef3715" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_ContainsRibbonInterface" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Framework_Compatibility_Check" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="c573233b-408e-6660-ac37-3cc6b7d50246">
-      <Execution id="236b368d-1c5a-4957-8f99-6538d5dfe8d0" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Framework_Compatibility_Check" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="3866c083-a176-cae2-61ee-b71cb6185d2b">
-      <Execution id="75408609-5394-42ea-9841-e2c2e83319e2" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_LoadsWithExpectedTitle" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="759a79a0-c917-a9ba-b00f-8ffc9e102928">
-      <Execution id="19115b7c-a398-4ae8-8aca-2c58e12dbfec" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasAllExpectedTabs" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.TestDashboardAfterMigration_SfDataGridLoadsSeededData" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="537d90bf-48c2-c9c5-26c3-81f991266950">
-      <Execution id="77ac85a0-5efd-4ab1-8012-2b264338422e" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="TestDashboardAfterMigration_SfDataGridLoadsSeededData" />
-    </UnitTest>
-    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanEnumerateDesktopWindows" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="2069c557-3fbb-0610-bc33-93106cab9382">
-      <Execution id="2a5b37e1-68a6-4777-aa44-78bec8f1f1f4" />
-      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Automation_CanEnumerateDesktopWindows" />
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\release\net9.0-windows\wileywidget.uitests.dll" id="759a79a0-c917-a9ba-b00f-8ffc9e102928">
+      <Execution id="5355d54d-2114-409d-8d38-26e3f4552dcd" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Release\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasAllExpectedTabs" />
     </UnitTest>
   </TestDefinitions>
   <TestEntries>
-    <TestEntry testId="5453a416-dc02-28ec-680e-024d268b61cd" executionId="95264d6a-4b7d-49a1-a120-2750f4a9034d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="fba49196-ded9-4235-7a6e-d8bc3d32b0fa" executionId="cb3bcb72-4ad3-403d-a067-f8ff093fe690" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="6d824502-df5d-0076-21f7-b7e50f627267" executionId="7c0ef702-1615-46bf-a827-a4046054526e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="b784be1b-b728-44f4-8e70-095fc6250191" executionId="b9757e29-dea8-4289-8be1-36f25bef3715" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="848d400a-3297-38f8-3511-ef5fc9699422" executionId="2a403784-41dd-4138-94bb-a539768ed572" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="c573233b-408e-6660-ac37-3cc6b7d50246" executionId="236b368d-1c5a-4957-8f99-6538d5dfe8d0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="537d90bf-48c2-c9c5-26c3-81f991266950" executionId="77ac85a0-5efd-4ab1-8012-2b264338422e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="be565b50-8d83-c276-947d-d5d13795c237" executionId="ee2c6cd5-a129-4148-9ca3-8dc22b7c12c4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="ec600a7a-5c74-e02e-f6b1-f548ec090790" executionId="dcbcf6ce-d1e5-45b9-81e5-bcc06d4bec0a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="9b8797f9-7eae-a20c-6f76-1f24c45beaf5" executionId="10b358ac-54b1-4655-b795-aeb48d11209c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="25873e8b-f59f-d8ac-65eb-b4d9c3d3470c" executionId="2c62338e-e7e8-41f3-ae3b-c52791e02aef" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="6f52c8bd-0b67-323f-e5e8-33e4d9016f0a" executionId="357b6d98-51bf-4c3d-bae8-fa67e32f9424" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="f6d5f5bb-05c6-918d-ca59-9e31473e5112" executionId="be5c96b6-9a75-41b4-9824-d57657457ac0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0" executionId="83cb4785-6af6-4f8f-ae13-063a868e69b4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="759a79a0-c917-a9ba-b00f-8ffc9e102928" executionId="19115b7c-a398-4ae8-8aca-2c58e12dbfec" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="f5cdd0f3-5d72-c55c-a00e-fa26592be8c5" executionId="f1987863-d253-4e41-9405-46f70aa49691" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="8ccd3ba8-584e-e74e-cadd-221f276c8394" executionId="f905fb7d-fd52-439b-aa45-d3304cada9be" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="2069c557-3fbb-0610-bc33-93106cab9382" executionId="2a5b37e1-68a6-4777-aa44-78bec8f1f1f4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="3866c083-a176-cae2-61ee-b71cb6185d2b" executionId="75408609-5394-42ea-9841-e2c2e83319e2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="d24c625a-4776-73de-9e52-ebe2c9bfaa83" executionId="d95af4e4-7862-453f-8ecc-f612b13fe62c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="9daec5f3-5b2a-58a6-e44e-972fdbc203a3" executionId="7bdebf24-4daa-471c-8f21-78ce3a309db9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b784be1b-b728-44f4-8e70-095fc6250191" executionId="20988952-c236-4ffc-95b7-721329c4d0e7" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="759a79a0-c917-a9ba-b00f-8ffc9e102928" executionId="5355d54d-2114-409d-8d38-26e3f4552dcd" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0" executionId="722b6d0c-9a7a-4beb-a4d7-1869a1fc35a6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9ab75ed6-d1cd-9d2c-d923-2c24a71bf80f" executionId="606d3cfe-cf5a-423c-a28f-1a59d11405d8" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c573233b-408e-6660-ac37-3cc6b7d50246" executionId="0b6f3a87-16ce-4303-9d70-0200579b77d8" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fba49196-ded9-4235-7a6e-d8bc3d32b0fa" executionId="1401dffe-e4e5-4828-bbeb-5f25edd23901" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f6d5f5bb-05c6-918d-ca59-9e31473e5112" executionId="296d689a-290e-41f8-84f2-9db45f40c515" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9daec5f3-5b2a-58a6-e44e-972fdbc203a3" executionId="89f0ff5f-1936-4e75-ba59-63fc81116790" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8ccd3ba8-584e-e74e-cadd-221f276c8394" executionId="412d8a26-ca21-4e40-b022-7cacd92e6168" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9b8797f9-7eae-a20c-6f76-1f24c45beaf5" executionId="05721575-0ea1-4581-a9e5-c57b0687f51e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3866c083-a176-cae2-61ee-b71cb6185d2b" executionId="56fc85e8-2de4-46c9-947d-dae900708cd4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
   </TestEntries>
   <TestLists>
     <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
     <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
   </TestLists>
   <ResultSummary outcome="Failed">
-    <Counters total="21" executed="19" passed="5" failed="14" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Counters total="11" executed="9" passed="2" failed="7" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
     <Output>
       <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.8.2+699d445a1a (64-bit .NET 9.0.8)&#xD;
-[xUnit.net 00:00:00.05]   Discovering: WileyWidget.UiTests&#xD;
-[xUnit.net 00:00:00.08]   Discovered:  WileyWidget.UiTests&#xD;
-[xUnit.net 00:00:00.08]   Starting:    WileyWidget.UiTests&#xD;
-[xUnit.net 00:00:07.11]       System.Exception : Could not find process with id: 137368&#xD;
-[xUnit.net 00:00:07.11]       ---- System.ArgumentException : Process with an Id of 137368 is not running.&#xD;
-[xUnit.net 00:00:07.11]       Stack Trace:&#xD;
-[xUnit.net 00:00:07.11]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:00:07.11]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:00:07.11]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:00:07.11]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:00:07.11]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:00:07.11]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:00:07.11]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:00:07.11]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(1470,0): at WileyWidget.UiTests.MainWindowUITests.TestWidgetConfiguration_SaveAndLoadSettings()&#xD;
-[xUnit.net 00:00:07.12]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:00:07.12]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:00:07.12]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:00:07.12]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:00:07.12]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:00:19.35]       Assert.NotNull() Failure: Value is null&#xD;
-[xUnit.net 00:00:19.35]       Stack Trace:&#xD;
-[xUnit.net 00:00:19.35]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(396,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle()&#xD;
-[xUnit.net 00:00:19.35]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:00:19.35]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:00:26.88]       System.Exception : Could not find process with id: 63152&#xD;
-[xUnit.net 00:00:26.88]       ---- System.ArgumentException : Process with an Id of 63152 is not running.&#xD;
-[xUnit.net 00:00:26.88]       Stack Trace:&#xD;
-[xUnit.net 00:00:26.88]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:00:26.88]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:00:26.88]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:00:26.88]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:00:26.88]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:00:26.88]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:00:26.88]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:00:26.88]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(873,0): at WileyWidget.UiTests.MainWindowUITests.TestDashboardAfterMigration_SfDataGridLoadsSeededData()&#xD;
-[xUnit.net 00:00:26.88]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:00:26.88]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:00:26.88]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:00:26.88]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:00:26.88]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:00:53.38]       System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 145264&#xD;
-[xUnit.net 00:00:53.38]       ---- System.Exception : Could not find process with id: 145264&#xD;
-[xUnit.net 00:00:53.38]       -------- System.ArgumentException : Process with an Id of 145264 is not running.&#xD;
-[xUnit.net 00:00:53.38]       Stack Trace:&#xD;
-[xUnit.net 00:00:53.38]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(587,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface()&#xD;
-[xUnit.net 00:00:53.38]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:00:53.38]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:00:53.38]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:00:53.38]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:00:53.38]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:00:53.38]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:00:53.38]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:00:53.38]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:00:53.38]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:00:53.38]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:00:53.38]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(553,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface()&#xD;
-[xUnit.net 00:00:53.38]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:00:53.38]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:00:53.38]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:00:53.38]       Requires application to be built and available&#xD;
+[xUnit.net 00:00:00.06]   Discovering: WileyWidget.UiTests&#xD;
+[xUnit.net 00:00:00.10]   Discovered:  WileyWidget.UiTests&#xD;
+[xUnit.net 00:00:00.11]   Starting:    WileyWidget.UiTests&#xD;
+[xUnit.net 00:00:07.33]       Assert.NotNull() Failure: Value is null&#xD;
+[xUnit.net 00:00:07.33]       Stack Trace:&#xD;
+[xUnit.net 00:00:07.33]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(487,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle()&#xD;
+[xUnit.net 00:00:07.33]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+[xUnit.net 00:00:07.33]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:11.55]       System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 97964&#xD;
+[xUnit.net 00:00:11.55]       ---- System.Exception : Could not find process with id: 97964&#xD;
+[xUnit.net 00:00:11.55]       -------- System.ArgumentException : Process with an Id of 97964 is not running.&#xD;
+[xUnit.net 00:00:11.55]       Stack Trace:&#xD;
+[xUnit.net 00:00:11.55]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(678,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface()&#xD;
+[xUnit.net 00:00:11.55]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+[xUnit.net 00:00:11.55]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:11.55]         ----- Inner Stack Trace -----&#xD;
+[xUnit.net 00:00:11.55]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+[xUnit.net 00:00:11.55]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
+[xUnit.net 00:00:11.55]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
+[xUnit.net 00:00:11.55]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
+[xUnit.net 00:00:11.55]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
+[xUnit.net 00:00:11.55]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
+[xUnit.net 00:00:11.55]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
+[xUnit.net 00:00:11.55]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(644,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface()&#xD;
+[xUnit.net 00:00:11.55]         ----- Inner Stack Trace -----&#xD;
+[xUnit.net 00:00:11.55]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
+[xUnit.net 00:00:11.55]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+[xUnit.net 00:00:11.55]       Requires application to be built and available&#xD;
 Test 'WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements' was skipped in the test run.&#xD;
-[xUnit.net 00:01:20.26]       System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 88740&#xD;
-[xUnit.net 00:01:20.26]       ---- System.Exception : Could not find process with id: 88740&#xD;
-[xUnit.net 00:01:20.26]       -------- System.ArgumentException : Process with an Id of 88740 is not running.&#xD;
-[xUnit.net 00:01:20.26]       Stack Trace:&#xD;
-[xUnit.net 00:01:20.26]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(694,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl()&#xD;
-[xUnit.net 00:01:20.26]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:01:20.26]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:01:20.26]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:01:20.26]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:20.26]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:01:20.26]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:01:20.26]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:01:20.26]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:01:20.26]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:20.26]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:20.26]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(660,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl()&#xD;
-[xUnit.net 00:01:20.26]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:01:20.26]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:01:20.26]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:28.24]       System.Exception : Could not find process with id: 153828&#xD;
-[xUnit.net 00:01:28.24]       ---- System.ArgumentException : Process with an Id of 153828 is not running.&#xD;
-[xUnit.net 00:01:28.24]       Stack Trace:&#xD;
-[xUnit.net 00:01:28.24]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:28.24]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:01:28.24]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:01:28.24]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:01:28.24]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:01:28.24]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:28.24]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:28.24]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(1374,0): at WileyWidget.UiTests.MainWindowUITests.TestEnterpriseDataFiltering_WorksCorrectly()&#xD;
-[xUnit.net 00:01:28.24]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:01:28.24]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:01:28.24]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:01:28.24]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:01:28.24]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:36.22]       System.Exception : Could not find process with id: 34808&#xD;
-[xUnit.net 00:01:36.22]       ---- System.ArgumentException : Process with an Id of 34808 is not running.&#xD;
-[xUnit.net 00:01:36.22]       Stack Trace:&#xD;
-[xUnit.net 00:01:36.22]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:36.22]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:01:36.22]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:01:36.22]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:01:36.22]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:01:36.22]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:36.22]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:36.22]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(1121,0): at WileyWidget.UiTests.MainWindowUITests.TestEnterpriseGridRefreshButton_TriggersDataReload()&#xD;
-[xUnit.net 00:01:36.22]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:01:36.22]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:01:36.22]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:01:36.22]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:01:36.22]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:43.75]       System.Exception : Could not find process with id: 16484&#xD;
-[xUnit.net 00:01:43.75]       ---- System.ArgumentException : Process with an Id of 16484 is not running.&#xD;
-[xUnit.net 00:01:43.75]       Stack Trace:&#xD;
-[xUnit.net 00:01:43.75]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:43.75]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:01:43.75]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:01:43.75]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:01:43.75]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:01:43.75]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:43.75]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:43.75]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(957,0): at WileyWidget.UiTests.MainWindowUITests.TestThemeSwitchAfterMigration_NoCrash()&#xD;
-[xUnit.net 00:01:43.75]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:01:43.75]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:01:43.75]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:01:43.75]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:01:43.75]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:51.40]       System.Exception : Could not find process with id: 164968&#xD;
-[xUnit.net 00:01:51.40]       ---- System.ArgumentException : Process with an Id of 164968 is not running.&#xD;
-[xUnit.net 00:01:51.40]       Stack Trace:&#xD;
-[xUnit.net 00:01:51.40]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:01:51.40]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:01:51.40]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:01:51.40]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:01:51.40]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:01:51.40]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:51.40]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:01:51.40]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(1289,0): at WileyWidget.UiTests.MainWindowUITests.TestQuickBooksSyncButton_InitiatesSyncProcess()&#xD;
-[xUnit.net 00:01:51.40]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:01:51.40]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:01:51.40]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:01:51.40]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:01:51.40]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:02:03.93]       Assert.NotNull() Failure: Value is null&#xD;
-[xUnit.net 00:02:03.93]       Stack Trace:&#xD;
-[xUnit.net 00:02:03.93]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(310,0): at WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment()&#xD;
-[xUnit.net 00:02:03.93]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:02:03.93]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:02:11.88]       System.Exception : Could not find process with id: 136792&#xD;
-[xUnit.net 00:02:11.88]       ---- System.ArgumentException : Process with an Id of 136792 is not running.&#xD;
-[xUnit.net 00:02:11.88]       Stack Trace:&#xD;
-[xUnit.net 00:02:11.88]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:02:11.88]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:02:11.88]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:02:11.88]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:02:11.88]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:02:11.88]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:02:11.88]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:02:11.88]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(1047,0): at WileyWidget.UiTests.MainWindowUITests.TestMigrationFailure_ShowsErrorDialog()&#xD;
-[xUnit.net 00:02:11.88]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:02:11.88]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:02:11.88]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:02:11.88]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:02:11.88]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:02:11.88]       Requires application to be built and available&#xD;
+[xUnit.net 00:00:15.78]       System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 73532&#xD;
+[xUnit.net 00:00:15.78]       ---- System.Exception : Could not find process with id: 73532&#xD;
+[xUnit.net 00:00:15.78]       -------- System.ArgumentException : Process with an Id of 73532 is not running.&#xD;
+[xUnit.net 00:00:15.78]       Stack Trace:&#xD;
+[xUnit.net 00:00:15.78]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(785,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl()&#xD;
+[xUnit.net 00:00:15.78]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+[xUnit.net 00:00:15.78]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:15.78]         ----- Inner Stack Trace -----&#xD;
+[xUnit.net 00:00:15.78]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+[xUnit.net 00:00:15.78]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
+[xUnit.net 00:00:15.78]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
+[xUnit.net 00:00:15.78]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
+[xUnit.net 00:00:15.78]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
+[xUnit.net 00:00:15.78]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
+[xUnit.net 00:00:15.78]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
+[xUnit.net 00:00:15.78]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(751,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl()&#xD;
+[xUnit.net 00:00:15.78]         ----- Inner Stack Trace -----&#xD;
+[xUnit.net 00:00:15.78]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
+[xUnit.net 00:00:15.78]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+[xUnit.net 00:00:17.80]       System.ArgumentException : Process with an Id of 43016 is not running.&#xD;
+[xUnit.net 00:00:17.80]       Stack Trace:&#xD;
+[xUnit.net 00:00:17.80]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
+[xUnit.net 00:00:17.80]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(303,0): at WileyWidget.UiTests.MainWindowUITests.Application_Process_CanBeLaunched()&#xD;
+[xUnit.net 00:00:17.80]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+[xUnit.net 00:00:17.80]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:25.86]       Assert.NotNull() Failure: Value is null&#xD;
+[xUnit.net 00:00:25.86]       Stack Trace:&#xD;
+[xUnit.net 00:00:25.86]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(396,0): at WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment()&#xD;
+[xUnit.net 00:00:25.86]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+[xUnit.net 00:00:25.86]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:25.87]       Requires application to be built and available&#xD;
 Test 'WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched' was skipped in the test run.&#xD;
-[xUnit.net 00:02:27.11]       Assert.NotNull() Failure: Value is null&#xD;
-[xUnit.net 00:02:27.11]       Stack Trace:&#xD;
-[xUnit.net 00:02:27.11]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(482,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions()&#xD;
-[xUnit.net 00:02:27.11]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:02:27.11]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:02:54.16]       System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 136004&#xD;
-[xUnit.net 00:02:54.16]       ---- System.Exception : Could not find process with id: 136004&#xD;
-[xUnit.net 00:02:54.16]       -------- System.ArgumentException : Process with an Id of 136004 is not running.&#xD;
-[xUnit.net 00:02:54.16]       Stack Trace:&#xD;
-[xUnit.net 00:02:54.16]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(801,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs()&#xD;
-[xUnit.net 00:02:54.16]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:02:54.16]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:02:54.16]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:02:54.16]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:02:54.16]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:02:54.16]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:02:54.16]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:02:54.16]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:02:54.16]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:02:54.16]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:02:54.16]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(767,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs()&#xD;
-[xUnit.net 00:02:54.16]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:02:54.16]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:02:54.16]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:03:01.34]       System.Exception : Could not find process with id: 148232&#xD;
-[xUnit.net 00:03:01.34]       ---- System.ArgumentException : Process with an Id of 148232 is not running.&#xD;
-[xUnit.net 00:03:01.34]       Stack Trace:&#xD;
-[xUnit.net 00:03:01.34]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:03:01.34]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
-[xUnit.net 00:03:01.34]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
-[xUnit.net 00:03:01.34]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
-[xUnit.net 00:03:01.34]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
-[xUnit.net 00:03:01.34]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:03:01.34]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
-[xUnit.net 00:03:01.34]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(1207,0): at WileyWidget.UiTests.MainWindowUITests.TestBudgetSummaryCalculations_DisplayCorrectly()&#xD;
-[xUnit.net 00:03:01.34]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
-[xUnit.net 00:03:01.34]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
-[xUnit.net 00:03:01.34]         ----- Inner Stack Trace -----&#xD;
-[xUnit.net 00:03:01.34]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
-[xUnit.net 00:03:01.34]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
-[xUnit.net 00:03:01.34]   Finished:    WileyWidget.UiTests&#xD;
+[xUnit.net 00:00:34.94]       Assert.NotNull() Failure: Value is null&#xD;
+[xUnit.net 00:00:34.94]       Stack Trace:&#xD;
+[xUnit.net 00:00:34.94]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(573,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions()&#xD;
+[xUnit.net 00:00:34.94]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+[xUnit.net 00:00:34.94]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:39.18]       System.Exception : Failed to launch application after 3 attempts. Last error: Could not find process with id: 86900&#xD;
+[xUnit.net 00:00:39.18]       ---- System.Exception : Could not find process with id: 86900&#xD;
+[xUnit.net 00:00:39.18]       -------- System.ArgumentException : Process with an Id of 86900 is not running.&#xD;
+[xUnit.net 00:00:39.18]       Stack Trace:&#xD;
+[xUnit.net 00:00:39.18]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(892,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs()&#xD;
+[xUnit.net 00:00:39.18]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)&#xD;
+[xUnit.net 00:00:39.18]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:39.18]         ----- Inner Stack Trace -----&#xD;
+[xUnit.net 00:00:39.18]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+[xUnit.net 00:00:39.18]            at FlaUI.Core.Application.&lt;WaitWhileMainHandleIsMissing&gt;b__33_0()&#xD;
+[xUnit.net 00:00:39.18]            at FlaUI.Core.Tools.Retry.&lt;&gt;c__DisplayClass12_0.&lt;WhileTrue&gt;b__0()&#xD;
+[xUnit.net 00:00:39.18]            at FlaUI.Core.Tools.Retry.While[T](Func`1 retryMethod, Func`2 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage, Boolean lastValueOnTimeout, T defaultOnTimeout)&#xD;
+[xUnit.net 00:00:39.18]            at FlaUI.Core.Tools.Retry.WhileTrue(Func`1 checkMethod, Nullable`1 timeout, Nullable`1 interval, Boolean throwOnTimeout, Boolean ignoreException, String timeoutMessage)&#xD;
+[xUnit.net 00:00:39.18]            at FlaUI.Core.Application.WaitWhileMainHandleIsMissing(Nullable`1 waitTimeout)&#xD;
+[xUnit.net 00:00:39.18]            at FlaUI.Core.Application.GetMainWindow(AutomationBase automation, Nullable`1 waitTimeout)&#xD;
+[xUnit.net 00:00:39.18]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(858,0): at WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs()&#xD;
+[xUnit.net 00:00:39.18]         ----- Inner Stack Trace -----&#xD;
+[xUnit.net 00:00:39.18]            at System.Diagnostics.Process.GetProcessById(Int32 processId, String machineName)&#xD;
+[xUnit.net 00:00:39.18]            at FlaUI.Core.Application.FindProcess(Int32 processId)&#xD;
+[xUnit.net 00:00:39.21]   Finished:    WileyWidget.UiTests&#xD;
 </StdOut>
     </Output>
     <RunInfos>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:51:35.9952241-06:00">
-        <Text>[xUnit.net 00:00:07.11]     WileyWidget.UiTests.MainWindowUITests.TestWidgetConfiguration_SaveAndLoadSettings [FAIL]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-30T05:59:44.2030879-06:00">
+        <Text>[xUnit.net 00:00:07.33]     WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle [FAIL]</Text>
       </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:51:48.2394083-06:00">
-        <Text>[xUnit.net 00:00:19.35]     WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle [FAIL]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-30T05:59:48.4220856-06:00">
+        <Text>[xUnit.net 00:00:11.55]     WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface [FAIL]</Text>
       </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:51:55.7660160-06:00">
-        <Text>[xUnit.net 00:00:26.88]     WileyWidget.UiTests.MainWindowUITests.TestDashboardAfterMigration_SfDataGridLoadsSeededData [FAIL]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Warning" timestamp="2025-08-30T05:59:48.4255817-06:00">
+        <Text>[xUnit.net 00:00:11.55]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements [SKIP]</Text>
       </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:52:22.2609274-06:00">
-        <Text>[xUnit.net 00:00:53.38]     WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface [FAIL]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-30T05:59:52.6510606-06:00">
+        <Text>[xUnit.net 00:00:15.78]     WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl [FAIL]</Text>
       </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Warning" timestamp="2025-08-29T20:52:22.2642208-06:00">
-        <Text>[xUnit.net 00:00:53.38]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements [SKIP]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-30T05:59:54.6689122-06:00">
+        <Text>[xUnit.net 00:00:17.80]     WileyWidget.UiTests.MainWindowUITests.Application_Process_CanBeLaunched [FAIL]</Text>
       </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:52:49.1410354-06:00">
-        <Text>[xUnit.net 00:01:20.26]     WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl [FAIL]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-30T06:00:02.7361282-06:00">
+        <Text>[xUnit.net 00:00:25.86]     WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment [FAIL]</Text>
       </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:52:57.1223873-06:00">
-        <Text>[xUnit.net 00:01:28.24]     WileyWidget.UiTests.MainWindowUITests.TestEnterpriseDataFiltering_WorksCorrectly [FAIL]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Warning" timestamp="2025-08-30T06:00:02.7417268-06:00">
+        <Text>[xUnit.net 00:00:25.87]     WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched [SKIP]</Text>
       </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:53:05.1055290-06:00">
-        <Text>[xUnit.net 00:01:36.22]     WileyWidget.UiTests.MainWindowUITests.TestEnterpriseGridRefreshButton_TriggersDataReload [FAIL]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-30T06:00:11.8163535-06:00">
+        <Text>[xUnit.net 00:00:34.94]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions [FAIL]</Text>
       </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:53:12.6360272-06:00">
-        <Text>[xUnit.net 00:01:43.75]     WileyWidget.UiTests.MainWindowUITests.TestThemeSwitchAfterMigration_NoCrash [FAIL]</Text>
-      </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:53:20.2831407-06:00">
-        <Text>[xUnit.net 00:01:51.40]     WileyWidget.UiTests.MainWindowUITests.TestQuickBooksSyncButton_InitiatesSyncProcess [FAIL]</Text>
-      </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:53:32.8192516-06:00">
-        <Text>[xUnit.net 00:02:03.93]     WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment [FAIL]</Text>
-      </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:53:40.7665943-06:00">
-        <Text>[xUnit.net 00:02:11.88]     WileyWidget.UiTests.MainWindowUITests.TestMigrationFailure_ShowsErrorDialog [FAIL]</Text>
-      </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Warning" timestamp="2025-08-29T20:53:40.7690605-06:00">
-        <Text>[xUnit.net 00:02:11.88]     WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched [SKIP]</Text>
-      </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:53:55.9973361-06:00">
-        <Text>[xUnit.net 00:02:27.11]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions [FAIL]</Text>
-      </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:54:23.0432980-06:00">
-        <Text>[xUnit.net 00:02:54.16]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs [FAIL]</Text>
-      </RunInfo>
-      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T20:54:30.2245669-06:00">
-        <Text>[xUnit.net 00:03:01.34]     WileyWidget.UiTests.MainWindowUITests.TestBudgetSummaryCalculations_DisplayCorrectly [FAIL]</Text>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-30T06:00:16.0525388-06:00">
+        <Text>[xUnit.net 00:00:39.18]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs [FAIL]</Text>
       </RunInfo>
     </RunInfos>
-    <CollectorDataEntries>
-      <Collector agentName="MCKITRICK" uri="datacollector://microsoft/CoverletCodeCoverage/1.0" collectorDisplayName="XPlat code coverage">
-        <UriAttachments>
-          <UriAttachment>
-            <A href="MCKITRICK\coverage.cobertura.xml"></A>
-          </UriAttachment>
-        </UriAttachments>
-      </Collector>
-    </CollectorDataEntries>
   </ResultSummary>
 </TestRun>

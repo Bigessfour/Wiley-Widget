@@ -32,7 +32,7 @@ public class Enterprise : IValidatableObject
     /// Current rate charged per citizen (e.g., $5.00 per month for water)
     /// </summary>
     [Required(ErrorMessage = "Current rate is required")]
-    [Range(0, double.MaxValue, ErrorMessage = "Rates can't be negative, unless you're paying citizens!")]
+    [Range(0.01, 1000, ErrorMessage = "Rates can't be zero—citizens ain't free!")]
     [Column(TypeName = "decimal(18,2)")]
     [ConcurrencyCheck]
     public decimal CurrentRate { get; set; }
@@ -41,13 +41,14 @@ public class Enterprise : IValidatableObject
     /// Monthly expenses (sum of employee compensation + maintenance + other operational costs)
     /// </summary>
     [Required(ErrorMessage = "Monthly expenses are required")]
-    [Range(0, double.MaxValue, ErrorMessage = "Monthly expenses cannot be negative")]
+    [Range(typeof(decimal), "0", "79228162514264337593543950335", ErrorMessage = "Monthly expenses cannot be negative")]
     [Column(TypeName = "decimal(18,2)")]
     [ConcurrencyCheck]
     public decimal MonthlyExpenses { get; set; }
 
     /// <summary>
     /// Monthly revenue (calculated as CitizenCount * CurrentRate)
+    /// Represents total revenue from all rate payers for this enterprise
     /// </summary>
     [NotMapped]
     public decimal MonthlyRevenue
@@ -56,10 +57,14 @@ public class Enterprise : IValidatableObject
     }
 
     /// <summary>
-    /// Number of citizens served by this enterprise
+    /// Number of rate payers served by this enterprise.
+    /// NOTE: In this application, "citizen" refers to any person or entity paying for municipal services
+    /// (rate payer), not necessarily a legal citizen. Examples include tenants in apartments,
+    /// homeowners, or businesses receiving utility services.
+    /// This count is used for revenue calculations and per-person cost analysis.
     /// </summary>
-    [Required(ErrorMessage = "Citizen count is required")]
-    [Range(1, int.MaxValue, ErrorMessage = "Citizen count must be at least 1")]
+    [Required(ErrorMessage = "Rate payer count is required")]
+    [Range(1, int.MaxValue, ErrorMessage = "Rate payer count must be at least 1")]
     [ConcurrencyCheck]
     public int CitizenCount { get; set; }
 
@@ -76,6 +81,7 @@ public class Enterprise : IValidatableObject
 
     /// <summary>
     /// Calculated property: Monthly deficit/surplus (Revenue - Expenses)
+    /// Enhanced with Grok for predictive analytics
     /// </summary>
     [NotMapped]
     public decimal MonthlyBalance
@@ -85,7 +91,7 @@ public class Enterprise : IValidatableObject
 
     /// <summary>
     /// Calculated property: Monthly deficit (Expenses - Revenue)
-    /// Don't let deficits sneak up like unpaid trash bills.
+    /// Can be offloaded to Grok for complex scenario analysis
     /// </summary>
     [NotMapped]
     public decimal MonthlyDeficit
@@ -99,6 +105,18 @@ public class Enterprise : IValidatableObject
     /// </summary>
     [NotMapped]
     public decimal Deficit => MonthlyExpenses - MonthlyRevenue;
+
+    /// <summary>
+    /// Computed deficit from Grok analysis (can be stored if needed)
+    /// </summary>
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? ComputedDeficit { get; set; }
+
+    /// <summary>
+    /// Suggested rate hike from Grok analysis
+    /// </summary>
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? SuggestedRateHike { get; set; }
 
     /// <summary>
     /// Budget status indicator for visual display
@@ -194,7 +212,7 @@ public class Enterprise : IValidatableObject
     /// </summary>
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (Deficit < 0)
+        if (Deficit > 0)
         {
             yield return new ValidationResult("Warning: Enterprise is operating at a deficit!", new[] { "Deficit" });
         }

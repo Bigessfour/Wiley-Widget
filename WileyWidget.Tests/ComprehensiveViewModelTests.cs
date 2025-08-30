@@ -6,21 +6,84 @@ using WileyWidget.ViewModels;
 using Moq;
 using System.Windows.Threading;
 using System.Threading;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using WileyWidget.Configuration;
+using WileyWidget.Data;
+using WileyWidget.Services;
 
 namespace WileyWidget.Tests;
 
 /// <summary>
 /// Comprehensive tests for MainViewModel covering widget management and UI interactions
-/// Uses STA threading for WPF compatibility.
+/// Uses STA threading for WPF compatibility and service initialization.
 /// </summary>
-public class MainViewModelTests : IDisposable
+[Collection("WPF Test Collection")]
+public class MainViewModelTests : IClassFixture<WpfTestFixture>, IDisposable
 {
     private readonly MainViewModel _viewModel;
     private bool _disposed = false;
 
     public MainViewModelTests()
     {
+        // Initialize ServiceLocator for MainViewModel
+        InitializeServiceLocator();
+#pragma warning disable CS0618 // Suppress obsolete warning for test
         _viewModel = new MainViewModel();
+#pragma warning restore CS0618
+    }
+
+    private void InitializeServiceLocator()
+    {
+        try
+        {
+            // Set required environment variables for QuickBooksService
+            Environment.SetEnvironmentVariable("QBO_CLIENT_ID", "test-client-id", EnvironmentVariableTarget.User);
+            Environment.SetEnvironmentVariable("QBO_REALM_ID", "test-realm-id", EnvironmentVariableTarget.User);
+
+            // Create a minimal service provider for testing
+            var services = new ServiceCollection();
+
+            // Add configuration
+            var configBuilder = new ConfigurationBuilder();
+            configBuilder.AddInMemoryCollection(new[]
+            {
+                new KeyValuePair<string, string>("xAI:ApiKey", "test-api-key"),
+                new KeyValuePair<string, string>("xAI:BaseUrl", "https://api.x.ai/v1/")
+            });
+            var configuration = configBuilder.Build();
+            services.AddSingleton<IConfiguration>(configuration);
+
+            // Add logging
+            services.AddLogging();
+
+            // Add database with unique name
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}"));
+
+            // Add other services
+            services.AddTransient<IEnterpriseRepository, EnterpriseRepository>();
+            services.AddTransient<GrokSupercomputer>();
+            services.AddTransient<QuickBooksService>();
+            services.AddTransient<WpfMiddlewareService>();
+            services.AddTransient<GrokDatabaseService>();
+            
+            // Add SettingsService as singleton (matches its design)
+            services.AddTransient<SettingsService>(sp => SettingsService.Instance);
+
+            var serviceProvider = services.BuildServiceProvider();
+            ServiceLocator.Initialize(serviceProvider);
+
+            // Ensure database is created
+            using var scope = serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            context.Database.EnsureCreated();
+        }
+        catch
+        {
+            // ServiceLocator might already be initialized, ignore
+        }
     }
 
     protected virtual void Dispose(bool disposing)
@@ -30,6 +93,7 @@ public class MainViewModelTests : IDisposable
             if (disposing)
             {
                 // Dispose managed resources
+                _viewModel.Dispose();
             }
             _disposed = true;
         }
@@ -370,8 +434,8 @@ public class EnterpriseModelTests
         {
             Name = "Test Enterprise",
             CurrentRate = rate,
-            MonthlyExpenses = 1000.00m,
-            CitizenCount = 1000
+            MonthlyExpenses = 50,
+            CitizenCount = 100
         };
 
         // Act
@@ -385,6 +449,8 @@ public class EnterpriseModelTests
         {
             Assert.Contains(validationResults, vr => vr.MemberNames.Contains(nameof(Enterprise.CurrentRate)));
         }
+        if (!shouldBeValid && rate <= 0)
+            Assert.Contains(validationResults, r => r.ErrorMessage.Contains("positive"));
     }
 
     [Theory]
@@ -412,6 +478,38 @@ public class EnterpriseModelTests
         if (!shouldBeValid)
         {
             Assert.Contains(validationResults, vr => vr.MemberNames.Contains(nameof(Enterprise.MonthlyExpenses)));
+        }
+    }
+
+    [Theory]
+    [InlineData(1.00, 50, false)] // Revenue = 100, Expenses = 50, Surplus
+    [InlineData(0.50, 50, true)]  // Revenue = 50, Expenses = 50, Break-even
+    [InlineData(0.25, 50, true)]  // Revenue = 25, Expenses = 50, Deficit
+    public void Enterprise_Deficit_Validation(decimal rate, decimal expenses, bool hasDeficitWarning)
+    {
+        // Arrange
+        var enterprise = new Enterprise
+        {
+            Name = "Test Enterprise",
+            CurrentRate = rate,
+            MonthlyExpenses = expenses,
+            CitizenCount = 100
+        };
+
+        // Act
+        var validationContext = new ValidationContext(enterprise);
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(enterprise, validationContext, validationResults, true);
+
+        // Assert
+        if (hasDeficitWarning)
+        {
+            Assert.False(isValid, "Expected validation to fail due to deficit warning");
+            Assert.Contains(validationResults, vr => vr.ErrorMessage.Contains("deficit"));
+        }
+        else
+        {
+            Assert.True(isValid, $"Expected valid but got errors: {string.Join(", ", validationResults.Select(v => v.ErrorMessage))}");
         }
     }
 

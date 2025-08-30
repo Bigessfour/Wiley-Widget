@@ -11,12 +11,23 @@
     <NoWarn>$(NoWarn);NU1605;NETSDK1206</NoWarn>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    
+    <!-- Testing Configuration -->
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>lcov;opencover</CoverletOutputFormat>
+    <CoverletOutput>$(MSBuildProjectDirectory)/TestResults/coverage/</CoverletOutput>
+    <Exclude>[xunit.*]*,[Moq]*,[FluentAssertions]*,[AutoFixture]*,[Bogus]*,[Microsoft.Extensions.*]*,[System.*]*,[Newtonsoft.Json]*</Exclude>
+    <Include>[WileyWidget*]*</Include>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AutoFixture" />
+    <PackageReference Include="AutoFixture.Xunit2" />
+    <PackageReference Include="Bogus" />
     <PackageReference Include="DBConfirm.Core" />
     <PackageReference Include="DBConfirm.Packages.SQLServer.MSTest" />
     <PackageReference Include="DBConfirm.Packages.SQLServer.NUnit" />
+    <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio">

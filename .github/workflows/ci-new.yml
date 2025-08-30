@@ -24,7 +24,7 @@ jobs:
             - name: Setup .NET
               uses: actions/setup-dotnet@v4
               with:
-                  dotnet-version: 8.0.x
+                  dotnet-version: 9.0.x
 
             - name: Cache NuGet
               uses: actions/cache@v4
@@ -78,6 +78,8 @@ jobs:
 
             - name: Run Tests
               run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx" --filter "Category!=UiSmokeTests&Category!=HighInteraction&Category!=PostMigration"
+              env:
+                CI: true
 
             - name: Run Phase 1 Validation
               run: |

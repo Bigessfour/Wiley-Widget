@@ -1,3 +1,4 @@
+using WileyWidget.ViewModels;
 #nullable enable
 
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
 using WileyWidget.Data;
+using WileyWidget.Services;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace WileyWidget.Configuration;
 
@@ -84,6 +88,67 @@ public static class DatabaseConfiguration
     }
 
     /// <summary>
+    /// Adds all application services to the dependency injection container
+    /// </summary>
+    public static IServiceCollection AddApplicationServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // Add database services first
+        services.AddDatabaseServices(configuration);
+
+        // Add logging
+        services.AddLogging(logging =>
+        {
+            logging.AddSerilog();
+        });
+
+        // Add HTTP client for external API calls
+        services.AddHttpClient();
+
+        // Register application services
+        services.AddScoped<GrokSupercomputer>();
+        services.AddScoped<QuickBooksService>();
+        services.AddScoped<SettingsService>();
+
+        // Register ViewModels with their dependencies
+        services.AddTransient<MainViewModel>();
+        services.AddTransient<EnterpriseViewModel>();
+
+        // Add configuration options with validation
+        services.AddOptions<XAiSettings>()
+            .Bind(configuration.GetSection("xAI"))
+            .ValidateOnStart();
+
+        services.AddOptions<DatabaseSettings>()
+            .Bind(configuration.GetSection("Database"))
+            .ValidateOnStart();
+
+        // Register custom validators
+        services.AddSingleton<IValidateOptions<XAiSettings>, ServiceValidation.XAiSettingsValidation>();
+        services.AddSingleton<IValidateOptions<DatabaseSettings>, ServiceValidation.DatabaseSettingsValidation>();
+
+        // Add health checks
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("Database", tags: new[] { "database", "sql" })
+            .AddCheck<ExternalApiHealthCheck>("xAI API", tags: new[] { "external", "api" });
+
+        // Register health check services
+        services.AddSingleton<ExternalApiHealthCheck>();
+
+        // Register WPF middleware service
+        services.AddSingleton<WpfMiddlewareService>();
+
+        // Register health monitoring service
+        services.AddSingleton<HealthMonitoringService>();
+
+        // Register Grok database service
+        services.AddScoped<GrokDatabaseService>();
+
+        return services;
+    }
+
+    /// <summary>
     /// Configures additional DbContext options
     /// </summary>
     private static void ConfigureDbContextOptions(DbContextOptionsBuilder options)
@@ -127,7 +192,7 @@ public static class DatabaseConfiguration
             }
 
             // Seed the database with sample data using the same context
-            await seeder.SeedAsync(context);
+            seeder.Seed();
         }
         catch (Exception ex)
         {

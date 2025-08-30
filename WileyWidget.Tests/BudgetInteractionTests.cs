@@ -94,7 +94,7 @@ public class BudgetInteractionTests
     }
 
     [Theory]
-    [InlineData(0, true)]       // Zero amount (valid for cost = 0)
+    [InlineData(0, false)]      // Zero amount (invalid - no free rides)
     [InlineData(0.01, true)]    // Minimum positive amount
     [InlineData(1000.99, true)] // Valid amount
     [InlineData(-1, false)]     // Negative amount

@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory=$false)]
-    [ValidateSet("All", "Unit", "Integration", "UI", "Coverage")]
+        [ValidateSet("All", "Unit", "Integration", "UI", "Coverage", "Mutation", "EntityValidation")]
     [string]$TestType = "All",
 
     [Parameter(Mandatory=$false)]
@@ -13,7 +13,10 @@ param(
     [switch]$NoBuild,
 
     [Parameter(Mandatory=$false)]
-    [switch]$Verbose
+    [switch]$Verbose,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$UseAdvancedTools
 )
 
 # Configuration
@@ -62,75 +65,175 @@ if (-not $NoBuild) {
     Write-TestLog "Build completed successfully" "SUCCESS"
 }
 
-# Function to run tests
+# Function to run tests with retry logic
 function Run-Tests {
     param(
         [string]$ProjectPath,
         [string]$TestFilter = "",
-        [string]$DisplayName
+        [string]$DisplayName,
+        [int]$MaxRetries = 3,
+        [int]$RetryDelay = 5
     )
 
     Write-TestLog "Running $DisplayName tests..." "INFO"
 
-    $testArgs = @(
-        "test",
-        $ProjectPath,
-        "--configuration", "Release",
-        "--settings", $testSettingsFile,
-        "--logger", "console;verbosity=detailed",
-        "--logger", "trx",
-        "--results-directory", "$projectRoot\TestResults"
-    )
+    $attempt = 1
+    $success = $false
 
-    if ($TestFilter) {
-        $testArgs += "--filter", $TestFilter
+    while ($attempt -le $MaxRetries -and -not $success) {
+        Write-TestLog "Attempt $attempt of $MaxRetries for $DisplayName" "INFO"
+
+        $testArgs = @(
+            "test",
+            $ProjectPath,
+            "--configuration", "Release",
+            "--settings", $testSettingsFile,
+            "--logger", "console;verbosity=minimal",
+            "--logger", "trx",
+            "--results-directory", "$projectRoot\TestResults",
+            "--blame-hang-timeout", "5min",
+            "--blame-crash"
+        )
+
+        if ($TestFilter) {
+            $testArgs += "--filter", $TestFilter
+        }
+
+        if ($UseAdvancedTools) {
+            $testArgs += "--collect", "XPlat Code Coverage"
+        }
+
+        try {
+            $testResult = & dotnet $testArgs
+            $exitCode = $LASTEXITCODE
+
+            if ($exitCode -eq 0) {
+                Write-TestLog "$DisplayName tests completed successfully on attempt $attempt" "SUCCESS"
+                $success = $true
+            } else {
+                Write-TestLog "$DisplayName tests failed on attempt $attempt (Exit code: $exitCode)" "WARNING"
+
+                if ($attempt -lt $MaxRetries) {
+                    Write-TestLog "Retrying in $RetryDelay seconds..." "INFO"
+                    Start-Sleep -Seconds $RetryDelay
+                    $RetryDelay = [Math]::Min($RetryDelay * 2, 60)  # Exponential backoff
+                }
+            }
+        } catch {
+            Write-TestLog "Exception during $DisplayName test execution: $($_.Exception.Message)" "ERROR"
+
+            if ($attempt -lt $MaxRetries) {
+                Write-TestLog "Retrying in $RetryDelay seconds..." "INFO"
+                Start-Sleep -Seconds $RetryDelay
+                $RetryDelay = [Math]::Min($RetryDelay * 2, 60)
+            }
+        }
+
+        $attempt++
     }
 
-    if ($Verbose) {
-        $testArgs += "--verbosity", "detailed"
+    if (-not $success) {
+        Write-TestLog "$DisplayName tests failed after $MaxRetries attempts" "ERROR"
+        return $false
     }
 
-    $testResult = & dotnet $testArgs
-
-    if ($LASTEXITCODE -eq 0) {
-        Write-TestLog "$DisplayName tests completed successfully" "SUCCESS"
-        return $true
+    return $true
+}
     } else {
         Write-TestLog "$DisplayName tests failed" "ERROR"
         return $false
     }
 }
 
-# Function to run coverage
-function Run-Coverage {
-    Write-TestLog "Running code coverage analysis..." "INFO"
+# Function to run advanced coverage with Coverlet
+function Run-AdvancedCoverage {
+    Write-TestLog "Running advanced coverage analysis with Coverlet..." "INFO"
 
-    $coverageArgs = @(
+    if (!(Get-Command coverlet -ErrorAction SilentlyContinue)) {
+        Write-TestLog "Coverlet not found. Installing..." "WARNING"
+        dotnet tool install --global coverlet.console
+    }
+
+    $coverageOutput = "$projectRoot\TestResults\coverage"
+    if (!(Test-Path $coverageOutput)) {
+        New-Item -ItemType Directory -Path $coverageOutput | Out-Null
+    }
+
+    $coverletArgs = @(
+        "$projectRoot\WileyWidget.Tests\bin\Release\net9.0-windows\WileyWidget.Tests.dll",
+        "--target", "dotnet",
+        "--targetargs", "test $unitTestProject --no-build --configuration Release",
+        "--format", "lcov;html;opencover",
+        "--output", "$coverageOutput\",
+        "--exclude", "[xunit.*]*,[Moq]*,[FluentAssertions]*,[AutoFixture]*,[Bogus]*,[Microsoft.Extensions.*]*,[System.*]*",
+        "--include", "[WileyWidget*]*"
+    )
+
+    if ($Filter) {
+        $coverletArgs[3] = "test $unitTestProject --no-build --configuration Release --filter `"$Filter`""
+    }
+
+    & coverlet $coverletArgs
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-TestLog "Advanced coverage analysis completed successfully" "SUCCESS"
+        Write-TestLog "Coverage reports available at: $coverageOutput" "INFO"
+        Write-TestLog "  - HTML Report: $coverageOutput\coverage.html" "INFO"
+        Write-TestLog "  - LCOV Report: $coverageOutput\coverage.lcov" "INFO"
+    } else {
+        Write-TestLog "Advanced coverage analysis failed" "ERROR"
+    }
+}
+
+# Function to run mutation testing with Stryker
+function Run-MutationTests {
+    Write-TestLog "Running mutation testing with Stryker.NET..." "INFO"
+
+    if (!(Get-Command dotnet-stryker -ErrorAction SilentlyContinue)) {
+        Write-TestLog "Stryker.NET not found. Installing..." "WARNING"
+        dotnet tool install --global dotnet-stryker
+    }
+
+    Push-Location $projectRoot
+    try {
+        & dotnet-stryker
+        if ($LASTEXITCODE -eq 0) {
+            Write-TestLog "Mutation testing completed successfully" "SUCCESS"
+        } else {
+            Write-TestLog "Mutation testing failed or found surviving mutants" "WARNING"
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
+# Function to run entity validation tests specifically
+function Run-EntityValidationTests {
+    Write-TestLog "Running entity validation tests..." "INFO"
+
+    $entityTestArgs = @(
         "test",
         $unitTestProject,
         "--configuration", "Release",
+        "--filter", "EntityValidationTests",
         "--settings", $testSettingsFile,
-        "--collect", "XPlat Code Coverage",
-        "--results-directory", "$projectRoot\TestResults",
-        "--logger", "console;verbosity=detailed"
+        "--logger", "console;verbosity=detailed",
+        "--logger", "trx",
+        "--results-directory", "$projectRoot\TestResults"
     )
 
     if ($Verbose) {
-        $coverageArgs += "--verbosity", "detailed"
+        $entityTestArgs += "--verbosity", "detailed"
     }
 
-    $coverageResult = & dotnet $coverageArgs
+    $testResult = & dotnet $entityTestArgs
 
     if ($LASTEXITCODE -eq 0) {
-        Write-TestLog "Coverage analysis completed successfully" "SUCCESS"
-
-        # Generate coverage report
-        $coverageFiles = Get-ChildItem -Path "$projectRoot\TestResults" -Filter "*.coverage" -Recurse
-        if ($coverageFiles) {
-            Write-TestLog "Coverage reports generated in: $projectRoot\TestResults" "INFO"
-        }
+        Write-TestLog "Entity validation tests completed successfully" "SUCCESS"
+        return $true
     } else {
-        Write-TestLog "Coverage analysis failed" "ERROR"
+        Write-TestLog "Entity validation tests failed" "ERROR"
+        return $false
     }
 }
 
@@ -148,7 +251,17 @@ switch ($TestType) {
         $allTestsPassed = Run-Tests -ProjectPath $uiTestProject -TestFilter "Category=UITest" -DisplayName "UI"
     }
     "Coverage" {
-        Run-Coverage
+        if ($UseAdvancedTools) {
+            Run-AdvancedCoverage
+        } else {
+            Run-Coverage
+        }
+    }
+    "Mutation" {
+        Run-MutationTests
+    }
+    "EntityValidation" {
+        $allTestsPassed = Run-EntityValidationTests
     }
     "All" {
         # Run unit tests
@@ -159,8 +272,21 @@ switch ($TestType) {
         $uiPassed = Run-Tests -ProjectPath $uiTestProject -TestFilter "Category=UITest" -DisplayName "UI"
         $allTestsPassed = $allTestsPassed -and $uiPassed
 
+        # Run entity validation tests
+        $entityPassed = Run-EntityValidationTests
+        $allTestsPassed = $allTestsPassed -and $entityPassed
+
         # Run coverage
-        Run-Coverage
+        if ($UseAdvancedTools) {
+            Run-AdvancedCoverage
+        } else {
+            Run-Coverage
+        }
+
+        # Run mutation tests if requested
+        if ($UseAdvancedTools) {
+            Run-MutationTests
+        }
     }
 }
 

@@ -446,10 +446,13 @@ public partial class App : Application
 
 			// Configure services
 			var services = new ServiceCollection();
-			services.AddDatabaseServices(configuration);
+			services.AddApplicationServices(configuration);
 
 			// Build service provider
 			var serviceProvider = services.BuildServiceProvider();
+
+			// Initialize service locator for global access
+			ServiceLocator.Initialize(serviceProvider);
 
 			// Initialize database
 			await DatabaseConfiguration.EnsureDatabaseCreatedAsync(serviceProvider);

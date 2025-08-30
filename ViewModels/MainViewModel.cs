@@ -6,9 +6,17 @@ using WileyWidget.Services;
 using Intuit.Ipp.Data;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using WileyWidget.Configuration;
 using WileyWidget.Data;
 using Serilog;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System.IO;
+using DotNetEnv;
+using Azure.Security.KeyVault.Secrets;
+using Azure.Identity;
+using Azure.Extensions.AspNetCore.Configuration;
 
 namespace WileyWidget.ViewModels;
 
@@ -16,27 +24,44 @@ namespace WileyWidget.ViewModels;
     /// Enhanced main view model providing widgets, QuickBooks integration, and enterprise management
     /// Includes comprehensive logging for all operations and user interactions
     /// </summary>
-    public partial class MainViewModel : ObservableObject
+    public partial class MainViewModel : ObservableObject, IDisposable
     {
-        private readonly QuickBooksService _qb; // null until user config provided
-
-        public ObservableCollection<Widget> Widgets { get; } = new()
-        {
-            new Widget { Id = 1, Name = "Alpha", Category = "Core", Price = 19.99M },
-            new Widget { Id = 2, Name = "Beta", Category = "Core", Price = 24.50M },
-            new Widget { Id = 3, Name = "Gamma", Category = "Extended", Price = 42.00M }
-        };
-
-        public ObservableCollection<Customer> QuickBooksCustomers { get; } = new();
-        public ObservableCollection<Invoice> QuickBooksInvoices { get; } = new();
-        public ObservableCollection<Class> QboClasses { get; } = new();
-        public ObservableCollection<Account> QboAccounts { get; } = new();
-
-        [ObservableProperty]
-        private bool quickBooksBusy;
-
-        // Enterprise management properties
+        private readonly QuickBooksService _qb;
+        private readonly IConfiguration _config;
+        private readonly GrokSupercomputer _grokSupercomputer;
+        private readonly AppDbContext _dbContext;
+        private readonly IEnterpriseRepository _enterpriseRepository;
+        private readonly WpfMiddlewareService _middlewareService;
         private readonly EnterpriseViewModel _enterpriseViewModel;
+
+        /// <summary>
+        /// Constructor with dependency injection
+        /// </summary>
+        public MainViewModel(
+            IConfiguration config,
+            GrokSupercomputer grokSupercomputer = null,
+            AppDbContext dbContext = null,
+            IEnterpriseRepository enterpriseRepository = null,
+            QuickBooksService quickBooksService = null,
+            WpfMiddlewareService middlewareService = null)
+        {
+            Log.Information("MainViewModel initialization started with DI");
+
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _grokSupercomputer = grokSupercomputer;
+            _dbContext = dbContext;
+            _enterpriseRepository = enterpriseRepository;
+            _qb = quickBooksService;
+            _middlewareService = middlewareService ?? new WpfMiddlewareService();
+
+            // Initialize enterprise management
+            _enterpriseViewModel = new EnterpriseViewModel(_enterpriseRepository);
+
+            // Initialize default widgets
+            InitializeDefaultWidgets();
+
+            Log.Information("MainViewModel initialized successfully with DI");
+        }
 
         public ObservableCollection<Enterprise> Enterprises => _enterpriseViewModel?.Enterprises ?? new();
         public Enterprise SelectedEnterprise
@@ -52,9 +77,24 @@ namespace WileyWidget.ViewModels;
         // Budget interactions properties
         public ObservableCollection<BudgetInteraction> BudgetInteractions { get; } = new();
 
+        public Models.BudgetInsights BudgetInsights => _enterpriseViewModel?.BudgetInsights ?? new();
+
         /// <summary>Currently selected widget in the grid (null when none selected).</summary>
         [ObservableProperty]
         private Widget selectedWidget;
+
+        /// <summary>Collection of widgets for the main view.</summary>
+        public ObservableCollection<Widget> Widgets { get; } = new();
+
+        /// <summary>Indicates if QuickBooks operations are in progress.</summary>
+        [ObservableProperty]
+        private bool quickBooksBusy;
+
+        /// <summary>Collection of QuickBooks customers.</summary>
+        public ObservableCollection<Customer> QuickBooksCustomers { get; } = new();
+
+        /// <summary>Collection of QuickBooks invoices.</summary>
+        public ObservableCollection<Invoice> QuickBooksInvoices { get; } = new();
 
     [RelayCommand]
     /// <summary>
@@ -112,74 +152,88 @@ namespace WileyWidget.ViewModels;
         Log.Debug("Widget collection now contains {WidgetCount} items", Widgets.Count);
     }
 
-    public MainViewModel()
+    /// <summary>
+    /// Legacy constructor for backward compatibility - creates dependencies manually
+    /// </summary>
+    [Obsolete("Use constructor with dependency injection parameters instead")]
+    public MainViewModel() : this(
+        ServiceLocator.GetService<IConfiguration>(),
+        ServiceLocator.GetServiceOrDefault<GrokSupercomputer>(),
+        ServiceLocator.GetServiceOrDefault<AppDbContext>(),
+        ServiceLocator.GetServiceOrDefault<IEnterpriseRepository>(),
+        ServiceLocator.GetServiceOrDefault<QuickBooksService>(),
+        ServiceLocator.GetServiceOrDefault<WpfMiddlewareService>())
     {
-        Log.Information("MainViewModel initialization started");
-
-        // Load QuickBooks client id/secret from environment (user sets manually). Redirect port chosen arbitrarily (must match Intuit app settings).
-        var cid = System.Environment.GetEnvironmentVariable("QBO_CLIENT_ID");
-        var csec = System.Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET");
-        var redirect = System.Environment.GetEnvironmentVariable("QBO_REDIRECT_URI");
-
-        if (string.IsNullOrWhiteSpace(redirect))
-            redirect = "http://localhost:8080/callback/"; // default; MUST exactly match developer portal entry
-
-        if (!redirect.EndsWith('/')) redirect += "/"; // HttpListener prefix requires trailing slash
-
-        // Only initialize service if client id present.
-        if (!string.IsNullOrWhiteSpace(cid))
+        // If GrokSupercomputer wasn't provided by DI, create it manually with database service
+        if (_grokSupercomputer == null && _config != null)
         {
-            _qb = new QuickBooksService(SettingsService.Instance);
-            Log.Information("QuickBooks service initialized successfully");
-        }
-        else
-        {
-            Log.Warning("QuickBooks client ID not found in environment variables - QuickBooks features will be disabled");
-        }
+            try
+            {
+                using var loggerFactory = new LoggerFactory();
+                loggerFactory.AddSerilog(Log.Logger);
+                var logger = loggerFactory.CreateLogger<GrokSupercomputer>();
 
-        // Initialize enterprise management
-        try
-        {
-            var contextFactory = new AppDbContextFactory();
-            using var context = contextFactory.CreateDbContext(new string[0]);
-            var enterpriseRepository = new EnterpriseRepository(context);
-            _enterpriseViewModel = new EnterpriseViewModel(enterpriseRepository);
-            Log.Information("Enterprise management system initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to initialize enterprise management system - enterprise features will be disabled");
-            _enterpriseViewModel = null;
-        }
+                var contextFactory = new AppDbContextFactory();
+                _dbContext = contextFactory.CreateDbContext(new string[0]);
 
-        Log.Information("MainViewModel initialization completed - Widgets: {WidgetCount}, Enterprises: {EnterpriseAvailable}",
-                       Widgets.Count, _enterpriseViewModel != null ? "Available" : "Unavailable");
+                // Try to get the database service from DI
+                var dbService = ServiceLocator.GetServiceOrDefault<GrokDatabaseService>();
+
+                _grokSupercomputer = new GrokSupercomputer(_config, logger, _dbContext, dbService);
+                Log.Information("GrokSupercomputer initialized successfully with database service");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to initialize GrokSupercomputer - AI features will be disabled");
+                _grokSupercomputer = null;
+                _dbContext = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Initializes the default widgets for the application
+    /// </summary>
+    private void InitializeDefaultWidgets()
+    {
+        if (Widgets.Count == 0)
+        {
+            Widgets.Add(new Widget { Id = 1, Name = "Alpha", Category = "Test", Price = 10.00m });
+            Widgets.Add(new Widget { Id = 2, Name = "Beta", Category = "Test", Price = 20.00m });
+            Widgets.Add(new Widget { Id = 3, Name = "Gamma", Category = "Test", Price = 30.00m });
+            
+            SelectedWidget = Widgets[0];
+            Log.Information("Initialized {WidgetCount} default widgets", Widgets.Count);
+        }
     }
 
     [RelayCommand]
     private async System.Threading.Tasks.Task LoadEnterprisesAsync()
     {
-        if (_enterpriseViewModel == null)
+        await _middlewareService.ExecuteAsync("LoadEnterprises", async () =>
         {
-            Log.Warning("Attempted to load enterprises but enterprise management system is not available");
-            return;
-        }
+            if (_enterpriseViewModel == null)
+            {
+                Log.Warning("Attempted to load enterprises but enterprise management system is not available");
+                return;
+            }
 
-        Log.Information("User initiated enterprise loading");
-        await _enterpriseViewModel.LoadEnterprisesAsync();
+            Log.Information("User initiated enterprise loading");
+            await _enterpriseViewModel.LoadEnterprisesAsync();
 
-        var enterpriseCount = _enterpriseViewModel.Enterprises.Count;
-        Log.Information("Enterprise loading completed - {Count} enterprises loaded", enterpriseCount);
+            var enterpriseCount = _enterpriseViewModel.Enterprises.Count;
+            Log.Information("Enterprise loading completed - {Count} enterprises loaded", enterpriseCount);
 
-        if (enterpriseCount > 0)
-        {
-            var totalRevenue = _enterpriseViewModel.Enterprises.Sum(e => e.MonthlyRevenue);
-            var totalExpenses = _enterpriseViewModel.Enterprises.Sum(e => e.MonthlyExpenses);
-            var totalBalance = totalRevenue - totalExpenses;
+            if (enterpriseCount > 0)
+            {
+                var totalRevenue = _enterpriseViewModel.Enterprises.Sum(e => e.MonthlyRevenue);
+                var totalExpenses = _enterpriseViewModel.Enterprises.Sum(e => e.MonthlyExpenses);
+                var totalBalance = totalRevenue - totalExpenses;
 
-            Log.Information("Enterprise summary - Revenue: {Revenue:C}, Expenses: {Expenses:C}, Balance: {Balance:C}",
-                           totalRevenue, totalExpenses, totalBalance);
-        }
+                Log.Information("Enterprise summary - Revenue: {Revenue:C}, Expenses: {Expenses:C}, Balance: {Balance:C}",
+                               totalRevenue, totalExpenses, totalBalance);
+            }
+        });
     }
 
     [RelayCommand]
@@ -242,6 +296,131 @@ namespace WileyWidget.ViewModels;
 
         await _enterpriseViewModel.DeleteEnterpriseAsync();
         Log.Information("Enterprise deletion process completed");
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RunGrokCrunchAsync()
+    {
+        if (_grokSupercomputer == null)
+        {
+            Log.Warning("Attempted to run Grok crunch but GrokSupercomputer is not available");
+            return;
+        }
+
+        if (_enterpriseViewModel == null || _enterpriseViewModel.Enterprises.Count == 0)
+        {
+            Log.Warning("Attempted to run Grok crunch but no enterprises are available");
+            return;
+        }
+
+        Log.Information("User initiated Grok AI crunch analysis for {Count} enterprises", 
+                       _enterpriseViewModel.Enterprises.Count);
+
+        try
+        {
+            // Define the algorithm for Grok to execute
+            var algoDescription = @"
+Calculate for each enterprise:
+- Deficit = MonthlyExpenses - MonthlyRevenue
+- If deficit > 0, SuggestedRateHike = (deficit / CitizenCount) * 1.1 (10% buffer)
+- If deficit <= 0, SuggestedRateHike = 0
+- Provide a witty suggestion for budget optimization
+
+Output structured analysis with actionable insights.";
+
+            // Run the AI-powered analysis
+            var updatedEnterprises = await _grokSupercomputer.CrunchNumbersAsync(
+                _enterpriseViewModel.Enterprises.ToList(), 
+                algoDescription);
+
+            // Update the enterprise collection (this will trigger UI refresh via ObservableCollection)
+            _enterpriseViewModel.Enterprises.Clear();
+            foreach (var enterprise in updatedEnterprises)
+            {
+                _enterpriseViewModel.Enterprises.Add(enterprise);
+            }
+
+            Log.Information("Grok crunch analysis completed successfully - {Count} enterprises updated", 
+                           updatedEnterprises.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Grok crunch analysis failed - falling back to local calculations");
+            
+            // Could implement local fallback here if desired
+            // For now, just log the error and let user know
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CrunchWithGrokAsync()
+    {
+        if (_enterpriseViewModel == null)
+        {
+            Log.Warning("Attempted to crunch enterprises with Grok but enterprise management system is not available");
+            return;
+        }
+
+        if (_grokSupercomputer == null)
+        {
+            Log.Warning("Attempted to crunch enterprises with Grok but GrokSupercomputer is not available");
+            return;
+        }
+
+        Log.Information("User initiated Grok analysis for {Count} enterprises", _enterpriseViewModel.Enterprises.Count);
+
+        try
+        {
+            // Get current enterprises list
+            var enterprisesList = _enterpriseViewModel.Enterprises.ToList();
+
+            // Call GrokSupercomputer to compute enterprises
+            var analyzedEnterprises = await _grokSupercomputer.ComputeEnterprisesAsync(enterprisesList);
+
+            // Update the Enterprises collection with analyzed data
+            _enterpriseViewModel.Enterprises.Clear();
+            foreach (var enterprise in analyzedEnterprises)
+            {
+                _enterpriseViewModel.Enterprises.Add(enterprise);
+            }
+
+            // Save to database
+            var contextFactory = new AppDbContextFactory();
+            using var context = contextFactory.CreateDbContext(new string[0]);
+            context.Enterprises.UpdateRange(analyzedEnterprises);
+            await context.SaveChangesAsync();
+
+            Log.Information("Grok analysis completed and saved to database for {Count} enterprises", analyzedEnterprises.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to perform Grok analysis");
+        }
+    }
+
+    [RelayCommand]
+    private void TestConfigurationAsync()
+    {
+        try
+        {
+            var apiKey = _config["xAI:ApiKey"];
+            var hasApiKey = !string.IsNullOrEmpty(apiKey) && !apiKey.Contains("your-xai-api-key-here");
+
+            Log.Information("Configuration test - xAI API Key loaded: {HasKey}", hasApiKey);
+
+            if (hasApiKey)
+            {
+                Log.Information("✅ xAI API key is properly configured and loaded from .env file");
+            }
+            else
+            {
+                Log.Warning("⚠️ xAI API key not found or still using placeholder. Please update .env file with your actual xAI API key");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to test configuration");
+        }
     }
 
     [RelayCommand]
@@ -402,5 +581,84 @@ namespace WileyWidget.ViewModels;
         {
             QuickBooksBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task AnalyzeBudgetWithGrokAsync()
+    {
+        if (_enterpriseViewModel == null)
+        {
+            Log.Warning("Attempted to analyze budget with Grok but enterprise management system is not available");
+            return;
+        }
+
+        if (_grokSupercomputer == null)
+        {
+            Log.Warning("Attempted to analyze budget with Grok but GrokSupercomputer is not available");
+            return;
+        }
+
+        Log.Information("User initiated comprehensive Grok budget analysis");
+
+        try
+        {
+            var enterprisesList = _enterpriseViewModel.Enterprises.ToList();
+            
+            // Get advanced analytics from Grok
+            var budgetMetrics = await _grokSupercomputer.ComputeBudgetAnalyticsAsync(enterprisesList);
+            
+            // Generate AI-powered insights
+            var budgetInsights = await _grokSupercomputer.GenerateBudgetInsightsAsync(budgetMetrics, enterprisesList);
+            
+            // Update UI with results
+            // Note: You'd need to bind these to UI properties
+            
+            Log.Information("Comprehensive Grok budget analysis completed");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to perform comprehensive Grok budget analysis");
+        }
+    }
+
+    [RelayCommand]
+    private void ExportForCpa()
+    {
+        if (_enterpriseViewModel != null)
+        {
+            _enterpriseViewModel.ExportForCpaAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Disposes of managed resources
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes of managed resources
+    /// </summary>
+    /// <param name="disposing">True if called from Dispose(), false if called from finalizer</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Dispose managed resources
+            _grokSupercomputer?.Dispose();
+            _dbContext?.Dispose();
+            _enterpriseViewModel?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Finalizer for MainViewModel
+    /// </summary>
+    ~MainViewModel()
+    {
+        Dispose(false);
     }
 }

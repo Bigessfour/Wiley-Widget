@@ -19,13 +19,14 @@ runtimes:
 lint:
   enabled:
     # Code formatting - essential for consistency
+    - svgo@4.0.0
     - shfmt@3.6.0
     - gitleaks@8.28.0
     - prettier@3.6.2
     # Security scanning - critical for production
     - trufflehog@3.90.5
     # .NET code quality and formatting
-    - dotnet-format@8.0.0
+    - dotnet-format@9.0.0
     # PowerShell script analysis with 7.5.2 formatting
     - psscriptanalyzer@1.24.0:
         config: .trunk/configs/PSScriptAnalyzerSettings.psd1
@@ -33,7 +34,7 @@ lint:
     - osv-scanner@2.2.2
     # Git security scanning with custom config
     # - gitleaks@8.28.0:
-        # config: .trunk/configs/.gitleaks.toml
+    # config: .trunk/configs/.gitleaks.toml
     # Alternative: Use trufflehog if gitleaks fails
     - trufflehog@3.90.5
   disabled:
@@ -83,5 +84,3 @@ tools:
   enabled:
     - pwsh@7.5.2
     - converttosarif@1.0.0
-
-

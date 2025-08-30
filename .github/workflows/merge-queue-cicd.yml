@@ -120,6 +120,7 @@ jobs:
               env:
                   RUN_UI_TESTS: 0  # Disable UI tests in CI (headless environment)
                   COVERAGE_MIN: 70  # Minimum coverage threshold
+                  CI: true
               run: |
                   # Run unit tests with coverage
                   dotnet test ./WileyWidget.Tests/WileyWidget.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit-tests.trx" --logger "junit;LogFileName=unit-tests.xml"

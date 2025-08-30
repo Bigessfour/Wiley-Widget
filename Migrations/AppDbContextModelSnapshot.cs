@@ -17,6 +17,237 @@ namespace WileyWidget.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
 
+            modelBuilder.Entity("WileyWidget.Models.AiAnalysisAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("DurationMs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EnterpriseId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSuccessful")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("{}");
+
+                    b.Property<string>("OperationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("LocalSystem");
+
+                    b.Property<DateTime>("Timestamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("System");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnterpriseId");
+
+                    b.HasIndex("OperationType");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AiAnalysisAudits", (string)null);
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.AiAnalysisResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AiResponse")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("AnalysisDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("AnalysisType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("ApiCost")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InputHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSuccessful")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ProcessingTimeMs")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnalysisDate");
+
+                    b.HasIndex("AnalysisType");
+
+                    b.HasIndex("InputHash")
+                        .IsUnique();
+
+                    b.ToTable("AiAnalysisResults", (string)null);
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.AiRecommendation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ConfidenceLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(50);
+
+                    b.Property<int>("EnterpriseId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("ExpectedImpact")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime>("GeneratedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<DateTime?>("ImplementationDeadline")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Medium");
+
+                    b.Property<string>("RecommendationText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RecommendationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Pending");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnterpriseId");
+
+                    b.HasIndex("Priority");
+
+                    b.HasIndex("RecommendationType");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("AiRecommendations", (string)null);
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.AiResponseCache", b =>
+                {
+                    b.Property<string>("CacheKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AccessCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastAccessedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Response")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("CacheKey");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.ToTable("AiResponseCache", (string)null);
+                });
+
             modelBuilder.Entity("WileyWidget.Models.BudgetInteraction", b =>
                 {
                     b.Property<int>("Id")
@@ -53,6 +284,10 @@ namespace WileyWidget.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("QboAccountRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("QboLastSync")
                         .HasColumnType("TEXT");
 
@@ -76,19 +311,27 @@ namespace WileyWidget.Migrations
             modelBuilder.Entity("WileyWidget.Models.Enterprise", b =>
                 {
                     b.Property<int>("Id")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("CitizenCount")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal?>("ComputedDeficit")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("CurrentRate")
+                        .IsConcurrencyToken()
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("MonthlyExpenses")
+                        .IsConcurrencyToken()
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
@@ -99,7 +342,7 @@ namespace WileyWidget.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("QboClassId")
-                        .HasMaxLength(50)
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("QboLastSync")
@@ -107,6 +350,9 @@ namespace WileyWidget.Migrations
 
                     b.Property<int>("QboSyncStatus")
                         .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("SuggestedRateHike")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -160,6 +406,27 @@ namespace WileyWidget.Migrations
                     b.HasIndex("SnapshotDate");
 
                     b.ToTable("OverallBudgets", (string)null);
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.AiAnalysisAudit", b =>
+                {
+                    b.HasOne("WileyWidget.Models.Enterprise", "Enterprise")
+                        .WithMany()
+                        .HasForeignKey("EnterpriseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Enterprise");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.AiRecommendation", b =>
+                {
+                    b.HasOne("WileyWidget.Models.Enterprise", "Enterprise")
+                        .WithMany()
+                        .HasForeignKey("EnterpriseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Enterprise");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.BudgetInteraction", b =>

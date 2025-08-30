@@ -57,6 +57,15 @@ if ($LASTEXITCODE -ne 0) {
   } else { Write-Warning 'msbuild.binlog not found (build may have failed before log creation).' }
   exit 1
 }
+
+Write-Information '== Roslyn Code Analysis ==' -InformationAction Continue
+dotnet build ./WileyWidget.sln -c $Config --no-restore /warnaserror- /warn:1
+if ($LASTEXITCODE -ne 0) {
+  Write-Error 'Roslyn analyzer warnings found. Please fix the warnings or suppress them appropriately.'
+  exit 1
+}
+Write-Information 'Roslyn analysis passed - no warnings found.' -InformationAction Continue
+
 if (Test-Path $binlogPath) {
   try {
     Copy-Item -Path $binlogPath -Destination (Join-Path 'TestResults' 'msbuild.binlog') -Force

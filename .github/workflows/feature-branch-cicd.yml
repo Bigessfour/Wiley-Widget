@@ -1,0 +1,199 @@
+# Wiley Widget - Feature Branch CI/CD (CRAFTS-Compliant)
+# Lightweight pipeline for feature branches with rapid feedback
+
+name: Feature Branch CI/CD
+
+on:
+    push:
+        branches: [feature/**, bugfix/**, hotfix/**]
+    pull_request:
+        branches: [main, develop]
+        types: [opened, synchronize, reopened]
+
+permissions:
+    contents: read
+    actions: read
+    security-events: write
+    pull-requests: write
+    checks: write
+
+jobs:
+    # Rapid health check with minimal footprint
+    quick-health:
+        name: Quick Health Check
+        runs-on: windows-latest
+        outputs:
+            should_skip: ${{ steps.health.outputs.should_skip }}
+            dotnet_version: ${{ steps.health.outputs.dotnet_version }}
+        steps:
+            - name: Checkout (shallow)
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 1
+
+            - name: Rapid Environment Check
+              id: health
+              run: |
+                  Write-Host "🏥 Quick health validation..." -ForegroundColor Cyan
+
+                  # Skip for documentation-only changes
+                  try {
+                      $changed_files = git diff --name-only HEAD~1 2>$null
+                      $only_docs = $changed_files | Where-Object { $_ -match '\.(md|txt|yml|yaml|json)$' -and $_ -notmatch 'src/' }
+                      if ($only_docs -and $changed_files.Count -eq $only_docs.Count) {
+                          Write-Host "📝 Docs-only changes - skipping CI" -ForegroundColor Green
+                          echo "should_skip=true" >> $env:GITHUB_OUTPUT
+                          exit 0
+                      }
+                  } catch {
+                      Write-Host "⚠️ Could not determine changes, proceeding" -ForegroundColor Yellow
+                  }
+
+                  # Quick .NET check
+                  $dotnetVersion = dotnet --version
+                  Write-Host "✅ .NET: $dotnetVersion" -ForegroundColor Green
+                  echo "dotnet_version=$dotnetVersion" >> $env:GITHUB_OUTPUT
+                  echo "should_skip=false" >> $env:GITHUB_OUTPUT
+
+    # Fast build and basic tests
+    rapid-build-test:
+        name: Rapid Build & Test
+        runs-on: windows-latest
+        needs: quick-health
+        if: needs.quick-health.outputs.should_skip != 'true'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: 9.0.x
+
+            - name: Quick Restore
+              run: dotnet restore --verbosity minimal
+
+            - name: Fast Build
+              run: dotnet build --configuration Debug --verbosity minimal
+
+            - name: Run Fast Unit Tests
+              run: |
+                  Write-Host "🧪 Running fast unit tests..." -ForegroundColor Cyan
+                  dotnet test --configuration Debug --filter "Category!=Integration&Category!=UiSmokeTests" --verbosity minimal --logger "console;verbosity=minimal"
+
+    # Basic quality checks
+    quality-gate:
+        name: Quality Gate
+        runs-on: windows-latest
+        needs: [quick-health, rapid-build-test]
+        if: needs.quick-health.outputs.should_skip != 'true'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: 9.0.x
+
+            - name: Code Quality Check
+              run: |
+                  Write-Host "🔍 Basic code quality check..." -ForegroundColor Cyan
+                  dotnet build --configuration Debug --verbosity minimal /warnaserror- /warn:1
+
+            - name: Security Scan (Basic)
+              uses: github/super-linter/slim@v5
+              env:
+                  DEFAULT_BRANCH: main
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VALIDATE_ALL_CODEBASE: false
+                  VALIDATE_CSHARP: true
+                  VALIDATE_POWERSHELL: true
+
+    # Feature deployment (optional)
+    feature-deployment:
+        name: Feature Environment Deployment
+        runs-on: windows-latest
+        needs: [rapid-build-test, quality-gate]
+        if: needs.quick-health.outputs.should_skip != 'true' && github.event_name == 'push'
+        environment:
+            name: feature-${{ github.ref_name }}
+            url: https://feature-${{ github.ref_name }}.wileywidget.com
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: 9.0.x
+
+            - name: Build for Feature Environment
+              run: dotnet build --configuration Release
+
+            - name: Deploy to Feature Environment
+              run: |
+                  Write-Host "🚀 Deploying to feature environment..." -ForegroundColor Cyan
+                  # Feature environment deployment logic here
+                  # This would typically involve:
+                  # - Building deployment package
+                  # - Uploading to feature environment
+                  # - Running smoke tests
+                  # - Updating feature environment URL
+
+                  Write-Host "✅ Feature deployment completed" -ForegroundColor Green
+
+    # Rapid feedback reporting
+    feedback:
+        name: Rapid Feedback
+        runs-on: windows-latest
+        needs: [quick-health, rapid-build-test, quality-gate, feature-deployment]
+        if: always()
+        steps:
+            - name: Generate Rapid Feedback Report
+              run: |
+                  Write-Host "📊 Generating rapid feedback..." -ForegroundColor Cyan
+
+                  $status = switch {
+                      ("${{ needs.rapid-build-test.result }}" -eq "success" -and
+                       "${{ needs.quality-gate.result }}" -eq "success") { "✅ Ready for review" }
+                      ("${{ needs.rapid-build-test.result }}" -eq "failure") { "❌ Build/Test failures" }
+                      ("${{ needs.quality-gate.result }}" -eq "failure") { "⚠️ Quality issues" }
+                      default { "🔄 In progress" }
+                  }
+
+                  Write-Host "Feature Branch Status: $status" -ForegroundColor $(if ($status -match "✅") { "Green" } elseif ($status -match "❌") { "Red" } else { "Yellow" })
+
+            - name: PR Comment (Rapid Feedback)
+              if: github.event_name == 'pull_request'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const status = `${{ needs.rapid-build-test.result }}` === 'success' &&
+                                    `${{ needs.quality-gate.result }}` === 'success' ? '✅' : '❌';
+
+                      const body = `
+                      ## 🚀 Feature Branch CI/CD Results
+
+                      **Status:** ${status} ${{ needs.rapid-build-test.result === 'success' ? 'Build & Tests Passed' : 'Issues Found' }}
+
+                      ### Quick Checks
+                      - Build: ${{ needs.rapid-build-test.result === 'success' ? '✅' : '❌' }}
+                      - Quality: ${{ needs.quality-gate.result === 'success' ? '✅' : '❌' }}
+                      - Feature Deploy: ${{ needs.feature-deployment.result === 'success' ? '✅' : needs.feature-deployment.result === 'skipped' ? '⏭️' : '❌' }}
+
+                      ### Performance
+                      - .NET Version: ${{ needs.quick-health.outputs.dotnet_version }}
+                      - Build Time: < 2 minutes (target)
+                      - Test Time: < 1 minute (target)
+
+                      ---
+                      *Rapid feedback for feature: ${process.env.GITHUB_REF_NAME}*
+                      `;
+
+                      github.rest.issues.createComment({
+                          issue_number: context.issue.number,
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          body: body
+                      });

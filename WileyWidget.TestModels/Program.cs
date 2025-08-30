@@ -39,9 +39,8 @@ class Program
                 options.EnableSensitiveDataLogging();
             });
 
-            // Register services
-            services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
-            services.AddScoped<DatabaseSeeder>();
+            // Register services using the comprehensive application services method
+            services.AddApplicationServices(configuration);
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -131,6 +130,15 @@ class Program
                     Console.WriteLine($"   Total Expenses: ${totalExpenses:F2}");
                     Console.WriteLine($"   Monthly Balance: ${totalBalance:F2}");
                     Console.WriteLine($"   Status: {(totalBalance >= 0 ? "SURPLUS 🎉" : "DEFICIT ⚠️")}");
+
+                    // Test GrokSupercomputer GenerateTalkingPoints
+                    Console.WriteLine("\n🤖 Testing GrokSupercomputer GenerateTalkingPoints...");
+                    var grokService = scope.ServiceProvider.GetRequiredService<WileyWidget.Services.GrokSupercomputer>();
+                    var talkingPoints = grokService.GenerateTalkingPoints(enterprises.ToList());
+                    Console.WriteLine("✅ Generated Talking Points:");
+                    Console.WriteLine("==============================");
+                    Console.WriteLine(talkingPoints);
+                    Console.WriteLine("==============================");
 
                     Console.WriteLine("\n✅ Phase 1 Test Complete!");
                     Console.WriteLine("Ready to proceed to Phase 2: UI Dashboards & Basic Analytics");

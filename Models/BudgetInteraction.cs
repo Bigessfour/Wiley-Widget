@@ -48,7 +48,7 @@ public class BudgetInteraction
     /// Monthly cost/value of this interaction
     /// </summary>
     [Required(ErrorMessage = "Monthly amount is required")]
-    [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
+    [Range(0.01, 10000, ErrorMessage = "Amount must be greater than 0")]
     [Column(TypeName = "decimal(18,2)")]
     public decimal MonthlyAmount { get; set; }
 

@@ -1,0 +1,22 @@
+name: CI (Legacy - Use ci-optimized.yml)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deprecated-notice:
+    runs-on: windows-latest
+    steps:
+      - name: Notice
+        run: |
+          Write-Host "⚠️ This workflow is deprecated. Please use ci-optimized.yml for 90% success rate features." -ForegroundColor Yellow
+          Write-Host "Features in ci-optimized.yml:" -ForegroundColor Cyan
+          Write-Host "  • Health validation" -ForegroundColor White
+          Write-Host "  • Parallel test execution" -ForegroundColor White
+          Write-Host "  • Retry mechanisms" -ForegroundColor White
+          Write-Host "  • Circuit breaker pattern" -ForegroundColor White
+          Write-Host "  • Success rate monitoring" -ForegroundColor White
+          Write-Host "  • Emergency mode support" -ForegroundColor White
