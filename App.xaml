@@ -5,6 +5,10 @@
              StartupUri="Views/MainWindow.xaml"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
-
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/SyncfusionResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -133,4 +133,20 @@ public class Enterprise
             return (MonthlyExpenses / MonthlyRevenue) * 100;
         }
     }
+
+    /// <summary>
+    /// QuickBooks Online Class ID for fund tracking
+    /// </summary>
+    [StringLength(50)]
+    public string? QboClassId { get; set; }
+
+    /// <summary>
+    /// Sync status with QuickBooks Online
+    /// </summary>
+    public QboSyncStatus QboSyncStatus { get; set; } = QboSyncStatus.Pending;
+
+    /// <summary>
+    /// Last sync timestamp with QuickBooks Online
+    /// </summary>
+    public DateTime? QboLastSync { get; set; }
 }

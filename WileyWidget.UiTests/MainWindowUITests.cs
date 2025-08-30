@@ -1,4 +1,5 @@
 using Xunit;
+using Xunit.Sdk;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
@@ -6,12 +7,16 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using FlaUI.Core.Definitions;
 using System;
+using System.Threading;
+using Xunit.Sdk;
 
 namespace WileyWidget.UiTests;
 
 /// <summary>
-    /// Basic UI tests for the MainWindow
-    /// </summary>
+/// Enhanced UI tests for the MainWindow using WPF test framework
+/// Uses [WpfFact] for proper STA threading support
+/// </summary>
+[Collection("WPF Test Collection")]
 public class MainWindowUITests : IDisposable
 {
     private UIA3Automation _automation;
@@ -24,6 +29,7 @@ public class MainWindowUITests : IDisposable
             return;
         }
 
+        // xunit.runner.wpf should handle STA threading automatically
 #pragma warning disable CA1416 // Validate platform compatibility
         _automation = new UIA3Automation();
 #pragma warning restore CA1416
@@ -230,15 +236,37 @@ public class MainWindowUITests : IDisposable
             {
                 FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
                 WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
-                UseShellExecute = true
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Normal
             };
 
 #pragma warning disable CA1416 // Validate platform compatibility
             automation = new UIA3Automation();
 
-            // Act
+            // Act - Launch application with retry logic
             app = Application.Launch(processStartInfo);
-            var mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+
+            // Wait for the process to start and stabilize
+            System.Threading.Thread.Sleep(2000);
+
+            // Try to get main window with extended timeout and retry
+            Window mainWindow = null;
+            int retryCount = 0;
+            const int maxRetries = 5;
+
+            while (retryCount < maxRetries && mainWindow == null)
+            {
+                try
+                {
+                    mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(5));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Attempt {retryCount + 1} failed: {ex.Message}");
+                    System.Threading.Thread.Sleep(1000);
+                    retryCount++;
+                }
+            }
 #pragma warning restore CA1416
 
             // Assert
@@ -296,13 +324,36 @@ public class MainWindowUITests : IDisposable
             {
                 FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
                 WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
-                UseShellExecute = true
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Normal
             };
 
 #pragma warning disable CA1416 // Validate platform compatibility
             automation = new UIA3Automation();
+
+            // Act - Launch application with retry logic
             app = Application.Launch(processStartInfo);
-            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+
+            // Wait for the process to start and stabilize
+            System.Threading.Thread.Sleep(2000);
+
+            // Try to get main window with extended timeout and retry
+            int retryCount = 0;
+            const int maxRetries = 5;
+
+            while (retryCount < maxRetries && mainWindow == null)
+            {
+                try
+                {
+                    mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(5));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"MainWindow_LoadsWithExpectedTitle - Attempt {retryCount + 1} failed: {ex.Message}");
+                    System.Threading.Thread.Sleep(1000);
+                    retryCount++;
+                }
+            }
 #pragma warning restore CA1416
 
             // Assert
@@ -356,19 +407,43 @@ public class MainWindowUITests : IDisposable
             {
                 FileName = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.exe",
                 WorkingDirectory = @"C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows",
-                UseShellExecute = true
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Normal
             };
 
 #pragma warning disable CA1416 // Validate platform compatibility
             automation = new UIA3Automation();
+
+            // Act - Launch application with retry logic
             app = Application.Launch(processStartInfo);
-            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+
+            // Wait for the process to start and stabilize
+            System.Threading.Thread.Sleep(2000);
+
+            // Try to get main window with extended timeout and retry
+            int retryCount = 0;
+            const int maxRetries = 5;
+
+            while (retryCount < maxRetries && mainWindow == null)
+            {
+                try
+                {
+                    mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(5));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"MainWindow_HasExpectedDimensions - Attempt {retryCount + 1} failed: {ex.Message}");
+                    System.Threading.Thread.Sleep(1000);
+                    retryCount++;
+                }
+            }
 
             // Wait for window to be fully loaded
             System.Threading.Thread.Sleep(2000);
 #pragma warning restore CA1416
 
             // Assert
+            Assert.NotNull(mainWindow);
 #pragma warning disable CA1416 // Validate platform compatibility
             var bounds = mainWindow.BoundingRectangle;
             Assert.True(bounds.Width >= 800, $"Window width {bounds.Width} should be at least 800");
@@ -428,10 +503,53 @@ public class MainWindowUITests : IDisposable
 
 #pragma warning disable CA1416 // Validate platform compatibility
             automation = new UIA3Automation();
-            app = Application.Launch(processStartInfo);
-            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
 
-            System.Threading.Thread.Sleep(2000); // Wait for UI to load
+            // Retry logic for application launch
+            const int maxRetries = 3;
+            const int retryDelay = 2000;
+            Exception lastException = null;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    app = Application.Launch(processStartInfo);
+                    mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(15));
+
+                    // Additional stabilization time
+                    System.Threading.Thread.Sleep(3000);
+
+                    // Verify the window is actually available
+                    if (mainWindow != null && mainWindow.IsAvailable)
+                    {
+                        break; // Success, exit retry loop
+                    }
+                    else
+                    {
+                        throw new Exception("Main window not available after launch");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    if (attempt < maxRetries)
+                    {
+                        System.Threading.Thread.Sleep(retryDelay);
+                        // Cleanup failed attempt
+                        try
+                        {
+                            mainWindow?.Close();
+                            app?.Close();
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            if (app == null || mainWindow == null)
+            {
+                throw new Exception($"Failed to launch application after {maxRetries} attempts. Last error: {lastException?.Message}", lastException);
+            }
 
             // Act - Find ribbon
             var ribbon = mainWindow.FindFirstDescendant(cf => cf.ByClassName("Ribbon"));
@@ -492,10 +610,53 @@ public class MainWindowUITests : IDisposable
 
 #pragma warning disable CA1416 // Validate platform compatibility
             automation = new UIA3Automation();
-            app = Application.Launch(processStartInfo);
-            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
 
-            System.Threading.Thread.Sleep(2000); // Wait for UI to load
+            // Retry logic for application launch
+            const int maxRetries = 3;
+            const int retryDelay = 2000;
+            Exception lastException = null;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    app = Application.Launch(processStartInfo);
+                    mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(15));
+
+                    // Additional stabilization time
+                    System.Threading.Thread.Sleep(3000);
+
+                    // Verify the window is actually available
+                    if (mainWindow != null && mainWindow.IsAvailable)
+                    {
+                        break; // Success, exit retry loop
+                    }
+                    else
+                    {
+                        throw new Exception("Main window not available after launch");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    if (attempt < maxRetries)
+                    {
+                        System.Threading.Thread.Sleep(retryDelay);
+                        // Cleanup failed attempt
+                        try
+                        {
+                            mainWindow?.Close();
+                            app?.Close();
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            if (app == null || mainWindow == null)
+            {
+                throw new Exception($"Failed to launch application after {maxRetries} attempts. Last error: {lastException?.Message}", lastException);
+            }
 
             // Act - Find tab control
             var tabControl = mainWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.Tab));
@@ -556,10 +717,53 @@ public class MainWindowUITests : IDisposable
 
 #pragma warning disable CA1416 // Validate platform compatibility
             automation = new UIA3Automation();
-            app = Application.Launch(processStartInfo);
-            mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
 
-            System.Threading.Thread.Sleep(2000); // Wait for UI to load
+            // Retry logic for application launch
+            const int maxRetries = 3;
+            const int retryDelay = 2000;
+            Exception lastException = null;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    app = Application.Launch(processStartInfo);
+                    mainWindow = app.GetMainWindow(automation, TimeSpan.FromSeconds(15));
+
+                    // Additional stabilization time
+                    System.Threading.Thread.Sleep(3000);
+
+                    // Verify the window is actually available
+                    if (mainWindow != null && mainWindow.IsAvailable)
+                    {
+                        break; // Success, exit retry loop
+                    }
+                    else
+                    {
+                        throw new Exception("Main window not available after launch");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    if (attempt < maxRetries)
+                    {
+                        System.Threading.Thread.Sleep(retryDelay);
+                        // Cleanup failed attempt
+                        try
+                        {
+                            mainWindow?.Close();
+                            app?.Close();
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            if (app == null || mainWindow == null)
+            {
+                throw new Exception($"Failed to launch application after {maxRetries} attempts. Last error: {lastException?.Message}", lastException);
+            }
 
             // Act - Find all tabs
             var widgetsTab = mainWindow.FindFirstDescendant(cf => cf.ByName("Widgets"));

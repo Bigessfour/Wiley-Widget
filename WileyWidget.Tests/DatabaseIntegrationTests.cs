@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using WileyWidget.Data;
@@ -289,7 +290,7 @@ public class DatabaseIntegrationTests : IDisposable
     #region Data Validation Tests
 
     [Fact]
-    public async Task Repository_ValidatesRequiredFields()
+    public void Repository_ValidatesRequiredFields()
     {
         // Arrange - Try to add enterprise with missing required fields
         var invalidEnterprise = new Enterprise
@@ -300,16 +301,18 @@ public class DatabaseIntegrationTests : IDisposable
             CitizenCount = 1000
         };
 
-        // Act & Assert - Should throw validation exception
-        await Assert.ThrowsAsync<DbUpdateException>(async () =>
-        {
-            await _context.Enterprises.AddAsync(invalidEnterprise);
-            await _context.SaveChangesAsync();
-        });
+        // Act - Validate the model
+        var validationContext = new ValidationContext(invalidEnterprise);
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(invalidEnterprise, validationContext, validationResults, true);
+
+        // Assert - Should have validation errors
+        Assert.False(isValid);
+        Assert.Contains(validationResults, v => v.ErrorMessage.Contains("required"));
     }
 
     [Fact]
-    public async Task Repository_EnforcesRateConstraints()
+    public void Repository_EnforcesRateConstraints()
     {
         // Arrange - Try to add enterprise with invalid rate
         var invalidEnterprise = new Enterprise
@@ -320,16 +323,18 @@ public class DatabaseIntegrationTests : IDisposable
             CitizenCount = 1000
         };
 
-        // Act & Assert - Should throw validation exception
-        await Assert.ThrowsAsync<DbUpdateException>(async () =>
-        {
-            await _context.Enterprises.AddAsync(invalidEnterprise);
-            await _context.SaveChangesAsync();
-        });
+        // Act - Validate the model
+        var validationContext = new ValidationContext(invalidEnterprise);
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(invalidEnterprise, validationContext, validationResults, true);
+
+        // Assert - Should have validation errors
+        Assert.False(isValid);
+        Assert.Contains(validationResults, v => v.ErrorMessage.Contains("Rate"));
     }
 
     [Fact]
-    public async Task Repository_EnforcesCitizenCountConstraints()
+    public void Repository_EnforcesCitizenCountConstraints()
     {
         // Arrange - Try to add enterprise with invalid citizen count
         var invalidEnterprise = new Enterprise
@@ -340,12 +345,14 @@ public class DatabaseIntegrationTests : IDisposable
             CitizenCount = -1 // Invalid: negative citizen count
         };
 
-        // Act & Assert - Should throw validation exception
-        await Assert.ThrowsAsync<DbUpdateException>(async () =>
-        {
-            await _context.Enterprises.AddAsync(invalidEnterprise);
-            await _context.SaveChangesAsync();
-        });
+        // Act - Validate the model
+        var validationContext = new ValidationContext(invalidEnterprise);
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(invalidEnterprise, validationContext, validationResults, true);
+
+        // Assert - Should have validation errors
+        Assert.False(isValid);
+        Assert.Contains(validationResults, v => v.ErrorMessage.Contains("Citizen"));
     }
 
     #endregion

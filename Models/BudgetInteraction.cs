@@ -43,6 +43,7 @@ public class BudgetInteraction
     /// Monthly cost/value of this interaction
     /// </summary>
     [Required(ErrorMessage = "Monthly amount is required")]
+    [Range(0, double.MaxValue, ErrorMessage = "Monthly amount cannot be negative")]
     [Column(TypeName = "decimal(18,2)")]
     public decimal MonthlyAmount { get; set; }
 
@@ -69,4 +70,20 @@ public class BudgetInteraction
     /// </summary>
     [ForeignKey("SecondaryEnterpriseId")]
     public virtual Enterprise SecondaryEnterprise { get; set; }
+
+    /// <summary>
+    /// QuickBooks Online Account ID for this interaction
+    /// </summary>
+    [StringLength(50)]
+    public string? QboAccountId { get; set; }
+
+    /// <summary>
+    /// Sync status with QuickBooks Online
+    /// </summary>
+    public QboSyncStatus QboSyncStatus { get; set; } = QboSyncStatus.Pending;
+
+    /// <summary>
+    /// Last sync timestamp with QuickBooks Online
+    /// </summary>
+    public DateTime? QboLastSync { get; set; }
 }

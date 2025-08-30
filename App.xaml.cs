@@ -7,6 +7,9 @@ using System.Windows;
 using System.Windows.Threading;
 using Serilog;
 using Serilog.Events;
+using Serilog.Context;
+using Serilog.Enrichers;
+using Serilog.Filters;
 using Syncfusion.Licensing;
 using WileyWidget.Services;
 using Microsoft.Extensions.Configuration;
@@ -14,6 +17,174 @@ using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Configuration;
 
 namespace WileyWidget;
+
+/// <summary>
+/// Custom enricher for structured logging with application-specific context.
+/// Provides correlation IDs, operation tracking, and performance metrics.
+/// </summary>
+public class ApplicationEnricher : Serilog.Core.ILogEventEnricher
+{
+    private static readonly AsyncLocal<string> _correlationId = new();
+    private static readonly AsyncLocal<string> _operationId = new();
+    private static readonly AsyncLocal<string> _userId = new();
+
+    /// <summary>
+    /// Sets the correlation ID for the current async context.
+    /// </summary>
+    public static string CorrelationId
+    {
+        get => _correlationId.Value ?? (_correlationId.Value = Guid.NewGuid().ToString());
+        set => _correlationId.Value = value;
+    }
+
+    /// <summary>
+    /// Sets the operation ID for tracking specific operations.
+    /// </summary>
+    public static string OperationId
+    {
+        get => _operationId.Value ?? (_operationId.Value = Guid.NewGuid().ToString());
+        set => _operationId.Value = value;
+    }
+
+    /// <summary>
+    /// Sets the user ID for the current context.
+    /// </summary>
+    public static string UserId
+    {
+        get => _userId.Value;
+        set => _userId.Value = value;
+    }
+
+    /// <summary>
+    /// Enriches log events with application-specific properties.
+    /// </summary>
+    public void Enrich(Serilog.Events.LogEvent logEvent, Serilog.Core.ILogEventPropertyFactory propertyFactory)
+    {
+        // Add correlation and operation tracking
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("CorrelationId", CorrelationId));
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("OperationId", OperationId));
+
+        // Add user context if available
+        if (!string.IsNullOrEmpty(UserId))
+        {
+            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("UserId", UserId));
+        }
+
+        // Add performance metrics
+        var process = Process.GetCurrentProcess();
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("MemoryUsageMB", process.WorkingSet64 / 1024 / 1024));
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("CpuTime", process.TotalProcessorTime.TotalMilliseconds));
+
+        // Add application context
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("ApplicationContext", "WPF"));
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("UIThread", System.Threading.Thread.CurrentThread.ManagedThreadId));
+    }
+}
+
+/// <summary>
+/// Structured logging helper for consistent log formatting and context.
+/// </summary>
+public static class StructuredLogger
+{
+    /// <summary>
+    /// Creates a logger with operation context for tracking related log entries.
+    /// </summary>
+    public static IDisposable BeginOperation(string operationName, string operationId = null)
+    {
+        var opId = operationId ?? Guid.NewGuid().ToString();
+        ApplicationEnricher.OperationId = opId;
+
+        using (LogContext.PushProperty("OperationName", operationName))
+        using (LogContext.PushProperty("OperationStart", DateTime.UtcNow))
+        {
+            Log.Information("🔄 Operation Started: {OperationName}", operationName);
+        }
+
+        return new OperationScope(operationName, opId);
+    }
+
+    /// <summary>
+    /// Logs performance metrics for operations.
+    /// </summary>
+    public static void LogPerformance(string operationName, TimeSpan duration, long memoryDelta = 0)
+    {
+        using (LogContext.PushProperty("OperationName", operationName))
+        using (LogContext.PushProperty("Duration", duration.TotalMilliseconds))
+        using (LogContext.PushProperty("MemoryDeltaMB", memoryDelta / 1024 / 1024))
+        {
+            Log.Information("⚡ Performance: {OperationName} completed in {Duration:F2}ms", operationName, duration.TotalMilliseconds);
+        }
+    }
+
+    /// <summary>
+    /// Logs user actions with structured context.
+    /// </summary>
+    public static void LogUserAction(string action, string details = null, object data = null)
+    {
+        using (LogContext.PushProperty("UserAction", action))
+        using (LogContext.PushProperty("ActionDetails", details))
+        using (LogContext.PushProperty("ActionData", data))
+        {
+            Log.Information("👤 User Action: {UserAction}", action);
+        }
+    }
+
+    /// <summary>
+    /// Logs theme changes with structured context.
+    /// </summary>
+    public static void LogThemeChange(string fromTheme, string toTheme, bool userInitiated = true)
+    {
+        using (LogContext.PushProperty("ThemeChange", true))
+        using (LogContext.PushProperty("FromTheme", fromTheme))
+        using (LogContext.PushProperty("ToTheme", toTheme))
+        using (LogContext.PushProperty("UserInitiated", userInitiated))
+        {
+            Log.Information("🎨 Theme Changed: {FromTheme} → {ToTheme}", fromTheme, toTheme);
+        }
+    }
+
+    /// <summary>
+    /// Logs Syncfusion control operations with structured context.
+    /// </summary>
+    public static void LogSyncfusionOperation(string controlType, string operation, object properties = null)
+    {
+        using (LogContext.PushProperty("SyncfusionControl", controlType))
+        using (LogContext.PushProperty("SyncfusionOperation", operation))
+        using (LogContext.PushProperty("ControlProperties", properties))
+        {
+            Log.Debug("🔧 Syncfusion {ControlType}: {Operation}", controlType, operation);
+        }
+    }
+
+    /// <summary>
+    /// Operation scope for automatic cleanup and completion logging.
+    /// </summary>
+    private class OperationScope : IDisposable
+    {
+        private readonly string _operationName;
+        private readonly string _operationId;
+        private readonly DateTime _startTime;
+
+        public OperationScope(string operationName, string operationId)
+        {
+            _operationName = operationName;
+            _operationId = operationId;
+            _startTime = DateTime.UtcNow;
+        }
+
+        public void Dispose()
+        {
+            var duration = DateTime.UtcNow - _startTime;
+
+            using (LogContext.PushProperty("OperationName", _operationName))
+            using (LogContext.PushProperty("OperationDuration", duration.TotalMilliseconds))
+            using (LogContext.PushProperty("OperationCompleted", true))
+            {
+                Log.Information("✅ Operation Completed: {OperationName} in {Duration:F2}ms", _operationName, duration.TotalMilliseconds);
+            }
+        }
+    }
+}
 
 /// <summary>
 /// Wiley Widget WPF Application Entry Point and Bootstrap Class.
@@ -686,9 +857,17 @@ public partial class App : Application
     ///
     /// <para>Log Sinks Configured:</para>
     /// <list type="number">
-    /// <item><strong>File Sink:</strong> Daily rolling files with size limits and retention policy</item>
+    /// <item><strong>Structured JSON Sink:</strong> Daily rolling files with size limits and retention policy</item>
+    /// <item><strong>Human-Readable Sink:</strong> Development-friendly formatted logs</item>
     /// <item><strong>Console Sink:</strong> Real-time console output for development and debugging</item>
     /// <item><strong>Debug Sink:</strong> Visual Studio debug output for IDE integration</item>
+    /// <item><strong>Error Sink:</strong> Filtered critical issues with detailed context</item>
+    /// <item><strong>Performance Sink:</strong> Operation timing and resource usage tracking</item>
+    /// <item><strong>User Actions Sink:</strong> User interaction and action tracking</item>
+    /// <item><strong>Theme Changes Sink:</strong> UI theme and appearance change tracking</item>
+    /// <item><strong>Syncfusion Sink:</strong> Syncfusion control operations and diagnostics</item>
+    /// <item><strong>Security Sink:</strong> Security events and authentication tracking</item>
+    /// <item><strong>Health Sink:</strong> Application health and system monitoring</item>
     /// </list>
     ///
     /// <para>Log Enrichment:</para>
@@ -706,6 +885,8 @@ public partial class App : Application
     /// - Log analysis with structured data and correlation IDs
     /// - Performance monitoring with timing and resource metrics
     /// - Security auditing with detailed event tracking
+    /// - Health monitoring with system resource tracking
+    /// - Business intelligence with user action and KPI tracking
     /// </remarks>
     private void ConfigureLogging()
     {
@@ -737,57 +918,122 @@ public partial class App : Application
                 .Enrich.WithProperty("Application", "WileyWidget")
                 .Enrich.WithProperty("Version", GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0")
                 .Enrich.FromLogContext()
+                .Enrich.With(new ApplicationEnricher())
 
-                // File sink with enterprise features
+                // Structured JSON file sink for log analysis tools
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "structured-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    formatter: new Serilog.Formatting.Json.JsonFormatter(),
+                    shared: false,
+                    restrictedToMinimumLevel: LogEventLevel.Debug,
+                    fileSizeLimitBytes: 100 * 1024 * 1024, // 100MB per file
+                    rollOnFileSizeLimit: true,
+                    buffered: true,
+                    flushToDiskInterval: TimeSpan.FromSeconds(5))
+
+                // Human-readable file sink for development and troubleshooting
                 .WriteTo.File(
                     path: Path.Combine(logRoot, "app-.log"),
                     rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 30, // Keep 30 days of logs
+                    retainedFileCountLimit: 30,
                     shared: false,
                     restrictedToMinimumLevel: LogEventLevel.Debug,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] (pid:{ProcessId} tid:{ThreadId}) {MachineName} {Application} v{Version} {Message:lj}{NewLine}{Exception}{NewLine}---{NewLine}",
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] (pid:{ProcessId} tid:{ThreadId}) {MachineName} {Application} v{Version} {CorrelationId} {OperationId}{NewLine}Message: {Message:lj}{NewLine}Properties: {@Properties}{NewLine}{Exception}{NewLine}---{NewLine}",
                     fileSizeLimitBytes: 50 * 1024 * 1024, // 50MB per file
                     rollOnFileSizeLimit: true,
                     buffered: true,
                     flushToDiskInterval: TimeSpan.FromSeconds(5))
 
-                // Console sink for development
+                // Console sink for development with structured output
                 .WriteTo.Console(
                     restrictedToMinimumLevel: LogEventLevel.Information,
-                    outputTemplate: "[{Timestamp:HH:mm:ss}] [{Level:u3}] {Application} {Message:lj}{NewLine}{Exception}",
+                    outputTemplate: "[{Timestamp:HH:mm:ss}] [{Level:u3}] {Application} {CorrelationId} {Message:lj}{NewLine}{Exception}",
                     theme: Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme.Code)
 
                 // Debug sink for IDE integration
                 .WriteTo.Debug(
                     restrictedToMinimumLevel: LogEventLevel.Debug,
-                    outputTemplate: "[{Timestamp:HH:mm:ss}] [{Level:u3}] {Application} {Message:lj}{NewLine}{Exception}")
+                    outputTemplate: "[{Timestamp:HH:mm:ss}] [{Level:u3}] {Application} {CorrelationId} {Message:lj}{NewLine}{Exception}")
 
-                // Additional file for errors only (easier error tracking)
+                // Filtered error sink for critical issues only
                 .WriteTo.File(
                     path: Path.Combine(logRoot, "errors-.log"),
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 30,
                     restrictedToMinimumLevel: LogEventLevel.Error,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] (pid:{ProcessId} tid:{ThreadId}) {MachineName} {Application} v{Version}{NewLine}Message: {Message:lj}{NewLine}Exception: {Exception}{NewLine}Stack Trace: {StackTrace}{NewLine}Source: {Source}{NewLine}---{NewLine}",
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] (pid:{ProcessId} tid:{ThreadId}) {MachineName} {Application} v{Version}{NewLine}CorrelationId: {CorrelationId}{NewLine}OperationId: {OperationId}{NewLine}Message: {Message:lj}{NewLine}Exception: {Exception}{NewLine}Stack Trace: {StackTrace}{NewLine}Source: {Source}{NewLine}Properties: {@Properties}{NewLine}---{NewLine}",
                     fileSizeLimitBytes: 25 * 1024 * 1024, // 25MB per file
                     rollOnFileSizeLimit: true)
 
-                // Performance monitoring file
+                // Performance monitoring with structured data
                 .WriteTo.File(
                     path: Path.Combine(logRoot, "performance-.log"),
                     rollingInterval: RollingInterval.Hour,
                     retainedFileCountLimit: 168, // Keep 7 days of hourly logs
                     restrictedToMinimumLevel: LogEventLevel.Information,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Application} {Message:lj} | Duration: {Duration}ms | Memory: {MemoryUsage}MB{NewLine}",
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Application} {CorrelationId} {OperationId}{NewLine}Message: {Message:lj}{NewLine}Duration: {Duration}ms | Memory: {MemoryUsageMB}MB | CPU: {CpuTime}ms{NewLine}Properties: {@Properties}{NewLine}---{NewLine}",
                     fileSizeLimitBytes: 10 * 1024 * 1024) // 10MB per file
+
+                // User action tracking
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "user-actions-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    restrictedToMinimumLevel: LogEventLevel.Information,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Application} {CorrelationId} {UserId}{NewLine}User Action: {UserAction}{NewLine}Details: {ActionDetails}{NewLine}Data: {@ActionData}{NewLine}---{NewLine}",
+                    fileSizeLimitBytes: 5 * 1024 * 1024) // 5MB per file
+
+                // Theme change tracking
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "theme-changes-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    restrictedToMinimumLevel: LogEventLevel.Information,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Application} {CorrelationId}{NewLine}Theme Change: {FromTheme} → {ToTheme}{NewLine}User Initiated: {UserInitiated}{NewLine}---{NewLine}",
+                    fileSizeLimitBytes: 2 * 1024 * 1024) // 2MB per file
+
+                // Syncfusion operations tracking
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "syncfusion-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    restrictedToMinimumLevel: LogEventLevel.Debug,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Application} {CorrelationId} {OperationId}{NewLine}Syncfusion {SyncfusionControl}: {SyncfusionOperation}{NewLine}Properties: {@ControlProperties}{NewLine}---{NewLine}",
+                    fileSizeLimitBytes: 10 * 1024 * 1024) // 10MB per file
+
+                // Security events tracking
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "security-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 90, // Keep 90 days of security logs
+                    restrictedToMinimumLevel: LogEventLevel.Information,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Application} {CorrelationId} {UserId}{NewLine}Security Event: {SecurityEvent}{NewLine}Details: {SecurityDetails}{NewLine}IP: {ClientIP} | UserAgent: {UserAgent}{NewLine}Result: {SecurityResult}{NewLine}---{NewLine}",
+                    fileSizeLimitBytes: 15 * 1024 * 1024) // 15MB per file
+
+                // Health monitoring
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "health-.log"),
+                    rollingInterval: RollingInterval.Hour,
+                    retainedFileCountLimit: 168, // Keep 7 days of hourly health checks
+                    restrictedToMinimumLevel: LogEventLevel.Information,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Application} {CorrelationId}{NewLine}Health Check: {HealthCheckName}{NewLine}Status: {HealthStatus}{NewLine}Duration: {HealthCheckDuration}ms{NewLine}Details: {HealthDetails}{NewLine}Memory: {MemoryUsageMB}MB | CPU: {CpuUsage}% | Disk: {DiskUsageGB}GB{NewLine}---{NewLine}",
+                    fileSizeLimitBytes: 5 * 1024 * 1024) // 5MB per file
 
                 .CreateLogger();
 
-            Log.Information("✅ Serilog logging system configured successfully");
+            Log.Information("✅ Serilog structured logging system configured successfully");
             Log.Debug("🔧 Log level: Debug, Microsoft override: Warning, Syncfusion override: Information");
             Log.Information("📊 Log files location: {LogPath}", logRoot);
             Log.Information("📈 Performance monitoring enabled with separate log file");
             Log.Information("🚨 Error tracking enabled with dedicated error log file");
+            Log.Information("👤 User action tracking enabled");
+            Log.Information("🎨 Theme change tracking enabled");
+            Log.Information("🔧 Syncfusion operation tracking enabled");
+            Log.Information("� Security event tracking enabled");
+            Log.Information("❤️ Health monitoring enabled");
+            Log.Information("�📋 Structured JSON logging enabled for analysis tools");
         }
         catch (Exception ex)
         {

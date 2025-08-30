@@ -148,6 +148,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and standards.
 - **[Copilot Instructions](.vscode/copilot-instructions.md)**: AI assistant guidelines and project standards
 - **[Database Setup Guide](docs/database-setup.md)**: SQL Server LocalDB installation and configuration
 - **[Syncfusion License Setup](docs/syncfusion-license-setup.md)**: License acquisition and registration guide
+- **[QuickBooks Integration](QuickBooks%20Integration.md)**: Complete QBO API reference and implementation guide
 - **[Contributing Guide](CONTRIBUTING.md)**: Development workflow and contribution guidelines
 - **[Release Notes](RELEASE_NOTES.md)**: Version history and upcoming features
 - **[Changelog](CHANGELOG.md)**: Technical change history
@@ -635,6 +636,8 @@ Future (Optional Enhancements)
 - Introduce analyzer set (.editorconfig rules) when complexity grows
 
 ## QuickBooks Online (Experimental Integration)
+
+> 📖 **Complete API Reference**: See [QuickBooks Integration.md](QuickBooks%20Integration.md) for comprehensive API documentation, endpoints, and implementation details.
 
 ### 1. Environment Variables (set once, User scope)
 

@@ -1,0 +1,307 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="0f7f6d8c-3850-4004-a0a0-8550d975500a" name="biges@MCKITRICK 2025-08-29 19:02:30" runUser="MCKITRICK\biges" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2025-08-29T19:02:30.8979950-06:00" queuing="2025-08-29T19:02:30.8979953-06:00" start="2025-08-29T19:02:29.8945973-06:00" finish="2025-08-29T19:02:30.9731992-06:00" />
+  <TestSettings name="default" id="8909edb5-4342-4c62-98a8-1ae8d9917069">
+    <Deployment runDeploymentRoot="biges_MCKITRICK_2025-08-29_19_02_30" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="fcd699be-edcb-41c0-a411-db7db03b3b92" testId="8ccd3ba8-584e-e74e-cadd-221f276c8394" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8412513-06:00" endTime="2025-08-29T19:02:30.8412514-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fcd699be-edcb-41c0-a411-db7db03b3b92">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="fe4bca0a-a551-4da8-a47a-31490f6e797f" testId="f6d5f5bb-05c6-918d-ca59-9e31473e5112" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8603227-06:00" endTime="2025-08-29T19:02:30.8603228-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fe4bca0a-a551-4da8-a47a-31490f6e797f">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="f35e2436-5947-472b-82ba-c5fbbb220f9f" testId="b784be1b-b728-44f4-8e70-095fc6250191" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8385418-06:00" endTime="2025-08-29T19:02:30.8385421-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f35e2436-5947-472b-82ba-c5fbbb220f9f">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="71e39747-5a61-49ce-b131-ca6ecd91ac70" testId="759a79a0-c917-a9ba-b00f-8ffc9e102928" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8606500-06:00" endTime="2025-08-29T19:02:30.8606500-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="71e39747-5a61-49ce-b131-ca6ecd91ac70">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="bbe12749-cd6e-416c-94f2-c9fe5e56de62" testId="fba49196-ded9-4235-7a6e-d8bc3d32b0fa" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8598741-06:00" endTime="2025-08-29T19:02:30.8598742-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="NotExecuted" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bbe12749-cd6e-416c-94f2-c9fe5e56de62">
+      <Output>
+        <ErrorInfo>
+          <Message>Requires application to be built and available</Message>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="dbab4720-8065-4441-8bfa-bb524e01d4fc" testId="9b8797f9-7eae-a20c-6f76-1f24c45beaf5" testName="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanFindDesktop" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8609683-06:00" endTime="2025-08-29T19:02:30.8609683-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dbab4720-8065-4441-8bfa-bb524e01d4fc">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="be666750-f3df-470b-9908-e9373ea0f66a" testId="3866c083-a176-cae2-61ee-b71cb6185d2b" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8289967-06:00" endTime="2025-08-29T19:02:30.8290101-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="be666750-f3df-470b-9908-e9373ea0f66a">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="893cade7-8231-4a66-88e9-8c8d7385365d" testId="2069c557-3fbb-0610-bc33-93106cab9382" testName="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanEnumerateDesktopWindows" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8371309-06:00" endTime="2025-08-29T19:02:30.8371311-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="893cade7-8231-4a66-88e9-8c8d7385365d">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="5b3ccd72-b755-44ea-b33a-bc8b40073d1e" testId="be565b50-8d83-c276-947d-d5d13795c237" testName="WileyWidget.UiTests.MainWindowUITests.UI_Test_Framework_IsConfigured" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8416832-06:00" endTime="2025-08-29T19:02:30.8416833-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5b3ccd72-b755-44ea-b33a-bc8b40073d1e">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="a388a6d3-12e3-42da-8082-d13f87ea4d62" testId="848d400a-3297-38f8-3511-ef5fc9699422" testName="WileyWidget.UiTests.MainWindowUITests.UI_Test_Environment_IsReady" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8407849-06:00" endTime="2025-08-29T19:02:30.8407850-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a388a6d3-12e3-42da-8082-d13f87ea4d62">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="ce06b644-6310-4f10-a064-a73ac8885f66" testId="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0" testName="WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8425297-06:00" endTime="2025-08-29T19:02:30.8425301-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ce06b644-6310-4f10-a064-a73ac8885f66">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="5751eb22-c7a5-4ce5-84df-4acfd3e7d269" testId="9daec5f3-5b2a-58a6-e44e-972fdbc203a3" testName="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8402349-06:00" endTime="2025-08-29T19:02:30.8402351-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="NotExecuted" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5751eb22-c7a5-4ce5-84df-4acfd3e7d269">
+      <Output>
+        <ErrorInfo>
+          <Message>Requires application to be built and available</Message>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="c9c2d150-f08a-4caf-8d50-eb8e1481d585" testId="c573233b-408e-6660-ac37-3cc6b7d50246" testName="WileyWidget.UiTests.MainWindowUITests.UI_Framework_Compatibility_Check" computerName="MCKITRICK" duration="00:00:00.0010000" startTime="2025-08-29T19:02:30.8393305-06:00" endTime="2025-08-29T19:02:30.8393306-06:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c9c2d150-f08a-4caf-8d50-eb8e1481d585">
+      <Output>
+        <ErrorInfo>
+          <Message>System.InvalidOperationException : UI tests must run on STA thread</Message>
+          <StackTrace>   at WileyWidget.UiTests.MainWindowUITests..ctor() in C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs:line 34&#xD;
+   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Test_Framework_IsConfigured" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="be565b50-8d83-c276-947d-d5d13795c237">
+      <Execution id="5b3ccd72-b755-44ea-b33a-bc8b40073d1e" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Test_Framework_IsConfigured" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="8ccd3ba8-584e-e74e-cadd-221f276c8394">
+      <Execution id="fcd699be-edcb-41c0-a411-db7db03b3b92" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_ContainsTabControl" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="fba49196-ded9-4235-7a6e-d8bc3d32b0fa">
+      <Execution id="bbe12749-cd6e-416c-94f2-c9fe5e56de62" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_CanBeLaunched" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanFindDesktop" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="9b8797f9-7eae-a20c-6f76-1f24c45beaf5">
+      <Execution id="dbab4720-8065-4441-8bfa-bb524e01d4fc" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Automation_CanFindDesktop" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="f6d5f5bb-05c6-918d-ca59-9e31473e5112">
+      <Execution id="fe4bca0a-a551-4da8-a47a-31490f6e797f" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasExpectedDimensions" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Test_Environment_IsReady" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="848d400a-3297-38f8-3511-ef5fc9699422">
+      <Execution id="a388a6d3-12e3-42da-8082-d13f87ea4d62" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Test_Environment_IsReady" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="9daec5f3-5b2a-58a6-e44e-972fdbc203a3">
+      <Execution id="5751eb22-c7a5-4ce5-84df-4acfd3e7d269" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasExpectedUIElements" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0">
+      <Execution id="ce06b644-6310-4f10-a064-a73ac8885f66" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="Application_CanBeLaunchedFromTestEnvironment" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="b784be1b-b728-44f4-8e70-095fc6250191">
+      <Execution id="f35e2436-5947-472b-82ba-c5fbbb220f9f" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_ContainsRibbonInterface" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Framework_Compatibility_Check" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="c573233b-408e-6660-ac37-3cc6b7d50246">
+      <Execution id="c9c2d150-f08a-4caf-8d50-eb8e1481d585" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Framework_Compatibility_Check" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="3866c083-a176-cae2-61ee-b71cb6185d2b">
+      <Execution id="be666750-f3df-470b-9908-e9373ea0f66a" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_LoadsWithExpectedTitle" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="759a79a0-c917-a9ba-b00f-8ffc9e102928">
+      <Execution id="71e39747-5a61-49ce-b131-ca6ecd91ac70" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="MainWindow_HasAllExpectedTabs" />
+    </UnitTest>
+    <UnitTest name="WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanEnumerateDesktopWindows" storage="c:\users\biges\desktop\wiley_widget\wileywidget.uitests\bin\debug\net9.0-windows\wileywidget.uitests.dll" id="2069c557-3fbb-0610-bc33-93106cab9382">
+      <Execution id="893cade7-8231-4a66-88e9-8c8d7385365d" />
+      <TestMethod codeBase="C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\bin\Debug\net9.0-windows\WileyWidget.UiTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="WileyWidget.UiTests.MainWindowUITests" name="UI_Automation_CanEnumerateDesktopWindows" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="8ccd3ba8-584e-e74e-cadd-221f276c8394" executionId="fcd699be-edcb-41c0-a411-db7db03b3b92" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f6d5f5bb-05c6-918d-ca59-9e31473e5112" executionId="fe4bca0a-a551-4da8-a47a-31490f6e797f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b784be1b-b728-44f4-8e70-095fc6250191" executionId="f35e2436-5947-472b-82ba-c5fbbb220f9f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="759a79a0-c917-a9ba-b00f-8ffc9e102928" executionId="71e39747-5a61-49ce-b131-ca6ecd91ac70" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fba49196-ded9-4235-7a6e-d8bc3d32b0fa" executionId="bbe12749-cd6e-416c-94f2-c9fe5e56de62" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9b8797f9-7eae-a20c-6f76-1f24c45beaf5" executionId="dbab4720-8065-4441-8bfa-bb524e01d4fc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3866c083-a176-cae2-61ee-b71cb6185d2b" executionId="be666750-f3df-470b-9908-e9373ea0f66a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2069c557-3fbb-0610-bc33-93106cab9382" executionId="893cade7-8231-4a66-88e9-8c8d7385365d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="be565b50-8d83-c276-947d-d5d13795c237" executionId="5b3ccd72-b755-44ea-b33a-bc8b40073d1e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="848d400a-3297-38f8-3511-ef5fc9699422" executionId="a388a6d3-12e3-42da-8082-d13f87ea4d62" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4e09d0f0-d0e3-ce1a-54bc-44a73be06ad0" executionId="ce06b644-6310-4f10-a064-a73ac8885f66" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9daec5f3-5b2a-58a6-e44e-972fdbc203a3" executionId="5751eb22-c7a5-4ce5-84df-4acfd3e7d269" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c573233b-408e-6660-ac37-3cc6b7d50246" executionId="c9c2d150-f08a-4caf-8d50-eb8e1481d585" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="13" executed="11" passed="0" failed="11" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.8.2+699d445a1a (64-bit .NET 9.0.8)&#xD;
+[xUnit.net 00:00:00.09]   Discovering: WileyWidget.UiTests&#xD;
+[xUnit.net 00:00:00.12]   Discovered:  WileyWidget.UiTests&#xD;
+[xUnit.net 00:00:00.12]   Starting:    WileyWidget.UiTests&#xD;
+[xUnit.net 00:00:00.18]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.18]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.18]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.18]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.19]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.19]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.19]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.19]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.19]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.19]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.19]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.19]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.19]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.19]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.19]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.19]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.19]       Requires application to be built and available&#xD;
+[xUnit.net 00:00:00.19]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.19]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.19]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.19]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.19]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.19]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.19]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.19]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.19]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.19]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.19]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.19]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.19]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.19]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.19]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.19]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+Test 'WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements' was skipped in the test run.&#xD;
+[xUnit.net 00:00:00.21]       Requires application to be built and available&#xD;
+[xUnit.net 00:00:00.21]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.21]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.21]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.21]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.21]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.21]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.21]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.21]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.21]       System.InvalidOperationException : UI tests must run on STA thread&#xD;
+[xUnit.net 00:00:00.21]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.21]         C:\Users\biges\Desktop\Wiley_Widget\WileyWidget.UiTests\MainWindowUITests.cs(34,0): at WileyWidget.UiTests.MainWindowUITests..ctor()&#xD;
+[xUnit.net 00:00:00.21]            at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)&#xD;
+[xUnit.net 00:00:00.21]   Finished:    WileyWidget.UiTests&#xD;
+Test 'WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched' was skipped in the test run.&#xD;
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="MCKITRICK" outcome="Warning" timestamp="2025-08-29T19:02:30.6434167-06:00">
+        <Text>ExecutionThreadApartmentState option not supported for framework: .NETCoreApp,Version=v9.0.</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.8263199-06:00">
+        <Text>[xUnit.net 00:00:00.18]     WileyWidget.UiTests.MainWindowUITests.MainWindow_LoadsWithExpectedTitle [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.8375411-06:00">
+        <Text>[xUnit.net 00:00:00.19]     WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanEnumerateDesktopWindows [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.8386199-06:00">
+        <Text>[xUnit.net 00:00:00.19]     WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsRibbonInterface [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.8393668-06:00">
+        <Text>[xUnit.net 00:00:00.19]     WileyWidget.UiTests.MainWindowUITests.UI_Framework_Compatibility_Check [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Warning" timestamp="2025-08-29T19:02:30.8401344-06:00">
+        <Text>[xUnit.net 00:00:00.19]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedUIElements [SKIP]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.8407996-06:00">
+        <Text>[xUnit.net 00:00:00.19]     WileyWidget.UiTests.MainWindowUITests.UI_Test_Environment_IsReady [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.8413134-06:00">
+        <Text>[xUnit.net 00:00:00.19]     WileyWidget.UiTests.MainWindowUITests.MainWindow_ContainsTabControl [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.8418025-06:00">
+        <Text>[xUnit.net 00:00:00.19]     WileyWidget.UiTests.MainWindowUITests.UI_Test_Framework_IsConfigured [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.8423716-06:00">
+        <Text>[xUnit.net 00:00:00.19]     WileyWidget.UiTests.MainWindowUITests.Application_CanBeLaunchedFromTestEnvironment [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Warning" timestamp="2025-08-29T19:02:30.9108500-06:00">
+        <Text>[xUnit.net 00:00:00.21]     WileyWidget.UiTests.MainWindowUITests.MainWindow_CanBeLaunched [SKIP]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.9109634-06:00">
+        <Text>[xUnit.net 00:00:00.21]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasExpectedDimensions [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.9113576-06:00">
+        <Text>[xUnit.net 00:00:00.21]     WileyWidget.UiTests.MainWindowUITests.MainWindow_HasAllExpectedTabs [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="MCKITRICK" outcome="Error" timestamp="2025-08-29T19:02:30.9115655-06:00">
+        <Text>[xUnit.net 00:00:00.21]     WileyWidget.UiTests.MainWindowUITests.UI_Automation_CanFindDesktop [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+    <CollectorDataEntries>
+      <Collector agentName="MCKITRICK" uri="datacollector://microsoft/CodeCoverage/2.0" collectorDisplayName="Code Coverage">
+        <UriAttachments>
+          <UriAttachment>
+            <A href="MCKITRICK\biges_MCKITRICK_2025-08-29.19_02_30.coverage"></A>
+          </UriAttachment>
+        </UriAttachments>
+      </Collector>
+    </CollectorDataEntries>
+  </ResultSummary>
+</TestRun>

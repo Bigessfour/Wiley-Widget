@@ -3,6 +3,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using WileyWidget.Data;
 
 namespace WileyWidget.Configuration;
@@ -23,6 +24,9 @@ public static class DatabaseConfiguration
         services.AddDbContext<AppDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
+            
+            // Log the connection string for debugging
+            Serilog.Log.Information("Database connection string: {ConnectionString}", connectionString);
 
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -35,9 +39,6 @@ public static class DatabaseConfiguration
             {
                 // Configure SQLite options
                 sqliteOptions.CommandTimeout(30);
-
-                // Enable query splitting for better performance with includes
-                sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             });
 
             // Configure logging and other options
@@ -46,6 +47,9 @@ public static class DatabaseConfiguration
 
         // Register repository
         services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
+
+        // Register database seeder
+        services.AddScoped<DatabaseSeeder>();
 
         return services;
     }
@@ -73,6 +77,7 @@ public static class DatabaseConfiguration
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
 
         try
         {
@@ -81,6 +86,9 @@ public static class DatabaseConfiguration
 
             // Apply any pending migrations
             await context.Database.MigrateAsync();
+
+            // Seed the database with sample data
+            await seeder.SeedAsync();
         }
         catch (Exception ex)
         {

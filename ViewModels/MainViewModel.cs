@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using WileyWidget.Data;
 using Serilog;
+using Microsoft.EntityFrameworkCore;
 
 namespace WileyWidget.ViewModels;
 
@@ -28,6 +29,11 @@ namespace WileyWidget.ViewModels;
 
         public ObservableCollection<Customer> QuickBooksCustomers { get; } = new();
         public ObservableCollection<Invoice> QuickBooksInvoices { get; } = new();
+        public ObservableCollection<Class> QboClasses { get; } = new();
+        public ObservableCollection<Account> QboAccounts { get; } = new();
+
+        [ObservableProperty]
+        private bool quickBooksBusy;
 
         // Enterprise management properties
         private readonly EnterpriseViewModel _enterpriseViewModel;
@@ -42,6 +48,9 @@ namespace WileyWidget.ViewModels;
                     _enterpriseViewModel.SelectedEnterprise = value;
             }
         }
+
+        // Budget interactions properties
+        public ObservableCollection<BudgetInteraction> BudgetInteractions { get; } = new();
 
         /// <summary>Currently selected widget in the grid (null when none selected).</summary>
         [ObservableProperty]
@@ -235,6 +244,48 @@ namespace WileyWidget.ViewModels;
         Log.Information("Enterprise deletion process completed");
     }
 
+    [RelayCommand]
+    private async System.Threading.Tasks.Task LoadBudgetInteractionsAsync()
+    {
+        try
+        {
+            Log.Information("Loading budget interactions from database");
+
+            // Get DbContext from the enterprise view model
+            var contextFactory = new AppDbContextFactory();
+            using var context = contextFactory.CreateDbContext(new string[0]);
+
+            var interactions = await context.BudgetInteractions
+                .Include(bi => bi.PrimaryEnterprise)
+                .Include(bi => bi.SecondaryEnterprise)
+                .ToListAsync();
+
+            BudgetInteractions.Clear();
+            foreach (var interaction in interactions)
+            {
+                BudgetInteractions.Add(interaction);
+                Log.Debug("Loaded budget interaction: {Type} - {Description} (${Amount})",
+                         interaction.InteractionType, interaction.Description, interaction.MonthlyAmount);
+            }
+
+            Log.Information("Successfully loaded {Count} budget interactions", BudgetInteractions.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to load budget interactions from database");
+        }
+    }
+
+    [RelayCommand]
+    private void RefreshDiagram()
+    {
+        Log.Information("User initiated diagram refresh");
+        // The diagram will automatically refresh when BudgetInteractions collection changes
+        // due to ObservableCollection notifications
+        Log.Information("Diagram refresh completed - {Count} interactions available for visualization",
+                       BudgetInteractions.Count);
+    }
+
     /// <summary>
     /// Gets the budget summary from enterprise data
     /// Logs when budget summary is accessed for performance monitoring
@@ -246,6 +297,110 @@ namespace WileyWidget.ViewModels;
             var summary = _enterpriseViewModel?.GetBudgetSummary() ?? "Enterprise data not available";
             Log.Debug("Budget summary accessed - Content length: {Length} characters", summary.Length);
             return summary;
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task LoadQuickBooksCustomersAsync()
+    {
+        if (_qb == null) return;
+        try
+        {
+            QuickBooksBusy = true;
+            var customers = await _qb.GetCustomersAsync();
+            QuickBooksCustomers.Clear();
+            foreach (var customer in customers)
+            {
+                QuickBooksCustomers.Add(customer);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to load QuickBooks customers");
+        }
+        finally
+        {
+            QuickBooksBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task LoadQuickBooksInvoicesAsync()
+    {
+        if (_qb == null) return;
+        try
+        {
+            QuickBooksBusy = true;
+            var invoices = await _qb.GetInvoicesAsync();
+            QuickBooksInvoices.Clear();
+            foreach (var invoice in invoices)
+            {
+                QuickBooksInvoices.Add(invoice);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to load QuickBooks invoices");
+        }
+        finally
+        {
+            QuickBooksBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task SyncEnterprisesToQbo()
+    {
+        if (_qb == null || _enterpriseViewModel == null) return;
+        try
+        {
+            QuickBooksBusy = true;
+            foreach (var enterprise in Enterprises)
+            {
+                await _qb.SyncEnterpriseToQboClassAsync(enterprise);
+            }
+            // Save changes to database
+            var contextFactory = new AppDbContextFactory();
+            using var context = contextFactory.CreateDbContext(new string[0]);
+            await context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to sync enterprises to QBO");
+        }
+        finally
+        {
+            QuickBooksBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task SyncBudgetInteractionsToQbo()
+    {
+        if (_qb == null) return;
+        try
+        {
+            QuickBooksBusy = true;
+            var contextFactory = new AppDbContextFactory();
+            using var context = contextFactory.CreateDbContext(new string[0]);
+            var interactions = await context.BudgetInteractions.Include(bi => bi.PrimaryEnterprise).ToListAsync();
+            foreach (var interaction in interactions)
+            {
+                var classId = interaction.PrimaryEnterprise?.QboClassId;
+                if (!string.IsNullOrEmpty(classId))
+                {
+                    await _qb.SyncBudgetInteractionToQboAccountAsync(interaction, classId);
+                }
+            }
+            await context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to sync budget interactions to QBO");
+        }
+        finally
+        {
+            QuickBooksBusy = false;
         }
     }
 }

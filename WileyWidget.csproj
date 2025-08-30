@@ -17,6 +17,7 @@
   <DelaySign>false</DelaySign>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <UserSecretsId>b361c895-73de-46a6-9110-c7a5c18bbebf</UserSecretsId>
   </PropertyGroup>
 
   <!-- Copy Syncfusion license file to output directory -->
@@ -25,6 +26,13 @@
   </Target>
 
   <ItemGroup>
+    <!-- Copy configuration files to output directory -->
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="appsettings.Production.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <PackageReference Include="Azure.Identity" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
@@ -42,6 +50,7 @@
     <PackageReference Include="Serilog.Enrichers.Thread" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Syncfusion.Licensing" />
+    <PackageReference Include="Syncfusion.SfDiagram.WPF" />
     <PackageReference Include="Syncfusion.SfGrid.WPF" />
     <PackageReference Include="Syncfusion.SfSkinManager.WPF" />
     <PackageReference Include="Syncfusion.Tools.WPF" />

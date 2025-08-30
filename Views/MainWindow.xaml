@@ -61,7 +61,7 @@
                             <Button Content="Load Enterprises" Command="{Binding LoadEnterprisesCommand}" Margin="0,0,6,0"/>
                             <Button Content="Add Enterprise" Command="{Binding AddEnterpriseCommand}" Margin="0,0,6,0"/>
                             <Button Content="Save" Command="{Binding SaveEnterpriseCommand}" Margin="0,0,6,0"/>
-                            <Button Content="Delete" Command="{Binding DeleteEnterpriseCommand}" Margin="0,0,6,0" Background="IndianRed" Foreground="White"/>
+                            <Button Content="Delete" Command="{Binding DeleteEnterpriseCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeButton}"/>
                         </StackPanel>
                         <syncfusion:SfDataGrid ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" 
                                              AutoGenerateColumns="False" AllowSorting="True" AllowFiltering="True" 
@@ -84,35 +84,33 @@
                             <TextBlock Text="Municipal Budget Dashboard" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,20"/>
                             
                             <UniformGrid Columns="2" Rows="2" Margin="0,0,0,20">
-                                <Border Background="#E8F5E8" BorderBrush="#4CAF50" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                                <Border Style="{StaticResource DashboardCard}">
                                     <StackPanel>
-                                        <TextBlock Text="Total Revenue" FontSize="14" FontWeight="SemiBold" Foreground="#2E7D32"/>
-                                        <TextBlock Text="{Binding BudgetMetrics.TotalRevenue, StringFormat=C2}" FontSize="20" FontWeight="Bold" Foreground="#1B5E20"/>
+                                        <TextBlock Text="Total Revenue" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="{Binding BudgetMetrics.TotalRevenue, StringFormat=C2}" Style="{StaticResource CardValue}"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Background="#FFEBEE" BorderBrush="#F44336" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                                <Border Style="{StaticResource DashboardCard}">
                                     <StackPanel>
-                                        <TextBlock Text="Total Expenses" FontSize="14" FontWeight="SemiBold" Foreground="#C62828"/>
-                                        <TextBlock Text="{Binding BudgetMetrics.TotalExpenses, StringFormat=C2}" FontSize="20" FontWeight="Bold" Foreground="#B71C1C"/>
+                                        <TextBlock Text="Total Expenses" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="{Binding BudgetMetrics.TotalExpenses, StringFormat=C2}" Style="{StaticResource CardValue}"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Background="{Binding BudgetMetrics.BalanceColor}" BorderBrush="{Binding BudgetMetrics.BalanceBorderColor}" 
-                                        BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                                <Border Style="{StaticResource DashboardCard}">
                                     <StackPanel>
-                                        <TextBlock Text="Monthly Balance" FontSize="14" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding BudgetMetrics.MonthlyBalance, StringFormat=C2}" FontSize="20" FontWeight="Bold"/>
+                                        <TextBlock Text="Monthly Balance" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="{Binding BudgetMetrics.MonthlyBalance, StringFormat=C2}" Style="{StaticResource CardValue}"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Background="#E3F2FD" BorderBrush="#2196F3" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                                <Border Style="{StaticResource DashboardCard}">
                                     <StackPanel>
-                                        <TextBlock Text="Citizens Served" FontSize="14" FontWeight="SemiBold" Foreground="#0D47A1"/>
-                                        <TextBlock Text="{Binding BudgetMetrics.TotalCitizens}" FontSize="20" FontWeight="Bold" Foreground="#0D47A1"/>
+                                        <TextBlock Text="Citizens Served" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="{Binding BudgetMetrics.TotalCitizens}" Style="{StaticResource CardValue}"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
 
-                            <Border Background="{Binding BudgetMetrics.StatusBackground}" BorderBrush="{Binding BudgetMetrics.StatusBorder}" 
-                                    BorderThickness="2" CornerRadius="10" Margin="0,0,0,20" Padding="20">
+                            <Border Style="{StaticResource DashboardCard}" CornerRadius="10" Margin="0,0,0,20" Padding="20">
                                 <StackPanel HorizontalAlignment="Center">
                                     <TextBlock Text="{Binding BudgetMetrics.StatusIcon}" FontSize="48" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding BudgetMetrics.StatusMessage}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,10,0,0"/>
@@ -134,7 +132,7 @@
                             </GroupBox>
 
                             <GroupBox Header="Enterprise Performance Details" Margin="0,0,0,20">
-                                <DataGrid ItemsSource="{Binding Enterprises}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10" AlternatingRowBackground="#F5F5F5">
+                                <DataGrid ItemsSource="{Binding Enterprises}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10" Style="{StaticResource ThemeDataGrid}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Enterprise" Binding="{Binding Name}" Width="120"/>
                                         <DataGridTextColumn Header="Citizens" Binding="{Binding CitizenCount}" Width="80"/>
@@ -167,7 +165,7 @@
                                     <ItemsControl ItemsSource="{Binding BudgetInsights.Recommendations}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Margin="0,2" Padding="8">
+                                                <Border Style="{StaticResource DashboardCard}" CornerRadius="4" Margin="0,2" Padding="8">
                                                     <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12"/>
                                                 </Border>
                                             </DataTemplate>
@@ -176,17 +174,39 @@
                                 </StackPanel>
                             </GroupBox>
 
-                            <TextBlock Text="💡 Phase 2: UI Dashboards &amp; Basic Analytics - COMPLETED" FontStyle="Italic" Foreground="Green" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Dashboard provides real-time budget analytics with visual indicators and actionable insights." FontStyle="Italic" Foreground="Gray" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                            <TextBlock Text="💡 Phase 2: UI Dashboards &amp; Basic Analytics - COMPLETED" Style="{StaticResource StatusTextSuccess}"/>
+                            <TextBlock Text="Dashboard provides real-time budget analytics with visual indicators and actionable insights." Style="{StaticResource StatusTextInfo}"/>
                         </StackPanel>
                     </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Budget Interactions">
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4">
+                            <Button Content="Load Interactions" Command="{Binding LoadBudgetInteractionsCommand}" Margin="0,0,6,0"/>
+                            <Button Content="Refresh Diagram" Command="{Binding RefreshDiagramCommand}" Margin="0,0,6,0"/>
+                            <TextBlock Text="Interactions: " />
+                            <TextBlock Text="{Binding BudgetInteractions.Count}" FontWeight="Bold" />
+                        </StackPanel>
+                        <syncfusion:SfDiagram x:Name="BudgetDiagram" 
+                                           Background="White"
+                                           Constraints="Default,Undoable,Zoomable">
+                            <syncfusion:SfDiagram.Nodes>
+                                <syncfusion:NodeCollection />
+                            </syncfusion:SfDiagram.Nodes>
+                            <syncfusion:SfDiagram.Connectors>
+                                <syncfusion:ConnectorCollection />
+                            </syncfusion:SfDiagram.Connectors>
+                        </syncfusion:SfDiagram>
+                    </DockPanel>
                 </TabItem>
                 <TabItem Header="QuickBooks">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4">
                             <Button Content="Load Customers" Command="{Binding LoadQuickBooksCustomersAsyncCommand}" Margin="0,0,6,0"/>
                             <Button Content="Load Invoices" Command="{Binding LoadQuickBooksInvoicesAsyncCommand}" Margin="0,0,6,0"/>
-                            <TextBlock Text="Busy" Foreground="OrangeRed" Visibility="{Binding QuickBooksBusy, Converter={StaticResource BoolToVis}}"/>
+                            <Button Content="Sync Enterprises" Command="{Binding SyncEnterprisesToQboCommand}" Margin="0,0,6,0"/>
+                            <Button Content="Sync Budget Interactions" Command="{Binding SyncBudgetInteractionsToQboCommand}" Margin="0,0,6,0"/>
+                            <TextBlock Text="Busy" Style="{StaticResource BusyText}" Visibility="{Binding QuickBooksBusy, Converter={StaticResource BoolToVis}}"/>
                         </StackPanel>
                         <TabControl>
                             <TabItem Header="Customers">
@@ -195,11 +215,17 @@
                             <TabItem Header="Invoices">
                                 <syncfusion:SfDataGrid ItemsSource="{Binding QuickBooksInvoices}" AutoGenerateColumns="True" />
                             </TabItem>
+                            <TabItem Header="QBO Classes">
+                                <syncfusion:SfDataGrid ItemsSource="{Binding QboClasses}" AutoGenerateColumns="True" />
+                            </TabItem>
+                            <TabItem Header="QBO Accounts">
+                                <syncfusion:SfDataGrid ItemsSource="{Binding QboAccounts}" AutoGenerateColumns="True" />
+                            </TabItem>
                         </TabControl>
                     </DockPanel>
                 </TabItem>
             </TabControl>
-            <StatusBar DockPanel.Dock="Bottom" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+            <StatusBar DockPanel.Dock="Bottom">
                 <StatusBarItem>
                     <TextBlock>
                         <Run Text="Items: "/><Run Text="{Binding Widgets.Count, Mode=OneWay}" />

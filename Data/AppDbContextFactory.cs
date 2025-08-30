@@ -26,20 +26,13 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .Build();
 
         // Get connection string
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            // Fallback to SQLite for development
-            connectionString = "Data Source=WileyWidget.db";
-        }
+        var connectionString = "Data Source=WileyWidget.db";
 
         // Configure DbContext options
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseSqlite(connectionString, sqliteOptions =>
         {
             sqliteOptions.CommandTimeout(30);
-            sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
         });
 
         // Enable sensitive data logging in development
