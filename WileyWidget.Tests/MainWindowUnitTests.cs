@@ -16,13 +16,19 @@ namespace WileyWidget.Tests;
 [Collection("WPF Test Collection")]
 public sealed class MainWindowUnitTests : IDisposable
 {
+    /// <summary>
+    /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+    /// </summary>
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
-    protected void Dispose(bool disposing)
+    /// <summary>
+    /// Performs cleanup of resources used by the test class.
+    /// </summary>
+    private void Dispose(bool disposing)  // Changed from protected to private
     {
         // Cleanup any WPF resources if needed
         if (disposing)

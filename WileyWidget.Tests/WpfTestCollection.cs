@@ -29,7 +29,7 @@ public sealed class WpfTestFixture : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         // WPF cleanup can be done here if needed
         if (disposing)

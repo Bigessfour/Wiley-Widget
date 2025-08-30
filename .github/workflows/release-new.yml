@@ -107,7 +107,3 @@ jobs:
             RELEASE_NOTES.md
             msbuild.binlog
           retention-days: 90
-                      ./artifacts/
-                      RELEASE_NOTES.md
-                      msbuild.binlog
-                  retention-days: 90
