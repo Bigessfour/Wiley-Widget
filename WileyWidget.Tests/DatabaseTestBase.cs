@@ -20,7 +20,6 @@ public abstract class DatabaseTestBase : NUnitBase
         if (TestRunner == null)
         {
             // Create a custom TestRunner instance
-            var connectionString = "Server=.\\SQLEXPRESS;Database=WileyWidget;Trusted_Connection=True;TrustServerCertificate=True;Connection Timeout=30;";
             // We'll handle this in the individual tests since automatic initialization isn't working
         }
     }

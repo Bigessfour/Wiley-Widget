@@ -75,20 +75,30 @@ public static class DatabaseConfiguration
     /// </summary>
     public static async Task EnsureDatabaseCreatedAsync(IServiceProvider serviceProvider)
     {
-        using var scope = serviceProvider.CreateScope();
+        var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
 
         try
         {
-            // Create database if it doesn't exist
-            await context.Database.EnsureCreatedAsync();
+            // For SQLite in-memory databases, skip migrations to avoid conflicts
+            var connectionString = context.Database.GetConnectionString();
+            var isInMemory = connectionString?.Contains(":memory:") == true ||
+                           connectionString?.Contains("DataSource=:memory:") == true;
 
-            // Apply any pending migrations
-            await context.Database.MigrateAsync();
+            if (isInMemory)
+            {
+                // For in-memory databases, just ensure created (no migrations)
+                await context.Database.EnsureCreatedAsync();
+            }
+            else
+            {
+                // For file-based databases, use migrations
+                await context.Database.MigrateAsync();
+            }
 
-            // Seed the database with sample data
-            await seeder.SeedAsync();
+            // Seed the database with sample data using the same context
+            await seeder.SeedAsync(context);
         }
         catch (Exception ex)
         {
@@ -99,6 +109,11 @@ public static class DatabaseConfiguration
             throw new InvalidOperationException(
                 "Failed to initialize database. Please check your connection string and database permissions.",
                 ex);
+        }
+        finally
+        {
+            // Dispose the scope after seeding is complete
+            scope.Dispose();
         }
     }
 }

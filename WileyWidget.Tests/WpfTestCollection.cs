@@ -15,7 +15,7 @@ public class WpfTestCollection : ICollectionFixture<WpfTestFixture>
 /// WPF Test Fixture that sets up STA threading for WPF tests.
 /// This fixture ensures proper WPF initialization and cleanup.
 /// </summary>
-public class WpfTestFixture : IDisposable
+public sealed class WpfTestFixture : IDisposable
 {
     public WpfTestFixture()
     {
@@ -25,6 +25,16 @@ public class WpfTestFixture : IDisposable
 
     public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected void Dispose(bool disposing)
+    {
         // WPF cleanup can be done here if needed
+        if (disposing)
+        {
+            // Dispose managed resources
+        }
     }
 }

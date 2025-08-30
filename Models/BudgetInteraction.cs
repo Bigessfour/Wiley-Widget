@@ -1,3 +1,5 @@
+#nullable enable
+
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -69,7 +71,7 @@ public class BudgetInteraction
     /// Navigation property to secondary enterprise (optional)
     /// </summary>
     [ForeignKey("SecondaryEnterpriseId")]
-    public virtual Enterprise SecondaryEnterprise { get; set; }
+    public virtual Enterprise? SecondaryEnterprise { get; set; }
 
     /// <summary>
     /// QuickBooks Online Account ID for this interaction

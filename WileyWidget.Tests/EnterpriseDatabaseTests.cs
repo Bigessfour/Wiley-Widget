@@ -196,10 +196,12 @@ public class EnterpriseDatabaseTests : DatabaseTestBase
 
                     // Query with parameters to find high rate companies within transaction
                     using (var command = new SqlCommand(
-                        $"SELECT Name, CurrentRate FROM dbo.Enterprises WHERE CurrentRate > @rateThreshold AND Name IN ('{highRateName}', '{lowRateName}')",
+                        "SELECT Name, CurrentRate FROM dbo.Enterprises WHERE CurrentRate > @rateThreshold AND Name IN (@highRateName, @lowRateName)",
                         connection, transaction))
                     {
                         command.Parameters.AddWithValue("@rateThreshold", 3.00m);
+                        command.Parameters.AddWithValue("@highRateName", highRateName);
+                        command.Parameters.AddWithValue("@lowRateName", lowRateName);
 
                         using (var reader = await command.ExecuteReaderAsync())
                         {

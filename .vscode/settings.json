@@ -181,5 +181,8 @@
   "xml.format.splitAttributes": "splitNewLine",
 
   // Workspace-specific Copilot guidance
-  "github.copilot.chat.welcomeMessage": "Welcome to WileyWidget! This is a hobby WPF project focused on learning. I'll suggest practical patterns suitable for experimentation rather than production-level complexity."
+  "github.copilot.chat.welcomeMessage": "Welcome to WileyWidget! This is a hobby WPF project focused on learning. I'll suggest practical patterns suitable for experimentation rather than production-level complexity.",
+  "yaml.schemas": {
+    "https://gitlab.com/appsemble/appsemble/-/raw/HEAD/packages/cli/assets/appsemblerc.schema.json": "chat-editing-snapshot-text-model:/c%3A/Users/biges/Desktop/Wiley_Widget/.github/workflows/release-new.yml?%7B%22sessionId%22%3A%22bacce419-d9d7-48eb-b211-4bc420789800%22%2C%22requestId%22%3A%22request_1f785618-7556-4a24-b682-f4a0618a2558%22%2C%22undoStop%22%3A%22b53c08eb-fb08-4e98-9ff7-f1035166a221%22%7D"
+  }
 }

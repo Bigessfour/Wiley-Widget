@@ -14,11 +14,21 @@ namespace WileyWidget.Tests;
 /// Uses STA threading for WPF compatibility.
 /// </summary>
 [Collection("WPF Test Collection")]
-public class MainWindowUnitTests : IDisposable
+public sealed class MainWindowUnitTests : IDisposable
 {
     public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected void Dispose(bool disposing)
+    {
         // Cleanup any WPF resources if needed
+        if (disposing)
+        {
+            // Dispose managed resources
+        }
     }
     [Fact]
     public void InitializeBudgetDiagram_MethodExists()
