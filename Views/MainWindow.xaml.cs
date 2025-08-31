@@ -13,7 +13,7 @@ using WileyWidget.Models;
 using System.Text;
 using System.IO;
 
-namespace WileyWidget;
+namespace WileyWidget.Views;
 
 /// <summary>
 /// Primary shell window for Wiley Widget municipal management application.
@@ -442,9 +442,9 @@ public partial class MainWindow : RibbonWindow
         // Add new theme
         var themeUriString = themeName switch
         {
-            "FluentDark" => "pack://application:,,,/PresentationFramework.Fluent;component/Themes/FluentDark.xaml",
-            "FluentLight" => "pack://application:,,,/PresentationFramework.Fluent;component/Themes/FluentLight.xaml",
-            _ => "pack://application:,,,/PresentationFramework.Fluent;component/Themes/FluentLight.xaml"
+            "FluentDark" => "/Syncfusion.Themes.FluentDark.WPF;component/Themes/FluentDark.xaml",
+            "FluentLight" => "/Syncfusion.Themes.FluentLight.WPF;component/Themes/FluentLight.xaml",
+            _ => "/Syncfusion.Themes.FluentLight.WPF;component/Themes/FluentLight.xaml"
         };
 
         Log.Information("Constructing new theme resource dictionary from URI: {ThemeUri}", themeUriString);

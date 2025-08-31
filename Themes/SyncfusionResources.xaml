@@ -4,20 +4,18 @@
                     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
                     xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF">
 
-    <!-- Fluent Theme Resources (Merged for Light/Dark Switching) -->
+    <!-- Fluent Theme Resources (Loaded dynamically by SfSkinManager) -->
     <ResourceDictionary.MergedDictionaries>
-        <!-- Use WPF built-in Fluent themes as fallback -->
-        <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/FluentDark.xaml"/>
-        <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/FluentLight.xaml"/>
+        <!-- Theme resources will be loaded dynamically by the application -->
     </ResourceDictionary.MergedDictionaries>
 
-    <!-- Button Style (Expanded with Font, Focus, Disabled States) -->
-    <Style x:Key="ThemeButton" TargetType="Button" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=WPFButtonStyle}}">
-        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
-        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
-        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBorderBrush}}"/>
+    <!-- Button Style (Simplified for startup compatibility) -->
+    <Style x:Key="ThemeButton" TargetType="Button">
+        <Setter Property="Background" Value="#0078D4"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderBrush" Value="#0078D4"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="Padding" Value="10,5"/>
         <Setter Property="Template">
@@ -33,19 +31,14 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonHoverBackground}}"/>
-                            <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonHoverForeground}}"/>
+                            <Setter Property="Background" Value="#106EBE"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonPressedBackground}}"/>
-                            <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonPressedBorderBrush}}"/>
-                        </Trigger>
-                        <Trigger Property="IsFocused" Value="True">
-                            <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=FocusBrush}}"/>
+                            <Setter Property="Background" Value="#005A9E"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DisabledBackground}}"/>
-                            <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DisabledForeground}}"/>
+                            <Setter Property="Background" Value="#CCCCCC"/>
+                            <Setter Property="Foreground" Value="#666666"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -53,46 +46,41 @@
         </Setter>
     </Style>
 
-    <!-- DashboardCard Border Style (Expanded with Shadow, Focus) -->
+    <!-- DashboardCard Border Style (Simplified) -->
     <Style x:Key="DashboardCard" TargetType="Border">
-        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=CardBackground}}"/>
-        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=CardBorderBrush}}"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#E1E1E1"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Margin" Value="5"/>
         <Setter Property="Padding" Value="15"/>
         <Setter Property="Effect">
             <Setter.Value>
-                <DropShadowEffect Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ShadowColor}}" BlurRadius="5" ShadowDepth="2"/>
+                <DropShadowEffect Color="#CCCCCC" BlurRadius="5" ShadowDepth="2"/>
             </Setter.Value>
         </Setter>
-        <Style.Triggers>
-            <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=FocusBrush}}"/>
-            </Trigger>
-        </Style.Triggers>
     </Style>
 
-    <!-- CardTitle TextBlock Style (Expanded with Font) -->
+    <!-- CardTitle TextBlock Style (Simplified) -->
     <Style x:Key="CardTitle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentForeground}}"/>
-        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="Foreground" Value="#333333"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="TextAlignment" Value="Left"/>
     </Style>
 
-    <!-- CardValue TextBlock Style (Similar Expansion) -->
+    <!-- CardValue TextBlock Style (Simplified) -->
     <Style x:Key="CardValue" TargetType="TextBlock">
         <Setter Property="FontSize" Value="20"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentForeground}}"/>
-        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="Foreground" Value="#0078D4"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="TextAlignment" Value="Left"/>
     </Style>
 
-    <!-- DataGrid Style (Expanded for SfDataGrid Compatibility, Headers, Selection) -->
-    <Style x:Key="ThemeDataGrid" TargetType="{x:Type syncfusion:SfDataGrid}" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfDataGridStyle}}">
+    <!-- DataGrid Style (Commented out due to assembly loading issue during startup)
+    <Style x:Key="ThemeDataGrid" TargetType="{x:Type syncfusion:SfDataGrid}">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridBorderBrush}}"/>
@@ -108,6 +96,7 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+    -->
 
     <!-- StatusTextSuccess TextBlock Style -->
     <Style x:Key="StatusTextSuccess" TargetType="TextBlock">
@@ -135,7 +124,7 @@
     </Style>
 
     <!-- StatusBar Style (Expanded with ItemsPanel) -->
-    <Style x:Key="ThemeStatusBar" TargetType="StatusBar" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=WPFStatusBarStyle}}">
+    <Style x:Key="ThemeStatusBar" TargetType="StatusBar">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarBorderBrush}}"/>
@@ -197,6 +186,14 @@
         <Setter Property="Margin" Value="0,2,0,0"/>
     </Style>
 
+    <!-- Status Bar Border Style -->
+    <Style x:Key="ThemeStatusBarBorder" TargetType="Border">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarBackground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarBorderBrush}}"/>
+        <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        <Setter Property="Height" Value="25"/>
+    </Style>
+
     <!-- Enhanced TextBox Style with Validation -->
     <Style x:Key="ValidatedTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Style.Triggers>
@@ -208,8 +205,8 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Ribbon Styles -->
-    <Style x:Key="ThemeRibbon" TargetType="syncfusion:Ribbon" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionRibbonStyle}}">
+    <!-- Ribbon Styles (Commented out due to assembly loading issue during startup)
+    <Style x:Key="ThemeRibbon" TargetType="syncfusion:Ribbon">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBorderBrush}}"/>
@@ -217,7 +214,7 @@
         <Setter Property="FontSize" Value="14"/>
     </Style>
 
-    <Style x:Key="ThemeRibbonTab" TargetType="syncfusion:RibbonTab" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionRibbonTabStyle}}">
+    <Style x:Key="ThemeRibbonTab" TargetType="syncfusion:RibbonTab">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonTabBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonTabForeground}}"/>
         <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
@@ -225,7 +222,7 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
-    <Style x:Key="ThemeRibbonBar" TargetType="syncfusion:RibbonBar" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionRibbonBarStyle}}">
+    <Style x:Key="ThemeRibbonBar" TargetType="syncfusion:RibbonBar">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBarBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBarForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBarBorderBrush}}"/>
@@ -233,7 +230,7 @@
         <Setter Property="FontSize" Value="12"/>
     </Style>
 
-    <Style x:Key="ThemeRibbonButton" TargetType="syncfusion:RibbonButton" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionRibbonButtonStyle}}">
+    <Style x:Key="ThemeRibbonButton" TargetType="syncfusion:RibbonButton">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBorderBrush}}"/>
@@ -241,9 +238,10 @@
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Padding" Value="8,4"/>
     </Style>
+    -->
 
     <!-- Tab Control Styles -->
-    <Style x:Key="ThemeTabControl" TargetType="synctools:TabControlAdv" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionTabControlAdvStyle}}">
+    <Style x:Key="ThemeTabControl" TargetType="TabControl" BasedOn="{StaticResource {x:Type TabControl}}">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=TabControlBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=TabControlForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=TabControlBorderBrush}}"/>
@@ -251,8 +249,8 @@
         <Setter Property="FontSize" Value="14"/>
     </Style>
 
-    <!-- SfDataGrid Style -->
-    <Style x:Key="ThemeSfDataGrid" TargetType="syncfusion:SfDataGrid" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfDataGridStyle}}">
+    <!-- SfDataGrid Style (Commented out due to assembly loading issue during startup)
+    <Style x:Key="ThemeSfDataGrid" TargetType="syncfusion:SfDataGrid">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridBorderBrush}}"/>
@@ -273,9 +271,11 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+    -->
 
-    <!-- SfChart Style -->
-    <Style x:Key="ThemeSfChart" TargetType="syncfusion:SfChart" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfChartStyle}}">
+    <!--
+    SfChart Style - Temporarily commented out due to assembly loading issues
+    <Style x:Key="ThemeSfChart" TargetType="syncfusion:SfChart">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ChartBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ChartForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ChartBorderBrush}}"/>
@@ -283,9 +283,10 @@
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Virtualization" Value="True"/>
     </Style>
+    -->
 
     <!-- SfButton Style -->
-    <Style x:Key="ThemeSfButton" TargetType="syncfusion:ButtonAdv" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionButtonAdvStyle}}">
+    <Style x:Key="ThemeSfButton" TargetType="syncfusion:ButtonAdv">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBorderBrush}}"/>
@@ -325,7 +326,7 @@
     </Style>
 
     <!-- SfDiagram Style -->
-    <Style x:Key="ThemeSfDiagram" TargetType="syncfusion:SfDiagram" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfDiagramStyle}}">
+    <Style x:Key="ThemeSfDiagram" TargetType="syncfusion:SfDiagram">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DiagramBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DiagramForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DiagramBorderBrush}}"/>
@@ -335,7 +336,7 @@
     </Style>
 
     <!-- SfComboBox Style -->
-    <Style x:Key="ThemeSfComboBox" TargetType="syncfusion:ComboBoxAdv" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionComboBoxAdvStyle}}">
+    <Style x:Key="ThemeSfComboBox" TargetType="syncfusion:ComboBoxAdv">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ComboBoxBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ComboBoxForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ComboBoxBorderBrush}}"/>
@@ -345,7 +346,7 @@
     </Style>
 
     <!-- SfAccordion Styles -->
-    <Style x:Key="ThemeSfAccordion" TargetType="syncfusion:SfAccordion" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfAccordionStyle}}">
+    <Style x:Key="ThemeSfAccordion" TargetType="syncfusion:SfAccordion">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionBorderBrush}}"/>
@@ -353,7 +354,7 @@
         <Setter Property="FontSize" Value="14"/>
     </Style>
 
-    <Style x:Key="ThemeSfAccordionItem" TargetType="syncfusion:AccordionItem" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionAccordionItemStyle}}">
+    <Style x:Key="ThemeSfAccordionItem" TargetType="syncfusion:AccordionItem">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionItemBackground}}"/>
         <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionItemForeground}}"/>
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionItemBorderBrush}}"/>
@@ -361,5 +362,11 @@
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
+
+    <!-- Basic Syncfusion theme setup - apply MaterialLightTheme as default -->
+    <syncfusion:SfSkinManager.Theme>
+        <syncfusion:MaterialLightTheme />
+    </syncfusion:SfSkinManager.Theme>
+    <!-- Add additional theme resources here as per Syncfusion WPF documentation -->
 
 </ResourceDictionary>

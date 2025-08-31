@@ -82,7 +82,7 @@ public class ApiKeyValidationRule : ValidationRule
         var fakeKeyPatterns = new[] { "test", "fake", "dummy", "example", "your-key-here" };
         foreach (var pattern in fakeKeyPatterns)
         {
-            if (apiKey.ToLower().Contains(pattern))
+            if (apiKey.ToLowerInvariant().Contains(pattern))
             {
                 return new ValidationResult(false,
                     ErrorMessage ?? "This appears to be a test or placeholder API key");

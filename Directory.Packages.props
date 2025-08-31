@@ -19,16 +19,22 @@
     <PackageVersion Include="DotNetEnv" Version="3.0.0" />
     <PackageVersion Include="FluentAssertions" Version="6.12.0" />
     <!-- Entity Framework Core -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.8" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.8" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10" />
     <!-- Microsoft Extensions -->
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
     <!-- Serilog -->
     <PackageVersion Include="Serilog" Version="4.3.0" />
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
@@ -36,41 +42,35 @@
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <!-- Syncfusion -->
-    <PackageVersion Include="Syncfusion.Licensing" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfDiagram.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfScheduler.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.Tools.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfChart.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfInput.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.Shared.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="30.2.7" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.SfChart.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.SfDiagram.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.SfInput.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.SfScheduler.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.Shared.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="30.2.4" />
+    <PackageVersion Include="Syncfusion.Tools.WPF" Version="30.2.4" />
     <!-- Code Analysis -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     <!-- Test Packages -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageVersion Include="xunit" Version="2.9.2" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
-    <PackageVersion Include="xunit.runner.wpf" Version="1.0.10" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="Moq" Version="4.20.70" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.8" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="Moq" Version="4.20.70" />
     <!-- UI Testing -->
     <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
     <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
     <!-- QuickBooks SDK -->
-    <PackageVersion Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0" />
+    <PackageVersion Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.76.0" />
-    <!-- Additional Microsoft Extensions -->
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="9.0.8" />
+    <!-- Test Packages (continued) -->
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="xunit.runner.wpf" Version="1.0.10" />
   </ItemGroup>
 </Project>

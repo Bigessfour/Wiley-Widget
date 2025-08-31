@@ -11,7 +11,9 @@ using Serilog.Context;
 using Serilog.Enrichers;
 using Serilog.Filters;
 using Syncfusion.Licensing;
+using Syncfusion.SfSkinManager;
 using WileyWidget.Services;
+using WileyWidget.Views;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Configuration;
@@ -362,15 +364,45 @@ public partial class App : Application
             File.AppendAllText("debug.log", "⚙️ Configuration loaded\n");
             Log.Information("✅ Configuration loaded successfully");
 
-            // Phase 3: Apply Fluent theme globally
-            Syncfusion.SfSkinManager.SfSkinManager.ApplyThemeAsDefaultStyle = true;
-            Syncfusion.SfSkinManager.SfSkinManager.ApplicationTheme = new Syncfusion.SfSkinManager.Theme("FluentDark");
-            File.AppendAllText("debug.log", "🎨 Fluent Dark theme applied\n");
-            Log.Information("✅ Fluent Dark theme applied globally");
-
-            // Phase 4: Register Syncfusion license (CRITICAL: must happen before any controls)
+            // Phase 3: Register Syncfusion license (CRITICAL: must happen before any Syncfusion operations)
             RegisterSyncfusionLicense();
             File.AppendAllText("debug.log", "🔑 Syncfusion license registered\n");
+
+            // Phase 4: Apply Fluent theme globally
+            try
+            {
+                Log.Information("🎨 Starting theme application in constructor...");
+                File.AppendAllText("debug.log", "🎨 Starting theme application in constructor...\n");
+
+                Syncfusion.SfSkinManager.SfSkinManager.ApplyThemeAsDefaultStyle = true;
+                Log.Information("✅ SfSkinManager.ApplyThemeAsDefaultStyle set to true in constructor");
+                File.AppendAllText("debug.log", "✅ SfSkinManager.ApplyThemeAsDefaultStyle set to true in constructor\n");
+
+                Syncfusion.SfSkinManager.SfSkinManager.ApplicationTheme = new Syncfusion.SfSkinManager.Theme("FluentLight");
+                Log.Information("✅ FluentLight theme set as ApplicationTheme");
+                File.AppendAllText("debug.log", "✅ FluentLight theme set as ApplicationTheme\n");
+
+                // Load theme resources after theme is set
+                try
+                {
+                    // Note: Theme resources are now loaded in App.xaml to avoid conflicts
+                    Log.Information("✅ Theme resources loaded via App.xaml");
+                    File.AppendAllText("debug.log", "✅ Theme resources loaded via App.xaml\n");
+                }
+                catch (Exception resEx)
+                {
+                    Log.Error(resEx, "❌ Failed to load theme resources: {Message}", resEx.Message);
+                    File.AppendAllText("debug.log", $"❌ Failed to load theme resources: {resEx.Message}\n");
+                }
+
+                Log.Information("🎨 Theme application in constructor completed");
+                File.AppendAllText("debug.log", "🎨 Theme application in constructor completed\n");
+            }
+            catch (Exception themeEx)
+            {
+                Log.Error(themeEx, "💥 ERROR during constructor theme application: {Message}", themeEx.Message);
+                File.AppendAllText("debug.log", $"💥 ERROR during constructor theme application: {themeEx.Message}\n{themeEx.StackTrace}\n");
+            }
 
             // Log successful initialization
             _startupTimer.Stop();
@@ -411,7 +443,45 @@ public partial class App : Application
         {
             File.AppendAllText("debug.log", "🎬 === Application Startup Event ===\n");
             Log.Information("🎬 === Application Startup Event ===");
-            Log.Information("📋 Command line args: {Args}", string.Join(" ", e.Args));
+
+            // Log XAML resource loading status
+            Log.Information("🔍 Checking XAML resource loading...");
+            File.AppendAllText("debug.log", "� Checking XAML resource loading...\n");
+
+            if (this.Resources?.MergedDictionaries != null)
+            {
+                Log.Information("📚 Found {Count} merged dictionaries in Application.Resources", this.Resources.MergedDictionaries.Count);
+                File.AppendAllText("debug.log", $"📚 Found {this.Resources.MergedDictionaries.Count} merged dictionaries in Application.Resources\n");
+
+                for (int i = 0; i < this.Resources.MergedDictionaries.Count; i++)
+                {
+                    var dict = this.Resources.MergedDictionaries[i];
+                    var source = dict.Source?.ToString() ?? "null";
+                    Log.Information("📖 Dictionary {Index}: Source='{Source}'", i, source);
+                    File.AppendAllText("debug.log", $"📖 Dictionary {i}: Source='{source}'\n");
+
+                    // Try to access the dictionary to see if it loads
+                    try
+                    {
+                        var keys = dict.Keys;
+                        Log.Information("✅ Dictionary {Index} loaded successfully with {KeyCount} keys", i, keys.Count);
+                        File.AppendAllText("debug.log", $"✅ Dictionary {i} loaded successfully with {keys.Count} keys\n");
+                    }
+                    catch (Exception dictEx)
+                    {
+                        Log.Error(dictEx, "❌ Failed to load dictionary {Index}: {Message}", i, dictEx.Message);
+                        File.AppendAllText("debug.log", $"❌ Failed to load dictionary {i}: {dictEx.Message}\n{dictEx.StackTrace}\n");
+                    }
+                }
+            }
+            else
+            {
+                Log.Warning("⚠️ No merged dictionaries found in Application.Resources");
+                File.AppendAllText("debug.log", "⚠️ No merged dictionaries found in Application.Resources\n");
+            }
+
+            Log.Information("�📋 Command line args: {Args}", string.Join(" ", e.Args));
+            File.AppendAllText("debug.log", $"📋 Command line args: {string.Join(" ", e.Args)}\n");
 
             // Phase 1: Database services (can fail gracefully if DB unavailable)
             File.AppendAllText("debug.log", "📊 Starting database services configuration...\n");
@@ -426,6 +496,50 @@ public partial class App : Application
             // Phase 3: User settings and theme
             LoadAndApplyUserSettings();
             File.AppendAllText("debug.log", "⚙️ User settings loaded\n");
+
+            // Phase 3.5: Apply Syncfusion theme
+            try
+            {
+                Log.Information("🎨 Starting Syncfusion theme application...");
+                File.AppendAllText("debug.log", "🎨 Starting Syncfusion theme application...\n");
+
+                // Log current application resources state
+                Log.Information("📋 Application resources count: {Count}", this.Resources?.MergedDictionaries?.Count ?? 0);
+                File.AppendAllText("debug.log", $"📋 Application resources count: {this.Resources?.MergedDictionaries?.Count ?? 0}\n");
+
+                // Log each merged dictionary
+                if (this.Resources?.MergedDictionaries != null)
+                {
+                    for (int i = 0; i < this.Resources.MergedDictionaries.Count; i++)
+                    {
+                        var dict = this.Resources.MergedDictionaries[i];
+                        Log.Information("📚 Merged dictionary {Index}: Source={Source}", i, dict.Source?.ToString() ?? "null");
+                        File.AppendAllText("debug.log", $"📚 Merged dictionary {i}: Source={dict.Source?.ToString() ?? "null"}\n");
+                    }
+                }
+
+                // Apply theme settings
+                SfSkinManager.ApplyThemeAsDefaultStyle = true; // Enables ThemeResource on all controls
+                Log.Information("✅ SfSkinManager.ApplyThemeAsDefaultStyle set to true");
+                File.AppendAllText("debug.log", "✅ SfSkinManager.ApplyThemeAsDefaultStyle set to true\n");
+
+                SfSkinManager.ApplicationTheme = new Theme("FluentDark"); // Or load from settings
+                Log.Information("✅ FluentDark theme set as ApplicationTheme");
+                File.AppendAllText("debug.log", "✅ FluentDark theme set as ApplicationTheme\n");
+
+                // Log theme application success
+                Log.Information("🎨 Syncfusion theme application completed successfully");
+                File.AppendAllText("debug.log", "🎨 Syncfusion theme application completed successfully\n");
+            }
+            catch (Exception themeEx)
+            {
+                Log.Error(themeEx, "💥 CRITICAL ERROR during theme application: {Message}", themeEx.Message);
+                File.AppendAllText("debug.log", $"💥 CRITICAL ERROR during theme application: {themeEx.Message}\n{themeEx.StackTrace}\n");
+
+                // Try to continue without theme
+                Log.Warning("⚠️ Continuing application startup without theme application");
+                File.AppendAllText("debug.log", "⚠️ Continuing application startup without theme application\n");
+            }
 
             // Phase 4: Test automation support (optional)
             ConfigureTestAutomationSupport();

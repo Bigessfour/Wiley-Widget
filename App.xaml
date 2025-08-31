@@ -1,11 +1,16 @@
-<Application x:Class="WileyWidget.App"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Application xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:WileyWidget"
-             ShutdownMode="OnMainWindowClose">
+             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Syncfusion FluentDark: Exact casing, full assembly/component -->
+                <ResourceDictionary Source="pack://application:,,,/Syncfusion.Themes.FluentDark.WPF;component/Themes/FluentDark.xaml"/>
+                <!-- FluentLight for runtime toggling -->
+                <ResourceDictionary Source="pack://application:,,,/Syncfusion.Themes.FluentLight.WPF;component/Themes/FluentLight.xaml"/>
+                <!-- Custom resources (adjust path if in Themes/ folder) -->
                 <ResourceDictionary Source="Themes/SyncfusionResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

@@ -1,17 +1,13 @@
-<syncfusion:RibbonWindow x:Class="WileyWidget.MainWindow"
+<syncfusion:RibbonWindow x:Class="WileyWidget.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:WileyWidget"
-        xmlns:converters="clr-namespace:WileyWidget.Converters"
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
-        xmlns:synctools="clr-namespace:Syncfusion.Windows.Tools.Controls;assembly=Syncfusion.Tools.WPF"
-        xmlns:syncinput="clr-namespace:System.Windows.Controls;assembly=PresentationFramework"
         xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+        xmlns:converters="clr-namespace:WileyWidget.Converters"
         mc:Ignorable="d"
-        Title="Wiley Widget" Height="600" Width="1000"
-        syncfusionskin:SfSkinManager.Theme="{syncfusionskin:SkinManagerExtension ThemeName='FluentLight'}">
+        Title="Wiley Widget" Height="450" Width="800">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:BalanceToColorConverter x:Key="BalanceToColorConverter"/>
@@ -63,13 +59,13 @@
                 <TabItem Header="Enterprises">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4">
-                            <syncfusion:ButtonAdv Content="Load Enterprises" Command="{Binding LoadEnterprisesCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Add Enterprise" Command="{Binding AddEnterpriseCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Save" Command="{Binding SaveEnterpriseCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Delete" Command="{Binding DeleteEnterpriseCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Test Config" Command="{Binding TestConfigurationCommand}" Margin="0,0,6,0" 
+                            <syncfusion:SfButton Content="Load Enterprises" Command="{Binding LoadEnterprisesCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Add Enterprise" Command="{Binding AddEnterpriseCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Save" Command="{Binding SaveEnterpriseCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Delete" Command="{Binding DeleteEnterpriseCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Test Config" Command="{Binding TestConfigurationCommand}" Margin="0,0,6,0" 
                                     Background="{StaticResource TestConfigBackground}" Foreground="{StaticResource TestConfigForeground}" ToolTip="Test xAI API key configuration" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Crunch with Grok" Command="{Binding CrunchWithGrokCommand}" Margin="0,0,6,0" 
+                            <syncfusion:SfButton Content="Crunch with Grok" Command="{Binding CrunchWithGrokCommand}" Margin="0,0,6,0" 
                                     Background="{StaticResource GrokButtonBackground}" Foreground="{StaticResource GrokButtonForeground}" FontWeight="Bold" ToolTip="Analyze enterprises with AI" Style="{StaticResource ThemeSfButton}"/>
                         </StackPanel>
                         <syncfusion:SfDataGrid ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" 
@@ -135,6 +131,7 @@
                                 </StackPanel>
                             </Border>
 
+                            <!--
                             <GroupBox Header="Revenue vs Expenses Overview" Margin="0,0,0,20">
                                 <syncfusion:SfChart Height="300" Margin="10" Style="{StaticResource ThemeSfChart}">
                                     <syncfusion:SfChart.PrimaryAxis>
@@ -147,6 +144,7 @@
                                     <syncfusion:ColumnSeries ItemsSource="{Binding Enterprises}" XBindingPath="Name" YBindingPath="MonthlyExpenses" Label="Expenses" Interior="{StaticResource ExpensesChartColor}"/>
                                 </syncfusion:SfChart>
                             </GroupBox>
+                            -->
 
                             <GroupBox Header="Enterprise Performance Details" Margin="0,0,0,20">
                                 <syncfusion:SfDataGrid ItemsSource="{Binding Enterprises}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10" Style="{StaticResource ThemeSfDataGrid}">
@@ -178,7 +176,7 @@
                                     <Border Background="{StaticResource WarningBackground}" BorderBrush="{StaticResource WarningBorderBrush}" BorderThickness="1" CornerRadius="4" Margin="0,10,0,0" Padding="8">
                                         <StackPanel>
                                             <TextBlock Text="{Binding BudgetInsights.Disclaimer}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource WarningTextForeground}"/>
-                                            <syncfusion:ButtonAdv Content="Export for CPA Review" HorizontalAlignment="Center" Margin="0,8,0,0" Padding="8,4" Background="{StaticResource ExportButtonBackground}" Foreground="{StaticResource ExportButtonForeground}" BorderThickness="0" Command="{Binding ExportForCpaCommand}" Style="{StaticResource ThemeSfButton}"/>
+                                            <syncfusion:SfButton Content="Export for CPA Review" HorizontalAlignment="Center" Margin="0,8,0,0" Padding="8,4" Background="{StaticResource ExportButtonBackground}" Foreground="{StaticResource ExportButtonForeground}" BorderThickness="0" Command="{Binding ExportForCpaCommand}" Style="{StaticResource ThemeSfButton}"/>
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
@@ -191,8 +189,8 @@
                 <TabItem Header="Budget Interactions">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4">
-                            <syncfusion:ButtonAdv Content="Load Interactions" Command="{Binding LoadBudgetInteractionsCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Refresh Diagram" Command="{Binding RefreshDiagramCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Load Interactions" Command="{Binding LoadBudgetInteractionsCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Refresh Diagram" Command="{Binding RefreshDiagramCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
                             <TextBlock Text="Interactions: " />
                             <TextBlock Text="{Binding BudgetInteractions.Count}" FontWeight="Bold" />
                         </StackPanel>
@@ -212,10 +210,10 @@
                 <TabItem Header="QuickBooks">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4">
-                            <syncfusion:ButtonAdv Content="Load Customers" Command="{Binding LoadQuickBooksCustomersAsyncCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Load Invoices" Command="{Binding LoadQuickBooksInvoicesAsyncCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Sync Enterprises" Command="{Binding SyncEnterprisesToQboCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
-                            <syncfusion:ButtonAdv Content="Sync Budget Interactions" Command="{Binding SyncBudgetInteractionsToQboCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Load Customers" Command="{Binding LoadQuickBooksCustomersAsyncCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Load Invoices" Command="{Binding LoadQuickBooksInvoicesAsyncCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Sync Enterprises" Command="{Binding SyncEnterprisesToQboCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
+                            <syncfusion:SfButton Content="Sync Budget Interactions" Command="{Binding SyncBudgetInteractionsToQboCommand}" Margin="0,0,6,0" Style="{StaticResource ThemeSfButton}"/>
                             <TextBlock Text="Busy" Style="{StaticResource BusyText}" Visibility="{Binding QuickBooksBusy, Converter={StaticResource BoolToVis}}"/>
                         </StackPanel>
                         <TabControl>
@@ -247,7 +245,7 @@
                                         <syncfusion:ComboBoxItemAdv Content="Fluent Dark"/>
                                         <syncfusion:ComboBoxItemAdv Content="Fluent Light"/>
                                     </syncfusion:ComboBoxAdv>
-                                    <syncfusion:ButtonAdv Content="Apply Theme" Click="OnApplyTheme" Margin="0,0,0,10" Style="{StaticResource ThemeSfButton}"/>
+                                    <syncfusion:SfButton Content="Apply Theme" Click="OnApplyTheme" Margin="0,0,0,10" Style="{StaticResource ThemeSfButton}"/>
                                 </StackPanel>
                             </GroupBox>
 
@@ -310,19 +308,19 @@
                                     
                                     <!-- Action Buttons -->
                                     <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
-                                        <syncfusion:ButtonAdv Content="Test API Key" Click="OnTestApiKey" 
+                                        <syncfusion:SfButton Content="Test API Key" Click="OnTestApiKey" 
                                                 Background="{StaticResource TestApiBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                 Margin="0,0,10,0" Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
-                                        <syncfusion:ButtonAdv Content="Save Settings" Click="OnSaveSettings" 
+                                        <syncfusion:SfButton Content="Save Settings" Click="OnSaveSettings" 
                                                 Background="{StaticResource SaveSettingsBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                 Margin="0,0,10,0" Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
-                                        <syncfusion:ButtonAdv Content="Load Settings" Click="OnLoadSettings" 
+                                        <syncfusion:SfButton Content="Load Settings" Click="OnLoadSettings" 
                                                 Background="{StaticResource LoadSettingsBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                 Margin="0,0,10,0" Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
-                                        <syncfusion:ButtonAdv Content="Remove API Key" Click="OnRemoveApiKey" 
+                                        <syncfusion:SfButton Content="Remove API Key" Click="OnRemoveApiKey" 
                                                 Background="{StaticResource RemoveApiBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                 Margin="0,0,10,0" Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
-                                        <syncfusion:ButtonAdv Content="API Key Info" Click="OnShowApiKeyInfo" 
+                                        <syncfusion:SfButton Content="API Key Info" Click="OnShowApiKeyInfo" 
                                                 Background="{StaticResource ApiInfoBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                 Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
                                     </StackPanel>
@@ -354,7 +352,7 @@
                     </ScrollViewer>
                 </TabItem>
             </TabControl>
-            <Border DockPanel.Dock="Bottom" Style="{StaticResource ThemeStatusBar}" Padding="5">
+            <Border DockPanel.Dock="Bottom" Style="{StaticResource ThemeStatusBarBorder}" Padding="5">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Margin="10,0">
                         <Run Text="Items: "/><Run Text="{Binding Widgets.Count, Mode=OneWay}" />
