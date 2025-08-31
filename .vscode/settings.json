@@ -77,17 +77,29 @@
     "editor.formatOnType": true
   },
   // MCP (Model Context Protocol) Configuration
-  // Current: WebSocket Remote Server for real-time collaboration
+  // Current: Multi-server setup with GitHub, Azure, and Microsoft Docs
   "mcp": {
     "servers": {
       "github": {
-        "url": "wss://your-mcp-server.example.com/github",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "type": "http",
         "headers": {
           "Authorization": "Bearer ${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
-        },
-        "reconnect": true,
-        "reconnectInterval": 5000,
-        "timeout": 30000
+        }
+      },
+      "azure": {
+        "command": "azmcp-win32-x64",
+        "type": "stdio",
+        "env": {
+          "AZURE_CLIENT_ID": "${env:AZURE_CLIENT_ID}",
+          "AZURE_CLIENT_SECRET": "${env:AZURE_CLIENT_SECRET}",
+          "AZURE_TENANT_ID": "${env:AZURE_TENANT_ID}",
+          "AZURE_SUBSCRIPTION_ID": "${env:AZURE_SUBSCRIPTION_ID}"
+        }
+      },
+      "microsoft-docs": {
+        "url": "https://mcp.microsoft.com/docs/",
+        "type": "http"
       }
     }
   },

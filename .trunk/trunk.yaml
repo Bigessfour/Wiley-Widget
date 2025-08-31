@@ -19,6 +19,11 @@ runtimes:
 lint:
   enabled:
     # Code formatting - essential for consistency
+    - black@25.1.0
+    - isort@6.0.1
+    - ruff@0.12.11
+    - taplo@0.10.0
+    - bandit@1.8.6
     - svgo@4.0.0
     - shfmt@3.6.0
     - gitleaks@8.28.0

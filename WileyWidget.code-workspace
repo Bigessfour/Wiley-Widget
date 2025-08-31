@@ -1,0 +1,55 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		// Wiley Widget specific settings
+		"azureResourceManagerTools.resourceGroupFilter": "WileyWidget-RG",
+		"sql.databaseConnections": [
+			{
+				"connectionString": "Server=tcp:${env:AZURE_SQL_SERVER},1433;Database=${env:AZURE_SQL_DATABASE};User ID=${env:AZURE_SQL_USER};Password=${env:AZURE_SQL_PASSWORD};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
+				"name": "Wiley Widget Azure SQL Database",
+				"providerName": "MSSQL"
+			}
+		],
+		// MCP Configuration for Wiley Widget
+		"mcp": {
+			"servers": {
+				"github": {
+					"url": "https://api.githubcopilot.com/mcp/",
+					"type": "http",
+					"headers": {
+						"Authorization": "Bearer ${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+					}
+				},
+				"azure": {
+					"command": "azure-mcp-server",
+					"type": "stdio",
+					"env": {
+						"AZURE_CLIENT_ID": "${env:AZURE_CLIENT_ID}",
+						"AZURE_CLIENT_SECRET": "${env:AZURE_CLIENT_SECRET}",
+						"AZURE_TENANT_ID": "${env:AZURE_TENANT_ID}",
+						"AZURE_SUBSCRIPTION_ID": "${env:AZURE_SUBSCRIPTION_ID}"
+					}
+				},
+				"microsoft-docs": {
+					"url": "https://mcp.microsoft.com/docs/",
+					"type": "http"
+				}
+			}
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-dotnettools.csharp",
+			"ms-vscode.powershell",
+			"ms-vscode.azure-account",
+			"ms-vscode.vscode-json",
+			"github.copilot",
+			"github.copilot-chat"
+		]
+	},
+	"name": "Wiley Widget Workspace"
+}

@@ -167,6 +167,19 @@ catch (Exception ex)
 .\scripts\azure-safe-operations.ps1 -Operation list
 ```
 
+### **Current Azure Configuration Status**
+**✅ Azure Resources Verified and Operational:**
+- **Resource Group:** `wileywidget-rg` (East US)
+- **SQL Database:** `wileywidget-db` (East US)
+- **Managed Identity:** Configured for secure authentication
+- **MCP Server:** Azure MCP server configured and functional
+- **Subscription:** Active with proper permissions
+
+**🔧 MCP (Model Context Protocol) Servers:**
+- **GitHub MCP:** Configured for repository management
+- **Azure MCP:** Configured for cloud resource operations
+- **Microsoft Docs MCP:** Configured for documentation reference
+
 ---
 
 ## 🚀 **Phase 1 Implementation Quick Start**
@@ -262,9 +275,11 @@ WileyWidget/
 
 ## 📚 **Documentation**
 
+- **[Application Separation Guide](APPLICATION_SEPARATION_GUIDE.md)** - Clear separation between BusBuddy and Wiley Widget
 - **[North Star Roadmap](docs/wiley-widget-north-star-v1.1.md)** - Complete implementation plan
 - **[Contributing Guide](CONTRIBUTING.md)** - Development workflow
 - **[Azure Setup](docs/azure-setup.md)** - Safe Azure operations
+- **[MCP Configuration Guide](docs/mcp-configuration-guide.md)** - Model Context Protocol setup
 - **[Testing Guide](docs/TESTING.md)** - Testing standards
 
 ---
@@ -294,8 +309,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and standards.
 - **[Copilot Azure Integration](docs/copilot-azure-examples.md)**: Safe AI-assisted Azure development
 
 ### **Project Documentation**
+- **[Application Separation Guide](APPLICATION_SEPARATION_GUIDE.md)**: **REQUIRED** - Clear separation between BusBuddy and Wiley Widget applications
 - **[Project Plan](.vscode/project-plan.md)**: True North vision and phased roadmap
 - **[Development Guide](docs/development-guide.md)**: Comprehensive development standards and best practices
+- **[MCP Configuration Guide](docs/mcp-configuration-guide.md)**: Model Context Protocol servers and setup
 - **[Copilot Instructions](.vscode/copilot-instructions.md)**: AI assistant guidelines and project standards
 - **[Database Setup Guide](docs/database-setup.md)**: SQL Server LocalDB installation and configuration
 - **[Syncfusion License Setup](docs/syncfusion-license-setup.md)**: License acquisition and registration guide
