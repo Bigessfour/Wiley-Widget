@@ -516,6 +516,7 @@ jobs:
         if: always()
         steps:
             - name: Calculate Success Metrics
+              id: metrics
               run: |
                   Write-Host "[METRICS] Calculating Success Metrics..." -ForegroundColor Cyan
 
@@ -558,8 +559,8 @@ jobs:
                       repository = $env:GITHUB_REPOSITORY
                       workflow_file = ".github/workflows/ci-optimized.yml"
                       emergency_mode = "${{ needs.health-validation.outputs.emergency_mode }}"
-                      circuit_breaker_status = "${{ steps.circuit-breaker.outputs.circuit_breaker_tripped }}"
-                      deployment_strategy = "${{ steps.strategy.outputs.deployment_strategy }}"
+                      circuit_breaker_status = "not_implemented"
+                      deployment_strategy = "standard"
                       artifacts = @(
                           @{
                               name = "build-artifacts-${{ github.run_number }}"
@@ -613,20 +614,20 @@ jobs:
               uses: actions/github-script@v7
               with:
                   script: |
-                      const successRate = ${{ steps.metrics.outputs.success_rate }};
+                      const successRate = ${{ fromJSON(steps.metrics.outputs.success_rate || '0') }};
                       const status = successRate >= 90 ? '[SUCCESS]' : successRate >= 75 ? '⚠️' : '[ERROR]';
 
                       const body = `
                       ## [START] CI/CD Pipeline Results
 
-                      **Overall Success Rate:** ${status} ${{ steps.metrics.outputs.success_rate }}%
+                      **Overall Success Rate:** ${status} ${successRate}%
 
                       ### Job Status
-                      - Health Validation: ${{ needs.health-validation.result === 'success' ? '[SUCCESS]' : '[ERROR]' }}
-                      - Build & Test Matrix: ${{ needs.build-test-matrix.result === 'success' ? '[SUCCESS]' : '[ERROR]' }}
-                      - Quality Assurance: ${{ needs.quality-assurance.result === 'success' ? '[SUCCESS]' : '[ERROR]' }}
-                      - UI Tests: ${{ needs.ui-tests.result === 'success' ? '[SUCCESS]' : needs.ui-tests.result === 'skipped' ? '⏭️' : '[ERROR]' }}
-                      - Deployment Readiness: ${{ needs.deployment-readiness.result === 'success' ? '[SUCCESS]' : '[ERROR]' }}
+                      - Health Validation: ${{ needs.health-validation.result == 'success' && '[SUCCESS]' || '[ERROR]' }}
+                      - Build & Test Matrix: ${{ needs.build-test-matrix.result == 'success' && '[SUCCESS]' || '[ERROR]' }}
+                      - Quality Assurance: ${{ needs.quality-assurance.result == 'success' && '[SUCCESS]' || '[ERROR]' }}
+                      - UI Tests: ${{ needs.ui-tests.result == 'success' && '[SUCCESS]' || needs.ui-tests.result == 'skipped' && '⏭️' || '[ERROR]' }}
+                      - Deployment Readiness: ${{ needs.deployment-readiness.result == 'success' && '[SUCCESS]' || '[ERROR]' }}
 
                       ### Performance Metrics
                       - .NET Version: ${{ needs.health-validation.outputs.dotnet_version }}
