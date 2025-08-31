@@ -31,6 +31,11 @@ on:
         required: false
         default: true
         type: boolean
+      skip_ui_tests:
+        description: 'Skip UI tests for faster execution'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
     contents: read
@@ -104,6 +109,8 @@ jobs:
 
             - name: Circuit Breaker Check
               id: circuit-breaker
+              env:
+                GH_TOKEN: ${{ github.token }}
               run: |
                   Write-Host "🔌 Circuit Breaker Analysis..." -ForegroundColor Cyan
 
@@ -260,14 +267,16 @@ jobs:
                       msbuild.binlog
                   retention-days: 30
 
-            - name: Upload Test Results to Trunk
-              if: always()
-              continue-on-error: true
-              uses: trunk-io/analytics-uploader@v1
-              with:
-                  junit-paths: "TestResults/**/*.xml"
-                  org-slug: ${{ secrets.TRUNK_ORG_URL_SLUG }}
-                  token: ${{ secrets.TRUNK_API_TOKEN }}
+            # - name: Upload Test Results to Trunk
+            #   if: always() && secrets.TRUNK_ORG_URL_SLUG != '' && secrets.TRUNK_API_TOKEN != ''
+            #   continue-on-error: true
+            #   uses: trunk-io/analytics-uploader@v1
+            #   with:
+            #       junit-paths: "TestResults/**/*.xml"
+            #       org-slug: ${{ secrets.TRUNK_ORG_URL_SLUG }}
+            #       token: ${{ secrets.TRUNK_API_TOKEN }}
+            #
+            # NOTE: Uncomment when TRUNK_ORG_URL_SLUG and TRUNK_API_TOKEN secrets are configured
 
     # 3. Quality Assurance (Parallel with Build)
     quality-assurance:
@@ -294,28 +303,32 @@ jobs:
                   # Ensure Trunk is properly configured
                   .\scripts\trunk-maintenance.ps1 -Diagnose -Fix
 
-            - name: Trunk Security Scan
-              if: matrix.check-type == 'Security' && (github.event.inputs.run_security_scan == 'true' || github.event_name != 'workflow_dispatch')
-              uses: trunk-io/trunk-action@v1
-              with:
-                  arguments: --ci --upload --series=${{ github.ref_name }}-${{ matrix.check-type }} --scope=security
-              env:
-                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+            # - name: Trunk Security Scan
+            #   if: matrix.check-type == 'Security' && (github.event.inputs.run_security_scan == 'true' || github.event_name != 'workflow_dispatch')
+            #   uses: trunk-io/trunk-action@v1
+            #   with:
+            #       arguments: --ci --upload --series=${{ github.ref_name }}-${{ matrix.check-type }} --scope=security
+            #   env:
+            #       TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+            #
+            # NOTE: Uncomment when TRUNK_API_TOKEN secret is configured
 
-            - name: Trunk Code Quality Scan
-              if: matrix.check-type == 'CodeQuality'
-              uses: trunk-io/trunk-action@v1
-              with:
-                  arguments: --ci --upload --series=${{ github.ref_name }}-${{ matrix.check-type }} --filter=psscriptanalyzer,prettier
-              env:
-                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+            # - name: Trunk Code Quality Scan
+            #   if: matrix.check-type == 'CodeQuality'
+            #   uses: trunk-io/trunk-action@v1
+            #   with:
+            #       arguments: --ci --upload --series=${{ github.ref_name }}-${{ matrix.check-type }} --filter=psscriptanalyzer,prettier
+            #   env:
+            #       TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+            #
+            # NOTE: Uncomment when TRUNK_API_TOKEN secret is configured
 
             - name: Security Analysis (Fallback)
               if: matrix.check-type == 'Security' && (github.event.inputs.run_security_scan == 'false' || github.event_name == 'workflow_dispatch')
               uses: github/super-linter/slim@v5
               env:
                   DEFAULT_BRANCH: main
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GITHUB_TOKEN: ${{ github.token }}
                   VALIDATE_ALL_CODEBASE: false
                   VALIDATE_CSHARP: true
                   VALIDATE_POWERSHELL: true
