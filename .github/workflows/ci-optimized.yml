@@ -49,7 +49,7 @@ jobs:
         outputs:
             should_skip: "${{ steps.health.outputs.should_skip }}"
             dotnet_version: "${{ steps.health.outputs.dotnet_version }}"
-            cache_hit: "${{ steps.cache.outputs.cache-hit }}"
+            cache_hit: "false"
             emergency_mode: "${{ steps.health.outputs.emergency_mode }}"
         steps:
             - name: Checkout (minimal)
