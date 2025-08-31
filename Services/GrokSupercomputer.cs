@@ -112,16 +112,17 @@ namespace WileyWidget.Services
             var effectiveLogger = logger ?? NullLogger<GrokSupercomputer>.Instance;
             effectiveLogger.LogInformation("Initializing GrokSupercomputer service");
 
-            var apiKey = config["xAI:ApiKey"];
+            var apiKey = config["Azure:ApiKey"];
             if (string.IsNullOrEmpty(apiKey))
             {
-                effectiveLogger.LogError("xAI API key not found in configuration");
-                throw new Exception("No xAI key? Grok can't crunch without creds, boss.");
+                effectiveLogger.LogError("Azure API key not found in configuration");
+                throw new Exception("No Azure key? AI can't crunch without creds, boss.");
             }
 
             _apiKey = apiKey;
-            _client = new HttpClient { BaseAddress = new Uri("https://api.x.ai/v1/"), Timeout = TimeSpan.FromSeconds(10) };
-            _client.DefaultRequestHeaders.Authorization = new("Bearer", _apiKey);
+            var baseUrl = config["Azure:Endpoint"] ?? "https://your-resource.openai.azure.com/";
+            _client = new HttpClient { BaseAddress = new Uri(baseUrl), Timeout = TimeSpan.FromSeconds(10) };
+            _client.DefaultRequestHeaders.Add("api-key", _apiKey);
             _logger = effectiveLogger;
             _context = context;
             _dbService = dbService;
