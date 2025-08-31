@@ -1,6 +1,6 @@
 name: CI/CD 90% Success Rate (Trunk Integrated)
 
-"on":
+on:
   push:
     branches:
       - main
