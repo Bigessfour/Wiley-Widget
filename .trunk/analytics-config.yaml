@@ -1,0 +1,133 @@
+# Wiley Widget - Trunk Analytics Configuration
+# This file configures advanced analytics and reporting features
+# that sync with the Trunk.io web interface
+
+# Analytics Configuration
+analytics:
+  enabled: true
+
+  # CI/CD Pipeline Analytics
+  cicd:
+    enabled: true
+    metrics:
+      - success_rate
+      - execution_time
+      - failure_patterns
+      - resource_usage
+
+    # Alert thresholds
+    alerts:
+      success_rate_threshold: 85 # Alert if below 85%
+      execution_time_threshold: 300 # Alert if over 5 minutes
+      enable_notifications: true
+
+  # Security Analytics
+  security:
+    enabled: true
+    metrics:
+      - vulnerability_count
+      - severity_distribution
+      - scan_coverage
+      - remediation_time
+
+    # Security policies
+    policies:
+      block_on_high_severity: true
+      require_security_scan: true
+      max_vulnerability_age: 30 # days
+
+  # Code Quality Analytics
+  quality:
+    enabled: true
+    metrics:
+      - code_coverage
+      - technical_debt
+      - duplication_rate
+      - maintainability_index
+
+    # Quality gates
+    gates:
+      min_coverage: 80
+      max_debt_ratio: 0.1
+      max_duplication: 5
+
+# Reporting Configuration
+reporting:
+  enabled: true
+
+  # Dashboard configuration
+  dashboard:
+    enabled: true
+    refresh_interval: 300 # 5 minutes
+    widgets:
+      - cicd_health
+      - security_status
+      - quality_metrics
+      - performance_trends
+
+  # Export configuration
+  export:
+    enabled: true
+    formats: ["json", "csv", "pdf"]
+    schedule: "daily" # daily, weekly, monthly
+
+  # Integration endpoints
+  integrations:
+    slack:
+      enabled: false
+      webhook_url: ""
+    teams:
+      enabled: false
+      webhook_url: ""
+    email:
+      enabled: false
+      recipients: []
+
+# Performance Configuration
+performance:
+  enabled: true
+
+  # Caching settings
+  cache:
+    enabled: true
+    max_size: "2GB"
+    ttl: 3600 # 1 hour
+
+  # Parallel execution
+  parallel:
+    enabled: true
+    max_workers: 4
+
+  # Resource limits
+  limits:
+    max_memory: "1GB"
+    max_cpu: 2
+    timeout: 600 # 10 minutes
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+
+  # Health checks
+  health:
+    enabled: true
+    interval: 60 # seconds
+    endpoints:
+      - daemon_status
+      - api_connectivity
+      - disk_space
+
+  # Logging
+  logging:
+    enabled: true
+    level: "info" # debug, info, warn, error
+    retention: 30 # days
+
+  # Metrics collection
+  metrics:
+    enabled: true
+    interval: 300 # 5 minutes
+    collectors:
+      - system_metrics
+      - linting_metrics
+      - security_metrics

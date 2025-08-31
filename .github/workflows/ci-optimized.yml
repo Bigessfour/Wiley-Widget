@@ -1,4 +1,4 @@
-name: CI/CD 90% Success Rate
+name: CI/CD 90% Success Rate (Trunk Integrated)
 
 "on":
   push:
@@ -9,6 +9,8 @@ name: CI/CD 90% Success Rate
     branches:
       - main
       - temp
+  merge_group:  # Support for merge queue
+    branches: [main, temp]
   schedule:
     # Run daily health check at 2 AM UTC
     - cron: '0 2 * * *'
@@ -23,6 +25,11 @@ name: CI/CD 90% Success Rate
         description: 'Run full test matrix'
         required: false
         default: false
+        type: boolean
+      run_security_scan:
+        description: 'Run full security scan'
+        required: false
+        default: true
         type: boolean
 
 permissions:
@@ -253,6 +260,15 @@ jobs:
                       msbuild.binlog
                   retention-days: 30
 
+            - name: Upload Test Results to Trunk
+              if: always()
+              continue-on-error: true
+              uses: trunk-io/analytics-uploader@v1
+              with:
+                  junit-paths: "TestResults/**/*.xml"
+                  org-slug: ${{ secrets.TRUNK_ORG_URL_SLUG }}
+                  token: ${{ secrets.TRUNK_API_TOKEN }}
+
     # 3. Quality Assurance (Parallel with Build)
     quality-assurance:
         name: Quality Assurance
@@ -273,8 +289,29 @@ jobs:
               with:
                   dotnet-version: 9.0.x
 
-            - name: Security Analysis
-              if: matrix.check-type == 'Security'
+            - name: Setup Trunk
+              run: |
+                  # Ensure Trunk is properly configured
+                  .\scripts\trunk-maintenance.ps1 -Diagnose -Fix
+
+            - name: Trunk Security Scan
+              if: matrix.check-type == 'Security' && (github.event.inputs.run_security_scan == 'true' || github.event_name != 'workflow_dispatch')
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --ci --upload --series=${{ github.ref_name }}-${{ matrix.check-type }} --scope=security
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+
+            - name: Trunk Code Quality Scan
+              if: matrix.check-type == 'CodeQuality'
+              uses: trunk-io/trunk-action@v1
+              with:
+                  arguments: --ci --upload --series=${{ github.ref_name }}-${{ matrix.check-type }} --filter=psscriptanalyzer,prettier
+              env:
+                  TRUNK_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+
+            - name: Security Analysis (Fallback)
+              if: matrix.check-type == 'Security' && (github.event.inputs.run_security_scan == 'false' || github.event_name == 'workflow_dispatch')
               uses: github/super-linter/slim@v5
               env:
                   DEFAULT_BRANCH: main

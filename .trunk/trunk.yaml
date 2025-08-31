@@ -84,6 +84,32 @@ actions:
     - trunk-check-pre-push
     - trunk-fmt-pre-commit
     - trunk-upgrade-available
+    - trunk-cache-prune
+    - trunk-single-player-auto-on-upgrade
+    - trunk-single-player-auto-upgrade
+    - trunk-whoami
+  # CI/CD specific actions
+  disabled:
+    - buf-gen
+    - commitizen
+    - commitlint
+    - git-blame-ignore-revs
+    - go-mod-tidy
+    - go-mod-tidy-vendor
+    - hello-world-python
+    - npm-check
+    - npm-check-pre-push
+    - poetry-check
+    - poetry-export
+    - poetry-install
+    - poetry-lock
+    - uv-check
+    - uv-lock
+    - uv-sync
+    - yarn-check
+    - trufflehog-pre-commit
+    - trunk-check-pre-commit
+    - trunk-check-pre-push-always
 tools:
   enabled:
     - pwsh@7.5.2

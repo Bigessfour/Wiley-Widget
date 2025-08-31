@@ -2,7 +2,7 @@
 
 ## 🚀 Overview
 
-This repository implements an enterprise-grade CI/CD pipeline designed to achieve and maintain a **90% success rate** through advanced reliability features, parallel execution, and comprehensive monitoring.
+This repository implements an enterprise-grade CI/CD pipeline designed to achieve and maintain a **90% success rate** through advanced reliability features, parallel execution, and comprehensive monitoring with **Trunk CLI integration**.
 
 ## 📊 Pipeline Features
 
@@ -13,20 +13,48 @@ This repository implements an enterprise-grade CI/CD pipeline designed to achiev
 - **Parallel Execution**: Matrix-based test execution
 - **Success Rate Monitoring**: Real-time performance tracking
 - **Emergency Mode**: Graceful degradation during issues
+- **Trunk Integration**: Security scanning, code quality, and analytics
 
 ### Workflows
 
-#### 1. `ci-optimized.yml` (Primary)
-- **Purpose**: Main CI/CD pipeline with 90% success rate features
-- **Triggers**: Push/PR to main branch
+#### 1. `ci-optimized.yml` (Primary - ACTIVE)
+- **Purpose**: Main CI/CD pipeline with 90% success rate features and Trunk integration
+- **Triggers**: Push/PR to main/temp branches, merge_group, scheduled, manual dispatch
 - **Features**:
   - Health validation before builds
   - Parallel test execution matrix
   - Retry logic with circuit breaker
+  - **Trunk security scanning** (Gitleaks, Trufflehog, OSV-Scanner)
+  - **Trunk code quality** (PSScriptAnalyzer, Prettier, SVGO)
+  - **Test results upload** to Trunk analytics
   - Comprehensive success rate monitoring
   - Emergency mode support
+  - **Merge queue compatible**
 
-#### 2. `comprehensive-cicd.yml` (Enhanced)
+#### 2. `merge-queue-cicd.yml` (Merge Queue - ACTIVE)
+- **Purpose**: Dedicated merge queue pipeline with Trunk quality gates
+- **Triggers**: Push/PR to main/temp branches, merge_group, manual dispatch
+- **Features**:
+  - **Merge queue integration** for automated merging
+  - **Trunk security scans** on every queue entry
+  - **Parallel quality assurance** (Security, CodeQuality, Performance)
+  - **Test coverage validation** (80% minimum)
+  - **Automated release notes** generation
+  - **GitHub release creation** with assets
+  - **Test results upload** to Trunk for flaky test analysis
+
+#### 3. `release-new.yml` (Release Pipeline - ACTIVE)
+- **Purpose**: Automated release creation with quality gates
+- **Triggers**: Push to main branch + Manual dispatch with tag
+- **Features**:
+  - **Trunk security scanning** for releases
+  - Full test suite execution (excluding UI tests)
+  - NuGet package creation
+  - **Automated release notes** generation
+  - **GitHub release creation** with assets
+  - **Test results upload** to Trunk analytics
+
+#### 4. `comprehensive-cicd.yml` (Enhanced)
 - **Purpose**: Full-featured pipeline with advanced caching
 - **Triggers**: Push/PR to main branch
 - **Features**:
@@ -35,7 +63,7 @@ This repository implements an enterprise-grade CI/CD pipeline designed to achiev
   - Extended health validation
   - Performance analytics
 
-#### 3. `deploy.yml` (Production)
+#### 5. `deploy.yml` (Production)
 - **Purpose**: Production deployment with safety checks
 - **Triggers**: Manual dispatch
 - **Features**:
@@ -44,7 +72,7 @@ This repository implements an enterprise-grade CI/CD pipeline designed to achiev
   - Post-deployment health checks
   - Environment-specific configurations
 
-#### 4. `maintenance.yml` (Scheduled)
+#### 6. `maintenance.yml` (Scheduled)
 - **Purpose**: Automated pipeline maintenance
 - **Triggers**: Daily at 2 AM UTC + Manual
 - **Features**:
@@ -53,17 +81,186 @@ This repository implements an enterprise-grade CI/CD pipeline designed to achiev
   - Success rate analysis
   - Maintenance reporting
 
-#### 5. `ci.yml` (Legacy - Deprecated)
+#### 5. `release-new.yml` (Release Pipeline)
+- **Purpose**: Automated release creation with quality gates
+- **Triggers**: Push to main branch + Manual dispatch with tag
+- **Features**:
+  - Trunk security scanning for releases
+  - Full test suite execution (excluding UI tests)
+  - NuGet package creation
+  - Automated release notes generation
+  - GitHub release creation with assets
+  - Test results upload to Trunk for analysis
+
+#### 6. `ci.yml` (Legacy - Deprecated)
 - **Status**: Deprecated - Use `ci-optimized.yml`
 - **Purpose**: Basic CI pipeline (kept for reference)
 
+## 🛠️ CI/CD Commands Reference
+
+### Primary CI Pipeline Commands (`ci-optimized.yml`)
+
+#### Health Validation Commands
+```powershell
+# Run comprehensive health check
+.\scripts\health-check.ps1
+
+# Check Trunk daemon status
+trunk daemon status
+
+# Validate environment
+dotnet --version
+```
+
+#### Trunk Security & Quality Commands
+```bash
+# Run Trunk security scan
+trunk check --ci --upload --series=main-security --scope=security
+
+# Run Trunk code quality scan
+trunk check --ci --upload --series=main-quality --filter=psscriptanalyzer,prettier
+
+# Run comprehensive Trunk check
+trunk check --ci --all
+```
+
+#### Build Commands
+```bash
+# Restore NuGet packages with caching
+dotnet restore
+
+# Build with performance monitoring
+dotnet build --configuration Release --verbosity minimal
+
+# Build with binary logging
+dotnet build -c Release --no-restore /bl:msbuild.binlog
+```
+
+#### Test Commands
+```bash
+# Run unit tests with coverage and multiple loggers
+dotnet test --configuration Release --no-build \
+  --collect:"XPlat Code Coverage" \
+  --logger "trx;LogFileName=test-results.trx" \
+  --logger "junit;LogFileName=test-results.xml" \
+  --filter "Category!=UiSmokeTests"
+
+# Upload test results to Trunk
+trunk analytics upload \
+  --junit-paths "TestResults/*.xml" \
+  --org-slug ${TRUNK_ORG_URL_SLUG} \
+  --token ${TRUNK_API_TOKEN}
+```
+
+### Merge Queue Commands (`merge-queue-cicd.yml`)
+
+#### Quality Gate Commands
+```bash
+# Pre-merge quality checks
+trunk check --ci --upload --series=merge-queue-${GITHUB_RUN_NUMBER} --scope=security
+
+# Code quality validation
+trunk check --ci --filter=psscriptanalyzer,prettier,svgo
+
+# Coverage validation
+dotnet test --collect:"XPlat Code Coverage" --filter "Category!=UiSmokeTests"
+```
+
+#### Release Commands
+```bash
+# Generate release notes
+git log --oneline --pretty=format:"- %s" HEAD~1..HEAD
+
+# Create GitHub release
+gh release create ${TAG_NAME} \
+  --title "Release ${TAG_NAME}" \
+  --notes-file RELEASE_NOTES.md \
+  --draft false
+```
+
+### Release Pipeline Commands (`release-new.yml`)
+
+#### Build Commands
+```bash
+# Restore NuGet packages
+dotnet restore
+
+# Build in Release configuration with binary logging
+dotnet build -c Release --no-restore /bl:msbuild.binlog
+
+# Pack NuGet package
+dotnet pack -c Release --no-build -o ./artifacts
+```
+
+#### Test Commands
+```bash
+# Run tests with code coverage and JUnit output (excluding UI tests)
+dotnet test -c Release --no-build --verbosity normal \
+  --collect:"XPlat Code Coverage" \
+  --logger "junit;LogFileName=test-results.xml" \
+  --filter "Category!=UiSmokeTests&Category!=HighInteraction&Category!=PostMigration"
+```
+
+#### Trunk Integration Commands
+```bash
+# Security scan for releases
+trunk check --ci --upload --series=release-${GITHUB_REF_NAME} --scope=security
+
+# Upload test results to Trunk
+trunk analytics upload \
+  --junit-paths "TestResults/*/test-results.xml" \
+  --org-slug ${TRUNK_ORG_URL_SLUG} \
+  --token ${TRUNK_API_TOKEN}
+```
+
+#### Release Commands
+```bash
+# Generate release notes
+git log --oneline --pretty=format:"- %s" HEAD~1..HEAD
+
+# Create GitHub release
+gh release create ${TAG_NAME} \
+  --title "Release ${TAG_NAME}" \
+  --notes-file RELEASE_NOTES.md \
+  --draft false \
+  --prerelease false
+
+# Upload release assets
+gh release upload ${TAG_NAME} ./artifacts/*.nupkg
+```
+
+### Core CI Commands
+
+#### Health Validation
+```powershell
+# Run health check script
+.\scripts\health-check.ps1
+```
+
+#### Enhanced Testing
+```powershell
+# Run tests with retry logic
+.\scripts\run-tests-enhanced.ps1 -ProjectPath "WileyWidget.csproj" -MaxRetries 3
+```
+
+#### Monitoring
+```powershell
+# Monitor CI/CD success rates
+.\scripts\monitor-cicd.ps1 -AnalyzeHistory -Days 30
+```
+
 ## 🛠️ Scripts
 
-### Core Scripts
-- `scripts/health-check.ps1`: Environment validation
-- `scripts/run-tests-enhanced.ps1`: Enhanced test runner with retry logic
-- `scripts/monitor-cicd.ps1`: Success rate monitoring and alerting
+### Core CI/CD Scripts
+- `scripts/health-check.ps1`: Environment validation and system health checks
+- `scripts/run-tests-enhanced.ps1`: Enhanced test runner with retry logic and coverage
+- `scripts/monitor-cicd.ps1`: Success rate monitoring and CI/CD analytics
 - `scripts/run-tests.ps1`: Updated test runner with retry mechanisms
+
+### Trunk Integration Scripts
+- `scripts\trunk-maintenance.ps1`: Trunk configuration and maintenance
+- `scripts\trunk-cicd-monitor.ps1`: Comprehensive Trunk CI/CD monitoring and reporting
+- `scripts\merge-queue-manager.ps1`: Merge queue management and monitoring
 
 ### Usage Examples
 
@@ -80,6 +277,42 @@ This repository implements an enterprise-grade CI/CD pipeline designed to achiev
 #### Monitor Success Rates
 ```powershell
 .\scripts\monitor-cicd.ps1 -AnalyzeHistory -Days 30
+```
+
+#### Trunk CI/CD Monitoring
+```powershell
+# Check overall CI/CD health
+.\scripts\trunk-cicd-monitor.ps1 -CheckHealth
+
+# Generate performance report
+.\scripts\trunk-cicd-monitor.ps1 -GenerateReport -Days 7
+
+# Monitor in real-time
+.\scripts\trunk-cicd-monitor.ps1 -PerformanceMetrics
+```
+
+#### Merge Queue Management
+```powershell
+# Check merge queue status
+.\scripts\merge-queue-manager.ps1 -CheckStatus
+
+# Add PR to merge queue
+.\scripts\merge-queue-manager.ps1 -AddToQueue -PullRequestNumber 123
+
+# Monitor queue in real-time
+.\scripts\merge-queue-manager.ps1 -MonitorQueue
+
+# Generate merge queue report
+.\scripts\merge-queue-manager.ps1 -GenerateReport -Days 30
+```
+
+#### Trunk Maintenance
+```powershell
+# Diagnose and fix Trunk configuration
+.\scripts\trunk-maintenance.ps1 -Diagnose -Fix
+
+# Update Trunk tools and linters
+.\scripts\trunk-maintenance.ps1 -UpdateTools
 ```
 
 ## 📈 Achieving 90% Success Rate
@@ -122,14 +355,98 @@ This repository implements an enterprise-grade CI/CD pipeline designed to achiev
 
 ### Environment Variables
 ```yaml
+# Core CI/CD Variables
 DOTNET_VERSION: '9.0.x'
 CI: true
 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# Trunk CLI Configuration
+TRUNK_API_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+TRUNK_ORG_URL_SLUG: ${{ secrets.TRUNK_ORG_URL_SLUG }}
+TRUNK_VERSION: '1.25.0'
+
+# Merge Queue Configuration
+MERGE_QUEUE_ENABLED: true
+MERGE_QUEUE_MAX_WAIT_TIME: '30m'
+MERGE_QUEUE_REQUIRED_CHECKS: 'build,test,security-scan'
+
+# Build Configuration
+BUILD_CONFIGURATION: 'Release'
+TEST_PARALLELISM: 4
+COVERAGE_THRESHOLD: 85
 ```
 
 ### Required Secrets
-- `GITHUB_TOKEN`: For GitHub API access
+- `GITHUB_TOKEN`: For GitHub API access and workflow triggers
+- `TRUNK_API_TOKEN`: For Trunk CLI authentication and analytics upload
+- `TRUNK_ORG_URL_SLUG`: Organization identifier for Trunk analytics
 - `AZURE_CREDENTIALS`: For Azure deployments (if applicable)
+
+### Trunk Configuration (`trunk.yaml`)
+```yaml
+version: 0.1
+cli:
+  version: 1.25.0
+lint:
+  enabled:
+    - actionlint@1.6.27
+    - gitleaks@8.18.2
+    - osv-scanner@1.8.4
+    - prettier@3.3.3
+    - psscriptanalyzer@1.22.0
+    - trufflehog@3.81.0
+  disabled: []
+plugins:
+  sources:
+    - id: trunk
+      ref: v1.25.0
+      uri: https://github.com/trunk-io/plugins
+actions:
+  definitions:
+    - id: test
+      runtime: node
+      packages_file: package.json
+      run: npm test
+  disabled: []
+```
+
+### GitHub Actions Configuration
+```yaml
+# .github/workflows/ci-optimized.yml
+name: CI/CD Pipeline
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  statuses: write
+```
+
+### PowerShell Configuration
+```powershell
+# scripts/config.ps1
+param(
+    [string]$Environment = "Development",
+    [switch]$EnableDebug,
+    [switch]$SkipTests
+)
+
+# CI/CD Configuration
+$CICD_CONFIG = @{
+    TrunkEnabled = $true
+    MergeQueueEnabled = $true
+    MonitoringEnabled = $true
+    HealthChecksEnabled = $true
+}
+```
 
 ## 📋 Maintenance
 
