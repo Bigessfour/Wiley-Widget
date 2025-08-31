@@ -35,7 +35,7 @@ enable-hyperthreading.bat
 
 **Direct Trunk Commands with Hyperthreading:**
 ```powershell
-# After running environment setup, use trunk normally
+# After running environment setup, use trunk normally with .env variables
 trunk check --all --ci
 trunk check --scope security
 trunk fmt --ci
@@ -421,17 +421,19 @@ COVERAGE_THRESHOLD: 85
 version: 0.1
 cli:
   version: 1.25.0
-lint:
-  enabled:
-    - actionlint@1.6.27
-    - gitleaks@8.18.2
-    - osv-scanner@1.8.4
-    - prettier@3.3.3
-    - psscriptanalyzer@1.22.0
-    - trufflehog@3.81.0
-  disabled: []
-plugins:
-  sources:
+  # Performance optimization for hyperthreading support
+  performance:
+    enable_hyperthreading: true
+    threads: auto
+    parallel_processing: true
+    memory_limit: "4GB"
+    cpu_affinity: true
+  # Environment configuration
+  env:
+    dotenv: true
+    dotenv_path: "../.env"
+    dotenv_override: false
+```
     - id: trunk
       ref: v1.25.0
       uri: https://github.com/trunk-io/plugins
@@ -463,10 +465,22 @@ cli:
 
 #### ⚡ **Terminal Commands for Hyperthreading**
 
-**Quick Enable Hyperthreading:**
+**Quick Enable (with .env support):**
 ```batch
-# Windows Batch (run in terminal)
+# Windows Batch (loads .env + enables hyperthreading)
 enable-hyperthreading.bat
+```
+
+**Load .env file only:**
+```powershell
+# Load environment variables from .env file
+.\scripts\load-env-for-trunk.ps1
+
+# Load with override (replace existing variables)
+.\scripts\load-env-for-trunk.ps1 -OverrideExisting
+
+# Quiet mode (no output)
+.\scripts\load-env-for-trunk.ps1 -Quiet
 ```
 
 **PowerShell with Full Control:**

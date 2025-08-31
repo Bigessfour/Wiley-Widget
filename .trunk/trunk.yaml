@@ -15,6 +15,14 @@ cli:
     memory_limit: "4GB"
     # CPU affinity for consistent performance
     cpu_affinity: true
+  # Environment configuration
+  env:
+    # Load environment variables from .env file
+    dotenv: true
+    # Specify .env file path (relative to workspace root)
+    dotenv_path: ".env"
+    # Override existing environment variables
+    dotenv_override: false
 # Trunk provides extensibility via plugins. (https://docs.trunk.io/plugins)
 plugins:
   sources:
