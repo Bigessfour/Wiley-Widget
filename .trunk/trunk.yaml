@@ -3,6 +3,18 @@
 version: 0.1
 cli:
   version: 1.25.0
+  # Performance optimization for hyperthreading support
+  performance:
+    # Enable hyperthreading support for parallel processing
+    enable_hyperthreading: true
+    # Optimize thread count based on CPU cores (auto-detects hyperthreading)
+    threads: auto
+    # Enable parallel processing for linters
+    parallel_processing: true
+    # Memory optimization for large codebases
+    memory_limit: "4GB"
+    # CPU affinity for consistent performance
+    cpu_affinity: true
 # Trunk provides extensibility via plugins. (https://docs.trunk.io/plugins)
 plugins:
   sources:

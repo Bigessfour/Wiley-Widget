@@ -410,6 +410,73 @@ actions:
   disabled: []
 ```
 
+### Hyperthreading Support & Performance Optimization
+
+#### 🚀 **Automatic Hyperthreading Detection**
+The CI/CD pipeline automatically detects and optimizes for hyperthreading-capable CPUs:
+
+```yaml
+# Performance configuration in trunk.yaml
+cli:
+  version: 1.25.0
+  performance:
+    enable_hyperthreading: true
+    threads: auto
+    parallel_processing: true
+    memory_limit: "4GB"
+    cpu_affinity: true
+```
+
+#### ⚡ **Terminal Commands for Hyperthreading**
+
+**Quick Enable Hyperthreading:**
+```batch
+# Windows Batch (run in terminal)
+enable-hyperthreading.bat
+```
+
+**PowerShell with Full Control:**
+```powershell
+# Enable hyperthreading with performance monitoring
+.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -MonitorPerformance
+
+# CI-optimized hyperthreading setup
+.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -OptimizeForCI
+
+# Custom thread count
+.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -ThreadCount 8
+```
+
+#### 📊 **Performance Benefits**
+- **Hyperthreading CPUs**: Utilizes all logical processors (typically 2x physical cores)
+- **Non-Hyperthreading CPUs**: Optimizes for physical cores + overhead
+- **Memory Management**: 4GB limit prevents memory exhaustion
+- **CPU Affinity**: Consistent core allocation for stable performance
+- **Parallel Processing**: Concurrent linting and scanning operations
+
+#### 🔧 **Environment Variables Set**
+```powershell
+# Automatically configured by hyperthreading script
+TRUNK_NUM_THREADS=auto          # Based on CPU detection
+TRUNK_MEMORY_LIMIT=4GB          # Memory optimization
+TRUNK_ENABLE_PARALLEL=true      # Parallel processing
+TRUNK_HYPERTHREADING_ENABLED=true  # Hyperthreading support
+TRUNK_CPU_AFFINITY=true         # CPU core affinity
+TRUNK_MAX_CONCURRENT_JOBS=auto  # Concurrent job limit
+```
+
+#### 📈 **Performance Monitoring**
+```powershell
+# Monitor hyperthreading performance
+.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -MonitorPerformance
+
+# Expected output includes:
+# - CPU detection (physical cores, logical processors, hyperthreading status)
+# - Optimal thread count calculation
+# - Performance metrics (duration, CPU usage, exit codes)
+# - Memory and resource utilization
+```
+
 ### GitHub Actions Configuration
 ```yaml
 # .github/workflows/ci-optimized.yml
