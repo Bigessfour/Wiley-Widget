@@ -5,11 +5,11 @@ name: CI/CD with Merge Queue Support
 
 "on":
     push:
-        branches: [main]
+        branches: [main, temp]
     pull_request:
-        branches: [main]
+        branches: [main, temp]
     merge_group:  # Required for merge queues
-        branches: [main]
+        branches: [main, temp]
     workflow_dispatch:
         inputs:
             run_full_security_scan:

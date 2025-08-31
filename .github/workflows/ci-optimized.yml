@@ -4,9 +4,11 @@ name: CI/CD 90% Success Rate
   push:
     branches:
       - main
+      - temp
   pull_request:
     branches:
       - main
+      - temp
   schedule:
     # Run daily health check at 2 AM UTC
     - cron: '0 2 * * *'
