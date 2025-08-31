@@ -7,8 +7,42 @@ This repository implements an enterprise-grade CI/CD pipeline designed to achiev
 ## 📊 Pipeline Features
 
 ### Core Reliability Features
-- **Health Validation**: Pre-build environment checks
-- **Retry Mechanisms**: Exponential backoff for transient failures
+- **Health Validation**: Pre-build environment #### **Terminal Commands for Hyperthreading**
+
+**Quick Enable Hyperthreading:**
+```batch
+# Windows Batch (run in terminal)
+enable-hyperthreading.bat
+```
+
+**PowerShell Environment Setup (Recommended):**
+```powershell
+# Simple environment setup (just sets variables)
+.\scripts\trunk-env-setup.ps1
+
+# Full setup with monitoring and execution
+.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading
+
+# CI-optimized setup
+.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -OptimizeForCI
+
+# Custom thread count
+.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -ThreadCount 8
+
+# Quiet mode (no output, just setup)
+.\scripts\trunk-env-setup.ps1 -Quiet
+```
+
+**Direct Trunk Commands with Hyperthreading:**
+```powershell
+# After running environment setup, use trunk normally
+trunk check --all --ci
+trunk check --scope security
+trunk fmt --ci
+
+# Manual thread control
+trunk check --jobs 12 --all --ci
+```echanisms**: Exponential backoff for transient failures
 - **Circuit Breaker Pattern**: Prevents cascade failures
 - **Parallel Execution**: Matrix-based test execution
 - **Success Rate Monitoring**: Real-time performance tracking

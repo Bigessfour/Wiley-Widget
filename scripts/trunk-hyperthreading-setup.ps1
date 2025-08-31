@@ -75,31 +75,91 @@ function Invoke-TrunkWithMonitoring {
     if ($MonitorPerformance) {
         Write-Host "📊 Starting Trunk performance monitoring..." -ForegroundColor Magenta
         $startTime = Get-Date
-        $startCpu = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
+        try {
+            $startCpu = (Get-Counter '\Processor(_Total)\% Processor Time' -ErrorAction Stop).CounterSamples.CookedValue
+        } catch {
+            Write-Host "⚠️  CPU monitoring not available, continuing without performance metrics" -ForegroundColor Yellow
+            $startCpu = 0
+        }
     }
 
     Write-Host "🚀 Executing: trunk $Command" -ForegroundColor Green
     Write-Host "⏳ Processing with hyperthreading optimization..." -ForegroundColor Yellow
 
     try {
-        # Execute trunk command
-        $process = Start-Process -FilePath "trunk" -ArgumentList $Command -NoNewWindow -Wait -PassThru
+        # First, try to find trunk executable
+        $trunkPath = $null
+
+        # Check if trunk is in PATH
+        try {
+            $trunkPath = (Get-Command trunk -ErrorAction Stop).Source
+        } catch {
+            # Try common installation locations
+            $possiblePaths = @(
+                "$env:USERPROFILE\.trunk\bin\trunk.exe",
+                "$env:LOCALAPPDATA\trunk\bin\trunk.exe",
+                "C:\Program Files\trunk\bin\trunk.exe",
+                "$env:ProgramFiles\trunk\bin\trunk.exe"
+            )
+
+            foreach ($path in $possiblePaths) {
+                if (Test-Path $path) {
+                    $trunkPath = $path
+                    break
+                }
+            }
+        }
+
+        if (-not $trunkPath) {
+            throw "Trunk CLI not found. Please ensure Trunk is installed and in PATH, or install it using: curl -fsSL https://get.trunk.io | bash"
+        }
+
+        # Execute trunk command using call operator for better error handling
+        Write-Host "📍 Using Trunk at: $trunkPath" -ForegroundColor Cyan
+
+        # Set error action preference to continue to capture errors
+        $ErrorActionPreference = "Continue"
+
+        # Execute the command and capture output
+        $output = & $trunkPath $Command.Split() 2>&1
+        $exitCode = $LASTEXITCODE
+
+        # Display output
+        if ($output) {
+            $output | ForEach-Object {
+                if ($_ -is [System.Management.Automation.ErrorRecord]) {
+                    Write-Host "❌ $_" -ForegroundColor Red
+                } else {
+                    Write-Host "📝 $_" -ForegroundColor White
+                }
+            }
+        }
 
         if ($MonitorPerformance) {
             $endTime = Get-Date
-            $endCpu = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
+            try {
+                $endCpu = (Get-Counter '\Processor(_Total)\% Processor Time' -ErrorAction Stop).CounterSamples.CookedValue
+            } catch {
+                $endCpu = 0
+            }
             $duration = $endTime - $startTime
 
             Write-Host "📈 Performance Results:" -ForegroundColor Magenta
             Write-Host "   Duration: $($duration.TotalSeconds.ToString('F2')) seconds" -ForegroundColor Cyan
-            Write-Host "   Exit Code: $($process.ExitCode)" -ForegroundColor Cyan
-            Write-Host "   CPU Usage: ~$([math]::Round(($startCpu + $endCpu) / 2, 1))%" -ForegroundColor Cyan
+            Write-Host "   Exit Code: $exitCode" -ForegroundColor Cyan
+            if ($startCpu -gt 0 -and $endCpu -gt 0) {
+                Write-Host "   Avg CPU Usage: ~$([math]::Round(($startCpu + $endCpu) / 2, 1))%" -ForegroundColor Cyan
+            }
         }
 
-        return $process.ExitCode
+        return $exitCode
     }
     catch {
         Write-Error "❌ Failed to execute trunk command: $_"
+        Write-Host "💡 Troubleshooting tips:" -ForegroundColor Yellow
+        Write-Host "   1. Ensure Trunk CLI is installed: curl -fsSL https://get.trunk.io | bash" -ForegroundColor White
+        Write-Host "   2. Check if trunk is in PATH: trunk --version" -ForegroundColor White
+        Write-Host "   3. Try reinstalling Trunk CLI" -ForegroundColor White
         return 1
     }
 }
