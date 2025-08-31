@@ -86,7 +86,7 @@ actions:
     - trunk-single-player-auto-on-upgrade
     - trunk-single-player-auto-upgrade
     - trunk-whoami
-    - trunk-merge-queue-status  # Enable merge queue status reporting
+    # Note: trunk-merge-queue-status removed after merge queue workflow cleanup
   # CI/CD specific actions
   disabled:
     - buf-gen
