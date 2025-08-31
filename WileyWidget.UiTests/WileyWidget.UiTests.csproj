@@ -30,4 +30,9 @@
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- Exclude theme files from UI test project -->
+  <ItemGroup>
+    <Content Remove="Themes\**" />
+  </ItemGroup>
+
 </Project>

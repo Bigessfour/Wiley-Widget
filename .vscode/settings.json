@@ -2,37 +2,69 @@
   // WileyWidget VS Code Workspace Settings
   // See project-plan.md for True North vision and development roadmap
   // See copilot-instructions.md for AI assistant guidelines
-  "cSpell.words": [
-    "AZURECONNECTION",
-    "biges",
-    "BSTR",
-    "CONNECTIONSTRING",
-    "CONNECTIONSTRINGS",
-    "fetchability",
-    "FIOS",
-    "GETUTCDATE",
-    "hyperthreading",
-    "LASTEXITCODE",
-    "localdb",
-    "MSBUILDDEBUGPATH",
-    "mssqllocaldb",
-    "Mvvm",
-    "nameof",
-    "NOLOGO",
-    "NVARCHAR",
-    "OPTOUT",
-    "pwsh",
-    "Serilog",
-    "snupkg",
-    "sonarqube",
-    "sqllocaldb",
-    "userprefs",
-    "Uverse",
-    "wileyadmin",
-    "WILEYWIDGET",
-    "winget",
-    "Xfinity"
-  ],
+  // C# Dev Kit Enhanced Settings
+  "dotnet.defaultSolution": "WileyWidget.sln",
+  "csharp.suppressDotnetInstallWarning": true,
+  "csharp.suppressDotnetRestoreNotification": true,
+  "csharp.suppressProjectJsonWarning": true,
+  "csharp.suppressBuildAssetsNotification": true,
+  "csharp.suppressHiddenDiagnostics": false,
+  "csharp.maxProjectFileCountForDiagnosticAnalysis": 1000,
+  "csharp.semanticHighlighting.enabled": true,
+  "csharp.inlayHints.enableInlayHintsForImplicitObjectCreation": true,
+  "csharp.inlayHints.enableInlayHintsForImplicitVariableTypes": true,
+  "csharp.inlayHints.enableInlayHintsForLambdaParameterTypes": true,
+  "csharp.inlayHints.enableInlayHintsForTypes": true,
+  "csharp.inlayHints.enableInlayHintsForIndexerParameters": true,
+  "csharp.inlayHints.enableInlayHintsForLiteralParameters": true,
+  "csharp.inlayHints.enableInlayHintsForObjectCreationParameters": true,
+  "csharp.inlayHints.enableInlayHintsForOtherParameters": true,
+  "csharp.inlayHints.enableInlayHintsForParameters": true,
+  "csharp.format.enable": true,
+  "csharp.format.organizeImportsOnFormat": true,
+  "dotnet.server.useOmnisharp": false,
+  "dotnet.server.path": "",
+  "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+  "dotnet.completion.showNameCompletionSuggestions": true,
+  "dotnet.diagnostics.debugLogging": false,
+  "dotnet.projects.enableAutomaticRestore": true,
+  "dotnet.projects.enableBackgroundRestore": true,
+  "dotnet.projects.enableSdkParseOnRestore": true,
+  "dotnet.testWindow.visible": true,
+  "dotnet.testWindow.autoExpandTree": true,
+  "dotnet.testWindow.showSubfolderTests": true,
+  "dotnet.unitTestDebuggingOptions": {
+    "Project": true
+  },
+  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+  "dotnet.highlighting.highlightRelatedRegexComponents": true,
+  "dotnet.highlighting.highlightRelatedJsonComponents": true,
+  "dotnet.navigation.navigateToDecompiledSources": true,
+  "dotnet.quickInfo.showRemarksInQuickInfo": true,
+  "dotnet.symbolSearch.searchReferenceAssemblies": true,
+  "dotnet.symbolSearch.searchNuGetPackages": true,
+  "dotnet.codeLens.enableReferencesCodeLens": true,
+  "dotnet.codeLens.enableTestsCodeLens": true,
+  "dotnet.codeLens.enableTestsOnly": false,
+  "dotnet.codeAction.enableCodeActions": true,
+  "dotnet.codeAction.includeSnippets": true,
+  "dotnet.codeAction.showCodeActionLightBulb": true,
+  "dotnet.codeAction.showCodeActionLightBulbForReadOnlyFiles": false,
+  "dotnet.intelliCode.enableAutoImportCompletion": true,
+  "dotnet.intelliCode.enableImportCompletion": true,
+  "dotnet.intelliCode.enableIntelliSenseFilter": true,
+  "dotnet.intelliCode.enableSemanticColorization": true,
+  "dotnet.intelliCode.enableSuggestionCommitCharacters": true,
+  "dotnet.intelliCode.enableSuggestionMode": true,
+  "dotnet.intelliCode.enableTypeImportCompletion": true,
+  "dotnet.intelliCode.maxCompletionListHeight": 10,
+  "dotnet.intelliCode.suppressExtendedCompletion": false,
+  "dotnet.intelliCode.suppressSemanticColorization": false,
+  "dotnet.intelliCode.suppressSuggestionCommitCharacters": false,
+  "dotnet.intelliCode.suppressSuggestionMode": false,
+  "dotnet.intelliCode.suppressTypeImportCompletion": false,
+
   // PowerShell 7.5.2 Configuration
   "powershell.powerShellDefaultVersion": "7.5.2",
   "powershell.powerShellExePath": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
@@ -45,10 +77,21 @@
   "powershell.codeFormatting.useCorrectCasing": true,
   "powershell.integratedConsole.showOnStartup": false,
   "powershell.integratedConsole.focusConsoleOnExecute": false,
+
+  // PowerShell formatting
+  "powershell.codeFormatting.openBraceOnSameLine": true,
+
+  // XAML formatting
+  "xml.format.splitAttributes": "splitNewLine",
+
+  // Workspace-specific Copilot guidance
+  "github.copilot.chat.welcomeMessage": "Welcome to WileyWidget! This is a hobby WPF project focused on learning. I'll suggest practical patterns suitable for experimentation rather than production-level complexity.",
+
   // Enhanced PowerShell Analysis Settings
   "powershell.scriptAnalysis.enable": true,
   "powershell.scriptAnalysis.runOnSave": true,
   "powershell.scriptAnalysis.runOnOpen": true,
+
   // GitHub Copilot Configuration
   "github.copilot.enable": {
     "*": true,
@@ -63,12 +106,14 @@
     "length": 500,
     "temperature": 0.1
   },
+
   // File Associations for PowerShell
   "files.associations": {
     "*.ps1": "powershell",
     "*.psm1": "powershell",
     "*.psd1": "powershell"
   },
+
   // PowerShell-specific settings
   "editor.defaultFormatter": "ms-vscode.powershell",
   "[powershell]": {
@@ -76,6 +121,7 @@
     "editor.formatOnSave": true,
     "editor.formatOnType": true
   },
+
   // MCP (Model Context Protocol) Configuration
   // Current: Multi-server setup with GitHub, Azure, and Microsoft Docs
   "mcp": {
@@ -119,7 +165,6 @@
             }
         }
     },
-
     // Option 2: WebSocket Remote Server
     "mcp": {
         "servers": {
@@ -133,7 +178,6 @@
             }
         }
     },
-
     // Option 3: Load Balanced Remote Servers
     "mcp": {
         "servers": {
@@ -149,12 +193,9 @@
             }
         }
     */
-
   // Enhanced context for C# development
-  "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
-
   // Azure Development Settings
   "azureFunctions.deploySubpath": ".",
   "azureFunctions.postDeployTask": "npm prune",
@@ -162,7 +203,6 @@
   "azureFunctions.projectLanguage": "C#",
   "azureFunctions.projectRuntime": "~4",
   "azureFunctions.templateFilter": "Verified",
-
   // Azure SQL Database Settings
   "sql.databaseConnections": [
     {
@@ -171,29 +211,17 @@
       "providerName": "MSSQL"
     }
   ],
-
   // Azure Resource Manager Template Settings
   "azureResourceManagerTools.enableCodeLens": true,
   "azureResourceManagerTools.enableParameterFileCodeLens": true,
-
   // Azure Storage Settings
   "azureStorage.accountFilter": [],
   "azureStorage.containerFilter": [],
   "azureStorage.resourceGroupFilter": "",
-
   // Azure App Service Settings
   "appService.defaultWebAppToDeploy": "",
   "appService.deploySubpath": ".",
   "appService.showBuildDuringDeployPrompt": true,
-
-  // PowerShell formatting
-  "powershell.codeFormatting.openBraceOnSameLine": true,
-
-  // XAML formatting
-  "xml.format.splitAttributes": "splitNewLine",
-
-  // Workspace-specific Copilot guidance
-  "github.copilot.chat.welcomeMessage": "Welcome to WileyWidget! This is a hobby WPF project focused on learning. I'll suggest practical patterns suitable for experimentation rather than production-level complexity.",
   "yaml.schemas": {
     "https://gitlab.com/appsemble/appsemble/-/raw/HEAD/packages/cli/assets/appsemblerc.schema.json": "chat-editing-snapshot-text-model:/c%3A/Users/biges/Desktop/Wiley_Widget/.github/workflows/release-new.yml?%7B%22sessionId%22%3A%22bacce419-d9d7-48eb-b211-4bc420789800%22%2C%22requestId%22%3A%22request_1f785618-7556-4a24-b682-f4a0618a2558%22%2C%22undoStop%22%3A%22b53c08eb-fb08-4e98-9ff7-f1035166a221%22%7D"
   }

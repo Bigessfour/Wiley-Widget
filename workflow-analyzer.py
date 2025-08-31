@@ -4,11 +4,11 @@ GitHub Actions Workflow Analyzer
 Helps analyze and validate GitHub Actions workflow files
 """
 
-import os
-import yaml
-import sys
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
+import yaml
+
 
 class WorkflowAnalyzer:
     def __init__(self, repo_path: str = "."):
@@ -20,22 +20,21 @@ class WorkflowAnalyzer:
         if not self.workflows_path.exists():
             return []
 
-        return list(self.workflows_path.glob("*.yml")) + list(self.workflows_path.glob("*.yaml"))
+        return list(self.workflows_path.glob("*.yml")) + list(
+            self.workflows_path.glob("*.yaml")
+        )
 
     def validate_yaml(self, file_path: Path) -> Dict[str, Any]:
         """Validate YAML syntax and structure"""
-        result = {
-            "file": str(file_path),
-            "valid": False,
-            "errors": [],
-            "warnings": []
-        }
+        result = {"file": str(file_path), "valid": False, "errors": [], "warnings": []}
 
         try:
-            with open(file_path, 'r', encoding='utf-8-sig') as f:
+            with open(file_path, "r", encoding="utf-8-sig") as f:
                 content = yaml.safe_load(f)
                 result["valid"] = True
-                print(f"DEBUG: Parsed keys for {file_path.name}: {list(content.keys())}")
+                print(
+                    f"DEBUG: Parsed keys for {file_path.name}: {list(content.keys())}"
+                )
                 print(f"DEBUG: 'on' in content: {'on' in content}")
                 if True in content:
                     print(f"DEBUG: True key value: {content[True]}")
@@ -50,7 +49,14 @@ class WorkflowAnalyzer:
             if "name" not in content:
                 result["warnings"].append("Workflow missing 'name' field")
 
-            if "on" not in content:
+            # Check for 'on' trigger field (YAML parses 'on:' as True key)
+            trigger_field = None
+            if "on" in content:
+                trigger_field = "on"
+            elif True in content:
+                trigger_field = True
+
+            if not trigger_field:
                 result["errors"].append("Workflow missing 'on' trigger field")
                 result["valid"] = False
 
@@ -59,15 +65,22 @@ class WorkflowAnalyzer:
                 result["valid"] = False
 
             # Check trigger configuration
-            if "on" in content:
-                triggers = content["on"]
+            if trigger_field:
+                triggers = content[trigger_field]
                 if isinstance(triggers, str):
                     triggers = [triggers]
 
                 if isinstance(triggers, list):
                     for trigger in triggers:
-                        if trigger not in ["push", "pull_request", "schedule", "workflow_dispatch"]:
-                            result["warnings"].append(f"Non-standard trigger: {trigger}")
+                        if trigger not in [
+                            "push",
+                            "pull_request",
+                            "schedule",
+                            "workflow_dispatch",
+                        ]:
+                            result["warnings"].append(
+                                f"Non-standard trigger: {trigger}"
+                            )
 
         except yaml.YAMLError as e:
             result["errors"].append(f"YAML syntax error: {str(e)}")
@@ -78,10 +91,7 @@ class WorkflowAnalyzer:
 
     def analyze_triggers(self, workflow: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze workflow triggers and their configuration"""
-        analysis = {
-            "triggers": [],
-            "issues": []
-        }
+        analysis = {"triggers": [], "issues": []}
 
         if "on" not in workflow:
             analysis["issues"].append("No triggers defined")
@@ -103,7 +113,9 @@ class WorkflowAnalyzer:
                     if "branches" in config:
                         branches = config["branches"]
                         if isinstance(branches, list) and "main" not in branches:
-                            analysis["issues"].append("Push trigger doesn't include 'main' branch")
+                            analysis["issues"].append(
+                                "Push trigger doesn't include 'main' branch"
+                            )
 
         return analysis
 
@@ -116,7 +128,7 @@ class WorkflowAnalyzer:
 
         # Load workflow for deeper analysis
         try:
-            with open(file_path, 'r', encoding='utf-8-sig') as f:
+            with open(file_path, "r", encoding="utf-8-sig") as f:
                 workflow = yaml.safe_load(f)
 
             trigger_analysis = self.analyze_triggers(workflow)
@@ -126,7 +138,7 @@ class WorkflowAnalyzer:
                 "name": workflow.get("name", "Unnamed"),
                 "triggers": trigger_analysis["triggers"],
                 "trigger_issues": trigger_analysis["issues"],
-                "job_count": len(workflow.get("jobs", {}))
+                "job_count": len(workflow.get("jobs", {})),
             }
         except Exception as e:
             validation["errors"].append(f"Analysis error: {str(e)}")
@@ -197,10 +209,13 @@ class WorkflowAnalyzer:
 
         return "\n".join(report)
 
+
 def main():
     analyzer = WorkflowAnalyzer()
     report = analyzer.generate_report()
     print(report)
 
+
 if __name__ == "__main__":
+    main()
     main()

@@ -1,20 +1,17 @@
+using Syncfusion.Windows.Tools.Controls; // For ComboBoxAdv, RibbonWindow
 using System.Windows;
 using System.Windows.Controls;
-using System.IO;
-using Syncfusion.SfSkinManager; // Theme manager
-using Syncfusion.UI.Xaml.Grid; // Added for Grid controls
-using Syncfusion.UI.Xaml.Diagram; // Added for Diagram controls
-using Syncfusion.UI.Xaml.Charts; // Added for Chart controls
-using WileyWidget.Services;
-using Serilog;
-using WileyWidget.Models;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Media;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using System.Text;
+using Serilog;
+using Syncfusion.UI.Xaml.Diagram;
 using WileyWidget.Configuration;
+using Syncfusion.SfSkinManager;
+using Syncfusion.UI.Xaml.Grid;
+using Syncfusion.UI.Xaml.Charts;
+using WileyWidget.Services;
+using WileyWidget.Models;
+using System.Text;
+using System.IO;
 
 namespace WileyWidget;
 
@@ -45,7 +42,7 @@ namespace WileyWidget;
 /// <item>Window events are handled synchronously</item>
 /// </list>
 /// </summary>
-public partial class MainWindow : Window
+public partial class MainWindow : RibbonWindow
 {
     /// <summary>
     /// Runtime toggle for dynamic column generation in data grids.
@@ -69,7 +66,13 @@ public partial class MainWindow : Window
         try
         {
             Log.Information("Initializing MainWindow components...");
-            InitializeComponent();
+            InitializeComponent(); // Fix CS0103
+            Log.Information("MainWindow components initialized successfully");
+
+            // Initialize named controls
+            // Controls with x:Name in XAML are auto-generated and available for use directly.
+            // ...existing code...
+
             Log.Information("MainWindow components initialized successfully");
 
             Log.Information("Setting up data context with MainViewModel...");
@@ -247,6 +250,7 @@ public partial class MainWindow : Window
             Log.Information("Applying Syncfusion theme via SfSkinManager...");
 #pragma warning disable CA2000 // Dispose objects before losing scope - Theme objects are managed by SfSkinManager
             var syncTheme = new Theme(canonical);
+            SfSkinManager.ApplyThemeAsDefaultStyle = true; // Ensure framework controls respect themes
             SfSkinManager.SetTheme(this, syncTheme);
 #pragma warning restore CA2000 // Dispose objects before losing scope
             Log.Information("Syncfusion theme applied successfully - Theme: {Theme}", canonical);
@@ -869,21 +873,21 @@ public partial class MainWindow : Window
     {
         try
         {
-            var apiKey = ApiKeyBox.Password;
+            var apiKey = ApiKeyBox.Text;
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                UpdateStatus("❌ Please enter an API key first", "#EF4444");
+                UpdateStatus("❌ Please enter an API key first", "ErrorBrush");
                 return;
             }
 
-            UpdateStatus("🔄 Testing xAI API key...", "#F59E0B");
+            UpdateStatus("🔄 Testing xAI API key...", "WarningBrush");
 
             // Test the provided key
             var isValid = await ApiKeyService.Instance.TestApiKeyAsync(apiKey);
 
             if (isValid)
             {
-                UpdateStatus("✅ API key is valid! xAI connection successful.", "#10B981");
+                UpdateStatus("✅ API key is valid! xAI connection successful.", "SuccessBrush");
                 Log.Information("xAI API key test successful");
 
                 // Ask user if they want to save it
@@ -900,13 +904,13 @@ public partial class MainWindow : Window
             }
             else
             {
-                UpdateStatus("❌ API test failed - check your key and try again", "#EF4444");
+                UpdateStatus("❌ API test failed - check your key and try again", "ErrorBrush");
                 Log.Warning("xAI API key test failed");
             }
         }
         catch (Exception ex)
         {
-            UpdateStatus($"❌ API test failed: {ex.Message}", "#EF4444");
+            UpdateStatus($"❌ API test failed: {ex.Message}", "ErrorBrush");
             Log.Error(ex, "xAI API key test failed");
         }
     }
@@ -918,7 +922,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            UpdateStatus("🔒 Saving API key securely...", "#F59E0B");
+            UpdateStatus("🔒 Saving API key securely...", "WarningBrush");
 
             // Try to save using the most secure method available
             var success = ApiKeyService.Instance.StoreApiKey(apiKey, StorageMethod.Auto);
@@ -930,21 +934,21 @@ public partial class MainWindow : Window
                 settings.XaiApiKey = "[SECURELY_STORED]";
                 SettingsService.Instance.Save();
 
-                UpdateStatus("✅ API key saved securely!", "#10B981");
+                UpdateStatus("✅ API key saved securely!", "SuccessBrush");
                 Log.Information("xAI API key saved securely");
 
                 // Clear the password box for security
-                ApiKeyBox.Password = string.Empty;
+                ApiKeyBox.Text = string.Empty;
             }
             else
             {
-                UpdateStatus("❌ Failed to save API key securely", "#EF4444");
+                UpdateStatus("❌ Failed to save API key securely", "ErrorBrush");
                 Log.Error("Failed to save xAI API key securely");
             }
         }
         catch (Exception ex)
         {
-            UpdateStatus($"❌ Failed to save API key: {ex.Message}", "#EF4444");
+            UpdateStatus($"❌ Failed to save API key: {ex.Message}", "ErrorBrush");
             Log.Error(ex, "Failed to save xAI API key");
         }
 
@@ -958,6 +962,13 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Validate all input fields before saving
+            if (!ValidateAllSettingsInputs())
+            {
+                UpdateStatus("❌ Please fix validation errors before saving", "ErrorBrush");
+                return;
+            }
+
             AppSettings settings = SettingsService.Instance.Current;
 
             // Save theme
@@ -969,7 +980,7 @@ public partial class MainWindow : Window
             }
 
             // Handle API key securely
-            var enteredApiKey = ApiKeyBox.Password;
+            var enteredApiKey = ApiKeyBox.Text;
             if (!string.IsNullOrWhiteSpace(enteredApiKey))
             {
                 // Test the key first
@@ -993,7 +1004,7 @@ public partial class MainWindow : Window
                     }
                     else
                     {
-                        UpdateStatus("❌ Settings not saved - invalid API key", "#EF4444");
+                        UpdateStatus("❌ Settings not saved - invalid API key", "ErrorBrush");
                         return;
                     }
                 }
@@ -1027,12 +1038,12 @@ public partial class MainWindow : Window
             }
 
             SettingsService.Instance.Save();
-            UpdateStatus("✅ Settings saved successfully!", "#10B981");
+            UpdateStatus("✅ Settings saved successfully!", "SuccessBrush");
             Log.Information("Settings saved successfully");
         }
         catch (Exception ex)
         {
-            UpdateStatus($"❌ Failed to save settings: {ex.Message}", "#EF4444");
+            UpdateStatus($"❌ Failed to save settings: {ex.Message}", "ErrorBrush");
             Log.Error(ex, "Failed to save settings");
         }
     }
@@ -1060,12 +1071,12 @@ public partial class MainWindow : Window
             {
                 // Show that a key is stored securely
                 ApiKeyStatusText.Text = "✅ API key is securely stored";
-                ApiKeyStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                ApiKeyStatusText.Foreground = GetThemeBrush("SuccessBrush");
             }
             else
             {
                 ApiKeyStatusText.Text = "❌ No API key configured";
-                ApiKeyStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                ApiKeyStatusText.Foreground = GetThemeBrush("ErrorBrush");
             }
 
             // Load other xAI settings
@@ -1082,12 +1093,12 @@ public partial class MainWindow : Window
             DailyBudgetTextBox.Text = settings.XaiDailyBudget.ToString("F2");
             MonthlyBudgetTextBox.Text = settings.XaiMonthlyBudget.ToString("F2");
 
-            UpdateStatus("✅ Settings loaded successfully!", "#10B981");
+            UpdateStatus("✅ Settings loaded successfully!", "SuccessBrush");
             Log.Information("Settings loaded into UI");
         }
         catch (Exception ex)
         {
-            UpdateStatus($"❌ Failed to load settings: {ex.Message}", "#EF4444");
+            UpdateStatus($"❌ Failed to load settings: {ex.Message}", "ErrorBrush");
             Log.Error(ex, "Failed to load settings into UI");
         }
     }
@@ -1104,13 +1115,13 @@ public partial class MainWindow : Window
                 var theme = themeItem.Content.ToString();
                 TryApplyTheme(theme);
                 UpdateThemeToggleVisuals();
-                UpdateStatus($"✅ Theme changed to {theme}", "#10B981");
+                UpdateStatus($"✅ Theme changed to {theme}", "SuccessBrush");
                 Log.Information("Theme applied: {Theme}", theme);
             }
         }
         catch (Exception ex)
         {
-            UpdateStatus($"❌ Failed to apply theme: {ex.Message}", "#EF4444");
+            UpdateStatus($"❌ Failed to apply theme: {ex.Message}", "ErrorBrush");
             Log.Error(ex, "Failed to apply theme");
         }
     }
@@ -1140,23 +1151,23 @@ public partial class MainWindow : Window
                     SettingsService.Instance.Save();
 
                     // Update UI
-                    ApiKeyBox.Password = string.Empty;
+                    ApiKeyBox.Text = string.Empty;
                     ApiKeyStatusText.Text = "❌ No API key configured";
-                    ApiKeyStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                    ApiKeyStatusText.Foreground = GetThemeBrush("ErrorBrush");
 
-                    UpdateStatus("✅ API key removed successfully!", "#10B981");
+                    UpdateStatus("✅ API key removed successfully!", "SuccessBrush");
                     Log.Information("xAI API key removed successfully");
                 }
                 else
                 {
-                    UpdateStatus("❌ Failed to remove API key completely", "#EF4444");
+                    UpdateStatus("❌ Failed to remove API key completely", "ErrorBrush");
                     Log.Warning("Failed to remove xAI API key from all locations");
                 }
             }
         }
         catch (Exception ex)
         {
-            UpdateStatus($"❌ Failed to remove API key: {ex.Message}", "#EF4444");
+            UpdateStatus($"❌ Failed to remove API key: {ex.Message}", "ErrorBrush");
             Log.Error(ex, "Failed to remove xAI API key");
         }
     }
@@ -1225,18 +1236,144 @@ public partial class MainWindow : Window
     /// <summary>
     /// Update the status display in the settings tab
     /// </summary>
-    private void UpdateStatus(string message, string colorHex)
+    private void UpdateStatus(string message, Brush brush)
     {
         if (StatusTextBlock != null)
         {
             StatusTextBlock.Text = message;
-            StatusTextBlock.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex));
+            StatusTextBlock.Foreground = brush;
         }
 
         if (StatusBorder != null)
         {
-            StatusBorder.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex));
+            StatusBorder.BorderBrush = brush;
         }
+    }
+
+    /// <summary>
+    /// Update the status display with a theme-based color
+    /// </summary>
+    private void UpdateStatus(string message, string themeKey)
+    {
+        var brush = GetThemeBrush(themeKey);
+        UpdateStatus(message, brush);
+    }
+
+    /// <summary>
+    /// Get a brush from the current theme
+    /// </summary>
+    private Brush GetThemeBrush(string themeKey)
+    {
+        try
+        {
+            if (Application.Current.Resources.Contains(themeKey))
+            {
+                return (Brush)Application.Current.Resources[themeKey];
+            }
+            else
+            {
+                // Fallback to default colors if theme key not found
+                return themeKey switch
+                {
+                    "SuccessBrush" => new SolidColorBrush(Colors.Green),
+                    "ErrorBrush" => new SolidColorBrush(Colors.Red),
+                    "WarningBrush" => new SolidColorBrush(Colors.Orange),
+                    "InfoBrush" => new SolidColorBrush(Colors.Blue),
+                    _ => new SolidColorBrush(Colors.Black)
+                };
+            }
+        }
+        catch
+        {
+            // Fallback to default colors if theme key not found
+            return themeKey switch
+            {
+                "SuccessBrush" => new SolidColorBrush(Colors.Green),
+                "ErrorBrush" => new SolidColorBrush(Colors.Red),
+                "WarningBrush" => new SolidColorBrush(Colors.Orange),
+                "InfoBrush" => new SolidColorBrush(Colors.Blue),
+                _ => new SolidColorBrush(Colors.Black)
+            };
+        }
+    }
+
+    /// <summary>
+    /// Validates all settings input fields
+    /// </summary>
+    private bool ValidateAllSettingsInputs()
+    {
+        bool isValid = true;
+
+        // Validate API key (if provided)
+        if (!string.IsNullOrWhiteSpace(ApiKeyBox.Text))
+        {
+            var apiKeyValidation = new Converters.ApiKeyValidationRule
+            {
+                MinLength = 20,
+                MaxLength = 128,
+                AllowEmpty = true
+            };
+
+            var result = apiKeyValidation.Validate(ApiKeyBox.Text, System.Globalization.CultureInfo.CurrentCulture);
+            if (!result.IsValid)
+            {
+                isValid = false;
+            }
+        }
+
+        // Validate timeout
+        var timeoutValidation = new Converters.PositiveIntegerValidationRule
+        {
+            MinValue = 5,
+            MaxValue = 300
+        };
+
+        var timeoutResult = timeoutValidation.Validate(TimeoutTextBox.Text, System.Globalization.CultureInfo.CurrentCulture);
+        if (!timeoutResult.IsValid)
+        {
+            isValid = false;
+        }
+
+        // Validate cache TTL
+        var cacheValidation = new Converters.PositiveIntegerValidationRule
+        {
+            MinValue = 1,
+            MaxValue = 1440
+        };
+
+        var cacheResult = cacheValidation.Validate(CacheTtlTextBox.Text, System.Globalization.CultureInfo.CurrentCulture);
+        if (!cacheResult.IsValid)
+        {
+            isValid = false;
+        }
+
+        // Validate daily budget
+        var dailyBudgetValidation = new Converters.PositiveDecimalValidationRule
+        {
+            MinValue = 0.01M,
+            MaxValue = 1000.00M
+        };
+
+        var dailyResult = dailyBudgetValidation.Validate(DailyBudgetTextBox.Text, System.Globalization.CultureInfo.CurrentCulture);
+        if (!dailyResult.IsValid)
+        {
+            isValid = false;
+        }
+
+        // Validate monthly budget
+        var monthlyBudgetValidation = new Converters.PositiveDecimalValidationRule
+        {
+            MinValue = 1.00M,
+            MaxValue = 10000.00M
+        };
+
+        var monthlyResult = monthlyBudgetValidation.Validate(MonthlyBudgetTextBox.Text, System.Globalization.CultureInfo.CurrentCulture);
+        if (!monthlyResult.IsValid)
+        {
+            isValid = false;
+        }
+
+        return isValid;
     }
 
     #endregion

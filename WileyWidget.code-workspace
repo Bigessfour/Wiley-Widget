@@ -14,29 +14,14 @@
 				"providerName": "MSSQL"
 			}
 		],
-		// MCP Configuration for Wiley Widget
 		"mcp": {
 			"servers": {
-				"github": {
-					"url": "https://api.githubcopilot.com/mcp/",
-					"type": "http",
-					"headers": {
-						"Authorization": "Bearer ${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
-					}
-				},
 				"azure": {
-					"command": "azure-mcp-server",
+					"command": "C:\\Users\\biges\\.vscode\\extensions\\ms-azuretools.vscode-azure-mcp-server-0.5.8-win32-x64\\server\\azmcp.exe",
 					"type": "stdio",
 					"env": {
-						"AZURE_CLIENT_ID": "${env:AZURE_CLIENT_ID}",
-						"AZURE_CLIENT_SECRET": "${env:AZURE_CLIENT_SECRET}",
-						"AZURE_TENANT_ID": "${env:AZURE_TENANT_ID}",
-						"AZURE_SUBSCRIPTION_ID": "${env:AZURE_SUBSCRIPTION_ID}"
+						"AZURE_USE_CLI_AUTH": "true"
 					}
-				},
-				"microsoft-docs": {
-					"url": "https://mcp.microsoft.com/docs/",
-					"type": "http"
 				}
 			}
 		}

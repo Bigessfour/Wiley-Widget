@@ -49,4 +49,9 @@
     <ProjectReference Include="..\WileyWidget.csproj" />
   </ItemGroup>
 
+  <!-- Exclude theme files from test project -->
+  <ItemGroup>
+    <Content Remove="Themes\**" />
+  </ItemGroup>
+
 </Project>

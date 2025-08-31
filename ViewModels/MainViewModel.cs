@@ -96,6 +96,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>Collection of QuickBooks invoices.</summary>
     public ObservableCollection<Invoice> QuickBooksInvoices { get; } = new();
 
+    /// <summary>Collection of QuickBooks classes.</summary>
+    public ObservableCollection<Intuit.Ipp.Data.Class> QboClasses { get; } = new();
+
+    /// <summary>Collection of QuickBooks accounts.</summary>
+    public ObservableCollection<Account> QboAccounts { get; } = new();
+
+    /// <summary>Budget metrics for dashboard display.</summary>
+    public Models.BudgetMetrics BudgetMetrics { get; private set; } = new Models.BudgetMetrics();
+
+    /// <summary>Selected theme for the application.</summary>
+    [ObservableProperty]
+    private string selectedTheme = "FluentLight";
+
     [RelayCommand]
     /// <summary>
     /// Cycles to the next widget (wrap-around). If none selected, selects the first. Safe for empty list.

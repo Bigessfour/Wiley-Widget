@@ -1,12 +1,13 @@
 using System.Reflection;
 using System.Windows;
+using Syncfusion.Windows.Shared;
 
 namespace WileyWidget;
 
 /// <summary>
 /// Modal dialog showing application version information (InformationalVersion if present; falls back to assembly version).
 /// </summary>
-public partial class AboutWindow : Window
+public partial class AboutWindow : ChromelessWindow
 {
     public AboutWindow()
     {

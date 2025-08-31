@@ -349,24 +349,39 @@ public partial class App : Application
 
         try
         {
+            // Write to a debug file to see if constructor is reached
+            File.WriteAllText("debug.log", "🚀 === Application Constructor Started ===\n");
+
             // Phase 1: Configure logging FIRST (must happen before any Log calls)
             ConfigureLogging();
+            File.AppendAllText("debug.log", "📝 Logging configured\n");
             Log.Information("🚀 === Application Constructor Started ===");
 
             // Phase 2: Load configuration (required for license keys and database)
             LoadConfiguration();
+            File.AppendAllText("debug.log", "⚙️ Configuration loaded\n");
             Log.Information("✅ Configuration loaded successfully");
 
-            // Phase 3: Register Syncfusion license (CRITICAL: must happen before any controls)
+            // Phase 3: Apply Fluent theme globally
+            Syncfusion.SfSkinManager.SfSkinManager.ApplyThemeAsDefaultStyle = true;
+            Syncfusion.SfSkinManager.SfSkinManager.ApplicationTheme = new Syncfusion.SfSkinManager.Theme("FluentDark");
+            File.AppendAllText("debug.log", "🎨 Fluent Dark theme applied\n");
+            Log.Information("✅ Fluent Dark theme applied globally");
+
+            // Phase 4: Register Syncfusion license (CRITICAL: must happen before any controls)
             RegisterSyncfusionLicense();
+            File.AppendAllText("debug.log", "🔑 Syncfusion license registered\n");
 
             // Log successful initialization
             _startupTimer.Stop();
+            File.AppendAllText("debug.log", "✅ Constructor completed successfully\n");
             Log.Information("🎉 === Application Constructor Completed ===");
             Log.Information("⏱️  Application initialization took {ElapsedMs}ms", _startupTimer.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
+            File.AppendAllText("debug.log", $"💥 CRITICAL ERROR in constructor: {ex.Message}\n{ex.StackTrace}\n");
+
             // Critical failure in constructor - log and rethrow to prevent corrupted state
             Log.Fatal(ex, "💥 CRITICAL: Application constructor failed - application may not start properly");
             throw;
@@ -390,37 +405,49 @@ public partial class App : Application
     /// This method runs on the UI thread and has access to Dispatcher and Windows collection.
     /// Any exceptions here will crash the application, so robust error handling is critical.
     /// </remarks>
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         try
         {
+            File.AppendAllText("debug.log", "🎬 === Application Startup Event ===\n");
             Log.Information("🎬 === Application Startup Event ===");
             Log.Information("📋 Command line args: {Args}", string.Join(" ", e.Args));
 
             // Phase 1: Database services (can fail gracefully if DB unavailable)
-            ConfigureDatabaseServices();
+            File.AppendAllText("debug.log", "📊 Starting database services configuration...\n");
+            await ConfigureDatabaseServices();
+            File.AppendAllText("debug.log", "✅ Database services configured\n");
 
             // Phase 2: Global exception handling (critical for stability)
             ConfigureGlobalExceptionHandling();
             Log.Information("✅ Global exception handling configured");
+            File.AppendAllText("debug.log", "🛡️ Global exception handling configured\n");
 
             // Phase 3: User settings and theme
             LoadAndApplyUserSettings();
+            File.AppendAllText("debug.log", "⚙️ User settings loaded\n");
 
             // Phase 4: Test automation support (optional)
             ConfigureTestAutomationSupport();
+            File.AppendAllText("debug.log", "🧪 Test automation configured\n");
 
             // Call base implementation last
             base.OnStartup(e);
+            File.AppendAllText("debug.log", "📱 Base OnStartup completed\n");
 
             // Set MainWindow since StartupUri is removed
+            File.AppendAllText("debug.log", "🏠 Creating MainWindow...\n");
             this.MainWindow = new MainWindow();
+            File.AppendAllText("debug.log", "✅ MainWindow created\n");
+
             this.MainWindow.Show();
+            File.AppendAllText("debug.log", "🎉 MainWindow shown - application should be visible now!\n");
 
             Log.Information("✅ === Application Startup Completed Successfully ===");
         }
         catch (Exception ex)
         {
+            File.AppendAllText("debug.log", $"💥 CRITICAL ERROR during startup: {ex.Message}\n{ex.StackTrace}\n");
             Log.Fatal(ex, "💥 CRITICAL: Application startup failed - shutting down");
             // Shutdown the application gracefully
             Shutdown(1);
@@ -430,7 +457,7 @@ public partial class App : Application
     /// <summary>
     /// Configures database services and initializes the database
     /// </summary>
-    private async void ConfigureDatabaseServices()
+    private async Task ConfigureDatabaseServices()
     {
         try
         {
@@ -454,7 +481,7 @@ public partial class App : Application
             // Initialize service locator for global access
             ServiceLocator.Initialize(serviceProvider);
 
-            // Initialize database
+            // Initialize database - RESTORED
             await DatabaseConfiguration.EnsureDatabaseCreatedAsync(serviceProvider);
 
             Log.Information("Database services configured successfully");

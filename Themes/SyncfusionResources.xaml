@@ -1,40 +1,51 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:WileyWidget"
                     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
-                    xmlns:local="clr-namespace:WileyWidget">
+                    xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF">
 
-    <!-- Fluent Theme Resources -->
+    <!-- Fluent Theme Resources (Merged for Light/Dark Switching) -->
     <ResourceDictionary.MergedDictionaries>
+        <!-- Use WPF built-in Fluent themes as fallback -->
         <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/FluentDark.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/FluentLight.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 
-    <!-- Theme-based Colors - No Custom Colors Allowed -->
-    <!-- Use only DynamicResource references to theme colors -->
-
-    <!-- Button Styles -->
-    <Style x:Key="ThemeButton" TargetType="Button">
-        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
-        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
+    <!-- Button Style (Expanded with Font, Focus, Disabled States) -->
+    <Style x:Key="ThemeButton" TargetType="Button" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=WPFButtonStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBorderBrush}}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Padding" Value="10,5"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="1"
+                            BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="3">
                         <ContentPresenter HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Margin="{TemplateBinding Padding}"/>
+                                          VerticalAlignment="Center"
+                                          Margin="{TemplateBinding Padding}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
+                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonHoverBackground}}"/>
+                            <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonHoverForeground}}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
+                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonPressedBackground}}"/>
+                            <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonPressedBorderBrush}}"/>
+                        </Trigger>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=FocusBrush}}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DisabledBackground}}"/>
+                            <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DisabledForeground}}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -42,65 +53,313 @@
         </Setter>
     </Style>
 
-    <!-- Border Styles for Dashboard Cards -->
+    <!-- DashboardCard Border Style (Expanded with Shadow, Focus) -->
     <Style x:Key="DashboardCard" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=CardBackground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=CardBorderBrush}}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Margin" Value="5"/>
         <Setter Property="Padding" Value="15"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ShadowColor}}" BlurRadius="5" ShadowDepth="2"/>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=FocusBrush}}"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
-    <!-- Text Styles -->
+    <!-- CardTitle TextBlock Style (Expanded with Font) -->
     <Style x:Key="CardTitle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentForeground}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="TextAlignment" Value="Left"/>
     </Style>
 
+    <!-- CardValue TextBlock Style (Similar Expansion) -->
     <Style x:Key="CardValue" TargetType="TextBlock">
         <Setter Property="FontSize" Value="20"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentForeground}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="TextAlignment" Value="Left"/>
     </Style>
 
-    <!-- DataGrid Styles -->
-    <Style x:Key="ThemeDataGrid" TargetType="DataGrid">
-        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
-        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
-        <Setter Property="AlternatingRowBackground" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
-        <Setter Property="RowBackground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+    <!-- DataGrid Style (Expanded for SfDataGrid Compatibility, Headers, Selection) -->
+    <Style x:Key="ThemeDataGrid" TargetType="{x:Type syncfusion:SfDataGrid}" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfDataGridStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridBorderBrush}}"/>
+        <Setter Property="AlternatingRowBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridAlternatingRowBackground}}"/>
+        <Setter Property="RowBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridRowBackground}}"/>
+        <Setter Property="HeaderBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=HeaderBackground}}"/>
+        <Setter Property="SelectionBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SelectionBackground}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="RowHoverBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RowHoverBackground}}"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
-    <!-- Status Text Styles -->
+    <!-- StatusTextSuccess TextBlock Style -->
     <Style x:Key="StatusTextSuccess" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="Green"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SuccessBrush}}"/>
         <Setter Property="FontStyle" Value="Italic"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
     </Style>
 
+    <!-- StatusTextInfo (Similar) -->
     <Style x:Key="StatusTextInfo" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="Gray"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=InfoBrush}}"/>
         <Setter Property="FontStyle" Value="Italic"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
         <Setter Property="Margin" Value="0,5,0,0"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
     </Style>
 
-    <!-- StatusBar Styles -->
-    <Style x:Key="ThemeStatusBar" TargetType="StatusBar">
-        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
-        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
+    <!-- BusyText -->
+    <Style x:Key="BusyText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=WarningBrush}}"/>
+        <Setter Property="FontStyle" Value="Italic"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+    </Style>
+
+    <!-- StatusBar Style (Expanded with ItemsPanel) -->
+    <Style x:Key="ThemeStatusBar" TargetType="StatusBar" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=WPFStatusBarStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarBorderBrush}}"/>
         <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <DockPanel LastChildFill="True"/>
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
-    <!-- StatusBarItem Styles -->
+    <!-- StatusBarItem Style -->
     <Style x:Key="ThemeStatusBarItem" TargetType="StatusBarItem">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=StatusBarItemForeground}}"/>
         <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+    </Style>
+
+    <!-- Custom Theme Colors for Wiley Widget -->
+    <SolidColorBrush x:Key="TestConfigBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=CardBackground}}"/>
+    <SolidColorBrush x:Key="TestConfigForeground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentForeground}}"/>
+    <SolidColorBrush x:Key="GrokButtonBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SuccessBrush}}"/>
+    <SolidColorBrush x:Key="GrokButtonForeground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
+    <SolidColorBrush x:Key="WarningBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=WarningBackground}}"/>
+    <SolidColorBrush x:Key="WarningBorderBrush" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=WarningBorderBrush}}"/>
+    <SolidColorBrush x:Key="WarningTextForeground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=WarningTextForeground}}"/>
+    <SolidColorBrush x:Key="ExportButtonBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
+    <SolidColorBrush x:Key="ExportButtonForeground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
+    <SolidColorBrush x:Key="TestApiBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SuccessBrush}}"/>
+    <SolidColorBrush x:Key="SaveSettingsBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
+    <SolidColorBrush x:Key="LoadSettingsBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=CardBackground}}"/>
+    <SolidColorBrush x:Key="RemoveApiBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ErrorBrush}}"/>
+    <SolidColorBrush x:Key="ApiInfoBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=InfoBrush}}"/>
+    <SolidColorBrush x:Key="StatusBorderBrush" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=BorderBrush}}"/>
+    <SolidColorBrush x:Key="GuideButtonBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
+    <SolidColorBrush x:Key="GuideButtonForeground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
+    <SolidColorBrush x:Key="DiagramBackground" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DiagramBackground}}"/>
+    <SolidColorBrush x:Key="RevenueChartColor" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SuccessBrush}}"/>
+    <SolidColorBrush x:Key="ExpensesChartColor" Color="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ErrorBrush}}"/>
+
+    <!-- Validation Error Styles -->
+    <Style x:Key="ValidationErrorStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ErrorBrush}}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style x:Key="ValidationErrorBorderStyle" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ErrorBrush}}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ErrorBackground}}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+
+    <!-- Enhanced TextBox Style with Validation -->
+    <Style x:Key="ValidatedTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Style.Triggers>
+            <Trigger Property="Validation.HasError" Value="True">
+                <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ErrorBrush}}"/>
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ErrorBackground}}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Ribbon Styles -->
+    <Style x:Key="ThemeRibbon" TargetType="syncfusion:Ribbon" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionRibbonStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+
+    <Style x:Key="ThemeRibbonTab" TargetType="syncfusion:RibbonTab" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionRibbonTabStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonTabBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonTabForeground}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="ThemeRibbonBar" TargetType="syncfusion:RibbonBar" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionRibbonBarStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBarBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBarForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RibbonBarBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style x:Key="ThemeRibbonButton" TargetType="syncfusion:RibbonButton" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionRibbonButtonStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="8,4"/>
+    </Style>
+
+    <!-- Tab Control Styles -->
+    <Style x:Key="ThemeTabControl" TargetType="synctools:TabControlAdv" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionTabControlAdvStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=TabControlBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=TabControlForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=TabControlBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+
+    <!-- SfDataGrid Style -->
+    <Style x:Key="ThemeSfDataGrid" TargetType="syncfusion:SfDataGrid" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfDataGridStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridBorderBrush}}"/>
+        <Setter Property="AlternatingRowBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridAlternatingRowBackground}}"/>
+        <Setter Property="RowBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DataGridRowBackground}}"/>
+        <Setter Property="HeaderBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=HeaderBackground}}"/>
+        <Setter Property="SelectionBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SelectionBackground}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="RowHeight" Value="28"/>
+        <Setter Property="AllowSorting" Value="True"/>
+        <Setter Property="AllowFiltering" Value="True"/>
+        <Setter Property="AllowResizingColumns" Value="True"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="RowHoverBackground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=RowHoverBackground}}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- SfChart Style -->
+    <Style x:Key="ThemeSfChart" TargetType="syncfusion:SfChart" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfChartStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ChartBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ChartForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ChartBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Virtualization" Value="True"/>
+    </Style>
+
+    <!-- SfButton Style -->
+    <Style x:Key="ThemeSfButton" TargetType="syncfusion:ButtonAdv" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionButtonAdvStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonBorderBrush}}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="syncfusion:ButtonAdv">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonHoverBackground}}"/>
+                            <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonHoverForeground}}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonPressedBackground}}"/>
+                            <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ButtonPressedBorderBrush}}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DisabledBackground}}"/>
+                            <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DisabledForeground}}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- SfDiagram Style -->
+    <Style x:Key="ThemeSfDiagram" TargetType="syncfusion:SfDiagram" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfDiagramStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DiagramBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DiagramForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=DiagramBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Virtualization" Value="True"/>
+    </Style>
+
+    <!-- SfComboBox Style -->
+    <Style x:Key="ThemeSfComboBox" TargetType="syncfusion:ComboBoxAdv" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionComboBoxAdvStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ComboBoxBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ComboBoxForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ComboBoxBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Padding" Value="8,4"/>
+    </Style>
+
+    <!-- SfAccordion Styles -->
+    <Style x:Key="ThemeSfAccordion" TargetType="syncfusion:SfAccordion" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionSfAccordionStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+
+    <Style x:Key="ThemeSfAccordionItem" TargetType="syncfusion:AccordionItem" BasedOn="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=SyncfusionAccordionItemStyle}}">
+        <Setter Property="Background" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionItemBackground}}"/>
+        <Setter Property="Foreground" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionItemForeground}}"/>
+        <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=AccordionItemBorderBrush}}"/>
+        <Setter Property="FontFamily" Value="{syncfusionskin:ThemeResource ThemeKey={syncfusionskin:ThemeKey Key=ContentFontFamily}}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
 </ResourceDictionary>

@@ -33,6 +33,10 @@
     <Content Include="appsettings.Production.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- Copy theme files to output directory -->
+    <Content Include="Themes\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <PackageReference Include="AutoFixture" />
     <PackageReference Include="AutoFixture.Xunit2" />
     <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" />
@@ -59,9 +63,15 @@
     <PackageReference Include="Syncfusion.Licensing" />
     <PackageReference Include="Syncfusion.SfDiagram.WPF" />
     <PackageReference Include="Syncfusion.SfGrid.WPF" />
+    <PackageReference Include="Syncfusion.SfProgressBar.WPF" />
+    <PackageReference Include="Syncfusion.SfScheduler.WPF" />
     <PackageReference Include="Syncfusion.SfSkinManager.WPF" />
+    <PackageReference Include="Syncfusion.Themes.FluentLight.WPF" />
+    <PackageReference Include="Syncfusion.Themes.FluentDark.WPF" />
     <PackageReference Include="Syncfusion.Tools.WPF" />
     <PackageReference Include="Syncfusion.SfChart.WPF" />
+    <PackageReference Include="Syncfusion.Shared.WPF" />
+    <PackageReference Include="Syncfusion.SfInput.WPF" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
   <PackageReference Include="Microsoft.Extensions.Http" />
   <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
@@ -78,12 +88,18 @@
     <Compile Remove="WileyWidget.Tests\**" />
     <Compile Remove="WileyWidget.UiTests\**" />
     <Compile Remove="WileyWidget.TestModels\**" />
+    <Compile Remove="WileyWidgetTest\**" />
+    <Compile Remove="TestWpfApp\**" />
     <EmbeddedResource Remove="WileyWidget.Tests\**" />
     <EmbeddedResource Remove="WileyWidget.UiTests\**" />
     <EmbeddedResource Remove="WileyWidget.TestModels\**" />
+    <EmbeddedResource Remove="WileyWidgetTest\**" />
+    <EmbeddedResource Remove="TestWpfApp\**" />
     <None Remove="WileyWidget.Tests\**" />
     <None Remove="WileyWidget.UiTests\**" />
     <None Remove="WileyWidget.TestModels\**" />
+    <None Remove="WileyWidgetTest\**" />
+    <None Remove="TestWpfApp\**" />
   </ItemGroup>
 
 </Project>
