@@ -463,41 +463,48 @@ cli:
     cpu_affinity: true
 ```
 
-#### ⚡ **Terminal Commands for Hyperthreading**
+#### 🔧 **Trunk Configuration Setup**
 
-**Quick Enable (with .env support):**
-```batch
-# Windows Batch (loads .env + enables hyperthreading)
-enable-hyperthreading.bat
-```
+**Prerequisites:**
+- ✅ Trunk CLI installed (`trunk --version` should return 1.25.0)
+- ✅ `.trunk/trunk.yaml` configuration file present
+- ✅ Environment variables loaded from `.env` file
+- ✅ GitHub secrets configured (`TRUNK_API_TOKEN`, `TRUNK_ORG_URL_SLUG`)
 
-**Load .env file only:**
+**Quick Setup Commands:**
 ```powershell
-# Load environment variables from .env file
+# 1. Load environment variables for Trunk
 .\scripts\load-env-for-trunk.ps1
 
-# Load with override (replace existing variables)
-.\scripts\load-env-for-trunk.ps1 -OverrideExisting
+# 2. Test environment variable access
+.\scripts\test-env-variables.ps1
 
-# Quiet mode (no output)
-.\scripts\load-env-for-trunk.ps1 -Quiet
+# 3. Run Trunk maintenance and diagnostics
+.\scripts\trunk-maintenance.ps1 -Diagnose -Fix
+
+# 4. Test Trunk configuration
+trunk check --ci --print-failures
 ```
 
-**PowerShell with Full Control:**
-```powershell
-# Enable hyperthreading with performance monitoring
-.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -MonitorPerformance
+**Environment Variables Required:**
+- `TRUNK_TOKEN` (GitHub secret: `TRUNK_API_TOKEN`)
+- `TRUNK_ORG_URL_SLUG` (GitHub secret: `TRUNK_ORG_URL_SLUG`)
+- Azure and QuickBooks variables from `.env` file
 
-# CI-optimized hyperthreading setup
-.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -OptimizeForCI
+**Trunk Actions Enabled:**
+- `trunk-announce` - Repository announcements
+- `trunk-check-pre-push` - Pre-push quality gates
+- `trunk-fmt-pre-commit` - Code formatting on commit
+- `trunk-upgrade-available` - Tool upgrade notifications
+- `trunk-cache-prune` - Cache management
+- `trunk-merge-queue-status` - Merge queue analytics
 
-# Custom thread count
-.\scripts\trunk-hyperthreading-setup.ps1 -EnableHyperthreading -ThreadCount 8
-```
-
-#### 📊 **Performance Benefits**
-- **Hyperthreading CPUs**: Utilizes all logical processors (typically 2x physical cores)
-- **Non-Hyperthreading CPUs**: Optimizes for physical cores + overhead
+**Linters Configured:**
+- `psscriptanalyzer@1.24.0` - PowerShell code analysis
+- `prettier@3.6.2` - Code formatting
+- `gitleaks@8.28.0` - Secret detection
+- `trufflehog@3.90.5` - Security scanning
+- `dotnet-format@9.0.0` - .NET code formatting
 - **Memory Management**: 4GB limit prevents memory exhaustion
 - **CPU Affinity**: Consistent core allocation for stable performance
 - **Parallel Processing**: Concurrent linting and scanning operations

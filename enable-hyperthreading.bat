@@ -6,6 +6,9 @@ echo.
 echo Setting up hyperthreading environment...
 powershell -ExecutionPolicy Bypass -File scripts\trunk-env-setup.ps1
 echo.
+echo Testing environment variable access...
+powershell -ExecutionPolicy Bypass -File scripts\test-env-variables.ps1 -Quiet
+echo.
 echo ✅ Trunk CLI is now configured with hyperthreading and .env support!
 echo 💡 You can now run trunk commands with access to your environment variables
 pause
