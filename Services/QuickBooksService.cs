@@ -36,11 +36,11 @@ public sealed class QuickBooksService
     public bool HasValidAccessToken()
     {
         var s = _settings.Current;
-    // Consider token valid if set and expires more than 60s from now (renew early to avoid edge expiry in-flight)
-    if (string.IsNullOrWhiteSpace(s.QboAccessToken)) return false;
-    // Default(DateTime) means 'unset'
-    if (s.QboTokenExpiry == default) return false;
-    return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(60);
+        // Consider token valid if set and expires more than 60s from now (renew early to avoid edge expiry in-flight)
+        if (string.IsNullOrWhiteSpace(s.QboAccessToken)) return false;
+        // Default(DateTime) means 'unset'
+        if (s.QboTokenExpiry == default) return false;
+        return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(60);
     }
 
     public async System.Threading.Tasks.Task RefreshTokenIfNeededAsync()

@@ -19,7 +19,7 @@ function Show-AzureConnectionGuide {
     Write-Host "📋 How to Get Your Azure SQL Connection Details:" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "1. Go to your Azure Portal: https://portal.azure.com" -ForegroundColor White
-    Write-Host "2. Navigate to your SQL Database (BusBuddy)" -ForegroundColor White
+    Write-Host "2. Navigate to your SQL Database (WileyWidgetDB)" -ForegroundColor White
     Write-Host "3. Go to 'Connection strings' in the left menu" -ForegroundColor White
     Write-Host "4. Copy the ADO.NET connection string" -ForegroundColor White
     Write-Host "5. Extract the following values:" -ForegroundColor White
@@ -29,7 +29,7 @@ function Show-AzureConnectionGuide {
     Write-Host "   - Password: your_password" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Example Connection String:" -ForegroundColor Cyan
-    Write-Host "Server=tcp:busbuddy-server.database.windows.net,1433;Initial Catalog=BusBuddy;Persist Security Info=False;User ID=busbuddy_admin;Password=YourPassword123!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;" -ForegroundColor Gray
+    Write-Host "Server=tcp:wileywidget-server.database.windows.net,1433;Initial Catalog=WileyWidgetDB;Persist Security Info=False;User ID=wileywidget_admin;Password=W1l3yW1dg3t@2025!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;" -ForegroundColor Gray
     Write-Host ""
 }
 

@@ -29,10 +29,10 @@ public static class DatabaseConfiguration
         services.AddDbContext<AppDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
-            var databaseProvider = configuration["DatabaseProvider"] ?? 
-                                 configuration["Database:Provider"] ?? 
+            var databaseProvider = configuration["DatabaseProvider"] ??
+                                 configuration["Database:Provider"] ??
                                  "SQLite";
-            
+
             // Log the connection string and provider for debugging
             Serilog.Log.Information("Database connection string: {ConnectionString}", connectionString);
             Serilog.Log.Information("Database provider: {Provider}", databaseProvider);
@@ -54,7 +54,7 @@ public static class DatabaseConfiguration
                         sqliteOptions.CommandTimeout(30);
                     });
                     break;
-                    
+
                 case "LOCALDB":
                 case "SQLSERVER":
                     options.UseSqlServer(connectionString, sqlOptions =>
@@ -67,7 +67,7 @@ public static class DatabaseConfiguration
                             errorNumbersToAdd: null);
                     });
                     break;
-                    
+
                 default:
                     throw new InvalidOperationException(
                         $"Unsupported database provider: {databaseProvider}. " +

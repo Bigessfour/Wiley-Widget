@@ -1,4 +1,4 @@
-﻿namespace WileyWidgetModels;
+namespace WileyWidgetModels;
 
 public class Class1
 {

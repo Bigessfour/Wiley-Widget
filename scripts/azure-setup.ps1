@@ -1,13 +1,5 @@
 # Azure Setup and Configuration Script for WileyWidget
-# Run this script to set upif ($DeployDatabase) {
-    Write-Information "`n🗄️  Deploying Database Schema..." -InformationAction Continue
-
-    # Run EF Core migrations
-    Write-Information "  Running Entity Framework migrations..." -InformationAction Continue
-    dotnet ef database update --project WileyWidget.csproj
-
-    Write-Information "  ✓ Database schema deployed!" -InformationAction Continue
-}re development environment
+# Run this script to set up your development environment
 
 param(
     [switch]$TestConnection,
@@ -25,14 +17,24 @@ if (!(Test-Path ".env")) {
     exit 1
 }
 
+# Check for administrator privileges
+Write-Information "🔍 Checking for administrator privileges..." -InformationAction Continue
+$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Information "  ❌ Administrator privileges required to set machine environment variables" -InformationAction Continue
+    Write-Information "  Please run this script as administrator or use 'Process' scope" -InformationAction Continue
+    exit 1
+}
+Write-Information "  ✓ Running as administrator" -InformationAction Continue
+
 # Load environment variables
 Write-Information "📖 Loading environment configuration..." -InformationAction Continue
 Get-Content ".env" | ForEach-Object {
     if ($_ -match '^([^=]+)=(.*)$') {
         $key = $matches[1]
         $value = $matches[2]
-        [Environment]::SetEnvironmentVariable($key, $value, "Process")
-        Write-Information "  ✓ $key" -InformationAction Continue
+        [Environment]::SetEnvironmentVariable($key, $value, "Machine")
+        Write-Information "  ✓ $key set in machine environment" -InformationAction Continue
     }
 }
 
@@ -72,19 +74,19 @@ if ($CreateResources) {
 
     # Create Resource Group
     Write-Information "  Creating resource group..." -InformationAction Continue
-    az group create --name "WileyWidget-RG" --location "East US" --output none
+    az group create --name "BusBuddy-RG" --location "westus2" --output none
 
     # Create SQL Server
     Write-Information "  Creating Azure SQL Server..." -InformationAction Continue
-    az sql server create --name $env:AZURE_SQL_SERVER.Split('.')[0] --resource-group "WileyWidget-RG" --location "East US" --admin-user $env:AZURE_SQL_USER --admin-password $env:AZURE_SQL_PASSWORD --output none
+    az sql server create --name $env:AZURE_SQL_SERVER.Split('.')[0] --resource-group "BusBuddy-RG" --location "westus2" --admin-user $env:AZURE_SQL_USER --admin-password $env:AZURE_SQL_PASSWORD --output none
 
     # Create SQL Database
     Write-Information "  Creating Azure SQL Database..." -InformationAction Continue
-    az sql db create --resource-group "WileyWidget-RG" --server $env:AZURE_SQL_SERVER.Split('.')[0] --name $env:AZURE_SQL_DATABASE --service-objective S0 --output none
+    az sql db create --resource-group "BusBuddy-RG" --server $env:AZURE_SQL_SERVER.Split('.')[0] --name $env:AZURE_SQL_DATABASE --service-objective S0 --output none
 
     # Configure firewall
     Write-Information "  Configuring firewall..." -InformationAction Continue
-    az sql server firewall-rule create --resource-group "WileyWidget-RG" --server $env:AZURE_SQL_SERVER.Split('.')[0] --name "AllowAllWindowsAzureIps" --start-ip-address "0.0.0.0" --end-ip-address "0.0.0.0" --output none
+    az sql server firewall-rule create --resource-group "BusBuddy-RG" --server $env:AZURE_SQL_SERVER.Split('.')[0] --name "AllowAllWindowsAzureIps" --start-ip-address "0.0.0.0" --end-ip-address "0.0.0.0" --output none
 
     Write-Information "  ✓ Azure resources created successfully!" -InformationAction Continue
 }

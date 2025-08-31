@@ -1,6 +1,6 @@
 name: CI (Legacy - Use ci-optimized.yml)
 
-on:
+"on":
   push:
     branches: [ main ]
   pull_request:

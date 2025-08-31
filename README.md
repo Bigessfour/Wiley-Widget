@@ -464,15 +464,16 @@ WileyWidget uses secure environment variable management for sensitive configurat
 
 The application is configured to work with Azure SQL Database:
 
-- **Server**: busbuddy-server.database.windows.net
-- **Database**: BusBuddy
-- **Authentication**: SQL Server Authentication
+- **Server**: wileywidget-server.database.windows.net
+- **Database**: WileyWidgetDB
+- **Authentication**: Azure AD Authentication (with managed identity support)
 
 ### Security Notes
 
 - **Never commit** `.env` files to version control
 - **Use strong passwords** for production databases
 - **Rotate credentials** regularly
+- **Use managed identities** for Azure-to-Azure authentication
 - **Store production secrets** in Azure Key Vault
   Pinned packages (NuGet):
 

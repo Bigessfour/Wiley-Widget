@@ -64,6 +64,10 @@ lint:
       paths:
         - .github/**/*.yml
         - .github/**/*.yaml
+    # Skip gitleaks on setup script (contains intentional test secrets)
+    - linters: [gitleaks, trufflehog]
+      paths:
+        - scripts/setup-gitleaks.ps1
     # Skip binary and generated files
     - linters: [ALL]
       paths:

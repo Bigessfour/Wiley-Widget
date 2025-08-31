@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.IO;
 using Syncfusion.SfSkinManager; // Theme manager
@@ -77,7 +77,7 @@ public partial class MainWindow : Window
             Log.Information("Data context established");
 
             Log.Information("Locating Syncfusion controls...");
-            InitializeSyncfusionControls();
+            // InitializeSyncfusionControls(); // Commented out - controls not in simplified XAML
             Log.Information("Syncfusion controls located and referenced");
 
             Log.Information("Applying initial theme: {Theme}", SettingsService.Instance.Current.Theme ?? "Default");
@@ -190,9 +190,9 @@ public partial class MainWindow : Window
             LogSyncfusionControls(child);
         }
     }    /// <summary>
-    /// Dynamically builds text columns for each public property of the widget model when enabled.
-    /// Demonstration only – static XAML columns are preferred when shape is stable.
-    /// </summary>
+         /// Dynamically builds text columns for each public property of the widget model when enabled.
+         /// Demonstration only – static XAML columns are preferred when shape is stable.
+         /// </summary>
     private void BuildDynamicColumns()
     {
         try
@@ -761,83 +761,86 @@ public partial class MainWindow : Window
                     (diagram.Nodes as System.Collections.IList)?.Add(node);
                     enterpriseNodes[enterprise.Id] = node;
 
-                Log.Information("Node added - Position: ({X}, {Y}), Content length: {ContentLength}",
-                    x, y, node.Content?.ToString()?.Length ?? 0);
+                    Log.Information("Node added - Position: ({X}, {Y}), Content length: {ContentLength}",
+                        x, y, node.Content?.ToString()?.Length ?? 0);
 
-                x += 200;
-                if (x > 600) // Wrap to next row
-                {
-                    x = 100;
-                    y += 150;
-                }
-            }
-
-            StructuredLogger.LogSyncfusionOperation("SfDiagram", "NodeCreationCompleted",
-                new { TotalNodes = enterpriseNodes.Count });
-
-            // Create simple connectors for budget interactions
-            StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorCreationStarted",
-                new { InteractionCount = vm.BudgetInteractions.Count });
-
-            var connectorCount = 0;
-            foreach (var interaction in vm.BudgetInteractions)
-            {
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "ProcessingInteraction",
-                    new { InteractionType = interaction.InteractionType, PrimaryId = interaction.PrimaryEnterpriseId, SecondaryId = interaction.SecondaryEnterpriseId });
-
-                if (enterpriseNodes.ContainsKey(interaction.PrimaryEnterpriseId))
-                {
-                    var sourceNode = enterpriseNodes[interaction.PrimaryEnterpriseId];
-                    Node targetNode = null;
-
-                    if (interaction.SecondaryEnterpriseId.HasValue &&
-                        enterpriseNodes.ContainsKey(interaction.SecondaryEnterpriseId.Value))
+                    x += 200;
+                    if (x > 600) // Wrap to next row
                     {
-                        targetNode = enterpriseNodes[interaction.SecondaryEnterpriseId.Value];
+                        x = 100;
+                        y += 150;
                     }
+                }
 
-                    if (targetNode != null)
+                StructuredLogger.LogSyncfusionOperation("SfDiagram", "NodeCreationCompleted",
+                    new { TotalNodes = enterpriseNodes.Count });
+
+                // Create simple connectors for budget interactions
+                StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorCreationStarted",
+                    new { InteractionCount = vm.BudgetInteractions.Count });
+
+                var connectorCount = 0;
+                foreach (var interaction in vm.BudgetInteractions)
+                {
+                    StructuredLogger.LogSyncfusionOperation("SfDiagram", "ProcessingInteraction",
+                        new { InteractionType = interaction.InteractionType, PrimaryId = interaction.PrimaryEnterpriseId, SecondaryId = interaction.SecondaryEnterpriseId });
+
+                    if (enterpriseNodes.ContainsKey(interaction.PrimaryEnterpriseId))
                     {
-                        // Create connector between two enterprises
-#pragma warning disable CA2000 // Dispose objects before losing scope - Connector is managed by diagram
-                        var connector = new Connector
+                        var sourceNode = enterpriseNodes[interaction.PrimaryEnterpriseId];
+                        Node targetNode = null;
+
+                        if (interaction.SecondaryEnterpriseId.HasValue &&
+                            enterpriseNodes.ContainsKey(interaction.SecondaryEnterpriseId.Value))
                         {
-                            SourceNode = sourceNode,
-                            TargetNode = targetNode,
-                            Content = $"{interaction.InteractionType}\n${interaction.MonthlyAmount:F0}"
-                        };
+                            targetNode = enterpriseNodes[interaction.SecondaryEnterpriseId.Value];
+                        }
+
+                        if (targetNode != null)
+                        {
+                            // Create connector between two enterprises
+#pragma warning disable CA2000 // Dispose objects before losing scope - Connector is managed by diagram
+                            var connector = new Connector
+                            {
+                                SourceNode = sourceNode,
+                                TargetNode = targetNode,
+                                Content = $"{interaction.InteractionType}\n${interaction.MonthlyAmount:F0}"
+                            };
 #pragma warning restore CA2000
 
-                        (diagram.Connectors as System.Collections.IList)?.Add(connector);
-                        connectorCount++;
+                            (diagram.Connectors as System.Collections.IList)?.Add(connector);
+                            connectorCount++;
 
-                        StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorAdded",
-                            new { From = sourceNode.Content?.ToString()?.Split('\n')[0] ?? "Unknown",
-                                  To = targetNode.Content?.ToString()?.Split('\n')[0] ?? "Unknown",
-                                  Amount = interaction.MonthlyAmount });
+                            StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorAdded",
+                                new
+                                {
+                                    From = sourceNode.Content?.ToString()?.Split('\n')[0] ?? "Unknown",
+                                    To = targetNode.Content?.ToString()?.Split('\n')[0] ?? "Unknown",
+                                    Amount = interaction.MonthlyAmount
+                                });
+                        }
+                        else
+                        {
+                            StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorSkipped",
+                                new { Reason = "TargetNodeNotFound", SecondaryId = interaction.SecondaryEnterpriseId });
+                        }
                     }
                     else
                     {
                         StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorSkipped",
-                            new { Reason = "TargetNodeNotFound", SecondaryId = interaction.SecondaryEnterpriseId });
+                            new { Reason = "SourceNodeNotFound", PrimaryId = interaction.PrimaryEnterpriseId });
                     }
                 }
-                else
-                {
-                    StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorSkipped",
-                        new { Reason = "SourceNodeNotFound", PrimaryId = interaction.PrimaryEnterpriseId });
-                }
-            }
 
-            var finalNodeCount = (diagram.Nodes as System.Collections.ICollection)?.Count ?? 0;
-            var finalConnectorCount = (diagram.Connectors as System.Collections.ICollection)?.Count ?? 0;
+                var finalNodeCount = (diagram.Nodes as System.Collections.ICollection)?.Count ?? 0;
+                var finalConnectorCount = (diagram.Connectors as System.Collections.ICollection)?.Count ?? 0;
 
-            StructuredLogger.LogSyncfusionOperation("SfDiagram", "InitializationCompleted",
-                new { FinalNodeCount = finalNodeCount, FinalConnectorCount = finalConnectorCount });
+                StructuredLogger.LogSyncfusionOperation("SfDiagram", "InitializationCompleted",
+                    new { FinalNodeCount = finalNodeCount, FinalConnectorCount = finalConnectorCount });
 
-            // Verify diagram state after initialization
-            StructuredLogger.LogSyncfusionOperation("SfDiagram", "PostInitializationVerification",
-                new { IsLoaded = diagram.IsLoaded, IsEnabled = diagram.IsEnabled });
+                // Verify diagram state after initialization
+                StructuredLogger.LogSyncfusionOperation("SfDiagram", "PostInitializationVerification",
+                    new { IsLoaded = diagram.IsLoaded, IsEnabled = diagram.IsEnabled });
 
             }
             catch (Exception ex)
@@ -955,7 +958,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var settings = SettingsService.Instance.Current;
+            AppSettings settings = SettingsService.Instance.Current;
 
             // Save theme
             if (ThemeComboBox.SelectedItem is ComboBoxItem themeItem)
@@ -1234,6 +1237,15 @@ public partial class MainWindow : Window
         {
             StatusBorder.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex));
         }
+    }
+
+    #endregion
+
+    #region Event Handlers
+
+    private void OnExit(object sender, RoutedEventArgs e)
+    {
+        Application.Current.Shutdown();
     }
 
     #endregion

@@ -178,10 +178,11 @@ $csprojFiles = Get-ChildItem -Path . -Filter "*.csproj" -Recurse
 $versionConsistent = $true
 
 foreach ($file in $csprojFiles) {
-    $content = Get-Content $file.FullName
-    if ($content -match '<TargetFramework>net(\d+)\.(\d+)</TargetFramework>') {
+    $content = Get-Content $file.FullName -Raw
+    if ($content -match '<TargetFramework>net(\d+)(?:\.(\d+))?(?:-windows)?</TargetFramework>') {
         $major = $matches[1]
         $minor = $matches[2]
+        if ($minor -eq $null) { $minor = "0" }
         if ("$major.$minor" -ne "9.0") {
             Write-Status "$($file.Name)" "⚠️ Version $major.$minor" "Expected: 9.0"
             $versionConsistent = $false

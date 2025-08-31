@@ -61,18 +61,18 @@ namespace WileyWidget.Services
         /// </summary>
         private readonly ILogger<GrokSupercomputer> _logger;
 
-    /// <summary>
-    /// Optional database context for saving AI results and fetching historical data
-    /// </summary>
-    private readonly AppDbContext? _context;
-
-    /// <summary>
-    /// Database service for AI operations
-    /// </summary>
-    private readonly GrokDatabaseService? _dbService;        /// <summary>
-        /// In-memory cache to store API responses and avoid redundant calls
-        /// Key: Anonymized hash of input data, Value: JSON response from Grok
+        /// <summary>
+        /// Optional database context for saving AI results and fetching historical data
         /// </summary>
+        private readonly AppDbContext? _context;
+
+        /// <summary>
+        /// Database service for AI operations
+        /// </summary>
+        private readonly GrokDatabaseService? _dbService;        /// <summary>
+                                                                 /// In-memory cache to store API responses and avoid redundant calls
+                                                                 /// Key: Anonymized hash of input data, Value: JSON response from Grok
+                                                                 /// </summary>
         private readonly Dictionary<string, string> _cache = new();
 
         /// <summary>
@@ -244,7 +244,8 @@ namespace WileyWidget.Services
 
                 // Prepare anonymized data for transmission to external AI service
                 // Only sends: hashed names, rates, expenses, revenue, and rate payer counts
-                var dataJson = JsonSerializer.Serialize(enterprises.Select(e => new {
+                var dataJson = JsonSerializer.Serialize(enterprises.Select(e => new
+                {
                     AnonymizedName = AnonymizeName(e.Name),
                     e.CurrentRate,
                     e.MonthlyExpenses,
@@ -1230,26 +1231,26 @@ Remember: I'm not your accountant, but this trend screams 'double-check'—have 
             public string? opportunities { get; set; }
         }
 
-    /// <summary>
-    /// Deserialized result from Grok's budget analytics computation.
-    ///
-    /// This class maps the JSON response when requesting comprehensive
-    /// municipal budget calculations from the AI:
-    /// - Aggregated financial totals and balances
-    /// - Per-citizen averages and efficiency ratios
-    /// - Budget status classification
-    ///
-    /// Used internally to transfer AI results to BudgetMetrics objects.
-    /// </summary>
-    internal class BudgetAnalyticsResult
-    {
-        public decimal totalRevenue { get; set; }
-        public decimal totalExpenses { get; set; }
-        public decimal monthlyBalance { get; set; }
-        public int totalCitizens { get; set; }
-        public string? status { get; set; }
-        public decimal averageRevenuePerCitizen { get; set; }
-        public decimal overallEfficiency { get; set; }
+        /// <summary>
+        /// Deserialized result from Grok's budget analytics computation.
+        ///
+        /// This class maps the JSON response when requesting comprehensive
+        /// municipal budget calculations from the AI:
+        /// - Aggregated financial totals and balances
+        /// - Per-citizen averages and efficiency ratios
+        /// - Budget status classification
+        ///
+        /// Used internally to transfer AI results to BudgetMetrics objects.
+        /// </summary>
+        internal class BudgetAnalyticsResult
+        {
+            public decimal totalRevenue { get; set; }
+            public decimal totalExpenses { get; set; }
+            public decimal monthlyBalance { get; set; }
+            public int totalCitizens { get; set; }
+            public string? status { get; set; }
+            public decimal averageRevenuePerCitizen { get; set; }
+            public decimal overallEfficiency { get; set; }
+        }
     }
-}
 }

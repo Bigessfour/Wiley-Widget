@@ -11,7 +11,7 @@ namespace WileyWidget.Models;
 public class BudgetMetrics
 {
     private readonly GrokSupercomputer _grokComputer;
-    
+
     public BudgetMetrics(GrokSupercomputer grokComputer = null)
     {
         _grokComputer = grokComputer;
@@ -30,7 +30,7 @@ public class BudgetMetrics
     /// <summary>
     /// Monthly balance (Revenue - Expenses) - computed by Grok when available
     /// </summary>
-    public decimal MonthlyBalance => _grokComputer != null ? 
+    public decimal MonthlyBalance => _grokComputer != null ?
         TotalRevenue - TotalExpenses : TotalRevenue - TotalExpenses;
 
     /// <summary>

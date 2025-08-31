@@ -114,7 +114,7 @@ public class BudgetInteraction
                 return 0; // Only costs are shared, revenues are direct
 
             int linkedCount = SecondaryEnterpriseId.HasValue ? 2 : 1;
-            
+
             return MonthlyAmount / linkedCount;
         }
         catch (Exception ex)

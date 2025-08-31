@@ -5,7 +5,7 @@ namespace Wiley_Widget
 {
     public class Enterprise : IValidatableObject
     {
-                [Range(0.01, 1000, ErrorMessage = "Rates can't be zero—citizens ain't free!")]
+        [Range(0.01, 1000, ErrorMessage = "Rates can't be zero—citizens ain't free!")]
         public decimal CurrentRate { get; set; }
 
         public decimal MonthlyRevenue { get; set; }

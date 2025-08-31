@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -427,45 +427,45 @@ public partial class App : Application
         }
     }
 
-	/// <summary>
-	/// Configures database services and initializes the database
-	/// </summary>
-	private async void ConfigureDatabaseServices()
-	{
-		try
-		{
-			Log.Information("Configuring database services...");
+    /// <summary>
+    /// Configures database services and initializes the database
+    /// </summary>
+    private async void ConfigureDatabaseServices()
+    {
+        try
+        {
+            Log.Information("Configuring database services...");
 
-			// Build configuration
-			var configuration = new ConfigurationBuilder()
-				.SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-				.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-				.AddUserSecrets<WileyWidget.App>(optional: true)
-				.AddEnvironmentVariables()
-				.Build();
+            // Build configuration
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddUserSecrets<WileyWidget.App>(optional: true)
+                .AddEnvironmentVariables()
+                .Build();
 
-			// Configure services
-			var services = new ServiceCollection();
-			services.AddApplicationServices(configuration);
+            // Configure services
+            var services = new ServiceCollection();
+            services.AddApplicationServices(configuration);
 
-			// Build service provider
-			var serviceProvider = services.BuildServiceProvider();
+            // Build service provider
+            var serviceProvider = services.BuildServiceProvider();
 
-			// Initialize service locator for global access
-			ServiceLocator.Initialize(serviceProvider);
+            // Initialize service locator for global access
+            ServiceLocator.Initialize(serviceProvider);
 
-			// Initialize database
-			await DatabaseConfiguration.EnsureDatabaseCreatedAsync(serviceProvider);
+            // Initialize database
+            await DatabaseConfiguration.EnsureDatabaseCreatedAsync(serviceProvider);
 
-			Log.Information("Database services configured successfully");
-		}
-		catch (Exception ex)
-		{
-			Log.Error(ex, "Failed to configure database services");
-			// In development, you might want to show a message box or handle this differently
-			// For now, we'll log the error and continue - the app can still run without database
-		}
-	}
+            Log.Information("Database services configured successfully");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to configure database services");
+            // In development, you might want to show a message box or handle this differently
+            // For now, we'll log the error and continue - the app can still run without database
+        }
+    }
 
     /// <summary>
     /// Loads user settings and applies theme configuration.
@@ -674,10 +674,10 @@ public partial class App : Application
         }
     }
 
-	/// <summary>
-	/// Registers the Syncfusion license using precedence: environment variable (SYNCFUSION_LICENSE_KEY) > side-by-side license.key file.
-	/// Falls back silently if neither is present so the app can still run in development (will show trial banner).
-	/// </summary>
+    /// <summary>
+    /// Registers the Syncfusion license using precedence: environment variable (SYNCFUSION_LICENSE_KEY) > side-by-side license.key file.
+    /// Falls back silently if neither is present so the app can still run in development (will show trial banner).
+    /// </summary>
     /// <summary>
     /// Loads application configuration from multiple sources with fallback support.
     ///
@@ -841,11 +841,11 @@ public partial class App : Application
         }
     }
 
-	/// <summary>
-	/// Partial hook allowing a private, untracked file (e.g. LicenseKey.Private.cs) to embed the license.
-	/// Return true if a key was registered. Default (no implementation) returns false.
-	/// </summary>
-	private partial bool TryRegisterEmbeddedLicense();
+    /// <summary>
+    /// Partial hook allowing a private, untracked file (e.g. LicenseKey.Private.cs) to embed the license.
+    /// Return true if a key was registered. Default (no implementation) returns false.
+    /// </summary>
+    private partial bool TryRegisterEmbeddedLicense();
 
     /// <summary>
     /// Configures the Serilog structured logging system with comprehensive settings.

@@ -9,6 +9,7 @@ using FlaUI.Core.Definitions;
 using System;
 using System.Threading;
 using System.IO;
+using System.Linq;
 
 namespace WileyWidget.UiTests;
 
@@ -111,7 +112,7 @@ public class MainWindowUITests : IDisposable
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Launch attempt {i+1} failed: {ex.Message}—because CI hates fun.");
+                Console.WriteLine($"Launch attempt {i + 1} failed: {ex.Message}—because CI hates fun.");
                 Thread.Sleep(5000); // Backoff
             }
         }
@@ -316,20 +317,20 @@ public class MainWindowUITests : IDisposable
 
         // Declare variables for cleanup
         string originalConnectionString = null;
-        string originalBusBuddyConnection = null;
+        string originalAzureConnection = null;
         string originalDatabaseProvider = null;
 
         try
         {
             // Arrange - Set correct environment variables for SQLite
             originalConnectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION");
-            originalBusBuddyConnection = Environment.GetEnvironmentVariable("BUSBUDDY_CONNECTION");
+            originalAzureConnection = Environment.GetEnvironmentVariable("AZURE_CONNECTION");
             originalDatabaseProvider = Environment.GetEnvironmentVariable("DatabaseProvider");
 
-            // Set SQLite connection string for test
-            Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", "Data Source=WileyWidget.db");
-            Environment.SetEnvironmentVariable("BUSBUDDY_CONNECTION", null);
-            Environment.SetEnvironmentVariable("DatabaseProvider", null);
+            // Set SQLite connection string for test with absolute path
+            Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", @"Data Source=C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.db");
+            Environment.SetEnvironmentVariable("AZURE_CONNECTION", null);
+            Environment.SetEnvironmentVariable("DatabaseProvider", "SQLite");
 
             var processStartInfo = new ProcessStartInfo
             {
@@ -355,7 +356,7 @@ public class MainWindowUITests : IDisposable
         {
             // Cleanup - Restore original environment variables
             Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", originalConnectionString);
-            Environment.SetEnvironmentVariable("BUSBUDDY_CONNECTION", originalBusBuddyConnection);
+            Environment.SetEnvironmentVariable("AZURE_CONNECTION", originalAzureConnection);
             Environment.SetEnvironmentVariable("DatabaseProvider", originalDatabaseProvider);
 
             // Cleanup application
@@ -392,16 +393,16 @@ public class MainWindowUITests : IDisposable
 
         // Store original environment variables
         var originalConnectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION");
-        var originalBusBuddyConnection = Environment.GetEnvironmentVariable("BUSBUDDY_CONNECTION");
+        var originalAzureConnection = Environment.GetEnvironmentVariable("AZURE_CONNECTION");
         var originalDatabaseProvider = Environment.GetEnvironmentVariable("DatabaseProvider");
 
         try
         {
             // Arrange - Set correct environment variables for SQLite
-            // Set SQLite connection string for test
-            Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", "Data Source=WileyWidget.db");
-            Environment.SetEnvironmentVariable("BUSBUDDY_CONNECTION", null);
-            Environment.SetEnvironmentVariable("DatabaseProvider", null);
+            // Set SQLite connection string for test with absolute path
+            Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", @"Data Source=C:\Users\biges\Desktop\Wiley_Widget\bin\Debug\net9.0-windows\WileyWidget.db");
+            Environment.SetEnvironmentVariable("AZURE_CONNECTION", null);
+            Environment.SetEnvironmentVariable("DatabaseProvider", "SQLite");
 
             var processStartInfo = new ProcessStartInfo
             {
@@ -432,7 +433,7 @@ public class MainWindowUITests : IDisposable
         {
             // Cleanup - Restore original environment variables
             Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", originalConnectionString);
-            Environment.SetEnvironmentVariable("BUSBUDDY_CONNECTION", originalBusBuddyConnection);
+            Environment.SetEnvironmentVariable("AZURE_CONNECTION", originalAzureConnection);
             Environment.SetEnvironmentVariable("DatabaseProvider", originalDatabaseProvider);
 
             // Cleanup application

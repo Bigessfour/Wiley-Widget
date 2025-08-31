@@ -3,7 +3,7 @@
 
 name: Feature Branch CI/CD
 
-on:
+"on":
     push:
         branches: [feature/**, bugfix/**, hotfix/**, fix-cicd-workflows]
     pull_request:

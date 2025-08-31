@@ -20,81 +20,81 @@ using Azure.Extensions.AspNetCore.Configuration;
 
 namespace WileyWidget.ViewModels;
 
+/// <summary>
+/// Enhanced main view model providing widgets, QuickBooks integration, and enterprise management
+/// Includes comprehensive logging for all operations and user interactions
+/// </summary>
+public partial class MainViewModel : ObservableObject, IDisposable
+{
+    private readonly QuickBooksService _qb;
+    private readonly IConfiguration _config;
+    private readonly GrokSupercomputer _grokSupercomputer;
+    private readonly AppDbContext _dbContext;
+    private readonly IEnterpriseRepository _enterpriseRepository;
+    private readonly WpfMiddlewareService _middlewareService;
+    private readonly EnterpriseViewModel _enterpriseViewModel;
+
     /// <summary>
-    /// Enhanced main view model providing widgets, QuickBooks integration, and enterprise management
-    /// Includes comprehensive logging for all operations and user interactions
+    /// Constructor with dependency injection
     /// </summary>
-    public partial class MainViewModel : ObservableObject, IDisposable
+    public MainViewModel(
+        IConfiguration config,
+        GrokSupercomputer grokSupercomputer = null,
+        AppDbContext dbContext = null,
+        IEnterpriseRepository enterpriseRepository = null,
+        QuickBooksService quickBooksService = null,
+        WpfMiddlewareService middlewareService = null)
     {
-        private readonly QuickBooksService _qb;
-        private readonly IConfiguration _config;
-        private readonly GrokSupercomputer _grokSupercomputer;
-        private readonly AppDbContext _dbContext;
-        private readonly IEnterpriseRepository _enterpriseRepository;
-        private readonly WpfMiddlewareService _middlewareService;
-        private readonly EnterpriseViewModel _enterpriseViewModel;
+        Log.Information("MainViewModel initialization started with DI");
 
-        /// <summary>
-        /// Constructor with dependency injection
-        /// </summary>
-        public MainViewModel(
-            IConfiguration config,
-            GrokSupercomputer grokSupercomputer = null,
-            AppDbContext dbContext = null,
-            IEnterpriseRepository enterpriseRepository = null,
-            QuickBooksService quickBooksService = null,
-            WpfMiddlewareService middlewareService = null)
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _grokSupercomputer = grokSupercomputer;
+        _dbContext = dbContext;
+        _enterpriseRepository = enterpriseRepository;
+        _qb = quickBooksService;
+        _middlewareService = middlewareService ?? new WpfMiddlewareService();
+
+        // Initialize enterprise management
+        _enterpriseViewModel = new EnterpriseViewModel(_enterpriseRepository);
+
+        // Initialize default widgets
+        InitializeDefaultWidgets();
+
+        Log.Information("MainViewModel initialized successfully with DI");
+    }
+
+    public ObservableCollection<Enterprise> Enterprises => _enterpriseViewModel?.Enterprises ?? new();
+    public Enterprise SelectedEnterprise
+    {
+        get => _enterpriseViewModel?.SelectedEnterprise;
+        set
         {
-            Log.Information("MainViewModel initialization started with DI");
-
-            _config = config ?? throw new ArgumentNullException(nameof(config));
-            _grokSupercomputer = grokSupercomputer;
-            _dbContext = dbContext;
-            _enterpriseRepository = enterpriseRepository;
-            _qb = quickBooksService;
-            _middlewareService = middlewareService ?? new WpfMiddlewareService();
-
-            // Initialize enterprise management
-            _enterpriseViewModel = new EnterpriseViewModel(_enterpriseRepository);
-
-            // Initialize default widgets
-            InitializeDefaultWidgets();
-
-            Log.Information("MainViewModel initialized successfully with DI");
+            if (_enterpriseViewModel != null)
+                _enterpriseViewModel.SelectedEnterprise = value;
         }
+    }
 
-        public ObservableCollection<Enterprise> Enterprises => _enterpriseViewModel?.Enterprises ?? new();
-        public Enterprise SelectedEnterprise
-        {
-            get => _enterpriseViewModel?.SelectedEnterprise;
-            set
-            {
-                if (_enterpriseViewModel != null)
-                    _enterpriseViewModel.SelectedEnterprise = value;
-            }
-        }
+    // Budget interactions properties
+    public ObservableCollection<BudgetInteraction> BudgetInteractions { get; } = new();
 
-        // Budget interactions properties
-        public ObservableCollection<BudgetInteraction> BudgetInteractions { get; } = new();
+    public Models.BudgetInsights BudgetInsights => _enterpriseViewModel?.BudgetInsights ?? new();
 
-        public Models.BudgetInsights BudgetInsights => _enterpriseViewModel?.BudgetInsights ?? new();
+    /// <summary>Currently selected widget in the grid (null when none selected).</summary>
+    [ObservableProperty]
+    private Widget selectedWidget;
 
-        /// <summary>Currently selected widget in the grid (null when none selected).</summary>
-        [ObservableProperty]
-        private Widget selectedWidget;
+    /// <summary>Collection of widgets for the main view.</summary>
+    public ObservableCollection<Widget> Widgets { get; } = new();
 
-        /// <summary>Collection of widgets for the main view.</summary>
-        public ObservableCollection<Widget> Widgets { get; } = new();
+    /// <summary>Indicates if QuickBooks operations are in progress.</summary>
+    [ObservableProperty]
+    private bool quickBooksBusy;
 
-        /// <summary>Indicates if QuickBooks operations are in progress.</summary>
-        [ObservableProperty]
-        private bool quickBooksBusy;
+    /// <summary>Collection of QuickBooks customers.</summary>
+    public ObservableCollection<Customer> QuickBooksCustomers { get; } = new();
 
-        /// <summary>Collection of QuickBooks customers.</summary>
-        public ObservableCollection<Customer> QuickBooksCustomers { get; } = new();
-
-        /// <summary>Collection of QuickBooks invoices.</summary>
-        public ObservableCollection<Invoice> QuickBooksInvoices { get; } = new();
+    /// <summary>Collection of QuickBooks invoices.</summary>
+    public ObservableCollection<Invoice> QuickBooksInvoices { get; } = new();
 
     [RelayCommand]
     /// <summary>
@@ -112,7 +112,7 @@ namespace WileyWidget.ViewModels;
         if (SelectedWidget == null)
         {
             SelectedWidget = Widgets[0];
-            Log.Information("Selected first widget: {WidgetName} (ID: {WidgetId})", 
+            Log.Information("Selected first widget: {WidgetName} (ID: {WidgetId})",
                            SelectedWidget.Name, SelectedWidget.Id);
             return;
         }
@@ -201,7 +201,7 @@ namespace WileyWidget.ViewModels;
             Widgets.Add(new Widget { Id = 1, Name = "Alpha", Category = "Test", Price = 10.00m });
             Widgets.Add(new Widget { Id = 2, Name = "Beta", Category = "Test", Price = 20.00m });
             Widgets.Add(new Widget { Id = 3, Name = "Gamma", Category = "Test", Price = 30.00m });
-            
+
             SelectedWidget = Widgets[0];
             Log.Information("Initialized {WidgetCount} default widgets", Widgets.Count);
         }
@@ -262,7 +262,7 @@ namespace WileyWidget.ViewModels;
         var selectedEnterprise = _enterpriseViewModel.SelectedEnterprise;
         if (selectedEnterprise != null)
         {
-            Log.Information("User initiated enterprise save - Enterprise: {Name} (ID: {Id})", 
+            Log.Information("User initiated enterprise save - Enterprise: {Name} (ID: {Id})",
                            selectedEnterprise.Name, selectedEnterprise.Id);
         }
         else
@@ -313,7 +313,7 @@ namespace WileyWidget.ViewModels;
             return;
         }
 
-        Log.Information("User initiated Grok AI crunch analysis for {Count} enterprises", 
+        Log.Information("User initiated Grok AI crunch analysis for {Count} enterprises",
                        _enterpriseViewModel.Enterprises.Count);
 
         try
@@ -330,7 +330,7 @@ Output structured analysis with actionable insights.";
 
             // Run the AI-powered analysis
             var updatedEnterprises = await _grokSupercomputer.CrunchNumbersAsync(
-                _enterpriseViewModel.Enterprises.ToList(), 
+                _enterpriseViewModel.Enterprises.ToList(),
                 algoDescription);
 
             // Update the enterprise collection (this will trigger UI refresh via ObservableCollection)
@@ -340,13 +340,13 @@ Output structured analysis with actionable insights.";
                 _enterpriseViewModel.Enterprises.Add(enterprise);
             }
 
-            Log.Information("Grok crunch analysis completed successfully - {Count} enterprises updated", 
+            Log.Information("Grok crunch analysis completed successfully - {Count} enterprises updated",
                            updatedEnterprises.Count);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Grok crunch analysis failed - falling back to local calculations");
-            
+
             // Could implement local fallback here if desired
             // For now, just log the error and let user know
         }
@@ -603,16 +603,16 @@ Output structured analysis with actionable insights.";
         try
         {
             var enterprisesList = _enterpriseViewModel.Enterprises.ToList();
-            
+
             // Get advanced analytics from Grok
             var budgetMetrics = await _grokSupercomputer.ComputeBudgetAnalyticsAsync(enterprisesList);
-            
+
             // Generate AI-powered insights
             var budgetInsights = await _grokSupercomputer.GenerateBudgetInsightsAsync(budgetMetrics, enterprisesList);
-            
+
             // Update UI with results
             // Note: You'd need to bind these to UI properties
-            
+
             Log.Information("Comprehensive Grok budget analysis completed");
         }
         catch (Exception ex)

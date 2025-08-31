@@ -68,7 +68,7 @@ public class MainViewModelTests : IClassFixture<WpfTestFixture>, IDisposable
             services.AddTransient<QuickBooksService>();
             services.AddTransient<WpfMiddlewareService>();
             services.AddTransient<GrokDatabaseService>();
-            
+
             // Add SettingsService as singleton (matches its design)
             services.AddTransient<SettingsService>(sp => SettingsService.Instance);
 

@@ -59,7 +59,7 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable
     public EnterpriseViewModel(IEnterpriseRepository enterpriseRepository)
     {
         _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
-        Log.Information("EnterpriseViewModel initialized with repository: {RepositoryType}", 
+        Log.Information("EnterpriseViewModel initialized with repository: {RepositoryType}",
                        enterpriseRepository.GetType().Name);
 
         // Try to initialize GrokSupercomputer if configuration is available

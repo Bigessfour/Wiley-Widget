@@ -3,7 +3,7 @@
 
 name: CI/CD with 90% Success Rate
 
-on:
+"on":
     push:
         branches: [main]
     pull_request:

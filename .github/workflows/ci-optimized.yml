@@ -1,28 +1,27 @@
-# Wiley Widget CI/CD Pipeline - 90% Success Rate Optimized
-# This workflow implements enterprise-grade practices for maximum reliability
-
 name: CI/CD 90% Success Rate
 
-on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
-    schedule:
-        # Run daily health check at 2 AM UTC
-        - cron: '0 2 * * *'
-    workflow_dispatch:
-        inputs:
-            emergency_mode:
-                description: 'Emergency mode - skip non-critical checks'
-                required: false
-                default: false
-                type: boolean
-            full_matrix:
-                description: 'Run full test matrix'
-                required: false
-                default: false
-                type: boolean
+"on":
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Run daily health check at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      emergency_mode:
+        description: 'Emergency mode - skip non-critical checks'
+        required: false
+        default: false
+        type: boolean
+      full_matrix:
+        description: 'Run full test matrix'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
     contents: read
@@ -39,10 +38,10 @@ jobs:
         name: Health Validation
         runs-on: windows-latest
         outputs:
-            should_skip: ${{ steps.health.outputs.should_skip }}
-            dotnet_version: ${{ steps.health.outputs.dotnet_version }}
-            cache_hit: ${{ steps.cache.outputs.cache-hit }}
-            emergency_mode: ${{ steps.health.outputs.emergency_mode }}
+            should_skip: "${{ steps.health.outputs.should_skip }}"
+            dotnet_version: "${{ steps.health.outputs.dotnet_version }}"
+            cache_hit: "${{ steps.cache.outputs.cache-hit }}"
+            emergency_mode: "${{ steps.health.outputs.emergency_mode }}"
         steps:
             - name: Checkout (minimal)
               uses: actions/checkout@v4
@@ -52,12 +51,12 @@ jobs:
             - name: Environment Health Check
               id: health
               run: |
-                  Write-Host "🏥 Environment Health Validation..." -ForegroundColor Cyan
+                  Write-Host "[HEALTH] Environment Health Validation..." -ForegroundColor Cyan
 
                   # Emergency mode check
                   $emergencyMode = "${{ github.event.inputs.emergency_mode }}" -eq "true" -or "${{ github.event_name }}" -eq "schedule"
                   if ($emergencyMode) {
-                      Write-Host "🚨 Emergency mode activated" -ForegroundColor Yellow
+                      Write-Host "[ALERT] Emergency mode activated" -ForegroundColor Yellow
                       "emergency_mode=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                       "should_skip=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                       exit 0
@@ -69,7 +68,7 @@ jobs:
                       $changed_files = git diff --name-only HEAD~1 2>$null
                       $only_docs = $changed_files | Where-Object { $_ -match '\.(md|txt|yml|yaml|json)$' -and $_ -notmatch 'src/' -and $_ -notmatch 'scripts/' }
                       if ($only_docs -and $changed_files.Count -eq $only_docs.Count) {
-                          Write-Host "📝 Documentation-only changes detected" -ForegroundColor Green
+                          Write-Host "[NOTE] Documentation-only changes detected" -ForegroundColor Green
                           "should_skip=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                           exit 0
                       }
@@ -80,10 +79,10 @@ jobs:
                   # .NET SDK validation
                   try {
                       $dotnetVersion = dotnet --version
-                      Write-Host "✅ .NET SDK: $dotnetVersion" -ForegroundColor Green
+                      Write-Host "[SUCCESS] .NET SDK: $dotnetVersion" -ForegroundColor Green
                       "dotnet_version=$dotnetVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                   } catch {
-                      Write-Host "❌ .NET SDK validation failed" -ForegroundColor Red
+                      Write-Host "[ERROR] .NET SDK validation failed" -ForegroundColor Red
                       exit 1
                   }
 
@@ -117,7 +116,7 @@ jobs:
 
                       # Circuit breaker logic
                       if ($failureRate -gt 50) {
-                          Write-Host "🚨 Circuit breaker triggered - High failure rate detected" -ForegroundColor Red
+                          Write-Host "[ALERT] Circuit breaker triggered - High failure rate detected" -ForegroundColor Red
                           "circuit_breaker_tripped=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                           "emergency_mode=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                       } elseif ($failureRate -gt 30) {
@@ -125,7 +124,7 @@ jobs:
                           "circuit_breaker_tripped=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                           "enhanced_monitoring=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                       } else {
-                          Write-Host "✅ Circuit breaker clear" -ForegroundColor Green
+                          Write-Host "[SUCCESS] Circuit breaker clear" -ForegroundColor Green
                           "circuit_breaker_tripped=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                           "enhanced_monitoring=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                       }
@@ -175,7 +174,7 @@ jobs:
                   dotnet build --no-restore --configuration ${{ matrix.configuration }} --verbosity minimal /bl:msbuild.binlog /p:DeterministicSourcePaths=true
 
                   if ($LASTEXITCODE -ne 0) {
-                      Write-Host "❌ Build failed, checking diagnostics..." -ForegroundColor Red
+                      Write-Host "[ERROR] Build failed, checking diagnostics..." -ForegroundColor Red
                       # Extract error summary from binlog
                       dotnet msbuild -t:PrintTarget "msbuild.binlog" 2>$null | Select-String -Pattern "error|Error" | Select-Object -First 10
                       exit 1
@@ -185,7 +184,7 @@ jobs:
               id: test-run
               continue-on-error: true
               run: |
-                  Write-Host "🧪 Running ${{ matrix.test-category }} tests..." -ForegroundColor Cyan
+                  Write-Host "[TEST] Running ${{ matrix.test-category }} tests..." -ForegroundColor Cyan
 
                   $testFilter = switch ("${{ matrix.test-category }}") {
                       "Unit" { "Category!=UiSmokeTests&Category!=HighInteraction&Category!=PostMigration" }
@@ -215,7 +214,7 @@ jobs:
             - name: Test Results Analysis
               if: always()
               run: |
-                  Write-Host "📊 Analyzing test results..." -ForegroundColor Cyan
+                  Write-Host "[STATS] Analyzing test results..." -ForegroundColor Cyan
 
                   $testCategory = "${{ matrix.test-category }}"
                   $trxFile = "TestResults/test-results-$testCategory.trx"
@@ -285,7 +284,7 @@ jobs:
             - name: Code Quality Analysis
               if: matrix.check-type == 'CodeQuality'
               run: |
-                  Write-Host "🔍 Running code quality analysis..." -ForegroundColor Cyan
+                  Write-Host "[SEARCH] Running code quality analysis..." -ForegroundColor Cyan
 
                   # Roslyn analyzers
                   dotnet build --configuration Release --verbosity minimal /warnaserror- /warn:1
@@ -299,7 +298,7 @@ jobs:
             - name: Performance Baseline
               if: matrix.check-type == 'Performance'
               run: |
-                  Write-Host "⚡ Performance analysis..." -ForegroundColor Cyan
+                  Write-Host "[FAST] Performance analysis..." -ForegroundColor Cyan
 
                   # Build performance metrics
                   $buildTime = Measure-Command { dotnet build --configuration Release --verbosity quiet }
@@ -384,7 +383,7 @@ jobs:
               if: always()
               run: |
                   if (Test-Path "ui-test-results.trx") {
-                      Write-Host "📊 UI Test Results:" -ForegroundColor Cyan
+                      Write-Host "[STATS] UI Test Results:" -ForegroundColor Cyan
                       # Parse and display UI test results
                   }
 
@@ -398,29 +397,29 @@ jobs:
             - name: Deployment Readiness Check
               id: readiness
               run: |
-                  Write-Host "🚀 Deployment Readiness Assessment..." -ForegroundColor Cyan
+                  Write-Host "[START] Deployment Readiness Assessment..." -ForegroundColor Cyan
 
                   # Check all required conditions
                   $buildSuccess = "${{ needs.build-test-matrix.result }}" -eq "success"
                   $qualitySuccess = "${{ needs.quality-assurance.result }}" -eq "success"
                   $uiSuccess = "${{ needs.ui-tests.result }}" -eq "success" -or "${{ needs.ui-tests.result }}" -eq "skipped"
 
-                  Write-Host "Build Status: $(if ($buildSuccess) { "✅" } else { "❌" })" -ForegroundColor $(if ($buildSuccess) { "Green" } else { "Red" })
-                  Write-Host "Quality Status: $(if ($qualitySuccess) { "✅" } else { "❌" })" -ForegroundColor $(if ($qualitySuccess) { "Green" } else { "Red" })
-                  Write-Host "UI Tests Status: $(if ($uiSuccess) { "✅" } else { "❌" })" -ForegroundColor $(if ($uiSuccess) { "Green" } else { "Red" })
+                  Write-Host "Build Status: $(if ($buildSuccess) { "[SUCCESS]" } else { "[ERROR]" })" -ForegroundColor $(if ($buildSuccess) { "Green" } else { "Red" })
+                  Write-Host "Quality Status: $(if ($qualitySuccess) { "[SUCCESS]" } else { "[ERROR]" })" -ForegroundColor $(if ($qualitySuccess) { "Green" } else { "Red" })
+                  Write-Host "UI Tests Status: $(if ($uiSuccess) { "[SUCCESS]" } else { "[ERROR]" })" -ForegroundColor $(if ($uiSuccess) { "Green" } else { "Red" })
 
                   if ($buildSuccess -and $qualitySuccess) {
-                      Write-Host "✅ Deployment Ready" -ForegroundColor Green
+                      Write-Host "[SUCCESS] Deployment Ready" -ForegroundColor Green
                       "deployment_ready=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                   } else {
-                      Write-Host "❌ Deployment Blocked" -ForegroundColor Red
+                      Write-Host "[ERROR] Deployment Blocked" -ForegroundColor Red
                       "deployment_ready=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
                   }
 
             - name: Deployment Strategy Selection
               if: steps.readiness.outputs.deployment_ready == 'true'
               run: |
-                  Write-Host "🎯 Selecting Deployment Strategy..." -ForegroundColor Cyan
+                  Write-Host "[TARGET] Selecting Deployment Strategy..." -ForegroundColor Cyan
 
                   # Determine deployment strategy based on change type and risk assessment
                   $changeType = "patch"  # Could be determined by commit analysis
@@ -479,7 +478,7 @@ jobs:
         steps:
             - name: Calculate Success Metrics
               run: |
-                  Write-Host "📈 Calculating Success Metrics..." -ForegroundColor Cyan
+                  Write-Host "[METRICS] Calculating Success Metrics..." -ForegroundColor Cyan
 
                   # Calculate overall success rate
                   $totalJobs = 5  # health, build-test, quality, ui-tests, deployment
@@ -554,7 +553,7 @@ jobs:
                   $auditTrail | Out-File "audit-trail-${{ github.run_number }}.json" -Encoding UTF8
 
                   # Sign the audit trail (conceptual - would need actual signing implementation)
-                  Write-Host "✅ Audit trail generated and signed" -ForegroundColor Green
+                  Write-Host "[SUCCESS] Audit trail generated and signed" -ForegroundColor Green
 
             - name: Success Rate Alert
               if: steps.metrics.outputs.success_rate < 90
@@ -576,19 +575,19 @@ jobs:
               with:
                   script: |
                       const successRate = ${{ steps.metrics.outputs.success_rate }};
-                      const status = successRate >= 90 ? '✅' : successRate >= 75 ? '⚠️' : '❌';
+                      const status = successRate >= 90 ? '[SUCCESS]' : successRate >= 75 ? '⚠️' : '[ERROR]';
 
                       const body = `
-                      ## 🚀 CI/CD Pipeline Results
+                      ## [START] CI/CD Pipeline Results
 
                       **Overall Success Rate:** ${status} ${{ steps.metrics.outputs.success_rate }}%
 
                       ### Job Status
-                      - Health Validation: ${{ needs.health-validation.result === 'success' ? '✅' : '❌' }}
-                      - Build & Test Matrix: ${{ needs.build-test-matrix.result === 'success' ? '✅' : '❌' }}
-                      - Quality Assurance: ${{ needs.quality-assurance.result === 'success' ? '✅' : '❌' }}
-                      - UI Tests: ${{ needs.ui-tests.result === 'success' ? '✅' : needs.ui-tests.result === 'skipped' ? '⏭️' : '❌' }}
-                      - Deployment Readiness: ${{ needs.deployment-readiness.result === 'success' ? '✅' : '❌' }}
+                      - Health Validation: ${{ needs.health-validation.result === 'success' ? '[SUCCESS]' : '[ERROR]' }}
+                      - Build & Test Matrix: ${{ needs.build-test-matrix.result === 'success' ? '[SUCCESS]' : '[ERROR]' }}
+                      - Quality Assurance: ${{ needs.quality-assurance.result === 'success' ? '[SUCCESS]' : '[ERROR]' }}
+                      - UI Tests: ${{ needs.ui-tests.result === 'success' ? '[SUCCESS]' : needs.ui-tests.result === 'skipped' ? '⏭️' : '[ERROR]' }}
+                      - Deployment Readiness: ${{ needs.deployment-readiness.result === 'success' ? '[SUCCESS]' : '[ERROR]' }}
 
                       ### Performance Metrics
                       - .NET Version: ${{ needs.health-validation.outputs.dotnet_version }}

@@ -219,7 +219,7 @@ public class DatabaseConfigurationTests
     {
         // Test error handling with truly invalid connection string
         var services = new ServiceCollection();
-        services.AddDbContext<AppDbContext>(options => 
+        services.AddDbContext<AppDbContext>(options =>
             options.UseSqlite("Data Source=C:\\Invalid\\Path\\That\\Does\\Not\\Exist\\database.db"));
         services.AddScoped<DatabaseSeeder>();
         var serviceProvider = services.BuildServiceProvider();
