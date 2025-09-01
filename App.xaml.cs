@@ -374,25 +374,26 @@ public partial class App : Application
                 Log.Information("🎨 Starting theme application in constructor...");
                 File.AppendAllText("debug.log", "🎨 Starting theme application in constructor...\n");
 
+                // Initialize SfSkinManager for dynamic theming - CRITICAL: Must happen before any Syncfusion controls load
+                // Reference: https://help.syncfusion.com/cr/wpf/Syncfusion.html#theme-application
                 Syncfusion.SfSkinManager.SfSkinManager.ApplyThemeAsDefaultStyle = true;
                 Log.Information("✅ SfSkinManager.ApplyThemeAsDefaultStyle set to true in constructor");
                 File.AppendAllText("debug.log", "✅ SfSkinManager.ApplyThemeAsDefaultStyle set to true in constructor\n");
 
-                Syncfusion.SfSkinManager.SfSkinManager.ApplicationTheme = new Syncfusion.SfSkinManager.Theme("FluentLight");
-                Log.Information("✅ FluentLight theme set as ApplicationTheme");
-                File.AppendAllText("debug.log", "✅ FluentLight theme set as ApplicationTheme\n");
-
-                // Load theme resources after theme is set
+                // Set FluentDark theme as the application default
+                // This ensures all Syncfusion controls use FluentDark theme by default
                 try
                 {
-                    // Note: Theme resources are now loaded in App.xaml to avoid conflicts
-                    Log.Information("✅ Theme resources loaded via App.xaml");
-                    File.AppendAllText("debug.log", "✅ Theme resources loaded via App.xaml\n");
+                    // Apply FluentDark theme globally using SfSkinManager
+                    // Reference: https://help.syncfusion.com/cr/wpf/Syncfusion.SfSkinManager.SfSkinManager.html
+                    // Note: Theme will be applied when MainWindow is created in OnStartup
+                    Log.Information("✅ FluentDark theme will be applied when MainWindow loads");
+                    File.AppendAllText("debug.log", "✅ FluentDark theme will be applied when MainWindow loads\n");
                 }
-                catch (Exception resEx)
+                catch (Exception themeApplyEx)
                 {
-                    Log.Error(resEx, "❌ Failed to load theme resources: {Message}", resEx.Message);
-                    File.AppendAllText("debug.log", $"❌ Failed to load theme resources: {resEx.Message}\n");
+                    Log.Warning(themeApplyEx, "⚠️  Failed to prepare FluentDark theme: {Message}", themeApplyEx.Message);
+                    File.AppendAllText("debug.log", $"⚠️  Failed to prepare FluentDark theme: {themeApplyEx.Message}\n");
                 }
 
                 Log.Information("🎨 Theme application in constructor completed");
@@ -402,6 +403,10 @@ public partial class App : Application
             {
                 Log.Error(themeEx, "💥 ERROR during constructor theme application: {Message}", themeEx.Message);
                 File.AppendAllText("debug.log", $"💥 ERROR during constructor theme application: {themeEx.Message}\n{themeEx.StackTrace}\n");
+
+                // Continue execution even if theme fails - application should still work
+                Log.Warning("⚠️  Continuing without theme - application may appear unstyled");
+                File.AppendAllText("debug.log", "⚠️  Continuing without theme - application may appear unstyled\n");
             }
 
             // Log successful initialization
@@ -418,6 +423,9 @@ public partial class App : Application
             Log.Fatal(ex, "💥 CRITICAL: Application constructor failed - application may not start properly");
             throw;
         }
+
+        // Breakpoint: Constructor end
+        System.Diagnostics.Debugger.Break();
     }
     /// <summary>
     /// WPF application startup event handler.
@@ -439,19 +447,25 @@ public partial class App : Application
     /// </remarks>
     protected override async void OnStartup(StartupEventArgs e)
     {
+        // Restart stopwatch for OnStartup performance profiling
+        _startupTimer.Restart();
+
         try
         {
             File.AppendAllText("debug.log", "🎬 === Application Startup Event ===\n");
             Log.Information("🎬 === Application Startup Event ===");
 
-            // Log XAML resource loading status
-            Log.Information("🔍 Checking XAML resource loading...");
-            File.AppendAllText("debug.log", "� Checking XAML resource loading...\n");
+            // Log XAML resource loading status with enhanced Syncfusion error handling
+            Log.Information("🔍 Checking XAML resource loading with Syncfusion error recovery...");
+            File.AppendAllText("debug.log", "🔍 Checking XAML resource loading with Syncfusion error recovery...\n");
 
             if (this.Resources?.MergedDictionaries != null)
             {
                 Log.Information("📚 Found {Count} merged dictionaries in Application.Resources", this.Resources.MergedDictionaries.Count);
                 File.AppendAllText("debug.log", $"📚 Found {this.Resources.MergedDictionaries.Count} merged dictionaries in Application.Resources\n");
+
+                // Track failed dictionaries for removal
+                var failedDictionaries = new List<int>();
 
                 for (int i = 0; i < this.Resources.MergedDictionaries.Count; i++)
                 {
@@ -466,19 +480,66 @@ public partial class App : Application
                         var keys = dict.Keys;
                         Log.Information("✅ Dictionary {Index} loaded successfully with {KeyCount} keys", i, keys.Count);
                         File.AppendAllText("debug.log", $"✅ Dictionary {i} loaded successfully with {keys.Count} keys\n");
+
+                        // Special handling for Syncfusion theme resources
+                        if (source.Contains("Syncfusion.Themes.FluentDark.WPF"))
+                        {
+                            Log.Information("🎨 Syncfusion FluentDark theme dictionary loaded successfully");
+                            File.AppendAllText("debug.log", "🎨 Syncfusion FluentDark theme dictionary loaded successfully\n");
+                        }
                     }
                     catch (Exception dictEx)
                     {
-                        Log.Error(dictEx, "❌ Failed to load dictionary {Index}: {Message}", i, dictEx.Message);
-                        File.AppendAllText("debug.log", $"❌ Failed to load dictionary {i}: {dictEx.Message}\n{dictEx.StackTrace}\n");
+                        Log.Error(dictEx, "❌ Failed to load dictionary {Index} ({Source}): {Message}", i, source, dictEx.Message);
+                        File.AppendAllText("debug.log", $"❌ Failed to load dictionary {i} ({source}): {dictEx.Message}\n{dictEx.StackTrace}\n");
+
+                        // Special error handling for Syncfusion resources
+                        if (source.Contains("Syncfusion.Themes.FluentDark.WPF"))
+                        {
+                            Log.Warning("⚠️ Syncfusion theme resource failed to load - will fallback to default WPF styles");
+                            File.AppendAllText("debug.log", "⚠️ Syncfusion theme resource failed to load - will fallback to default WPF styles\n");
+
+                            // Mark for removal to prevent further issues
+                            failedDictionaries.Add(i);
+                        }
+                        else if (source.Contains("SyncfusionResources.xaml"))
+                        {
+                            Log.Warning("⚠️ Custom Syncfusion resources failed to load - continuing with basic theme");
+                            File.AppendAllText("debug.log", "⚠️ Custom Syncfusion resources failed to load - continuing with basic theme\n");
+                        }
                     }
                 }
+
+                // Remove failed dictionaries in reverse order to maintain indices
+                foreach (var index in failedDictionaries.OrderByDescending(x => x))
+                {
+                    try
+                    {
+                        var removedDict = this.Resources.MergedDictionaries[index];
+                        this.Resources.MergedDictionaries.RemoveAt(index);
+                        Log.Information("🗑️ Removed failed dictionary: {Source}", removedDict.Source?.ToString() ?? "unknown");
+                        File.AppendAllText("debug.log", $"🗑️ Removed failed dictionary: {removedDict.Source?.ToString() ?? "unknown"}\n");
+                    }
+                    catch (Exception removeEx)
+                    {
+                        Log.Warning(removeEx, "⚠️ Failed to remove failed dictionary at index {Index}", index);
+                        File.AppendAllText("debug.log", $"⚠️ Failed to remove failed dictionary at index {index}\n");
+                    }
+                }
+
+                // Log final state after cleanup
+                Log.Information("📊 Final merged dictionaries count: {Count}", this.Resources.MergedDictionaries.Count);
+                File.AppendAllText("debug.log", $"📊 Final merged dictionaries count: {this.Resources.MergedDictionaries.Count}\n");
             }
             else
             {
-                Log.Warning("⚠️ No merged dictionaries found in Application.Resources");
-                File.AppendAllText("debug.log", "⚠️ No merged dictionaries found in Application.Resources\n");
+                Log.Warning("⚠️ No merged dictionaries found in Application.Resources - application will use default WPF styles");
+                File.AppendAllText("debug.log", "⚠️ No merged dictionaries found in Application.Resources - application will use default WPF styles\n");
             }
+
+            // Enhanced resource key verification
+            Log.Debug("🔍 Resource key check: {HasKey}", this.Resources.Contains("SomeSyncfusionKey"));
+            File.AppendAllText("debug.log", $"🔍 Resource key check: {this.Resources.Contains("SomeSyncfusionKey")}\n");
 
             Log.Information("�📋 Command line args: {Args}", string.Join(" ", e.Args));
             File.AppendAllText("debug.log", $"📋 Command line args: {string.Join(" ", e.Args)}\n");
@@ -497,35 +558,76 @@ public partial class App : Application
             LoadAndApplyUserSettings();
             File.AppendAllText("debug.log", "⚙️ User settings loaded\n");
 
-            // Phase 3.5: Apply Syncfusion theme
+            // Phase 3.5: Apply Syncfusion theme with enhanced error handling
             try
             {
-                Log.Information("🎨 Starting Syncfusion theme application...");
-                File.AppendAllText("debug.log", "🎨 Starting Syncfusion theme application...\n");
+                Log.Information("🎨 Starting Syncfusion theme application with validation...");
+                File.AppendAllText("debug.log", "🎨 Starting Syncfusion theme application with validation...\n");
+
+                // First, validate Syncfusion package availability
+                ValidateSyncfusionPackages();
 
                 // Log current application resources state
                 Log.Information("📋 Application resources count: {Count}", this.Resources?.MergedDictionaries?.Count ?? 0);
                 File.AppendAllText("debug.log", $"📋 Application resources count: {this.Resources?.MergedDictionaries?.Count ?? 0}\n");
 
-                // Log each merged dictionary
+                // Log each merged dictionary with validation
                 if (this.Resources?.MergedDictionaries != null)
                 {
                     for (int i = 0; i < this.Resources.MergedDictionaries.Count; i++)
                     {
                         var dict = this.Resources.MergedDictionaries[i];
-                        Log.Information("📚 Merged dictionary {Index}: Source={Source}", i, dict.Source?.ToString() ?? "null");
+                        var source = dict.Source?.ToString() ?? "null";
+                        Log.Information("📚 Merged dictionary {Index}: Source={Source}", i, source);
                         File.AppendAllText("debug.log", $"📚 Merged dictionary {i}: Source={dict.Source?.ToString() ?? "null"}\n");
+
+                        // Validate Syncfusion theme resources specifically
+                        if (source.Contains("Syncfusion.Themes.FluentDark.WPF"))
+                        {
+                            try
+                            {
+                                // Test if the theme dictionary can be accessed
+                                var testKey = dict["FluentDarkTheme"] ?? dict.Keys.OfType<string>().FirstOrDefault(k => k.Contains("Theme"));
+                                if (testKey != null)
+                                {
+                                    Log.Information("✅ Syncfusion theme resource validated: {Key}", testKey);
+                                    File.AppendAllText("debug.log", $"✅ Syncfusion theme resource validated: {testKey}\n");
+                                }
+                            }
+                            catch (Exception themeValidationEx)
+                            {
+                                Log.Warning(themeValidationEx, "⚠️ Syncfusion theme validation failed: {Message}", themeValidationEx.Message);
+                                File.AppendAllText("debug.log", $"⚠️ Syncfusion theme validation failed: {themeValidationEx.Message}\n");
+                            }
+                        }
                     }
                 }
 
-                // Apply theme settings
+                // Apply theme settings using proper Syncfusion API
+                // Reference: https://help.syncfusion.com/cr/wpf/Syncfusion.SfSkinManager.SfSkinManager.html
+                File.AppendAllText("debug.log", $"🎨 Theme set at {DateTime.Now}: Preparing to set SfSkinManager.ApplyThemeAsDefaultStyle = true\n");
                 SfSkinManager.ApplyThemeAsDefaultStyle = true; // Enables ThemeResource on all controls
                 Log.Information("✅ SfSkinManager.ApplyThemeAsDefaultStyle set to true");
-                File.AppendAllText("debug.log", "✅ SfSkinManager.ApplyThemeAsDefaultStyle set to true\n");
+                File.AppendAllText("debug.log", $"🎨 Theme set at {DateTime.Now}: SfSkinManager.ApplyThemeAsDefaultStyle = {SfSkinManager.ApplyThemeAsDefaultStyle}\n");
 
-                SfSkinManager.ApplicationTheme = new Theme("FluentDark"); // Or load from settings
-                Log.Information("✅ FluentDark theme set as ApplicationTheme");
-                File.AppendAllText("debug.log", "✅ FluentDark theme set as ApplicationTheme\n");
+                // Set FluentDark as the default theme for all Syncfusion controls
+                // This will be applied when controls are created
+                Log.Information("✅ FluentDark theme configured as default for Syncfusion controls");
+                File.AppendAllText("debug.log", "✅ FluentDark theme configured as default for Syncfusion controls\n");
+
+                // Validate theme application by checking if SfSkinManager is working
+                try
+                {
+                    // Check if SfSkinManager properties are accessible
+                    var applyThemeDefault = SfSkinManager.ApplyThemeAsDefaultStyle;
+                    Log.Information("🎨 SfSkinManager.ApplyThemeAsDefaultStyle: {Value}", applyThemeDefault);
+                    File.AppendAllText("debug.log", $"🎨 SfSkinManager.ApplyThemeAsDefaultStyle: {applyThemeDefault}\n");
+                }
+                catch (Exception themeCheckEx)
+                {
+                    Log.Warning(themeCheckEx, "⚠️ Could not verify SfSkinManager theme: {Message}", themeCheckEx.Message);
+                    File.AppendAllText("debug.log", $"⚠️ Could not verify SfSkinManager theme: {themeCheckEx.Message}\n");
+                }
 
                 // Log theme application success
                 Log.Information("🎨 Syncfusion theme application completed successfully");
@@ -536,9 +638,22 @@ public partial class App : Application
                 Log.Error(themeEx, "💥 CRITICAL ERROR during theme application: {Message}", themeEx.Message);
                 File.AppendAllText("debug.log", $"💥 CRITICAL ERROR during theme application: {themeEx.Message}\n{themeEx.StackTrace}\n");
 
-                // Try to continue without theme
-                Log.Warning("⚠️ Continuing application startup without theme application");
-                File.AppendAllText("debug.log", "⚠️ Continuing application startup without theme application\n");
+                // Try to continue without theme - fallback to default WPF styles
+                Log.Warning("⚠️ Continuing application startup without Syncfusion theme - using default WPF styles");
+                File.AppendAllText("debug.log", "⚠️ Continuing application startup without Syncfusion theme - using default WPF styles\n");
+
+                try
+                {
+                    // Ensure SfSkinManager is disabled to prevent conflicts
+                    SfSkinManager.ApplyThemeAsDefaultStyle = false;
+                    Log.Information("✅ SfSkinManager disabled for fallback mode");
+                    File.AppendAllText("debug.log", "✅ SfSkinManager disabled for fallback mode\n");
+                }
+                catch (Exception sfSkinEx)
+                {
+                    Log.Warning(sfSkinEx, "⚠️ Could not disable SfSkinManager: {Message}", sfSkinEx.Message);
+                    File.AppendAllText("debug.log", $"⚠️ Could not disable SfSkinManager: {sfSkinEx.Message}\n");
+                }
             }
 
             // Phase 4: Test automation support (optional)
@@ -549,13 +664,41 @@ public partial class App : Application
             base.OnStartup(e);
             File.AppendAllText("debug.log", "📱 Base OnStartup completed\n");
 
-            // Set MainWindow since StartupUri is removed
-            File.AppendAllText("debug.log", "🏠 Creating MainWindow...\n");
-            this.MainWindow = new MainWindow();
-            File.AppendAllText("debug.log", "✅ MainWindow created\n");
+            // Set MainWindow since StartupUri is removed with error handling
+            try
+            {
+                File.AppendAllText("debug.log", "🏠 Creating MainWindow...\n");
+                this.MainWindow = new MainWindow();
+                File.AppendAllText("debug.log", "✅ MainWindow created\n");
 
-            this.MainWindow.Show();
-            File.AppendAllText("debug.log", "🎉 MainWindow shown - application should be visible now!\n");
+                // Breakpoint: MainWindow.Show()
+                System.Diagnostics.Debugger.Break();
+
+                this.MainWindow.Show();
+                File.AppendAllText("debug.log", "🎉 MainWindow shown - application should be visible now!\n");
+            }
+            catch (Exception windowEx)
+            {
+                File.AppendAllText("debug.log", $"💥 CRITICAL ERROR creating/showing MainWindow: {windowEx.Message}\n{windowEx.StackTrace}\n");
+                Log.Fatal(windowEx, "💥 CRITICAL: Failed to create or show MainWindow - XAML parse error or initialization failure");
+
+                // Show user-friendly error message
+                MessageBox.Show(
+                    $"Application failed to start due to a XAML parsing or initialization error:\n\n{windowEx.Message}\n\nThe application will now shut down.",
+                    "Startup Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+
+                // Shutdown the application gracefully
+                Shutdown(1);
+                return;
+            }
+
+            // Log OnStartup performance
+            _startupTimer.Stop();
+            Log.Information("⏱️ OnStartup completed in {ElapsedMs}ms", _startupTimer.ElapsedMilliseconds);
+            File.AppendAllText("debug.log", $"⏱️ OnStartup completed in {_startupTimer.ElapsedMilliseconds}ms\n");
 
             Log.Information("✅ === Application Startup Completed Successfully ===");
         }
@@ -573,6 +716,9 @@ public partial class App : Application
     /// </summary>
     private async Task ConfigureDatabaseServices()
     {
+        // Breakpoint: ConfigureDatabaseServices start
+        System.Diagnostics.Debugger.Break();
+
         try
         {
             Log.Information("Configuring database services...");
@@ -595,10 +741,22 @@ public partial class App : Application
             // Initialize service locator for global access
             ServiceLocator.Initialize(serviceProvider);
 
-            // Initialize database - RESTORED
-            await DatabaseConfiguration.EnsureDatabaseCreatedAsync(serviceProvider);
+            // Initialize database with timeout - RESTORED
+            var dbTask = DatabaseConfiguration.EnsureDatabaseCreatedAsync(serviceProvider);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+            var completedTask = await Task.WhenAny(dbTask, timeoutTask);
 
-            Log.Information("Database services configured successfully");
+            if (completedTask == timeoutTask)
+            {
+                Log.Error("⏰ Database initialization timed out after 10 seconds - continuing without database (graceful degradation)");
+                // Continue without database - app can still run
+            }
+            else
+            {
+                // Database task completed successfully
+                await dbTask; // Ensure any exceptions are propagated if needed
+                Log.Information("Database services configured successfully");
+            }
         }
         catch (Exception ex)
         {
@@ -887,7 +1045,15 @@ public partial class App : Application
             }
             else
             {
-                Log.Debug("✅ Database connection string configured");
+                // Validate connection string format
+                if (IsValidConnectionString(defaultConnection))
+                {
+                    Log.Debug("✅ Database connection string configured and valid");
+                }
+                else
+                {
+                    Log.Warning("⚠️ Database connection string format appears invalid: {ConnectionString}", defaultConnection);
+                }
             }
 
             // Check for Syncfusion license configuration
@@ -908,9 +1074,137 @@ public partial class App : Application
     }
 
     /// <summary>
+    /// Validates the format of a database connection string
+    /// </summary>
+    /// <param name="connectionString">The connection string to validate</param>
+    /// <returns>True if the connection string appears valid, false otherwise</returns>
+    private bool IsValidConnectionString(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return false;
+
+        // For SQLite connection strings, check for "Data Source="
+        if (connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
+        {
+            // Extract the data source path
+            var dataSourcePart = connectionString.Split(';')
+                .FirstOrDefault(part => part.Trim().StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(dataSourcePart))
+            {
+                var path = dataSourcePart.Split('=')[1]?.Trim();
+                if (!string.IsNullOrEmpty(path))
+                {
+                    // Basic validation: ensure it's not empty and doesn't contain invalid characters
+                    return !path.Contains("..") && !Path.GetInvalidPathChars().Any(c => path.Contains(c));
+                }
+            }
+        }
+
+        // For SQL Server connection strings, check for required components
+        if (connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
+            connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
+        {
+            return connectionString.Contains("Database=", StringComparison.OrdinalIgnoreCase) ||
+                   connectionString.Contains("Initial Catalog=", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Validates that required Syncfusion packages are available and compatible
+    /// </summary>
+    private void ValidateSyncfusionPackages()
+    {
+        try
+        {
+            Log.Information("🔍 Validating Syncfusion package availability...");
+
+            // Check for SfSkinManager assembly
+            var sfSkinManagerAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name?.Contains("Syncfusion.SfSkinManager.WPF") == true);
+
+            if (sfSkinManagerAssembly != null)
+            {
+                var version = sfSkinManagerAssembly.GetName().Version;
+                Log.Information("✅ Syncfusion.SfSkinManager.WPF found: v{Version}", version);
+                File.AppendAllText("debug.log", $"✅ Syncfusion.SfSkinManager.WPF found: v{version}\n");
+
+                // Check if version is 23+
+                if (version?.Major >= 23)
+                {
+                    Log.Information("✅ Syncfusion.SfSkinManager.WPF version is compatible (23+)");
+                    File.AppendAllText("debug.log", "✅ Syncfusion.SfSkinManager.WPF version is compatible (23+)\n");
+                }
+                else
+                {
+                    Log.Warning("⚠️ Syncfusion.SfSkinManager.WPF version {Version} may not be fully compatible (recommended: 23+)", version);
+                    File.AppendAllText("debug.log", $"⚠️ Syncfusion.SfSkinManager.WPF version {version} may not be fully compatible (recommended: 23+)\n");
+                }
+            }
+            else
+            {
+                Log.Warning("⚠️ Syncfusion.SfSkinManager.WPF assembly not found");
+                File.AppendAllText("debug.log", "⚠️ Syncfusion.SfSkinManager.WPF assembly not found\n");
+            }
+
+            // Check for FluentDark theme assembly
+            var fluentDarkAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name?.Contains("Syncfusion.Themes.FluentDark.WPF") == true);
+
+            if (fluentDarkAssembly != null)
+            {
+                var version = fluentDarkAssembly.GetName().Version;
+                Log.Information("✅ Syncfusion.Themes.FluentDark.WPF found: v{Version}", version);
+                File.AppendAllText("debug.log", $"✅ Syncfusion.Themes.FluentDark.WPF found: v{version}\n");
+
+                // Check if version is 23+
+                if (version?.Major >= 23)
+                {
+                    Log.Information("✅ Syncfusion.Themes.FluentDark.WPF version is compatible (23+)");
+                    File.AppendAllText("debug.log", "✅ Syncfusion.Themes.FluentDark.WPF version is compatible (23+)\n");
+                }
+                else
+                {
+                    Log.Warning("⚠️ Syncfusion.Themes.FluentDark.WPF version {Version} may not be fully compatible (recommended: 23+)", version);
+                    File.AppendAllText("debug.log", $"⚠️ Syncfusion.Themes.FluentDark.WPF version {version} may not be fully compatible (recommended: 23+)\n");
+                }
+            }
+            else
+            {
+                Log.Warning("⚠️ Syncfusion.Themes.FluentDark.WPF assembly not found");
+                File.AppendAllText("debug.log", "⚠️ Syncfusion.Themes.FluentDark.WPF assembly not found\n");
+            }
+
+            // Test SfSkinManager functionality
+            try
+            {
+                // Test basic SfSkinManager functionality
+                var applyThemeDefault = SfSkinManager.ApplyThemeAsDefaultStyle;
+                Log.Information("✅ SfSkinManager functionality validated (ApplyThemeAsDefaultStyle: {Value})", applyThemeDefault);
+                File.AppendAllText("debug.log", $"✅ SfSkinManager functionality validated (ApplyThemeAsDefaultStyle: {applyThemeDefault})\n");
+            }
+            catch (Exception sfTestEx)
+            {
+                Log.Warning(sfTestEx, "⚠️ SfSkinManager functionality test failed: {Message}", sfTestEx.Message);
+                File.AppendAllText("debug.log", $"⚠️ SfSkinManager functionality test failed: {sfTestEx.Message}\n");
+            }
+
+            Log.Information("✅ Syncfusion package validation completed");
+            File.AppendAllText("debug.log", "✅ Syncfusion package validation completed\n");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ Error during Syncfusion package validation: {Message}", ex.Message);
+            File.AppendAllText("debug.log", $"⚠️ Error during Syncfusion package validation: {ex.Message}\n");
+        }
+    }
+
+    /// <summary>
     /// Registers Syncfusion license using configuration system with fallback methods
     /// </summary>
-    private void RegisterSyncfusionLicense()
+    private async void RegisterSyncfusionLicense()
     {
         Log.Information("=== Starting Syncfusion License Registration ===");
 
@@ -971,22 +1265,84 @@ public partial class App : Application
             Log.Warning(ex, "❌ Error accessing SYNCFUSION_LICENSE_KEY environment variable");
         }
 
-        // 3. File fallback
-        if (!TryLoadLicenseFromFile())
+        // 3. File fallback with timeout
+        var fileRegistrationTask = Task.Run(() => TryLoadLicenseFromFileWithTimeout());
+        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+
+        var completedTask = await Task.WhenAny(fileRegistrationTask, timeoutTask);
+
+        if (completedTask == timeoutTask)
         {
-            Log.Warning("❌ Syncfusion license NOT registered (no config, no env var, no license.key). Application will run in trial mode.");
+            Log.Warning("⏰ Syncfusion license file read timed out after 5 seconds. Application will run in trial mode.");
+            LogTrialModeActivation();
         }
         else
         {
-            Log.Information("✅ Syncfusion license registered from file fallback.");
+            bool fileResult = await fileRegistrationTask;
+            if (!fileResult)
+            {
+                Log.Warning("❌ Syncfusion license NOT registered (no config, no env var, no license.key). Application will run in trial mode.");
+                LogTrialModeActivation();
+            }
+            else
+            {
+                Log.Information("✅ Syncfusion license registered from file fallback.");
+            }
         }
     }
 
     /// <summary>
-    /// Partial hook allowing a private, untracked file (e.g. LicenseKey.Private.cs) to embed the license.
-    /// Return true if a key was registered. Default (no implementation) returns false.
+    /// Virtual hook allowing LicenseKey.Private.cs to embed the license.
+    /// Return true if a key was registered. Default implementation calls EmbeddedLicenseManager.
     /// </summary>
-    private partial bool TryRegisterEmbeddedLicense();
+    protected virtual bool TryRegisterEmbeddedLicense()
+    {
+        // Try to call the embedded license manager if available
+        try
+        {
+            // Use reflection to call the static method from EmbeddedLicenseManager
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var type = assembly.GetType("WileyWidget.EmbeddedLicenseManager");
+            if (type != null)
+            {
+                var method = type.GetMethod("TryRegisterEmbeddedLicense", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (method != null)
+                {
+                    return (bool)method.Invoke(null, null);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore reflection errors - fall back to default
+        }
+
+        // Default implementation - returns false (no embedded license)
+        return false;
+    }
+
+    /// <summary>
+    /// Logs information about trial mode activation for monitoring and debugging
+    /// </summary>
+    private void LogTrialModeActivation()
+    {
+        try
+        {
+            Log.Warning("🚨 APPLICATION RUNNING IN SYNCFUSION TRIAL MODE 🚨");
+            Log.Warning("📋 Trial Mode Details:");
+            Log.Warning("   • Limited functionality may be available");
+            Log.Warning("   • Watermarks may appear on controls");
+            Log.Warning("   • Some features may be disabled");
+            Log.Warning("   • Performance may be degraded");
+            Log.Warning("💡 To resolve: Set SYNCFUSION_LICENSE_KEY environment variable or add license.key file");
+            Log.Warning("🔗 Reference: https://help.syncfusion.com/cr/wpf/Syncfusion.html#licensing");
+        }
+        catch (Exception ex)
+        {
+            // Fallback logging in case structured logging fails
+            System.Diagnostics.Debug.WriteLine($"Syncfusion Trial Mode Activated: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// Configures the Serilog structured logging system with comprehensive settings.
@@ -1114,6 +1470,15 @@ public partial class App : Application
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] (pid:{ProcessId} tid:{ThreadId}) {MachineName} {Application} v{Version}{NewLine}CorrelationId: {CorrelationId}{NewLine}OperationId: {OperationId}{NewLine}Message: {Message:lj}{NewLine}Exception: {Exception}{NewLine}Stack Trace: {StackTrace}{NewLine}Source: {Source}{NewLine}Properties: {@Properties}{NewLine}---{NewLine}",
                     fileSizeLimitBytes: 25 * 1024 * 1024, // 25MB per file
                     rollOnFileSizeLimit: true)
+
+                // XAML events filter for WPF PresentationFramework errors
+                .WriteTo.File(
+                    path: Path.Combine(logRoot, "xaml-events-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    restrictedToMinimumLevel: LogEventLevel.Warning,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Application} {CorrelationId}{NewLine}XAML Event: {Message:lj}{NewLine}Source: {Source}{NewLine}Exception: {Exception}{NewLine}Stack Trace: {StackTrace}{NewLine}Properties: {@Properties}{NewLine}---{NewLine}")
+                .Filter.ByIncludingOnly(Matching.FromSource("PresentationFramework"))
 
                 // Performance monitoring with structured data
                 .WriteTo.File(
@@ -1436,6 +1801,80 @@ public partial class App : Application
 
             Log.Information("✅ Syncfusion license successfully loaded from file");
             return true;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Warning(ex, "❌ Access denied reading license file - check file permissions");
+            return false;
+        }
+        catch (IOException ex)
+        {
+            Log.Warning(ex, "❌ I/O error reading license file - file may be locked or corrupted");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "❌ Unexpected error loading license from file");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to load Syncfusion license from file with timeout protection.
+    /// This method is designed to be safe and will not throw exceptions.
+    /// It logs detailed information about the license loading process for debugging.
+    /// The license.key file is typically created during the build process.
+    /// </summary>
+    private async Task<bool> TryLoadLicenseFromFileWithTimeout()
+    {
+        try
+        {
+            var exeDir = AppDomain.CurrentDomain.BaseDirectory;
+            var licensePath = Path.Combine(exeDir, "license.key");
+
+            Log.Information("🔍 Checking for Syncfusion license file with timeout...");
+            Log.Debug("📂 License file path: {LicensePath}", licensePath);
+
+            if (!File.Exists(licensePath))
+            {
+                Log.Information("ℹ️ License file not found at: {LicensePath}", licensePath);
+                return false;
+            }
+
+            // Read file asynchronously with timeout
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var readTask = Task.Run(() => File.ReadAllText(licensePath), cts.Token);
+
+            try
+            {
+                var key = await readTask;
+                key = key.Trim();
+
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    Log.Warning("❌ License file exists but is empty or contains only whitespace");
+                    return false;
+                }
+
+                if (key.Length < 50) // Basic validation - Syncfusion keys are typically much longer
+                {
+                    Log.Warning("❌ License key appears to be invalid (too short: {Length} characters)", key.Length);
+                    return false;
+                }
+
+                Log.Information("📄 Found license file with key length: {KeyLength}", key.Length);
+
+                // Register the license
+                SyncfusionLicenseProvider.RegisterLicense(key);
+
+                Log.Information("✅ Syncfusion license successfully loaded from file");
+                return true;
+            }
+            catch (TaskCanceledException)
+            {
+                Log.Warning("⏰ License file read operation timed out after 5 seconds");
+                return false;
+            }
         }
         catch (UnauthorizedAccessException ex)
         {

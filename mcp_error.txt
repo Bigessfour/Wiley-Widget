@@ -1,0 +1,6 @@
+Checking for required zones...
+Required zone "mcp_unlocker" already exists
+Required zone "mcp_browser" already exists
+Starting server...
+[FastMCP warning] could not infer client capabilities after 10 attempts. Connection may be unstable.
+^C^C

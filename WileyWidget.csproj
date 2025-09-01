@@ -61,6 +61,7 @@
     <PackageReference Include="Serilog.Enrichers.Thread" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Syncfusion.Licensing" />
+    <PackageReference Include="Syncfusion.SfAccordion.WPF" />
     <PackageReference Include="Syncfusion.SfDiagram.WPF" />
     <PackageReference Include="Syncfusion.SfGrid.WPF" />
     <PackageReference Include="Syncfusion.SfProgressBar.WPF" />

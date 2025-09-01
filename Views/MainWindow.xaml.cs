@@ -42,7 +42,7 @@ namespace WileyWidget.Views;
 /// <item>Window events are handled synchronously</item>
 /// </list>
 /// </summary>
-public partial class MainWindow : RibbonWindow
+public partial class MainWindow : Window
 {
     /// <summary>
     /// Runtime toggle for dynamic column generation in data grids.
@@ -76,15 +76,37 @@ public partial class MainWindow : RibbonWindow
             Log.Information("MainWindow components initialized successfully");
 
             Log.Information("Setting up data context with MainViewModel...");
-            DataContext = ServiceLocator.GetService<ViewModels.MainViewModel>();
-            Log.Information("Data context established");
+            // Delay DataContext setup until ServiceLocator is initialized
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    DataContext = ServiceLocator.GetService<ViewModels.MainViewModel>();
+                    Log.Information("Data context established");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to set DataContext");
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
 
             Log.Information("Locating Syncfusion controls...");
             // InitializeSyncfusionControls(); // Commented out - controls not in simplified XAML
             Log.Information("Syncfusion controls located and referenced");
 
-            Log.Information("Applying initial theme: {Theme}", SettingsService.Instance.Current.Theme ?? "Default");
-            TryApplyTheme(SettingsService.Instance.Current.Theme);
+            Log.Information("Applying initial theme: FluentDark");
+            // Apply FluentDark theme to this window
+            try
+            {
+                // Note: Theme is applied globally via SfSkinManager.ApplyThemeAsDefaultStyle = true in App.xaml.cs
+                // Individual window themes can be set here if needed
+                Log.Information("✅ MainWindow theme will use global FluentDark theme");
+            }
+            catch (Exception themeEx)
+            {
+                Log.Warning(themeEx, "⚠️ Failed to configure MainWindow theme: {Message}", themeEx.Message);
+                // Continue without theme - application should still work
+            }
 
             if (UseDynamicColumns)
             {
@@ -94,7 +116,7 @@ public partial class MainWindow : RibbonWindow
 
             Log.Information("Setting up window state management...");
             RestoreWindowState();
-            Loaded += (_, _) => ApplyMaximized();
+            Loaded += (_, _) => { Log.Information("Window.Loaded event fired - applying maximized state"); ApplyMaximized(); };
             Closing += (_, _) => PersistWindowState();
 
             Log.Information("Updating theme toggle button visuals...");
@@ -1238,10 +1260,10 @@ public partial class MainWindow : RibbonWindow
     /// </summary>
     private void UpdateStatus(string message, Brush brush)
     {
-        if (StatusTextBlock != null)
+        if (ApiKeyStatusText != null)
         {
-            StatusTextBlock.Text = message;
-            StatusTextBlock.Foreground = brush;
+            ApiKeyStatusText.Text = message;
+            ApiKeyStatusText.Foreground = brush;
         }
 
         if (StatusBorder != null)

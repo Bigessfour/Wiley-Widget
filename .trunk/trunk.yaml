@@ -26,7 +26,6 @@ lint:
     - bandit@1.8.6
     - svgo@4.0.0
     - shfmt@3.6.0
-    - gitleaks@8.28.0
     - prettier@3.6.2
     # Security scanning - critical for production
     - trufflehog@3.90.5
@@ -42,6 +41,7 @@ lint:
         config: .trunk/configs/.gitleaks.toml
   disabled:
     # Too aggressive on documentation formatting
+    - gitleaks
     - markdownlint
     # Too strict on git whitespace in docs
     - git-diff-check

@@ -66,7 +66,7 @@
   "dotnet.intelliCode.suppressTypeImportCompletion": false,
 
   // PowerShell 7.5.2 Configuration
-  "powershell.powerShellDefaultVersion": "7.5.2",
+  "powershell.powerShellDefaultVersion": "PowerShell (x64)",
   "powershell.powerShellExePath": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
   "powershell.enableProfileLoading": true,
   "powershell.enableReferencesCodeLens": true,
@@ -123,7 +123,7 @@
   },
 
   // MCP (Model Context Protocol) Configuration
-  // Current: Multi-server setup with GitHub, Azure, and Microsoft Docs
+  // Current: Multi-server setup with GitHub, Azure, Microsoft Docs, and BrightData
   "mcp": {
     "servers": {
       "github": {
@@ -146,8 +146,25 @@
       "microsoft-docs": {
         "url": "https://mcp.microsoft.com/docs/",
         "type": "http"
+      },
+      "brightdata": {
+        "url": "https://mcp.brightdata.com/mcp?token=${env:BRIGHTDATA_API_KEY}",
+        "type": "http",
+        "headers": {
+          "Content-Type": "application/json"
+        }
       }
     }
+  },
+
+  // Disable other search providers
+  "search.experimental.searchInOpenEditors": false,
+  "search.searchOnType": false,
+  "search.useGlobalIgnoreFiles": true,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/*.code-search": true
   },
 
   // Alternative Remote Server Configurations (uncomment to use):

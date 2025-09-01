@@ -17,6 +17,7 @@ using DotNetEnv;
 using Azure.Security.KeyVault.Secrets;
 using Azure.Identity;
 using Azure.Extensions.AspNetCore.Configuration;
+using System.Globalization;
 
 namespace WileyWidget.ViewModels;
 
@@ -33,6 +34,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IEnterpriseRepository _enterpriseRepository;
     private readonly WpfMiddlewareService _middlewareService;
     private readonly EnterpriseViewModel _enterpriseViewModel;
+    private readonly BrightDataService _brightDataService;
 
     /// <summary>
     /// Constructor with dependency injection
@@ -43,7 +45,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         AppDbContext dbContext = null,
         IEnterpriseRepository enterpriseRepository = null,
         QuickBooksService quickBooksService = null,
-        WpfMiddlewareService middlewareService = null)
+        WpfMiddlewareService middlewareService = null,
+        BrightDataService brightDataService = null)
     {
         Log.Information("MainViewModel initialization started with DI");
 
@@ -53,6 +56,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _enterpriseRepository = enterpriseRepository;
         _qb = quickBooksService;
         _middlewareService = middlewareService ?? new WpfMiddlewareService();
+        _brightDataService = brightDataService;
 
         // Initialize enterprise management
         _enterpriseViewModel = new EnterpriseViewModel(_enterpriseRepository);
@@ -650,6 +654,44 @@ Output structured analysis with actionable insights.";
     {
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Searches for information using Bright Data API
+    /// </summary>
+    /// <param name="query">Search query</param>
+    /// <param name="searchType">Type of search (general, syncfusion, wpf)</param>
+    /// <returns>Search results</returns>
+    public async Task<object> SearchAsync(string query, string searchType = "general")
+    {
+        if (_brightDataService == null)
+        {
+            Log.Warning("BrightDataService not available for search");
+            return new { Success = false, Error = "Search service not available" };
+        }
+
+        try
+        {
+            Log.Information("Performing {SearchType} search for: {Query}", searchType, query);
+
+            var result = await _brightDataService.SearchAsync(query);
+
+            if (result.Success)
+            {
+                Log.Information("Search completed successfully, found {Count} results", result.Results.Length);
+                return new { Success = true, Results = result.Results };
+            }
+            else
+            {
+                Log.Warning("Search failed: {Error}", result.Error);
+                return new { Success = false, Error = result.Error };
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error performing search");
+            return new { Success = false, Error = ex.Message };
+        }
     }
 
     /// <summary>

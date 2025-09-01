@@ -110,6 +110,7 @@ public static class DatabaseConfiguration
         services.AddScoped<GrokSupercomputer>();
         services.AddScoped<QuickBooksService>();
         services.AddScoped<SettingsService>();
+        services.AddScoped<BrightDataService>();
 
         // Register ViewModels with their dependencies
         services.AddTransient<MainViewModel>();
