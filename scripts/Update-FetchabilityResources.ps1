@@ -12,18 +12,18 @@ Write-Host "Updating fetchability resources..." -ForegroundColor Green
 $repoInfo = git log --oneline -1 --format="%H %s"
 $commitHash = ($repoInfo -split ' ')[0]
 $branch = git branch --show-current
-$isDirty = (git status --porcelain).Count -gt 0
+$isDirty = (git status --porcelain | Measure-Object).Count -gt 0
 $remoteUrl = git config --get remote.origin.url
 
 # Get file statistics
-$untrackedFiles = (git ls-files --others --exclude-standard).Count
-$trackedFiles = (git ls-files).Count
+$untrackedFiles = (git ls-files --others --exclude-standard | Measure-Object).Count
+$trackedFiles = (git ls-files | Measure-Object).Count
 $totalFiles = $untrackedFiles + $trackedFiles
 
 # Calculate total size of tracked files
 $totalSize = 0
 git ls-files | ForEach-Object {
-    if (Test-Path $_) {
+    if (Test-Path $_ -PathType Leaf) {
         $totalSize += (Get-Item $_).Length
     }
 }
@@ -32,10 +32,14 @@ git ls-files | ForEach-Object {
 $files = @()
 git ls-files | ForEach-Object {
     $filePath = $_
-    if (Test-Path $filePath) {
+    if (Test-Path $filePath -PathType Leaf) {
         $fileInfo = Get-Item $filePath
         $extension = [System.IO.Path]::GetExtension($filePath)
-        $sha256 = (Get-FileHash $filePath -Algorithm SHA256).Hash.ToLower()
+        try {
+            $sha256 = (Get-FileHash $filePath -Algorithm SHA256).Hash.ToLower()
+        } catch {
+            $sha256 = "access-denied"
+        }
 
         $files += @{
             path = $filePath
@@ -51,10 +55,14 @@ git ls-files | ForEach-Object {
 # Add untracked files
 git ls-files --others --exclude-standard | ForEach-Object {
     $filePath = $_
-    if (Test-Path $filePath) {
+    if (Test-Path $filePath -PathType Leaf) {
         $fileInfo = Get-Item $filePath
         $extension = [System.IO.Path]::GetExtension($filePath)
-        $sha256 = (Get-FileHash $filePath -Algorithm SHA256).Hash.ToLower()
+        try {
+            $sha256 = (Get-FileHash $filePath -Algorithm SHA256).Hash.ToLower()
+        } catch {
+            $sha256 = "access-denied"
+        }
 
         $files += @{
             path = $filePath
