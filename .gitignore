@@ -5,6 +5,9 @@ obj/
 *.log
 msbuild.binlog
 
+# Node modules (NEVER commit)
+node_modules/
+
 # Publish artifacts
 publish/
 
