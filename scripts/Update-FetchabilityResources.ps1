@@ -18,7 +18,9 @@ $remoteUrl = git config --get remote.origin.url
 # Get file statistics
 $untrackedFiles = (git ls-files --others --exclude-standard | Measure-Object).Count
 $trackedFiles = (git ls-files | Measure-Object).Count
-$totalFiles = $untrackedFiles + $trackedFiles
+$allUntrackedAndIgnored = (git ls-files --others | Measure-Object).Count
+$ignoredFiles = $allUntrackedAndIgnored - $untrackedFiles
+$totalFiles = $trackedFiles + $untrackedFiles + $ignoredFiles
 
 # Calculate total size of tracked files
 $totalSize = 0
@@ -91,6 +93,7 @@ $jsonData = @{
             totalSize = $totalSize
             totalFiles = $totalFiles
             trackedFiles = $trackedFiles
+            ignoredFiles = $ignoredFiles
         }
     }
     files = $files
@@ -106,6 +109,7 @@ if ($Force -or -not (Test-Path $OutputPath) -or (Read-Host "File exists. Overwri
     Write-Host "  Total files: $totalFiles" -ForegroundColor White
     Write-Host "  Tracked files: $trackedFiles" -ForegroundColor White
     Write-Host "  Untracked files: $untrackedFiles" -ForegroundColor White
+    Write-Host "  Ignored files: $ignoredFiles" -ForegroundColor White
     Write-Host "  Total size: $([math]::Round($totalSize / 1MB, 2)) MB" -ForegroundColor White
 } else {
     Write-Host "Operation cancelled." -ForegroundColor Yellow

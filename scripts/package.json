@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@brightdata/mcp": "^2.4.3",
+    "node-fetch": "^3.3.2"
+  },
+  "scripts": {
+    "startup:diagnostics": "node brightdata-startup-diagnostics.js",
+    "startup:diagnostics:json": "powershell -NoLogo -NoProfile -Command \"$env:BRIGHTDATA_OUTPUT_JSON='diagnostics-output.json'; $env:BRIGHTDATA_SUMMARY='1'; node brightdata-startup-diagnostics.js\""
+  }
+}

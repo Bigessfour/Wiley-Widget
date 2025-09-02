@@ -1,0 +1,716 @@
+{
+  "timestamp": "2025-09-01T17:03:05.832818",
+  "project_path": "C:\\Users\\biges\\Desktop\\Wiley_Widget",
+  "cleanup_results": {
+    "cleaned_files": [],
+    "cleanup_count": 0
+  },
+  "event_viewer_crashes": [
+    {
+      "timestamp": "/Date(1756767343479)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756767291818)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756766336149)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'mscontrol.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756738133191)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756738127391)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756738118861)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756738110663)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756737885268)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756737847326)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732777805)/",
+      "event_id": 1000,
+      "level": "Error",
+      "source": "Application Error",
+      "message": "Faulting application name: WileyWidget.exe, version: 0.0.0.0, time stamp: 0x68760000\r\nFaulting module name: KERNELBASE.dll, version: 10.0.26100.5074, time stamp: 0x77452b93\r\nException code: 0xe0434352\r\nFault offset: 0x00000000000c66ca\r\nFaulting process id: 0x8688\r\nFaulting application start time: 0x1DC1B4310E4FFFA\r\nFaulting application path: C:\\Users\\biges\\Desktop\\Wiley_Widget\\bin\\Debug\\net9.0-windows\\WileyWidget.exe\r\nFaulting module path: C:\\WINDOWS\\System32\\KERNELBASE.dll\r\nReport Id: d5dd3640-5c3e-45f4-be6a-481a43dc1551\r\nFaulting package full name: \r\nFaulting package-relative application ID: ",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732777575)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732768024)/",
+      "event_id": 1000,
+      "level": "Error",
+      "source": "Application Error",
+      "message": "Faulting application name: WileyWidget.exe, version: 0.0.0.0, time stamp: 0x68760000\r\nFaulting module name: KERNELBASE.dll, version: 10.0.26100.5074, time stamp: 0x77452b93\r\nException code: 0xe0434352\r\nFault offset: 0x00000000000c66ca\r\nFaulting process id: 0x53B4\r\nFaulting application start time: 0x1DC1B430B09B02E\r\nFaulting application path: C:\\Users\\biges\\Desktop\\Wiley_Widget\\bin\\Debug\\net9.0-windows\\WileyWidget.exe\r\nFaulting module path: C:\\WINDOWS\\System32\\KERNELBASE.dll\r\nReport Id: e7d7e318-e0b7-418a-b8e4-868ae3fb4fcf\r\nFaulting package full name: \r\nFaulting package-relative application ID: ",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732767756)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732758215)/",
+      "event_id": 1000,
+      "level": "Error",
+      "source": "Application Error",
+      "message": "Faulting application name: WileyWidget.exe, version: 0.0.0.0, time stamp: 0x68760000\r\nFaulting module name: KERNELBASE.dll, version: 10.0.26100.5074, time stamp: 0x77452b93\r\nException code: 0xe0434352\r\nFault offset: 0x00000000000c66ca\r\nFaulting process id: 0x7010\r\nFaulting application start time: 0x1DC1B43052E4939\r\nFaulting application path: C:\\Users\\biges\\Desktop\\Wiley_Widget\\bin\\Debug\\net9.0-windows\\WileyWidget.exe\r\nFaulting module path: C:\\WINDOWS\\System32\\KERNELBASE.dll\r\nReport Id: 13827b2d-0c6f-4d87-bbc6-805678f70bee\r\nFaulting package full name: \r\nFaulting package-relative application ID: ",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732757921)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732748308)/",
+      "event_id": 1000,
+      "level": "Error",
+      "source": "Application Error",
+      "message": "Faulting application name: WileyWidget.exe, version: 0.0.0.0, time stamp: 0x68760000\r\nFaulting module name: KERNELBASE.dll, version: 10.0.26100.5074, time stamp: 0x77452b93\r\nException code: 0xe0434352\r\nFault offset: 0x00000000000c66ca\r\nFaulting process id: 0x7DD0\r\nFaulting application start time: 0x1DC1B42FF0CA4D7\r\nFaulting application path: C:\\Users\\biges\\Desktop\\Wiley_Widget\\bin\\Debug\\net9.0-windows\\WileyWidget.exe\r\nFaulting module path: C:\\WINDOWS\\System32\\KERNELBASE.dll\r\nReport Id: 0b86a6f9-46ca-496e-9541-0cc308e635d8\r\nFaulting package full name: \r\nFaulting package-relative application ID: ",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732747919)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756732491851)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.Source' threw an exception.' Line number '10' and line position '18'.\r\n ---> System.IO.IOException: Cannot locate resource 'controls/fluentdark.xaml'.\r\n   at MS.Internal.AppModel.ResourcePart.GetStreamCore(FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackagePart.GetStream(FileMode mode, FileAccess access)\r\n   at MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(PackagePart packPart, FileMode mode, FileAccess access)\r\n   at System.IO.Packaging.PackWebResponse.CachedResponse.GetResponseStream()\r\n   at System.IO.Packaging.PackWebResponse.get_ContentType()\r\n   at MS.Internal.WpfWebRequestHelper.GetContentType(WebResponse response)\r\n   at MS.Internal.WpfWebRequestHelper.GetResponseStream(WebRequest request, ContentType& contentType)\r\n   at System.Windows.ResourceDictionary.set_Source(Uri value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756730083543)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'WarningBackground'  Key being added: 'WarningBackground'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in c:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756730056935)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'ExpensesChartColor'  Key being added: 'ExpensesChartColor'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in c:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756730033166)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'ExpensesChartColor'  Key being added: 'ExpensesChartColor'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in c:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756729996291)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'RevenueChartColor'  Key being added: 'RevenueChartColor'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in c:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756729984492)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'RevenueChartColor'  Key being added: 'RevenueChartColor'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in c:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756729972708)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'RevenueChartColor'  Key being added: 'RevenueChartColor'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in c:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756729897014)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'RevenueChartColor'  Key being added: 'RevenueChartColor'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756728871214)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'RevenueChartColor'  Key being added: 'RevenueChartColor'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756728271701)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'The invocation of the constructor on type 'WileyWidget.Views.MainWindow' that matches the specified binding constraints threw an exception.' Line number '8' and line position '9'.\r\n ---> System.InvalidOperationException: ServiceLocator has not been initialized. Call Initialize() first.\r\n   at WileyWidget.Configuration.ServiceLocator.GetService[T]() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\Configuration\\ServiceLocator.cs:line 32\r\n   at WileyWidget.Views.MainWindow..ctor() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\Views\\MainWindow.xaml.cs:line 79\r\n   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadBamlStreamWithSyncInfo(Stream stream, ParserContext pc)\r\n   at System.Windows.Application.DoStartup()\r\n   at System.Windows.Application.<.ctor>b__1_0(Object unused)\r\n   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)\r\n   at System.Windows.Threading.DispatcherOperation.InvokeImpl()\r\n   at MS.Internal.CulturePreservingExecutionContext.CallbackWrapper(Object obj)\r\n   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)\r\n--- End of stack trace from previous location ---\r\n   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)\r\n   at MS.Internal.CulturePreservingExecutionContext.Run(CulturePreservingExecutionContext executionContext, ContextCallback callback, Object state)\r\n   at System.Windows.Threading.DispatcherOperation.Invoke()\r\n   at System.Windows.Threading.Dispatcher.ProcessQueue()\r\n   at System.Windows.Threading.Dispatcher.WndProcHook(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)\r\n   at MS.Win32.HwndWrapper.WndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)\r\n   at MS.Win32.HwndSubclass.DispatcherCallbackOperation(Object o)\r\n   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)\r\n   at System.Windows.Threading.Dispatcher.LegacyInvokeImpl(DispatcherPriority priority, TimeSpan timeout, Delegate method, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.Dispatcher.Invoke(DispatcherPriority priority, Delegate method, Object arg)\r\n   at MS.Win32.HwndSubclass.SubclassWndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)\r\n   at MS.Win32.UnsafeNativeMethods.DispatchMessage(MSG& msg)\r\n   at System.Windows.Threading.Dispatcher.PushFrameImpl(DispatcherFrame frame)\r\n   at System.Windows.Application.RunDispatcher(Object ignore)\r\n   at System.Windows.Application.RunInternal(Window window)\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756728225781)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'The invocation of the constructor on type 'WileyWidget.Views.MainWindow' that matches the specified binding constraints threw an exception.' Line number '8' and line position '9'.\r\n ---> System.InvalidOperationException: ServiceLocator has not been initialized. Call Initialize() first.\r\n   at WileyWidget.Configuration.ServiceLocator.GetService[T]() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\Configuration\\ServiceLocator.cs:line 32\r\n   at WileyWidget.Views.MainWindow..ctor() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\Views\\MainWindow.xaml.cs:line 79\r\n   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadBamlStreamWithSyncInfo(Stream stream, ParserContext pc)\r\n   at System.Windows.Application.DoStartup()\r\n   at System.Windows.Application.<.ctor>b__1_0(Object unused)\r\n   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)\r\n   at System.Windows.Threading.DispatcherOperation.InvokeImpl()\r\n   at MS.Internal.CulturePreservingExecutionContext.CallbackWrapper(Object obj)\r\n   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)\r\n--- End of stack trace from previous location ---\r\n   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)\r\n   at MS.Internal.CulturePreservingExecutionContext.Run(CulturePreservingExecutionContext executionContext, ContextCallback callback, Object state)\r\n   at System.Windows.Threading.DispatcherOperation.Invoke()\r\n   at System.Windows.Threading.Dispatcher.ProcessQueue()\r\n   at System.Windows.Threading.Dispatcher.WndProcHook(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)\r\n   at MS.Win32.HwndWrapper.WndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)\r\n   at MS.Win32.HwndSubclass.DispatcherCallbackOperation(Object o)\r\n   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)\r\n   at System.Windows.Threading.Dispatcher.LegacyInvokeImpl(DispatcherPriority priority, TimeSpan timeout, Delegate method, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.Dispatcher.Invoke(DispatcherPriority priority, Delegate method, Object arg)\r\n   at MS.Win32.HwndSubclass.SubclassWndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)\r\n   at MS.Win32.UnsafeNativeMethods.DispatchMessage(MSG& msg)\r\n   at System.Windows.Threading.Dispatcher.PushFrameImpl(DispatcherFrame frame)\r\n   at System.Windows.Application.RunDispatcher(Object ignore)\r\n   at System.Windows.Application.RunInternal(Window window)\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756728210084)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'The invocation of the constructor on type 'WileyWidget.Views.MainWindow' that matches the specified binding constraints threw an exception.' Line number '8' and line position '9'.\r\n ---> System.InvalidOperationException: ServiceLocator has not been initialized. Call Initialize() first.\r\n   at WileyWidget.Configuration.ServiceLocator.GetService[T]() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\Configuration\\ServiceLocator.cs:line 32\r\n   at WileyWidget.Views.MainWindow..ctor() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\Views\\MainWindow.xaml.cs:line 79\r\n   at System.RuntimeType.CreateInstanceDefaultCtor(Boolean publicOnly, Boolean wrapExceptions)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadBamlStreamWithSyncInfo(Stream stream, ParserContext pc)\r\n   at System.Windows.Application.DoStartup()\r\n   at System.Windows.Application.<.ctor>b__1_0(Object unused)\r\n   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)\r\n   at System.Windows.Threading.DispatcherOperation.InvokeImpl()\r\n   at MS.Internal.CulturePreservingExecutionContext.CallbackWrapper(Object obj)\r\n   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)\r\n--- End of stack trace from previous location ---\r\n   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)\r\n   at MS.Internal.CulturePreservingExecutionContext.Run(CulturePreservingExecutionContext executionContext, ContextCallback callback, Object state)\r\n   at System.Windows.Threading.DispatcherOperation.Invoke()\r\n   at System.Windows.Threading.Dispatcher.ProcessQueue()\r\n   at System.Windows.Threading.Dispatcher.WndProcHook(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)\r\n   at MS.Win32.HwndWrapper.WndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)\r\n   at MS.Win32.HwndSubclass.DispatcherCallbackOperation(Object o)\r\n   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)\r\n   at System.Windows.Threading.Dispatcher.LegacyInvokeImpl(DispatcherPriority priority, TimeSpan timeout, Delegate method, Object args, Int32 numArgs)\r\n   at System.Windows.Threading.Dispatcher.Invoke(DispatcherPriority priority, Delegate method, Object arg)\r\n   at MS.Win32.HwndSubclass.SubclassWndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)\r\n   at MS.Win32.UnsafeNativeMethods.DispatchMessage(MSG& msg)\r\n   at System.Windows.Threading.Dispatcher.PushFrameImpl(DispatcherFrame frame)\r\n   at System.Windows.Application.RunDispatcher(Object ignore)\r\n   at System.Windows.Application.RunInternal(Window window)\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756690449518)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Set property 'System.Windows.ResourceDictionary.DeferrableContent' threw an exception.' Line number '8' and line position '6'.\r\n ---> System.ArgumentException: Item has already been added. Key in dictionary: 'WarningBackground'  Key being added: 'WarningBackground'\r\n   at System.Collections.Hashtable.Insert(Object key, Object nvalue, Boolean add)\r\n   at System.Windows.ResourceDictionary.SetKeys(IList`1 keyCollection, IServiceProvider serviceProvider)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(Object inst, XamlMember property, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at XamlGeneratedNamespace.GeneratedApplication.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at XamlGeneratedNamespace.GeneratedApplication.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756687688290)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: SyncfusionSearchTest.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.InvalidOperationException: Misused header name, 'Content-Type'. Make sure request headers are used with HttpRequestMessage, response headers with HttpResponseMessage, and content headers with HttpContent objects.\r\n   at System.Net.Http.Headers.HttpHeaders.GetHeaderDescriptor(String name)\r\n   at System.Net.Http.Headers.HttpHeaders.Add(String name, String value)\r\n   at SyncfusionSearchTest.Services.BrightDataService..ctor(HttpClient httpClient, ILogger`1 logger, IConfiguration configuration) in C:\\Users\\biges\\Desktop\\Wiley_Widget\\SyncfusionTest\\BrightDataService.cs:line 33\r\n   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)\r\n   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)\r\n   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)\r\n   at System.Reflection.RuntimeConstructorInfo.Invoke(BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitScopeCache(ServiceCallSite callSite, RuntimeResolverContext context)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)\r\n   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)\r\n   at SyncfusionSearchTest.Program.Main(String[] args) in C:\\Users\\biges\\Desktop\\Wiley_Widget\\SyncfusionTest\\SyncfusionSearchTest.cs:line 37\r\n   at SyncfusionSearchTest.Program.<Main>(String[] args)\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756687675135)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: SyncfusionSearchTest.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.IO.FileNotFoundException: The configuration file 'appsettings.json' was not found and is not optional. The expected physical path was 'C:\\Users\\biges\\Desktop\\Wiley_Widget\\SyncfusionTest\\bin\\Debug\\net9.0-windows\\appsettings.json'.\r\n   at Microsoft.Extensions.Configuration.FileConfigurationProvider.HandleException(ExceptionDispatchInfo info)\r\n   at Microsoft.Extensions.Configuration.FileConfigurationProvider.Load(Boolean reload)\r\n   at Microsoft.Extensions.Configuration.FileConfigurationProvider.Load()\r\n   at Microsoft.Extensions.Configuration.ConfigurationRoot..ctor(IList`1 providers)\r\n   at Microsoft.Extensions.Configuration.ConfigurationBuilder.Build()\r\n   at SyncfusionSearchTest.Program.Main(String[] args) in C:\\Users\\biges\\Desktop\\Wiley_Widget\\SyncfusionTest\\SyncfusionSearchTest.cs:line 17\r\n   at SyncfusionSearchTest.Program.<Main>(String[] args)\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756682553627)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Failed to create a 'TargetType' from the text 'syncfusion:ButtonAdv'.' Line number '299' and line position '34'.\r\n ---> System.Xaml.XamlParseException: Type reference cannot find type named '{http://schemas.syncfusion.com/wpf}ButtonAdv'.\r\n   at MS.Internal.Xaml.Context.ObjectWriterContext.ServiceProvider_Resolve(String qName)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.CreateObjectWithTypeConverter(ServiceProviderContext serviceContext, XamlValueConverter`1 ts, Object value)\r\n   at System.Xaml.XamlObjectWriter.Logic_CreateFromValue(ObjectWriterContext ctx, XamlValueConverter`1 typeConverter, Object value, XamlMember property, String targetName, IAddLineInfo lineInfo)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at WileyWidget.App.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at WileyWidget.App.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756682515367)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Failed to create a 'TargetType' from the text 'syncfusion:SfChart'.' Line number '287' and line position '33'.\r\n ---> System.Xaml.XamlParseException: Type reference cannot find type named '{http://schemas.syncfusion.com/wpf}SfChart'.\r\n   at MS.Internal.Xaml.Context.ObjectWriterContext.ServiceProvider_Resolve(String qName)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.CreateObjectWithTypeConverter(ServiceProviderContext serviceContext, XamlValueConverter`1 ts, Object value)\r\n   at System.Xaml.XamlObjectWriter.Logic_CreateFromValue(ObjectWriterContext ctx, XamlValueConverter`1 typeConverter, Object value, XamlMember property, String targetName, IAddLineInfo lineInfo)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at WileyWidget.App.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at WileyWidget.App.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756682333744)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Failed to create a 'TargetType' from the text 'syncfusion:Ribbon'.' Line number '219' and line position '32'.\r\n ---> System.Xaml.XamlParseException: Type reference cannot find type named '{http://schemas.syncfusion.com/wpf}Ribbon'.\r\n   at MS.Internal.Xaml.Context.ObjectWriterContext.ServiceProvider_Resolve(String qName)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.CreateObjectWithTypeConverter(ServiceProviderContext serviceContext, XamlValueConverter`1 ts, Object value)\r\n   at System.Xaml.XamlObjectWriter.Logic_CreateFromValue(ObjectWriterContext ctx, XamlValueConverter`1 typeConverter, Object value, XamlMember property, String targetName, IAddLineInfo lineInfo)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at WileyWidget.App.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at WileyWidget.App.Main()\n",
+      "crash_type": "unknown"
+    },
+    {
+      "timestamp": "/Date(1756682282443)/",
+      "event_id": 1026,
+      "level": "Error",
+      "source": ".NET Runtime",
+      "message": "Application: WileyWidget.exe\nCoreCLR Version: 9.0.825.36511\n.NET Version: 9.0.8\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.Windows.Markup.XamlParseException: 'Failed to create a 'Type' from the text 'syncfusion:SfDataGrid'.' Line number '93' and line position '34'.\r\n ---> System.Xaml.XamlParseException: Type reference cannot find type named '{http://schemas.syncfusion.com/wpf}SfDataGrid'.\r\n   at MS.Internal.Xaml.Context.ObjectWriterContext.ServiceProvider_Resolve(String qName)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.CreateObjectWithTypeConverter(ServiceProviderContext serviceContext, XamlValueConverter`1 ts, Object value)\r\n   at System.Xaml.XamlObjectWriter.Logic_CreateFromValue(ObjectWriterContext ctx, XamlValueConverter`1 typeConverter, Object value, XamlMember property, String targetName, IAddLineInfo lineInfo)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at WileyWidget.App.InitializeComponent() in C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml:line 1\r\n   at WileyWidget.App.Main()\n",
+      "crash_type": "unknown"
+    }
+  ],
+  "debug_log_entries": [
+    {
+      "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\debug.log",
+      "line_number": 1,
+      "pattern": "null_reference",
+      "content": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "context": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "timestamp": null
+    },
+    {
+      "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\debug.log",
+      "line_number": 4,
+      "pattern": "null_reference",
+      "content": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "context": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "timestamp": null
+    },
+    {
+      "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\debug.log",
+      "line_number": 7,
+      "pattern": "null_reference",
+      "content": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "context": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "timestamp": null
+    },
+    {
+      "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\debug.log",
+      "line_number": 10,
+      "pattern": "null_reference",
+      "content": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "context": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "timestamp": null
+    },
+    {
+      "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\debug.log",
+      "line_number": 13,
+      "pattern": "null_reference",
+      "content": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "context": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "timestamp": null
+    },
+    {
+      "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\debug.log",
+      "line_number": 16,
+      "pattern": "null_reference",
+      "content": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "context": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "timestamp": null
+    },
+    {
+      "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\debug.log",
+      "line_number": 19,
+      "pattern": "null_reference",
+      "content": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0",
+      "context": "[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n[Probe✅] Syncfusion.SfSkinManager.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentDark.WPF v30.2.4.0\n[Probe✅] Syncfusion.Themes.FluentLight.WPF v30.2.4.0\n",
+      "timestamp": null
+    }
+  ],
+  "assembly_info": {
+    "syncfusion_dlls": [
+      {
+        "name": "Syncfusion.Data.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 279040
+      },
+      {
+        "name": "Syncfusion.Licensing.dll",
+        "version": "30.2.4",
+        "product_version": "30.2.4",
+        "size": 52736
+      },
+      {
+        "name": "Syncfusion.SfAccordion.WPF.dll",
+        "version": "30.2.7.0",
+        "product_version": "30.2.7",
+        "size": 79360
+      },
+      {
+        "name": "Syncfusion.SfBusyIndicator.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 184320
+      },
+      {
+        "name": "Syncfusion.SfChart.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 2073600
+      },
+      {
+        "name": "Syncfusion.SfDiagram.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 4149248
+      },
+      {
+        "name": "Syncfusion.SfGrid.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 2552832
+      },
+      {
+        "name": "Syncfusion.SfInput.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 496128
+      },
+      {
+        "name": "Syncfusion.SfProgressBar.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 82432
+      },
+      {
+        "name": "Syncfusion.SfScheduler.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 702464
+      },
+      {
+        "name": "Syncfusion.SfSkinManager.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 57856
+      },
+      {
+        "name": "Syncfusion.Shared.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 3228160
+      },
+      {
+        "name": "Syncfusion.Tools.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 6210560
+      }
+    ],
+    "theme_dlls": [
+      {
+        "name": "Syncfusion.Themes.FluentDark.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 4340736
+      },
+      {
+        "name": "Syncfusion.Themes.FluentLight.WPF.dll",
+        "version": "30.2.4.0",
+        "product_version": "30.2.4",
+        "size": 4343808
+      }
+    ],
+    "version_conflicts": []
+  },
+  "file_locks": {
+    "temp_wpf_files": [],
+    "locked_assemblies": [],
+    "running_processes": []
+  },
+  "wpf_designer_issues": {
+    "xaml_errors": [
+      {
+        "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\App.xaml",
+        "issues": ["SfSkinManager usage in XAML"]
+      },
+      {
+        "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\SyncfusionResources.xaml",
+        "issues": ["SfSkinManager usage in XAML"]
+      },
+      {
+        "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\Views\\AboutWindow.xaml",
+        "issues": ["SfSkinManager usage in XAML"]
+      },
+      {
+        "file": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\Views\\MainWindow.xaml",
+        "issues": ["SfSkinManager usage in XAML"]
+      }
+    ],
+    "designer_cache": [
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net8.0-windows\\App.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net8.0-windows\\WileyWidget.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net8.0-windows\\WileyWidget_Content.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net8.0-windows\\TestWpfApp\\App.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net8.0-windows\\TestWpfApp\\MainWindow.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net8.0-windows\\Views\\AboutWindow.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0\\SyncfusionSearchTest.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\App.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\GeneratedInternalTypeHelper.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\SyncfusionSearchTest.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_00vheab3_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_00vicyyi_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_02pvd01o_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_0gwi014d_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_0mc3zv3j_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_0smoz13g_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1ccl03no_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1dmon41w_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1dyjjdgz_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1gfojmcb_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1hz1omre_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1ljdw4su_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1m5god22_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1pgyc5yo_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1sgbmi4o_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_1z1wlkma_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_230ejfrs_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_32bvr2tf_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_32iry5xp_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_34rbmeon_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_3blekjoo_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_3kjgntbd_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_3lhrbvdk_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_3pvxbhwm_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_3w5a0pih_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_3zitr3ai_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_40nz03un_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_411p2cd0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_435dlgbz_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_4frnlmfu_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_4pxk54yj_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_4pyzyueg_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_4v1rrjti_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_5atjifo1_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_5dukjeyb_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_5qqx53gg_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_5qvztarq_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_5szzsijd_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_5whzub5i_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_a0asoe3l_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ak3ix4ya_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_al4o2iy0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_avk0qcgz_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_awzkearc_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ayoryw3w_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_b1bghyhi_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_b5mbfeyp_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_bcqzx10l_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_bgv4xnky_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_bh3zx3si_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_bhzp4u12_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_bnred4du_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_bpos0czo_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_bv1qpqs0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_casjzvat_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_cfwax3bh_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_cliktdgy_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_cniwroqy_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_Content.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ctkvyjz0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_d2lsjdh0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ditqhcfp_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_dmngsy3u_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_e4pw3wyh_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ea45rwot_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_egwmasyl_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_etbowyq1_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_exiosemv_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_f12hl2su_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_f2euplcr_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_fbaafmst_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_fcm150e1_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_g0mbq2da_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_gm4caktu_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_gmvhkw5t_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_hhcjiux2_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_hldozzb5_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_hss0vyb0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_if5mskr4_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_iq0vdzxv_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ir1jfxfl_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_j3zhcw5o_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_jjwdfu2d_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_k3p32ndo_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_kklwv02b_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ksnyoiuf_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_kxi3rnfm_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ky01xdi3_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_l5fv0bdj_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_leqqqzah_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ligtqkhk_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_lro1jxn0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_lwjfushv_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_lymoqfnl_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_lzkfzxhr_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_maaxehla_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_mnybc4d3_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_mu1mx4jt_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_mxfaulom_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_n20zfwp3_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_n3bden5j_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_n4mbsypa_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ngwokbc0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_njmfp53m_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_nkqqgfdg_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_nn0kqfx3_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_no4nwuz1_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_nvx0kn5i_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_o44qi0vc_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ogpxwslk_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ohxvzzgr_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ojw2qd0w_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_om5uizvv_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ookxmuns_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_opkogxca_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_owxrek4l_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_oxvgmncw_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_p5n4ie20_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pduhrhlu_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pezftrpw_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pil40zjf_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pinkkdai_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pmelql5r_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pnb2mirs_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pnfxazmw_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pp0dgyfd_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ppmqblng_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_pt5qgcmq_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_puvbpabs_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_qbhnckd3_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_qmhuhk2u_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_qokcjz20_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_qqdvaowr_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_qtv3acfc_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_quesfshy_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_r0503lme_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_r0lsxwpc_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_rdvgk0qa_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_rflhfzki_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_s2viifnz_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_s5tj5cau_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_scoz2mgw_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_sealbr0x_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_svdv0dbu_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_swgrfidd_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_sxhpblqe_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_td5cutqm_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_teohl2tj_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_tgi4wyzh_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_tkq31ku1_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_tzfnum5g_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_u3ikfibk_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_u5uniuya_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_uka1ouz1_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_um05gnca_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_v3d4cek4_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_v3tflg4d_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_vlmrivoy_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_vu35nbac_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_vuhg4f5c_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_vzz4qvcj_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_wbs1p2nt_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_wgfizlaq_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_wj2mquo4_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_wlkanoun_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_wqd0n2y0_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_wqnpa11i_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_wwg2j44m_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_wwvuh0b4_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_x1jvducl_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_xaaf0bux_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_xjrf3h2y_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_xpnxryrx_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_xurj2zrp_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ynt1lryq_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_yzobwnmx_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_z1svedvs_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_ziplvrsh_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_zjlsrtll_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_zpeu5clv_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\WileyWidget_zyr1rpkd_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\TestWpfApp\\App.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\TestWpfApp\\MainWindow.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\Views\\AboutWindow.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Debug\\net9.0-windows\\Views\\MainWindow.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\App.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\GeneratedInternalTypeHelper.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\WileyWidget.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\WileyWidget_Content.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\WileyWidget_pg5wvxwg_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\WileyWidget_r5yxtebb_wpftmp.GlobalUsings.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\TestWpfApp\\App.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\TestWpfApp\\MainWindow.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\Views\\AboutWindow.g.cs",
+      "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\Release\\net9.0-windows\\Views\\MainWindow.g.cs"
+    ],
+    "resource_conflicts": []
+  },
+  "runtime_environment": {
+    "dotnet_version": "9.0.304",
+    "wpf_version": "unknown",
+    "environment_vars": {
+      "ASPNETCORE_ENVIRONMENT": "Development"
+    },
+    "runtime_config": {},
+    "sdk_info": ".NET SDK:\n Version:           9.0.304\n Commit:            f12f5f689e\n Workload version:  9.0.300-manifests.407ced12\n MSBuild version:   17.14.16+5d8159c5f\n\nRuntime Environment:\n OS Name:     Windows\n OS Version:  10.0.26100\n OS Platform: Windows\n RID:         win-x64\n Base Path:   C:\\Program Files\\dotnet\\sdk\\9.0.304\\\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use loose manifests when installing new manifests.\n\nHost:\n  Version:      9.0.8\n  Architecture: x64\n  Commit:       aae90fa090\n\n.NET SDKs installed:\n  8.0.413 [C:\\Program Files\\dotnet\\sdk]\n  9.0.304 [C:\\Program Files\\dotnet\\sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 8.0.12 [C:\\Program Files\\dotnet\\shared\\Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 8.0.19 [C:\\Program Files\\dotnet\\shared\\Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 9.0.8 [C:\\Program Files\\dotnet\\shared\\Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 6.0.36 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\n  Microsoft.NETCore.App 8.0.12 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\n  Microsoft.NETCore.App 8.0.19 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\n  Microsoft.NETCore.App 9.0.8 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\n  Microsoft.WindowsDesktop.App 6.0.36 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\n  Microsoft.WindowsDesktop.App 8.0.12 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\n  Microsoft.WindowsDesktop.App 8.0.19 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\n  Microsoft.WindowsDesktop.App 9.0.8 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\n\nOther architectures found:\n  None\n\nEnvironment variables:\n  Not set\n\nglobal.json file:\n  C:\\Users\\biges\\Desktop\\Wiley_Widget\\global.json\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n"
+  },
+  "recommendations": [
+    "✅ Move theme application from constructor to Window.Loaded event",
+    "✅ Set SfSkinManager.ApplyThemeAsDefaultStyle = true in App.OnStartup",
+    "✅ Disable FluentLight animations: HoverEffectMode = HoverEffect.None",
+    "✅ Use XAML-first theme application via merged dictionaries",
+    "🔍 Check Windows Event Viewer for .NET Runtime errors",
+    "🔍 Monitor debug.log for TargetInvocationException patterns",
+    "🧪 Test with minimal repro to isolate theme crashes",
+    "📞 Contact Syncfusion support with specific crash logs"
+  ],
+  "minimal_repro": {
+    "path": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\theme-crash-repro",
+    "test_results": {
+      "build_success": false,
+      "run_success": false,
+      "crashes": [],
+      "output": "",
+      "build_output": "  Determining projects to restore...\nC:\\Users\\biges\\Desktop\\Wiley_Widget\\theme-crash-repro\\ThemeCrashRepro.csproj : error NU1008: Projects that use central package version management should not define the version on the PackageReference items but on the PackageVersion items: Syncfusion.SfSkinManager.WPF;Syncfusion.Themes.FluentLight.WPF;Syncfusion.Tools.WPF.\n  Failed to restore C:\\Users\\biges\\Desktop\\Wiley_Widget\\theme-crash-repro\\ThemeCrashRepro.csproj (in 36 ms).\n\nBuild FAILED.\n\nC:\\Users\\biges\\Desktop\\Wiley_Widget\\theme-crash-repro\\ThemeCrashRepro.csproj : error NU1008: Projects that use central package version management should not define the version on the PackageReference items but on the PackageVersion items: Syncfusion.SfSkinManager.WPF;Syncfusion.Themes.FluentLight.WPF;Syncfusion.Tools.WPF.\n    0 Warning(s)\n    1 Error(s)\n\nTime Elapsed 00:00:00.54\n"
+    }
+  }
+}

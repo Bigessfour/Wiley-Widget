@@ -1,26 +1,16 @@
 using System.Threading.Tasks;
-using DBConfirm.Core.Data;
-using DBConfirm.Core.DataResults;
-using DBConfirm.Core.Parameters;
-using DBConfirm.Packages.SQLServer.NUnit;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace WileyWidget.Tests;
 
 /// <summary>
-/// Base class for DBConfirm database tests
-/// Provides access to TestRunner for executing SQL operations
+/// Base class for database tests
 /// </summary>
-public abstract class DatabaseTestBase : NUnitBase
+public abstract class DatabaseTestBase
 {
     protected DatabaseTestBase()
     {
-        // Try to manually initialize TestRunner if it's null
-        if (TestRunner == null)
-        {
-            // Create a custom TestRunner instance
-            // We'll handle this in the individual tests since automatic initialization isn't working
-        }
+        // Base constructor for database tests
     }
 }

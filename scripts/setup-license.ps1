@@ -114,7 +114,7 @@ function Get-LicenseStatus {
     }
 
     # Check embedded license file
-    $embeddedPath = Join-Path $PSScriptRoot ".." "WileyWidget" "LicenseKey.Private.cs"
+    $embeddedPath = Join-Path $PSScriptRoot ".." "Wiley Widget" "Resources" "LicenseKey.Private.cs"
     if (Test-Path $embeddedPath) {
         Write-Host "✅ Embedded license file exists: $embeddedPath" -ForegroundColor Green
     }

@@ -169,11 +169,13 @@ catch (Exception ex)
 
 ### **Current Azure Configuration Status**
 **✅ Azure Resources Verified and Operational:**
-- **Resource Group:** `wileywidget-rg` (East US)
-- **SQL Database:** `wileywidget-db` (East US)
+- **Resource Group:** `WileyWidget-RG` (East US)
+- **SQL Server:** `wileywidget-sql` (East US 2 - deployed to bypass East US restrictions)
+- **Database:** `WileyWidgetDB` (Basic tier, 2GB)
+- **Firewall Rules:** `AllowAllAzureServices` + `AllowMyIP` (216.147.125.99)
 - **Managed Identity:** Configured for secure authentication
 - **MCP Server:** Azure MCP server configured and functional
-- **Subscription:** Active with proper permissions
+- **Subscription:** `89c2076a-8c6f-41fe-b03c-850d46a57abf` (Azure subscription 1)
 
 **🔧 MCP (Model Context Protocol) Servers:**
 - **GitHub MCP:** Configured for repository management
@@ -182,13 +184,131 @@ catch (Exception ex)
 
 ---
 
-## 🚀 **Phase 1 Implementation Quick Start**
+## �️ **Azure Database Setup & Configuration**
+
+### **Database Architecture Overview**
+Wiley Widget supports both local development (SQLite) and cloud production (Azure SQL Database) environments. The application automatically switches between providers based on configuration.
+
+### **Current Azure Database Configuration**
+**✅ Azure SQL Database Successfully Deployed:**
+- **Resource Group:** `WileyWidget-RG` (East US)
+- **SQL Server:** `wileywidget-sql` (East US 2 - deployed here to avoid East US provisioning restrictions)
+- **Database:** `WileyWidgetDB` (Basic tier, 2GB max size)
+- **Location:** East US 2 (selected to bypass temporary East US restrictions)
+- **Admin User:** `wileyadmin`
+- **Connection:** `wileywidget-sql.database.windows.net`
+
+### **Firewall Configuration**
+**Dynamic IP Access Enabled:**
+- **AllowAllAzureServices:** Permits all Azure services to connect (0.0.0.0 - 0.0.0.0)
+- **AllowMyIP:** Permits current public IP `216.147.125.99` for direct connections
+- **Note:** IP address may change; update firewall rules if connection fails
+
+### **Connection Configuration**
+**Environment Variables (`.env` file):**
+```bash
+# Azure SQL Database Configuration
+AZURE_SQL_SERVER=wileywidget-sql.database.windows.net
+AZURE_SQL_DATABASE=WileyWidgetDB
+AZURE_SQL_USER=wileyadmin
+AZURE_SQL_PASSWORD=P@ssw0rd123!
+AZURE_SQL_RETRY_ATTEMPTS=3
+```
+
+**Application Settings (`appsettings.json`):**
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+  },
+  "Database": {
+    "Provider": "SqlServer",
+    "EnableSensitiveDataLogging": false,
+    "EnableDetailedErrors": false,
+    "CommandTimeout": 30,
+    "MaxRetryCount": "${AZURE_SQL_RETRY_ATTEMPTS}",
+    "MaxRetryDelay": "00:00:30"
+  }
+}
+```
+
+### **Database Deployment Commands**
+**Executed Commands (for reference):**
+```bash
+# 1. Create SQL Server
+az sql server create \
+  --name wileywidget-sql \
+  --resource-group WileyWidget-RG \
+  --location "East US 2" \
+  --admin-user wileyadmin \
+  --admin-password "P@ssw0rd123!"
+
+# 2. Create Database
+az sql db create \
+  --resource-group WileyWidget-RG \
+  --server wileywidget-sql \
+  --name WileyWidgetDB \
+  --service-objective Basic
+
+# 3. Configure Firewall (Azure Services)
+az sql server firewall-rule create \
+  --resource-group WileyWidget-RG \
+  --server wileywidget-sql \
+  --name AllowAllAzureServices \
+  --start-ip-address 0.0.0.0 \
+  --end-ip-address 0.0.0.0
+
+# 4. Configure Firewall (Current IP)
+az sql server firewall-rule create \
+  --resource-group WileyWidget-RG \
+  --server wileywidget-sql \
+  --name AllowMyIP \
+  --start-ip-address 216.147.125.99 \
+  --end-ip-address 216.147.125.99
+```
+
+### **Security Considerations**
+- **⚠️ CHANGE DEFAULT PASSWORD:** The current password `P@ssw0rd123!` should be changed immediately for production use
+- **IP Whitelisting:** The `AllowMyIP` rule uses your current public IP. If your IP changes, update the firewall rule
+- **Azure Services Access:** The `AllowAllAzureServices` rule allows any Azure service to connect - consider restricting for production
+
+### **Troubleshooting Database Connections**
+1. **Connection Timeout:** Verify firewall rules include your current IP
+2. **Authentication Failed:** Check username/password in `.env` file
+3. **Server Not Found:** Ensure `AZURE_SQL_SERVER` is correct in `.env`
+4. **IP Changed:** Update `AllowMyIP` firewall rule with new public IP
+
+**Update Firewall for New IP:**
+```bash
+# Get current IP
+curl -s https://api.ipify.org
+
+# Update firewall rule (replace IP_ADDRESS with actual IP)
+az sql server firewall-rule create \
+  --resource-group WileyWidget-RG \
+  --server wileywidget-sql \
+  --name AllowMyIP \
+  --start-ip-address IP_ADDRESS \
+  --end-ip-address IP_ADDRESS \
+  --yes  # Overwrite existing rule
+```
+
+### **Database Migration & Schema**
+- **Entity Framework:** Configured for Azure SQL Server with automatic migrations
+- **Migration Status:** ✅ All migrations applied successfully (2025-09-01)
+- **Tables Created:** 8 tables (Enterprises, BudgetInteractions, OverallBudgets, AI entities)
+- **Data Types:** SQL Server compatible (datetime2, nvarchar, decimal, etc.)
+- **Connection:** Fully tested and operational
+
+---
+
+## �🚀 **Phase 1 Implementation Quick Start**
 
 ### **Prerequisites**
-1. **Setup Database**: `pwsh ./scripts/setup-database.ps1` (installs SQL Server LocalDB)
+1. **Setup Database**: ✅ Azure SQL Database configured and migrated
 2. **Setup Environment**: `pwsh ./scripts/load-env.ps1 -Load` (loads secure environment variables)
 3. **Setup Syncfusion License**: `pwsh ./scripts/setup-license.ps1` (obtain and configure license)
-4. **Setup Azure Environment**: `pwsh ./scripts/azure-setup.ps1` (configures safe Azure operations)
+4. **Setup Azure Environment**: ✅ Azure resources deployed and configured
 
 ### **Phase 1 Development Workflow**
 ```powershell

@@ -1,0 +1,17 @@
+<syncfusion:ChromelessWindow x:Class="WileyWidget.Views.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+        xmlns:syncfusionshared="clr-namespace:Syncfusion.Windows.Shared;assembly=Syncfusion.Shared.WPF"
+        xmlns:sfinput="clr-namespace:Syncfusion.Windows.Controls;assembly=Syncfusion.SfInput.WPF"
+        xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+        Title="About WileyWidget" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <!-- Updated to Syncfusion WPF 30.2.4 - ChromelessWindow, SfStackPanel, SfTextBlock, and ButtonAdv verified as compatible -->
+    <StackPanel Margin="16">
+        <TextBlock Text="WileyWidget" FontSize="20" FontWeight="Bold" />
+        <TextBlock x:Name="VersionText" Margin="0,8,0,0" />
+        <TextBlock Text="(c) 2025 Your Company" Margin="0,8,0,0" />
+        <syncfusion:ButtonAdv Content="Close" Margin="0,16,0,0" HorizontalAlignment="Right" Width="80" Click="OnClose" />
+    </StackPanel>
+</syncfusion:ChromelessWindow>

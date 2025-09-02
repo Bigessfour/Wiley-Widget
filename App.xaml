@@ -5,57 +5,10 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- FluentDark theme resources - loaded before custom resources -->
-                <!-- Reference: https://help.syncfusion.com/cr/wpf/Syncfusion.html#theme-application -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/FluentDark.xaml" />
-
-                <!-- Syncfusion Control-Specific Resource Dictionaries -->
-                <!-- Core Controls -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Button.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/TextBox.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/ComboBox.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/CheckBox.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/RadioButton.xaml" />
-
-                <!-- Data Controls -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/DataGrid.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/GridControl.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/ListView.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/TreeView.xaml" />
-
-                <!-- Layout Controls -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/TabControl.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Accordion.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Expander.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/GroupBox.xaml" />
-
-                <!-- Navigation Controls -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/DockingManager.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Ribbon.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Menu.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/ToolBar.xaml" />
-
-                <!-- Input Controls -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/DatePicker.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/TimePicker.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/NumericUpDown.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/MaskedTextBox.xaml" />
-
-                <!-- Visualization Controls -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Chart.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Diagram.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Gauge.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/ProgressBar.xaml" />
-
-                <!-- Scheduler and Calendar -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Scheduler.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Calendar.xaml" />
-
-                <!-- File and Document Controls -->
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/PdfViewer.xaml" />
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentDark.WPF;component/Controls/Spreadsheet.xaml" />
-
-                <!-- Custom application resources -->
+                <!-- FIXED: Remove problematic Syncfusion theme XAML references -->
+                <!-- Theme will be applied via code in App.xaml.cs OnStartup -->
+                
+                <!-- Custom application resources only -->
                 <ResourceDictionary Source="SyncfusionResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

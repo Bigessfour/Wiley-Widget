@@ -104,7 +104,10 @@
     "debug.overrideEngine": "gpt-4o",
     "debug.overrideModel": "gpt-4o",
     "length": 500,
-    "temperature": 0.1
+    "temperature": 0.1,
+    "contextWindow": 250000,
+    "grok.contextWindow": 250000,
+    "grok.model": "grok-codefast-1"
   },
 
   // File Associations for PowerShell
@@ -241,5 +244,18 @@
   "appService.showBuildDuringDeployPrompt": true,
   "yaml.schemas": {
     "https://gitlab.com/appsemble/appsemble/-/raw/HEAD/packages/cli/assets/appsemblerc.schema.json": "chat-editing-snapshot-text-model:/c%3A/Users/biges/Desktop/Wiley_Widget/.github/workflows/release-new.yml?%7B%22sessionId%22%3A%22bacce419-d9d7-48eb-b211-4bc420789800%22%2C%22requestId%22%3A%22request_1f785618-7556-4a24-b682-f4a0618a2558%22%2C%22undoStop%22%3A%22b53c08eb-fb08-4e98-9ff7-f1035166a221%22%7D"
-  }
+  },
+
+  // xAI Grok Configuration
+  "xai.grok": {
+    "model": "grok-codefast-1",
+    "contextWindow": 250000,
+    "maxTokens": 250000,
+    "temperature": 0.1,
+    "topP": 0.9,
+    "apiEndpoint": "https://api.x.ai/v1",
+    "timeout": 30000
+  },
+
+  "editor.fontSize": 13
 }

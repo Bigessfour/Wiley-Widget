@@ -10,7 +10,9 @@
     <LangVersion>latest</LangVersion>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-  <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022</NoWarn>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+  <!-- Consolidated warning suppressions: project adds additional codes on top of Directory.Build.props -->
+  <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022;CS1591</NoWarn>
   <!-- Signing placeholders (provide actual .snk and enable when ready) -->
   <SignAssembly>false</SignAssembly>
   <AssemblyOriginatorKeyFile>signing\WileyWidget.snk</AssemblyOriginatorKeyFile>
@@ -18,11 +20,76 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <UserSecretsId>b361c895-73de-46a6-9110-c7a5c18bbebf</UserSecretsId>
+    
+    <!-- Enhanced Diagnostic Properties for Dependency Analysis -->
+    <MSBuildVerbosity Condition="'$(Configuration)' == 'Debug'">detailed</MSBuildVerbosity>
+    <ShowDependencies Condition="'$(Configuration)' == 'Debug'">true</ShowDependencies>
+    <LogLevel Condition="'$(Configuration)' == 'Debug'">Information</LogLevel>
+    
+    <!-- Preserve compilation context for better diagnostics -->
+    <PreserveCompilationContext>true</PreserveCompilationContext>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    
+    <!-- Enhanced assembly loading diagnostics -->
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    
+    <!-- Syncfusion-specific preservation -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <PreserveCompilationReferences>true</PreserveCompilationReferences>
   </PropertyGroup>
 
   <!-- Copy Syncfusion license file to output directory -->
   <Target Name="CopyLicenseFile" AfterTargets="Build">
     <Copy SourceFiles="license.key" DestinationFolder="$(OutDir)" Condition="Exists('license.key')" />
+  </Target>
+
+  <!-- Clean WPF temp files before build to prevent accumulation -->
+  <Target Name="CleanTempFiles" BeforeTargets="Build">
+    <Exec Command="del /q $(IntermediateOutputPath)*_wpftmp.*.cs" IgnoreExitCode="true" />
+  </Target>
+
+  <!-- Enhanced Diagnostic Targets for Dependency Analysis -->
+  <Target Name="DiagnosticAssemblyInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="=== ASSEMBLY DIAGNOSTIC INFO ===" Importance="high" />
+    <Message Text="Target Framework: $(TargetFramework)" Importance="high" />
+    <Message Text="Runtime Identifier: $(RuntimeIdentifier)" Importance="high" />
+    <Message Text="Output Path: $(OutputPath)" Importance="high" />
+    <Message Text="Assembly Name: $(AssemblyName)" Importance="high" />
+    <Message Text="=== END ASSEMBLY DIAGNOSTIC INFO ===" Importance="high" />
+  </Target>
+
+  <Target Name="ListReferencedAssemblies" AfterTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="=== REFERENCED ASSEMBLIES ===" Importance="high" />
+    <Message Text="Total references: @(ReferencePath->Count())" Importance="high" />
+    <Message Text="Syncfusion assemblies:" Importance="high" />
+    <Message Text="  %(ReferencePath.Filename)" 
+             Condition="$([System.String]::Copy('%(ReferencePath.Filename)').Contains('Syncfusion'))" 
+             Importance="high" />
+    <Message Text="WPF assemblies:" Importance="high" />
+    <Message Text="  %(ReferencePath.Filename)" 
+             Condition="$([System.String]::Copy('%(ReferencePath.Filename)').Contains('Wpf')) OR $([System.String]::Copy('%(ReferencePath.Filename)').Contains('WPF'))" 
+             Importance="high" />
+    <Message Text="=== END REFERENCED ASSEMBLIES ===" Importance="high" />
+  </Target>
+
+  <Target Name="ValidateSyncfusionReferences" AfterTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug'">
+    <ItemGroup>
+      <SyncfusionRefs Include="@(ReferencePath)" Condition="$([System.String]::Copy('%(ReferencePath.Filename)').Contains('Syncfusion'))" />
+    </ItemGroup>
+    <Message Text="=== SYNCFUSION VALIDATION ===" Importance="high" />
+    <Warning Text="⚠️ Syncfusion.SfSkinManager.WPF reference missing!" 
+             Condition="!@(SyncfusionRefs->AnyHaveMetadataValue('Filename', 'Syncfusion.SfSkinManager.WPF'))" />
+    <Warning Text="⚠️ Syncfusion.Themes.FluentDark.WPF reference missing!" 
+             Condition="!@(SyncfusionRefs->AnyHaveMetadataValue('Filename', 'Syncfusion.Themes.FluentDark.WPF'))" />
+    <Message Text="✅ Found @(SyncfusionRefs->Count()) Syncfusion references" Importance="high" />
+    <Message Text="=== END SYNCFUSION VALIDATION ===" Importance="high" />
+  </Target>
+
+  <!-- Prevent build failures from locked bin\Debug\ WileyWidget.dll by killing stale process (Debug only) -->
+  <Target Name="KillRunningWileyWidget" BeforeTargets="BeforeBuild" Condition="'$(Configuration)'=='Debug'">
+    <Message Text="🔪 Pre-Build: terminating stale WileyWidget processes (if any)" Importance="high" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;$p=Get-Process -Name WileyWidget -ErrorAction SilentlyContinue; if($p){ $p | Stop-Process -Force; Write-Host 'Killed stale WileyWidget process.' } else { Write-Host 'No stale WileyWidget process.' }&quot;" IgnoreExitCode="true" />
   </Target>
 
   <ItemGroup>
@@ -34,9 +101,18 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!-- Copy theme files to output directory -->
-    <Content Include="Themes\**">
+    <Content Include="Wiley Widget\Themes\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- Explicitly include WPF pages -->
+    <Page Include="App.xaml" />
+    <Page Include="Wiley Widget\Views\SplashScreenWindow.xaml" />
+    <Page Include="Wiley Widget\Views\MainWindow.xaml" />
+    <Page Include="Wiley Widget\Views\AboutWindow.xaml" />
+    
+    <!-- Exclude sample files from compilation -->
+    <Compile Remove="Wiley Widget\Configuration\LicenseKey.Private.sample.cs" />
+    <Compile Remove="Wiley Widget\Configuration\license.sample.key" />
     <PackageReference Include="AutoFixture" />
     <PackageReference Include="AutoFixture.Xunit2" />
     <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" />
@@ -86,21 +162,10 @@
 
   <!-- Exclude test files from main project build -->
   <ItemGroup>
-    <Compile Remove="WileyWidget.Tests\**" />
-    <Compile Remove="WileyWidget.UiTests\**" />
-    <Compile Remove="WileyWidget.TestModels\**" />
-    <Compile Remove="WileyWidgetTest\**" />
-    <Compile Remove="TestWpfApp\**" />
-    <EmbeddedResource Remove="WileyWidget.Tests\**" />
-    <EmbeddedResource Remove="WileyWidget.UiTests\**" />
-    <EmbeddedResource Remove="WileyWidget.TestModels\**" />
-    <EmbeddedResource Remove="WileyWidgetTest\**" />
-    <EmbeddedResource Remove="TestWpfApp\**" />
-    <None Remove="WileyWidget.Tests\**" />
-    <None Remove="WileyWidget.UiTests\**" />
-    <None Remove="WileyWidget.TestModels\**" />
-    <None Remove="WileyWidgetTest\**" />
-    <None Remove="TestWpfApp\**" />
+    <Compile Remove="theme-crash-repro\**" />
+    <EmbeddedResource Remove="theme-crash-repro\**" />
+    <None Remove="theme-crash-repro\**" />
+    <Page Remove="theme-crash-repro\**" />
   </ItemGroup>
 
 </Project>

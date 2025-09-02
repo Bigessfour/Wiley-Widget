@@ -9,4 +9,13 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Nullable>disable</Nullable>
   </PropertyGroup>
+
+  <!-- Debug-only documentation noise suppression -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <!-- CS1587: XML comment not placed on a valid element -->
+    <!-- CS1591: Missing XML comment for publicly visible type or member -->
+    <!-- CS1570: Badly formed XML comment -->
+    <!-- CS1572: Param tag has no matching parameter -->
+    <NoWarn>$(NoWarn);CS1587;CS1591;CS1570;CS1572</NoWarn>
+  </PropertyGroup>
 </Project>

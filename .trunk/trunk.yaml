@@ -29,11 +29,11 @@ lint:
     - prettier@3.6.2
     # Security scanning - critical for production
     - trufflehog@3.90.5
-    # .NET code quality and formatting
-    - dotnet-format@9.0.0
     # PowerShell script analysis with 7.5.2 formatting
     - psscriptanalyzer@1.24.0:
         config: .trunk/configs/PSScriptAnalyzerSettings.psd1
+    # XAML validation for WPF applications
+    - actionlint@1.7.7
     # Security vulnerability scanning
     - osv-scanner@2.2.2
     # Git security scanning with custom config
@@ -41,12 +41,9 @@ lint:
         config: .trunk/configs/.gitleaks.toml
   disabled:
     # Too aggressive on documentation formatting
-    - gitleaks
     - markdownlint
     # Too strict on git whitespace in docs
     - git-diff-check
-    # Too picky about GitHub Actions syntax variations
-    - actionlint
     # Too picky about YAML formatting variations
     - yamllint
     # Security scanner with too many false positives on config files
