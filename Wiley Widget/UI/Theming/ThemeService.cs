@@ -4,19 +4,15 @@ using System.Windows;
 using Serilog;
 using Syncfusion.SfSkinManager;
 using WileyWidget.Infrastructure.Logging;
+using System.Reflection;
 
 namespace WileyWidget.UI.Theming;
 
-/// <summary>
-/// Centralized service for applying and managing Syncfusion + WPF Fluent themes.
-/// Refactored to use consistent theming strategy and proper resource management.
-/// </summary>
+// Centralized service for applying and managing Syncfusion + WPF Fluent themes.
+// Refactored to use consistent theming strategy and proper resource management.
 public static class ThemeService
 {
-    /// <summary>
-    /// Supported theme names for Syncfusion WPF 30.2.4
-    /// Per Syncfusion documentation: https://help.syncfusion.com/wpf/themes/getting-started
-    /// </summary>
+    // Supported theme names for Syncfusion WPF 30.2.4 (see Syncfusion docs: themes/getting-started)
     private static readonly string[] SupportedThemes =
     [
         "FluentDark",
@@ -30,25 +26,21 @@ public static class ThemeService
 
     private static string _currentTheme = "FluentDark";
     private static bool _isInitialized;
+    private static bool _fallbackNotificationShown;
+    private static bool _fallbackTelemetrySent;
+    private static int _fallbackAttemptCount;
+    private const int MaxFallbackAttempts = 3;
 
-    /// <summary>
-    /// Event raised when the application theme changes
-    /// </summary>
+    // Event raised when the application theme changes
     public static event EventHandler<ThemeChangedEventArgs> ThemeChanged;
 
-    /// <summary>
-    /// Gets the currently applied theme name
-    /// </summary>
+    // Gets the currently applied theme name
     public static string CurrentTheme => _currentTheme;
 
-    /// <summary>
-    /// Gets whether the theme system has been initialized
-    /// </summary>
+    // Gets whether the theme system has been initialized
     public static bool IsInitialized => _isInitialized;
 
-    /// <summary>
-    /// Initialize the theme system with global settings
-    /// </summary>
+    // Initialize the theme system with global settings
     public static void Initialize()
     {
         if (_isInitialized)
@@ -67,6 +59,7 @@ public static class ThemeService
 
             _isInitialized = true;
             Log.Information("✅ ThemeService initialized successfully");
+            LogThemeAssemblyDiagnostics();
         }
         catch (Exception ex)
         {
@@ -75,10 +68,7 @@ public static class ThemeService
         }
     }
 
-    /// <summary>
-    /// Apply a theme to the entire application using Syncfusion WPF 30.2.4 documented approach
-    /// Per Syncfusion documentation: https://help.syncfusion.com/wpf/themes/getting-started
-    /// </summary>
+    // Apply a theme to the entire application using Syncfusion documented approach
     public static void ApplyApplicationTheme(string themeName)
     {
     EnsureInitialized();
@@ -107,13 +97,31 @@ public static class ThemeService
         catch (Exception ex)
         {
             Log.Error(ex, "❌ Failed to apply Syncfusion application theme: {Theme}", theme);
-            throw;
+            // Basic fallback: try FluentLight then default WPF if original not FluentLight
+        if (!string.Equals(theme, "FluentLight", StringComparison.OrdinalIgnoreCase) && CanAttemptFallback())
+            {
+                try
+                {
+                    Log.Warning("Fallback: attempting FluentLight theme after failure applying {Theme}", theme);
+                    SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+                    _currentTheme = "FluentLight";
+                    StructuredLogger.LogThemeChange(theme, "FluentLight", false);
+                    OnThemeChanged(new ThemeChangedEventArgs(theme, "FluentLight", false));
+                    Log.Information("✅ Fallback FluentLight theme applied successfully");
+            RecordFallback(theme, ex);
+                    return; // swallow original after successful fallback
+                }
+                catch (Exception fallbackEx)
+                {
+                    Log.Error(fallbackEx, "Fallback FluentLight theme also failed; continuing without Syncfusion theme");
+            RecordFallback(theme, ex, fallbackEx, success:false);
+                }
+            }
+            throw; // rethrow if fallback unsuccessful
         }
     }
 
-    /// <summary>
-    /// Apply a theme to a specific window
-    /// </summary>
+    // Apply a theme to a specific window
     public static void ApplyWindowTheme(Window window, string themeName)
     {
         if (window == null) throw new ArgumentNullException(nameof(window));
@@ -138,18 +146,14 @@ public static class ThemeService
         }
     }
 
-    /// <summary>
-    /// Apply theme to both application and specific window
-    /// </summary>
+    // Apply theme to both application and specific window
     public static void ApplyCompleteTheme(Window window, string themeName)
     {
         ApplyApplicationTheme(themeName);
         ApplyWindowTheme(window, themeName);
     }
 
-    /// <summary>
-    /// Change theme initiated by user action (e.g., from UI)
-    /// </summary>
+    // Change theme initiated by user action (e.g., from UI)
     public static void ChangeTheme(string themeName, bool userInitiated = true)
     {
     EnsureInitialized();
@@ -181,36 +185,89 @@ public static class ThemeService
         catch (Exception ex)
         {
             Log.Error(ex, "❌ Failed to change theme: {FromTheme} → {ToTheme}", previousTheme, theme);
+        if (!string.Equals(theme, "FluentLight", StringComparison.OrdinalIgnoreCase) && CanAttemptFallback())
+            {
+                try
+                {
+                    Log.Warning("Attempting fallback to FluentLight after failed theme change");
+                    SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+                    _currentTheme = "FluentLight";
+                    StructuredLogger.LogThemeChange(previousTheme, "FluentLight", userInitiated);
+                    OnThemeChanged(new ThemeChangedEventArgs(previousTheme, "FluentLight", userInitiated));
+                    Log.Information("✅ Fallback FluentLight theme applied");
+            RecordFallback(theme, ex);
+                    return;
+                }
+                catch (Exception fallbackEx)
+                {
+                    Log.Error(fallbackEx, "Fallback FluentLight theme failed during theme change");
+            RecordFallback(theme, ex, fallbackEx, success:false);
+                }
+            }
             throw;
         }
     }
 
-    /// <summary>
-    /// Get list of supported theme names
-    /// </summary>
+    // Perform a lightweight diagnostic to ensure required Syncfusion theme assemblies are loadable.
+    // Logs warnings if expected assemblies are not present. Safe to call multiple times.
+    public static void RunDiagnostics()
+    {
+        try
+        {
+            var required = new[]
+            {
+                "Syncfusion.SfSkinManager.WPF",
+                "Syncfusion.Themes.FluentDark.WPF",
+                "Syncfusion.Themes.FluentLight.WPF"
+            };
+
+            var loaded = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetName().Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var r in required)
+            {
+                if (!loaded.Contains(r))
+                {
+                    Log.Warning("⚠️ ThemeDiagnostics: Expected assembly not loaded: {Assembly}", r);
+                }
+            }
+
+            Log.Information("🩺 ThemeDiagnostics complete. Loaded Syncfusion assemblies: {Count}", loaded.Count(n => n.StartsWith("Syncfusion", StringComparison.OrdinalIgnoreCase)));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "ThemeDiagnostics encountered an error");
+        }
+    }
+
+    // Get list of supported theme names
     public static string[] GetSupportedThemes() => SupportedThemes;
 
-    /// <summary>
-    /// Check if a theme is supported
-    /// </summary>
+    // Check if a theme is supported
     public static bool IsThemeSupported(string themeName) =>
         SupportedThemes.Any(t => string.Equals(t, themeName, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>
-    /// Normalize a theme name to a supported canonical theme
-    /// </summary>
+    // Normalize a theme name to a supported canonical theme
     public static string NormalizeTheme(string raw)
     {
-        if (string.IsNullOrWhiteSpace(raw)) return "FluentDark";
+        var original = raw;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            if (!string.Equals(original, "FluentDark", StringComparison.OrdinalIgnoreCase))
+                Log.Debug("Theme normalization: null/empty -> FluentDark");
+            return "FluentDark";
+        }
 
         raw = raw.Replace(" ", string.Empty, StringComparison.Ordinal);
-        return SupportedThemes.FirstOrDefault(t =>
+        var matched = SupportedThemes.FirstOrDefault(t =>
             string.Equals(t, raw, StringComparison.OrdinalIgnoreCase)) ?? "FluentDark";
+        if (!string.Equals(original, matched, StringComparison.OrdinalIgnoreCase))
+            Log.Debug("Theme normalization adjusted '{Original}' -> '{Matched}'", original, matched);
+        return matched;
     }
 
-    /// <summary>
-    /// Event arguments for theme change notifications
-    /// </summary>
+    // Event arguments for theme change notifications
     public class ThemeChangedEventArgs : EventArgs
     {
         public string FromTheme { get; }
@@ -227,18 +284,11 @@ public static class ThemeService
         }
     }
 
-    /// <summary>
-    /// Raises the ThemeChanged event
-    /// </summary>
     private static void OnThemeChanged(ThemeChangedEventArgs e)
     {
         ThemeChanged?.Invoke(null, e);
     }
 
-    /// <summary>
-    /// Idempotent guard ensuring initialization before any theme application.
-    /// Avoids runtime InvalidOperationExceptions if callers invoke theming too early.
-    /// </summary>
     private static void EnsureInitialized()
     {
         if (_isInitialized) return;
@@ -247,11 +297,89 @@ public static class ThemeService
             Log.Debug("ThemeService auto-initializing via EnsureInitialized()");
             SfSkinManager.ApplyThemeAsDefaultStyle = true;
             _isInitialized = true;
+            RunDiagnostics();
+            LogThemeAssemblyDiagnostics();
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed implicit ThemeService initialization");
             throw; // preserve original failure semantics
+        }
+    }
+
+    public static void LogThemeAssemblyDiagnostics()
+    {
+        try
+        {
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => a.GetName().Name.StartsWith("Syncfusion.", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(a => a.GetName().Name)
+                .Select(a => $"{a.GetName().Name} v{a.GetName().Version}")
+                .ToList();
+            if (assemblies.Count == 0)
+            {
+                Log.Warning("⚠️ No Syncfusion assemblies loaded yet (controls not instantiated)");
+            }
+            else
+            {
+                Log.Information("🧩 Loaded Syncfusion assemblies ({Count}): {Assemblies}", assemblies.Count, string.Join(", ", assemblies));
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to log Syncfusion assembly diagnostics");
+        }
+    }
+
+    private static void RecordFallback(string originalTheme, Exception primary, Exception secondary = null, bool success = true)
+    {
+        _fallbackAttemptCount++;
+        if (!_fallbackTelemetrySent)
+        {
+            Log.Information("TELEMETRY|ThemeFallback Applied={Success} Attempts={Attempts} From={Original} To=FluentLight", success, _fallbackAttemptCount, originalTheme);
+            _fallbackTelemetrySent = true; // only once per run
+        }
+
+        if (success && !_fallbackNotificationShown)
+        {
+            _fallbackNotificationShown = true;
+            TryNotifyUser(originalTheme, secondary == null ? primary : secondary);
+        }
+
+        if (_fallbackAttemptCount > MaxFallbackAttempts)
+        {
+            Log.Warning("Theme fallback attempts exceeded limit ({Max}); further fallbacks suppressed", MaxFallbackAttempts);
+        }
+    }
+
+    private static bool CanAttemptFallback() => _fallbackAttemptCount < MaxFallbackAttempts;
+
+    private static void TryNotifyUser(string originalTheme, Exception ex)
+    {
+        try
+        {
+            // Non-intrusive: show once. If dispatcher available, make async to avoid blocking.
+            void show()
+            {
+                try
+                {
+                    System.Windows.MessageBox.Show($"The theme '{originalTheme}' failed and the application switched to FluentLight. Details logged.", "Theme Fallback", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch { /* swallow UI errors */ }
+            }
+
+            if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+            {
+                Application.Current.Dispatcher.BeginInvoke((Action)show);
+            }
+            else
+            {
+                show();
+            }
+        }
+        catch (Exception notifyEx)
+        {
+            Log.Debug(notifyEx, "User notification for theme fallback failed (non-critical)");
         }
     }
 }

@@ -182,7 +182,7 @@ jobs:
               with:
                   timeout_minutes: 10
                   max_attempts: 3
-                  command: dotnet restore --verbosity minimal
+                  command: dotnet restore WileyWidget.csproj --verbosity minimal
 
             - name: Build with Enhanced Diagnostics
               run: |
@@ -243,7 +243,7 @@ jobs:
                       $failed = $testRun.ResultSummary.Counters.failed
                       $total = $testRun.ResultSummary.Counters.total
 
-                      Write-Host "Test Results for $testCategory:" -ForegroundColor Yellow
+                      Write-Host "Test Results for ${testCategory}:" -ForegroundColor Yellow
                       Write-Host "  Total: $total" -ForegroundColor White
                       Write-Host "  Passed: $passed" -ForegroundColor Green
                       Write-Host "  Failed: $failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })

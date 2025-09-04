@@ -155,14 +155,46 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Handles the Loaded event for MainWindow.
+    /// 
+    /// <para>
+    /// Sequence of operations:
+    /// <list type="number">
+    /// <item>Applies the deferred theme to the window for consistent appearance.</item>
+    /// <item>Restores maximized state if previously persisted in settings.</item>
+    /// <item>Applies WPF performance optimizations for responsiveness.</item>
+    /// <item>Verifies that critical theme resources are available for UI stability.</item>
+    /// </list>
+    /// This method detaches itself after execution to prevent duplicate initialization.
+    /// </para>
+    /// </summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Log.Information("Window.Loaded event fired - applying theme and maximized state");
         ApplyDeferredTheme();
         ApplyMaximized();
         OptimizePerformance();
+        VerifyCriticalResources(new [] { "DashboardCard", "CardTitle", "CardValue", "WarningBackground" });
         // Once executed, detach to avoid duplicate calls if window is reloaded (defensive)
         Loaded -= OnLoaded;
+    }
+
+    private static readonly string[] CriticalResourceKeys = { "DashboardCard", "CardTitle", "CardValue", "WarningBackground" };
+
+    private void VerifyCriticalResources(string[] resourceKeys)
+    {
+        foreach (var key in resourceKeys)
+        {
+            if (!Application.Current.Resources.Contains(key))
+            {
+                Log.Warning("Critical resource key missing: {Key}", key);
+            }
+            else
+            {
+                Log.Information("Critical resource key found: {Key}", key);
+            }
+        }
     }
 
     private void OnClosingPersistState(object sender, System.ComponentModel.CancelEventArgs e)

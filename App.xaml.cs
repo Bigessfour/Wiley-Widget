@@ -503,10 +503,7 @@ public partial class App : Application, IDisposable
     /// </summary>
     private IConfiguration _configuration;
 
-    /// <summary>
-    /// Service provider for dependency injection, primarily used for database services.
-    /// Currently reserved for future enhancements to database service management.
-    /// </summary>
+    // Post-theme diagnostic removed: resource key verification handled after MainWindow load
 #pragma warning disable CS0649 // Field is never assigned to - reserved for future use
     private IServiceProvider _serviceProvider;
 #pragma warning restore CS0649
@@ -819,6 +816,9 @@ public partial class App : Application, IDisposable
             // Step 3: Enable Serilog SelfLog to logs/selflog.txt
             EnableSerilogSelfLog();
 
+            // Step 3a: Configure global exception handlers (AppDomain + Dispatcher)
+            ConfigureGlobalExceptionHandling();
+
             // Step 4: Run idempotent license registrar again (adds config key path)
             RegisterSyncfusionLicense();
 
@@ -970,6 +970,18 @@ public partial class App : Application, IDisposable
             ThemeService.Initialize();
             Log.Information("✅ ThemeService initialized");
 
+            // Minimal pre-theme diagnostic of existing application resources (counts only)
+            try
+            {
+                var mergedCount = Application.Current?.Resources?.MergedDictionaries?.Count ?? 0;
+                var topLevelKeys = Application.Current?.Resources?.Count ?? 0;
+                Log.Information("🧪 Pre-Theme Resource Snapshot: MergedDictionaries={Merged} TopLevelKeys={Keys}", mergedCount, topLevelKeys);
+            }
+            catch (Exception snapEx)
+            {
+                Log.Debug(snapEx, "Pre-theme resource snapshot failed (non-critical)");
+            }
+
             // Apply theme with enhanced fallback sequence: Dark → Light (safe) → Default
             // FluentLight moved to end due to potential animation crashes identified by debug analysis
             string[] fallbackThemes = { "FluentDark", "MaterialDark", "FluentLight", "Default" };
@@ -1011,6 +1023,8 @@ public partial class App : Application, IDisposable
             }
 
             Log.Information("✅ Theme initialization complete - Applied: {Theme}", appliedTheme);
+
+            // Post-theme diagnostic removed: resource key verification now handled after MainWindow is loaded
         }
         catch (Exception ex)
         {
@@ -1088,6 +1102,8 @@ public partial class App : Application, IDisposable
             Log.Warning(ex, "⚠️ Failed to log system diagnostics");
         }
     }
+
+    // Removed LogMissingResourceKeys helper (superseded by window-level verification logging)
 
     /// <summary>
     /// Log Syncfusion assembly information for debugging

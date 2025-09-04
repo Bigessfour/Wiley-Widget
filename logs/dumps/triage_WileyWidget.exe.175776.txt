@@ -1,0 +1,95 @@
+Loading core dump: .\logs\dumps\WileyWidget.exe.175776.dmp ...
+OS Thread Id: 0x142f8 (0)
+        Child SP               IP Call Site
+00000081385AD310 00007ffb64423404 [InlinedCallFrame: 00000081385ad310] 
+00000081385AD310 00007ffab8577808 [InlinedCallFrame: 00000081385ad310] 
+00000081385AD2B0 00007FFAB8577808 System.Runtime.EH.DispatchEx(System.Runtime.StackFrameIterator ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 865]
+00000081385AD410 00007FFAB857708D System.Runtime.EH.RhThrowEx(System.Object, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 645]
+00000081385AF178 00007ffac6837c83 [HelperMethodFrame: 00000081385af178] 
+00000081385AF270 00007FFA66CBA470 System.Windows.Markup.XamlReader.RewrapException(System.Exception, System.Xaml.IXamlLineInfo, System.Uri)
+00000081385AF2A0 00007FFA96B24292 System.Windows.Markup.WpfXamlLoader.Load(System.Xaml.XamlReader, System.Xaml.IXamlObjectWriterFactory, Boolean, System.Object, System.Xaml.XamlObjectWriterSettings, System.Uri)
+00000081385AF4B0 00007ffac677ee5f [InlinedCallFrame: 00000081385af4b0] 
+00000081385AF4B0 00007ffab85778f1 [InlinedCallFrame: 00000081385af4b0] 
+00000081385AF450 00007FFAB85778F1 System.Runtime.EH.DispatchEx(System.Runtime.StackFrameIterator ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 928]
+00000081385AF5B0 00007FFAB85773C8 System.Runtime.EH.RhRethrow(ExInfo ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 724]
+00000081385B11C8 00007ffac6837c83 [HelperMethodFrame: 00000081385b11c8] 
+00000081385B12C0 00007FFAA60D4BAF MS.Internal.Xaml.Runtime.PartialTrustTolerantRuntime.SetValue(System.Object, System.Xaml.XamlMember, System.Object)
+00000081385B1470 00007ffac677ee5f [InlinedCallFrame: 00000081385b1470] 
+00000081385B1470 00007ffab85778f1 [InlinedCallFrame: 00000081385b1470] 
+00000081385B1410 00007FFAB85778F1 System.Runtime.EH.DispatchEx(System.Runtime.StackFrameIterator ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 928]
+00000081385B1570 00007FFAB857708D System.Runtime.EH.RhThrowEx(System.Object, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 645]
+00000081385B32D8 00007ffac6837c83 [HelperMethodFrame: 00000081385b32d8] 
+00000081385B33D0 00007FFAA60D1558 MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(System.Object, System.Xaml.XamlMember, System.Object)
+00000081385B3590 00007ffac677ee5f [InlinedCallFrame: 00000081385b3590] 
+00000081385B3590 00007ffab85778f1 [InlinedCallFrame: 00000081385b3590] 
+00000081385B3530 00007FFAB85778F1 System.Runtime.EH.DispatchEx(System.Runtime.StackFrameIterator ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 928]
+00000081385B3690 00007FFAB857708D System.Runtime.EH.RhThrowEx(System.Object, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 645]
+00000081385B53F8 00007ffac6837c83 [HelperMethodFrame: 00000081385b53f8] 
+00000081385B54F0 00007FFA66CBA470 System.Windows.Markup.XamlReader.RewrapException(System.Exception, System.Xaml.IXamlLineInfo, System.Uri)
+00000081385B5520 00007FFA96B24292 System.Windows.Markup.WpfXamlLoader.Load(System.Xaml.XamlReader, System.Xaml.IXamlObjectWriterFactory, Boolean, System.Object, System.Xaml.XamlObjectWriterSettings, System.Uri)
+00000081385B5730 00007ffac677ee5f [InlinedCallFrame: 00000081385b5730] 
+00000081385B5730 00007ffab85778f1 [InlinedCallFrame: 00000081385b5730] 
+00000081385B56D0 00007FFAB85778F1 System.Runtime.EH.DispatchEx(System.Runtime.StackFrameIterator ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 928]
+00000081385B5830 00007FFAB85773C8 System.Runtime.EH.RhRethrow(ExInfo ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 724]
+00000081385B7448 00007ffac6837c83 [HelperMethodFrame: 00000081385b7448] 
+00000081385B7540 00007FFAA60D4BAF MS.Internal.Xaml.Runtime.PartialTrustTolerantRuntime.SetValue(System.Object, System.Xaml.XamlMember, System.Object)
+00000081385B76F0 00007ffac677ee5f [InlinedCallFrame: 00000081385b76f0] 
+00000081385B76F0 00007ffab85778f1 [InlinedCallFrame: 00000081385b76f0] 
+00000081385B7690 00007FFAB85778F1 System.Runtime.EH.DispatchEx(System.Runtime.StackFrameIterator ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 928]
+00000081385B77F0 00007FFAB857708D System.Runtime.EH.RhThrowEx(System.Object, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 645]
+00000081385B9558 00007ffac6837c83 [HelperMethodFrame: 00000081385b9558] 
+00000081385B9650 00007FFAA60D1558 MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(System.Object, System.Xaml.XamlMember, System.Object)
+00000081385B9810 00007ffac677ee5f [InlinedCallFrame: 00000081385b9810] 
+00000081385B9810 00007ffab85778f1 [InlinedCallFrame: 00000081385b9810] 
+00000081385B97B0 00007FFAB85778F1 System.Runtime.EH.DispatchEx(System.Runtime.StackFrameIterator ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 928]
+00000081385B9910 00007FFAB85773C8 System.Runtime.EH.RhRethrow(ExInfo ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 724]
+00000081385BB528 00007ffac6837c83 [HelperMethodFrame: 00000081385bb528] 
+00000081385BB620 00007FFA969D74F5 System.Windows.ResourceDictionary.set_Source(System.Uri)
+00000081385BB810 00007ffac677ee5f [InlinedCallFrame: 00000081385bb810] 
+00000081385BB810 00007ffab85778f1 [InlinedCallFrame: 00000081385bb810] 
+00000081385BB7B0 00007FFAB85778F1 System.Runtime.EH.DispatchEx(System.Runtime.StackFrameIterator ByRef, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 928]
+00000081385BB910 00007FFAB857708D System.Runtime.EH.RhThrowEx(System.Object, ExInfo ByRef) [/_/src/coreclr/nativeaot/Runtime.Base/src/System/Runtime/ExceptionHandling.cs @ 645]
+00000081385BD678 00007ffac6837c83 [HelperMethodFrame: 00000081385bd678] 
+00000081385BD770 00007FFA9698293D MS.Internal.AppModel.ResourcePart.GetStreamCore(System.IO.FileMode, System.IO.FileAccess)
+00000081385BD7C0 00007FFAD5B72A95 System.IO.Packaging.PackagePart.GetStream(System.IO.FileMode, System.IO.FileAccess) [/_/src/libraries/System.IO.Packaging/src/System/IO/Packaging/PackagePart.cs @ 327]
+00000081385BD800 00007FFAA6DC277D MS.Internal.IO.Packaging.PackagePartExtensions.GetSeekableStream(System.IO.Packaging.PackagePart, System.IO.FileMode, System.IO.FileAccess)
+00000081385BD860 00007FFA9534653E System.IO.Packaging.PackWebResponse+CachedResponse.GetResponseStream()
+00000081385BD8E0 00007FFA951265DC System.IO.Packaging.PackWebResponse.get_ContentType()
+00000081385BD920 00007FFA95096BD1 MS.Internal.WpfWebRequestHelper.GetContentType(System.Net.WebResponse)
+00000081385BD970 00007FFA95096B6B MS.Internal.WpfWebRequestHelper.GetResponseStream(System.Net.WebRequest, MS.Internal.ContentType ByRef)
+00000081385BD9B0 00007FFA969D71F3 System.Windows.ResourceDictionary.set_Source(System.Uri)
+00000081385BDA90 00007FFAA60D14F3 MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(System.Object, System.Xaml.XamlMember, System.Object)
+00000081385BDAE0 00007FFAA60D4B31 MS.Internal.Xaml.Runtime.PartialTrustTolerantRuntime.SetValue(System.Object, System.Xaml.XamlMember, System.Object)
+00000081385BDB20 00007FFAA60A1D82 System.Xaml.XamlObjectWriter.Logic_ApplyPropertyValue(MS.Internal.Xaml.Context.ObjectWriterContext, System.Xaml.XamlMember, System.Object, Boolean)
+00000081385BDBA0 00007FFAA60A2FF0 System.Xaml.XamlObjectWriter.Logic_DoAssignmentToParentProperty(MS.Internal.Xaml.Context.ObjectWriterContext)
+00000081385BDC00 00007FFAA609FA5A System.Xaml.XamlObjectWriter.WriteEndMember()
+00000081385BDC60 00007FFA96B245DE System.Windows.Markup.WpfXamlLoader.TransformNodes(System.Xaml.XamlReader, System.Xaml.XamlObjectWriter, Boolean, Boolean, Boolean, System.Xaml.IXamlLineInfo, System.Xaml.IXamlLineInfoConsumer, MS.Internal.Xaml.Context.XamlContextStack`1<System.Windows.Markup.WpfXamlFrame>, System.Windows.Markup.IStyleConnector)
+00000081385BDD90 00007FFA96B24203 System.Windows.Markup.WpfXamlLoader.Load(System.Xaml.XamlReader, System.Xaml.IXamlObjectWriterFactory, Boolean, System.Object, System.Xaml.XamlObjectWriterSettings, System.Uri)
+00000081385BDE40 00007FFA96B23F86 System.Windows.Markup.WpfXamlLoader.LoadBaml(System.Xaml.XamlReader, Boolean, System.Object, System.Xaml.Permissions.XamlAccessLevel, System.Uri)
+00000081385BDEA0 00007FFA96B29CE5 System.Windows.Markup.XamlReader.LoadBaml(System.IO.Stream, System.Windows.Markup.ParserContext, System.Object, Boolean)
+00000081385BDF30 00007FFA969AC859 System.Windows.Application.LoadBamlStreamWithSyncInfo(System.IO.Stream, System.Windows.Markup.ParserContext)
+00000081385BDFA0 00007FFA9697BD44 MS.Internal.AppModel.AppModelKnownContentFactory.BamlConverterCore(System.IO.Stream, System.Uri, Boolean, Boolean, Boolean, Boolean, System.Windows.Markup.XamlReader ByRef, Boolean)
+00000081385BE010 00007FFA96980010 MS.Internal.AppModel.MimeObjectFactory.GetObjectAndCloseStreamCore(System.IO.Stream, MS.Internal.ContentType, System.Uri, Boolean, Boolean, Boolean, Boolean, System.Windows.Markup.XamlReader ByRef, Boolean)
+00000081385BE0A0 00007FFA969D722E System.Windows.ResourceDictionary.set_Source(System.Uri)
+00000081385BE180 00007FFAA60D14F3 MS.Internal.Xaml.Runtime.ClrObjectRuntime.SetValue(System.Object, System.Xaml.XamlMember, System.Object)
+00000081385BE1D0 00007FFAA60D4B31 MS.Internal.Xaml.Runtime.PartialTrustTolerantRuntime.SetValue(System.Object, System.Xaml.XamlMember, System.Object)
+00000081385BE210 00007FFAA60A1D82 System.Xaml.XamlObjectWriter.Logic_ApplyPropertyValue(MS.Internal.Xaml.Context.ObjectWriterContext, System.Xaml.XamlMember, System.Object, Boolean)
+00000081385BE290 00007FFAA60A2FF0 System.Xaml.XamlObjectWriter.Logic_DoAssignmentToParentProperty(MS.Internal.Xaml.Context.ObjectWriterContext)
+00000081385BE2F0 00007FFAA609FA5A System.Xaml.XamlObjectWriter.WriteEndMember()
+00000081385BE350 00007FFA96B245DE System.Windows.Markup.WpfXamlLoader.TransformNodes(System.Xaml.XamlReader, System.Xaml.XamlObjectWriter, Boolean, Boolean, Boolean, System.Xaml.IXamlLineInfo, System.Xaml.IXamlLineInfoConsumer, MS.Internal.Xaml.Context.XamlContextStack`1<System.Windows.Markup.WpfXamlFrame>, System.Windows.Markup.IStyleConnector)
+00000081385BE480 00007FFA96B24203 System.Windows.Markup.WpfXamlLoader.Load(System.Xaml.XamlReader, System.Xaml.IXamlObjectWriterFactory, Boolean, System.Object, System.Xaml.XamlObjectWriterSettings, System.Uri)
+00000081385BE530 00007FFA96B23F86 System.Windows.Markup.WpfXamlLoader.LoadBaml(System.Xaml.XamlReader, Boolean, System.Object, System.Xaml.Permissions.XamlAccessLevel, System.Uri)
+00000081385BE590 00007FFA96B29CE5 System.Windows.Markup.XamlReader.LoadBaml(System.IO.Stream, System.Windows.Markup.ParserContext, System.Object, Boolean)
+00000081385BE620 00007FFA969AC488 System.Windows.Application.LoadComponent(System.Object, System.Uri)
+00000081385BE680 00007FFA66CB4BCB WileyWidget.App.InitializeComponent()
+00000081385BE6D0 00007FFA66C718B4 WileyWidget.App.Main()
+*0 0x142F8 (82680)
+ 1 0x1C6E8 (116456)
+ 2 0x21DD8 (138712)
+ 3 0x20A80 (133760)
+ 4 0x3BB4 (15284)
+ 5 0x18EC8 (102088)
+ 6 0x29664 (169572)
+ 7 0x1E9D0 (125392)
+ 8 0xA7A4 (42916)
+ 9 0x136C4 (79556)

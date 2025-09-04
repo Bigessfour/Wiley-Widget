@@ -221,4 +221,21 @@ dotnet build WileyWidget.csproj
 ---
 
 **Remember**: This is a living document. Update it as phases are completed and new issues are discovered!</content>
+
+---
+
+## ⚠️ PRODUCTION CAUTION: AVOID DIRECT THEME XAML MERGES
+As of Sept 2025 the primary app must NOT merge `FluentDark.xaml` or `FluentLight.xaml` directly via `<ResourceDictionary Source=...>`.
+
+Reasoning:
+1. Prevents `Cannot locate resource 'fluentdark.xaml'` issues when internal structure shifts.
+2. Ensures Syncfusion controls receive correct deferred resource loading order.
+3. Reduces startup overhead (lazy load behavior preserved).
+
+Use ONLY:
+```csharp
+SfSkinManager.ApplicationTheme = new Theme("FluentDark");
+```
+
+If raw dictionary behavior must be tested, isolate it inside `theme-crash-repro` project—never reintroduce in main application scope.
 <parameter name="filePath">c:\Users\biges\Desktop\Wiley_Widget\SYNCFUSION-THEMING-GUIDE.md

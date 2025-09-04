@@ -48,7 +48,7 @@ jobs:
       # NOTE: Uncomment when TRUNK_API_TOKEN secret is configured
 
       - name: Restore Dependencies
-        run: dotnet restore
+        run: dotnet restore WileyWidget.csproj
 
       - name: Build Release
         run: dotnet build -c Release --no-restore /bl:msbuild.binlog

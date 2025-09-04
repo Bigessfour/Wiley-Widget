@@ -3,11 +3,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <!-- Test: XAML-first theme application -->
+        <!--
+            Deliberately NOT merging Syncfusion theme ResourceDictionaries here.
+            Rationale: Per Syncfusion guidance and main app implementation, themes should be applied
+            via SfSkinManager (code) instead of manual XAML pack URIs like:
+            /Syncfusion.Themes.FluentLight.WPF;component/FluentLight.xaml
+
+            This repro project now mirrors production approach, preventing XamlParseException:
+            'Cannot locate resource fluentdark.xaml'.
+
+            If you need to test raw dictionary loading, temporarily uncomment the block below.
+        -->
+        <!--
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="/Syncfusion.Themes.FluentLight.WPF;component/FluentLight.xaml"/>
+                <ResourceDictionary Source="/Syncfusion.Themes.FluentLight.WPF;component/FluentLight.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
+        -->
     </Application.Resources>
 </Application>
