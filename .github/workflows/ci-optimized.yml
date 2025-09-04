@@ -50,7 +50,7 @@ jobs:
     # 1. System Health & Environment Validation
     health-validation:
         name: Health Validation
-        runs-on: windows-latest
+        runs-on: windows-2022
         outputs:
             should_skip: "${{ steps.health.outputs.should_skip }}"
             dotnet_version: "${{ steps.health.outputs.dotnet_version }}"
@@ -153,7 +153,7 @@ jobs:
     # 2. Parallel Build & Test Matrix
     build-test-matrix:
         name: Build & Test Matrix
-        runs-on: windows-latest
+        runs-on: windows-2022
         needs: health-validation
         if: needs.health-validation.outputs.should_skip != 'true'
         strategy:
@@ -281,7 +281,7 @@ jobs:
     # 3. Quality Assurance (Parallel with Build)
     quality-assurance:
         name: Quality Assurance
-        runs-on: windows-latest
+        runs-on: windows-2022
         needs: [health-validation, build-test-matrix]
         if: needs.health-validation.outputs.should_skip != 'true' && needs.health-validation.outputs.emergency_mode != 'true'
         strategy:
@@ -363,7 +363,7 @@ jobs:
     # 4. UI Tests (Conditional)
     ui-tests:
         name: UI Tests
-        runs-on: windows-latest
+        runs-on: windows-2022
         needs: [health-validation, build-test-matrix]
         if: needs.health-validation.outputs.should_skip != 'true' && github.event.inputs.skip_ui_tests != 'true'
         steps:
@@ -442,7 +442,7 @@ jobs:
     # 5. Deployment Readiness
     deployment-readiness:
         name: Deployment Readiness
-        runs-on: windows-latest
+        runs-on: windows-2022
         needs: [build-test-matrix, quality-assurance, ui-tests]
         if: always() && github.ref == 'refs/heads/main'
         steps:
@@ -524,7 +524,7 @@ jobs:
     # 6. Success Rate Monitoring & Reporting
     success-monitoring:
         name: Success Rate Monitoring
-        runs-on: windows-latest
+        runs-on: windows-2022
         needs: [health-validation, build-test-matrix, quality-assurance, ui-tests, deployment-readiness]
         if: always()
         steps:
