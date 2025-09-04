@@ -187,7 +187,7 @@ jobs:
             - name: Build with Enhanced Diagnostics
               run: |
                   Write-Host "🔨 Building with diagnostics..." -ForegroundColor Cyan
-                  dotnet build --no-restore --configuration ${{ matrix.configuration }} --verbosity minimal /bl:msbuild.binlog /p:DeterministicSourcePaths=true
+                  dotnet build WileyWidget.csproj --no-restore --configuration ${{ matrix.configuration }} --verbosity minimal /bl:msbuild.binlog /p:DeterministicSourcePaths=true
 
                   if ($LASTEXITCODE -ne 0) {
                       Write-Host "[ERROR] Build failed, checking diagnostics..." -ForegroundColor Red
@@ -339,7 +339,7 @@ jobs:
                   Write-Host "[SEARCH] Running code quality analysis..." -ForegroundColor Cyan
 
                   # Roslyn analyzers
-                  dotnet build --configuration Release --verbosity minimal /warnaserror- /warn:1
+                  dotnet build WileyWidget.csproj --configuration Release --verbosity minimal /warnaserror- /warn:1
                   if ($LASTEXITCODE -ne 0) {
                       Write-Host "⚠️ Code quality warnings found" -ForegroundColor Yellow
                   }
@@ -353,7 +353,7 @@ jobs:
                   Write-Host "[FAST] Performance analysis..." -ForegroundColor Cyan
 
                   # Build performance metrics
-                  $buildTime = Measure-Command { dotnet build --configuration Release --verbosity quiet }
+                  $buildTime = Measure-Command { dotnet build WileyWidget.csproj --configuration Release --verbosity quiet }
                   Write-Host "Build time: $($buildTime.TotalSeconds)s" -ForegroundColor Green
 
                   # Test performance metrics
