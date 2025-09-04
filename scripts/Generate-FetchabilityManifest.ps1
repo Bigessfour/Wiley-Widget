@@ -25,6 +25,10 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$OutputPath = "fetchability-resources.json",
 
+    # When specified (default), include runtime diagnostics harvested from the latest structured log
+    [Parameter(Mandatory = $false)]
+    [switch]$IncludeDiagnostics,
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("PSReviewUnusedParameter", "ExcludePatterns")]
     [Parameter(Mandatory = $false)]
     [string[]]$ExcludePatterns = @(
@@ -188,6 +192,91 @@ process {
 
     Write-Progress -Activity "Processing files" -Completed
 
+    # Optional diagnostics collection from logs
+    $diagnostics = $null
+    if ($IncludeDiagnostics -or $PSBoundParameters.ContainsKey('IncludeDiagnostics') -eq $false) { # default ON
+        try {
+            $logsPath = Join-Path (Get-Location) 'logs'
+            if (Test-Path $logsPath) {
+                # Prefer the newest structured-*.log file
+                $structuredLog = Get-ChildItem -Path $logsPath -Filter 'structured-*.log' -File -ErrorAction SilentlyContinue |
+                    Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+                if ($structuredLog) {
+                    $themeAttempts = 0
+                    $themeSuccesses = 0
+                    $themeFailures = 0
+                    $fallbackFailures = 0
+                    $fatalCount = 0
+                    $exitCodes = [System.Collections.Generic.List[int]]::new()
+                    $missingKeys = [System.Collections.Generic.HashSet[string]]::new()
+                    $missingFromExceptions = [System.Collections.Generic.HashSet[string]]::new()
+                    $lastFatals = New-Object System.Collections.Generic.List[object]
+
+                    $regexMissing = [regex]'Cannot find resource named ''(?<key>[^'']+)''\.'
+
+                    # Read lines (limit to last 2000 to avoid huge memory)
+                    $lines = Get-Content -Path $structuredLog.FullName -Tail 2000 -ErrorAction Stop
+                    foreach ($line in $lines) {
+                        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                        $obj = $null
+                        try { $obj = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+                        if (-not $obj) { continue }
+
+                        $mt = [string]$obj.MessageTemplate
+                        $level = [string]$obj.Level
+
+                        if ($mt -like '🎨 Applying *application theme*') { $themeAttempts++ }
+                        elseif ($mt -like '🎨 Applying Syncfusion application theme:*') { $themeAttempts++ }
+                        elseif ($mt -like '🎨 Theme applied successfully*' -or $mt -like '✅ Syncfusion application theme applied successfully*') { $themeSuccesses++ }
+                        elseif ($mt -like '❌ Failed to apply application theme*') { $themeFailures++ }
+                        elseif ($mt -like '❌ All theme fallbacks failed*') { $fallbackFailures++ }
+
+                        if ($level -eq 'Fatal') {
+                            $fatalCount++
+                            if ($lastFatals.Count -lt 3) {
+                                $lastFatals.Add([PSCustomObject]@{
+                                        Timestamp = $obj.Timestamp
+                                        MessageTemplate = $mt
+                                        Exception = if ($obj.Exception) { ($obj.Exception -split "`n")[0] } else { $null }
+                                }) | Out-Null
+                            }
+                        }
+
+                        # Exit codes
+                        if ($mt -like '📊 Exit code:*' -and $obj.Properties.ExitCode -ne $null) {
+                            [void]$exitCodes.Add([int]$obj.Properties.ExitCode)
+                        }
+
+                        # Missing resource keys from warnings (LogMissingResourceKeys)
+                        if ($mt -like '⚠️ Missing static resource key:*' -and $obj.Properties.Key) {
+                            [void]$missingKeys.Add([string]$obj.Properties.Key)
+                        }
+
+                        # Parse exceptions for missing resource keys
+                        if ($obj.Exception) {
+                            $m = $regexMissing.Match([string]$obj.Exception)
+                            if ($m.Success) { [void]$missingFromExceptions.Add($m.Groups['key'].Value) }
+                        }
+                    }
+
+                    $allMissing = ($missingKeys + $missingFromExceptions) | Sort-Object -Unique
+                    $health = if ($fatalCount -gt 0) { 'Unhealthy' } elseif ($allMissing.Count -gt 0) { 'Degraded' } else { 'Healthy' }
+
+                    $diagnostics = @{
+                        logFile = @{ name = $structuredLog.Name; size = $structuredLog.Length; lastWriteTimeUtc = $structuredLog.LastWriteTimeUtc.ToString('o') }
+                        startup = @{ fatalCount = $fatalCount; exitCodes = $exitCodes.ToArray(); recentFatals = $lastFatals }
+                        theming = @{ attempts = $themeAttempts; successes = $themeSuccesses; failures = $themeFailures; fallbackFailures = $fallbackFailures }
+                        resources = @{ missingKeys = $allMissing }
+                        health = $health
+                    }
+                }
+            }
+        }
+        catch {
+            Write-Warning "Diagnostics collection failed: $($_.Exception.Message)"
+        }
+    }
+
     # Create manifest object
     $manifest = @{
         metadata = @{
@@ -205,6 +294,7 @@ process {
                 untrackedFiles = ($fileManifest | Where-Object { -not $_.tracked }).Count
                 totalSize      = ($fileManifest | Measure-Object -Property size -Sum).Sum
             }
+            diagnostics = $diagnostics
         }
         files    = $fileManifest | Sort-Object -Property path
     }

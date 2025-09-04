@@ -1160,3 +1160,72 @@ If issues persist, re-set the env var and restart your terminal:
 [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','<your-key>','User')
 ```
 # Test commit for manifest generation
+
+## 🔍 Fetchability Manifest & Runtime Diagnostics
+
+The repository includes an auto-generated machine-readable manifest `fetchability-resources.json` produced by `scripts/Generate-FetchabilityManifest.ps1`.
+
+### Purpose
+Provides CI/CD, security scanners, and troubleshooting tooling with a single JSON snapshot containing:
+
+- Complete file inventory (tracked + untracked) with SHA256 hashes
+- Git metadata (branch, commit, dirty state, remote)
+- Size & count statistics
+- Runtime diagnostics harvested from the latest structured log (if present)
+
+### Diagnostics Block Structure
+`metadata.diagnostics` contains:
+
+```jsonc
+{
+  "logFile": { "name": "structured-20250903.log", "size": 396993, "lastWriteTimeUtc": "2025-09-04T04:46:38.5450772Z" },
+  "health": "Unhealthy",                 // Derived from fatal + resource key analysis
+  "theming": {                            // Theme application telemetry summary
+    "attempts": 29,
+    "successes": 52,
+    "failures": 3,
+    "fallbackFailures": 1
+  },
+  "resources": {                          // Missing WPF static resource keys (merged log + exception scan)
+    "missingKeys": ["CardTitle", "DashboardCard", "ValidatedTextBox", "WarningBackground"]
+  },
+  "startup": {
+    "fatalCount": 27,
+    "exitCodes": [1, 1, 1, ...],         // Captured exit codes (raw list from sessions)
+    "recentFatals": [ { "Timestamp": "...", "MessageTemplate": "..." } ]
+  }
+}
+```
+
+### Generating / Refreshing
+```pwsh
+pwsh ./scripts/Generate-FetchabilityManifest.ps1        # (default includes diagnostics)
+pwsh ./scripts/Generate-FetchabilityManifest.ps1 -IncludeDiagnostics:$false  # inventory only
+```
+
+### CI/CD Usage
+- Supply to security / integrity scanners for tamper & drift detection
+- Feed into analytics to correlate build failures with runtime health state
+- Compare between commits to surface unexpected file churn or key regressions
+
+### Extending Diagnostics (Future Ideas)
+- Capture EF migration status & pending migration count
+- Include hash of `appsettings.json` & effective environment overrides
+- Summarize last 5 XAML resource load failures with source pack URIs
+
+### Current Action Items from Manifest (as of latest generation)
+1. Missing resource keys `CardTitle`, `DashboardCard` → causes `XamlParseException` during `MainWindow` load.
+2. Add minimal placeholder styles or ensure the theme dictionaries providing them are loaded prior to window construction.
+3. Reduce fatal restarts by gating window creation until resource validation passes.
+
+### Quick Placeholder Style Example (to eliminate crash temporarily)
+Add to `App.xaml` (temporary mitigation):
+```xaml
+<ResourceDictionary>
+  <Style x:Key="DashboardCard" TargetType="Border" />
+  <Style x:Key="CardTitle" TargetType="TextBlock" />
+</ResourceDictionary>
+```
+
+Remove once the proper themed resource dictionaries supply these keys.
+
