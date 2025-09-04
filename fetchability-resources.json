@@ -1,19 +1,19 @@
 {
   "metadata": {
     "statistics": {
-      "totalFiles": 10562,
-      "trackedFiles": 309,
+      "totalFiles": 10556,
+      "trackedFiles": 359,
       "ignoredFiles": 10197,
-      "untrackedFiles": 56,
-      "totalSize": 8501612
+      "untrackedFiles": 0,
+      "totalSize": 8763372
     },
     "repository": {
-      "commitHash": "7f12982749481d7be46b3ca8fffcf7bcb92eb06d",
-      "isDirty": true,
+      "commitHash": "3a60a74031a5a60b4af1918485d5991404af3132",
+      "isDirty": false,
       "branch": "temp",
       "remoteUrl": "git@github.com:Bigessfour/Wiley-Widget.git"
     },
-    "generatedAt": "2025-09-03T22:16:22.7147552Z",
+    "generatedAt": "2025-09-03T22:17:55.0356403Z",
     "generator": "Update-FetchabilityResources.ps1"
   },
   "files": [
@@ -202,20 +202,28 @@
       "extension": ".json"
     },
     {
-      "size": 10669,
-      "lastModified": "2025-09-03T12:49:21.2070777Z",
+      "size": 10665,
+      "lastModified": "2025-09-03T22:16:49.3346286Z",
       "path": ".vscode/settings.json",
       "tracked": true,
-      "sha256": "3ddf9c61ee9ce0c385809af934d97c4d8d958116745350d3a741de5d0075672c",
+      "sha256": "d2342047af74acc164aa01e28f7600f78d134b56442d3f3c7ca98d2adac36928",
       "extension": ".json"
     },
     {
-      "size": 4418,
-      "lastModified": "2025-09-03T14:35:49.2475758Z",
+      "size": 4486,
+      "lastModified": "2025-09-03T22:16:49.4045715Z",
       "path": ".vscode/tasks.json",
       "tracked": true,
-      "sha256": "2b29a982ea58043679cdab77e54b3face92905333fb2ebb7a09fcb0773e38030",
+      "sha256": "9e536a05842479eb6321361d107d8226881553bf4aa708e850ee1a9225f34532",
       "extension": ".json"
+    },
+    {
+      "size": 251,
+      "lastModified": "2025-09-03T14:34:13.3562626Z",
+      "path": "App.config",
+      "tracked": true,
+      "sha256": "381f2f4d7cdc42066d633bb9e403766606d0f576e817542ad9358e25b2a86f50",
+      "extension": ".config"
     },
     {
       "size": 755,
@@ -231,6 +239,38 @@
       "path": "App.xaml.cs",
       "tracked": true,
       "sha256": "9361cbeede6dee6e87ca7eda04a7a458f3fe7c2bbbae5a2cb56951618323a31d",
+      "extension": ".cs"
+    },
+    {
+      "size": 1887,
+      "lastModified": "2025-09-02T17:03:41.2263164Z",
+      "path": "App.xsd",
+      "tracked": true,
+      "sha256": "1de63f3f5ce075d4318b42329e5612b54abd3299d3a489875359aceca76bfc1a",
+      "extension": ".xsd"
+    },
+    {
+      "size": 3091,
+      "lastModified": "2025-09-03T11:48:16.6603237Z",
+      "path": "CONFIGURATION.md",
+      "tracked": true,
+      "sha256": "b431b5a9f0f2aab4d5488aa2f8d8f454fecc3f20ea411a2c1105d57a90b90680",
+      "extension": ".md"
+    },
+    {
+      "size": 1981,
+      "lastModified": "2025-09-03T11:42:10.2752644Z",
+      "path": "Diagnostics/Health/HealthServer.cs",
+      "tracked": true,
+      "sha256": "4a4d2adf9ad56fe994d91d74e93d6a59ef237295b8d73d686ed458a71a7fb24e",
+      "extension": ".cs"
+    },
+    {
+      "size": 3060,
+      "lastModified": "2025-09-03T11:42:10.2752644Z",
+      "path": "Diagnostics/StartupDiagnostics.cs",
+      "tracked": true,
+      "sha256": "20d6430e1c4ce066ed8e2e18bba27f41b268251a5c10dd5631d38c427f9e04cc",
       "extension": ".cs"
     },
     {
@@ -258,6 +298,14 @@
       "extension": ".props"
     },
     {
+      "size": 10925,
+      "lastModified": "2025-09-03T11:36:08.6364034Z",
+      "path": "Enterprise_Startup_Audit_and_Refactor.md",
+      "tracked": true,
+      "sha256": "4e5d26eae21e80e7bd999a2fae0a75735e2f9e03362f2a3cb0502ad8275de499",
+      "extension": ".md"
+    },
+    {
       "size": 5542,
       "lastModified": "2025-09-02T03:32:17.5901374Z",
       "path": "PROJECT_STRUCTURE.md",
@@ -266,11 +314,43 @@
       "extension": ".md"
     },
     {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:33.8647114Z",
+      "path": "Perfect_Test_Method_Guide.md",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".md"
+    },
+    {
+      "size": 6080,
+      "lastModified": "2025-09-03T14:35:49.2475758Z",
+      "path": "Program.cs",
+      "tracked": true,
+      "sha256": "a7b0d9c832371c87c5a52a0375c56d29f6e8220f0006ad57b7ed8349fd21a9ef",
+      "extension": ".cs"
+    },
+    {
       "size": 45959,
       "lastModified": "2025-09-03T22:15:34.7526612Z",
       "path": "README.md",
       "tracked": true,
       "sha256": "8de63eed806aaedb72f588d50844cf6ad24d81e884d1415ffff6738cc6eab0ee",
+      "extension": ".md"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:33.5875999Z",
+      "path": "Refactoring_EnterpriseViewModel.md",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".md"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:33.7025010Z",
+      "path": "Refactoring_Final_Summary.md",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "extension": ".md"
     },
     {
@@ -402,6 +482,54 @@
       "extension": ".db"
     },
     {
+      "size": 7358,
+      "lastModified": "2025-09-03T11:21:00.8938800Z",
+      "path": "Wiley Widget/Diagnostics/Health/ApplicationHealthMonitor.cs",
+      "tracked": true,
+      "sha256": "0bfada20f42738165bc71125b0791f66a45be1f528f7cd45378148ba7884b439",
+      "extension": ".cs"
+    },
+    {
+      "size": 7380,
+      "lastModified": "2025-09-03T11:46:03.3255652Z",
+      "path": "Wiley Widget/Infrastructure/LicenseRegistrar.cs",
+      "tracked": true,
+      "sha256": "588d119e83926b4bd43469332cf0a147f7d91619bdaa358ea23071014f82fb68",
+      "extension": ".cs"
+    },
+    {
+      "size": 4377,
+      "lastModified": "2025-09-03T11:29:53.7129835Z",
+      "path": "Wiley Widget/Infrastructure/Licensing/EmbeddedLicenseManager.cs",
+      "tracked": true,
+      "sha256": "df4b809bea9b0c8c05ac1623043e4ce0dfeee0db705e1189f960be10a871083d",
+      "extension": ".cs"
+    },
+    {
+      "size": 7843,
+      "lastModified": "2025-09-03T11:20:10.2899341Z",
+      "path": "Wiley Widget/Infrastructure/Logging/ApplicationLogging.cs",
+      "tracked": true,
+      "sha256": "bb1834b0e48588bf31d03d4a91f3c049804238dac13ee489f95d9c2b10b2f610",
+      "extension": ".cs"
+    },
+    {
+      "size": 1876,
+      "lastModified": "2025-09-03T11:20:10.2909376Z",
+      "path": "Wiley Widget/Infrastructure/Logging/WpfLoggingMiddleware.cs",
+      "tracked": true,
+      "sha256": "55de6ca018882a88d6e284707fdca4ecb568213db2d9ed016cd6ae14de9d094b",
+      "extension": ".cs"
+    },
+    {
+      "size": 4325,
+      "lastModified": "2025-09-03T11:25:34.3359844Z",
+      "path": "Wiley Widget/Infrastructure/StartupMetrics.cs",
+      "tracked": true,
+      "sha256": "84fbbb4e46919f4fc0f21feadc884c69153051f3ac0909cc8c80472185963664",
+      "extension": ".cs"
+    },
+    {
       "size": 7606,
       "lastModified": "2025-08-30T12:06:44.4720600Z",
       "path": "Wiley Widget/Models/AiModels.cs",
@@ -498,6 +626,14 @@
       "extension": ".txt"
     },
     {
+      "size": 1578,
+      "lastModified": "2025-09-03T12:27:28.9439510Z",
+      "path": "Wiley Widget/Services/ApiKeyFacade.cs",
+      "tracked": true,
+      "sha256": "1d85052b562936c27389200d850f31c9cb397de621e800a4153734c020b8b8d2",
+      "extension": ".cs"
+    },
+    {
       "size": 11780,
       "lastModified": "2025-08-30T17:36:05.4094148Z",
       "path": "Wiley Widget/Services/ApiKeyService.cs",
@@ -511,6 +647,22 @@
       "path": "Wiley Widget/Services/BrightDataService.cs",
       "tracked": true,
       "sha256": "c73cf4c8deddf909f1d9f9bb5ea8aa84adc7b64c7bb815effe88c498f258112d",
+      "extension": ".cs"
+    },
+    {
+      "size": 15300,
+      "lastModified": "2025-09-03T11:26:43.8712702Z",
+      "path": "Wiley Widget/Services/DeferredInitializer.cs",
+      "tracked": true,
+      "sha256": "61bc73d1b2a5e8869bc801985132f4f851a47b8f72d18809632df4d6f196dbb6",
+      "extension": ".cs"
+    },
+    {
+      "size": 3651,
+      "lastModified": "2025-09-03T12:27:28.9429514Z",
+      "path": "Wiley Widget/Services/DiagramBuilderService.cs",
+      "tracked": true,
+      "sha256": "71a4e5cc9566375f245e9699f02f84b7dad0433d384abd36c721b211f5c5a666",
       "extension": ".cs"
     },
     {
@@ -554,11 +706,43 @@
       "extension": ".cs"
     },
     {
+      "size": 1740,
+      "lastModified": "2025-09-03T13:59:20.7599093Z",
+      "path": "Wiley Widget/Services/ThemeCoordinator.cs",
+      "tracked": true,
+      "sha256": "c9989d231d55c3801125381c68eaf71013c829e5e484da1f258be674f9498d2d",
+      "extension": ".cs"
+    },
+    {
+      "size": 2072,
+      "lastModified": "2025-09-03T12:27:28.9429514Z",
+      "path": "Wiley Widget/Services/WindowStateService.cs",
+      "tracked": true,
+      "sha256": "1792d9fa7f56564f31a59e2aa833a25d336bbfa2a91f4cad391c0bec206d73be",
+      "extension": ".cs"
+    },
+    {
       "size": 6069,
       "lastModified": "2025-09-02T02:47:54.1379365Z",
       "path": "Wiley Widget/Services/WpfPerformanceOptimizer.cs",
       "tracked": true,
       "sha256": "bad10c607105284742d5ca557fc1c0deddf32614fd546d6730f746c3a7a47778",
+      "extension": ".cs"
+    },
+    {
+      "size": 1063,
+      "lastModified": "2025-09-03T11:37:51.8226118Z",
+      "path": "Wiley Widget/UI/Dialogs/IEnterpriseEditorDialog.cs",
+      "tracked": true,
+      "sha256": "1983608bcd9ca2dd8d7b0081f2916890f1393ac82cdc176d851eb5ce60d8006e",
+      "extension": ".cs"
+    },
+    {
+      "size": 8682,
+      "lastModified": "2025-09-03T12:01:34.1851084Z",
+      "path": "Wiley Widget/UI/Theming/ThemeService.cs",
+      "tracked": true,
+      "sha256": "8bc6339cfe70dd0f80627bdf5ced43ba9a7dd94f7556c09a2cce6483cfc2b322",
       "extension": ".cs"
     },
     {
@@ -575,6 +759,14 @@
       "path": "Wiley Widget/ViewModels/MainViewModel.cs",
       "tracked": true,
       "sha256": "b476a1643259c63ccef1b79425902e126f3218c2d01e93ebfc3d6b02d2d732ec",
+      "extension": ".cs"
+    },
+    {
+      "size": 6322,
+      "lastModified": "2025-09-03T13:59:20.7599093Z",
+      "path": "Wiley Widget/ViewModels/SettingsViewModel.cs",
+      "tracked": true,
+      "sha256": "0d63c4362c2168db6ad79c0fb96f695e131c559eae25773c3157f79ebd0b36e2",
       "extension": ".cs"
     },
     {
@@ -642,11 +834,43 @@
       "extension": ".runsettings"
     },
     {
+      "size": 4448,
+      "lastModified": "2025-09-03T12:54:19.7517909Z",
+      "path": "WileyWidget.Tests/AppStartupProfilingTests.cs",
+      "tracked": true,
+      "sha256": "2e027904ba727caacb82ec07e829534a7b300bd75279eaeb8a94a0439613c177",
+      "extension": ".cs"
+    },
+    {
       "size": 2408,
       "lastModified": "2025-09-03T11:42:10.2752644Z",
       "path": "WileyWidget.Tests/AppStartupTests.cs",
       "tracked": true,
       "sha256": "14c7b5126fd58080c555b2ba6ec05b46ca593112edd4638bdd17b5c66a672b79",
+      "extension": ".cs"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:33.1599456Z",
+      "path": "WileyWidget.Tests/Basic/BasicTests.cs",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".cs"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:31.3366103Z",
+      "path": "WileyWidget.Tests/CRAP_Analysis_Report.md",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".md"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:33.9213034Z",
+      "path": "WileyWidget.Tests/Core/TokenExpiryLogicTests.cs",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "extension": ".cs"
     },
     {
@@ -663,6 +887,78 @@
       "path": "WileyWidget.Tests/EntityValidationTests.cs",
       "tracked": true,
       "sha256": "51e212905dd509b73d433bdee021321c0509be48b67cfbcbb71059e57dc20b77",
+      "extension": ".cs"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:33.3020798Z",
+      "path": "WileyWidget.Tests/Refactoring_Results.md",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".md"
+    },
+    {
+      "size": 2114,
+      "lastModified": "2025-09-03T12:40:37.1534112Z",
+      "path": "WileyWidget.Tests/Services/ApiKeyFacadeTests.cs",
+      "tracked": true,
+      "sha256": "e94f6b7b329373159044218a8152c0ee25e9b7e6aa17d344074e1913103874fe",
+      "extension": ".cs"
+    },
+    {
+      "size": 1535,
+      "lastModified": "2025-09-03T12:35:22.3383683Z",
+      "path": "WileyWidget.Tests/Services/DiagramBuilderServiceTests.cs",
+      "tracked": true,
+      "sha256": "d9bbb2b25501fc8ca22720495496542be98198b33e799e4877d98cc1e6f56948",
+      "extension": ".cs"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:29.5221483Z",
+      "path": "WileyWidget.Tests/Services/GrokSupercomputerTests.cs",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".cs"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:33.0401077Z",
+      "path": "WileyWidget.Tests/Services/GrokSupercomputerXunitTests.cs",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".cs"
+    },
+    {
+      "size": 5454,
+      "lastModified": "2025-09-03T11:29:34.5623102Z",
+      "path": "WileyWidget.Tests/Services/LicenseRegistrationTests.cs",
+      "tracked": true,
+      "sha256": "aa13bd247a023cbea1f5cbf92d50339dbab6a93db8f8f7e6fd779cfca8f17b79",
+      "extension": ".cs"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:33.7741419Z",
+      "path": "WileyWidget.Tests/Services/QuickBooksServiceFocusedTests.cs",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".cs"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:30.8923537Z",
+      "path": "WileyWidget.Tests/Services/QuickBooksServiceTests.cs",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".cs"
+    },
+    {
+      "size": 799,
+      "lastModified": "2025-09-03T12:40:37.1534112Z",
+      "path": "WileyWidget.Tests/Services/ThemeCoordinatorTests.cs",
+      "tracked": true,
+      "sha256": "f8c14d39c0148af2a63476f400b6f55fd84b9371169257b9040a6502d6e5b9be",
       "extension": ".cs"
     },
     {
@@ -711,6 +1007,30 @@
       "path": "WileyWidget.Tests/ViewModelTests.cs",
       "tracked": true,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".cs"
+    },
+    {
+      "size": 3829,
+      "lastModified": "2025-09-03T11:37:51.8226118Z",
+      "path": "WileyWidget.Tests/ViewModels/EnterpriseViewModelTests.cs",
+      "tracked": true,
+      "sha256": "dc50ea849ce7bdae449adceba16fa04310e0214e70f365878783814d970c4e24",
+      "extension": ".cs"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T16:48:31.0746667Z",
+      "path": "WileyWidget.Tests/ViewModels/MainViewModelTests.cs",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".cs"
+    },
+    {
+      "size": 2748,
+      "lastModified": "2025-09-03T12:35:22.3383683Z",
+      "path": "WileyWidget.Tests/ViewModels/SettingsViewModelTests.cs",
+      "tracked": true,
+      "sha256": "8da41602f8d799c49d330e2c135ee62fb67cde6ffb4e7fe9b869d22f8fa06df4",
       "extension": ".cs"
     },
     {
@@ -818,12 +1138,28 @@
       "extension": ".csproj"
     },
     {
+      "size": 16384,
+      "lastModified": "2025-09-03T22:12:32.7695592Z",
+      "path": "WileyWidget.db",
+      "tracked": true,
+      "sha256": "2123ec1be106dacaa63e7bb0057b487359ef484cc8a47492706151c90c47ed70",
+      "extension": ".db"
+    },
+    {
       "size": 4017,
       "lastModified": "2025-08-28T12:52:32.0061749Z",
       "path": "WileyWidget.sln",
       "tracked": true,
       "sha256": "b20219b3dafe4452ef9790f2801dea578db601493c2ae22107df9898fa343af7",
       "extension": ".sln"
+    },
+    {
+      "size": 58665,
+      "lastModified": "2025-09-03T22:13:06.4632458Z",
+      "path": "WileyWidget_0lzef02k_wpftmp.csproj",
+      "tracked": true,
+      "sha256": "739c246a491e422c1e735bec3d336d61347d5138162c3b60fde2304fc573b656",
+      "extension": ".csproj"
     },
     {
       "size": 738,
@@ -1314,6 +1650,14 @@
       "extension": ".css"
     },
     {
+      "size": 3325,
+      "lastModified": "2025-09-03T14:35:49.2475758Z",
+      "path": "debug-conhost.ps1",
+      "tracked": true,
+      "sha256": "c64a4011cc10cb8a68653033ef2a56ba5d2705bdde221b702bd822c13b6da4d3",
+      "extension": ".ps1"
+    },
+    {
       "size": 30816,
       "lastModified": "2025-08-30T20:05:02.7094801Z",
       "path": "docs/.copilot-instructions.md",
@@ -1447,6 +1791,14 @@
       "path": "docs/OUR_PARTNERSHIP_JOURNEY.md",
       "tracked": true,
       "sha256": "93a6beb8b083fc9d637750ca0c0cbdb829c5f02c988cb00289c9805e3c8c4eed",
+      "extension": ".md"
+    },
+    {
+      "size": 2294,
+      "lastModified": "2025-09-03T12:49:21.3370766Z",
+      "path": "docs/PythonTools.md",
+      "tracked": true,
+      "sha256": "38cf6ae19cb4a4bf853691d431ec2cf63b4c98b1ff33c4caa8d75f5b777c8efa",
       "extension": ".md"
     },
     {
@@ -1754,11 +2106,19 @@
       "extension": ".md"
     },
     {
-      "size": 119244,
-      "lastModified": "2025-09-02T03:33:38.0273235Z",
+      "size": 0,
+      "lastModified": "2025-09-02T17:28:41.5339809Z",
+      "path": "error.txt",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".txt"
+    },
+    {
+      "size": 99345,
+      "lastModified": "2025-09-03T22:16:22.7264038Z",
       "path": "fetchability-resources.json",
       "tracked": true,
-      "sha256": "0802c3204d09b8a9818287457380a4673a39631ea7ea71734265af27dffc8691",
+      "sha256": "0f044aff96029c480c5f6de53783c2f7c9c9ac27a920ac6dfbb0cce41d62dc92",
       "extension": ".json"
     },
     {
@@ -1797,6 +2157,22 @@
       "size": 0,
       "lastModified": "2025-09-01T05:33:22.6103652Z",
       "path": "logs/mcp_output.txt",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".txt"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-03T11:47:47.2136844Z",
+      "path": "logs/selflog.txt",
+      "tracked": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extension": ".txt"
+    },
+    {
+      "size": 0,
+      "lastModified": "2025-09-02T17:28:41.5339809Z",
+      "path": "output.txt",
       "tracked": true,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "extension": ".txt"
@@ -1866,6 +2242,14 @@
       "extension": ".ps1"
     },
     {
+      "size": 33404,
+      "lastModified": "2025-09-03T14:12:40.1639147Z",
+      "path": "scripts/__pycache__/debug_syncfusion_themes.cpython-311.pyc",
+      "tracked": true,
+      "sha256": "76f890d78e5fd68dccee54c13ca39d0f1299d363d33041af3cab69af6abd2bf0",
+      "extension": ".pyc"
+    },
+    {
       "size": 4540,
       "lastModified": "2025-08-29T11:18:30.4703359Z",
       "path": "scripts/audit-extensions.ps1",
@@ -1887,6 +2271,14 @@
       "path": "scripts/azure-setup.ps1",
       "tracked": true,
       "sha256": "0a9d162b51a7f21de9200a79c366812761d8ad37a9339071b8e4a838ecc4a9dd",
+      "extension": ".ps1"
+    },
+    {
+      "size": 2939,
+      "lastModified": "2025-09-03T12:52:16.7433746Z",
+      "path": "scripts/bootstrap_python_env.ps1",
+      "tracked": true,
+      "sha256": "860f1bb2ccf43e1e21e47d08439d4db48c65cb54c2c8cee3a912a9608d0a88ba",
       "extension": ".ps1"
     },
     {
@@ -1978,6 +2370,14 @@
       "extension": ".ps1"
     },
     {
+      "size": 7378,
+      "lastModified": "2025-09-03T12:22:18.2312517Z",
+      "path": "scripts/compute-crap.ps1",
+      "tracked": true,
+      "sha256": "840b6bff4c4b7e47e24aaa57b2e61f492b4c021ff99f280bcec9052c64c4ffcd",
+      "extension": ".ps1"
+    },
+    {
       "size": 10537,
       "lastModified": "2025-08-29T11:18:30.4779613Z",
       "path": "scripts/copilot-azure-integration.ps1",
@@ -2002,11 +2402,11 @@
       "extension": ".ps1"
     },
     {
-      "size": 51669,
-      "lastModified": "2025-09-03T14:23:14.8531793Z",
+      "size": 52178,
+      "lastModified": "2025-09-03T22:16:50.2309169Z",
       "path": "scripts/debug_syncfusion_themes.py",
       "tracked": true,
-      "sha256": "072fdf88752a854a3c70dc3c526f8277ca8dcd44a1b808c5e02e5b4e135d31ef",
+      "sha256": "ad65002410aab93caca08cc8e86c94db85722580251b8b6af85337e5652c7a9b",
       "extension": ".py"
     },
     {
@@ -2394,410 +2794,10 @@
       "extension": ".py"
     },
     {
-      "size": 251,
-      "lastModified": "2025-09-03T14:34:13.3562626Z",
-      "path": "App.config",
-      "tracked": false,
-      "sha256": "381f2f4d7cdc42066d633bb9e403766606d0f576e817542ad9358e25b2a86f50",
-      "extension": ".config"
-    },
-    {
-      "size": 1887,
-      "lastModified": "2025-09-02T17:03:41.2263164Z",
-      "path": "App.xsd",
-      "tracked": false,
-      "sha256": "1de63f3f5ce075d4318b42329e5612b54abd3299d3a489875359aceca76bfc1a",
-      "extension": ".xsd"
-    },
-    {
-      "size": 3091,
-      "lastModified": "2025-09-03T11:48:16.6603237Z",
-      "path": "CONFIGURATION.md",
-      "tracked": false,
-      "sha256": "b431b5a9f0f2aab4d5488aa2f8d8f454fecc3f20ea411a2c1105d57a90b90680",
-      "extension": ".md"
-    },
-    {
-      "size": 1981,
-      "lastModified": "2025-09-03T11:42:10.2752644Z",
-      "path": "Diagnostics/Health/HealthServer.cs",
-      "tracked": false,
-      "sha256": "4a4d2adf9ad56fe994d91d74e93d6a59ef237295b8d73d686ed458a71a7fb24e",
-      "extension": ".cs"
-    },
-    {
-      "size": 3060,
-      "lastModified": "2025-09-03T11:42:10.2752644Z",
-      "path": "Diagnostics/StartupDiagnostics.cs",
-      "tracked": false,
-      "sha256": "20d6430e1c4ce066ed8e2e18bba27f41b268251a5c10dd5631d38c427f9e04cc",
-      "extension": ".cs"
-    },
-    {
-      "size": 10925,
-      "lastModified": "2025-09-03T11:36:08.6364034Z",
-      "path": "Enterprise_Startup_Audit_and_Refactor.md",
-      "tracked": false,
-      "sha256": "4e5d26eae21e80e7bd999a2fae0a75735e2f9e03362f2a3cb0502ad8275de499",
-      "extension": ".md"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:33.8647114Z",
-      "path": "Perfect_Test_Method_Guide.md",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".md"
-    },
-    {
-      "size": 6080,
-      "lastModified": "2025-09-03T14:35:49.2475758Z",
-      "path": "Program.cs",
-      "tracked": false,
-      "sha256": "a7b0d9c832371c87c5a52a0375c56d29f6e8220f0006ad57b7ed8349fd21a9ef",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:33.5875999Z",
-      "path": "Refactoring_EnterpriseViewModel.md",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".md"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:33.7025010Z",
-      "path": "Refactoring_Final_Summary.md",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".md"
-    },
-    {
-      "size": 7358,
-      "lastModified": "2025-09-03T11:21:00.8938800Z",
-      "path": "Wiley Widget/Diagnostics/Health/ApplicationHealthMonitor.cs",
-      "tracked": false,
-      "sha256": "0bfada20f42738165bc71125b0791f66a45be1f528f7cd45378148ba7884b439",
-      "extension": ".cs"
-    },
-    {
-      "size": 7380,
-      "lastModified": "2025-09-03T11:46:03.3255652Z",
-      "path": "Wiley Widget/Infrastructure/LicenseRegistrar.cs",
-      "tracked": false,
-      "sha256": "588d119e83926b4bd43469332cf0a147f7d91619bdaa358ea23071014f82fb68",
-      "extension": ".cs"
-    },
-    {
-      "size": 4377,
-      "lastModified": "2025-09-03T11:29:53.7129835Z",
-      "path": "Wiley Widget/Infrastructure/Licensing/EmbeddedLicenseManager.cs",
-      "tracked": false,
-      "sha256": "df4b809bea9b0c8c05ac1623043e4ce0dfeee0db705e1189f960be10a871083d",
-      "extension": ".cs"
-    },
-    {
-      "size": 7843,
-      "lastModified": "2025-09-03T11:20:10.2899341Z",
-      "path": "Wiley Widget/Infrastructure/Logging/ApplicationLogging.cs",
-      "tracked": false,
-      "sha256": "bb1834b0e48588bf31d03d4a91f3c049804238dac13ee489f95d9c2b10b2f610",
-      "extension": ".cs"
-    },
-    {
-      "size": 1876,
-      "lastModified": "2025-09-03T11:20:10.2909376Z",
-      "path": "Wiley Widget/Infrastructure/Logging/WpfLoggingMiddleware.cs",
-      "tracked": false,
-      "sha256": "55de6ca018882a88d6e284707fdca4ecb568213db2d9ed016cd6ae14de9d094b",
-      "extension": ".cs"
-    },
-    {
-      "size": 4325,
-      "lastModified": "2025-09-03T11:25:34.3359844Z",
-      "path": "Wiley Widget/Infrastructure/StartupMetrics.cs",
-      "tracked": false,
-      "sha256": "84fbbb4e46919f4fc0f21feadc884c69153051f3ac0909cc8c80472185963664",
-      "extension": ".cs"
-    },
-    {
-      "size": 1578,
-      "lastModified": "2025-09-03T12:27:28.9439510Z",
-      "path": "Wiley Widget/Services/ApiKeyFacade.cs",
-      "tracked": false,
-      "sha256": "1d85052b562936c27389200d850f31c9cb397de621e800a4153734c020b8b8d2",
-      "extension": ".cs"
-    },
-    {
-      "size": 15300,
-      "lastModified": "2025-09-03T11:26:43.8712702Z",
-      "path": "Wiley Widget/Services/DeferredInitializer.cs",
-      "tracked": false,
-      "sha256": "61bc73d1b2a5e8869bc801985132f4f851a47b8f72d18809632df4d6f196dbb6",
-      "extension": ".cs"
-    },
-    {
-      "size": 3651,
-      "lastModified": "2025-09-03T12:27:28.9429514Z",
-      "path": "Wiley Widget/Services/DiagramBuilderService.cs",
-      "tracked": false,
-      "sha256": "71a4e5cc9566375f245e9699f02f84b7dad0433d384abd36c721b211f5c5a666",
-      "extension": ".cs"
-    },
-    {
-      "size": 1740,
-      "lastModified": "2025-09-03T13:59:20.7599093Z",
-      "path": "Wiley Widget/Services/ThemeCoordinator.cs",
-      "tracked": false,
-      "sha256": "c9989d231d55c3801125381c68eaf71013c829e5e484da1f258be674f9498d2d",
-      "extension": ".cs"
-    },
-    {
-      "size": 2072,
-      "lastModified": "2025-09-03T12:27:28.9429514Z",
-      "path": "Wiley Widget/Services/WindowStateService.cs",
-      "tracked": false,
-      "sha256": "1792d9fa7f56564f31a59e2aa833a25d336bbfa2a91f4cad391c0bec206d73be",
-      "extension": ".cs"
-    },
-    {
-      "size": 1063,
-      "lastModified": "2025-09-03T11:37:51.8226118Z",
-      "path": "Wiley Widget/UI/Dialogs/IEnterpriseEditorDialog.cs",
-      "tracked": false,
-      "sha256": "1983608bcd9ca2dd8d7b0081f2916890f1393ac82cdc176d851eb5ce60d8006e",
-      "extension": ".cs"
-    },
-    {
-      "size": 8682,
-      "lastModified": "2025-09-03T12:01:34.1851084Z",
-      "path": "Wiley Widget/UI/Theming/ThemeService.cs",
-      "tracked": false,
-      "sha256": "8bc6339cfe70dd0f80627bdf5ced43ba9a7dd94f7556c09a2cce6483cfc2b322",
-      "extension": ".cs"
-    },
-    {
-      "size": 6322,
-      "lastModified": "2025-09-03T13:59:20.7599093Z",
-      "path": "Wiley Widget/ViewModels/SettingsViewModel.cs",
-      "tracked": false,
-      "sha256": "0d63c4362c2168db6ad79c0fb96f695e131c559eae25773c3157f79ebd0b36e2",
-      "extension": ".cs"
-    },
-    {
-      "size": 4448,
-      "lastModified": "2025-09-03T12:54:19.7517909Z",
-      "path": "WileyWidget.Tests/AppStartupProfilingTests.cs",
-      "tracked": false,
-      "sha256": "2e027904ba727caacb82ec07e829534a7b300bd75279eaeb8a94a0439613c177",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:33.1599456Z",
-      "path": "WileyWidget.Tests/Basic/BasicTests.cs",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:31.3366103Z",
-      "path": "WileyWidget.Tests/CRAP_Analysis_Report.md",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".md"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:33.9213034Z",
-      "path": "WileyWidget.Tests/Core/TokenExpiryLogicTests.cs",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:33.3020798Z",
-      "path": "WileyWidget.Tests/Refactoring_Results.md",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".md"
-    },
-    {
-      "size": 2114,
-      "lastModified": "2025-09-03T12:40:37.1534112Z",
-      "path": "WileyWidget.Tests/Services/ApiKeyFacadeTests.cs",
-      "tracked": false,
-      "sha256": "e94f6b7b329373159044218a8152c0ee25e9b7e6aa17d344074e1913103874fe",
-      "extension": ".cs"
-    },
-    {
-      "size": 1535,
-      "lastModified": "2025-09-03T12:35:22.3383683Z",
-      "path": "WileyWidget.Tests/Services/DiagramBuilderServiceTests.cs",
-      "tracked": false,
-      "sha256": "d9bbb2b25501fc8ca22720495496542be98198b33e799e4877d98cc1e6f56948",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:29.5221483Z",
-      "path": "WileyWidget.Tests/Services/GrokSupercomputerTests.cs",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:33.0401077Z",
-      "path": "WileyWidget.Tests/Services/GrokSupercomputerXunitTests.cs",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".cs"
-    },
-    {
-      "size": 5454,
-      "lastModified": "2025-09-03T11:29:34.5623102Z",
-      "path": "WileyWidget.Tests/Services/LicenseRegistrationTests.cs",
-      "tracked": false,
-      "sha256": "aa13bd247a023cbea1f5cbf92d50339dbab6a93db8f8f7e6fd779cfca8f17b79",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:33.7741419Z",
-      "path": "WileyWidget.Tests/Services/QuickBooksServiceFocusedTests.cs",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:30.8923537Z",
-      "path": "WileyWidget.Tests/Services/QuickBooksServiceTests.cs",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".cs"
-    },
-    {
-      "size": 799,
-      "lastModified": "2025-09-03T12:40:37.1534112Z",
-      "path": "WileyWidget.Tests/Services/ThemeCoordinatorTests.cs",
-      "tracked": false,
-      "sha256": "f8c14d39c0148af2a63476f400b6f55fd84b9371169257b9040a6502d6e5b9be",
-      "extension": ".cs"
-    },
-    {
-      "size": 3829,
-      "lastModified": "2025-09-03T11:37:51.8226118Z",
-      "path": "WileyWidget.Tests/ViewModels/EnterpriseViewModelTests.cs",
-      "tracked": false,
-      "sha256": "dc50ea849ce7bdae449adceba16fa04310e0214e70f365878783814d970c4e24",
-      "extension": ".cs"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T16:48:31.0746667Z",
-      "path": "WileyWidget.Tests/ViewModels/MainViewModelTests.cs",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".cs"
-    },
-    {
-      "size": 2748,
-      "lastModified": "2025-09-03T12:35:22.3383683Z",
-      "path": "WileyWidget.Tests/ViewModels/SettingsViewModelTests.cs",
-      "tracked": false,
-      "sha256": "8da41602f8d799c49d330e2c135ee62fb67cde6ffb4e7fe9b869d22f8fa06df4",
-      "extension": ".cs"
-    },
-    {
-      "size": 16384,
-      "lastModified": "2025-09-03T22:12:32.7695592Z",
-      "path": "WileyWidget.db",
-      "tracked": false,
-      "sha256": "2123ec1be106dacaa63e7bb0057b487359ef484cc8a47492706151c90c47ed70",
-      "extension": ".db"
-    },
-    {
-      "size": 58665,
-      "lastModified": "2025-09-03T22:13:06.4632458Z",
-      "path": "WileyWidget_0lzef02k_wpftmp.csproj",
-      "tracked": false,
-      "sha256": "739c246a491e422c1e735bec3d336d61347d5138162c3b60fde2304fc573b656",
-      "extension": ".csproj"
-    },
-    {
-      "size": 3325,
-      "lastModified": "2025-09-03T14:35:49.2475758Z",
-      "path": "debug-conhost.ps1",
-      "tracked": false,
-      "sha256": "c64a4011cc10cb8a68653033ef2a56ba5d2705bdde221b702bd822c13b6da4d3",
-      "extension": ".ps1"
-    },
-    {
-      "size": 2294,
-      "lastModified": "2025-09-03T12:49:21.3370766Z",
-      "path": "docs/PythonTools.md",
-      "tracked": false,
-      "sha256": "38cf6ae19cb4a4bf853691d431ec2cf63b4c98b1ff33c4caa8d75f5b777c8efa",
-      "extension": ".md"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T17:28:41.5339809Z",
-      "path": "error.txt",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".txt"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-03T11:47:47.2136844Z",
-      "path": "logs/selflog.txt",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".txt"
-    },
-    {
-      "size": 0,
-      "lastModified": "2025-09-02T17:28:41.5339809Z",
-      "path": "output.txt",
-      "tracked": false,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "extension": ".txt"
-    },
-    {
-      "size": 33404,
-      "lastModified": "2025-09-03T14:12:40.1639147Z",
-      "path": "scripts/__pycache__/debug_syncfusion_themes.cpython-311.pyc",
-      "tracked": false,
-      "sha256": "76f890d78e5fd68dccee54c13ca39d0f1299d363d33041af3cab69af6abd2bf0",
-      "extension": ".pyc"
-    },
-    {
-      "size": 2939,
-      "lastModified": "2025-09-03T12:52:16.7433746Z",
-      "path": "scripts/bootstrap_python_env.ps1",
-      "tracked": false,
-      "sha256": "860f1bb2ccf43e1e21e47d08439d4db48c65cb54c2c8cee3a912a9608d0a88ba",
-      "extension": ".ps1"
-    },
-    {
-      "size": 7378,
-      "lastModified": "2025-09-03T12:22:18.2312517Z",
-      "path": "scripts/compute-crap.ps1",
-      "tracked": false,
-      "sha256": "840b6bff4c4b7e47e24aaa57b2e61f492b4c021ff99f280bcec9052c64c4ffcd",
-      "extension": ".ps1"
-    },
-    {
       "size": 641,
       "lastModified": "2025-09-03T14:20:45.5690410Z",
       "path": "theme-crash-repro/App.xaml",
-      "tracked": false,
+      "tracked": true,
       "sha256": "8ad669a3fe3a63f2a1d17a4326028fe47ea3712b947a8d8ac1daf553b9da0351",
       "extension": ".xaml"
     },
@@ -2805,7 +2805,7 @@
       "size": 378,
       "lastModified": "2025-09-03T14:20:45.5703119Z",
       "path": "theme-crash-repro/App.xaml.cs",
-      "tracked": false,
+      "tracked": true,
       "sha256": "daec886974bca34e16f8bc70a411455f1d4bd87729bfbd33fde11abd82558a29",
       "extension": ".cs"
     },
@@ -2813,7 +2813,7 @@
       "size": 815,
       "lastModified": "2025-09-03T14:20:45.5703119Z",
       "path": "theme-crash-repro/MainWindow.xaml",
-      "tracked": false,
+      "tracked": true,
       "sha256": "46bb7c0b0df9de5fdfd40c88512d6306e52eef064f437812da2d6e67f32bb646",
       "extension": ".xaml"
     },
@@ -2821,7 +2821,7 @@
       "size": 2101,
       "lastModified": "2025-09-03T14:20:45.5703119Z",
       "path": "theme-crash-repro/MainWindow.xaml.cs",
-      "tracked": false,
+      "tracked": true,
       "sha256": "1de7a43f4ae7f0faa1f1200a46e35b9f86bb2210d896cc98cfc4805258badef3",
       "extension": ".cs"
     },
@@ -2829,16 +2829,16 @@
       "size": 517,
       "lastModified": "2025-09-03T14:20:45.5690410Z",
       "path": "theme-crash-repro/ThemeCrashRepro.csproj",
-      "tracked": false,
+      "tracked": true,
       "sha256": "71be5d625a69f5d976196ceb0d8e57805d041fd85308546b3426a895cd7c3ba0",
       "extension": ".csproj"
     },
     {
-      "size": 30638,
-      "lastModified": "2025-09-03T14:20:47.5400233Z",
+      "size": 30476,
+      "lastModified": "2025-09-03T22:16:50.1514700Z",
       "path": "theme-debug-results.json",
-      "tracked": false,
-      "sha256": "eb009487ff908330e94048dd1f79cdaeca1a9034b6cfa6480bbb86346998e556",
+      "tracked": true,
+      "sha256": "6f5e219cb82a8b46f1e6e70dffdf168c364a6e8d28ef9a3f3a8961f41f40cde6",
       "extension": ".json"
     }
   ]
