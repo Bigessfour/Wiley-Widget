@@ -5,15 +5,15 @@
       "trackedFiles": 359,
       "ignoredFiles": 10197,
       "untrackedFiles": 0,
-      "totalSize": 8763372
+      "totalSize": 8763315
     },
     "repository": {
-      "commitHash": "3a60a74031a5a60b4af1918485d5991404af3132",
+      "commitHash": "ed58d00f28f08981c972218917170fddb1b01ae6",
       "isDirty": false,
       "branch": "temp",
       "remoteUrl": "git@github.com:Bigessfour/Wiley-Widget.git"
     },
-    "generatedAt": "2025-09-03T22:17:55.0356403Z",
+    "generatedAt": "2025-09-03T22:18:43.1011466Z",
     "generator": "Update-FetchabilityResources.ps1"
   },
   "files": [
@@ -2114,11 +2114,11 @@
       "extension": ".txt"
     },
     {
-      "size": 99345,
-      "lastModified": "2025-09-03T22:16:22.7264038Z",
+      "size": 99288,
+      "lastModified": "2025-09-03T22:17:55.0391483Z",
       "path": "fetchability-resources.json",
       "tracked": true,
-      "sha256": "0f044aff96029c480c5f6de53783c2f7c9c9ac27a920ac6dfbb0cce41d62dc92",
+      "sha256": "8b63afdeaf2751d3d403b4851db8743193b1ed81841f37f14a3ee799b79d9674",
       "extension": ".json"
     },
     {
