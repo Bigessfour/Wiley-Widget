@@ -15,48 +15,11 @@
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/Resources/SyncfusionResources.xaml" />
+                <!-- Correct pack URI: spaces encoded in project folder path are avoided by using assembly root logical path -->
+                <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/Wiley Widget/Resources/SyncfusionResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            
-            <!-- Converters (defined first for proper resolution) -->
+            <!-- Local converters only (styles & brushes now centralized in SyncfusionResources.xaml) -->
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
-            <!-- Removed unused BalanceToColorConverter & StatusToColorConverter -->
-            
-            <!-- DashboardCard Border Style -->
-            <Style x:Key="DashboardCard" TargetType="Border">
-                <Setter Property="Background" Value="White"/>
-                <Setter Property="BorderBrush" Value="#E1E1E1"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="8"/>
-                <Setter Property="Margin" Value="5"/>
-                <Setter Property="Padding" Value="15"/>
-                <Setter Property="Effect">
-                    <Setter.Value>
-                        <DropShadowEffect Color="#CCCCCC" BlurRadius="5" ShadowDepth="2"/>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- Card Title Style -->
-            <Style x:Key="CardTitle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="16"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Foreground" Value="#333333"/>
-                <Setter Property="Margin" Value="0,0,0,8"/>
-            </Style>
-
-            <!-- Card Value Style -->
-            <Style x:Key="CardValue" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="24"/>
-                <Setter Property="FontWeight" Value="Bold"/>
-                <Setter Property="Foreground" Value="#007ACC"/>
-                <Setter Property="HorizontalAlignment" Value="Center"/>
-            </Style>
-
-            <!-- Warning Styles -->
-            <SolidColorBrush x:Key="WarningBackground" Color="#FFF3CD"/>
-            <SolidColorBrush x:Key="WarningBorderBrush" Color="#FFEAA7"/>
-            <SolidColorBrush x:Key="WarningTextForeground" Color="#856404"/>
         </ResourceDictionary>
     </Window.Resources>
     <DockPanel>
