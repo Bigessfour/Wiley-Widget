@@ -4,12 +4,10 @@
                     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
                     xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF">
 
-    <!-- Fluent Theme Resources (Loaded dynamically by SfSkinManager) -->
-    <ResourceDictionary.MergedDictionaries>
-        <!-- Theme resources will be loaded dynamically by the application -->
-    </ResourceDictionary.MergedDictionaries>
+    <!-- Syncfusion themes are loaded automatically by SfSkinManager -->
+    <!-- This file contains only custom application styles that complement the active theme -->
 
-    <!-- Button Style (Simplified for startup compatibility) -->
+    <!-- Custom application styles that complement Fluent theme -->
     <Style x:Key="ThemeButton" TargetType="Button">
         <Setter Property="Background" Value="#0078D4"/>
         <Setter Property="Foreground" Value="White"/>

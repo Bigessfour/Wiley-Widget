@@ -32,11 +32,33 @@ public static class DatabaseConfiguration
             switch (provider.ToUpperInvariant())
             {
                 case "SQLITE":
+                    // AZ DATABASE REFERENCE: SQLite for development/testing
+                    // - File-based database, no server required
+                    // - Cross-platform compatibility
+                    // - Suitable for single-user applications
+                    // - Connection: "Data Source=WileyWidget.db"
                     options.UseSqlite(connectionString, o => o.CommandTimeout(30));
                     break;
                 case "LOCALDB":
+                    // AZ DATABASE REFERENCE: SQL Server LocalDB
+                    // - Development database, no full SQL Server installation
+                    // - Automatic instance management
+                    // - Connection: "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;"
+                    // - Requires: SqlLocalDB.msi installation
+                    options.UseSqlServer(connectionString, o =>
+                    {
+                        o.CommandTimeout(30);
+                        o.EnableRetryOnFailure(3, TimeSpan.FromSeconds(15), null);
+                    });
+                    break;
                 case "SQLSERVER":
                 case "MSSQL":
+                    // AZ DATABASE REFERENCE: Azure SQL Database / SQL Server
+                    // - Production-ready cloud database
+                    // - Managed identity authentication recommended
+                    // - Connection: "Server=tcp:{server}.database.windows.net;Database={db};Authentication=Active Directory Managed Identity;"
+                    // - Alternative: "Server={server};Database={db};User Id={user};Password={pwd};"
+                    // - Features: Automatic backups, high availability, scaling
                     options.UseSqlServer(connectionString, o =>
                     {
                         o.CommandTimeout(30);
@@ -89,6 +111,12 @@ public static class DatabaseConfiguration
         services.AddScoped<QuickBooksService>();
         services.AddScoped<SettingsService>();
         services.AddScoped<BrightDataService>();
+
+    // UI / coordination services
+    services.AddSingleton<Services.IDiagramBuilderService, Services.DiagramBuilderService>();
+    services.AddSingleton<Services.IApiKeyFacade, Services.ApiKeyFacade>();
+    services.AddSingleton<Services.IThemeCoordinator, Services.ThemeCoordinator>();
+    services.AddTransient<ViewModels.SettingsViewModel>();
 
         return services;
     }

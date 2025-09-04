@@ -1,17 +1,62 @@
 <Window x:Class="WileyWidget.Views.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
-        xmlns:converters="clr-namespace:WileyWidget.Converters"
-        mc:Ignorable="d"
-        Title="Wiley Widget" Height="450" Width="800">
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+    xmlns:converters="clr-namespace:WileyWidget.Converters"
+    mc:Ignorable="d"
+    Title="Wiley Widget" Height="450" Width="800"
+    UseLayoutRounding="True"
+    SnapsToDevicePixels="True"
+    TextOptions.TextFormattingMode="Display"
+    TextOptions.TextRenderingMode="Auto"
+    DataContextChanged="MainWindow_DataContextChanged">
     <Window.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/Resources/SyncfusionResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Converters (defined first for proper resolution) -->
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
-            <converters:BalanceToColorConverter x:Key="BalanceToColorConverter"/>
-            <converters:StatusToColorConverter x:Key="StatusToColorConverter"/>
+            <!-- Removed unused BalanceToColorConverter & StatusToColorConverter -->
+            
+            <!-- DashboardCard Border Style -->
+            <Style x:Key="DashboardCard" TargetType="Border">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="BorderBrush" Value="#E1E1E1"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Margin" Value="5"/>
+                <Setter Property="Padding" Value="15"/>
+                <Setter Property="Effect">
+                    <Setter.Value>
+                        <DropShadowEffect Color="#CCCCCC" BlurRadius="5" ShadowDepth="2"/>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Card Title Style -->
+            <Style x:Key="CardTitle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="#333333"/>
+                <Setter Property="Margin" Value="0,0,0,8"/>
+            </Style>
+
+            <!-- Card Value Style -->
+            <Style x:Key="CardValue" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="24"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="#007ACC"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+            </Style>
+
+            <!-- Warning Styles -->
+            <SolidColorBrush x:Key="WarningBackground" Color="#FFF3CD"/>
+            <SolidColorBrush x:Key="WarningBorderBrush" Color="#FFEAA7"/>
+            <SolidColorBrush x:Key="WarningTextForeground" Color="#856404"/>
         </ResourceDictionary>
     </Window.Resources>
     <DockPanel>
@@ -22,9 +67,15 @@
                 <Separator />
                 <MenuItem Header="Refresh" />
             </MenuItem>
-            <MenuItem Header="Theme">
-                <MenuItem Header="Fluent Dark" Click="OnFluentDark" />
-                <MenuItem Header="Fluent Light" Click="OnFluentLight" />
+            <!-- Dynamic theme menu bound to ThemeCoordinator -->
+            <MenuItem x:Name="ThemeMenu" Header="Theme" 
+                      ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=ThemeCoordinator.Themes}">
+                <MenuItem.ItemContainerStyle>
+                    <Style TargetType="MenuItem">
+                        <Setter Property="Header" Value="{Binding}" />
+                        <EventSetter Event="Click" Handler="OnThemeMenuItemClick" />
+                    </Style>
+                </MenuItem.ItemContainerStyle>
             </MenuItem>
             <MenuItem Header="Data">
                 <MenuItem Header="Next" Command="{Binding SelectNextCommand}" />
@@ -38,12 +89,16 @@
         <DockPanel LastChildFill="True">
             <TabControl x:Name="MainTabControl">
                 <TabItem Header="Widgets">
+                    <!-- Added deferred scrolling & pixel snapping per Microsoft WPF performance guidelines -->
                     <DataGrid ItemsSource="{Binding Widgets}" SelectedItem="{Binding SelectedWidget, Mode=TwoWay}" 
                              AutoGenerateColumns="False" x:Name="Grid" IsReadOnly="True"
                              VirtualizingPanel.IsVirtualizing="True"
                              VirtualizingPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                             ScrollViewer.IsDeferredScrollingEnabled="True"
                              EnableRowVirtualization="True"
-                             EnableColumnVirtualization="True">
+                             EnableColumnVirtualization="True"
+                             SnapsToDevicePixels="True">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="70" />
                             <DataGridTextColumn Header="Name" Binding="{Binding Name}" />
@@ -64,12 +119,16 @@
                             <Button Content="Crunch with Grok" Command="{Binding CrunchWithGrokCommand}" Margin="0,0,6,0" 
                                     FontWeight="Bold" ToolTip="Analyze enterprises with AI"/>
                         </StackPanel>
-                        <DataGrid ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" 
+                        <!-- Named EnterprisesGrid to align with code-behind expectations & enable diagnostics -->
+                        <DataGrid x:Name="EnterprisesGrid" ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" 
                                  AutoGenerateColumns="False" IsReadOnly="True"
                                  VirtualizingPanel.IsVirtualizing="True"
                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                 VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                                 ScrollViewer.IsDeferredScrollingEnabled="True"
                                  EnableRowVirtualization="True"
-                                 EnableColumnVirtualization="True">
+                                 EnableColumnVirtualization="True"
+                                 SnapsToDevicePixels="True">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="200" />
                                 <DataGridTextColumn Header="Rate" Binding="{Binding CurrentRate}" Width="100" />
@@ -178,30 +237,30 @@
                 </TabItem>
                 <TabItem Header="Settings">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="10">
+                        <StackPanel Margin="10" DataContext="{Binding Settings}">
                                             <TextBlock Text="Timeout (seconds):" Margin="0,0,0,5"/>
-                                            <TextBox x:Name="TimeoutTextBox" Text="30" Margin="0,0,0,2"
+                                            <TextBox x:Name="TimeoutTextBox" Text="{Binding TimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,2"
                                                      Style="{StaticResource ValidatedTextBox}"/>
                                             <TextBlock Text="{Binding ElementName=TimeoutTextBox, Path=(Validation.Errors)[0].ErrorContent}"
                                                        Style="{StaticResource ValidationErrorStyle}"
                                                        Visibility="{Binding ElementName=TimeoutTextBox, Path=(Validation.HasError), Converter={StaticResource BoolToVis}}"/>
                                             
                                             <TextBlock Text="Cache TTL (minutes):" Margin="0,8,0,5"/>
-                                            <TextBox x:Name="CacheTtlTextBox" Text="30" Margin="0,0,0,2"
+                                            <TextBox x:Name="CacheTtlTextBox" Text="{Binding CacheTtlMinutes, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,2"
                                                      Style="{StaticResource ValidatedTextBox}"/>
                                             <TextBlock Text="{Binding ElementName=CacheTtlTextBox, Path=(Validation.Errors)[0].ErrorContent}"
                                                              Style="{StaticResource ValidationErrorStyle}"
                                                              Visibility="{Binding ElementName=CacheTtlTextBox, Path=(Validation.HasError), Converter={StaticResource BoolToVis}}"/>
                                             
                                             <TextBlock Text="Daily Budget ($):" Margin="0,8,0,5"/>
-                                            <TextBox x:Name="DailyBudgetTextBox" Text="10.00" Margin="0,0,0,2"
+                                            <TextBox x:Name="DailyBudgetTextBox" Text="{Binding DailyBudget, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,2"
                                                      Style="{StaticResource ValidatedTextBox}"/>
                                             <TextBlock Text="{Binding ElementName=DailyBudgetTextBox, Path=(Validation.Errors)[0].ErrorContent}"
                                                              Style="{StaticResource ValidationErrorStyle}"
                                                              Visibility="{Binding ElementName=DailyBudgetTextBox, Path=(Validation.HasError), Converter={StaticResource BoolToVis}}"/>
                                             
                                             <TextBlock Text="Monthly Budget ($):" Margin="0,8,0,5"/>
-                                            <TextBox x:Name="MonthlyBudgetTextBox" Text="300.00" Margin="0,0,0,2"
+                                            <TextBox x:Name="MonthlyBudgetTextBox" Text="{Binding MonthlyBudget, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,2"
                                                      Style="{StaticResource ValidatedTextBox}"/>
                                             <TextBlock Text="{Binding ElementName=MonthlyBudgetTextBox, Path=(Validation.Errors)[0].ErrorContent}"
                                                              Style="{StaticResource ValidationErrorStyle}"
@@ -211,7 +270,7 @@
                                             <GroupBox Header="xAI API Configuration" Margin="0,20,0,20">
                                                 <StackPanel Margin="10">
                                                     <TextBlock Text="API Key:" Margin="0,0,0,5"/>
-                                                    <TextBox x:Name="ApiKeyBox" Margin="0,0,0,2"
+                                                    <TextBox x:Name="ApiKeyBox" Text="{Binding ApiKey, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,2"
                                                              Style="{StaticResource ValidatedTextBox}"/>
                                                     <TextBlock Text="{Binding ElementName=ApiKeyBox, Path=(Validation.Errors)[0].ErrorContent}"
                                                                Style="{StaticResource ValidationErrorStyle}"
@@ -219,31 +278,29 @@
                                                     
                                                     <!-- Theme Selection -->
                                                     <TextBlock Text="Theme:" Margin="0,15,0,5"/>
-                                                    <ComboBox x:Name="ThemeComboBox" Margin="0,0,0,2">
-                                                        <ComboBoxItem Content="Fluent Dark"/>
-                                                        <ComboBoxItem Content="Fluent Light"/>
-                                                    </ComboBox>
+                                                    <ComboBox x:Name="ThemeComboBox" ItemsSource="{Binding Source={RelativeSource AncestorType=Window}, Path=ThemeCoordinator.Themes}" 
+                                                             SelectedItem="{Binding SelectedTheme, Mode=TwoWay}" Margin="0,0,0,2"/>
                                                     
                                                     <!-- Model Selection -->
                                                     <TextBlock Text="xAI Model:" Margin="0,15,0,5"/>
-                                                    <ComboBox x:Name="ModelComboBox" Margin="0,0,0,10">
-                                                        <ComboBoxItem Content="grok-beta"/>
-                                                        <ComboBoxItem Content="grok-vision-beta"/>
+                                                    <ComboBox x:Name="ModelComboBox" SelectedItem="{Binding SelectedModel, Mode=TwoWay}" Margin="0,0,0,10">
+                                                        <ComboBoxItem Content="grok-beta" />
+                                                        <ComboBoxItem Content="grok-vision-beta" />
                                                     </ComboBox>
                                                     <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
-                                                        <syncfusion:ButtonAdv Content="Test API Key" Click="OnTestApiKey" 
+                                                        <syncfusion:ButtonAdv Content="Test API Key" Command="{Binding TestApiKeyAsyncCommand}" 
                                                                 Background="{StaticResource TestApiBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                                 Margin="0,0,10,0" Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
-                                                        <syncfusion:ButtonAdv Content="Save Settings" Click="OnSaveSettings" 
+                                                        <syncfusion:ButtonAdv Content="Save Settings" Command="{Binding SaveCommand}" 
                                                                 Background="{StaticResource SaveSettingsBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                                 Margin="0,0,10,0" Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
-                                                        <syncfusion:ButtonAdv Content="Load Settings" Click="OnLoadSettings" 
+                                                        <syncfusion:ButtonAdv Content="Load Settings" Command="{Binding LoadCommand}" 
                                                                 Background="{StaticResource LoadSettingsBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                                 Margin="0,0,10,0" Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
-                                                        <syncfusion:ButtonAdv Content="Remove API Key" Click="OnRemoveApiKey" 
+                                                        <syncfusion:ButtonAdv Content="Remove API Key" Command="{Binding RemoveApiKeyCommand}" 
                                                                 Background="{StaticResource RemoveApiBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                                 Margin="0,0,10,0" Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
-                                                        <syncfusion:ButtonAdv Content="API Key Info" Click="OnShowApiKeyInfo" 
+                                                        <syncfusion:ButtonAdv Content="API Key Info" Command="{Binding ShowApiInfoCommand}" 
                                                                 Background="{StaticResource ApiInfoBackground}" Foreground="{StaticResource TestConfigForeground}" 
                                                                 Padding="20,10" Style="{StaticResource ThemeSfButton}"/>
                                                     </StackPanel>
@@ -251,8 +308,7 @@
                                                     <!-- Status Display -->
                                                     <Border x:Name="StatusBorder" BorderBrush="{StaticResource StatusBorderBrush}" BorderThickness="1" 
                                                            Margin="0,20,0,0" Padding="10" CornerRadius="5">
-                                                        <TextBlock x:Name="ApiKeyStatusText" 
-                                                                 Text="Ready to configure xAI API key. Click 'Load Settings' to see current configuration."
+                                                        <TextBlock x:Name="ApiKeyStatusText" Text="{Binding StatusMessage}"
                                                                  TextWrapping="Wrap"/>
                                                     </Border>
                                                 </StackPanel>
@@ -267,7 +323,7 @@
                                                     <TextBlock Text="3. Generate a new API key" Margin="0,0,0,5"/>
                                                     <TextBlock Text="4. Copy the key and paste it above" Margin="0,0,0,5"/>
                                                     <TextBlock Text="5. Click 'Test API Key' to verify" Margin="0,0,0,15"/>
-                                                    <syncfusion:ButtonAdv Content="Open xAI API Key Guide" Click="OnOpenApiGuide" 
+                                                    <syncfusion:ButtonAdv Content="Open xAI API Key Guide" Command="{Binding OpenGuideCommand}" 
                                                            Background="{StaticResource GuideButtonBackground}" Foreground="{StaticResource GuideButtonForeground}" Padding="15,8" Style="{StaticResource ThemeSfButton}"/>
                                                 </StackPanel>
                                             </GroupBox>

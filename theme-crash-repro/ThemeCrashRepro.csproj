@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Syncfusion.SfSkinManager.WPF" Version="27.1.48" />
+    <PackageReference Include="Syncfusion.Themes.FluentLight.WPF" Version="27.1.48" />
+    <PackageReference Include="Syncfusion.Tools.WPF" Version="27.1.48" />
+  </ItemGroup>
+</Project>

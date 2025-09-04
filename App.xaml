@@ -1,15 +1,12 @@
 <Application xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:WileyWidget"
-             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF">
+             xmlns:local="clr-namespace:WileyWidget">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- FIXED: Remove problematic Syncfusion theme XAML references -->
-                <!-- Theme will be applied via code in App.xaml.cs OnStartup -->
-                
-                <!-- Custom application resources only -->
-                <ResourceDictionary Source="SyncfusionResources.xaml"/>
+                <!-- Syncfusion themes are loaded automatically by SfSkinManager -->
+                <!-- Custom application resources only (no theme resources) -->
+                <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/Wiley Widget/Resources/SyncfusionResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

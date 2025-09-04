@@ -1,6 +1,38 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2025-09-03 - Syncfusion WPF 30.2.7 Update
+### Updated
+- **Syncfusion WPF Components:** Upgraded all UI controls to version 30.2.7
+  - Syncfusion.Licensing: 30.2.7
+  - Syncfusion.SfAccordion.WPF: 30.2.7
+  - Syncfusion.SfDiagram.WPF: 30.2.7
+  - Syncfusion.SfGrid.WPF: 30.2.7
+  - Syncfusion.SfProgressBar.WPF: 30.2.7
+  - Syncfusion.SfScheduler.WPF: 30.2.7
+  - Syncfusion.SfSkinManager.WPF: 30.2.7
+  - Syncfusion.Themes.FluentDark.WPF: 30.2.7
+  - Syncfusion.Themes.FluentLight.WPF: 30.2.7
+  - Syncfusion.Tools.WPF: 30.2.7
+  - Syncfusion.SfChart.WPF: 30.2.7
+  - Syncfusion.Shared.WPF: 30.2.7
+  - Syncfusion.SfInput.WPF: 30.2.7
+
+### Fixed
+- **GridControl Bug Fix:** Corrected `Infinity` text display issue when editing DoubleEdit cells with `double.PositiveInfinity` values
+- **PDF Bug Fixes:** 
+  - Resolved page import issues from specific PDF documents
+  - Fixed Find Text functionality in particular PDF documents
+  - Addressed signature field flattening preservation issues
+  - Corrected annotation redaction problems
+  - Fixed merge operation exceptions with fillable forms
+- **SfDataGrid Bug Fix:** Fixed header rendering issues during horizontal scrolling when FrozenColumnCount is applied
+
+### Enhanced
+- **Database Configuration:** Added comprehensive AZ database comments and documentation
+- **Theme System:** Improved FluentDark and FluentLight theme support with latest Syncfusion theming
+- **UI Performance:** Enhanced rendering performance with updated Syncfusion controls
+
 ## [1.0.0] - 2025-08-30 - Enterprise Architecture Complete
 ### Added
 - **Enterprise Dependency Injection:** Microsoft.Extensions.DependencyInjection with service locator pattern

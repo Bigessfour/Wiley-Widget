@@ -5,7 +5,7 @@ using System.Windows.Threading;
 using Serilog;
 using System.Runtime.Versioning;
 
-namespace WileyWidget.Services;
+namespace WileyWidget.Diagnostics.Health;
 
 /// <summary>
 /// Application health monitoring service that tracks performance metrics,
@@ -16,10 +16,14 @@ public class ApplicationHealthMonitor : IDisposable
     private readonly DispatcherTimer _performanceTimer;
     private readonly PerformanceCounter _cpuCounter;
     private readonly PerformanceCounter _memoryCounter;
+    private readonly Random _jitterRandom;
     private bool _disposed;
 
     public ApplicationHealthMonitor()
     {
+        // Initialize random for jitter
+        _jitterRandom = new Random();
+
         // Initialize performance counters (Windows only)
         if (OperatingSystem.IsWindows())
         {
@@ -29,15 +33,13 @@ public class ApplicationHealthMonitor : IDisposable
 #pragma warning restore CA1416
         }
 
-        // Set up periodic health checks
-        _performanceTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(30) // Check every 30 seconds
-        };
+        // Set up periodic health checks with jitter
+        _performanceTimer = new DispatcherTimer();
+        SetJitteredInterval();
         _performanceTimer.Tick += OnPerformanceCheck;
         _performanceTimer.Start();
 
-        Log.Information("Application Health Monitor initialized");
+        Log.Information("Application Health Monitor initialized with jittered health checks");
     }
 
     private void OnPerformanceCheck(object sender, EventArgs e)
@@ -51,9 +53,9 @@ public class ApplicationHealthMonitor : IDisposable
                 var memoryUsage = _memoryCounter.NextValue() / 1024 / 1024; // Convert to MB
 #pragma warning restore CA1416
 
-                // Log performance metrics
-                Log.Information("Performance Check - CPU: {CpuUsage:F1}%, Memory: {MemoryUsage:F1}MB",
-                    cpuUsage, memoryUsage);
+                // Log structured performance metrics
+                Log.Information("Health Check - CPU: {CpuUsage:F1}%, Memory: {MemoryUsage:F1}MB, ThreadCount: {ThreadCount}, ProcessId: {ProcessId}",
+                    cpuUsage, memoryUsage, Process.GetCurrentProcess().Threads.Count, Process.GetCurrentProcess().Id);
 
                 // Check for high resource usage
                 if (cpuUsage > 80)
@@ -68,10 +70,15 @@ public class ApplicationHealthMonitor : IDisposable
                     Log.Information("Garbage collection suggested due to high memory usage");
                 }
             }
+
+            // Reset jittered interval for next check
+            SetJitteredInterval();
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error during performance check");
+            // Reset interval even on error to prevent timer issues
+            SetJitteredInterval();
         }
     }
 
@@ -171,6 +178,23 @@ public class ApplicationHealthMonitor : IDisposable
 
         _disposed = true;
         Log.Information("Application Health Monitor disposed");
+    }
+
+    /// <summary>
+    /// Sets a jittered interval for health checks to avoid synchronized monitoring
+    /// Base interval: 30 seconds, Jitter: ±25% (22.5-37.5 seconds)
+    /// </summary>
+    private void SetJitteredInterval()
+    {
+        const double baseIntervalSeconds = 30.0;
+        const double jitterPercent = 0.25; // 25% jitter
+
+        // Calculate jittered interval
+        double jitterFactor = 1.0 + (_jitterRandom.NextDouble() * 2.0 - 1.0) * jitterPercent;
+        double jitteredSeconds = baseIntervalSeconds * jitterFactor;
+
+        _performanceTimer.Interval = TimeSpan.FromSeconds(jitteredSeconds);
+        Log.Debug("Health check interval set to {Interval:F1}s (jittered)", jitteredSeconds);
     }
 }
 

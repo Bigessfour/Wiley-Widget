@@ -4,6 +4,7 @@ Quick runtime error checker for Syncfusion themes
 """
 
 import json
+import shutil
 import subprocess  # nosec B404 - Using subprocess with validated inputs only
 from pathlib import Path
 
@@ -84,22 +85,30 @@ def check_build_output():
     print("🔨 Testing build...")
 
     try:
-        # Secure build test with fixed arguments
+        # Find dotnet executable securely
+        dotnet_exe = shutil.which("dotnet")
+        if not dotnet_exe:
+            print("❌ dotnet.exe not found in PATH")
+            return False
+
+        # Secure build test with fixed arguments and validated executable
         build_args = [
-            "dotnet.exe",
+            dotnet_exe,
             "build",
             "WileyWidget.csproj",
             "--verbosity",
             "quiet",
         ]
 
-        result = subprocess.run(  # nosec B603,B607 - Using fixed dotnet command with validated arguments
+        # Secure subprocess call with validated executable and fixed arguments
+        result = subprocess.run(  # nosec B603 - Using validated executable with fixed arguments
             build_args,
             capture_output=True,
             text=True,
             timeout=60,
             check=False,
             cwd=Path.cwd(),  # Explicit working directory
+            shell=False,  # Explicitly disable shell for security
         )
 
         if result.returncode == 0:

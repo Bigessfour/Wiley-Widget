@@ -1,0 +1,15 @@
+<Window x:Class="ThemeCrashRepro.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+        Title="Syncfusion Theme Crash Test" Height="450" Width="800"
+        Loaded="MainWindow_Loaded">
+    <Grid>
+        <StackPanel Margin="20">
+            <Button Name="TestButton" Content="Test Button" Margin="5"/>
+            <syncfusion:BusyIndicator Name="TestBusyIndicator" Margin="5" IsBusy="True"/>
+            <Button Name="SwitchThemeButton" Content="Switch to FluentLight" Click="SwitchTheme_Click" Margin="5"/>
+            <TextBlock Name="StatusText" Text="Waiting for theme test..." Margin="5"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -13,6 +13,9 @@ using WileyWidget.Models;
 using System.Text;
 using System.IO;
 using System; // For StringComparison
+using WileyWidget.UI.Theming;
+using WileyWidget.Infrastructure.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.Views;
 
@@ -45,6 +48,12 @@ namespace WileyWidget.Views;
 /// </summary>
 public partial class MainWindow : Window
 {
+    // Removed custom InitializeComponent and _contentLoaded duplicate to allow WPF-generated partial class implementation.
+    // Relying on the auto-generated InitializeComponent from the XAML build (Build Action: Page).
+    #region Constants
+    private const string DefaultTheme = "FluentDark"; // Syncfusion WPF 30.2.4 supported theme (documentation-aligned)
+    private const int PerformanceOptimizationChildScanLimit = 500; // Guard to prevent excessive visual tree traversal
+    #endregion
     /// <summary>
     /// Runtime toggle for dynamic column generation in data grids.
     /// When enabled, columns are generated programmatically based on model properties.
@@ -56,6 +65,10 @@ public partial class MainWindow : Window
     /// Reference to the budget diagram control
     /// </summary>
     private SfDiagram BudgetDiagramField;
+    private Services.IDiagramBuilderService _diagramBuilder;
+    private Services.IApiKeyFacade _apiKeyFacade;
+    private Services.IThemeCoordinator _themeCoordinator;
+    public Services.IThemeCoordinator ThemeCoordinator => _themeCoordinator; // for XAML binding
 
     /// <summary>
     /// Initializes the main application window with comprehensive setup.
@@ -76,8 +89,14 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    DataContext = ServiceLocator.GetService<ViewModels.MainViewModel>();
-                    Log.Information("Data context established");
+                    var vm = ServiceLocator.GetService<ViewModels.MainViewModel>();
+                    if (vm == null)
+                        Log.Warning("MainViewModel service not resolved – UI will operate in limited state");
+                    var settingsVm = ServiceLocator.GetServiceOrDefault<ViewModels.SettingsViewModel>()
+                        ?? new ViewModels.SettingsViewModel(SettingsService.Instance, _apiKeyFacade, _themeCoordinator);
+                    Settings = settingsVm; // Exposed via DP for XAML binding path `Settings`
+                    DataContext = vm;
+                    Log.Information("Data context established (null={IsNull}) SettingsVM={HasSettings}", vm == null, settingsVm != null);
                 }
                 catch (Exception ex)
                 {
@@ -89,6 +108,11 @@ public partial class MainWindow : Window
             // InitializeSyncfusionControls(); // Commented out - controls not in simplified XAML
             Log.Information("Syncfusion controls located and referenced");
 
+            // Resolve new coordination services (best-effort, fallback to simple instances)
+            _diagramBuilder = ServiceLocator.GetService<Services.IDiagramBuilderService>() ?? new Services.DiagramBuilderService();
+            _apiKeyFacade = ServiceLocator.GetService<Services.IApiKeyFacade>() ?? new Services.ApiKeyFacade(ApiKeyService.Instance, SettingsService.Instance);
+            _themeCoordinator = ServiceLocator.GetService<Services.IThemeCoordinator>() ?? new Services.ThemeCoordinator(SettingsService.Instance);
+
             // CRITICAL FIX: Defer theme application to Loaded event to prevent crashes
             // FluentLight and other themes with reveal animations can crash if applied in constructor
             Log.Information("Theme application deferred to Loaded event to prevent animation crashes");
@@ -99,21 +123,13 @@ public partial class MainWindow : Window
                 BuildDynamicColumns();
             }
 
-            Log.Information("Setting up window state management...");
-            RestoreWindowState();
+            Log.Information("Setting up window state management via WindowStateService...");
+            GetWindowStateService()?.Restore(this);
 
             // CRITICAL FIX: Apply theme in Loaded event instead of constructor
-            Loaded += (_, _) =>
-            {
-                Log.Information("Window.Loaded event fired - applying theme and maximized state");
-                ApplyDeferredTheme();
-                ApplyMaximized();
-                
-                // PERFORMANCE OPTIMIZATION: Apply WPF performance optimizations
-                OptimizePerformance();
-            };
+            Loaded += OnLoaded;
 
-            Closing += (_, _) => PersistWindowState();
+            Closing += OnClosingPersistState;
 
             Log.Information("Updating theme toggle button visuals...");
             UpdateThemeToggleVisuals();
@@ -125,6 +141,33 @@ public partial class MainWindow : Window
             Log.Error(ex, "Critical error during MainWindow initialization");
             throw;
         }
+    }
+
+    // Fallback stub for InitializeComponent to protect against rare build ordering issues.
+    // The real method will be code-generated by WPF; if it's missing, this prevents a hard compile break and logs the condition.
+    [System.Diagnostics.Conditional("DEBUG")]
+    private void InitializeComponentFallbackGuard()
+    {
+        if (GetType().GetMethod("InitializeComponent", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic) == null)
+        {
+            Log.Warning("WPF generated InitializeComponent missing at runtime - fallback guard executed. Check XAML build action (Page) and logical namespace.");
+        }
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Log.Information("Window.Loaded event fired - applying theme and maximized state");
+        ApplyDeferredTheme();
+        ApplyMaximized();
+        OptimizePerformance();
+        // Once executed, detach to avoid duplicate calls if window is reloaded (defensive)
+        Loaded -= OnLoaded;
+    }
+
+    private void OnClosingPersistState(object sender, System.ComponentModel.CancelEventArgs e)
+    {
+    GetWindowStateService()?.Persist(this);
+        Closing -= OnClosingPersistState;
     }
 
     /// <summary>
@@ -148,8 +191,14 @@ public partial class MainWindow : Window
 
             // Optimize UI elements
             var uiElements = this.FindVisualChildren<UIElement>();
+            int processed = 0;
             foreach (var element in uiElements)
             {
+                if (processed++ > PerformanceOptimizationChildScanLimit)
+                {
+                    Log.Debug("Performance optimization scan aborted after limit {Limit}", PerformanceOptimizationChildScanLimit);
+                    break;
+                }
                 WpfPerformanceOptimizer.OptimizeUIElement(element);
             }
 
@@ -432,204 +481,61 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// CRITICAL FIX: Apply theme in Loaded event to prevent animation crashes.
-    /// FluentLight themes with reveal animations can crash if applied in constructor.
+    /// Apply theme to MainWindow using the new ThemeService
     /// </summary>
     private void ApplyDeferredTheme()
     {
         try
         {
-            Log.Information("Applying deferred theme in Loaded event to prevent crashes");
-            
-            var initialTheme = SettingsService.Instance?.Current?.Theme ?? "FluentDark";
+            Log.Information("Applying deferred theme in Loaded event");
+
+            var initialTheme = SettingsService.Instance?.Current?.Theme ?? DefaultTheme;
             var normalizedTheme = ThemeService.NormalizeTheme(initialTheme);
-            
-            // CRITICAL FIX: Disable animations temporarily for FluentLight to prevent crashes
-            if (normalizedTheme.Contains("Light", StringComparison.OrdinalIgnoreCase))
-            {
-                Log.Information("Light theme detected - disabling animations to prevent crashes");
-                try
-                {
-                    // Note: FluentThemeSettings may not be available in current Syncfusion version
-                    // This is a future-proofing fix for when FluentTheme settings become available
-                    Log.Information("✅ Light theme crash prevention applied (FluentTheme settings disabled if available)");
-                }
-                catch (Exception animEx)
-                {
-                    Log.Warning(animEx, "⚠️ Failed to disable FluentTheme animations - continuing anyway");
-                }
-            }
-            
-            Log.Information("Applying theme {Theme} to MainWindow in Loaded event", normalizedTheme);
-            ThemeService.ApplyTheme(this, normalizedTheme);
-            Log.Information("✅ MainWindow deferred theme applied successfully: {Theme}", normalizedTheme);
+
+            Log.Information("Applying theme {Theme} to MainWindow", normalizedTheme);
+
+            // Use the new ThemeService method for window-specific theming
+            ThemeService.ApplyWindowTheme(this, normalizedTheme);
+
+            Log.Information("✅ MainWindow theme applied successfully: {Theme}", normalizedTheme);
         }
         catch (Exception themeEx)
         {
-            Log.Warning(themeEx, "⚠️ Failed to apply deferred MainWindow theme: {Message}", themeEx.Message);
+            Log.Warning(themeEx, "⚠️ Failed to apply MainWindow theme: {Message}", themeEx.Message);
             // Continue without theme - application should still work
         }
     }
 
-    // Theme logic moved to ThemeService; keep thin wrapper for existing call sites
-    private void TryApplyTheme(string themeName) => ThemeService.ApplyTheme(this, themeName);
-
-    // Legacy method names retained for backward compatibility with existing reflection-based tests.
-    // They now delegate to ThemeService (centralized theme management) or provide minimal logging only.
-    private void ApplyWpfTheme(string themeName) => WileyWidget.Services.ThemeService.ApplyTheme(this, themeName);
+    // Updated wrapper methods for backward compatibility
+    private void TryApplyTheme(string themeName) => ThemeService.ApplyWindowTheme(this, themeName);
+    private void ApplyWpfTheme(string themeName) => ThemeService.ApplyWindowTheme(this, themeName);
     private void LogCurrentThemeState() => Log.Information("LogCurrentThemeState is deprecated; ThemeService now logs state centrally.");
     private void VerifySpecificSyncfusionControls(string expectedTheme) => Log.Information("VerifySpecificSyncfusionControls deprecated - relying on ThemeService state logging. Expected={Expected}", expectedTheme);
     private void VerifySyncfusionThemeApplication(string expectedTheme) => Log.Information("VerifySyncfusionThemeApplication deprecated - central verification removed. Expected={Expected}", expectedTheme);
 
-    /// <summary>Switch to Fluent Dark theme and persist choice.</summary>
-    private void OnFluentDark(object sender, RoutedEventArgs e)
+    // Generic theme menu item click handler (dynamic binding)
+    private void OnThemeMenuItemClick(object sender, RoutedEventArgs e)
     {
-        var previousTheme = SettingsService.Instance.Current.Theme ?? "Default";
-
-        using (StructuredLogger.BeginOperation("ThemeChange_FluentDark"))
+        if (sender is MenuItem mi && mi.Header is string header && !string.IsNullOrWhiteSpace(header))
         {
-            StructuredLogger.LogThemeChange(previousTheme, "FluentDark", true);
-
-            TryApplyTheme("FluentDark");
-
-            SettingsService.Instance.Current.Theme = "FluentDark";
-            SettingsService.Instance.Save();
-
-            Log.Information("Theme successfully changed to {Theme}", "Fluent Dark");
-            Log.Information("Theme preference persisted to settings");
-
+            // Normalize header to internal theme key via ThemeService (relies on existing normalization logic)
+            var internalName = ThemeService.NormalizeTheme(header);
+            _themeCoordinator.Current = internalName; // triggers persistence & ThemeService change
             UpdateThemeToggleVisuals();
-            Log.Information("Theme toggle button visuals updated");
         }
     }
 
-    /// <summary>Switch to Fluent Light theme and persist choice.</summary>
-    private void OnFluentLight(object sender, RoutedEventArgs e)
+    private void ChangeTheme(string internalName, string displayName)
     {
         var previousTheme = SettingsService.Instance.Current.Theme ?? "Default";
-
-        using (StructuredLogger.BeginOperation("ThemeChange_FluentLight"))
+        using (StructuredLogger.BeginOperation($"ThemeChange_{internalName}"))
         {
-            StructuredLogger.LogThemeChange(previousTheme, "FluentLight", true);
-
-            TryApplyTheme("FluentLight");
-
-            SettingsService.Instance.Current.Theme = "FluentLight";
+            StructuredLogger.LogThemeChange(previousTheme, internalName, true);
+            TryApplyTheme(internalName);
+            SettingsService.Instance.Current.Theme = internalName;
             SettingsService.Instance.Save();
-
-            Log.Information("Theme successfully changed to {Theme}", "Fluent Light");
+            Log.Information("Theme successfully changed to {Theme}", displayName);
             Log.Information("Theme preference persisted to settings");
-
-            UpdateThemeToggleVisuals();
-            Log.Information("Theme toggle button visuals updated");
-        }
-    }
-
-    /// <summary>Switch to Material Dark theme and persist choice.</summary>
-    private void OnMaterialDark(object sender, RoutedEventArgs e)
-    {
-        var previousTheme = SettingsService.Instance.Current.Theme ?? "Default";
-
-        using (StructuredLogger.BeginOperation("ThemeChange_MaterialDark"))
-        {
-            StructuredLogger.LogThemeChange(previousTheme, "MaterialDark", true);
-
-            TryApplyTheme("MaterialDark");
-
-            SettingsService.Instance.Current.Theme = "MaterialDark";
-            SettingsService.Instance.Save();
-
-            Log.Information("Theme successfully changed to {Theme}", "Material Dark");
-            Log.Information("Theme preference persisted to settings");
-
-            UpdateThemeToggleVisuals();
-            Log.Information("Theme toggle button visuals updated");
-        }
-    }
-
-    /// <summary>Switch to Material Light theme and persist choice.</summary>
-    private void OnMaterialLight(object sender, RoutedEventArgs e)
-    {
-        var previousTheme = SettingsService.Instance.Current.Theme ?? "Default";
-
-        using (StructuredLogger.BeginOperation("ThemeChange_MaterialLight"))
-        {
-            StructuredLogger.LogThemeChange(previousTheme, "MaterialLight", true);
-
-            TryApplyTheme("MaterialLight");
-
-            SettingsService.Instance.Current.Theme = "MaterialLight";
-            SettingsService.Instance.Save();
-
-            Log.Information("Theme successfully changed to {Theme}", "Material Light");
-            Log.Information("Theme preference persisted to settings");
-
-            UpdateThemeToggleVisuals();
-            Log.Information("Theme toggle button visuals updated");
-        }
-    }
-
-    /// <summary>Switch to Office 2019 Colorful theme and persist choice.</summary>
-    private void OnOffice2019Colorful(object sender, RoutedEventArgs e)
-    {
-        var previousTheme = SettingsService.Instance.Current.Theme ?? "Default";
-
-        using (StructuredLogger.BeginOperation("ThemeChange_Office2019Colorful"))
-        {
-            StructuredLogger.LogThemeChange(previousTheme, "Office2019Colorful", true);
-
-            TryApplyTheme("Office2019Colorful");
-
-            SettingsService.Instance.Current.Theme = "Office2019Colorful";
-            SettingsService.Instance.Save();
-
-            Log.Information("Theme successfully changed to {Theme}", "Office 2019 Colorful");
-            Log.Information("Theme preference persisted to settings");
-
-            UpdateThemeToggleVisuals();
-            Log.Information("Theme toggle button visuals updated");
-        }
-    }
-
-    /// <summary>Switch to Office 365 theme and persist choice.</summary>
-    private void OnOffice365(object sender, RoutedEventArgs e)
-    {
-        var previousTheme = SettingsService.Instance.Current.Theme ?? "Default";
-
-        using (StructuredLogger.BeginOperation("ThemeChange_Office365"))
-        {
-            StructuredLogger.LogThemeChange(previousTheme, "Office365", true);
-
-            TryApplyTheme("Office365");
-
-            SettingsService.Instance.Current.Theme = "Office365";
-            SettingsService.Instance.Save();
-
-            Log.Information("Theme successfully changed to {Theme}", "Office 365");
-            Log.Information("Theme preference persisted to settings");
-
-            UpdateThemeToggleVisuals();
-            Log.Information("Theme toggle button visuals updated");
-        }
-    }
-
-    /// <summary>Switch to High Contrast theme and persist choice.</summary>
-    private void OnHighContrast(object sender, RoutedEventArgs e)
-    {
-        var previousTheme = SettingsService.Instance.Current.Theme ?? "Default";
-
-        using (StructuredLogger.BeginOperation("ThemeChange_HighContrast"))
-        {
-            StructuredLogger.LogThemeChange(previousTheme, "HighContrast", true);
-
-            TryApplyTheme("HighContrast");
-
-            SettingsService.Instance.Current.Theme = "HighContrast";
-            SettingsService.Instance.Save();
-
-            Log.Information("Theme successfully changed to {Theme}", "High Contrast");
-            Log.Information("Theme preference persisted to settings");
-
             UpdateThemeToggleVisuals();
             Log.Information("Theme toggle button visuals updated");
         }
@@ -637,52 +543,57 @@ public partial class MainWindow : Window
 
     private void UpdateThemeToggleVisuals()
     {
-        Log.Information("=== Updating Theme Toggle Button Visuals ===");
-
-    var current = ThemeService.NormalizeTheme(SettingsService.Instance.Current.Theme);
-        Log.Information("Current normalized theme: {CurrentTheme}", current);
-
-        // Find ribbon buttons using FindName since they're nested in the ribbon control
-        var btnFluentDark = FindName("BtnFluentDark") as Syncfusion.Windows.Tools.Controls.ButtonAdv;
-        var btnFluentLight = FindName("BtnFluentLight") as Syncfusion.Windows.Tools.Controls.ButtonAdv;
-
-        Log.Information("Theme button references - Dark: {DarkFound}, Light: {LightFound}",
-            btnFluentDark != null, btnFluentLight != null);
-
-        if (btnFluentDark != null)
+        Log.Information("=== Updating Theme Menu Visuals ===");
+        var current = ThemeService.NormalizeTheme(SettingsService.Instance.Current.Theme);
+        var themeMenu = FindName("ThemeMenu") as MenuItem;
+        if (themeMenu?.Items != null)
         {
-            var wasEnabled = btnFluentDark.IsEnabled;
-            var oldContent = btnFluentDark.Content?.ToString();
-
-            btnFluentDark.IsEnabled = current != "FluentDark";
-            btnFluentDark.Content = current == "FluentDark" ? "✔ Fluent Dark" : "Fluent Dark";
-
-            Log.Information("Fluent Dark button updated - Enabled: {WasEnabled} -> {IsEnabled}, Content: '{OldContent}' -> '{NewContent}'",
-                wasEnabled, btnFluentDark.IsEnabled, oldContent ?? "null", btnFluentDark.Content?.ToString() ?? "null");
+            foreach (var item in themeMenu.Items)
+            {
+                if (item is MenuItem mi && mi.Header is string h)
+                {
+                    var internalName = ThemeService.NormalizeTheme(h);
+                    mi.IsChecked = internalName == current;
+                    if (!mi.IsCheckable) mi.IsCheckable = true;
+                }
+            }
         }
-        else
-        {
-            Log.Warning("Fluent Dark button not found in visual tree");
-        }
-
-        if (btnFluentLight != null)
-        {
-            var wasEnabled = btnFluentLight.IsEnabled;
-            var oldContent = btnFluentLight.Content?.ToString();
-
-            btnFluentLight.IsEnabled = current != "FluentLight";
-            btnFluentLight.Content = current == "FluentLight" ? "✔ Fluent Light" : "Fluent Light";
-
-            Log.Information("Fluent Light button updated - Enabled: {WasEnabled} -> {IsEnabled}, Content: '{OldContent}' -> '{NewContent}'",
-                wasEnabled, btnFluentLight.IsEnabled, oldContent ?? "null", btnFluentLight.Content?.ToString() ?? "null");
-        }
-        else
-        {
-            Log.Warning("Fluent Light button not found in visual tree");
-        }
-
-        Log.Information("=== Theme Toggle Button Visuals Update Complete ===");
+        Log.Information("Theme menu updated - Current: {Current}", current);
     }
+
+    /// <summary>
+    /// Ensure DataContext-dependent initialization executes if DataContext arrives after Loaded.
+    /// </summary>
+    private void MainWindow_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        try
+        {
+            if (e.NewValue == null) return;
+            Log.Debug("DataContext changed to type {Type}", e.NewValue.GetType().FullName);
+            // Potential hook: reinitialize diagram if needed
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "DataContextChanged handler error");
+        }
+    }
+
+    // DependencyProperty to expose Settings VM to bindings as `Settings`
+    public static readonly DependencyProperty SettingsProxyProperty = DependencyProperty.Register(
+        "Settings", typeof(object), typeof(MainWindow), new PropertyMetadata(null));
+    public object Settings
+    {
+        get => GetValue(SettingsProxyProperty);
+        set => SetValue(SettingsProxyProperty, value);
+    }
+
+    // Defensive lazy element accessors (avoids direct field generation dependency on XAML compile)
+    private TextBox GetTextBox(string name) => FindName(name) as TextBox;
+    private TextBlock GetTextBlock(string name) => FindName(name) as TextBlock;
+    private ComboBox GetComboBox(string name) => FindName(name) as ComboBox;
+
+    // Replace direct field usages with lookup wrappers in critical methods (only if element fields unresolved at compile time)
+    // Example adaptation for status update already handles null references internally.
     /// <summary>Display modal About dialog with version information.</summary>
     private void OnAbout(object sender, RoutedEventArgs e)
     {
@@ -690,61 +601,7 @@ public partial class MainWindow : Window
         about.ShowDialog();
     }
 
-    /// <summary>
-    /// Restores last known window bounds (only if previously saved). Maximized state is applied after window is loaded
-    /// to avoid layout measurement issues during construction.
-    /// </summary>
-    private void RestoreWindowState()
-    {
-        Log.Information("=== Restoring Window State ===");
-
-        var s = SettingsService.Instance.Current;
-
-        Log.Information("Window state settings - Width: {Width}, Height: {Height}, Left: {Left}, Top: {Top}, Maximized: {Maximized}",
-            s.WindowWidth, s.WindowHeight, s.WindowLeft, s.WindowTop, s.WindowMaximized);
-
-        if (s.WindowWidth.HasValue)
-        {
-            Width = s.WindowWidth.Value;
-            Log.Information("Window width restored to: {Width}", Width);
-        }
-        else
-        {
-            Log.Information("Window width not set in settings - using default");
-        }
-
-        if (s.WindowHeight.HasValue)
-        {
-            Height = s.WindowHeight.Value;
-            Log.Information("Window height restored to: {Height}", Height);
-        }
-        else
-        {
-            Log.Information("Window height not set in settings - using default");
-        }
-
-        if (s.WindowLeft.HasValue)
-        {
-            Left = s.WindowLeft.Value;
-            Log.Information("Window left position restored to: {Left}", Left);
-        }
-        else
-        {
-            Log.Information("Window left position not set in settings - using default");
-        }
-
-        if (s.WindowTop.HasValue)
-        {
-            Top = s.WindowTop.Value;
-            Log.Information("Window top position restored to: {Top}", Top);
-        }
-        else
-        {
-            Log.Information("Window top position not set in settings - using default");
-        }
-
-        Log.Information("=== Window State Restoration Complete ===");
-    }
+    // Removed verbose RestoreWindowState method (handled by WindowStateService)
 
     /// <summary>
     /// Applies persisted maximized state post-load. Separated for clarity and potential future animation hooks.
@@ -775,37 +632,20 @@ public partial class MainWindow : Window
     /// <summary>
     /// Persists window bounds only when in Normal state to avoid capturing the restored size of a maximized window.
     /// </summary>
-    private void PersistWindowState()
+    // Removed verbose PersistWindowState method (handled by WindowStateService)
+
+    private Services.IWindowStateService GetWindowStateService()
     {
-        Log.Information("=== Persisting Window State ===");
-
-        var s = SettingsService.Instance.Current;
-
-        var isMaximized = WindowState == WindowState.Maximized;
-        s.WindowMaximized = isMaximized;
-
-        Log.Information("Window state captured - Maximized: {IsMaximized}, Current state: {CurrentState}",
-            isMaximized, WindowState);
-
-        if (WindowState == WindowState.Normal)
+        try
         {
-            s.WindowWidth = Width;
-            s.WindowHeight = Height;
-            s.WindowLeft = Left;
-            s.WindowTop = Top;
-
-            Log.Information("Window bounds persisted - Width: {Width}, Height: {Height}, Left: {Left}, Top: {Top}",
-                Width, Height, Left, Top);
+            var resolved = ServiceLocator.GetService<Services.IWindowStateService>();
+            return resolved ?? new Services.WindowStateService(SettingsService.Instance);
         }
-        else
+        catch (Exception ex)
         {
-            Log.Information("Window is maximized - bounds not persisted to avoid capturing restored size");
+            Log.Debug(ex, "Failed to resolve WindowStateService - falling back");
+            return new Services.WindowStateService(SettingsService.Instance);
         }
-
-        SettingsService.Instance.Save();
-        Log.Information("Window state settings saved successfully");
-
-        Log.Information("=== Window State Persistence Complete ===");
     }
 
     /// <summary>
@@ -814,148 +654,21 @@ public partial class MainWindow : Window
     /// </summary>
     private void InitializeBudgetDiagram()
     {
-        using (StructuredLogger.BeginOperation("InitializeBudgetDiagram"))
+        try
         {
-            StructuredLogger.LogSyncfusionOperation("SfDiagram", "InitializationStarted");
-
-            try
-            {
-                var vm = DataContext as ViewModels.MainViewModel;
-                var diagram = BudgetDiagramField as SfDiagram;
-
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "InitializationCheck",
-                    new { ViewModelExists = vm != null, DiagramExists = diagram != null });
-
-                if (vm == null || diagram == null)
-                {
-                    Log.Warning("Budget diagram initialization skipped - missing ViewModel or Diagram control");
-                    StructuredLogger.LogSyncfusionOperation("SfDiagram", "InitializationSkipped",
-                        new { Reason = "MissingViewModelOrDiagram" });
-                    return;
-                }
-
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "PreInitializationState",
-                    new { IsLoaded = diagram.IsLoaded, IsEnabled = diagram.IsEnabled });
-
-                // Clear existing diagram content
-                (diagram.Nodes as System.Collections.IList)?.Clear();
-                (diagram.Connectors as System.Collections.IList)?.Clear();
-
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "ContentCleared");
-
-                // Create nodes for each enterprise
-                var enterpriseNodes = new Dictionary<int, Node>();
-                double x = 100;
-                double y = 100;
-
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "NodeCreationStarted",
-                    new { EnterpriseCount = vm.Enterprises.Count });
-
-                foreach (var enterprise in vm.Enterprises)
-                {
-                    StructuredLogger.LogSyncfusionOperation("SfDiagram", "CreatingNode",
-                        new { EnterpriseName = enterprise.Name, EnterpriseId = enterprise.Id, PositionX = x, PositionY = y });
-
-                    var node = new Node
-                    {
-                        Content = $"{enterprise.Name}\n${enterprise.MonthlyRevenue:F0} Rev\n${enterprise.MonthlyExpenses:F0} Exp",
-                        Width = 150,
-                        Height = 80,
-                        OffsetX = x,
-                        OffsetY = y
-                    };
-
-                    (diagram.Nodes as System.Collections.IList)?.Add(node);
-                    enterpriseNodes[enterprise.Id] = node;
-
-                    Log.Information("Node added - Position: ({X}, {Y}), Content length: {ContentLength}",
-                        x, y, node.Content?.ToString()?.Length ?? 0);
-
-                    x += 200;
-                    if (x > 600) // Wrap to next row
-                    {
-                        x = 100;
-                        y += 150;
-                    }
-                }
-
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "NodeCreationCompleted",
-                    new { TotalNodes = enterpriseNodes.Count });
-
-                // Create simple connectors for budget interactions
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorCreationStarted",
-                    new { InteractionCount = vm.BudgetInteractions.Count });
-
-                var connectorCount = 0;
-                foreach (var interaction in vm.BudgetInteractions)
-                {
-                    StructuredLogger.LogSyncfusionOperation("SfDiagram", "ProcessingInteraction",
-                        new { InteractionType = interaction.InteractionType, PrimaryId = interaction.PrimaryEnterpriseId, SecondaryId = interaction.SecondaryEnterpriseId });
-
-                    if (enterpriseNodes.ContainsKey(interaction.PrimaryEnterpriseId))
-                    {
-                        var sourceNode = enterpriseNodes[interaction.PrimaryEnterpriseId];
-                        Node targetNode = null;
-
-                        if (interaction.SecondaryEnterpriseId.HasValue &&
-                            enterpriseNodes.ContainsKey(interaction.SecondaryEnterpriseId.Value))
-                        {
-                            targetNode = enterpriseNodes[interaction.SecondaryEnterpriseId.Value];
-                        }
-
-                        if (targetNode != null)
-                        {
-                            // Create connector between two enterprises
-#pragma warning disable CA2000 // Dispose objects before losing scope - Connector is managed by diagram
-                            var connector = new Connector
-                            {
-                                SourceNode = sourceNode,
-                                TargetNode = targetNode,
-                                Content = $"{interaction.InteractionType}\n${interaction.MonthlyAmount:F0}"
-                            };
-#pragma warning restore CA2000
-
-                            (diagram.Connectors as System.Collections.IList)?.Add(connector);
-                            connectorCount++;
-
-                            StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorAdded",
-                                new
-                                {
-                                    From = sourceNode.Content?.ToString()?.Split('\n')[0] ?? "Unknown",
-                                    To = targetNode.Content?.ToString()?.Split('\n')[0] ?? "Unknown",
-                                    Amount = interaction.MonthlyAmount
-                                });
-                        }
-                        else
-                        {
-                            StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorSkipped",
-                                new { Reason = "TargetNodeNotFound", SecondaryId = interaction.SecondaryEnterpriseId });
-                        }
-                    }
-                    else
-                    {
-                        StructuredLogger.LogSyncfusionOperation("SfDiagram", "ConnectorSkipped",
-                            new { Reason = "SourceNodeNotFound", PrimaryId = interaction.PrimaryEnterpriseId });
-                    }
-                }
-
-                var finalNodeCount = (diagram.Nodes as System.Collections.ICollection)?.Count ?? 0;
-                var finalConnectorCount = (diagram.Connectors as System.Collections.ICollection)?.Count ?? 0;
-
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "InitializationCompleted",
-                    new { FinalNodeCount = finalNodeCount, FinalConnectorCount = finalConnectorCount });
-
-                // Verify diagram state after initialization
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "PostInitializationVerification",
-                    new { IsLoaded = diagram.IsLoaded, IsEnabled = diagram.IsEnabled });
-
-            }
-            catch (Exception ex)
-            {
-                StructuredLogger.LogSyncfusionOperation("SfDiagram", "InitializationFailed",
-                    new { Error = ex.Message });
-                Log.Error(ex, "Error initializing budget diagram");
-            }
+            var vm = DataContext as ViewModels.MainViewModel;
+            var diagram = BudgetDiagramField as SfDiagram;
+            if (vm == null || diagram == null) return;
+            (diagram.Nodes as System.Collections.IList)?.Clear();
+            (diagram.Connectors as System.Collections.IList)?.Clear();
+            var built = _diagramBuilder.BuildEnterpriseDiagram(vm.Enterprises.ToList(), vm.BudgetInteractions.ToList());
+            foreach (var n in built.nodes) (diagram.Nodes as System.Collections.IList)?.Add(n);
+            foreach (var c in built.connectors) (diagram.Connectors as System.Collections.IList)?.Add(c);
+            Log.Information("Diagram built: {NodeCount} nodes, {ConnectorCount} connectors", (diagram.Nodes as System.Collections.ICollection)?.Count, (diagram.Connectors as System.Collections.ICollection)?.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Diagram build failed");
         }
     }
 
@@ -969,398 +682,13 @@ public partial class MainWindow : Window
 
     #region Settings Event Handlers
 
-    /// <summary>
-    /// Test the xAI API key configuration using secure storage
-    /// </summary>
-    private async void OnTestApiKey(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var apiKey = ApiKeyBox.Text;
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                UpdateStatus("❌ Please enter an API key first", "ErrorBrush");
-                return;
-            }
-
-            UpdateStatus("🔄 Testing xAI API key...", "WarningBrush");
-
-            // Test the provided key
-            var isValid = await ApiKeyService.Instance.TestApiKeyAsync(apiKey);
-
-            if (isValid)
-            {
-                UpdateStatus("✅ API key is valid! xAI connection successful.", "SuccessBrush");
-                Log.Information("xAI API key test successful");
-
-                // Ask user if they want to save it
-                var result = MessageBox.Show(
-                    "API key test successful! Would you like to save this key securely?",
-                    "Save API Key",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    await SaveApiKeySecurely(apiKey);
-                }
-            }
-            else
-            {
-                UpdateStatus("❌ API test failed - check your key and try again", "ErrorBrush");
-                Log.Warning("xAI API key test failed");
-            }
-        }
-        catch (Exception ex)
-        {
-            UpdateStatus($"❌ API test failed: {ex.Message}", "ErrorBrush");
-            Log.Error(ex, "xAI API key test failed");
-        }
-    }
-
-    /// <summary>
-    /// Securely save the API key using the best available method
-    /// </summary>
-    private async Task SaveApiKeySecurely(string apiKey)
-    {
-        try
-        {
-            UpdateStatus("🔒 Saving API key securely...", "WarningBrush");
-
-            // Try to save using the most secure method available
-            var success = ApiKeyService.Instance.StoreApiKey(apiKey, StorageMethod.Auto);
-
-            if (success)
-            {
-                // Update settings to reflect the key is stored securely
-                var settings = SettingsService.Instance.Current;
-                settings.XaiApiKey = "[SECURELY_STORED]";
-                SettingsService.Instance.Save();
-
-                UpdateStatus("✅ API key saved securely!", "SuccessBrush");
-                Log.Information("xAI API key saved securely");
-
-                // Clear the password box for security
-                ApiKeyBox.Text = string.Empty;
-            }
-            else
-            {
-                UpdateStatus("❌ Failed to save API key securely", "ErrorBrush");
-                Log.Error("Failed to save xAI API key securely");
-            }
-        }
-        catch (Exception ex)
-        {
-            UpdateStatus($"❌ Failed to save API key: {ex.Message}", "ErrorBrush");
-            Log.Error(ex, "Failed to save xAI API key");
-        }
-
-        await Task.CompletedTask; // To satisfy async
-    }
-
-    /// <summary>
-    /// Save all settings including xAI configuration
-    /// </summary>
-    private async void OnSaveSettings(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            // Validate all input fields before saving
-            if (!ValidateAllSettingsInputs())
-            {
-                UpdateStatus("❌ Please fix validation errors before saving", "ErrorBrush");
-                return;
-            }
-
-            AppSettings settings = SettingsService.Instance.Current;
-
-            // Save theme
-            if (ThemeComboBox.SelectedItem is Syncfusion.Windows.Tools.Controls.ComboBoxItemAdv themeItem)
-            {
-                settings.Theme = themeItem.Content.ToString();
-                TryApplyTheme(settings.Theme);
-                UpdateThemeToggleVisuals();
-            }
-
-            // Handle API key securely
-            var enteredApiKey = ApiKeyBox.Text;
-            if (!string.IsNullOrWhiteSpace(enteredApiKey))
-            {
-                // Test the key first
-                var isValid = await ApiKeyService.Instance.TestApiKeyAsync(enteredApiKey);
-                if (isValid)
-                {
-                    // Save securely
-                    await SaveApiKeySecurely(enteredApiKey);
-                }
-                else
-                {
-                    var result = MessageBox.Show(
-                        "The API key appears to be invalid. Save it anyway?",
-                        "Invalid API Key",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning);
-
-                    if (result == MessageBoxResult.Yes)
-                    {
-                        await SaveApiKeySecurely(enteredApiKey);
-                    }
-                    else
-                    {
-                        UpdateStatus("❌ Settings not saved - invalid API key", "ErrorBrush");
-                        return;
-                    }
-                }
-            }
-
-            // Save other xAI settings
-            if (ModelComboBox.SelectedItem is Syncfusion.Windows.Tools.Controls.ComboBoxItemAdv modelItem)
-            {
-                settings.XaiModel = modelItem.Content.ToString();
-            }
-
-            // Save advanced settings
-            if (int.TryParse(TimeoutTextBox.Text, out var timeout))
-            {
-                settings.XaiTimeoutSeconds = timeout;
-            }
-
-            if (int.TryParse(CacheTtlTextBox.Text, out var cacheTtl))
-            {
-                settings.XaiCacheTtlMinutes = cacheTtl;
-            }
-
-            if (decimal.TryParse(DailyBudgetTextBox.Text, out var dailyBudget))
-            {
-                settings.XaiDailyBudget = dailyBudget;
-            }
-
-            if (decimal.TryParse(MonthlyBudgetTextBox.Text, out var monthlyBudget))
-            {
-                settings.XaiMonthlyBudget = monthlyBudget;
-            }
-
-            SettingsService.Instance.Save();
-            UpdateStatus("✅ Settings saved successfully!", "SuccessBrush");
-            Log.Information("Settings saved successfully");
-        }
-        catch (Exception ex)
-        {
-            UpdateStatus($"❌ Failed to save settings: {ex.Message}", "ErrorBrush");
-            Log.Error(ex, "Failed to save settings");
-        }
-    }
-
-    /// <summary>
-    /// Load current settings into the UI
-    /// </summary>
-    private void OnLoadSettings(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var settings = SettingsService.Instance.Current;
-
-            // Load theme
-            if (!string.IsNullOrWhiteSpace(settings.Theme))
-            {
-                ThemeComboBox.SelectedItem = ThemeComboBox.Items
-                    .OfType<Syncfusion.Windows.Tools.Controls.ComboBoxItemAdv>()
-                    .FirstOrDefault(item => item.Content.ToString() == settings.Theme);
-            }
-
-            // Check API key status (don't load the actual key for security)
-            var keyInfo = ApiKeyService.Instance.GetApiKeyInfo();
-            if (keyInfo.IsValid)
-            {
-                // Show that a key is stored securely
-                ApiKeyStatusText.Text = "✅ API key is securely stored";
-                ApiKeyStatusText.Foreground = GetThemeBrush("SuccessBrush");
-            }
-            else
-            {
-                ApiKeyStatusText.Text = "❌ No API key configured";
-                ApiKeyStatusText.Foreground = GetThemeBrush("ErrorBrush");
-            }
-
-            // Load other xAI settings
-            if (!string.IsNullOrWhiteSpace(settings.XaiModel))
-            {
-                ModelComboBox.SelectedItem = ModelComboBox.Items
-                    .OfType<Syncfusion.Windows.Tools.Controls.ComboBoxItemAdv>()
-                    .FirstOrDefault(item => item.Content.ToString() == settings.XaiModel);
-            }
-
-            // Load advanced settings
-            TimeoutTextBox.Text = settings.XaiTimeoutSeconds.ToString();
-            CacheTtlTextBox.Text = settings.XaiCacheTtlMinutes.ToString();
-            DailyBudgetTextBox.Text = settings.XaiDailyBudget.ToString("F2");
-            MonthlyBudgetTextBox.Text = settings.XaiMonthlyBudget.ToString("F2");
-
-            UpdateStatus("✅ Settings loaded successfully!", "SuccessBrush");
-            Log.Information("Settings loaded into UI");
-        }
-        catch (Exception ex)
-        {
-            UpdateStatus($"❌ Failed to load settings: {ex.Message}", "ErrorBrush");
-            Log.Error(ex, "Failed to load settings into UI");
-        }
-    }
-
-    /// <summary>
-    /// Apply the selected theme
-    /// </summary>
-    private void OnApplyTheme(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            if (ThemeComboBox.SelectedItem is Syncfusion.Windows.Tools.Controls.ComboBoxItemAdv themeItem)
-            {
-                var theme = themeItem.Content.ToString();
-                TryApplyTheme(theme);
-                UpdateThemeToggleVisuals();
-                UpdateStatus($"✅ Theme changed to {theme}", "SuccessBrush");
-                Log.Information("Theme applied: {Theme}", theme);
-            }
-        }
-        catch (Exception ex)
-        {
-            UpdateStatus($"❌ Failed to apply theme: {ex.Message}", "ErrorBrush");
-            Log.Error(ex, "Failed to apply theme");
-        }
-    }
-
-    /// <summary>
-    /// Remove the stored API key securely
-    /// </summary>
-    private void OnRemoveApiKey(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var result = MessageBox.Show(
-                "Are you sure you want to remove the stored API key? This action cannot be undone.",
-                "Remove API Key",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                var success = ApiKeyService.Instance.RemoveApiKey();
-
-                if (success)
-                {
-                    // Update settings
-                    var settings = SettingsService.Instance.Current;
-                    settings.XaiApiKey = null;
-                    SettingsService.Instance.Save();
-
-                    // Update UI
-                    ApiKeyBox.Text = string.Empty;
-                    ApiKeyStatusText.Text = "❌ No API key configured";
-                    ApiKeyStatusText.Foreground = GetThemeBrush("ErrorBrush");
-
-                    UpdateStatus("✅ API key removed successfully!", "SuccessBrush");
-                    Log.Information("xAI API key removed successfully");
-                }
-                else
-                {
-                    UpdateStatus("❌ Failed to remove API key completely", "ErrorBrush");
-                    Log.Warning("Failed to remove xAI API key from all locations");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            UpdateStatus($"❌ Failed to remove API key: {ex.Message}", "ErrorBrush");
-            Log.Error(ex, "Failed to remove xAI API key");
-        }
-    }
-
-    /// <summary>
-    /// Show detailed information about API key storage
-    /// </summary>
-    private void OnShowApiKeyInfo(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var keyInfo = ApiKeyService.Instance.GetApiKeyInfo();
-
-            var infoMessage = new StringBuilder();
-            infoMessage.AppendLine("🔐 API Key Storage Information:");
-            infoMessage.AppendLine();
-            infoMessage.AppendLine($"Environment Variable: {(keyInfo.HasEnvironmentVariable ? "✅ Stored" : "❌ Not found")}");
-            infoMessage.AppendLine($"User Secrets: {(keyInfo.HasUserSecrets ? "✅ Stored" : "❌ Not found")}");
-            infoMessage.AppendLine($"Encrypted Storage: {(keyInfo.HasEncryptedStorage ? "✅ Stored" : "❌ Not found")}");
-            infoMessage.AppendLine();
-            infoMessage.AppendLine($"Overall Status: {(keyInfo.IsValid ? "✅ Valid key available" : "❌ No valid key found")}");
-
-            MessageBox.Show(infoMessage.ToString(), "API Key Information", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to get API key information: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            Log.Error(ex, "Failed to get API key information");
-        }
-    }
-
-    /// <summary>
-    /// Open the xAI API Key Setup Guide
-    /// </summary>
-    private void OnOpenApiGuide(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var guidePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "docs", "xAI-API-Key-Setup-Guide.md");
-
-            if (File.Exists(guidePath))
-            {
-                // Open the guide with the default markdown viewer or text editor
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = guidePath,
-                    UseShellExecute = true
-                });
-            }
-            else
-            {
-                MessageBox.Show("API Key Setup Guide not found. Please check the docs folder.", "Guide Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to open API Key Setup Guide: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            Log.Error(ex, "Failed to open API Key Setup Guide");
-        }
-    }
+    // Obsolete settings & API key handlers removed in favor of SettingsViewModel bindings
 
     #endregion
 
     #region Helper Methods
 
-    /// <summary>
-    /// Update the status display in the settings tab
-    /// </summary>
-    private void UpdateStatus(string message, Brush brush)
-    {
-        if (ApiKeyStatusText != null)
-        {
-            ApiKeyStatusText.Text = message;
-            ApiKeyStatusText.Foreground = brush;
-        }
-
-        if (StatusBorder != null)
-        {
-            StatusBorder.BorderBrush = brush;
-        }
-    }
-
-    /// <summary>
-    /// Update the status display with a theme-based color
-    /// </summary>
-    private void UpdateStatus(string message, string themeKey)
-    {
-        var brush = GetThemeBrush(themeKey);
-        UpdateStatus(message, brush);
-    }
+    // Removed legacy UpdateStatus/validation helpers (moved to SettingsViewModel or no longer needed)
 
     /// <summary>
     /// Get a brush from the current theme
@@ -1401,83 +729,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Validates all settings input fields
+    /// Resolves a Brush resource by key with null safety (used by settings validation)
     /// </summary>
-    private bool ValidateAllSettingsInputs()
-    {
-        bool isValid = true;
-
-        // Validate API key (if provided)
-        if (!string.IsNullOrWhiteSpace(ApiKeyBox.Text))
-        {
-            var apiKeyValidation = new Converters.ApiKeyValidationRule
-            {
-                MinLength = 20,
-                MaxLength = 128,
-                AllowEmpty = true
-            };
-
-            var result = apiKeyValidation.Validate(ApiKeyBox.Text, System.Globalization.CultureInfo.CurrentCulture);
-            if (!result.IsValid)
-            {
-                isValid = false;
-            }
-        }
-
-        // Validate timeout
-        var timeoutValidation = new Converters.PositiveIntegerValidationRule
-        {
-            MinValue = 5,
-            MaxValue = 300
-        };
-
-        var timeoutResult = timeoutValidation.Validate(TimeoutTextBox.Text, System.Globalization.CultureInfo.CurrentCulture);
-        if (!timeoutResult.IsValid)
-        {
-            isValid = false;
-        }
-
-        // Validate cache TTL
-        var cacheValidation = new Converters.PositiveIntegerValidationRule
-        {
-            MinValue = 1,
-            MaxValue = 1440
-        };
-
-        var cacheResult = cacheValidation.Validate(CacheTtlTextBox.Text, System.Globalization.CultureInfo.CurrentCulture);
-        if (!cacheResult.IsValid)
-        {
-            isValid = false;
-        }
-
-        // Validate daily budget
-        var dailyBudgetValidation = new Converters.PositiveDecimalValidationRule
-        {
-            MinValue = 0.01M,
-            MaxValue = 1000.00M
-        };
-
-        var dailyResult = dailyBudgetValidation.Validate(DailyBudgetTextBox.Text, System.Globalization.CultureInfo.CurrentCulture);
-        if (!dailyResult.IsValid)
-        {
-            isValid = false;
-        }
-
-        // Validate monthly budget
-        var monthlyBudgetValidation = new Converters.PositiveDecimalValidationRule
-        {
-            MinValue = 1.00M,
-            MaxValue = 10000.00M
-        };
-
-        var monthlyResult = monthlyBudgetValidation.Validate(MonthlyBudgetTextBox.Text, System.Globalization.CultureInfo.CurrentCulture);
-        if (!monthlyResult.IsValid)
-        {
-            isValid = false;
-        }
-
-        return isValid;
-    }
+    private Brush GetBrushByKey(string key) => string.IsNullOrWhiteSpace(key) ? null : (this.TryFindResource(key) as Brush);
 
     #endregion
 

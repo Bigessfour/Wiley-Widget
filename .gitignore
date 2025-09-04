@@ -59,6 +59,8 @@ Desktop.ini
 *.backup*
 *_backup*
 *.msi
+\n+# Python virtual environment
+.venv/
 
 # Installers and large binaries
 *.msi

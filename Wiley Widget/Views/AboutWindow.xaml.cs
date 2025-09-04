@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Windows;
+using System.Windows.Controls;
 using Syncfusion.Windows.Shared;
 using Syncfusion.SfSkinManager;
 
@@ -50,6 +51,8 @@ public partial class AboutWindow : ChromelessWindow
         var infoVersion = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
                            ?? asm.GetName().Version?.ToString() ?? "Unknown";
         VersionText.Text = $"Version: {infoVersion}";
+        
+        // Progress bar removed as per user request
     }
 
     /// <summary>Close the dialog.</summary>

@@ -257,5 +257,8 @@
     "timeout": 30000
   },
 
-  "editor.fontSize": 13
+  "editor.fontSize": 13,
+  // Python tooling (added for no-config debugging support)
+  "python.experiments.optOutFrom": ["pythonTerminalEnvVarActivation"],
+  "python.defaultInterpreterPath": ".venv/Scripts/python.exe"
 }

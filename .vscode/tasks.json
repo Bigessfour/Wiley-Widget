@@ -118,6 +118,56 @@
       },
       "problemMatcher": "$msCompile",
       "group": "build"
+    },
+    {
+      "label": "python: bootstrap env",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/bootstrap_python_env.ps1"
+      ],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "python: install deps",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "if (Test-Path .venv) { . .\\.venv\\Scripts\\Activate.ps1 }; python -m pip install -r scripts/requirements.txt"
+      ],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "debug-conhost",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "--debug-conhost"
+      ],
+      "options": {
+        "env": {
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "LOG_LEVEL": "Debug",
+          "SERILOG__MINIMUMLEVEL": "Debug"
+        }
+      },
+      "problemMatcher": "$msCompile",
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
     }
   ],
   "inputs": [

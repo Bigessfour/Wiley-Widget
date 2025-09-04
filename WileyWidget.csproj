@@ -37,7 +37,16 @@
     <!-- Syncfusion-specific preservation -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <PreserveCompilationReferences>true</PreserveCompilationReferences>
+  <!-- Explicit startup object to enable custom bootstrap (Phase 0) before WPF App -->
+  <StartupObject>WileyWidget.Program</StartupObject>
+  <!-- ReadyToRun compilation for improved startup performance -->
+  <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Make internal classes accessible to test project -->
+    <InternalsVisibleTo Include="WileyWidget.Tests" />
+  </ItemGroup>
 
   <!-- Copy Syncfusion license file to output directory -->
   <Target Name="CopyLicenseFile" AfterTargets="Build">
@@ -94,6 +103,9 @@
 
   <ItemGroup>
     <!-- Copy configuration files to output directory -->
+    <Content Include="App.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -166,6 +178,15 @@
     <EmbeddedResource Remove="theme-crash-repro\**" />
     <None Remove="theme-crash-repro\**" />
     <Page Remove="theme-crash-repro\**" />
+  <!-- Ensure test project sources are not compiled into main app -->
+  <Compile Remove="WileyWidget.Tests\**" />
+  <Compile Remove="WileyWidget.UiTests\**" />
+  <EmbeddedResource Remove="WileyWidget.Tests\**" />
+  <EmbeddedResource Remove="WileyWidget.UiTests\**" />
+  <None Remove="WileyWidget.Tests\**" />
+  <None Remove="WileyWidget.UiTests\**" />
+  <Page Remove="WileyWidget.Tests\**" />
+  <Page Remove="WileyWidget.UiTests\**" />
   </ItemGroup>
 
 </Project>

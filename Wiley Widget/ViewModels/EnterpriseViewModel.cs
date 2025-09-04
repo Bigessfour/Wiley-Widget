@@ -13,6 +13,7 @@ using WileyWidget.Services;
 using System.Windows;
 using Syncfusion.SfSkinManager;
 using System.ComponentModel;
+using System.Collections.Generic;
 
 namespace WileyWidget.ViewModels;
 
@@ -24,7 +25,10 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
 {
     private readonly IEnterpriseRepository _enterpriseRepository;
     private readonly GrokSupercomputer grokSupercomputer;
+    private readonly UI.Dialogs.IEnterpriseEditorDialog _editorDialog;
     private bool disposed;
+    // Tracks last persisted names to allow reverting UI edits that violate uniqueness rules
+    private readonly Dictionary<int, string> _originalNames = new();
 
     public EnterpriseViewModel(bool disposed)
     {
@@ -81,9 +85,10 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public EnterpriseViewModel(IEnterpriseRepository enterpriseRepository)
+    public EnterpriseViewModel(IEnterpriseRepository enterpriseRepository, UI.Dialogs.IEnterpriseEditorDialog editorDialog = null)
     {
         _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+        _editorDialog = editorDialog ?? new UI.Dialogs.NoOpEnterpriseEditorDialog();
         Log.Information("EnterpriseViewModel initialized with repository: {RepositoryType}",
                        enterpriseRepository.GetType().Name);
 
@@ -152,9 +157,10 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
     {
         if (SelectedEnterprise != null)
         {
-            Log.Information("Enterprise double-clicked: {Name} - opening edit dialog",
+            Log.Information("Enterprise double-clicked: {Name} - launching edit workflow placeholder",
                            SelectedEnterprise.Name);
-            // TODO: Implement edit dialog
+            // Placeholder: In future, inject IEnterpriseEditorDialog to open modal editor
+            // For now we log intent only to avoid blocking UI with unimplemented dialog.
         }
     }
 
@@ -183,6 +189,9 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
             foreach (var enterprise in enterprises)
             {
                 Enterprises.Add(enterprise);
+                // Capture baseline persisted name
+                if (!_originalNames.ContainsKey(enterprise.Id))
+                    _originalNames[enterprise.Id] = enterprise.Name;
                 Log.Debug("Loaded enterprise: {Name} - Revenue: {Revenue}, Expenses: {Expenses}, Balance: {Balance}",
                          enterprise.Name, enterprise.MonthlyRevenue, enterprise.MonthlyExpenses, enterprise.MonthlyBalance);
             }
@@ -243,7 +252,7 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
     {
         try
         {
-            var newEnterprise = new Enterprise
+            var baseEnterprise = new Enterprise
             {
                 Name = "New Enterprise",
                 CurrentRate = 15.00m,
@@ -252,14 +261,33 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
                 Notes = "New enterprise - update details"
             };
 
-            var addedEnterprise = await _enterpriseRepository.AddAsync(newEnterprise);
+            // Allow editor dialog to modify initial values
+            var edited = _editorDialog.Show(baseEnterprise) ?? baseEnterprise;
+
+            if (string.IsNullOrWhiteSpace(edited.Name))
+            {
+                Log.Warning("Aborting add enterprise - name required");
+                return;
+            }
+
+            // Uniqueness check
+            var exists = await _enterpriseRepository.ExistsByNameAsync(edited.Name);
+            if (exists)
+            {
+                Log.Warning("Cannot add enterprise - name already exists: {Name}", edited.Name);
+                return;
+            }
+
+            var addedEnterprise = await _enterpriseRepository.AddAsync(edited);
             Enterprises.Add(addedEnterprise);
             SelectedEnterprise = addedEnterprise;
+            _originalNames[addedEnterprise.Id] = addedEnterprise.Name;
+            Log.Information("Enterprise added: {Name} (ID: {Id})", addedEnterprise.Name, addedEnterprise.Id);
         }
         catch (Exception ex)
         {
-            // TODO: Add proper error handling/logging
-            Console.WriteLine($"Error adding enterprise: {ex.Message}");
+            Log.Error(ex, "Failed to add new enterprise");
+            // Non-fatal: leave UI state unchanged
         }
     }
 
@@ -273,13 +301,34 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
 
         try
         {
-            // MonthlyRevenue is now automatically calculated from CitizenCount * CurrentRate
+            if (string.IsNullOrWhiteSpace(SelectedEnterprise.Name))
+            {
+                Log.Warning("Cannot save enterprise with empty name (ID: {Id})", SelectedEnterprise.Id);
+                return;
+            }
+
+            // Preserve original name so we can revert on conflict (object instance already mutated in UI)
+            _originalNames.TryGetValue(SelectedEnterprise.Id, out var originalName);
+
+            var nameConflict = await _enterpriseRepository.ExistsByNameAsync(SelectedEnterprise.Name, SelectedEnterprise.Id);
+            if (nameConflict)
+            {
+                Log.Warning("Cannot save enterprise - name conflict: {Name}. Reverting to previous persisted name: {Original}", SelectedEnterprise.Name, originalName);
+                if (!string.IsNullOrWhiteSpace(originalName))
+                {
+                    SelectedEnterprise.Name = originalName; // revert mutation so repository state reflects expected uniqueness
+                }
+                return;
+            }
+
             await _enterpriseRepository.UpdateAsync(SelectedEnterprise);
+            // Update persisted name snapshot after successful save
+            _originalNames[SelectedEnterprise.Id] = SelectedEnterprise.Name;
+            Log.Information("Enterprise saved: {Name} (ID: {Id})", SelectedEnterprise.Name, SelectedEnterprise.Id);
         }
         catch (Exception ex)
         {
-            // TODO: Add proper error handling/logging
-            Console.WriteLine($"Error saving enterprise: {ex.Message}");
+            Log.Error(ex, "Failed to save enterprise {Id}", SelectedEnterprise?.Id);
         }
     }
 
@@ -293,17 +342,23 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
 
         try
         {
-            var success = await _enterpriseRepository.DeleteAsync(SelectedEnterprise.Id);
+            var targetId = SelectedEnterprise.Id;
+            var success = await _enterpriseRepository.DeleteAsync(targetId);
             if (success)
             {
+                var removedName = SelectedEnterprise.Name;
                 Enterprises.Remove(SelectedEnterprise);
                 SelectedEnterprise = Enterprises.FirstOrDefault();
+                Log.Information("Enterprise deleted: {Name} (ID: {Id})", removedName, targetId);
+            }
+            else
+            {
+                Log.Warning("Delete operation returned false for enterprise {Id}", targetId);
             }
         }
         catch (Exception ex)
         {
-            // TODO: Add proper error handling/logging
-            Console.WriteLine($"Error deleting enterprise: {ex.Message}");
+            Log.Error(ex, "Failed to delete enterprise {Id}", SelectedEnterprise?.Id);
         }
     }
 

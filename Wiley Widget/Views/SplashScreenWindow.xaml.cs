@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using System.Windows.Shapes;
 using Serilog;
 
 namespace WileyWidget;

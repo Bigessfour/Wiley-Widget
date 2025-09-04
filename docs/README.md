@@ -21,7 +21,20 @@
 
 This documentation provides comprehensive guidance for developing and maintaining the WileyWidget application.
 
-## 🚀 Getting Started
+## � Version Information
+
+**Current Version:** 1.0.1 (2025-09-03)
+**Syncfusion WPF:** 30.2.7
+**.NET Target:** .NET 9.0
+**Database:** SQLite (configurable to Azure SQL/SQL Server)
+
+### Recent Updates
+- ✅ **Syncfusion WPF 30.2.7**: All UI components upgraded with latest bug fixes
+- ✅ **Database Configuration**: Enhanced AZ database support with comprehensive comments
+- ✅ **Theme System**: Improved FluentDark/FluentLight theme support
+- ✅ **Bug Fixes**: GridControl, PDF, and SfDataGrid fixes applied
+
+## �🚀 Getting Started
 
 | Document                                  | Purpose                                 | Audience     |
 | ----------------------------------------- | --------------------------------------- | ------------ |
