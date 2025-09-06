@@ -11,6 +11,7 @@
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   <!-- Consolidated warning suppressions: project adds additional codes on top of Directory.Build.props -->
   <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022;CS1591</NoWarn>
   <!-- Signing placeholders (provide actual .snk and enable when ready) -->
@@ -46,6 +47,18 @@
   <ItemGroup>
     <!-- Make internal classes accessible to test project -->
     <InternalsVisibleTo Include="WileyWidget.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Include Diagnostics directory files -->
+    <Compile Include="Diagnostics\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Include main application files -->
+    <Compile Include="App.xaml.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Wiley Widget\**\*.cs" />
   </ItemGroup>
 
   <!-- Copy Syncfusion license file to output directory -->
@@ -118,9 +131,6 @@
     </Content>
     <!-- Explicitly include WPF pages -->
     <Page Include="App.xaml" />
-    <Page Include="Wiley Widget\Views\SplashScreenWindow.xaml" />
-    <Page Include="Wiley Widget\Views\MainWindow.xaml" />
-    <Page Include="Wiley Widget\Views\AboutWindow.xaml" />
     
     <!-- Exclude sample files from compilation -->
     <Compile Remove="Wiley Widget\Configuration\LicenseKey.Private.sample.cs" />
@@ -187,6 +197,12 @@
   <None Remove="WileyWidget.UiTests\**" />
   <Page Remove="WileyWidget.Tests\**" />
   <Page Remove="WileyWidget.UiTests\**" />
+  </ItemGroup>
+
+  <!-- Include Wiley Widget folder resources as Page items for pack URI access -->
+  <ItemGroup>
+    <Page Include="Wiley Widget\**\*.xaml" Exclude="App.xaml" />
+    <Page Include="Resources\*.xaml" />
   </ItemGroup>
 
 </Project>
