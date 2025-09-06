@@ -1,16 +1,16 @@
 # Python dependencies for Wiley Widget project
 # Core dependencies
 PyYAML>=6.0.2
-requests>=2.31.0
+requests>=2.32.4
 
 # Development and testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
-black>=23.0.0
+black>=24.3.0
 isort>=5.12.0
 flake8>=6.0.0
 mypy>=1.5.0
 
 # Optional: For enhanced workflow analysis
-GitPython>=3.1.40
+GitPython>=3.1.43
 jsonschema>=4.19.0

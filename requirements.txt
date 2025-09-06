@@ -1,0 +1,45 @@
+# Python requirements for Wiley Widget MCP integration
+# Enhanced terminal and BrightData support
+
+# Core MCP dependencies
+requests>=2.32.4
+urllib3>=2.5.0
+httpx>=0.25.0
+
+# BrightData specific
+beautifulsoup4>=4.12.0
+lxml>=5.3.0
+selenium>=4.15.0
+
+# Terminal and development tools
+rich>=13.7.0
+click>=8.1.0
+colorama>=0.4.6
+
+# Data processing
+pandas>=2.1.0
+numpy>=1.24.0
+openpyxl>=3.1.0
+
+# Azure integration
+azure-identity>=1.19.0
+azure-keyvault-secrets>=4.7.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=24.3.0
+flake8>=6.1.0
+
+# JSON and configuration
+pydantic>=2.4.0
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+
+# Async support
+aiohttp>=3.10.11
+asyncio-throttle>=1.0.2
+
+# Logging and monitoring
+structlog>=23.2.0
+python-json-logger>=2.0.0
