@@ -13,14 +13,8 @@
     TextOptions.TextRenderingMode="Auto"
     DataContextChanged="MainWindow_DataContextChanged">
     <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <!-- Correct pack URI: spaces encoded in project folder path are avoided by using assembly root logical path -->
-                <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/Wiley Widget/Resources/SyncfusionResources.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-            <!-- Local converters only (styles & brushes now centralized in SyncfusionResources.xaml) -->
-            <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        </ResourceDictionary>
+        <!-- Syncfusion theme applied via SfSkinManager in App.xaml.cs - no manual ResourceDictionary needed -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
     <DockPanel>
         <Menu DockPanel.Dock="Top">

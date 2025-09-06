@@ -6,6 +6,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Shapes;
 using Serilog;
+using WileyWidget.Infrastructure.Bootstrap;
 
 namespace WileyWidget;
 

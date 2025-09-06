@@ -79,6 +79,12 @@ public partial class MainWindow : Window
 
         try
         {
+            // Set SfSkinManager theme before InitializeComponent() to ensure themes load during XAML parsing
+            Log.Information("Setting SfSkinManager theme...");
+            SfSkinManager.ApplyThemeAsDefaultStyle = true;
+            SfSkinManager.ApplicationTheme = new Syncfusion.SfSkinManager.Theme(DefaultTheme);
+            Log.Information("SfSkinManager theme set to {Theme}", DefaultTheme);
+
             Log.Information("Initializing MainWindow components (XAML load first)...");
             InitializeComponent();
             Log.Information("MainWindow components initialized successfully");
@@ -111,7 +117,7 @@ public partial class MainWindow : Window
             // Resolve new coordination services (best-effort, fallback to simple instances)
             _diagramBuilder = ServiceLocator.GetService<Services.IDiagramBuilderService>() ?? new Services.DiagramBuilderService();
             _apiKeyFacade = ServiceLocator.GetService<Services.IApiKeyFacade>() ?? new Services.ApiKeyFacade(ApiKeyService.Instance, SettingsService.Instance);
-            _themeCoordinator = ServiceLocator.GetService<Services.IThemeCoordinator>() ?? new Services.ThemeCoordinator(SettingsService.Instance);
+            _themeCoordinator = ServiceLocator.GetService<Services.IThemeCoordinator>() ?? new Services.ThemeCoordinator(SettingsService.Instance, ServiceLocator.GetService<Services.IThemeService>());
 
             // Theme applied at application level; window-level adjustments (if any) can occur on Loaded
 
@@ -523,14 +529,14 @@ public partial class MainWindow : Window
             Log.Information("Applying deferred theme in Loaded event");
 
             var initialTheme = SettingsService.Instance?.Current?.Theme ?? DefaultTheme;
-            var normalizedTheme = ThemeService.NormalizeTheme(initialTheme);
+            var normalizedTheme = WileyWidget.UI.Theming.ThemeService.NormalizeTheme(initialTheme);
 
-            Log.Information("Applying theme {Theme} to MainWindow", normalizedTheme);
+            Log.Information("Applying theme {Theme} to MainWindow (disabled - SkinManager handles themes)", normalizedTheme);
 
-            // Use the new ThemeService method for window-specific theming
-            ThemeService.ApplyWindowTheme(this, normalizedTheme);
+            // REMOVED: Manual theme application - SkinManager handles this automatically
+            // REMOVED: Manual theme application - SkinManager handles this automatically
 
-            Log.Information("✅ MainWindow theme applied successfully: {Theme}", normalizedTheme);
+            Log.Information("✅ MainWindow theme initialization complete (SkinManager handles application)");
         }
         catch (Exception themeEx)
         {
@@ -539,9 +545,8 @@ public partial class MainWindow : Window
         }
     }
 
-    // Updated wrapper methods for backward compatibility
-    private void TryApplyTheme(string themeName) => ThemeService.ApplyWindowTheme(this, themeName);
-    private void ApplyWpfTheme(string themeName) => ThemeService.ApplyWindowTheme(this, themeName);
+    // Updated wrapper methods for backward compatibility - REMOVED: SkinManager handles themes
+    // REMOVED: Manual theme methods - SkinManager handles themes automatically
     private void LogCurrentThemeState() => Log.Information("LogCurrentThemeState is deprecated; ThemeService now logs state centrally.");
     private void VerifySpecificSyncfusionControls(string expectedTheme) => Log.Information("VerifySpecificSyncfusionControls deprecated - relying on ThemeService state logging. Expected={Expected}", expectedTheme);
     private void VerifySyncfusionThemeApplication(string expectedTheme) => Log.Information("VerifySyncfusionThemeApplication deprecated - central verification removed. Expected={Expected}", expectedTheme);
@@ -552,7 +557,7 @@ public partial class MainWindow : Window
         if (sender is MenuItem mi && mi.Header is string header && !string.IsNullOrWhiteSpace(header))
         {
             // Normalize header to internal theme key via ThemeService (relies on existing normalization logic)
-            var internalName = ThemeService.NormalizeTheme(header);
+            var internalName = WileyWidget.UI.Theming.ThemeService.NormalizeTheme(header);
             _themeCoordinator.Current = internalName; // triggers persistence & ThemeService change
             UpdateThemeToggleVisuals();
         }
@@ -564,7 +569,8 @@ public partial class MainWindow : Window
         using (StructuredLogger.BeginOperation($"ThemeChange_{internalName}"))
         {
             StructuredLogger.LogThemeChange(previousTheme, internalName, true);
-            TryApplyTheme(internalName);
+            // REMOVED: Manual theme application - SkinManager handles this
+            // REMOVED: Manual theme application - SkinManager handles this automatically
             SettingsService.Instance.Current.Theme = internalName;
             SettingsService.Instance.Save();
             Log.Information("Theme successfully changed to {Theme}", displayName);
@@ -577,7 +583,7 @@ public partial class MainWindow : Window
     private void UpdateThemeToggleVisuals()
     {
         Log.Information("=== Updating Theme Menu Visuals ===");
-        var current = ThemeService.NormalizeTheme(SettingsService.Instance.Current.Theme);
+        var current = WileyWidget.UI.Theming.ThemeService.NormalizeTheme(SettingsService.Instance.Current.Theme);
         var themeMenu = FindName("ThemeMenu") as MenuItem;
         if (themeMenu?.Items != null)
         {
@@ -585,7 +591,7 @@ public partial class MainWindow : Window
             {
                 if (item is MenuItem mi && mi.Header is string h)
                 {
-                    var internalName = ThemeService.NormalizeTheme(h);
+                    var internalName = WileyWidget.UI.Theming.ThemeService.NormalizeTheme(h);
                     mi.IsChecked = internalName == current;
                     if (!mi.IsCheckable) mi.IsCheckable = true;
                 }

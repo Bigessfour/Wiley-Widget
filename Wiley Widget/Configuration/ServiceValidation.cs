@@ -26,28 +26,6 @@ public class XAiSettings
 }
 
 /// <summary>
-/// Configuration settings for database connections
-/// </summary>
-public class DatabaseSettings
-{
-    [Required(ErrorMessage = "Database provider is required")]
-    public string? Provider { get; set; } = "SQLite";
-
-    [Required(ErrorMessage = "Connection string is required")]
-    [MinLength(5, ErrorMessage = "Connection string must be at least 5 characters")]
-    public string? ConnectionString { get; set; }
-
-    [Range(1, 300, ErrorMessage = "Command timeout must be between 1 and 300 seconds")]
-    public int CommandTimeout { get; set; } = 30;
-
-    [Range(1, 100, ErrorMessage = "Max retry count must be between 1 and 100")]
-    public int MaxRetryCount { get; set; } = 3;
-
-    [Range(1, 300, ErrorMessage = "Max retry delay must be between 1 and 300 seconds")]
-    public int MaxRetryDelaySeconds { get; set; } = 30;
-}
-
-/// <summary>
 /// Validation classes for service configurations
 /// </summary>
 public static class ServiceValidation

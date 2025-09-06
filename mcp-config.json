@@ -1,0 +1,41 @@
+{
+  "mcpServers": {
+    "azure": {
+      "command": "azmcp-win32-x64",
+      "args": ["--stdio"],
+      "env": {
+        "AZURE_MCP_COLLECT_TELEMETRY": "false",
+        "AZURE_CLI_DISABLE_CONNECTION_VERIFICATION": "true"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    },
+    "microsoft-docs": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/mcp/",
+      "headers": {
+        "User-Agent": "WileyWidget-MCP/1.0"
+      },
+      "env": {
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    },
+    "brightdata": {
+      "command": "npx",
+      "args": ["-y", "@brightdata/mcp"],
+      "env": {
+        "API_TOKEN": "${BRIGHTDATA_API_KEY}",
+        "BRIGHTDATA_MODE": "MCP",
+        "BRIGHTDATA_MCP_DEBUG": "1",
+        "BRIGHTDATA_MCP_TIMEOUT": "25000",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    }
+  }
+}

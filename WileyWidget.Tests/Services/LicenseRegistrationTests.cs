@@ -1,10 +1,5 @@
-using System;
-using System.IO;
-using System.Reflection;
-using FluentAssertions;
-using Serilog;
-using Syncfusion.Licensing;
-using WileyWidget.Infrastructure.Licensing;
+using WileyWidget;
+using WileyWidget.Licensing;
 using Xunit;
 
 namespace WileyWidget.Tests.Services;
@@ -29,9 +24,9 @@ public class LicenseRegistrationTests
         try
         {
             // Act - Call the method multiple times
-            var result1 = EmbeddedLicenseManager.TryRegisterEmbeddedLicense();
-            var result2 = EmbeddedLicenseManager.TryRegisterEmbeddedLicense();
-            var result3 = EmbeddedLicenseManager.TryRegisterEmbeddedLicense();
+            var result1 = SecureLicenseProvider.RegisterLicense();
+            var result2 = SecureLicenseProvider.RegisterLicense();
+            var result3 = SecureLicenseProvider.RegisterLicense();
 
             // Assert - All calls should succeed (or at least not throw)
             // Note: The actual result depends on whether Syncfusion accepts the test key
@@ -60,7 +55,7 @@ public class LicenseRegistrationTests
         try
         {
             // Act & Assert - Should not throw exception
-            var result = EmbeddedLicenseManager.TryRegisterEmbeddedLicense();
+            var result = SecureLicenseProvider.RegisterLicense();
 
             // The result may be false (registration failed), but should not throw
             Assert.True(result || !result); // Accept any boolean result
@@ -84,7 +79,7 @@ public class LicenseRegistrationTests
         try
         {
             // Act & Assert - Should not throw exception
-            var result = EmbeddedLicenseManager.TryRegisterEmbeddedLicense();
+            var result = SecureLicenseProvider.RegisterLicense();
 
             // Should return false for empty key
             Assert.False(result);
@@ -108,7 +103,7 @@ public class LicenseRegistrationTests
         Environment.SetEnvironmentVariable("SYNCFUSION_EMBEDDED_LICENSE_KEY", null);
 
         // Act & Assert - Should not throw exception
-        var result = EmbeddedLicenseManager.TryRegisterEmbeddedLicense();
+        var result = SecureLicenseProvider.RegisterLicense();
 
         // Should return false when no keys are available
         Assert.False(result);
@@ -131,7 +126,7 @@ public class LicenseRegistrationTests
             for (int i = 0; i < 10; i++)
             {
                 tasks[i] = System.Threading.Tasks.Task.Run(() =>
-                    EmbeddedLicenseManager.TryRegisterEmbeddedLicense());
+                    SecureLicenseProvider.RegisterLicense());
             }
 
             // Wait for all tasks to complete
@@ -140,7 +135,8 @@ public class LicenseRegistrationTests
             // Assert - All calls should complete without throwing
             foreach (var task in tasks)
             {
-                Assert.True(task.Result || !task.Result); // Accept any boolean result
+                var result = await task;
+                Assert.True(result || !result); // Accept any boolean result
             }
         }
         finally

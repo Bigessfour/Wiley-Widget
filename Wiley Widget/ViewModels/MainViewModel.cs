@@ -88,10 +88,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private bool quickBooksBusy;
 
     /// <summary>Collection of QuickBooks customers.</summary>
-    public ObservableCollection<Customer> QuickBooksCustomers { get; } = new();
+    public ObservableCollection<QboCustomer> QuickBooksCustomers { get; } = new();
 
     /// <summary>Collection of QuickBooks invoices.</summary>
-    public ObservableCollection<Invoice> QuickBooksInvoices { get; } = new();
+    public ObservableCollection<QboInvoice> QuickBooksInvoices { get; } = new();
 
     /// <summary>Collection of QuickBooks classes.</summary>
     public ObservableCollection<Intuit.Ipp.Data.Class> QboClasses { get; } = new();

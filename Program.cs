@@ -80,7 +80,9 @@ public static class Program
             // Provision correlation id into ambient context for any early code
             LogContext.PushProperty("CorrelationId", correlationId);
 
-            TryEarlySyncfusionLicense();
+            // DEPRECATED: Early license registration removed
+            // Official Syncfusion licensing is now handled in App.xaml.cs constructor
+            // per https://help.syncfusion.com/wpf/licensing/how-to-register-in-an-application
 
             // Set debug flag for App constructor if debugging conhost
             if (debugConhost)
@@ -116,13 +118,5 @@ public static class Program
         }
     }
 
-    /// <summary>
-    /// Attempt an extremely small-footprint Syncfusion license registration without relying on configuration.
-    /// Order in bootstrap: Environment variable then local file (license.key). Failing silently is acceptable;
-    /// trial mode will be re-evaluated in Phase 1 with full configuration.
-    /// </summary>
-    private static void TryEarlySyncfusionLicense()
-    {
-        WileyWidget.Infrastructure.LicenseRegistrar.RegisterEarlyLicenses();
-    }
+
 }

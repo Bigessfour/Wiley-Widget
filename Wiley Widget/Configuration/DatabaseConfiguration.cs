@@ -14,6 +14,7 @@ using Serilog;
 using WileyWidget.Data;
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
+using WileyWidget.Configuration;
 
 namespace WileyWidget.Configuration;
 
@@ -45,6 +46,8 @@ public static class DatabaseConfiguration
                     // - Automatic instance management
                     // - Connection: "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;"
                     // - Requires: SqlLocalDB.msi installation
+                    // - DEPRECATED: Consider migrating to Azure SQL Database with Managed Identity for production
+                    Log.Warning("⚠️ LocalDB is deprecated for production use. Consider migrating to Azure SQL Database with Managed Identity authentication.");
                     options.UseSqlServer(connectionString, o =>
                     {
                         o.CommandTimeout(30);
@@ -55,15 +58,37 @@ public static class DatabaseConfiguration
                 case "MSSQL":
                     // AZ DATABASE REFERENCE: Azure SQL Database / SQL Server
                     // - Production-ready cloud database
-                    // - Managed identity authentication recommended
+                    // - RECOMMENDED: Azure Managed Identity authentication (secure, automatic token rotation)
                     // - Connection: "Server=tcp:{server}.database.windows.net;Database={db};Authentication=Active Directory Managed Identity;"
-                    // - Alternative: "Server={server};Database={db};User Id={user};Password={pwd};"
+                    // - Alternative (deprecated): "Server={server};Database={db};User Id={user};Password={pwd};"
                     // - Features: Automatic backups, high availability, scaling
-                    options.UseSqlServer(connectionString, o =>
+
+                    // Check if Azure Managed Identity is configured
+                    var azureConfig = configuration.GetSection("Azure");
+                    var sqlServer = azureConfig["SqlServer"];
+                    var database = azureConfig["Database"];
+
+                    if (!string.IsNullOrWhiteSpace(sqlServer) && !string.IsNullOrWhiteSpace(database))
                     {
-                        o.CommandTimeout(30);
-                        o.EnableRetryOnFailure(3, TimeSpan.FromSeconds(15), null);
-                    });
+                        // Use Azure Managed Identity (RECOMMENDED)
+                        var azureConnectionString = $"Server=tcp:{sqlServer}.database.windows.net,1433;Database={database};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
+                        Log.Information("🔐 Using Azure Managed Identity for database authentication (RECOMMENDED)");
+                        options.UseSqlServer(azureConnectionString, o =>
+                        {
+                            o.CommandTimeout(30);
+                            o.EnableRetryOnFailure(3, TimeSpan.FromSeconds(15), null);
+                        });
+                    }
+                    else
+                    {
+                        // Fallback to connection string (may use password auth - DEPRECATED)
+                        Log.Warning("⚠️ Azure Managed Identity not configured, falling back to connection string authentication (DEPRECATED - consider migrating to Azure Managed Identity)");
+                        options.UseSqlServer(connectionString, o =>
+                        {
+                            o.CommandTimeout(30);
+                            o.EnableRetryOnFailure(3, TimeSpan.FromSeconds(15), null);
+                        });
+                    }
                     break;
                 default:
                     Log.Warning("Unknown database provider '{Provider}', defaulting to SQLite", provider);
@@ -97,28 +122,11 @@ public static class DatabaseConfiguration
         return services;
     }
 
-    /// <summary>
-    /// Higher-level application service registration that layers on top of database services.
-    /// </summary>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDatabaseServices(configuration);
-
-        services.AddLogging(lb => lb.AddSerilog());
-        services.AddHttpClient();
-
-        services.AddScoped<GrokSupercomputer>();
-        services.AddScoped<QuickBooksService>();
-        services.AddScoped<SettingsService>();
-        services.AddScoped<BrightDataService>();
-
-    // UI / coordination services
-    services.AddSingleton<Services.IDiagramBuilderService, Services.DiagramBuilderService>();
-    services.AddSingleton<Services.IApiKeyFacade, Services.ApiKeyFacade>();
-    services.AddSingleton<Services.IThemeCoordinator, Services.ThemeCoordinator>();
-    services.AddTransient<ViewModels.SettingsViewModel>();
-
-        return services;
+        // This method has been moved to ServiceCollectionExtensions to avoid conflicts
+        // Call the correct method from ServiceCollectionExtensions
+        return WileyWidget.Infrastructure.Services.ServiceCollectionExtensions.AddApplicationServices(services, configuration);
     }
 
     public static async Task EnsureDatabaseCreatedAsync(IServiceProvider rootProvider, CancellationToken cancellationToken = default)

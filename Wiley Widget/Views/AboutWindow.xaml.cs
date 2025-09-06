@@ -36,10 +36,11 @@ public partial class AboutWindow : ChromelessWindow
                 System.Diagnostics.Debug.WriteLine($"ThemeMode not available: {modeEx.Message}");
             }
 
-            using (var theme = new Theme("FluentLight"))
-            {
-                SfSkinManager.SetTheme(this, theme);
-            }
+            // REMOVED: Manual theme application - SkinManager handles this automatically
+            // using (var theme = new Theme("FluentLight"))
+            // {
+            //     SfSkinManager.SetTheme(this, theme);
+            // }
         }
         catch (Exception ex)
         {

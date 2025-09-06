@@ -5,6 +5,8 @@ using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using WileyWidget.Configuration;
 using WileyWidget.Services;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace WileyWidget.ViewModels;
 

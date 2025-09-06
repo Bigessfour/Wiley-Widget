@@ -2,7 +2,9 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -93,6 +95,7 @@ public class DeferredInitializer : IDisposable
 
     /// <summary>
     /// Performs database warm-up with timeout, cancellation, and telemetry
+    /// Follows Microsoft EF Core best practices for database initialization
     /// </summary>
     private async Task PerformDatabaseWarmupAsync(CancellationToken cancellationToken)
     {
@@ -100,14 +103,22 @@ public class DeferredInitializer : IDisposable
 
         try
         {
-            Log.Information("🔄 Starting database warm-up...");
+            Log.Information("🔄 Starting database warm-up with Microsoft best practices...");
+
+            // Wait for ServiceLocator to be initialized with timeout
+            var serviceProvider = await WaitForServiceLocatorAsync(TimeSpan.FromSeconds(10), cancellationToken);
+            if (serviceProvider == null)
+            {
+                Log.Warning("⚠️ ServiceLocator not available for database warm-up - skipping");
+                return;
+            }
 
             // Create a linked token source for timeout
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(TimeSpan.FromSeconds(15)); // 15 second timeout
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(30)); // Increased timeout for proper warm-up
 
             var warmupTask = DatabaseConfiguration.EnsureDatabaseCreatedAsync(
-                ServiceLocator.GetService<IServiceProvider>(), timeoutCts.Token);
+                serviceProvider, timeoutCts.Token);
 
             var completedTask = await Task.WhenAny(warmupTask, Task.Delay(Timeout.Infinite, timeoutCts.Token));
 
@@ -115,6 +126,10 @@ public class DeferredInitializer : IDisposable
             {
                 await warmupTask; // Ensure any exceptions are propagated
                 dbTimer.Stop();
+
+                // Perform additional warm-up following Microsoft best practices
+                await PerformAdditionalDatabaseWarmupAsync(serviceProvider, cancellationToken);
+
                 Log.Information("✅ Database warm-up completed successfully ElapsedMs={ElapsedMs}",
                     dbTimer.ElapsedMilliseconds);
             }
@@ -122,7 +137,7 @@ public class DeferredInitializer : IDisposable
             {
                 dbTimer.Stop();
                 Log.Warning("⏰ Database warm-up timed out after {Timeout}s - continuing without database",
-                    15);
+                    30);
             }
         }
         catch (OperationCanceledException)
@@ -136,6 +151,86 @@ public class DeferredInitializer : IDisposable
             dbTimer.Stop();
             Log.Error(ex, "❌ Database warm-up failed ElapsedMs={ElapsedMs}",
                 dbTimer.ElapsedMilliseconds);
+        }
+    }
+
+    /// <summary>
+    /// Waits for ServiceLocator to be initialized with timeout
+    /// </summary>
+    private async Task<IServiceProvider> WaitForServiceLocatorAsync(TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        var startTime = DateTime.UtcNow;
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                // Try to get the service provider from ServiceLocator
+                using var scope = WileyWidget.Configuration.ServiceLocator.CreateScope();
+                var serviceProvider = scope.ServiceProvider;
+                if (serviceProvider != null)
+                {
+                    Log.Information("✅ ServiceLocator ready for database warm-up");
+                    return serviceProvider;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // ServiceLocator not initialized yet
+            }
+
+            // Check timeout
+            if (DateTime.UtcNow - startTime > timeout)
+            {
+                Log.Warning("⏰ Timeout waiting for ServiceLocator initialization");
+                return null;
+            }
+
+            // Wait a bit before checking again
+            await Task.Delay(100, cancellationToken);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Performs additional database warm-up following Microsoft EF Core best practices
+    /// </summary>
+    private async Task PerformAdditionalDatabaseWarmupAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
+    {
+        try
+        {
+            Log.Information("🔥 Performing additional database warm-up (Microsoft best practices)...");
+
+            using var scope = serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<WileyWidget.Data.AppDbContext>();
+
+            // Microsoft best practice: Pre-warm connections and perform a simple query
+            // This helps with connection pooling and reduces first-query latency
+            var warmupQuery = await dbContext.Database.ExecuteSqlAsync(
+                $"SELECT 1", cancellationToken);
+
+            Log.Information("✅ Database connection pre-warmed successfully");
+
+            // Optional: Pre-compile common queries (if needed)
+            // This follows Microsoft recommendation for compiled queries in high-performance scenarios
+            // Uncomment if you have frequently used queries that would benefit from compilation
+
+            /*
+            // Example of compiled query pattern (uncomment and modify as needed)
+            var compiledQuery = EF.CompileQuery<WileyWidget.Data.AppDbContext, IQueryable<YourEntity>>(
+                (db) => db.YourEntities.Where(e => e.IsActive));
+
+            // Execute once to compile
+            var _ = await compiledQuery(dbContext).AnyAsync(cancellationToken);
+            */
+
+            Log.Information("✅ Additional database warm-up completed");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ Additional database warm-up failed - continuing anyway");
+            // Don't throw - additional warm-up is optional
         }
     }
 

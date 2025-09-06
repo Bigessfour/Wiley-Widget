@@ -10,7 +10,7 @@ namespace WileyWidget.Services;
 /// Nullable primitives distinguish 'not yet set' from legitimate 0 (e.g., geometry).
 /// Handles corruption by renaming the bad file and regenerating defaults.
 /// </summary>
-public sealed class SettingsService
+public sealed class SettingsService : ISettingsService
 {
     private static readonly Lazy<SettingsService> _lazy = new(() => new SettingsService());
     public static SettingsService Instance => _lazy.Value;
@@ -97,5 +97,26 @@ public sealed class SettingsService
             File.WriteAllText(_file, json);
         }
         catch { }
+    }
+
+    public async Task LoadSettingsAsync()
+    {
+        await Task.Run(() => Load());
+    }
+
+    public async Task SaveSettingsAsync()
+    {
+        await Task.Run(() => Save());
+    }
+
+    public T GetSetting<T>(string key)
+    {
+        // For now, return default. Could be enhanced to access properties dynamically
+        return default(T);
+    }
+
+    public void SetSetting<T>(string key, T value)
+    {
+        // For now, do nothing. Could be enhanced to set properties dynamically
     }
 }
