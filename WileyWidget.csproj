@@ -12,7 +12,20 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-  <!-- Consolidated warning suppressions: project adds additional codes on top of Directory.Build.props -->
+  
+  <!-- BUILD PERFORMANCE OPTIMIZATIONS -->
+  <!-- Enable parallel builds and optimized compilation -->
+  <BuildInParallel>true</BuildInParallel>
+  <MaxCpuCount>0</MaxCpuCount>
+  <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
+  
+  <!-- Reduce compilation overhead -->
+  <UseSharedCompilation>true</UseSharedCompilation>
+  <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
+  <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+  
+  <!-- Consolidate warning suppressions: project adds additional codes on top of Directory.Build.props -->
   <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022;CS1591</NoWarn>
   <!-- Signing placeholders (provide actual .snk and enable when ready) -->
   <SignAssembly>false</SignAssembly>
@@ -23,17 +36,22 @@
     <UserSecretsId>b361c895-73de-46a6-9110-c7a5c18bbebf</UserSecretsId>
     
     <!-- Enhanced Diagnostic Properties for Dependency Analysis -->
-    <MSBuildVerbosity Condition="'$(Configuration)' == 'Debug'">detailed</MSBuildVerbosity>
-    <ShowDependencies Condition="'$(Configuration)' == 'Debug'">true</ShowDependencies>
-    <LogLevel Condition="'$(Configuration)' == 'Debug'">Information</LogLevel>
+    <!-- Reduced verbosity for CI performance -->
+    <MSBuildVerbosity Condition="'$(Configuration)' == 'Debug' And '$(CI)' != 'true'">detailed</MSBuildVerbosity>
+    <MSBuildVerbosity Condition="'$(CI)' == 'true'">minimal</MSBuildVerbosity>
+    <ShowDependencies Condition="'$(Configuration)' == 'Debug' And '$(CI)' != 'true'">true</ShowDependencies>
+    <LogLevel Condition="'$(Configuration)' == 'Debug' And '$(CI)' != 'true'">Information</LogLevel>
+    <LogLevel Condition="'$(CI)' == 'true'">Warning</LogLevel>
     
-    <!-- Preserve compilation context for better diagnostics -->
-    <PreserveCompilationContext>true</PreserveCompilationContext>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Preserve compilation context for better diagnostics (disabled in CI) -->
+    <PreserveCompilationContext Condition="'$(CI)' != 'true'">true</PreserveCompilationContext>
+    <GenerateDocumentationFile Condition="'$(CI)' != 'true'">true</GenerateDocumentationFile>
     
-    <!-- Enhanced assembly loading diagnostics -->
-    <DebugType>portable</DebugType>
-    <DebugSymbols>true</DebugSymbols>
+    <!-- Enhanced assembly loading diagnostics (optimized for CI) -->
+    <DebugType Condition="'$(CI)' != 'true'">portable</DebugType>
+    <DebugType Condition="'$(CI)' == 'true'">none</DebugType>
+    <DebugSymbols Condition="'$(CI)' != 'true'">true</DebugSymbols>
+    <DebugSymbols Condition="'$(CI)' == 'true'">false</DebugSymbols>
     
     <!-- Syncfusion-specific preservation -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
