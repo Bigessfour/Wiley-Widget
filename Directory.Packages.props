@@ -57,6 +57,13 @@
     <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="30.2.7" />
     <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="30.2.7" />
     <PackageVersion Include="Syncfusion.Tools.WPF" Version="30.2.7" />
+  <PackageVersion Include="Syncfusion.Pdf.NET" Version="30.2.7" />
+  <!-- WPF PDF Viewer per official docs: https://help.syncfusion.com/wpf/pdf-viewer/getting-started -->
+  <PackageVersion Include="Syncfusion.PdfViewer.WPF" Version="30.2.7" />
+  <!-- System.Drawing.Common for legacy GDI+ drawing needs (Windows-only in .NET 9) -->
+  <PackageVersion Include="System.Drawing.Common" Version="9.0.0" />
+  <!-- Excel (XlsIO) engine -->
+  <PackageVersion Include="Syncfusion.XlsIO.Net.Core" Version="30.2.7" />
     <!-- Code Analysis -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     <!-- Test Packages -->

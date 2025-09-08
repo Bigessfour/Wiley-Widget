@@ -1,0 +1,9221 @@
+SF:C:\Users\biges\Desktop\Wiley_Widget\WileyWidgetTest\Program.cs
+FN:3,System.Void Program::<Main>$(System.String[])
+FNDA:0,System.Void Program::<Main>$(System.String[])
+DA:4,0
+DA:5,0
+DA:8,0
+DA:9,0
+DA:10,0
+DA:11,0
+DA:12,0
+DA:13,0
+DA:14,0
+DA:15,0
+DA:16,0
+DA:18,0
+DA:19,0
+DA:20,0
+DA:21,0
+DA:22,0
+DA:23,0
+DA:26,0
+DA:28,0
+DA:29,0
+DA:30,0
+DA:31,0
+DA:32,0
+DA:33,0
+DA:34,0
+DA:35,0
+DA:36,0
+DA:37,0
+DA:38,0
+DA:40,0
+DA:41,0
+DA:42,0
+DA:43,0
+DA:44,0
+DA:47,0
+DA:48,0
+DA:49,0
+DA:50,0
+DA:51,0
+DA:52,0
+DA:53,0
+DA:54,0
+DA:55,0
+DA:56,0
+DA:57,0
+DA:59,0
+DA:60,0
+DA:61,0
+DA:62,0
+DA:65,0
+DA:66,0
+DA:67,0
+DA:68,0
+DA:69,0
+DA:70,0
+DA:71,0
+DA:72,0
+DA:73,0
+DA:74,0
+DA:75,0
+DA:77,0
+DA:78,0
+DA:79,0
+DA:80,0
+DA:82,0
+DA:83,0
+DA:84,0
+DA:85,0
+DA:86,0
+BRDA:43,692,0,0
+BRDA:43,692,1,0
+BRDA:61,993,0,0
+BRDA:61,993,1,0
+LF:69
+LH:0
+BRF:4
+BRH:0
+FNF:1
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\obj\Debug\net9.0-windows\GeneratedInternalTypeHelper.g.cs
+FN:23,System.Object XamlGeneratedNamespace.GeneratedInternalTypeHelper::CreateInstance(System.Type,System.Globalization.CultureInfo)
+FNDA:0,System.Object XamlGeneratedNamespace.GeneratedInternalTypeHelper::CreateInstance(System.Type,System.Globalization.CultureInfo)
+DA:24,0
+DA:25,0
+DA:26,0
+DA:27,0
+FN:31,System.Object XamlGeneratedNamespace.GeneratedInternalTypeHelper::GetPropertyValue(System.Reflection.PropertyInfo,System.Object,System.Globalization.CultureInfo)
+FNDA:0,System.Object XamlGeneratedNamespace.GeneratedInternalTypeHelper::GetPropertyValue(System.Reflection.PropertyInfo,System.Object,System.Globalization.CultureInfo)
+DA:32,0
+DA:33,0
+DA:34,0
+FN:38,System.Void XamlGeneratedNamespace.GeneratedInternalTypeHelper::SetPropertyValue(System.Reflection.PropertyInfo,System.Object,System.Object,System.Globalization.CultureInfo)
+FNDA:0,System.Void XamlGeneratedNamespace.GeneratedInternalTypeHelper::SetPropertyValue(System.Reflection.PropertyInfo,System.Object,System.Object,System.Globalization.CultureInfo)
+DA:39,0
+DA:40,0
+DA:41,0
+FN:45,System.Delegate XamlGeneratedNamespace.GeneratedInternalTypeHelper::CreateDelegate(System.Type,System.Object,System.String)
+FNDA:0,System.Delegate XamlGeneratedNamespace.GeneratedInternalTypeHelper::CreateDelegate(System.Type,System.Object,System.String)
+DA:46,0
+DA:47,0
+DA:48,0
+DA:49,0
+DA:50,0
+DA:51,0
+FN:55,System.Void XamlGeneratedNamespace.GeneratedInternalTypeHelper::AddEventHandler(System.Reflection.EventInfo,System.Object,System.Delegate)
+FNDA:0,System.Void XamlGeneratedNamespace.GeneratedInternalTypeHelper::AddEventHandler(System.Reflection.EventInfo,System.Object,System.Delegate)
+DA:56,0
+DA:57,0
+DA:58,0
+LF:19
+LH:0
+BRF:0
+BRH:0
+FNF:5
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\WileyWidgetTest\BudgetInteraction.cs
+FN:17,System.Int32 WileyWidgetTest.BudgetInteraction::get_Id()
+FNDA:0,System.Int32 WileyWidgetTest.BudgetInteraction::get_Id()
+DA:18,0
+FN:23,System.Int32 WileyWidgetTest.BudgetInteraction::get_PrimaryEnterpriseId()
+FNDA:0,System.Int32 WileyWidgetTest.BudgetInteraction::get_PrimaryEnterpriseId()
+DA:24,0
+FN:28,System.Nullable`1<System.Int32> WileyWidgetTest.BudgetInteraction::get_SecondaryEnterpriseId()
+FNDA:0,System.Nullable`1<System.Int32> WileyWidgetTest.BudgetInteraction::get_SecondaryEnterpriseId()
+DA:29,0
+FN:35,System.String WileyWidgetTest.BudgetInteraction::get_InteractionType()
+FNDA:0,System.String WileyWidgetTest.BudgetInteraction::get_InteractionType()
+DA:36,0
+FN:42,System.String WileyWidgetTest.BudgetInteraction::get_Description()
+FNDA:0,System.String WileyWidgetTest.BudgetInteraction::get_Description()
+DA:43,0
+FN:50,System.Decimal WileyWidgetTest.BudgetInteraction::get_MonthlyAmount()
+FNDA:0,System.Decimal WileyWidgetTest.BudgetInteraction::get_MonthlyAmount()
+DA:51,0
+FN:56,System.Boolean WileyWidgetTest.BudgetInteraction::get_IsCost()
+FNDA:0,System.Boolean WileyWidgetTest.BudgetInteraction::get_IsCost()
+DA:57,0
+FN:62,System.String WileyWidgetTest.BudgetInteraction::get_Notes()
+FNDA:0,System.String WileyWidgetTest.BudgetInteraction::get_Notes()
+DA:63,0
+FN:68,WileyWidgetTest.Enterprise WileyWidgetTest.BudgetInteraction::get_PrimaryEnterprise()
+FNDA:0,WileyWidgetTest.Enterprise WileyWidgetTest.BudgetInteraction::get_PrimaryEnterprise()
+DA:69,0
+FN:74,WileyWidgetTest.Enterprise WileyWidgetTest.BudgetInteraction::get_SecondaryEnterprise()
+FNDA:0,WileyWidgetTest.Enterprise WileyWidgetTest.BudgetInteraction::get_SecondaryEnterprise()
+DA:75,0
+FN:80,System.String WileyWidgetTest.BudgetInteraction::get_QboAccountId()
+FNDA:0,System.String WileyWidgetTest.BudgetInteraction::get_QboAccountId()
+DA:81,0
+FN:85,WileyWidgetTest.QboSyncStatus WileyWidgetTest.BudgetInteraction::get_QboSyncStatus()
+FNDA:0,WileyWidgetTest.QboSyncStatus WileyWidgetTest.BudgetInteraction::get_QboSyncStatus()
+DA:86,0
+FN:90,System.Nullable`1<System.DateTime> WileyWidgetTest.BudgetInteraction::get_QboLastSync()
+FNDA:0,System.Nullable`1<System.DateTime> WileyWidgetTest.BudgetInteraction::get_QboLastSync()
+DA:91,0
+FN:97,System.Decimal WileyWidgetTest.BudgetInteraction::SharedCostImpact()
+FNDA:0,System.Decimal WileyWidgetTest.BudgetInteraction::SharedCostImpact()
+DA:98,0
+DA:100,0
+DA:101,0
+DA:102,0
+DA:104,0
+DA:106,0
+DA:108,0
+DA:109,0
+DA:111,0
+DA:112,0
+DA:114,0
+BRDA:101,13,0,0
+BRDA:101,13,1,0
+BRDA:104,37,0,0
+BRDA:104,37,1,0
+LF:24
+LH:0
+BRF:4
+BRH:0
+FNF:14
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\WileyWidgetTest\Enterprise.cs
+FN:16,System.Int32 WileyWidgetTest.Enterprise::get_Id()
+FNDA:0,System.Int32 WileyWidgetTest.Enterprise::get_Id()
+DA:17,0
+FN:23,System.String WileyWidgetTest.Enterprise::get_Name()
+FNDA:0,System.String WileyWidgetTest.Enterprise::get_Name()
+DA:24,0
+FN:31,System.Decimal WileyWidgetTest.Enterprise::get_CurrentRate()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_CurrentRate()
+DA:32,0
+FN:39,System.Decimal WileyWidgetTest.Enterprise::get_MonthlyExpenses()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_MonthlyExpenses()
+DA:40,0
+FN:47,System.Decimal WileyWidgetTest.Enterprise::get_MonthlyRevenue()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_MonthlyRevenue()
+DA:48,0
+FN:55,System.Int32 WileyWidgetTest.Enterprise::get_CitizenCount()
+FNDA:0,System.Int32 WileyWidgetTest.Enterprise::get_CitizenCount()
+DA:56,0
+FN:61,System.String WileyWidgetTest.Enterprise::get_Notes()
+FNDA:0,System.String WileyWidgetTest.Enterprise::get_Notes()
+DA:62,0
+FN:66,System.Collections.Generic.ICollection`1<WileyWidgetTest.BudgetInteraction> WileyWidgetTest.Enterprise::get_BudgetInteractions()
+FNDA:0,System.Collections.Generic.ICollection`1<WileyWidgetTest.BudgetInteraction> WileyWidgetTest.Enterprise::get_BudgetInteractions()
+DA:67,0
+FN:74,System.Decimal WileyWidgetTest.Enterprise::get_MonthlyBalance()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_MonthlyBalance()
+DA:75,0
+FN:84,System.Decimal WileyWidgetTest.Enterprise::get_MonthlyDeficit()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_MonthlyDeficit()
+DA:85,0
+FN:92,System.Decimal WileyWidgetTest.Enterprise::get_Deficit()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_Deficit()
+DA:93,0
+FN:101,System.String WileyWidgetTest.Enterprise::get_BudgetStatus()
+FNDA:0,System.String WileyWidgetTest.Enterprise::get_BudgetStatus()
+DA:102,0
+DA:103,0
+DA:104,0
+DA:105,0
+DA:106,0
+DA:108,0
+DA:109,0
+BRDA:103,19,0,0
+BRDA:103,19,1,0
+BRDA:105,47,0,0
+BRDA:105,47,1,0
+FN:117,System.Decimal WileyWidgetTest.Enterprise::get_BreakEvenRate()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_BreakEvenRate()
+DA:118,0
+BRDA:118,8,0,0
+BRDA:118,8,1,0
+FN:127,System.Decimal WileyWidgetTest.Enterprise::get_ProfitMargin()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_ProfitMargin()
+DA:128,0
+DA:129,0
+DA:130,0
+DA:131,0
+BRDA:129,19,0,0
+BRDA:129,19,1,0
+FN:139,System.Decimal WileyWidgetTest.Enterprise::get_RevenuePerCitizen()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_RevenuePerCitizen()
+DA:140,0
+BRDA:140,8,0,0
+BRDA:140,8,1,0
+FN:149,System.Decimal WileyWidgetTest.Enterprise::get_ExpenseRatio()
+FNDA:0,System.Decimal WileyWidgetTest.Enterprise::get_ExpenseRatio()
+DA:150,0
+DA:151,0
+DA:152,0
+DA:153,0
+BRDA:151,19,0,0
+BRDA:151,19,1,0
+FN:159,System.String WileyWidgetTest.Enterprise::get_QboClassId()
+FNDA:0,System.String WileyWidgetTest.Enterprise::get_QboClassId()
+DA:160,0
+FN:164,WileyWidgetTest.QboSyncStatus WileyWidgetTest.Enterprise::get_QboSyncStatus()
+FNDA:0,WileyWidgetTest.QboSyncStatus WileyWidgetTest.Enterprise::get_QboSyncStatus()
+DA:165,0
+FN:169,System.Nullable`1<System.DateTime> WileyWidgetTest.Enterprise::get_QboLastSync()
+FNDA:0,System.Nullable`1<System.DateTime> WileyWidgetTest.Enterprise::get_QboLastSync()
+DA:170,0
+LF:31
+LH:0
+BRF:12
+BRH:0
+FNF:19
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Enterprise.cs
+FN:8,System.Decimal Wiley_Widget.Enterprise::get_CurrentRate()
+FNDA:0,System.Decimal Wiley_Widget.Enterprise::get_CurrentRate()
+DA:9,0
+FN:10,System.Decimal Wiley_Widget.Enterprise::get_MonthlyRevenue()
+FNDA:0,System.Decimal Wiley_Widget.Enterprise::get_MonthlyRevenue()
+DA:11,0
+FN:11,System.Decimal Wiley_Widget.Enterprise::get_MonthlyExpenses()
+FNDA:0,System.Decimal Wiley_Widget.Enterprise::get_MonthlyExpenses()
+DA:12,0
+FN:14,System.Boolean Wiley_Widget.Enterprise/<Validate>d__12::MoveNext()
+FNDA:0,System.Boolean Wiley_Widget.Enterprise/<Validate>d__12::MoveNext()
+DA:15,0
+DA:16,0
+DA:17,0
+DA:18,0
+DA:19,0
+DA:20,0
+BRDA:16,75,0,0
+BRDA:16,75,1,0
+BRDA:18,146,0,0
+BRDA:18,146,1,0
+LF:9
+LH:0
+BRF:4
+BRH:0
+FNF:4
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\App.xaml.cs
+FN:35,System.String WileyWidget.ApplicationEnricher::get_CorrelationId()
+FNDA:0,System.String WileyWidget.ApplicationEnricher::get_CorrelationId()
+DA:36,0
+BRDA:36,11,0,0
+BRDA:36,11,1,0
+FN:36,System.Void WileyWidget.ApplicationEnricher::set_CorrelationId(System.String)
+FNDA:0,System.Void WileyWidget.ApplicationEnricher::set_CorrelationId(System.String)
+DA:37,0
+FN:44,System.String WileyWidget.ApplicationEnricher::get_OperationId()
+FNDA:0,System.String WileyWidget.ApplicationEnricher::get_OperationId()
+DA:45,0
+BRDA:45,11,0,0
+BRDA:45,11,1,0
+FN:45,System.Void WileyWidget.ApplicationEnricher::set_OperationId(System.String)
+FNDA:0,System.Void WileyWidget.ApplicationEnricher::set_OperationId(System.String)
+DA:46,0
+FN:53,System.String WileyWidget.ApplicationEnricher::get_UserId()
+FNDA:0,System.String WileyWidget.ApplicationEnricher::get_UserId()
+DA:54,0
+FN:54,System.Void WileyWidget.ApplicationEnricher::set_UserId(System.String)
+FNDA:0,System.Void WileyWidget.ApplicationEnricher::set_UserId(System.String)
+DA:55,0
+FN:61,System.Void WileyWidget.ApplicationEnricher::Enrich(Serilog.Events.LogEvent,Serilog.Core.ILogEventPropertyFactory)
+FNDA:0,System.Void WileyWidget.ApplicationEnricher::Enrich(Serilog.Events.LogEvent,Serilog.Core.ILogEventPropertyFactory)
+DA:62,0
+DA:64,0
+DA:65,0
+DA:68,0
+DA:69,0
+DA:70,0
+DA:71,0
+DA:74,0
+DA:75,0
+DA:76,0
+DA:79,0
+DA:80,0
+DA:81,0
+BRDA:68,64,0,0
+BRDA:68,64,1,0
+FN:26,System.Void WileyWidget.ApplicationEnricher::.cctor()
+FNDA:0,System.Void WileyWidget.ApplicationEnricher::.cctor()
+DA:27,0
+DA:28,0
+DA:29,0
+FN:92,System.IDisposable WileyWidget.StructuredLogger::BeginOperation(System.String,System.String)
+FNDA:0,System.IDisposable WileyWidget.StructuredLogger::BeginOperation(System.String,System.String)
+DA:93,0
+DA:94,0
+DA:95,0
+DA:97,0
+DA:98,0
+DA:99,0
+DA:100,0
+DA:101,0
+DA:103,0
+DA:104,0
+BRDA:94,3,0,0
+BRDA:94,3,1,0
+FN:109,System.Void WileyWidget.StructuredLogger::LogPerformance(System.String,System.TimeSpan,System.Int64)
+FNDA:0,System.Void WileyWidget.StructuredLogger::LogPerformance(System.String,System.TimeSpan,System.Int64)
+DA:110,0
+DA:111,0
+DA:112,0
+DA:113,0
+DA:114,0
+DA:115,0
+DA:116,0
+DA:117,0
+FN:122,System.Void WileyWidget.StructuredLogger::LogUserAction(System.String,System.String,System.Object)
+FNDA:0,System.Void WileyWidget.StructuredLogger::LogUserAction(System.String,System.String,System.Object)
+DA:123,0
+DA:124,0
+DA:125,0
+DA:126,0
+DA:127,0
+DA:128,0
+DA:129,0
+DA:130,0
+FN:135,System.Void WileyWidget.StructuredLogger::LogThemeChange(System.String,System.String,System.Boolean)
+FNDA:0,System.Void WileyWidget.StructuredLogger::LogThemeChange(System.String,System.String,System.Boolean)
+DA:136,0
+DA:137,0
+DA:138,0
+DA:139,0
+DA:140,0
+DA:141,0
+DA:142,0
+DA:143,0
+DA:144,0
+FN:149,System.Void WileyWidget.StructuredLogger::LogSyncfusionOperation(System.String,System.String,System.Object)
+FNDA:0,System.Void WileyWidget.StructuredLogger::LogSyncfusionOperation(System.String,System.String,System.Object)
+DA:150,0
+DA:151,0
+DA:152,0
+DA:153,0
+DA:154,0
+DA:155,0
+DA:156,0
+DA:157,0
+FN:175,System.Void WileyWidget.StructuredLogger/OperationScope::Dispose()
+FNDA:0,System.Void WileyWidget.StructuredLogger/OperationScope::Dispose()
+DA:176,0
+DA:177,0
+DA:179,0
+DA:180,0
+DA:181,0
+DA:182,0
+DA:183,0
+DA:184,0
+DA:185,0
+FN:167,System.Void WileyWidget.StructuredLogger/OperationScope::.ctor(System.String,System.String)
+FNDA:0,System.Void WileyWidget.StructuredLogger/OperationScope::.ctor(System.String,System.String)
+DA:168,0
+DA:169,0
+DA:170,0
+DA:171,0
+DA:172,0
+DA:173,0
+FN:393,System.Void WileyWidget.App::OnStartup(System.Windows.StartupEventArgs)
+FNDA:0,System.Void WileyWidget.App::OnStartup(System.Windows.StartupEventArgs)
+DA:394,0
+DA:396,0
+DA:397,0
+DA:398,0
+DA:401,0
+DA:404,0
+DA:405,0
+DA:408,0
+DA:411,0
+DA:414,0
+DA:417,0
+DA:418,0
+DA:420,0
+DA:421,0
+DA:422,0
+DA:423,0
+DA:424,0
+DA:426,0
+DA:427,0
+DA:428,0
+FN:474,System.Void WileyWidget.App::LoadAndApplyUserSettings()
+FNDA:0,System.Void WileyWidget.App::LoadAndApplyUserSettings()
+DA:475,0
+DA:477,0
+DA:478,0
+DA:481,0
+DA:484,0
+DA:485,0
+DA:486,0
+DA:487,0
+DA:488,0
+DA:490,0
+DA:491,0
+DA:492,0
+DA:494,0
+DA:495,0
+DA:496,0
+DA:497,0
+DA:498,0
+DA:500,0
+DA:501,0
+DA:502,0
+BRDA:484,46,0,0
+BRDA:484,46,1,0
+FN:508,System.Void WileyWidget.App::ConfigureTestAutomationSupport()
+FNDA:0,System.Void WileyWidget.App::ConfigureTestAutomationSupport()
+DA:509,0
+DA:511,0
+DA:513,0
+DA:514,0
+DA:515,0
+DA:516,0
+DA:517,0
+DA:518,0
+DA:520,0
+DA:521,0
+DA:522,0
+DA:523,0
+DA:524,0
+DA:525,0
+DA:526,0
+DA:527,0
+DA:528,0
+BRDA:514,27,0,0
+BRDA:514,27,1,0
+FN:545,System.Void WileyWidget.App::TryScheduleLicenseDialogAutoClose()
+FNDA:0,System.Void WileyWidget.App::TryScheduleLicenseDialogAutoClose()
+DA:546,0
+DA:548,0
+DA:549,0
+DA:551,0
+DA:552,0
+DA:553,0
+DA:554,0
+DA:555,0
+DA:557,0
+DA:560,0
+DA:561,0
+DA:562,0
+DA:563,0
+DA:564,0
+DA:565,0
+DA:566,0
+DA:567,0
+DA:568,0
+DA:569,0
+DA:570,0
+DA:571,0
+DA:572,0
+DA:573,0
+DA:574,0
+DA:575,0
+DA:576,0
+DA:577,0
+DA:578,0
+DA:579,0
+DA:580,0
+DA:581,0
+DA:582,0
+DA:583,0
+DA:584,0
+DA:585,0
+DA:586,0
+DA:587,0
+DA:588,0
+DA:589,0
+DA:590,0
+DA:591,0
+DA:592,0
+DA:593,0
+DA:595,0
+DA:596,0
+DA:597,0
+DA:598,0
+DA:599,0
+DA:600,0
+DA:601,0
+DA:602,0
+BRDA:568,149,1,0
+BRDA:570,70,0,0
+BRDA:570,83,0,0
+BRDA:570,70,1,0
+BRDA:570,83,1,0
+BRDA:570,107,0,0
+BRDA:570,107,1,0
+BRDA:568,149,0,0
+BRDA:582,191,0,0
+BRDA:582,191,1,0
+FN:620,System.Void WileyWidget.App::OnExit(System.Windows.ExitEventArgs)
+FNDA:0,System.Void WileyWidget.App::OnExit(System.Windows.ExitEventArgs)
+DA:621,0
+DA:623,0
+DA:624,0
+DA:625,0
+DA:628,0
+DA:631,0
+DA:632,0
+DA:634,0
+DA:635,0
+DA:636,0
+DA:637,0
+DA:639,0
+DA:640,0
+DA:642,0
+DA:644,0
+DA:645,0
+DA:646,0
+FN:652,System.Void WileyWidget.App::PerformFinalCleanup()
+FNDA:0,System.Void WileyWidget.App::PerformFinalCleanup()
+DA:653,0
+DA:655,0
+DA:656,0
+DA:659,0
+DA:660,0
+DA:661,0
+DA:662,0
+DA:663,0
+DA:666,0
+DA:667,0
+DA:669,0
+DA:670,0
+DA:671,0
+DA:672,0
+DA:673,0
+DA:674,0
+DA:675,0
+BRDA:659,31,0,0
+BRDA:659,31,1,0
+BRDA:666,60,0,0
+BRDA:666,60,1,0
+FN:703,System.Void WileyWidget.App::LoadConfiguration()
+FNDA:0,System.Void WileyWidget.App::LoadConfiguration()
+DA:704,0
+DA:706,0
+DA:707,0
+DA:709,0
+DA:710,0
+DA:712,0
+DA:713,0
+DA:714,0
+DA:715,0
+DA:717,0
+DA:720,0
+DA:722,0
+DA:723,0
+DA:724,0
+DA:725,0
+DA:726,0
+DA:727,0
+DA:728,0
+DA:729,0
+DA:731,0
+FN:737,System.Void WileyWidget.App::ValidateConfiguration()
+FNDA:0,System.Void WileyWidget.App::ValidateConfiguration()
+DA:738,0
+DA:740,0
+DA:742,0
+DA:743,0
+DA:744,0
+DA:745,0
+DA:746,0
+DA:748,0
+DA:749,0
+DA:750,0
+DA:753,0
+DA:754,0
+DA:755,0
+DA:756,0
+DA:757,0
+DA:759,0
+DA:760,0
+DA:761,0
+DA:762,0
+DA:763,0
+DA:764,0
+DA:765,0
+DA:766,0
+DA:767,0
+BRDA:743,27,0,0
+BRDA:743,27,1,0
+BRDA:754,82,0,0
+BRDA:754,82,1,0
+FN:772,System.Void WileyWidget.App::RegisterSyncfusionLicense()
+FNDA:0,System.Void WileyWidget.App::RegisterSyncfusionLicense()
+DA:773,0
+DA:774,0
+DA:778,0
+DA:779,0
+DA:780,0
+DA:781,0
+DA:782,0
+DA:783,0
+DA:784,0
+DA:787,0
+DA:788,0
+DA:789,0
+DA:790,0
+DA:791,0
+DA:792,0
+DA:793,0
+DA:794,0
+DA:799,0
+DA:800,0
+DA:801,0
+DA:802,0
+DA:803,0
+DA:805,0
+DA:806,0
+DA:810,0
+DA:812,0
+DA:813,0
+DA:814,0
+DA:816,0
+DA:817,0
+DA:818,0
+DA:819,0
+DA:820,0
+DA:821,0
+DA:824,0
+DA:825,0
+DA:826,0
+DA:827,0
+DA:828,0
+DA:829,0
+DA:830,0
+DA:831,0
+DA:834,0
+DA:835,0
+DA:836,0
+DA:837,0
+DA:839,0
+DA:840,0
+DA:841,0
+DA:842,0
+BRDA:780,36,0,0
+BRDA:780,36,1,0
+BRDA:780,54,0,0
+BRDA:780,54,1,0
+BRDA:800,128,0,0
+BRDA:800,128,1,0
+BRDA:812,169,0,0
+BRDA:812,184,0,0
+BRDA:812,169,1,0
+BRDA:812,184,1,0
+BRDA:816,206,0,0
+BRDA:816,206,1,0
+BRDA:816,227,0,0
+BRDA:816,227,1,0
+BRDA:834,368,0,0
+BRDA:834,368,1,0
+FN:898,System.Void WileyWidget.App::ConfigureLogging()
+FNDA:0,System.Void WileyWidget.App::ConfigureLogging()
+DA:899,0
+DA:901,0
+DA:903,0
+DA:905,0
+DA:906,0
+DA:909,0
+DA:912,0
+DA:913,0
+DA:914,0
+DA:915,0
+DA:916,0
+DA:917,0
+DA:918,0
+DA:919,0
+DA:920,0
+DA:921,0
+DA:922,0
+DA:923,0
+DA:924,0
+DA:925,0
+DA:926,0
+DA:927,0
+DA:928,0
+DA:929,0
+DA:930,0
+DA:931,0
+DA:932,0
+DA:933,0
+DA:934,0
+DA:935,0
+DA:936,0
+DA:937,0
+DA:938,0
+DA:939,0
+DA:940,0
+DA:941,0
+DA:942,0
+DA:943,0
+DA:944,0
+DA:945,0
+DA:946,0
+DA:947,0
+DA:948,0
+DA:949,0
+DA:950,0
+DA:951,0
+DA:952,0
+DA:953,0
+DA:954,0
+DA:955,0
+DA:956,0
+DA:957,0
+DA:958,0
+DA:959,0
+DA:960,0
+DA:961,0
+DA:962,0
+DA:963,0
+DA:964,0
+DA:965,0
+DA:966,0
+DA:967,0
+DA:968,0
+DA:969,0
+DA:970,0
+DA:971,0
+DA:972,0
+DA:973,0
+DA:974,0
+DA:975,0
+DA:976,0
+DA:977,0
+DA:978,0
+DA:979,0
+DA:980,0
+DA:981,0
+DA:982,0
+DA:983,0
+DA:984,0
+DA:985,0
+DA:986,0
+DA:987,0
+DA:988,0
+DA:989,0
+DA:990,0
+DA:991,0
+DA:992,0
+DA:993,0
+DA:994,0
+DA:995,0
+DA:996,0
+DA:997,0
+DA:998,0
+DA:999,0
+DA:1000,0
+DA:1001,0
+DA:1002,0
+DA:1003,0
+DA:1004,0
+DA:1005,0
+DA:1006,0
+DA:1007,0
+DA:1008,0
+DA:1009,0
+DA:1010,0
+DA:1011,0
+DA:1012,0
+DA:1013,0
+DA:1014,0
+DA:1015,0
+DA:1016,0
+DA:1017,0
+DA:1018,0
+DA:1019,0
+DA:1020,0
+DA:1021,0
+DA:1022,0
+DA:1023,0
+DA:1024,0
+DA:1025,0
+DA:1026,0
+DA:1027,0
+DA:1028,0
+DA:1029,0
+DA:1030,0
+DA:1031,0
+DA:1033,0
+DA:1034,0
+DA:1035,0
+DA:1036,0
+DA:1037,0
+DA:1038,0
+DA:1039,0
+DA:1040,0
+DA:1041,0
+DA:1042,0
+DA:1043,0
+DA:1044,0
+DA:1045,0
+DA:1046,0
+DA:1048,0
+DA:1052,0
+DA:1053,0
+DA:1054,0
+DA:1055,0
+DA:1056,0
+DA:1057,0
+DA:1058,0
+DA:1059,0
+DA:1061,0
+DA:1062,0
+DA:1063,0
+DA:1064,0
+DA:1065,0
+DA:1067,0
+DA:1068,0
+DA:1069,0
+DA:1070,0
+BRDA:912,225,0,0
+BRDA:912,225,1,0
+BRDA:912,237,0,0
+BRDA:912,237,1,0
+BRDA:1053,1277,0,0
+BRDA:1053,1277,1,0
+BRDA:1053,1289,0,0
+BRDA:1053,1289,1,0
+FN:1095,System.Void WileyWidget.App::ConfigureGlobalExceptionHandling()
+FNDA:0,System.Void WileyWidget.App::ConfigureGlobalExceptionHandling()
+DA:1096,0
+DA:1098,0
+DA:1099,0
+DA:1102,0
+DA:1103,0
+DA:1104,0
+DA:1105,0
+DA:1106,0
+DA:1107,0
+DA:1108,0
+DA:1109,0
+DA:1110,0
+DA:1111,0
+DA:1112,0
+DA:1115,0
+DA:1116,0
+DA:1117,0
+DA:1118,0
+DA:1119,0
+DA:1120,0
+DA:1121,0
+DA:1122,0
+DA:1123,0
+DA:1124,0
+DA:1125,0
+DA:1126,0
+DA:1129,0
+DA:1130,0
+DA:1131,0
+DA:1132,0
+DA:1133,0
+DA:1134,0
+DA:1135,0
+DA:1136,0
+DA:1137,0
+DA:1138,0
+DA:1139,0
+DA:1140,0
+DA:1141,0
+DA:1142,0
+DA:1144,0
+DA:1145,0
+DA:1146,0
+DA:1147,0
+DA:1148,0
+DA:1149,0
+DA:1151,0
+DA:1152,0
+BRDA:1108,39,0,0
+BRDA:1108,39,1,0
+BRDA:1108,56,0,0
+BRDA:1108,56,1,0
+BRDA:1132,24,0,0
+BRDA:1132,24,1,0
+BRDA:1132,41,0,0
+BRDA:1132,41,1,0
+BRDA:1138,78,0,0
+BRDA:1138,78,1,0
+FN:1160,System.Void WileyWidget.App::ShowExceptionDialog(System.Exception,System.String)
+FNDA:0,System.Void WileyWidget.App::ShowExceptionDialog(System.Exception,System.String)
+DA:1161,0
+DA:1163,0
+DA:1164,0
+DA:1165,0
+DA:1166,0
+DA:1167,0
+DA:1170,0
+DA:1171,0
+DA:1173,0
+DA:1174,0
+DA:1175,0
+DA:1176,0
+DA:1177,0
+DA:1178,0
+DA:1179,0
+FN:1199,System.Void WileyWidget.App::LogException(System.String,System.Exception)
+FNDA:0,System.Void WileyWidget.App::LogException(System.String,System.Exception)
+DA:1200,0
+DA:1201,0
+DA:1202,0
+DA:1203,0
+DA:1204,0
+DA:1208,0
+DA:1210,0
+DA:1213,0
+DA:1214,0
+DA:1215,0
+DA:1216,0
+DA:1219,0
+DA:1220,0
+DA:1221,0
+DA:1222,0
+DA:1225,0
+DA:1226,0
+DA:1227,0
+DA:1228,0
+DA:1230,0
+DA:1231,0
+DA:1232,0
+DA:1233,0
+BRDA:1201,7,0,0
+BRDA:1201,7,1,0
+BRDA:1213,58,0,0
+BRDA:1213,58,1,0
+BRDA:1219,90,0,0
+BRDA:1219,90,1,0
+FN:1260,System.Boolean WileyWidget.App::TryLoadLicenseFromFile()
+FNDA:0,System.Boolean WileyWidget.App::TryLoadLicenseFromFile()
+DA:1261,0
+DA:1263,0
+DA:1264,0
+DA:1265,0
+DA:1267,0
+DA:1268,0
+DA:1270,0
+DA:1271,0
+DA:1272,0
+DA:1273,0
+DA:1277,0
+DA:1279,0
+DA:1280,0
+DA:1281,0
+DA:1282,0
+DA:1285,0
+DA:1286,0
+DA:1287,0
+DA:1288,0
+DA:1291,0
+DA:1294,0
+DA:1296,0
+DA:1297,0
+DA:1299,0
+DA:1300,0
+DA:1301,0
+DA:1302,0
+DA:1304,0
+DA:1305,0
+DA:1306,0
+DA:1307,0
+DA:1309,0
+DA:1310,0
+DA:1311,0
+DA:1312,0
+DA:1314,0
+BRDA:1270,59,0,0
+BRDA:1270,59,1,0
+BRDA:1279,104,0,0
+BRDA:1279,104,1,0
+BRDA:1285,140,0,0
+BRDA:1285,140,1,0
+FN:344,System.Void WileyWidget.App::.ctor()
+FNDA:0,System.Void WileyWidget.App::.ctor()
+DA:345,0
+DA:346,0
+DA:348,0
+DA:351,0
+DA:353,0
+DA:354,0
+DA:357,0
+DA:358,0
+DA:361,0
+DA:364,0
+DA:365,0
+DA:366,0
+DA:367,0
+DA:368,0
+DA:369,0
+DA:371,0
+DA:372,0
+DA:374,0
+FN:433,System.Void WileyWidget.App/<ConfigureDatabaseServices>d__5::MoveNext()
+FNDA:0,System.Void WileyWidget.App/<ConfigureDatabaseServices>d__5::MoveNext()
+DA:434,0
+DA:436,0
+DA:437,0
+DA:440,0
+DA:441,0
+DA:442,0
+DA:443,0
+DA:444,0
+DA:445,0
+DA:448,0
+DA:449,0
+DA:452,0
+DA:455,0
+DA:458,0
+DA:460,0
+DA:461,0
+DA:462,0
+DA:463,0
+DA:464,0
+DA:467,0
+DA:468,0
+LF:635
+LH:0
+BRF:80
+BRH:0
+FNF:31
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Configuration\LicenseKey.Private.sample.cs
+FN:13,System.Boolean WileyWidget.App::TryRegisterEmbeddedLicense()
+FNDA:0,System.Boolean WileyWidget.App::TryRegisterEmbeddedLicense()
+DA:14,0
+DA:21,0
+DA:22,0
+LF:3
+LH:0
+BRF:0
+BRH:0
+FNF:1
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\obj\Debug\net9.0-windows\App.g.cs
+FN:48,System.Void WileyWidget.App::InitializeComponent()
+FNDA:0,System.Void WileyWidget.App::InitializeComponent()
+DA:49,0
+DA:50,0
+DA:51,0
+DA:53,0
+DA:54,0
+BRDA:50,9,0,0
+BRDA:50,9,1,0
+LF:5
+LH:0
+BRF:2
+BRH:0
+FNF:1
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\App.xaml
+FN:0,System.Void WileyWidget.App::InitializeComponent()
+FNDA:0,System.Void WileyWidget.App::InitializeComponent()
+DA:1,0
+LF:1
+LH:0
+BRF:0
+BRH:0
+FNF:1
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\DatabaseSeeder.cs
+FN:17,System.Void WileyWidget.DatabaseSeeder::Seed()
+FNDA:5,System.Void WileyWidget.DatabaseSeeder::Seed()
+DA:18,5
+DA:20,5
+DA:21,4
+DA:22,4
+DA:23,4
+DA:24,4
+DA:25,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:42,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:51,5
+DA:52,4
+DA:53,4
+DA:54,104
+DA:55,48
+DA:56,48
+DA:57,48
+DA:58,48
+DA:59,48
+DA:60,48
+DA:61,48
+DA:62,48
+DA:63,48
+DA:64,48
+DA:65,48
+DA:66,48
+DA:67,4
+DA:70,5
+DA:71,4
+DA:72,4
+DA:73,4
+DA:74,4
+DA:75,4
+DA:76,4
+DA:77,4
+DA:78,4
+DA:79,4
+DA:80,4
+DA:81,4
+DA:82,4
+DA:83,4
+DA:84,4
+DA:85,4
+DA:86,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:90,4
+DA:91,4
+DA:92,4
+DA:95,5
+DA:96,5
+DA:97,5
+DA:98,5
+DA:99,1
+DA:100,1
+DA:101,1
+DA:102,1
+DA:103,1
+DA:104,1
+DA:105,1
+DA:106,1
+DA:107,1
+DA:108,1
+DA:109,1
+DA:110,1
+DA:111,1
+DA:112,5
+DA:115,5
+DA:116,4
+DA:117,4
+DA:118,4
+DA:119,4
+DA:120,4
+DA:121,4
+DA:122,4
+DA:123,4
+DA:124,4
+DA:125,4
+DA:126,4
+DA:127,4
+DA:128,4
+DA:129,4
+DA:130,4
+DA:131,4
+DA:132,4
+DA:133,4
+DA:134,4
+DA:136,5
+DA:137,5
+BRDA:20,22,0,4
+BRDA:20,22,1,5
+BRDA:51,331,0,4
+BRDA:54,657,1,48
+BRDA:54,657,0,4
+BRDA:51,331,1,5
+BRDA:70,686,0,4
+BRDA:70,686,1,5
+BRDA:95,893,0,5
+BRDA:98,1011,0,1
+BRDA:98,1011,1,5
+BRDA:95,893,1,5
+BRDA:115,1168,0,4
+BRDA:115,1168,1,5
+FN:11,System.Void WileyWidget.DatabaseSeeder::.ctor(WileyWidget.Data.AppDbContext)
+FNDA:6,System.Void WileyWidget.DatabaseSeeder::.ctor(WileyWidget.Data.AppDbContext)
+DA:12,6
+DA:13,6
+DA:14,6
+DA:15,6
+LF:114
+LH:114
+BRF:14
+BRH:14
+FNF:2
+FNH:2
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Views\AboutWindow.xaml.cs
+FN:20,System.Void WileyWidget.AboutWindow::OnClose(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.AboutWindow::OnClose(System.Object,System.Windows.RoutedEventArgs)
+DA:21,0
+FN:10,System.Void WileyWidget.AboutWindow::.ctor()
+FNDA:0,System.Void WileyWidget.AboutWindow::.ctor()
+DA:11,0
+DA:12,0
+DA:13,0
+DA:14,0
+DA:15,0
+DA:16,0
+DA:17,0
+DA:18,0
+BRDA:15,28,0,0
+BRDA:15,28,1,0
+BRDA:15,40,0,0
+BRDA:15,55,0,0
+BRDA:15,55,1,0
+BRDA:15,67,0,0
+BRDA:15,40,1,0
+BRDA:15,67,1,0
+LF:9
+LH:0
+BRF:8
+BRH:0
+FNF:2
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Views\AboutWindow.xaml
+FN:0,System.Void WileyWidget.AboutWindow::InitializeComponent()
+FNDA:0,System.Void WileyWidget.AboutWindow::InitializeComponent()
+DA:1,0
+BRDA:1,9,0,0
+BRDA:1,9,1,0
+FN:15,System.Void WileyWidget.AboutWindow::System.Windows.Markup.IComponentConnector.Connect(System.Int32,System.Object)
+FNDA:0,System.Void WileyWidget.AboutWindow::System.Windows.Markup.IComponentConnector.Connect(System.Int32,System.Object)
+DA:16,0
+BRDA:16,7,0,0
+BRDA:16,7,1,0
+BRDA:16,13,1,0
+BRDA:16,13,0,0
+LF:2
+LH:0
+BRF:6
+BRH:0
+FNF:2
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Views\MainWindow.xaml.cs
+FN:113,System.Void WileyWidget.MainWindow::InitializeSyncfusionControls()
+FNDA:0,System.Void WileyWidget.MainWindow::InitializeSyncfusionControls()
+DA:114,0
+DA:115,0
+DA:118,0
+DA:120,0
+DA:121,0
+DA:122,0
+DA:123,0
+DA:124,0
+DA:125,0
+DA:126,0
+DA:127,0
+DA:129,0
+DA:130,0
+DA:131,0
+DA:134,0
+DA:136,0
+DA:137,0
+DA:138,0
+DA:139,0
+DA:140,0
+DA:141,0
+DA:143,0
+BRDA:121,46,0,0
+BRDA:121,46,1,0
+FN:149,System.Void WileyWidget.MainWindow::LogSyncfusionControls(System.Windows.DependencyObject)
+FNDA:0,System.Void WileyWidget.MainWindow::LogSyncfusionControls(System.Windows.DependencyObject)
+DA:150,0
+DA:151,0
+DA:154,0
+DA:155,0
+DA:156,0
+DA:157,0
+DA:158,0
+DA:159,0
+DA:160,0
+DA:163,0
+DA:164,0
+DA:165,0
+DA:166,0
+DA:167,0
+DA:168,0
+DA:169,0
+DA:170,0
+DA:171,0
+DA:172,0
+DA:173,0
+DA:174,0
+DA:175,0
+DA:176,0
+DA:177,0
+DA:178,0
+DA:179,0
+DA:180,0
+DA:181,0
+DA:182,0
+DA:183,0
+DA:184,0
+DA:187,0
+DA:188,0
+DA:189,0
+DA:190,0
+DA:191,0
+DA:192,0
+BRDA:151,7,1,0
+BRDA:155,28,0,0
+BRDA:155,28,1,0
+BRDA:155,46,0,0
+BRDA:157,70,0,0
+BRDA:157,70,1,0
+BRDA:157,82,0,0
+BRDA:157,82,1,0
+BRDA:157,97,0,0
+BRDA:157,97,1,0
+BRDA:163,134,0,0
+BRDA:163,134,1,0
+BRDA:170,198,0,0
+BRDA:172,219,0,0
+BRDA:172,219,1,0
+BRDA:170,198,1,0
+BRDA:177,261,0,0
+BRDA:177,261,1,0
+BRDA:155,46,1,0
+BRDA:187,347,1,0
+BRDA:151,7,0,0
+BRDA:187,347,0,0
+FN:196,System.Void WileyWidget.MainWindow::BuildDynamicColumns()
+FNDA:0,System.Void WileyWidget.MainWindow::BuildDynamicColumns()
+DA:197,0
+DA:199,0
+DA:200,0
+DA:201,0
+DA:202,0
+DA:205,0
+DA:206,0
+DA:208,0
+DA:209,0
+DA:210,0
+DA:211,0
+DA:212,0
+DA:214,0
+DA:215,0
+DA:216,0
+DA:217,0
+DA:218,0
+DA:219,0
+DA:220,0
+DA:221,0
+DA:222,0
+DA:223,0
+DA:224,0
+DA:225,0
+BRDA:201,15,0,0
+BRDA:201,15,1,0
+BRDA:202,28,0,0
+BRDA:202,28,1,0
+BRDA:202,46,0,0
+BRDA:202,46,1,0
+BRDA:206,78,0,0
+BRDA:206,78,1,0
+BRDA:211,198,1,0
+BRDA:211,198,0,0
+FN:231,System.Void WileyWidget.MainWindow::TryApplyTheme(System.String)
+FNDA:0,System.Void WileyWidget.MainWindow::TryApplyTheme(System.String)
+DA:232,0
+DA:233,0
+DA:234,0
+DA:237,0
+DA:238,0
+DA:239,0
+DA:242,0
+DA:243,0
+DA:244,0
+DA:247,0
+DA:249,0
+DA:250,0
+DA:252,0
+DA:255,0
+DA:256,0
+DA:259,0
+DA:261,0
+DA:262,0
+DA:263,0
+DA:264,0
+DA:265,0
+DA:267,0
+DA:268,0
+DA:269,0
+DA:272,0
+DA:273,0
+DA:275,0
+DA:277,0
+DA:279,0
+DA:280,0
+DA:281,0
+DA:282,0
+DA:283,0
+DA:284,0
+DA:285,0
+DA:286,0
+BRDA:234,19,0,0
+BRDA:234,19,1,0
+BRDA:267,190,0,0
+BRDA:267,190,1,0
+FN:291,System.Void WileyWidget.MainWindow::VerifySyncfusionThemeApplication(System.String)
+FNDA:0,System.Void WileyWidget.MainWindow::VerifySyncfusionThemeApplication(System.String)
+DA:292,0
+DA:293,0
+DA:296,0
+DA:298,0
+DA:299,0
+DA:302,0
+DA:303,0
+DA:304,0
+DA:305,0
+DA:306,0
+DA:308,0
+DA:309,0
+DA:310,0
+DA:313,0
+DA:315,0
+DA:316,0
+DA:317,0
+DA:318,0
+DA:319,0
+DA:320,0
+BRDA:299,27,0,0
+BRDA:299,27,1,0
+BRDA:299,39,0,0
+BRDA:299,39,1,0
+BRDA:302,54,0,0
+BRDA:302,54,1,0
+BRDA:302,73,0,0
+BRDA:304,83,0,0
+BRDA:304,83,1,0
+BRDA:304,95,0,0
+BRDA:304,95,1,0
+BRDA:302,73,1,0
+FN:325,System.Void WileyWidget.MainWindow::VerifySpecificSyncfusionControls(System.String)
+FNDA:0,System.Void WileyWidget.MainWindow::VerifySpecificSyncfusionControls(System.String)
+DA:326,0
+DA:327,0
+DA:330,0
+DA:331,0
+DA:332,0
+DA:333,0
+DA:334,0
+DA:335,0
+DA:337,0
+DA:338,0
+DA:339,0
+DA:342,0
+DA:343,0
+DA:344,0
+DA:345,0
+DA:346,0
+DA:347,0
+DA:348,0
+DA:349,0
+DA:351,0
+DA:352,0
+DA:353,0
+DA:356,0
+DA:357,0
+DA:358,0
+DA:359,0
+DA:360,0
+DA:361,0
+DA:362,0
+DA:364,0
+DA:365,0
+DA:366,0
+DA:367,0
+BRDA:331,35,0,0
+BRDA:334,51,0,0
+BRDA:334,51,1,0
+BRDA:334,63,0,0
+BRDA:334,63,1,0
+BRDA:331,35,1,0
+BRDA:343,118,0,0
+BRDA:346,136,0,0
+BRDA:346,136,1,0
+BRDA:346,149,0,0
+BRDA:346,149,1,0
+BRDA:347,180,0,0
+BRDA:347,180,1,0
+BRDA:343,118,1,0
+BRDA:356,229,0,0
+BRDA:359,252,0,0
+BRDA:359,252,1,0
+BRDA:359,265,0,0
+BRDA:359,265,1,0
+BRDA:356,229,1,0
+FN:372,System.Void WileyWidget.MainWindow::LogCurrentThemeState()
+FNDA:0,System.Void WileyWidget.MainWindow::LogCurrentThemeState()
+DA:373,0
+DA:374,0
+DA:377,0
+DA:379,0
+DA:380,0
+DA:381,0
+DA:382,0
+DA:383,0
+DA:384,0
+DA:385,0
+DA:387,0
+DA:388,0
+DA:389,0
+DA:392,0
+DA:393,0
+DA:396,0
+DA:397,0
+DA:399,0
+DA:400,0
+DA:401,0
+DA:402,0
+DA:403,0
+DA:404,0
+BRDA:380,25,0,0
+BRDA:387,131,0,0
+BRDA:387,131,1,0
+BRDA:380,25,1,0
+BRDA:393,171,0,0
+BRDA:393,171,1,0
+BRDA:393,183,0,0
+BRDA:393,183,1,0
+BRDA:396,218,0,0
+BRDA:396,218,1,0
+BRDA:396,227,0,0
+BRDA:396,227,1,0
+BRDA:396,239,0,0
+BRDA:396,239,1,0
+BRDA:383,7,0,0
+BRDA:383,7,1,0
+BRDA:384,7,0,0
+BRDA:384,7,1,0
+FN:410,System.Void WileyWidget.MainWindow::ApplyWpfTheme(System.String)
+FNDA:0,System.Void WileyWidget.MainWindow::ApplyWpfTheme(System.String)
+DA:411,0
+DA:412,0
+DA:414,0
+DA:415,0
+DA:416,0
+DA:417,0
+DA:418,0
+DA:421,0
+DA:424,0
+DA:425,0
+DA:426,0
+DA:428,0
+DA:429,0
+DA:431,0
+DA:432,0
+DA:433,0
+DA:434,0
+DA:435,0
+DA:436,0
+DA:439,0
+DA:440,0
+DA:441,0
+DA:442,0
+DA:443,0
+DA:444,0
+DA:446,0
+DA:449,0
+DA:450,0
+DA:451,0
+DA:452,0
+DA:454,0
+DA:455,0
+DA:458,0
+DA:459,0
+DA:460,0
+DA:462,0
+DA:463,0
+DA:465,0
+DA:466,0
+DA:467,0
+DA:468,0
+DA:469,0
+DA:472,0
+DA:473,0
+BRDA:415,45,0,0
+BRDA:415,45,1,0
+BRDA:431,236,1,0
+BRDA:433,174,0,0
+BRDA:433,174,1,0
+BRDA:433,186,0,0
+BRDA:433,186,1,0
+BRDA:431,236,0,0
+BRDA:439,279,0,0
+BRDA:439,279,1,0
+BRDA:439,293,1,0
+BRDA:439,293,0,0
+BRDA:425,7,0,0
+BRDA:425,7,1,0
+BRDA:459,7,0,0
+BRDA:459,7,1,0
+FN:475,System.String WileyWidget.MainWindow::NormalizeTheme(System.String)
+FNDA:0,System.String WileyWidget.MainWindow::NormalizeTheme(System.String)
+DA:476,0
+DA:477,0
+DA:478,0
+DA:479,0
+DA:480,0
+DA:481,0
+DA:482,0
+DA:483,0
+DA:484,0
+DA:485,0
+BRDA:477,9,0,0
+BRDA:477,9,1,0
+BRDA:479,52,0,0
+BRDA:479,52,1,0
+BRDA:479,65,1,0
+BRDA:479,65,0,0
+FN:488,System.Void WileyWidget.MainWindow::OnFluentDark(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::OnFluentDark(System.Object,System.Windows.RoutedEventArgs)
+DA:489,0
+DA:490,0
+DA:492,0
+DA:493,0
+DA:494,0
+DA:496,0
+DA:498,0
+DA:499,0
+DA:501,0
+DA:502,0
+DA:504,0
+DA:505,0
+DA:506,0
+DA:507,0
+BRDA:490,17,0,0
+BRDA:490,17,1,0
+FN:510,System.Void WileyWidget.MainWindow::OnFluentLight(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::OnFluentLight(System.Object,System.Windows.RoutedEventArgs)
+DA:511,0
+DA:512,0
+DA:514,0
+DA:515,0
+DA:516,0
+DA:518,0
+DA:520,0
+DA:521,0
+DA:523,0
+DA:524,0
+DA:526,0
+DA:527,0
+DA:528,0
+DA:529,0
+BRDA:512,17,0,0
+BRDA:512,17,1,0
+FN:531,System.Void WileyWidget.MainWindow::UpdateThemeToggleVisuals()
+FNDA:0,System.Void WileyWidget.MainWindow::UpdateThemeToggleVisuals()
+DA:532,0
+DA:533,0
+DA:535,0
+DA:536,0
+DA:539,0
+DA:540,0
+DA:542,0
+DA:543,0
+DA:545,0
+DA:546,0
+DA:547,0
+DA:548,0
+DA:550,0
+DA:551,0
+DA:553,0
+DA:554,0
+DA:555,0
+DA:557,0
+DA:558,0
+DA:559,0
+DA:561,0
+DA:562,0
+DA:563,0
+DA:564,0
+DA:566,0
+DA:567,0
+DA:569,0
+DA:570,0
+DA:571,0
+DA:573,0
+DA:574,0
+DA:575,0
+DA:577,0
+DA:578,0
+BRDA:545,105,0,0
+BRDA:548,126,0,0
+BRDA:548,126,1,0
+BRDA:551,169,0,0
+BRDA:551,169,1,0
+BRDA:553,229,0,0
+BRDA:553,229,1,0
+BRDA:553,247,0,0
+BRDA:553,247,1,0
+BRDA:553,259,0,0
+BRDA:553,259,1,0
+BRDA:545,105,1,0
+BRDA:561,298,0,0
+BRDA:564,319,0,0
+BRDA:564,319,1,0
+BRDA:567,362,0,0
+BRDA:567,362,1,0
+BRDA:569,422,0,0
+BRDA:569,422,1,0
+BRDA:569,440,0,0
+BRDA:569,440,1,0
+BRDA:569,452,0,0
+BRDA:569,452,1,0
+BRDA:561,298,1,0
+FN:580,System.Void WileyWidget.MainWindow::OnAbout(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::OnAbout(System.Object,System.Windows.RoutedEventArgs)
+DA:581,0
+DA:582,0
+DA:583,0
+DA:584,0
+FN:590,System.Void WileyWidget.MainWindow::RestoreWindowState()
+FNDA:0,System.Void WileyWidget.MainWindow::RestoreWindowState()
+DA:591,0
+DA:592,0
+DA:594,0
+DA:596,0
+DA:597,0
+DA:599,0
+DA:600,0
+DA:601,0
+DA:602,0
+DA:603,0
+DA:605,0
+DA:606,0
+DA:607,0
+DA:609,0
+DA:610,0
+DA:611,0
+DA:612,0
+DA:613,0
+DA:615,0
+DA:616,0
+DA:617,0
+DA:619,0
+DA:620,0
+DA:621,0
+DA:622,0
+DA:623,0
+DA:625,0
+DA:626,0
+DA:627,0
+DA:629,0
+DA:630,0
+DA:631,0
+DA:632,0
+DA:633,0
+DA:635,0
+DA:636,0
+DA:637,0
+DA:639,0
+DA:640,0
+BRDA:599,126,0,0
+BRDA:599,126,1,0
+BRDA:609,199,0,0
+BRDA:609,199,1,0
+BRDA:619,274,0,0
+BRDA:619,274,1,0
+BRDA:629,349,0,0
+BRDA:629,349,1,0
+FN:645,System.Void WileyWidget.MainWindow::ApplyMaximized()
+FNDA:0,System.Void WileyWidget.MainWindow::ApplyMaximized()
+DA:646,0
+DA:647,0
+DA:649,0
+DA:650,0
+DA:652,0
+DA:653,0
+DA:655,0
+DA:656,0
+DA:657,0
+DA:658,0
+DA:659,0
+DA:661,0
+DA:662,0
+DA:663,0
+DA:665,0
+DA:666,0
+BRDA:655,59,0,0
+BRDA:655,59,1,0
+FN:671,System.Void WileyWidget.MainWindow::PersistWindowState()
+FNDA:0,System.Void WileyWidget.MainWindow::PersistWindowState()
+DA:672,0
+DA:673,0
+DA:675,0
+DA:677,0
+DA:678,0
+DA:680,0
+DA:681,0
+DA:683,0
+DA:684,0
+DA:685,0
+DA:686,0
+DA:687,0
+DA:688,0
+DA:690,0
+DA:691,0
+DA:692,0
+DA:694,0
+DA:695,0
+DA:696,0
+DA:698,0
+DA:699,0
+DA:701,0
+DA:702,0
+BRDA:683,75,0,0
+BRDA:683,75,1,0
+FN:708,System.Void WileyWidget.MainWindow::InitializeBudgetDiagram()
+FNDA:0,System.Void WileyWidget.MainWindow::InitializeBudgetDiagram()
+DA:709,0
+DA:710,0
+DA:711,0
+DA:712,0
+DA:715,0
+DA:716,0
+DA:717,0
+DA:719,0
+DA:720,0
+DA:722,0
+DA:723,0
+DA:724,0
+DA:725,0
+DA:726,0
+DA:727,0
+DA:730,0
+DA:731,0
+DA:734,0
+DA:735,0
+DA:737,0
+DA:740,0
+DA:741,0
+DA:742,0
+DA:744,0
+DA:745,0
+DA:747,0
+DA:748,0
+DA:749,0
+DA:750,0
+DA:752,0
+DA:753,0
+DA:754,0
+DA:755,0
+DA:756,0
+DA:757,0
+DA:758,0
+DA:759,0
+DA:761,0
+DA:762,0
+DA:764,0
+DA:765,0
+DA:767,0
+DA:768,0
+DA:769,0
+DA:770,0
+DA:771,0
+DA:772,0
+DA:773,0
+DA:775,0
+DA:776,0
+DA:779,0
+DA:780,0
+DA:782,0
+DA:783,0
+DA:784,0
+DA:785,0
+DA:786,0
+DA:788,0
+DA:789,0
+DA:790,0
+DA:791,0
+DA:793,0
+DA:794,0
+DA:795,0
+DA:796,0
+DA:797,0
+DA:799,0
+DA:800,0
+DA:803,0
+DA:804,0
+DA:805,0
+DA:806,0
+DA:807,0
+DA:808,0
+DA:811,0
+DA:812,0
+DA:814,0
+DA:815,0
+DA:816,0
+DA:817,0
+DA:818,0
+DA:820,0
+DA:821,0
+DA:822,0
+DA:823,0
+DA:824,0
+DA:826,0
+DA:827,0
+DA:828,0
+DA:829,0
+DA:830,0
+DA:832,0
+DA:833,0
+DA:835,0
+DA:836,0
+DA:839,0
+DA:840,0
+DA:842,0
+DA:843,0
+DA:844,0
+DA:845,0
+DA:846,0
+DA:847,0
+DA:848,0
+DA:849,0
+DA:850,0
+BRDA:722,81,0,0
+BRDA:722,81,1,0
+BRDA:722,94,0,0
+BRDA:722,94,1,0
+BRDA:734,184,0,0
+BRDA:734,184,1,0
+BRDA:735,207,0,0
+BRDA:735,207,1,0
+BRDA:747,725,1,0
+BRDA:761,550,0,0
+BRDA:761,550,1,0
+BRDA:764,596,0,0
+BRDA:764,596,1,0
+BRDA:764,617,0,0
+BRDA:764,617,1,0
+BRDA:768,688,0,0
+BRDA:768,688,1,0
+BRDA:747,725,0,0
+BRDA:783,1338,1,0
+BRDA:788,895,0,0
+BRDA:793,935,0,0
+BRDA:793,935,1,0
+BRDA:793,966,0,0
+BRDA:793,966,1,0
+BRDA:799,1003,0,0
+BRDA:811,1117,0,0
+BRDA:811,1117,1,0
+BRDA:814,1154,0,0
+BRDA:814,1154,1,0
+BRDA:814,1166,0,0
+BRDA:814,1166,1,0
+BRDA:814,1183,0,0
+BRDA:814,1183,1,0
+BRDA:814,1199,0,0
+BRDA:814,1199,1,0
+BRDA:814,1211,0,0
+BRDA:814,1211,1,0
+BRDA:814,1228,0,0
+BRDA:814,1228,1,0
+BRDA:799,1003,1,0
+BRDA:788,895,1,0
+BRDA:783,1338,0,0
+BRDA:832,1370,0,0
+BRDA:832,1370,1,0
+BRDA:833,1395,0,0
+BRDA:833,1395,1,0
+FN:855,System.Void WileyWidget.MainWindow::OnBudgetInteractionsLoaded()
+FNDA:0,System.Void WileyWidget.MainWindow::OnBudgetInteractionsLoaded()
+DA:856,0
+DA:857,0
+DA:858,0
+FN:1040,System.Void WileyWidget.MainWindow::OnLoadSettings(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::OnLoadSettings(System.Object,System.Windows.RoutedEventArgs)
+DA:1041,0
+DA:1043,0
+DA:1044,0
+DA:1047,0
+DA:1048,0
+DA:1049,0
+DA:1050,0
+DA:1051,0
+DA:1052,0
+DA:1055,0
+DA:1056,0
+DA:1057,0
+DA:1059,0
+DA:1060,0
+DA:1061,0
+DA:1063,0
+DA:1064,0
+DA:1065,0
+DA:1066,0
+DA:1069,0
+DA:1070,0
+DA:1071,0
+DA:1072,0
+DA:1073,0
+DA:1074,0
+DA:1077,0
+DA:1078,0
+DA:1079,0
+DA:1080,0
+DA:1082,0
+DA:1083,0
+DA:1084,0
+DA:1085,0
+DA:1086,0
+DA:1087,0
+DA:1088,0
+DA:1089,0
+DA:1090,0
+BRDA:1047,45,0,0
+BRDA:1047,45,1,0
+BRDA:1056,113,0,0
+BRDA:1056,113,1,0
+BRDA:1069,242,0,0
+BRDA:1069,242,1,0
+FN:1095,System.Void WileyWidget.MainWindow::OnApplyTheme(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::OnApplyTheme(System.Object,System.Windows.RoutedEventArgs)
+DA:1096,0
+DA:1098,0
+DA:1099,0
+DA:1100,0
+DA:1101,0
+DA:1102,0
+DA:1103,0
+DA:1104,0
+DA:1105,0
+DA:1106,0
+DA:1107,0
+DA:1108,0
+DA:1109,0
+DA:1110,0
+DA:1111,0
+DA:1112,0
+DA:1113,0
+BRDA:1099,25,0,0
+BRDA:1099,25,1,0
+FN:1118,System.Void WileyWidget.MainWindow::OnRemoveApiKey(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::OnRemoveApiKey(System.Object,System.Windows.RoutedEventArgs)
+DA:1119,0
+DA:1121,0
+DA:1122,0
+DA:1123,0
+DA:1124,0
+DA:1125,0
+DA:1126,0
+DA:1128,0
+DA:1129,0
+DA:1130,0
+DA:1132,0
+DA:1133,0
+DA:1135,0
+DA:1136,0
+DA:1137,0
+DA:1140,0
+DA:1141,0
+DA:1142,0
+DA:1144,0
+DA:1145,0
+DA:1146,0
+DA:1148,0
+DA:1149,0
+DA:1150,0
+DA:1151,0
+DA:1152,0
+DA:1153,0
+DA:1154,0
+DA:1155,0
+DA:1156,0
+DA:1157,0
+DA:1158,0
+DA:1159,0
+BRDA:1128,27,0,0
+BRDA:1132,47,0,0
+BRDA:1132,47,1,0
+BRDA:1128,27,1,0
+FN:1164,System.Void WileyWidget.MainWindow::OnShowApiKeyInfo(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::OnShowApiKeyInfo(System.Object,System.Windows.RoutedEventArgs)
+DA:1165,0
+DA:1167,0
+DA:1168,0
+DA:1170,0
+DA:1171,0
+DA:1172,0
+DA:1173,0
+DA:1174,0
+DA:1175,0
+DA:1176,0
+DA:1177,0
+DA:1179,0
+DA:1180,0
+DA:1181,0
+DA:1182,0
+DA:1183,0
+DA:1184,0
+DA:1185,0
+DA:1186,0
+BRDA:1173,72,0,0
+BRDA:1173,72,1,0
+BRDA:1174,134,0,0
+BRDA:1174,134,1,0
+BRDA:1175,196,0,0
+BRDA:1175,196,1,0
+BRDA:1177,265,0,0
+BRDA:1177,265,1,0
+FN:1191,System.Void WileyWidget.MainWindow::OnOpenApiGuide(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::OnOpenApiGuide(System.Object,System.Windows.RoutedEventArgs)
+DA:1192,0
+DA:1194,0
+DA:1195,0
+DA:1197,0
+DA:1198,0
+DA:1200,0
+DA:1201,0
+DA:1202,0
+DA:1203,0
+DA:1204,0
+DA:1205,0
+DA:1207,0
+DA:1208,0
+DA:1209,0
+DA:1210,0
+DA:1211,0
+DA:1212,0
+DA:1213,0
+DA:1214,0
+DA:1215,0
+DA:1216,0
+BRDA:1197,36,0,0
+BRDA:1197,36,1,0
+FN:1225,System.Void WileyWidget.MainWindow::UpdateStatus(System.String,System.String)
+FNDA:0,System.Void WileyWidget.MainWindow::UpdateStatus(System.String,System.String)
+DA:1226,0
+DA:1227,0
+DA:1228,0
+DA:1229,0
+DA:1230,0
+DA:1231,0
+DA:1233,0
+DA:1234,0
+DA:1235,0
+DA:1236,0
+DA:1237,0
+BRDA:1227,12,0,0
+BRDA:1227,12,1,0
+BRDA:1233,68,0,0
+BRDA:1233,68,1,0
+FN:93,System.Void WileyWidget.MainWindow::<.ctor>b__2_0(System.Object,System.Windows.RoutedEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::<.ctor>b__2_0(System.Object,System.Windows.RoutedEventArgs)
+DA:94,0
+FN:94,System.Void WileyWidget.MainWindow::<.ctor>b__2_1(System.Object,System.ComponentModel.CancelEventArgs)
+FNDA:0,System.Void WileyWidget.MainWindow::<.ctor>b__2_1(System.Object,System.ComponentModel.CancelEventArgs)
+DA:95,0
+FN:64,System.Void WileyWidget.MainWindow::.ctor()
+FNDA:0,System.Void WileyWidget.MainWindow::.ctor()
+DA:65,0
+DA:66,0
+DA:67,0
+DA:70,0
+DA:71,0
+DA:72,0
+DA:73,0
+DA:75,0
+DA:76,0
+DA:77,0
+DA:79,0
+DA:80,0
+DA:81,0
+DA:83,0
+DA:84,0
+DA:86,0
+DA:87,0
+DA:88,0
+DA:89,0
+DA:90,0
+DA:92,0
+DA:93,0
+DA:97,0
+DA:98,0
+DA:100,0
+DA:101,0
+DA:102,0
+DA:103,0
+DA:104,0
+DA:105,0
+DA:107,0
+BRDA:83,133,0,0
+BRDA:83,133,1,0
+BRDA:86,176,0,0
+BRDA:86,176,1,0
+FN:954,System.Void WileyWidget.MainWindow/<OnSaveSettings>d__23::MoveNext()
+FNDA:0,System.Void WileyWidget.MainWindow/<OnSaveSettings>d__23::MoveNext()
+DA:955,0
+DA:957,0
+DA:958,0
+DA:961,0
+DA:962,0
+DA:963,0
+DA:964,0
+DA:965,0
+DA:966,0
+DA:969,0
+DA:970,0
+DA:971,0
+DA:973,0
+DA:974,0
+DA:975,0
+DA:977,0
+DA:978,0
+DA:980,0
+DA:981,0
+DA:982,0
+DA:983,0
+DA:984,0
+DA:985,0
+DA:987,0
+DA:988,0
+DA:989,0
+DA:990,0
+DA:992,0
+DA:993,0
+DA:994,0
+DA:996,0
+DA:997,0
+DA:1000,0
+DA:1001,0
+DA:1002,0
+DA:1003,0
+DA:1006,0
+DA:1007,0
+DA:1008,0
+DA:1009,0
+DA:1011,0
+DA:1012,0
+DA:1013,0
+DA:1014,0
+DA:1016,0
+DA:1017,0
+DA:1018,0
+DA:1019,0
+DA:1021,0
+DA:1022,0
+DA:1023,0
+DA:1024,0
+DA:1026,0
+DA:1027,0
+DA:1028,0
+DA:1029,0
+DA:1030,0
+DA:1031,0
+DA:1032,0
+DA:1033,0
+DA:1034,0
+DA:1035,0
+BRDA:961,109,0,0
+BRDA:961,109,1,0
+BRDA:970,214,0,0
+BRDA:974,357,0,0
+BRDA:974,357,1,0
+BRDA:987,515,0,0
+BRDA:987,515,1,0
+BRDA:970,214,1,0
+BRDA:1000,704,0,0
+BRDA:1000,704,1,0
+BRDA:1006,767,0,0
+BRDA:1006,767,1,0
+BRDA:1011,820,0,0
+BRDA:1011,820,1,0
+BRDA:1016,873,0,0
+BRDA:1016,873,1,0
+BRDA:1021,926,0,0
+BRDA:1021,926,1,0
+FN:865,System.Void WileyWidget.MainWindow/<OnTestApiKey>d__21::MoveNext()
+FNDA:0,System.Void WileyWidget.MainWindow/<OnTestApiKey>d__21::MoveNext()
+DA:866,0
+DA:868,0
+DA:869,0
+DA:870,0
+DA:871,0
+DA:872,0
+DA:873,0
+DA:876,0
+DA:879,0
+DA:881,0
+DA:882,0
+DA:883,0
+DA:884,0
+DA:887,0
+DA:888,0
+DA:889,0
+DA:890,0
+DA:891,0
+DA:893,0
+DA:894,0
+DA:895,0
+DA:896,0
+DA:897,0
+DA:899,0
+DA:900,0
+DA:901,0
+DA:902,0
+DA:903,0
+DA:904,0
+DA:905,0
+DA:906,0
+DA:907,0
+DA:908,0
+DA:909,0
+BRDA:870,74,0,0
+BRDA:870,74,1,0
+BRDA:881,259,0,0
+BRDA:893,335,0,0
+BRDA:893,335,1,0
+BRDA:881,259,1,0
+FN:914,System.Void WileyWidget.MainWindow/<SaveApiKeySecurely>d__22::MoveNext()
+FNDA:0,System.Void WileyWidget.MainWindow/<SaveApiKeySecurely>d__22::MoveNext()
+DA:915,0
+DA:917,0
+DA:918,0
+DA:921,0
+DA:923,0
+DA:924,0
+DA:926,0
+DA:927,0
+DA:928,0
+DA:930,0
+DA:931,0
+DA:934,0
+DA:935,0
+DA:937,0
+DA:938,0
+DA:939,0
+DA:940,0
+DA:941,0
+DA:942,0
+DA:943,0
+DA:944,0
+DA:945,0
+DA:946,0
+DA:948,0
+DA:949,0
+BRDA:923,72,0,0
+BRDA:923,72,1,0
+LF:795
+LH:0
+BRF:252
+BRH:0
+FNF:30
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Views\MainWindow.xaml
+FN:0,System.Void WileyWidget.MainWindow::InitializeComponent()
+FNDA:0,System.Void WileyWidget.MainWindow::InitializeComponent()
+DA:1,0
+BRDA:1,9,0,0
+BRDA:1,9,1,0
+FN:27,System.Void WileyWidget.MainWindow::System.Windows.Markup.IComponentConnector.Connect(System.Int32,System.Object)
+FNDA:0,System.Void WileyWidget.MainWindow::System.Windows.Markup.IComponentConnector.Connect(System.Int32,System.Object)
+DA:28,0
+DA:29,0
+DA:39,0
+DA:257,0
+DA:302,0
+DA:305,0
+DA:308,0
+DA:311,0
+DA:314,0
+DA:338,0
+BRDA:28,8,1,0
+BRDA:28,8,2,0
+BRDA:28,8,3,0
+BRDA:28,8,4,0
+BRDA:28,8,5,0
+BRDA:28,8,6,0
+BRDA:28,8,7,0
+BRDA:28,8,8,0
+BRDA:28,8,9,0
+BRDA:28,8,10,0
+BRDA:28,8,11,0
+BRDA:28,8,12,0
+BRDA:28,8,13,0
+BRDA:28,8,14,0
+BRDA:28,8,15,0
+BRDA:28,8,16,0
+BRDA:28,8,17,0
+BRDA:28,8,18,0
+BRDA:28,8,19,0
+BRDA:28,8,20,0
+BRDA:28,8,21,0
+BRDA:28,8,22,0
+BRDA:28,8,23,0
+BRDA:28,8,0,0
+LF:11
+LH:0
+BRF:26
+BRH:0
+FNF:2
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\ViewModels\EnterpriseViewModel.cs
+FN:29,System.Collections.ObjectModel.ObservableCollection`1<WileyWidget.Models.Enterprise> WileyWidget.ViewModels.EnterpriseViewModel::get_Enterprises()
+FNDA:18,System.Collections.ObjectModel.ObservableCollection`1<WileyWidget.Models.Enterprise> WileyWidget.ViewModels.EnterpriseViewModel::get_Enterprises()
+DA:30,18
+FN:218,System.String WileyWidget.ViewModels.EnterpriseViewModel::GetBudgetSummary()
+FNDA:0,System.String WileyWidget.ViewModels.EnterpriseViewModel::GetBudgetSummary()
+DA:219,0
+DA:220,0
+DA:221,0
+DA:223,0
+DA:224,0
+DA:225,0
+DA:226,0
+DA:227,0
+DA:229,0
+DA:230,0
+DA:231,0
+DA:232,0
+DA:233,0
+DA:234,0
+DA:235,0
+BRDA:220,19,0,0
+BRDA:220,19,1,0
+BRDA:229,411,0,0
+BRDA:229,411,1,0
+FN:240,System.Void WileyWidget.ViewModels.EnterpriseViewModel::CalculateBudgetMetrics()
+FNDA:0,System.Void WileyWidget.ViewModels.EnterpriseViewModel::CalculateBudgetMetrics()
+DA:241,0
+DA:242,0
+DA:243,0
+DA:244,0
+DA:245,0
+DA:248,0
+DA:249,0
+DA:250,0
+DA:251,0
+DA:252,0
+DA:253,0
+DA:255,0
+DA:256,0
+DA:257,0
+DA:258,0
+BRDA:242,17,0,0
+BRDA:242,17,1,0
+FN:324,System.Void WileyWidget.ViewModels.EnterpriseViewModel::Dispose()
+FNDA:11,System.Void WileyWidget.ViewModels.EnterpriseViewModel::Dispose()
+DA:325,11
+DA:326,11
+DA:327,11
+DA:328,11
+FN:330,System.Void WileyWidget.ViewModels.EnterpriseViewModel::Dispose(System.Boolean)
+FNDA:11,System.Void WileyWidget.ViewModels.EnterpriseViewModel::Dispose(System.Boolean)
+DA:331,11
+DA:332,11
+DA:333,11
+DA:334,11
+DA:335,11
+DA:336,11
+DA:337,11
+DA:338,11
+DA:339,11
+DA:340,11
+BRDA:332,12,0,11
+BRDA:334,18,0,11
+BRDA:336,28,0,11
+BRDA:336,28,1,0
+BRDA:334,18,1,11
+BRDA:332,12,1,11
+FN:47,System.Void WileyWidget.ViewModels.EnterpriseViewModel::.ctor(WileyWidget.Data.IEnterpriseRepository)
+FNDA:11,System.Void WileyWidget.ViewModels.EnterpriseViewModel::.ctor(WileyWidget.Data.IEnterpriseRepository)
+DA:48,11
+DA:54,11
+DA:59,11
+DA:60,11
+DA:61,11
+DA:62,11
+DA:63,11
+DA:67,11
+DA:69,11
+DA:70,11
+DA:71,11
+DA:72,11
+DA:73,11
+DA:74,11
+DA:76,11
+DA:77,0
+DA:78,0
+DA:79,11
+DA:80,11
+DA:81,11
+DA:82,11
+DA:83,11
+DA:84,11
+BRDA:61,45,0,0
+BRDA:61,45,1,11
+FN:147,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<AddEnterpriseAsync>d__13::MoveNext()
+FNDA:1,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<AddEnterpriseAsync>d__13::MoveNext()
+DA:148,1
+DA:150,1
+DA:151,1
+DA:152,1
+DA:153,1
+DA:154,1
+DA:155,1
+DA:156,1
+DA:157,1
+DA:158,1
+DA:160,1
+DA:161,1
+DA:162,1
+DA:163,1
+DA:164,0
+DA:165,0
+DA:167,0
+DA:168,0
+DA:169,1
+FN:195,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<DeleteEnterpriseAsync>d__15::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<DeleteEnterpriseAsync>d__15::MoveNext()
+DA:196,0
+DA:197,0
+DA:200,0
+DA:201,0
+DA:202,0
+DA:203,0
+DA:204,0
+DA:205,0
+DA:206,0
+DA:207,0
+DA:208,0
+DA:209,0
+DA:211,0
+DA:212,0
+DA:213,0
+BRDA:197,31,0,0
+BRDA:197,31,1,0
+BRDA:202,196,0,0
+BRDA:202,196,1,0
+FN:299,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<ExportForCpaAsync>d__19::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<ExportForCpaAsync>d__19::MoveNext()
+DA:300,0
+DA:302,0
+DA:304,0
+DA:305,0
+DA:306,0
+DA:307,0
+DA:308,0
+DA:311,0
+DA:313,0
+DA:314,0
+DA:315,0
+DA:316,0
+DA:317,0
+DA:318,0
+DA:319,0
+FN:263,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<GenerateBudgetInsightsAsync>d__18::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<GenerateBudgetInsightsAsync>d__18::MoveNext()
+DA:264,0
+DA:265,0
+DA:266,0
+DA:267,0
+DA:271,0
+DA:272,0
+DA:273,0
+DA:276,0
+DA:277,0
+DA:278,0
+DA:279,0
+DA:282,0
+DA:284,0
+DA:285,0
+DA:286,0
+DA:287,0
+DA:288,0
+DA:290,0
+DA:292,0
+DA:293,0
+DA:294,0
+BRDA:276,341,1,0
+BRDA:276,341,0,0
+FN:90,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<LoadEnterprisesAsync>d__11::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<LoadEnterprisesAsync>d__11::MoveNext()
+DA:91,0
+DA:93,0
+DA:94,0
+DA:95,0
+DA:97,0
+DA:99,0
+DA:100,0
+DA:101,0
+DA:102,0
+DA:103,0
+DA:104,0
+DA:105,0
+DA:108,0
+DA:109,0
+DA:111,0
+DA:112,0
+DA:113,0
+DA:114,0
+DA:115,0
+DA:117,0
+DA:119,0
+DA:120,0
+DA:121,0
+DA:122,0
+BRDA:100,378,1,0
+BRDA:100,378,0,0
+FN:175,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<SaveEnterpriseAsync>d__14::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<SaveEnterpriseAsync>d__14::MoveNext()
+DA:176,0
+DA:177,0
+DA:180,0
+DA:182,0
+DA:183,0
+DA:184,0
+DA:185,0
+DA:187,0
+DA:188,0
+DA:189,0
+BRDA:177,31,0,0
+BRDA:177,31,1,0
+FN:127,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<SaveEnterprisesAsync>d__12::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.EnterpriseViewModel/<SaveEnterprisesAsync>d__12::MoveNext()
+DA:128,0
+DA:130,0
+DA:131,0
+DA:132,0
+DA:133,0
+DA:134,0
+DA:135,0
+DA:136,0
+DA:137,0
+DA:138,0
+DA:139,0
+DA:140,0
+DA:141,0
+BRDA:131,209,1,0
+BRDA:131,209,0,0
+LF:185
+LH:51
+BRF:26
+BRH:6
+FNF:13
+FNH:5
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\ViewModels\MainViewModel.cs
+FN:65,System.Collections.ObjectModel.ObservableCollection`1<WileyWidget.Models.Enterprise> WileyWidget.ViewModels.MainViewModel::get_Enterprises()
+FNDA:6,System.Collections.ObjectModel.ObservableCollection`1<WileyWidget.Models.Enterprise> WileyWidget.ViewModels.MainViewModel::get_Enterprises()
+DA:66,6
+BRDA:66,7,0,0
+BRDA:66,7,1,6
+BRDA:66,19,0,0
+BRDA:66,19,1,6
+FN:68,WileyWidget.Models.Enterprise WileyWidget.ViewModels.MainViewModel::get_SelectedEnterprise()
+FNDA:0,WileyWidget.Models.Enterprise WileyWidget.ViewModels.MainViewModel::get_SelectedEnterprise()
+DA:69,0
+BRDA:69,7,0,0
+BRDA:69,7,1,0
+FN:70,System.Void WileyWidget.ViewModels.MainViewModel::set_SelectedEnterprise(WileyWidget.Models.Enterprise)
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel::set_SelectedEnterprise(WileyWidget.Models.Enterprise)
+DA:71,0
+DA:72,0
+DA:73,0
+DA:74,0
+BRDA:72,12,0,0
+BRDA:72,12,1,0
+FN:77,System.Collections.ObjectModel.ObservableCollection`1<WileyWidget.Models.BudgetInteraction> WileyWidget.ViewModels.MainViewModel::get_BudgetInteractions()
+FNDA:11,System.Collections.ObjectModel.ObservableCollection`1<WileyWidget.Models.BudgetInteraction> WileyWidget.ViewModels.MainViewModel::get_BudgetInteractions()
+DA:78,11
+FN:79,WileyWidget.Models.BudgetInsights WileyWidget.ViewModels.MainViewModel::get_BudgetInsights()
+FNDA:0,WileyWidget.Models.BudgetInsights WileyWidget.ViewModels.MainViewModel::get_BudgetInsights()
+DA:80,0
+BRDA:80,7,0,0
+BRDA:80,7,1,0
+BRDA:80,19,0,0
+BRDA:80,19,1,0
+FN:86,System.Collections.ObjectModel.ObservableCollection`1<WileyWidget.Models.Widget> WileyWidget.ViewModels.MainViewModel::get_Widgets()
+FNDA:102,System.Collections.ObjectModel.ObservableCollection`1<WileyWidget.Models.Widget> WileyWidget.ViewModels.MainViewModel::get_Widgets()
+DA:87,102
+FN:93,System.Collections.ObjectModel.ObservableCollection`1<Intuit.Ipp.Data.Customer> WileyWidget.ViewModels.MainViewModel::get_QuickBooksCustomers()
+FNDA:12,System.Collections.ObjectModel.ObservableCollection`1<Intuit.Ipp.Data.Customer> WileyWidget.ViewModels.MainViewModel::get_QuickBooksCustomers()
+DA:94,12
+FN:96,System.Collections.ObjectModel.ObservableCollection`1<Intuit.Ipp.Data.Invoice> WileyWidget.ViewModels.MainViewModel::get_QuickBooksInvoices()
+FNDA:12,System.Collections.ObjectModel.ObservableCollection`1<Intuit.Ipp.Data.Invoice> WileyWidget.ViewModels.MainViewModel::get_QuickBooksInvoices()
+DA:97,12
+FN:104,System.Void WileyWidget.ViewModels.MainViewModel::SelectNext()
+FNDA:3,System.Void WileyWidget.ViewModels.MainViewModel::SelectNext()
+DA:105,3
+DA:106,3
+DA:107,1
+DA:108,1
+DA:109,1
+DA:112,2
+DA:113,0
+DA:114,0
+DA:115,0
+DA:116,0
+DA:117,0
+DA:120,2
+DA:121,2
+DA:122,2
+DA:124,2
+DA:125,2
+DA:126,3
+BRDA:106,17,0,1
+BRDA:106,17,1,2
+BRDA:112,47,0,0
+BRDA:112,47,1,2
+FN:133,System.Void WileyWidget.ViewModels.MainViewModel::AddWidget()
+FNDA:1,System.Void WileyWidget.ViewModels.MainViewModel::AddWidget()
+DA:134,1
+DA:135,1
+DA:136,1
+DA:137,1
+DA:139,1
+DA:140,1
+DA:141,1
+DA:142,1
+DA:143,1
+DA:144,1
+DA:145,1
+DA:147,1
+DA:148,1
+DA:150,1
+DA:151,1
+DA:152,1
+DA:153,1
+BRDA:135,12,0,1
+BRDA:135,12,1,0
+BRDA:136,47,0,0
+BRDA:136,47,1,1
+FN:197,System.Void WileyWidget.ViewModels.MainViewModel::InitializeDefaultWidgets()
+FNDA:11,System.Void WileyWidget.ViewModels.MainViewModel::InitializeDefaultWidgets()
+DA:198,11
+DA:199,11
+DA:200,11
+DA:201,11
+DA:202,11
+DA:203,11
+DA:205,11
+DA:206,11
+DA:207,11
+DA:208,11
+BRDA:199,17,0,11
+BRDA:199,17,1,11
+FN:402,System.Void WileyWidget.ViewModels.MainViewModel::TestConfigurationAsync()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel::TestConfigurationAsync()
+DA:403,0
+DA:405,0
+DA:406,0
+DA:407,0
+DA:409,0
+DA:411,0
+DA:412,0
+DA:413,0
+DA:414,0
+DA:416,0
+DA:417,0
+DA:418,0
+DA:419,0
+DA:420,0
+DA:421,0
+DA:422,0
+DA:423,0
+DA:424,0
+BRDA:407,25,0,0
+BRDA:407,25,1,0
+BRDA:411,60,0,0
+BRDA:411,60,1,0
+FN:459,System.Void WileyWidget.ViewModels.MainViewModel::RefreshDiagram()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel::RefreshDiagram()
+DA:460,0
+DA:461,0
+DA:464,0
+DA:465,0
+DA:466,0
+FN:474,System.String WileyWidget.ViewModels.MainViewModel::get_BudgetSummary()
+FNDA:0,System.String WileyWidget.ViewModels.MainViewModel::get_BudgetSummary()
+DA:475,0
+DA:476,0
+DA:477,0
+DA:478,0
+DA:479,0
+BRDA:476,8,0,0
+BRDA:476,8,1,0
+BRDA:476,20,0,0
+BRDA:476,20,1,0
+FN:625,System.Void WileyWidget.ViewModels.MainViewModel::ExportForCpa()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel::ExportForCpa()
+DA:626,0
+DA:627,0
+DA:628,0
+DA:629,0
+DA:630,0
+DA:631,0
+BRDA:627,12,0,0
+BRDA:627,12,1,0
+FN:636,System.Void WileyWidget.ViewModels.MainViewModel::Dispose()
+FNDA:11,System.Void WileyWidget.ViewModels.MainViewModel::Dispose()
+DA:637,11
+DA:638,11
+DA:639,11
+DA:640,11
+FN:646,System.Void WileyWidget.ViewModels.MainViewModel::Dispose(System.Boolean)
+FNDA:11,System.Void WileyWidget.ViewModels.MainViewModel::Dispose(System.Boolean)
+DA:647,11
+DA:648,11
+DA:649,11
+DA:651,11
+DA:652,11
+DA:653,11
+DA:654,11
+DA:655,11
+BRDA:648,4,0,11
+BRDA:651,14,0,0
+BRDA:651,14,1,11
+BRDA:652,32,0,0
+BRDA:652,32,1,11
+BRDA:653,50,0,0
+BRDA:653,50,1,11
+BRDA:648,4,1,11
+FN:660,System.Void WileyWidget.ViewModels.MainViewModel::Finalize()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel::Finalize()
+DA:661,0
+DA:662,0
+DA:663,0
+FN:39,System.Void WileyWidget.ViewModels.MainViewModel::.ctor(Microsoft.Extensions.Configuration.IConfiguration,WileyWidget.Services.GrokSupercomputer,WileyWidget.Data.AppDbContext,WileyWidget.Data.IEnterpriseRepository,WileyWidget.Services.QuickBooksService,WileyWidget.Configuration.WpfMiddlewareService)
+FNDA:11,System.Void WileyWidget.ViewModels.MainViewModel::.ctor(Microsoft.Extensions.Configuration.IConfiguration,WileyWidget.Services.GrokSupercomputer,WileyWidget.Data.AppDbContext,WileyWidget.Data.IEnterpriseRepository,WileyWidget.Services.QuickBooksService,WileyWidget.Configuration.WpfMiddlewareService)
+DA:40,11
+DA:41,11
+DA:42,11
+DA:43,11
+DA:44,11
+DA:45,11
+DA:46,11
+DA:47,11
+DA:48,11
+DA:50,11
+DA:51,11
+DA:52,11
+DA:53,11
+DA:54,11
+DA:55,11
+DA:58,11
+DA:61,11
+DA:63,11
+DA:64,11
+BRDA:50,66,0,0
+BRDA:50,66,1,11
+BRDA:55,119,0,0
+BRDA:55,119,1,11
+FN:158,System.Void WileyWidget.ViewModels.MainViewModel::.ctor()
+FNDA:11,System.Void WileyWidget.ViewModels.MainViewModel::.ctor()
+DA:159,11
+DA:160,11
+DA:161,11
+DA:162,11
+DA:163,11
+DA:164,11
+DA:165,11
+DA:166,11
+DA:168,11
+DA:169,0
+DA:171,0
+DA:172,0
+DA:173,0
+DA:174,0
+DA:176,0
+DA:177,0
+DA:180,0
+DA:182,0
+DA:183,0
+DA:184,0
+DA:185,0
+DA:186,0
+DA:187,0
+DA:188,0
+DA:189,0
+DA:190,0
+DA:191,0
+DA:192,11
+BRDA:168,44,0,0
+BRDA:168,44,1,11
+BRDA:168,60,0,0
+BRDA:168,60,1,11
+FN:213,System.Void WileyWidget.ViewModels.MainViewModel/<<LoadEnterprisesAsync>b__33_0>d::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<<LoadEnterprisesAsync>b__33_0>d::MoveNext()
+DA:214,0
+DA:215,0
+DA:216,0
+DA:217,0
+DA:218,0
+DA:221,0
+DA:222,0
+DA:224,0
+DA:225,0
+DA:227,0
+DA:228,0
+DA:229,0
+DA:230,0
+DA:231,0
+DA:233,0
+DA:234,0
+DA:235,0
+DA:236,0
+BRDA:215,31,0,0
+BRDA:215,31,1,0
+BRDA:227,224,0,0
+BRDA:227,224,1,0
+FN:240,System.Void WileyWidget.ViewModels.MainViewModel/<AddEnterpriseAsync>d__34::MoveNext()
+FNDA:1,System.Void WileyWidget.ViewModels.MainViewModel/<AddEnterpriseAsync>d__34::MoveNext()
+DA:241,1
+DA:242,1
+DA:243,0
+DA:244,0
+DA:245,0
+DA:248,1
+DA:249,1
+DA:250,1
+DA:251,1
+BRDA:242,31,0,0
+BRDA:242,31,1,1
+FN:587,System.Void WileyWidget.ViewModels.MainViewModel/<AnalyzeBudgetWithGrokAsync>d__48::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<AnalyzeBudgetWithGrokAsync>d__48::MoveNext()
+DA:588,0
+DA:589,0
+DA:590,0
+DA:591,0
+DA:592,0
+DA:595,0
+DA:596,0
+DA:597,0
+DA:598,0
+DA:601,0
+DA:604,0
+DA:605,0
+DA:608,0
+DA:611,0
+DA:616,0
+DA:617,0
+DA:618,0
+DA:619,0
+DA:620,0
+DA:621,0
+DA:622,0
+BRDA:589,32,0,0
+BRDA:589,32,1,0
+BRDA:595,67,0,0
+BRDA:595,67,1,0
+FN:356,System.Void WileyWidget.ViewModels.MainViewModel/<CrunchWithGrokAsync>d__38::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<CrunchWithGrokAsync>d__38::MoveNext()
+DA:357,0
+DA:358,0
+DA:359,0
+DA:360,0
+DA:361,0
+DA:364,0
+DA:365,0
+DA:366,0
+DA:367,0
+DA:370,0
+DA:373,0
+DA:375,0
+DA:378,0
+DA:381,0
+DA:382,0
+DA:383,0
+DA:384,0
+DA:385,0
+DA:388,0
+DA:389,0
+DA:390,0
+DA:391,0
+DA:393,0
+DA:394,0
+DA:395,0
+DA:396,0
+DA:397,0
+DA:398,0
+DA:399,0
+BRDA:358,32,0,0
+BRDA:358,32,1,0
+BRDA:364,67,0,0
+BRDA:364,67,1,0
+BRDA:382,409,1,0
+BRDA:382,409,0,0
+FN:278,System.Void WileyWidget.ViewModels.MainViewModel/<DeleteEnterpriseAsync>d__36::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<DeleteEnterpriseAsync>d__36::MoveNext()
+DA:279,0
+DA:280,0
+DA:281,0
+DA:282,0
+DA:283,0
+DA:286,0
+DA:287,0
+DA:288,0
+DA:289,0
+DA:290,0
+DA:291,0
+DA:293,0
+DA:294,0
+DA:295,0
+DA:297,0
+DA:298,0
+DA:299,0
+BRDA:280,34,0,0
+BRDA:280,34,1,0
+BRDA:287,86,0,0
+BRDA:287,86,1,0
+FN:427,System.Void WileyWidget.ViewModels.MainViewModel/<LoadBudgetInteractionsAsync>d__40::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<LoadBudgetInteractionsAsync>d__40::MoveNext()
+DA:428,0
+DA:430,0
+DA:431,0
+DA:434,0
+DA:435,0
+DA:437,0
+DA:438,0
+DA:439,0
+DA:440,0
+DA:442,0
+DA:443,0
+DA:444,0
+DA:445,0
+DA:446,0
+DA:447,0
+DA:448,0
+DA:450,0
+DA:451,0
+DA:452,0
+DA:453,0
+DA:454,0
+DA:455,0
+DA:456,0
+BRDA:443,485,1,0
+BRDA:443,485,0,0
+FN:211,System.Void WileyWidget.ViewModels.MainViewModel/<LoadEnterprisesAsync>d__33::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<LoadEnterprisesAsync>d__33::MoveNext()
+DA:212,0
+DA:213,0
+DA:219,0
+DA:220,0
+DA:223,0
+DA:226,0
+DA:232,0
+DA:237,0
+FN:483,System.Void WileyWidget.ViewModels.MainViewModel/<LoadQuickBooksCustomersAsync>d__44::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<LoadQuickBooksCustomersAsync>d__44::MoveNext()
+DA:484,0
+DA:485,0
+DA:487,0
+DA:488,0
+DA:489,0
+DA:490,0
+DA:491,0
+DA:492,0
+DA:493,0
+DA:494,0
+DA:495,0
+DA:496,0
+DA:497,0
+DA:498,0
+DA:499,0
+DA:501,0
+DA:502,0
+DA:503,0
+DA:504,0
+BRDA:485,31,0,0
+BRDA:485,31,1,0
+BRDA:491,287,1,0
+BRDA:491,287,0,0
+FN:507,System.Void WileyWidget.ViewModels.MainViewModel/<LoadQuickBooksInvoicesAsync>d__45::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<LoadQuickBooksInvoicesAsync>d__45::MoveNext()
+DA:508,0
+DA:509,0
+DA:511,0
+DA:512,0
+DA:513,0
+DA:514,0
+DA:515,0
+DA:516,0
+DA:517,0
+DA:518,0
+DA:519,0
+DA:520,0
+DA:521,0
+DA:522,0
+DA:523,0
+DA:525,0
+DA:526,0
+DA:527,0
+DA:528,0
+BRDA:509,31,0,0
+BRDA:509,31,1,0
+BRDA:515,288,1,0
+BRDA:515,288,0,0
+FN:302,System.Void WileyWidget.ViewModels.MainViewModel/<RunGrokCrunchAsync>d__37::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<RunGrokCrunchAsync>d__37::MoveNext()
+DA:303,0
+DA:304,0
+DA:305,0
+DA:306,0
+DA:307,0
+DA:310,0
+DA:311,0
+DA:312,0
+DA:313,0
+DA:316,0
+DA:317,0
+DA:320,0
+DA:322,0
+DA:323,0
+DA:324,0
+DA:325,0
+DA:326,0
+DA:327,0
+DA:328,0
+DA:329,0
+DA:332,0
+DA:333,0
+DA:334,0
+DA:337,0
+DA:338,0
+DA:339,0
+DA:340,0
+DA:341,0
+DA:343,0
+DA:344,0
+DA:345,0
+DA:346,0
+DA:347,0
+DA:348,0
+DA:352,0
+DA:353,0
+BRDA:304,34,0,0
+BRDA:304,34,1,0
+BRDA:310,64,0,0
+BRDA:310,64,1,0
+BRDA:310,95,0,0
+BRDA:310,95,1,0
+BRDA:338,431,1,0
+BRDA:338,431,0,0
+FN:254,System.Void WileyWidget.ViewModels.MainViewModel/<SaveEnterpriseAsync>d__35::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<SaveEnterpriseAsync>d__35::MoveNext()
+DA:255,0
+DA:256,0
+DA:257,0
+DA:258,0
+DA:259,0
+DA:262,0
+DA:263,0
+DA:264,0
+DA:265,0
+DA:266,0
+DA:267,0
+DA:269,0
+DA:270,0
+DA:271,0
+DA:273,0
+DA:274,0
+DA:275,0
+BRDA:256,34,0,0
+BRDA:256,34,1,0
+BRDA:263,86,0,0
+BRDA:263,86,1,0
+FN:557,System.Void WileyWidget.ViewModels.MainViewModel/<SyncBudgetInteractionsToQbo>d__47::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<SyncBudgetInteractionsToQbo>d__47::MoveNext()
+DA:558,0
+DA:559,0
+DA:561,0
+DA:562,0
+DA:563,0
+DA:564,0
+DA:565,0
+DA:566,0
+DA:567,0
+DA:568,0
+DA:569,0
+DA:570,0
+DA:571,0
+DA:572,0
+DA:573,0
+DA:574,0
+DA:575,0
+DA:576,0
+DA:577,0
+DA:578,0
+DA:579,0
+DA:581,0
+DA:582,0
+DA:583,0
+DA:584,0
+BRDA:559,32,0,0
+BRDA:559,32,1,0
+BRDA:566,587,1,0
+BRDA:568,401,0,0
+BRDA:568,401,1,0
+BRDA:569,435,0,0
+BRDA:569,435,1,0
+BRDA:566,587,0,0
+FN:531,System.Void WileyWidget.ViewModels.MainViewModel/<SyncEnterprisesToQbo>d__46::MoveNext()
+FNDA:0,System.Void WileyWidget.ViewModels.MainViewModel/<SyncEnterprisesToQbo>d__46::MoveNext()
+DA:532,0
+DA:533,0
+DA:535,0
+DA:536,0
+DA:537,0
+DA:538,0
+DA:539,0
+DA:540,0
+DA:542,0
+DA:543,0
+DA:544,0
+DA:545,0
+DA:546,0
+DA:547,0
+DA:548,0
+DA:549,0
+DA:551,0
+DA:552,0
+DA:553,0
+DA:554,0
+BRDA:533,27,0,0
+BRDA:533,27,1,0
+BRDA:533,48,0,0
+BRDA:533,48,1,0
+BRDA:537,273,1,0
+BRDA:537,273,0,0
+LF:412
+LH:91
+BRF:104
+BRH:19
+FNF:33
+FNH:13
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Services\ApiKeyService.cs
+FN:19,WileyWidget.Services.ApiKeyService WileyWidget.Services.ApiKeyService::get_Instance()
+FNDA:0,WileyWidget.Services.ApiKeyService WileyWidget.Services.ApiKeyService::get_Instance()
+DA:20,0
+FN:53,System.String WileyWidget.Services.ApiKeyService::GetApiKey()
+FNDA:0,System.String WileyWidget.Services.ApiKeyService::GetApiKey()
+DA:54,0
+DA:56,0
+DA:58,0
+DA:59,0
+DA:60,0
+DA:61,0
+DA:62,0
+DA:66,0
+DA:67,0
+DA:68,0
+DA:69,0
+DA:70,0
+DA:74,0
+DA:75,0
+DA:76,0
+DA:77,0
+DA:78,0
+DA:81,0
+DA:82,0
+DA:84,0
+DA:85,0
+DA:86,0
+DA:87,0
+DA:89,0
+BRDA:59,24,0,0
+BRDA:59,24,1,0
+BRDA:67,73,0,0
+BRDA:67,73,1,0
+BRDA:75,112,0,0
+BRDA:75,112,1,0
+FN:94,System.Boolean WileyWidget.Services.ApiKeyService::StoreApiKey(System.String,WileyWidget.Services.StorageMethod)
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyService::StoreApiKey(System.String,WileyWidget.Services.StorageMethod)
+DA:95,0
+DA:96,0
+DA:97,0
+DA:98,0
+DA:99,0
+DA:103,0
+DA:104,0
+DA:107,0
+DA:110,0
+DA:113,0
+DA:118,0
+DA:119,0
+DA:120,0
+DA:123,0
+DA:124,0
+DA:125,0
+DA:126,0
+DA:128,0
+BRDA:96,9,0,0
+BRDA:96,9,1,0
+BRDA:104,34,2,0
+BRDA:104,34,3,0
+BRDA:104,34,4,0
+BRDA:104,34,0,0
+BRDA:104,34,1,0
+BRDA:118,98,0,0
+BRDA:118,98,1,0
+BRDA:119,115,0,0
+BRDA:119,115,1,0
+FN:173,System.Boolean WileyWidget.Services.ApiKeyService::RemoveApiKey()
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyService::RemoveApiKey()
+DA:174,0
+DA:176,0
+DA:177,0
+DA:180,0
+DA:183,0
+DA:184,0
+DA:186,0
+DA:187,0
+DA:188,0
+DA:189,0
+DA:190,0
+DA:191,0
+DA:192,0
+DA:193,0
+DA:196,0
+DA:197,0
+DA:199,0
+DA:200,0
+DA:201,0
+DA:202,0
+DA:203,0
+DA:204,0
+DA:205,0
+DA:206,0
+DA:208,0
+DA:209,0
+DA:211,0
+DA:212,0
+DA:213,0
+DA:214,0
+DA:216,0
+BRDA:183,30,0,0
+BRDA:183,30,1,0
+BRDA:196,70,0,0
+BRDA:196,70,1,0
+FN:221,WileyWidget.Services.ApiKeyInfo WileyWidget.Services.ApiKeyService::GetApiKeyInfo()
+FNDA:0,WileyWidget.Services.ApiKeyInfo WileyWidget.Services.ApiKeyService::GetApiKeyInfo()
+DA:222,0
+DA:223,0
+DA:224,0
+DA:225,0
+DA:226,0
+DA:227,0
+DA:228,0
+DA:229,0
+DA:230,0
+FN:232,System.Boolean WileyWidget.Services.ApiKeyService::StoreInEnvironmentVariable(System.String)
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyService::StoreInEnvironmentVariable(System.String)
+DA:233,0
+DA:235,0
+DA:236,0
+DA:237,0
+DA:238,0
+DA:240,0
+DA:241,0
+DA:242,0
+DA:243,0
+DA:245,0
+FN:247,System.Boolean WileyWidget.Services.ApiKeyService::StoreInUserSecrets(System.String)
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyService::StoreInUserSecrets(System.String)
+DA:248,0
+DA:250,0
+DA:253,0
+DA:254,0
+DA:255,0
+DA:256,0
+DA:258,0
+DA:259,0
+DA:261,0
+DA:262,0
+DA:264,0
+DA:265,0
+DA:266,0
+DA:267,0
+DA:269,0
+FN:271,System.Boolean WileyWidget.Services.ApiKeyService::StoreEncryptedLocally(System.String)
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyService::StoreEncryptedLocally(System.String)
+DA:272,0
+DA:274,0
+DA:275,0
+DA:276,0
+DA:277,0
+DA:278,0
+DA:280,0
+DA:281,0
+DA:282,0
+DA:283,0
+DA:285,0
+FN:287,System.String WileyWidget.Services.ApiKeyService::LoadEncryptedApiKey()
+FNDA:0,System.String WileyWidget.Services.ApiKeyService::LoadEncryptedApiKey()
+DA:288,0
+DA:290,0
+DA:291,0
+DA:292,0
+DA:294,0
+DA:295,0
+DA:297,0
+DA:298,0
+DA:299,0
+DA:301,0
+BRDA:291,18,0,0
+BRDA:291,18,1,0
+FN:303,System.String WileyWidget.Services.ApiKeyService::EncryptString(System.String)
+FNDA:0,System.String WileyWidget.Services.ApiKeyService::EncryptString(System.String)
+DA:304,0
+DA:305,0
+DA:306,0
+DA:307,0
+DA:309,0
+DA:310,0
+DA:311,0
+DA:312,0
+DA:314,0
+DA:315,0
+DA:317,0
+DA:318,0
+DA:320,0
+DA:321,0
+FN:323,System.String WileyWidget.Services.ApiKeyService::DecryptString(System.String)
+FNDA:0,System.String WileyWidget.Services.ApiKeyService::DecryptString(System.String)
+DA:324,0
+DA:326,0
+DA:327,0
+DA:328,0
+DA:330,0
+DA:331,0
+DA:332,0
+DA:334,0
+DA:335,0
+DA:336,0
+DA:338,0
+DA:339,0
+DA:340,0
+DA:341,0
+DA:343,0
+DA:345,0
+DA:346,0
+DA:347,0
+DA:349,0
+BRDA:328,25,0,0
+BRDA:328,25,1,0
+FN:27,System.Void WileyWidget.Services.ApiKeyService::.ctor()
+FNDA:0,System.Void WileyWidget.Services.ApiKeyService::.ctor()
+DA:28,0
+DA:29,0
+DA:31,0
+DA:32,0
+DA:33,0
+DA:34,0
+DA:35,0
+DA:36,0
+DA:38,0
+DA:41,0
+DA:42,0
+DA:43,0
+DA:45,0
+DA:46,0
+DA:47,0
+FN:18,System.Void WileyWidget.Services.ApiKeyService::.cctor()
+FNDA:0,System.Void WileyWidget.Services.ApiKeyService::.cctor()
+DA:19,0
+FN:133,System.Void WileyWidget.Services.ApiKeyService/<TestApiKeyAsync>d__11::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.ApiKeyService/<TestApiKeyAsync>d__11::MoveNext()
+DA:134,0
+DA:135,0
+DA:136,0
+DA:137,0
+DA:138,0
+DA:142,0
+DA:144,0
+DA:145,0
+DA:146,0
+DA:147,0
+DA:148,0
+DA:149,0
+DA:150,0
+DA:152,0
+DA:155,0
+DA:156,0
+DA:157,0
+DA:158,0
+DA:160,0
+DA:161,0
+DA:163,0
+DA:164,0
+DA:165,0
+DA:166,0
+DA:168,0
+BRDA:135,23,0,0
+BRDA:135,23,1,0
+BRDA:136,55,0,0
+BRDA:136,55,1,0
+BRDA:161,389,0,0
+BRDA:161,389,1,0
+FN:367,System.Boolean WileyWidget.Services.ApiKeyInfo::get_HasEnvironmentVariable()
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyInfo::get_HasEnvironmentVariable()
+DA:368,0
+FN:368,System.Boolean WileyWidget.Services.ApiKeyInfo::get_HasUserSecrets()
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyInfo::get_HasUserSecrets()
+DA:369,0
+FN:369,System.Boolean WileyWidget.Services.ApiKeyInfo::get_HasEncryptedStorage()
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyInfo::get_HasEncryptedStorage()
+DA:370,0
+FN:370,System.Boolean WileyWidget.Services.ApiKeyInfo::get_IsValid()
+FNDA:0,System.Boolean WileyWidget.Services.ApiKeyInfo::get_IsValid()
+DA:371,0
+LF:207
+LH:0
+BRF:31
+BRH:0
+FNF:18
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Services\GrokDatabaseService.cs
+FN:22,System.Void WileyWidget.Services.GrokDatabaseService::.ctor(WileyWidget.Data.AppDbContext,Microsoft.Extensions.Logging.ILogger`1<WileyWidget.Services.GrokDatabaseService>)
+FNDA:11,System.Void WileyWidget.Services.GrokDatabaseService::.ctor(WileyWidget.Data.AppDbContext,Microsoft.Extensions.Logging.ILogger`1<WileyWidget.Services.GrokDatabaseService>)
+DA:23,11
+DA:24,11
+DA:25,11
+DA:26,11
+DA:27,11
+BRDA:25,11,0,0
+BRDA:25,11,1,11
+BRDA:26,33,0,0
+BRDA:26,33,1,11
+FN:254,System.Void WileyWidget.Services.GrokDatabaseService/<CleanupExpiredCacheAsync>d__12::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<CleanupExpiredCacheAsync>d__12::MoveNext()
+DA:255,0
+DA:257,0
+DA:258,0
+DA:259,0
+DA:260,0
+DA:262,0
+DA:263,0
+DA:264,0
+DA:265,0
+DA:267,0
+DA:268,0
+DA:271,0
+DA:273,0
+DA:274,0
+DA:275,0
+DA:276,0
+DA:278,0
+BRDA:262,262,0,0
+BRDA:262,262,1,0
+FN:189,System.Void WileyWidget.Services.GrokDatabaseService/<CreateBudgetSnapshotAsync>d__10::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<CreateBudgetSnapshotAsync>d__10::MoveNext()
+DA:190,0
+DA:192,0
+DA:194,0
+DA:195,0
+DA:196,0
+DA:198,0
+DA:199,0
+DA:200,0
+DA:201,0
+DA:204,0
+DA:205,0
+DA:206,0
+DA:207,0
+DA:208,0
+DA:209,0
+DA:210,0
+DA:211,0
+DA:212,0
+DA:213,0
+DA:215,0
+DA:216,0
+DA:218,0
+DA:219,0
+DA:221,0
+DA:222,0
+DA:223,0
+DA:224,0
+DA:226,0
+BRDA:198,317,1,0
+BRDA:198,317,0,0
+BRDA:204,433,0,0
+BRDA:204,433,1,0
+FN:283,System.Void WileyWidget.Services.GrokDatabaseService/<GetAnalysisStatisticsAsync>d__13::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<GetAnalysisStatisticsAsync>d__13::MoveNext()
+DA:284,0
+DA:286,0
+DA:287,0
+DA:288,0
+DA:289,0
+DA:290,0
+DA:291,0
+DA:292,0
+DA:293,0
+DA:294,0
+DA:295,0
+DA:296,0
+DA:298,0
+DA:300,0
+DA:301,0
+DA:302,0
+DA:303,0
+DA:305,0
+FN:51,System.Void WileyWidget.Services.GrokDatabaseService/<GetCachedResponseAsync>d__4::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<GetCachedResponseAsync>d__4::MoveNext()
+DA:52,0
+DA:54,0
+DA:55,0
+DA:56,0
+DA:58,0
+DA:59,0
+DA:61,0
+DA:62,0
+DA:63,0
+DA:65,0
+DA:66,0
+DA:68,0
+DA:70,0
+DA:71,0
+DA:72,0
+DA:73,0
+DA:75,0
+BRDA:58,355,0,0
+BRDA:58,355,1,0
+FN:144,System.Void WileyWidget.Services.GrokDatabaseService/<GetHistoricalBudgetsAsync>d__8::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<GetHistoricalBudgetsAsync>d__8::MoveNext()
+DA:145,0
+DA:147,0
+DA:148,0
+DA:149,0
+DA:150,0
+DA:151,0
+DA:153,0
+DA:154,0
+DA:156,0
+DA:157,0
+DA:158,0
+DA:159,0
+DA:161,0
+FN:231,System.Void WileyWidget.Services.GrokDatabaseService/<GetRecommendationsForEnterpriseAsync>d__11::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<GetRecommendationsForEnterpriseAsync>d__11::MoveNext()
+DA:232,0
+DA:234,0
+DA:235,0
+DA:236,0
+DA:237,0
+DA:238,0
+DA:240,0
+DA:241,0
+DA:242,0
+DA:244,0
+DA:245,0
+DA:246,0
+DA:247,0
+DA:249,0
+FN:125,System.Void WileyWidget.Services.GrokDatabaseService/<LogAuditEntryAsync>d__7::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<LogAuditEntryAsync>d__7::MoveNext()
+DA:126,0
+DA:128,0
+DA:129,0
+DA:130,0
+DA:132,0
+DA:133,0
+DA:134,0
+DA:135,0
+DA:136,0
+DA:138,0
+DA:139,0
+FN:32,System.Void WileyWidget.Services.GrokDatabaseService/<SaveAnalysisResultAsync>d__3::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<SaveAnalysisResultAsync>d__3::MoveNext()
+DA:33,0
+DA:35,0
+DA:36,0
+DA:37,0
+DA:39,0
+DA:40,0
+DA:41,0
+DA:42,0
+DA:43,0
+DA:44,0
+DA:46,0
+FN:106,System.Void WileyWidget.Services.GrokDatabaseService/<SaveRecommendationsAsync>d__6::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<SaveRecommendationsAsync>d__6::MoveNext()
+DA:107,0
+DA:109,0
+DA:110,0
+DA:111,0
+DA:113,0
+DA:114,0
+DA:115,0
+DA:116,0
+DA:117,0
+DA:118,0
+DA:120,0
+FN:80,System.Void WileyWidget.Services.GrokDatabaseService/<SaveResponseToCacheAsync>d__5::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<SaveResponseToCacheAsync>d__5::MoveNext()
+DA:81,0
+DA:83,0
+DA:84,0
+DA:85,0
+DA:86,0
+DA:87,0
+DA:88,0
+DA:89,0
+DA:91,0
+DA:92,0
+DA:94,0
+DA:95,0
+DA:96,0
+DA:97,0
+DA:98,0
+DA:99,0
+DA:101,0
+FN:166,System.Void WileyWidget.Services.GrokDatabaseService/<UpdateEnterprisesWithAiResultsAsync>d__9::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokDatabaseService/<UpdateEnterprisesWithAiResultsAsync>d__9::MoveNext()
+DA:167,0
+DA:169,0
+DA:170,0
+DA:171,0
+DA:173,0
+DA:174,0
+DA:175,0
+DA:176,0
+DA:177,0
+DA:178,0
+DA:180,0
+FN:312,System.Int32 WileyWidget.Services.AnalysisStatistics::get_TotalAnalyses()
+FNDA:0,System.Int32 WileyWidget.Services.AnalysisStatistics::get_TotalAnalyses()
+DA:313,0
+FN:313,System.Int32 WileyWidget.Services.AnalysisStatistics::get_SuccessfulAnalyses()
+FNDA:0,System.Int32 WileyWidget.Services.AnalysisStatistics::get_SuccessfulAnalyses()
+DA:314,0
+FN:314,System.Int32 WileyWidget.Services.AnalysisStatistics::get_FailedAnalyses()
+FNDA:0,System.Int32 WileyWidget.Services.AnalysisStatistics::get_FailedAnalyses()
+DA:315,0
+FN:315,System.Int32 WileyWidget.Services.AnalysisStatistics::get_TotalRecommendations()
+FNDA:0,System.Int32 WileyWidget.Services.AnalysisStatistics::get_TotalRecommendations()
+DA:316,0
+FN:316,System.Int32 WileyWidget.Services.AnalysisStatistics::get_PendingRecommendations()
+FNDA:0,System.Int32 WileyWidget.Services.AnalysisStatistics::get_PendingRecommendations()
+DA:317,0
+FN:317,System.Int32 WileyWidget.Services.AnalysisStatistics::get_CacheEntries()
+FNDA:0,System.Int32 WileyWidget.Services.AnalysisStatistics::get_CacheEntries()
+DA:318,0
+FN:318,System.Int32 WileyWidget.Services.AnalysisStatistics::get_AuditEntries()
+FNDA:0,System.Int32 WileyWidget.Services.AnalysisStatistics::get_AuditEntries()
+DA:319,0
+FN:320,System.Double WileyWidget.Services.AnalysisStatistics::get_SuccessRate()
+FNDA:0,System.Double WileyWidget.Services.AnalysisStatistics::get_SuccessRate()
+DA:321,0
+BRDA:321,7,0,0
+BRDA:321,7,1,0
+LF:181
+LH:5
+BRF:14
+BRH:2
+FNF:20
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Services\GrokSupercomputer.cs
+FN:148,System.String WileyWidget.Services.GrokSupercomputer::AnonymizeName(System.String)
+FNDA:1,System.String WileyWidget.Services.GrokSupercomputer::AnonymizeName(System.String)
+DA:149,1
+DA:150,1
+DA:152,1
+DA:153,1
+DA:154,1
+DA:156,1
+DA:157,1
+DA:159,1
+DA:160,1
+FN:519,System.Threading.Tasks.Task`1<System.Collections.Generic.List`1<WileyWidget.Models.Enterprise>> WileyWidget.Services.GrokSupercomputer::ComputeEnterprisesAsync(System.Collections.Generic.List`1<WileyWidget.Models.Enterprise>)
+FNDA:0,System.Threading.Tasks.Task`1<System.Collections.Generic.List`1<WileyWidget.Models.Enterprise>> WileyWidget.Services.GrokSupercomputer::ComputeEnterprisesAsync(System.Collections.Generic.List`1<WileyWidget.Models.Enterprise>)
+DA:520,0
+DA:521,0
+DA:522,0
+FN:1020,System.String WileyWidget.Services.GrokSupercomputer::GenerateTalkingPoints(System.Collections.Generic.List`1<WileyWidget.Models.Enterprise>,System.Int32,System.Decimal,System.Int32)
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer::GenerateTalkingPoints(System.Collections.Generic.List`1<WileyWidget.Models.Enterprise>,System.Int32,System.Decimal,System.Int32)
+DA:1021,0
+DA:1023,0
+DA:1024,0
+DA:1025,0
+DA:1026,0
+DA:1027,0
+DA:1028,0
+DA:1029,0
+DA:1030,0
+DA:1031,0
+DA:1032,0
+DA:1033,0
+DA:1039,0
+DA:1040,0
+DA:1041,0
+DA:1042,0
+DA:1043,0
+DA:1044,0
+DA:1045,0
+DA:1046,0
+DA:1047,0
+DA:1048,0
+DA:1049,0
+DA:1050,0
+DA:1051,0
+DA:1052,0
+DA:1053,0
+DA:1054,0
+DA:1055,0
+DA:1058,0
+DA:1060,0
+DA:1061,0
+BRDA:1030,243,0,0
+BRDA:1030,243,1,0
+FN:1074,System.Void WileyWidget.Services.GrokSupercomputer::Dispose()
+FNDA:12,System.Void WileyWidget.Services.GrokSupercomputer::Dispose()
+DA:1075,12
+DA:1076,12
+DA:1077,12
+DA:1078,12
+FN:1087,System.Void WileyWidget.Services.GrokSupercomputer::Dispose(System.Boolean)
+FNDA:12,System.Void WileyWidget.Services.GrokSupercomputer::Dispose(System.Boolean)
+DA:1088,12
+DA:1089,12
+DA:1090,12
+DA:1091,12
+DA:1092,12
+DA:1093,12
+DA:1094,12
+DA:1095,12
+DA:1096,12
+DA:1097,12
+DA:1098,12
+BRDA:1089,12,0,12
+BRDA:1091,18,0,12
+BRDA:1091,18,1,12
+BRDA:1089,12,1,12
+FN:1103,System.String WileyWidget.Services.GrokSupercomputer::ComputeHash(System.String)
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer::ComputeHash(System.String)
+DA:1104,0
+DA:1105,0
+DA:1106,0
+DA:1107,0
+DA:1108,0
+DA:1109,0
+FN:246,<>f__AnonymousType7`5<System.String,System.Decimal,System.Decimal,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer::<CrunchNumbersAsync>b__12_1(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType7`5<System.String,System.Decimal,System.Decimal,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer::<CrunchNumbersAsync>b__12_1(WileyWidget.Models.Enterprise)
+DA:247,0
+DA:248,0
+DA:249,0
+DA:250,0
+DA:251,0
+DA:252,0
+DA:253,0
+FN:1035,System.String WileyWidget.Services.GrokSupercomputer::<GenerateTalkingPoints>g__formatCurrency|25_3(System.Decimal)
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer::<GenerateTalkingPoints>g__formatCurrency|25_3(System.Decimal)
+DA:1036,0
+FN:75,System.Void WileyWidget.Services.GrokSupercomputer::.ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.Extensions.Logging.ILogger`1<WileyWidget.Services.GrokSupercomputer>,WileyWidget.Data.AppDbContext,WileyWidget.Services.GrokDatabaseService)
+FNDA:23,System.Void WileyWidget.Services.GrokSupercomputer::.ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.Extensions.Logging.ILogger`1<WileyWidget.Services.GrokSupercomputer>,WileyWidget.Data.AppDbContext,WileyWidget.Services.GrokDatabaseService)
+DA:76,23
+DA:106,23
+DA:107,23
+DA:108,23
+DA:109,23
+DA:110,23
+DA:111,23
+DA:112,23
+DA:113,23
+DA:115,23
+DA:116,23
+DA:117,11
+DA:118,11
+DA:119,11
+DA:122,12
+DA:123,12
+DA:124,12
+DA:125,12
+DA:126,12
+DA:127,12
+DA:129,12
+DA:130,12
+DA:131,12
+BRDA:112,21,0,12
+BRDA:112,21,1,23
+BRDA:116,67,0,11
+BRDA:116,67,1,12
+FN:549,System.String WileyWidget.Services.GrokSupercomputer/HistoricalData::get_Year()
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer/HistoricalData::get_Year()
+DA:550,0
+FN:550,System.Decimal WileyWidget.Services.GrokSupercomputer/HistoricalData::get_TotalExpenses()
+FNDA:0,System.Decimal WileyWidget.Services.GrokSupercomputer/HistoricalData::get_TotalExpenses()
+DA:551,0
+FN:551,System.Decimal WileyWidget.Services.GrokSupercomputer/HistoricalData::get_TotalRevenue()
+FNDA:0,System.Decimal WileyWidget.Services.GrokSupercomputer/HistoricalData::get_TotalRevenue()
+DA:552,0
+FN:834,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_totalRevenue()
+FNDA:0,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_totalRevenue()
+DA:835,0
+FN:835,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_totalExpenses()
+FNDA:0,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_totalExpenses()
+DA:836,0
+FN:836,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_monthlyBalance()
+FNDA:0,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_monthlyBalance()
+DA:837,0
+FN:837,System.Int32 WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_totalCitizens()
+FNDA:0,System.Int32 WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_totalCitizens()
+DA:838,0
+FN:838,System.String WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_status()
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_status()
+DA:839,0
+FN:839,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_averageRevenuePerCitizen()
+FNDA:0,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_averageRevenuePerCitizen()
+DA:840,0
+FN:840,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_overallEfficiency()
+FNDA:0,System.Decimal WileyWidget.Services.GrokSupercomputer/BudgetAnalyticsResult::get_overallEfficiency()
+DA:841,0
+FN:925,System.String WileyWidget.Services.GrokSupercomputer/BudgetInsightsResult::get_mainInsight()
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer/BudgetInsightsResult::get_mainInsight()
+DA:926,0
+FN:926,System.Collections.Generic.List`1<System.String> WileyWidget.Services.GrokSupercomputer/BudgetInsightsResult::get_recommendations()
+FNDA:0,System.Collections.Generic.List`1<System.String> WileyWidget.Services.GrokSupercomputer/BudgetInsightsResult::get_recommendations()
+DA:927,0
+FN:927,System.String WileyWidget.Services.GrokSupercomputer/BudgetInsightsResult::get_riskAssessment()
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer/BudgetInsightsResult::get_riskAssessment()
+DA:928,0
+FN:928,System.String WileyWidget.Services.GrokSupercomputer/BudgetInsightsResult::get_opportunities()
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer/BudgetInsightsResult::get_opportunities()
+DA:929,0
+FN:204,System.String WileyWidget.Services.GrokSupercomputer/<>c::<CrunchNumbersAsync>b__12_0(WileyWidget.Models.Enterprise)
+FNDA:0,System.String WileyWidget.Services.GrokSupercomputer/<>c::<CrunchNumbersAsync>b__12_0(WileyWidget.Models.Enterprise)
+DA:205,0
+FN:322,<>f__AnonymousType10`2<System.String,System.Decimal> WileyWidget.Services.GrokSupercomputer/<>c::<CrunchNumbersAsync>b__12_3(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType10`2<System.String,System.Decimal> WileyWidget.Services.GrokSupercomputer/<>c::<CrunchNumbersAsync>b__12_3(WileyWidget.Models.Enterprise)
+DA:323,0
+FN:471,<>f__AnonymousType10`2<System.String,System.Decimal> WileyWidget.Services.GrokSupercomputer/<>c::<LocalFallbackCrunch>b__13_0(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType10`2<System.String,System.Decimal> WileyWidget.Services.GrokSupercomputer/<>c::<LocalFallbackCrunch>b__13_0(WileyWidget.Models.Enterprise)
+DA:472,0
+FN:575,WileyWidget.Services.GrokSupercomputer/HistoricalData WileyWidget.Services.GrokSupercomputer/<>c::<AnalyzeTrendsAsync>b__16_1(WileyWidget.Models.OverallBudget)
+FNDA:0,WileyWidget.Services.GrokSupercomputer/HistoricalData WileyWidget.Services.GrokSupercomputer/<>c::<AnalyzeTrendsAsync>b__16_1(WileyWidget.Models.OverallBudget)
+DA:576,0
+DA:577,0
+DA:578,0
+DA:579,0
+DA:580,0
+DA:581,0
+FN:598,WileyWidget.Services.GrokSupercomputer/HistoricalData WileyWidget.Services.GrokSupercomputer/<>c::<AnalyzeTrendsAsync>b__16_2(WileyWidget.Models.OverallBudget)
+FNDA:0,WileyWidget.Services.GrokSupercomputer/HistoricalData WileyWidget.Services.GrokSupercomputer/<>c::<AnalyzeTrendsAsync>b__16_2(WileyWidget.Models.OverallBudget)
+DA:599,0
+DA:600,0
+DA:601,0
+DA:602,0
+DA:603,0
+DA:604,0
+FN:613,<>f__AnonymousType12`3<System.String,System.Decimal,System.Decimal> WileyWidget.Services.GrokSupercomputer/<>c::<AnalyzeTrendsAsync>b__16_0(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType12`3<System.String,System.Decimal,System.Decimal> WileyWidget.Services.GrokSupercomputer/<>c::<AnalyzeTrendsAsync>b__16_0(WileyWidget.Models.Enterprise)
+DA:614,0
+FN:658,<>f__AnonymousType13`5<System.String,System.Decimal,System.Decimal,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer/<>c::<SimulateScenarioAsync>b__17_0(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType13`5<System.String,System.Decimal,System.Decimal,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer/<>c::<SimulateScenarioAsync>b__17_0(WileyWidget.Models.Enterprise)
+DA:659,0
+FN:683,<>f__AnonymousType14`3<System.String,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer/<>c::<SuggestRetentionAsync>b__18_0(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType14`3<System.String,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer/<>c::<SuggestRetentionAsync>b__18_0(WileyWidget.Models.Enterprise)
+DA:684,0
+FN:708,<>f__AnonymousType10`2<System.String,System.Decimal> WileyWidget.Services.GrokSupercomputer/<>c::<HuntGrantsAsync>b__19_0(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType10`2<System.String,System.Decimal> WileyWidget.Services.GrokSupercomputer/<>c::<HuntGrantsAsync>b__19_0(WileyWidget.Models.Enterprise)
+DA:709,0
+FN:845,<>f__AnonymousType13`5<System.String,System.Decimal,System.Decimal,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer/<>c::<ComputeBudgetAnalyticsAsync>b__22_0(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType13`5<System.String,System.Decimal,System.Decimal,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer/<>c::<ComputeBudgetAnalyticsAsync>b__22_0(WileyWidget.Models.Enterprise)
+DA:846,0
+DA:847,0
+DA:848,0
+DA:849,0
+DA:850,0
+DA:851,0
+DA:852,0
+DA:853,0
+FN:942,<>f__AnonymousType17`4<System.String,System.Decimal,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer/<>c::<GenerateBudgetInsightsAsync>b__24_0(WileyWidget.Models.Enterprise)
+FNDA:0,<>f__AnonymousType17`4<System.String,System.Decimal,System.Decimal,System.Int32> WileyWidget.Services.GrokSupercomputer/<>c::<GenerateBudgetInsightsAsync>b__24_0(WileyWidget.Models.Enterprise)
+DA:943,0
+DA:944,0
+DA:945,0
+DA:946,0
+DA:947,0
+DA:948,0
+DA:949,0
+FN:332,System.Collections.Generic.IEnumerable`1<WileyWidget.Models.AiRecommendation> WileyWidget.Services.GrokSupercomputer/<>c__DisplayClass12_0::<CrunchNumbersAsync>b__2(WileyWidget.Models.Enterprise,System.Int32)
+FNDA:0,System.Collections.Generic.IEnumerable`1<WileyWidget.Models.AiRecommendation> WileyWidget.Services.GrokSupercomputer/<>c__DisplayClass12_0::<CrunchNumbersAsync>b__2(WileyWidget.Models.Enterprise,System.Int32)
+DA:333,0
+DA:334,0
+DA:335,0
+DA:336,0
+DA:337,0
+DA:338,0
+DA:339,0
+DA:340,0
+DA:341,0
+DA:342,0
+DA:343,0
+DA:344,0
+BRDA:333,57,0,0
+BRDA:333,57,1,0
+BRDA:333,153,0,0
+BRDA:333,153,1,0
+FN:554,System.Void WileyWidget.Services.GrokSupercomputer/<AnalyzeTrendsAsync>d__16::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<AnalyzeTrendsAsync>d__16::MoveNext()
+DA:555,0
+DA:556,0
+DA:557,0
+DA:559,0
+DA:560,0
+DA:563,0
+DA:564,0
+DA:566,0
+DA:567,0
+DA:568,0
+DA:570,0
+DA:572,0
+DA:573,0
+DA:574,0
+DA:583,0
+DA:584,0
+DA:585,0
+DA:586,0
+DA:588,0
+DA:590,0
+DA:591,0
+DA:592,0
+DA:593,0
+DA:595,0
+DA:596,0
+DA:597,0
+DA:606,0
+DA:607,0
+DA:609,0
+DA:610,0
+DA:611,0
+DA:616,0
+DA:619,0
+DA:620,0
+DA:621,0
+DA:622,0
+DA:624,0
+DA:625,0
+DA:627,0
+DA:629,0
+DA:630,0
+DA:631,0
+DA:633,0
+DA:634,0
+BRDA:566,178,0,0
+BRDA:566,178,1,0
+BRDA:585,563,0,0
+BRDA:585,563,1,0
+FN:844,System.Void WileyWidget.Services.GrokSupercomputer/<ComputeBudgetAnalyticsAsync>d__22::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<ComputeBudgetAnalyticsAsync>d__22::MoveNext()
+DA:845,0
+DA:855,0
+DA:856,0
+DA:857,0
+DA:858,0
+DA:859,0
+DA:860,0
+DA:861,0
+DA:862,0
+DA:863,0
+DA:864,0
+DA:866,0
+DA:867,0
+DA:868,0
+DA:869,0
+DA:870,0
+DA:871,0
+DA:872,0
+DA:873,0
+DA:874,0
+DA:875,0
+DA:876,0
+DA:877,0
+DA:878,0
+DA:880,0
+DA:881,0
+DA:882,0
+DA:884,0
+DA:885,0
+DA:886,0
+DA:888,0
+DA:889,0
+DA:890,0
+DA:891,0
+DA:892,0
+DA:893,0
+DA:894,0
+DA:895,0
+FN:192,System.Void WileyWidget.Services.GrokSupercomputer/<CrunchNumbersAsync>d__12::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<CrunchNumbersAsync>d__12::MoveNext()
+DA:193,0
+DA:194,0
+DA:195,0
+DA:197,0
+DA:198,0
+DA:199,0
+DA:201,0
+DA:207,0
+DA:210,0
+DA:211,0
+DA:212,0
+DA:213,0
+DA:216,0
+DA:219,0
+DA:220,0
+DA:221,0
+DA:222,0
+DA:223,0
+DA:224,0
+DA:225,0
+DA:226,0
+DA:228,0
+DA:229,0
+DA:231,0
+DA:232,0
+DA:235,0
+DA:238,0
+DA:239,0
+DA:240,0
+DA:241,0
+DA:242,0
+DA:243,0
+DA:255,0
+DA:256,0
+DA:260,0
+DA:261,0
+DA:262,0
+DA:263,0
+DA:265,0
+DA:266,0
+DA:269,0
+DA:270,0
+DA:271,0
+DA:274,0
+DA:275,0
+DA:276,0
+DA:277,0
+DA:279,0
+DA:282,0
+DA:283,0
+DA:285,0
+DA:286,0
+DA:287,0
+DA:289,0
+DA:290,0
+DA:293,0
+DA:294,0
+DA:298,0
+DA:299,0
+DA:300,0
+DA:301,0
+DA:302,0
+DA:303,0
+DA:304,0
+DA:305,0
+DA:306,0
+DA:308,0
+DA:311,0
+DA:312,0
+DA:313,0
+DA:314,0
+DA:317,0
+DA:320,0
+DA:321,0
+DA:322,0
+DA:324,0
+DA:325,0
+DA:326,0
+DA:327,0
+DA:328,0
+DA:329,0
+DA:332,0
+DA:346,0
+DA:349,0
+DA:350,0
+DA:351,0
+DA:352,0
+DA:353,0
+DA:354,0
+DA:355,0
+DA:356,0
+DA:358,0
+DA:359,0
+DA:360,0
+DA:361,0
+DA:362,0
+DA:363,0
+DA:365,0
+DA:366,0
+DA:368,0
+DA:369,0
+DA:371,0
+DA:372,0
+DA:373,0
+DA:374,0
+DA:376,0
+DA:377,0
+DA:378,0
+DA:380,0
+DA:381,0
+DA:383,0
+DA:384,0
+DA:386,0
+DA:387,0
+DA:388,0
+DA:389,0
+DA:390,0
+DA:391,0
+DA:393,0
+DA:394,0
+DA:395,0
+DA:396,0
+DA:397,0
+DA:398,0
+DA:400,0
+DA:401,0
+DA:402,0
+DA:403,0
+DA:404,0
+DA:405,0
+DA:407,0
+BRDA:201,247,0,0
+BRDA:201,247,1,0
+BRDA:210,426,0,0
+BRDA:213,486,0,0
+BRDA:213,486,1,0
+BRDA:216,516,0,0
+BRDA:216,516,1,0
+BRDA:219,851,1,0
+BRDA:219,851,0,0
+BRDA:231,937,0,0
+BRDA:231,937,1,0
+BRDA:210,426,1,0
+BRDA:243,1235,0,0
+BRDA:243,1235,1,0
+BRDA:289,2225,0,0
+BRDA:289,2225,1,0
+BRDA:298,2787,1,0
+BRDA:298,2787,0,0
+BRDA:308,2804,0,0
+BRDA:308,2804,1,0
+BRDA:311,2838,0,0
+BRDA:311,2838,1,0
+BRDA:362,3881,0,0
+BRDA:362,3881,1,0
+BRDA:383,4297,0,0
+BRDA:383,4297,1,0
+BRDA:400,4392,1,0
+BRDA:390,4538,0,0
+BRDA:390,4538,1,0
+BRDA:400,4392,2,0
+BRDA:397,4793,0,0
+BRDA:397,4793,1,0
+BRDA:400,4392,3,0
+BRDA:404,5048,0,0
+BRDA:404,5048,1,0
+BRDA:400,4392,0,0
+FN:932,System.Void WileyWidget.Services.GrokSupercomputer/<GenerateBudgetInsightsAsync>d__24::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<GenerateBudgetInsightsAsync>d__24::MoveNext()
+DA:933,0
+DA:934,0
+DA:935,0
+DA:936,0
+DA:937,0
+DA:938,0
+DA:939,0
+DA:940,0
+DA:941,0
+DA:942,0
+DA:950,0
+DA:952,0
+DA:953,0
+DA:954,0
+DA:955,0
+DA:956,0
+DA:957,0
+DA:958,0
+DA:960,0
+DA:961,0
+DA:962,0
+DA:963,0
+DA:964,0
+DA:965,0
+DA:966,0
+DA:967,0
+DA:968,0
+DA:969,0
+DA:970,0
+DA:971,0
+DA:973,0
+DA:974,0
+DA:975,0
+DA:977,0
+DA:978,0
+DA:979,0
+DA:981,0
+DA:982,0
+DA:985,0
+DA:986,0
+DA:987,0
+DA:988,0
+DA:989,0
+DA:992,0
+DA:994,0
+DA:995,0
+BRDA:986,699,0,0
+BRDA:986,699,1,0
+BRDA:986,779,1,0
+BRDA:986,779,0,0
+FN:707,System.Void WileyWidget.Services.GrokSupercomputer/<HuntGrantsAsync>d__19::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<HuntGrantsAsync>d__19::MoveNext()
+DA:708,0
+DA:710,0
+DA:711,0
+DA:712,0
+DA:714,0
+DA:715,0
+FN:427,System.Void WileyWidget.Services.GrokSupercomputer/<LocalFallbackCrunch>d__13::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<LocalFallbackCrunch>d__13::MoveNext()
+DA:428,0
+DA:429,0
+DA:430,0
+DA:432,0
+DA:433,0
+DA:434,0
+DA:437,0
+DA:438,0
+DA:439,0
+DA:440,0
+DA:441,0
+DA:444,0
+DA:447,0
+DA:448,0
+DA:449,0
+DA:452,0
+DA:454,0
+DA:455,0
+DA:456,0
+DA:457,0
+DA:458,0
+DA:461,0
+DA:462,0
+DA:463,0
+DA:464,0
+DA:466,0
+DA:469,0
+DA:470,0
+DA:471,0
+DA:473,0
+DA:474,0
+DA:475,0
+DA:476,0
+DA:477,0
+DA:478,0
+DA:480,0
+DA:481,0
+DA:482,0
+DA:483,0
+DA:484,0
+DA:486,0
+DA:487,0
+DA:489,0
+DA:490,0
+DA:492,0
+DA:493,0
+DA:494,0
+DA:496,0
+DA:497,0
+DA:498,0
+DA:500,0
+DA:501,0
+DA:502,0
+DA:503,0
+DA:505,0
+DA:506,0
+BRDA:437,688,1,0
+BRDA:447,324,0,0
+BRDA:447,324,1,0
+BRDA:447,378,0,0
+BRDA:447,378,1,0
+BRDA:437,688,0,0
+BRDA:461,711,0,0
+BRDA:461,711,1,0
+BRDA:483,1302,0,0
+BRDA:483,1302,1,0
+FN:732,System.Void WileyWidget.Services.GrokSupercomputer/<SendPromptAsync>d__20::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<SendPromptAsync>d__20::MoveNext()
+DA:733,0
+DA:734,0
+DA:735,0
+DA:737,0
+DA:738,0
+DA:739,0
+DA:740,0
+DA:743,0
+DA:745,0
+DA:746,0
+DA:747,0
+DA:750,0
+DA:751,0
+DA:753,0
+DA:754,0
+DA:756,0
+DA:757,0
+DA:759,0
+DA:762,0
+DA:763,0
+DA:765,0
+DA:766,0
+DA:768,0
+DA:769,0
+DA:770,0
+DA:771,0
+DA:773,0
+DA:775,0
+DA:776,0
+DA:777,0
+DA:778,0
+DA:779,0
+DA:780,0
+DA:781,0
+DA:783,0
+DA:784,0
+DA:785,0
+DA:786,0
+DA:787,0
+DA:788,0
+DA:789,0
+DA:791,0
+DA:792,0
+DA:793,0
+DA:794,0
+DA:795,0
+DA:796,0
+DA:797,0
+DA:799,0
+FN:657,System.Void WileyWidget.Services.GrokSupercomputer/<SimulateScenarioAsync>d__17::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<SimulateScenarioAsync>d__17::MoveNext()
+DA:658,0
+DA:660,0
+DA:661,0
+DA:662,0
+DA:663,0
+DA:665,0
+DA:666,0
+FN:682,System.Void WileyWidget.Services.GrokSupercomputer/<SuggestRetentionAsync>d__18::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.GrokSupercomputer/<SuggestRetentionAsync>d__18::MoveNext()
+DA:683,0
+DA:685,0
+DA:686,0
+DA:687,0
+DA:688,0
+DA:690,0
+DA:691,0
+FN:1129,WileyWidget.Services.CompletionResponse/Choice[] WileyWidget.Services.CompletionResponse::get_choices()
+FNDA:0,WileyWidget.Services.CompletionResponse/Choice[] WileyWidget.Services.CompletionResponse::get_choices()
+DA:1130,0
+FN:1133,WileyWidget.Services.CompletionResponse/Message WileyWidget.Services.CompletionResponse/Choice::get_message()
+FNDA:0,WileyWidget.Services.CompletionResponse/Message WileyWidget.Services.CompletionResponse/Choice::get_message()
+DA:1134,0
+FN:1138,System.String WileyWidget.Services.CompletionResponse/Message::get_content()
+FNDA:0,System.String WileyWidget.Services.CompletionResponse/Message::get_content()
+DA:1139,0
+FN:1154,System.String WileyWidget.Services.ComputedEnterprise::get_name()
+FNDA:0,System.String WileyWidget.Services.ComputedEnterprise::get_name()
+DA:1155,0
+FN:1155,System.Decimal WileyWidget.Services.ComputedEnterprise::get_deficit()
+FNDA:0,System.Decimal WileyWidget.Services.ComputedEnterprise::get_deficit()
+DA:1156,0
+FN:1156,System.Decimal WileyWidget.Services.ComputedEnterprise::get_suggestedHike()
+FNDA:0,System.Decimal WileyWidget.Services.ComputedEnterprise::get_suggestedHike()
+DA:1157,0
+FN:1157,System.String WileyWidget.Services.ComputedEnterprise::get_suggestion()
+FNDA:0,System.String WileyWidget.Services.ComputedEnterprise::get_suggestion()
+DA:1158,0
+FN:1173,System.Decimal WileyWidget.Services.BudgetMetrics::get_TotalRevenue()
+FNDA:0,System.Decimal WileyWidget.Services.BudgetMetrics::get_TotalRevenue()
+DA:1174,0
+FN:1174,System.Decimal WileyWidget.Services.BudgetMetrics::get_TotalExpenses()
+FNDA:0,System.Decimal WileyWidget.Services.BudgetMetrics::get_TotalExpenses()
+DA:1175,0
+FN:1175,System.Decimal WileyWidget.Services.BudgetMetrics::get_MonthlyBalance()
+FNDA:0,System.Decimal WileyWidget.Services.BudgetMetrics::get_MonthlyBalance()
+DA:1176,0
+FN:1176,System.Int32 WileyWidget.Services.BudgetMetrics::get_TotalCitizens()
+FNDA:0,System.Int32 WileyWidget.Services.BudgetMetrics::get_TotalCitizens()
+DA:1177,0
+FN:1193,System.String WileyWidget.Services.BudgetInsights::get_MainInsight()
+FNDA:0,System.String WileyWidget.Services.BudgetInsights::get_MainInsight()
+DA:1194,0
+FN:1194,System.Collections.Generic.List`1<System.String> WileyWidget.Services.BudgetInsights::get_Recommendations()
+FNDA:0,System.Collections.Generic.List`1<System.String> WileyWidget.Services.BudgetInsights::get_Recommendations()
+DA:1195,0
+FN:1195,System.String WileyWidget.Services.BudgetInsights::get_RiskAssessment()
+FNDA:0,System.String WileyWidget.Services.BudgetInsights::get_RiskAssessment()
+DA:1196,0
+FN:1196,System.String WileyWidget.Services.BudgetInsights::get_Opportunities()
+FNDA:0,System.String WileyWidget.Services.BudgetInsights::get_Opportunities()
+DA:1197,0
+FN:1197,System.String WileyWidget.Services.BudgetInsights::get_Disclaimer()
+FNDA:0,System.String WileyWidget.Services.BudgetInsights::get_Disclaimer()
+DA:1198,0
+FN:1211,System.Void WileyWidget.Services.BudgetInsights::GenerateInsights(WileyWidget.Services.BudgetMetrics)
+FNDA:0,System.Void WileyWidget.Services.BudgetInsights::GenerateInsights(WileyWidget.Services.BudgetMetrics)
+DA:1212,0
+DA:1214,0
+DA:1215,0
+DA:1216,0
+DA:1217,0
+BRDA:1214,18,0,0
+BRDA:1214,18,1,0
+FN:1226,System.String WileyWidget.Services.BudgetInsights/BudgetInsightsResult::get_mainInsight()
+FNDA:0,System.String WileyWidget.Services.BudgetInsights/BudgetInsightsResult::get_mainInsight()
+DA:1227,0
+FN:1227,System.Collections.Generic.List`1<System.String> WileyWidget.Services.BudgetInsights/BudgetInsightsResult::get_recommendations()
+FNDA:0,System.Collections.Generic.List`1<System.String> WileyWidget.Services.BudgetInsights/BudgetInsightsResult::get_recommendations()
+DA:1228,0
+FN:1228,System.String WileyWidget.Services.BudgetInsights/BudgetInsightsResult::get_riskAssessment()
+FNDA:0,System.String WileyWidget.Services.BudgetInsights/BudgetInsightsResult::get_riskAssessment()
+DA:1229,0
+FN:1229,System.String WileyWidget.Services.BudgetInsights/BudgetInsightsResult::get_opportunities()
+FNDA:0,System.String WileyWidget.Services.BudgetInsights/BudgetInsightsResult::get_opportunities()
+DA:1230,0
+FN:1245,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_totalRevenue()
+FNDA:0,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_totalRevenue()
+DA:1246,0
+FN:1246,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_totalExpenses()
+FNDA:0,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_totalExpenses()
+DA:1247,0
+FN:1247,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_monthlyBalance()
+FNDA:0,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_monthlyBalance()
+DA:1248,0
+FN:1248,System.Int32 WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_totalCitizens()
+FNDA:0,System.Int32 WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_totalCitizens()
+DA:1249,0
+FN:1249,System.String WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_status()
+FNDA:0,System.String WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_status()
+DA:1250,0
+FN:1250,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_averageRevenuePerCitizen()
+FNDA:0,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_averageRevenuePerCitizen()
+DA:1251,0
+FN:1251,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_overallEfficiency()
+FNDA:0,System.Decimal WileyWidget.Services.BudgetInsights/BudgetAnalyticsResult::get_overallEfficiency()
+DA:1252,0
+LF:572
+LH:47
+BRF:70
+BRH:8
+FNF:72
+FNH:4
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Services\QuickBooksService.cs
+FN:36,System.Boolean WileyWidget.Services.QuickBooksService::HasValidAccessToken()
+FNDA:0,System.Boolean WileyWidget.Services.QuickBooksService::HasValidAccessToken()
+DA:37,0
+DA:38,0
+DA:40,0
+DA:42,0
+DA:43,0
+DA:44,0
+BRDA:40,26,0,0
+BRDA:40,26,1,0
+BRDA:42,55,0,0
+BRDA:42,55,1,0
+FN:77,System.ValueTuple`2<Intuit.Ipp.Core.ServiceContext,Intuit.Ipp.DataService.DataService> WileyWidget.Services.QuickBooksService::GetDataService()
+FNDA:0,System.ValueTuple`2<Intuit.Ipp.Core.ServiceContext,Intuit.Ipp.DataService.DataService> WileyWidget.Services.QuickBooksService::GetDataService()
+DA:78,0
+DA:79,0
+DA:80,0
+DA:81,0
+DA:82,0
+DA:83,0
+DA:84,0
+DA:85,0
+BRDA:80,24,0,0
+BRDA:80,24,1,0
+BRDA:83,91,0,0
+BRDA:83,91,1,0
+FN:21,System.Void WileyWidget.Services.QuickBooksService::.ctor(WileyWidget.Services.SettingsService)
+FNDA:11,System.Void WileyWidget.Services.QuickBooksService::.ctor(WileyWidget.Services.SettingsService)
+DA:22,11
+DA:23,11
+DA:24,11
+DA:25,11
+DA:26,11
+DA:30,11
+DA:31,11
+DA:32,11
+DA:33,11
+DA:34,11
+BRDA:22,13,0,0
+BRDA:22,13,1,11
+BRDA:23,45,0,11
+BRDA:23,45,1,11
+BRDA:25,82,0,0
+BRDA:25,82,1,11
+BRDA:32,123,0,0
+BRDA:32,123,1,11
+FN:87,System.Void WileyWidget.Services.QuickBooksService/<GetCustomersAsync>d__12::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.QuickBooksService/<GetCustomersAsync>d__12::MoveNext()
+DA:88,0
+DA:90,0
+DA:91,0
+DA:92,0
+DA:93,0
+DA:95,0
+DA:96,0
+DA:97,0
+DA:98,0
+DA:100,0
+FN:102,System.Void WileyWidget.Services.QuickBooksService/<GetInvoicesAsync>d__13::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.QuickBooksService/<GetInvoicesAsync>d__13::MoveNext()
+DA:103,0
+DA:105,0
+DA:106,0
+DA:107,0
+DA:108,0
+DA:109,0
+DA:110,0
+DA:111,0
+DA:112,0
+DA:114,0
+DA:115,0
+DA:116,0
+DA:117,0
+DA:119,0
+BRDA:108,157,0,0
+BRDA:108,157,1,0
+FN:54,System.Void WileyWidget.Services.QuickBooksService/<RefreshTokenAsync>d__10::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.QuickBooksService/<RefreshTokenAsync>d__10::MoveNext()
+DA:55,0
+DA:56,0
+DA:57,0
+DA:58,0
+DA:59,0
+DA:61,0
+DA:62,0
+DA:63,0
+DA:64,0
+DA:66,0
+DA:67,0
+DA:68,0
+DA:69,0
+DA:70,0
+DA:71,0
+DA:72,0
+DA:73,0
+DA:74,0
+DA:75,0
+BRDA:63,291,0,0
+BRDA:68,329,0,0
+BRDA:68,329,1,0
+BRDA:68,364,0,0
+BRDA:68,364,1,0
+BRDA:63,291,1,0
+FN:46,System.Void WileyWidget.Services.QuickBooksService/<RefreshTokenIfNeededAsync>d__9::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.QuickBooksService/<RefreshTokenIfNeededAsync>d__9::MoveNext()
+DA:47,0
+DA:48,0
+DA:49,0
+DA:50,0
+DA:51,0
+DA:52,0
+BRDA:49,53,0,0
+BRDA:49,53,1,0
+BRDA:50,78,0,0
+BRDA:50,78,1,0
+FN:168,System.Void WileyWidget.Services.QuickBooksService/<SyncBudgetInteractionToQboAccountAsync>d__15::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.QuickBooksService/<SyncBudgetInteractionToQboAccountAsync>d__15::MoveNext()
+DA:169,0
+DA:171,0
+DA:172,0
+DA:173,0
+DA:176,0
+DA:177,0
+DA:179,0
+DA:180,0
+DA:181,0
+DA:182,0
+DA:183,0
+DA:184,0
+DA:185,0
+DA:186,0
+DA:187,0
+DA:188,0
+DA:189,0
+DA:190,0
+DA:191,0
+DA:192,0
+DA:194,0
+DA:196,0
+DA:197,0
+DA:198,0
+DA:199,0
+DA:201,0
+DA:202,0
+DA:203,0
+DA:204,0
+DA:205,0
+DA:206,0
+DA:207,0
+DA:209,0
+DA:211,0
+DA:212,0
+DA:213,0
+DA:214,0
+DA:215,0
+DA:217,0
+BRDA:176,184,0,0
+BRDA:179,209,0,0
+BRDA:179,209,1,0
+BRDA:179,221,0,0
+BRDA:179,221,1,0
+BRDA:179,268,0,0
+BRDA:179,268,1,0
+BRDA:176,184,1,0
+BRDA:197,495,0,0
+BRDA:197,495,1,0
+BRDA:201,548,0,0
+BRDA:201,548,1,0
+BRDA:201,560,0,0
+BRDA:201,560,1,0
+FN:121,System.Void WileyWidget.Services.QuickBooksService/<SyncEnterpriseToQboClassAsync>d__14::MoveNext()
+FNDA:0,System.Void WileyWidget.Services.QuickBooksService/<SyncEnterpriseToQboClassAsync>d__14::MoveNext()
+DA:122,0
+DA:124,0
+DA:125,0
+DA:126,0
+DA:129,0
+DA:130,0
+DA:132,0
+DA:133,0
+DA:134,0
+DA:135,0
+DA:136,0
+DA:137,0
+DA:138,0
+DA:139,0
+DA:140,0
+DA:141,0
+DA:142,0
+DA:144,0
+DA:146,0
+DA:147,0
+DA:148,0
+DA:149,0
+DA:151,0
+DA:152,0
+DA:153,0
+DA:154,0
+DA:155,0
+DA:156,0
+DA:158,0
+DA:160,0
+DA:161,0
+DA:162,0
+DA:163,0
+DA:164,0
+DA:166,0
+BRDA:129,184,0,0
+BRDA:129,184,1,0
+BRDA:147,411,0,0
+BRDA:147,411,1,0
+LF:147
+LH:10
+BRF:46
+BRH:5
+FNF:9
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Services\SettingsService.cs
+FN:20,WileyWidget.Services.SettingsService WileyWidget.Services.SettingsService::get_Instance()
+FNDA:80,WileyWidget.Services.SettingsService WileyWidget.Services.SettingsService::get_Instance()
+DA:21,80
+FN:25,WileyWidget.Models.AppSettings WileyWidget.Services.SettingsService::get_Current()
+FNDA:45,WileyWidget.Models.AppSettings WileyWidget.Services.SettingsService::get_Current()
+DA:26,45
+FN:33,System.Void WileyWidget.Services.SettingsService::InitializePaths()
+FNDA:1,System.Void WileyWidget.Services.SettingsService::InitializePaths()
+DA:34,1
+DA:35,1
+DA:36,1
+DA:37,1
+DA:38,1
+DA:39,1
+DA:40,1
+BRDA:36,19,0,0
+BRDA:36,19,1,1
+FN:42,System.Void WileyWidget.Services.SettingsService::ResetForTests()
+FNDA:7,System.Void WileyWidget.Services.SettingsService::ResetForTests()
+DA:43,7
+DA:45,7
+DA:46,7
+FN:52,System.Void WileyWidget.Services.SettingsService::Load()
+FNDA:5,System.Void WileyWidget.Services.SettingsService::Load()
+DA:53,5
+DA:55,5
+DA:56,5
+DA:57,1
+DA:58,1
+DA:59,1
+DA:60,1
+DA:62,4
+DA:63,4
+DA:64,2
+DA:65,2
+DA:67,2
+DA:68,1
+DA:69,1
+DA:70,1
+DA:71,1
+DA:72,1
+DA:73,1
+DA:74,2
+DA:75,2
+DA:76,2
+DA:79,2
+DA:80,2
+DA:81,2
+DA:82,2
+DA:83,2
+DA:84,2
+DA:85,2
+DA:86,0
+DA:87,2
+DA:88,2
+DA:89,2
+DA:90,5
+BRDA:56,18,0,1
+BRDA:56,18,1,4
+BRDA:64,71,0,2
+BRDA:64,71,1,2
+BRDA:67,97,0,2
+BRDA:67,97,1,0
+BRDA:67,125,0,1
+BRDA:71,198,0,1
+BRDA:71,198,1,1
+BRDA:67,125,1,2
+BRDA:80,254,0,2
+BRDA:80,254,1,2
+FN:96,System.Void WileyWidget.Services.SettingsService::Save()
+FNDA:4,System.Void WileyWidget.Services.SettingsService::Save()
+DA:97,4
+DA:99,4
+DA:100,4
+DA:101,4
+DA:102,4
+DA:103,4
+DA:104,0
+DA:105,4
+FN:27,System.Void WileyWidget.Services.SettingsService::.ctor()
+FNDA:1,System.Void WileyWidget.Services.SettingsService::.ctor()
+DA:28,1
+DA:29,1
+DA:30,1
+DA:31,1
+FN:19,System.Void WileyWidget.Services.SettingsService::.cctor()
+FNDA:2,System.Void WileyWidget.Services.SettingsService::.cctor()
+DA:20,2
+LF:58
+LH:56
+BRF:14
+BRH:12
+FNF:8
+FNH:8
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Models\AiModels.cs
+FN:16,System.Int32 WileyWidget.Models.AiAnalysisResult::get_Id()
+FNDA:0,System.Int32 WileyWidget.Models.AiAnalysisResult::get_Id()
+DA:17,0
+FN:22,System.DateTime WileyWidget.Models.AiAnalysisResult::get_AnalysisDate()
+FNDA:8,System.DateTime WileyWidget.Models.AiAnalysisResult::get_AnalysisDate()
+DA:23,8
+FN:29,System.String WileyWidget.Models.AiAnalysisResult::get_AnalysisType()
+FNDA:16,System.String WileyWidget.Models.AiAnalysisResult::get_AnalysisType()
+DA:30,16
+FN:36,System.String WileyWidget.Models.AiAnalysisResult::get_InputHash()
+FNDA:16,System.String WileyWidget.Models.AiAnalysisResult::get_InputHash()
+DA:37,16
+FN:43,System.String WileyWidget.Models.AiAnalysisResult::get_AiResponse()
+FNDA:16,System.String WileyWidget.Models.AiAnalysisResult::get_AiResponse()
+DA:44,16
+FN:49,System.Int64 WileyWidget.Models.AiAnalysisResult::get_ProcessingTimeMs()
+FNDA:8,System.Int64 WileyWidget.Models.AiAnalysisResult::get_ProcessingTimeMs()
+DA:50,8
+FN:55,System.Boolean WileyWidget.Models.AiAnalysisResult::get_IsSuccessful()
+FNDA:8,System.Boolean WileyWidget.Models.AiAnalysisResult::get_IsSuccessful()
+DA:56,8
+FN:61,System.String WileyWidget.Models.AiAnalysisResult::get_ErrorMessage()
+FNDA:0,System.String WileyWidget.Models.AiAnalysisResult::get_ErrorMessage()
+DA:62,0
+FN:67,System.Decimal WileyWidget.Models.AiAnalysisResult::get_ApiCost()
+FNDA:0,System.Decimal WileyWidget.Models.AiAnalysisResult::get_ApiCost()
+DA:68,0
+FN:73,System.String WileyWidget.Models.AiAnalysisResult::get_Notes()
+FNDA:16,System.String WileyWidget.Models.AiAnalysisResult::get_Notes()
+DA:74,16
+FN:85,System.Int32 WileyWidget.Models.AiRecommendation::get_Id()
+FNDA:0,System.Int32 WileyWidget.Models.AiRecommendation::get_Id()
+DA:86,0
+FN:91,System.Int32 WileyWidget.Models.AiRecommendation::get_EnterpriseId()
+FNDA:1,System.Int32 WileyWidget.Models.AiRecommendation::get_EnterpriseId()
+DA:92,1
+FN:97,WileyWidget.Models.Enterprise WileyWidget.Models.AiRecommendation::get_Enterprise()
+FNDA:0,WileyWidget.Models.Enterprise WileyWidget.Models.AiRecommendation::get_Enterprise()
+DA:98,0
+FN:103,System.DateTime WileyWidget.Models.AiRecommendation::get_GeneratedDate()
+FNDA:1,System.DateTime WileyWidget.Models.AiRecommendation::get_GeneratedDate()
+DA:104,1
+FN:110,System.String WileyWidget.Models.AiRecommendation::get_RecommendationType()
+FNDA:2,System.String WileyWidget.Models.AiRecommendation::get_RecommendationType()
+DA:111,2
+FN:117,System.String WileyWidget.Models.AiRecommendation::get_Priority()
+FNDA:2,System.String WileyWidget.Models.AiRecommendation::get_Priority()
+DA:118,2
+FN:124,System.String WileyWidget.Models.AiRecommendation::get_RecommendationText()
+FNDA:2,System.String WileyWidget.Models.AiRecommendation::get_RecommendationText()
+DA:125,2
+FN:130,System.Decimal WileyWidget.Models.AiRecommendation::get_ExpectedImpact()
+FNDA:1,System.Decimal WileyWidget.Models.AiRecommendation::get_ExpectedImpact()
+DA:131,1
+FN:136,System.Int32 WileyWidget.Models.AiRecommendation::get_ConfidenceLevel()
+FNDA:1,System.Int32 WileyWidget.Models.AiRecommendation::get_ConfidenceLevel()
+DA:137,1
+FN:143,System.String WileyWidget.Models.AiRecommendation::get_Status()
+FNDA:2,System.String WileyWidget.Models.AiRecommendation::get_Status()
+DA:144,2
+FN:148,System.Nullable`1<System.DateTime> WileyWidget.Models.AiRecommendation::get_ImplementationDeadline()
+FNDA:0,System.Nullable`1<System.DateTime> WileyWidget.Models.AiRecommendation::get_ImplementationDeadline()
+DA:149,0
+FN:154,System.String WileyWidget.Models.AiRecommendation::get_Notes()
+FNDA:2,System.String WileyWidget.Models.AiRecommendation::get_Notes()
+DA:155,2
+FN:166,System.Int32 WileyWidget.Models.AiAnalysisAudit::get_Id()
+FNDA:0,System.Int32 WileyWidget.Models.AiAnalysisAudit::get_Id()
+DA:167,0
+FN:172,System.DateTime WileyWidget.Models.AiAnalysisAudit::get_Timestamp()
+FNDA:8,System.DateTime WileyWidget.Models.AiAnalysisAudit::get_Timestamp()
+DA:173,8
+FN:179,System.String WileyWidget.Models.AiAnalysisAudit::get_OperationType()
+FNDA:16,System.String WileyWidget.Models.AiAnalysisAudit::get_OperationType()
+DA:180,16
+FN:185,System.String WileyWidget.Models.AiAnalysisAudit::get_UserId()
+FNDA:8,System.String WileyWidget.Models.AiAnalysisAudit::get_UserId()
+DA:186,8
+FN:190,System.Nullable`1<System.Int32> WileyWidget.Models.AiAnalysisAudit::get_EnterpriseId()
+FNDA:0,System.Nullable`1<System.Int32> WileyWidget.Models.AiAnalysisAudit::get_EnterpriseId()
+DA:191,0
+FN:196,WileyWidget.Models.Enterprise WileyWidget.Models.AiAnalysisAudit::get_Enterprise()
+FNDA:0,WileyWidget.Models.Enterprise WileyWidget.Models.AiAnalysisAudit::get_Enterprise()
+DA:197,0
+FN:203,System.String WileyWidget.Models.AiAnalysisAudit::get_Description()
+FNDA:16,System.String WileyWidget.Models.AiAnalysisAudit::get_Description()
+DA:204,16
+FN:209,System.String WileyWidget.Models.AiAnalysisAudit::get_Metadata()
+FNDA:8,System.String WileyWidget.Models.AiAnalysisAudit::get_Metadata()
+DA:210,8
+FN:215,System.String WileyWidget.Models.AiAnalysisAudit::get_Source()
+FNDA:16,System.String WileyWidget.Models.AiAnalysisAudit::get_Source()
+DA:216,16
+FN:220,System.Nullable`1<System.Int64> WileyWidget.Models.AiAnalysisAudit::get_DurationMs()
+FNDA:4,System.Nullable`1<System.Int64> WileyWidget.Models.AiAnalysisAudit::get_DurationMs()
+DA:221,4
+FN:226,System.Boolean WileyWidget.Models.AiAnalysisAudit::get_IsSuccessful()
+FNDA:16,System.Boolean WileyWidget.Models.AiAnalysisAudit::get_IsSuccessful()
+DA:227,16
+FN:232,System.String WileyWidget.Models.AiAnalysisAudit::get_ErrorMessage()
+FNDA:0,System.String WileyWidget.Models.AiAnalysisAudit::get_ErrorMessage()
+DA:233,0
+FN:245,System.String WileyWidget.Models.AiResponseCache::get_CacheKey()
+FNDA:0,System.String WileyWidget.Models.AiResponseCache::get_CacheKey()
+DA:246,0
+FN:252,System.String WileyWidget.Models.AiResponseCache::get_Response()
+FNDA:0,System.String WileyWidget.Models.AiResponseCache::get_Response()
+DA:253,0
+FN:258,System.DateTime WileyWidget.Models.AiResponseCache::get_CreatedAt()
+FNDA:0,System.DateTime WileyWidget.Models.AiResponseCache::get_CreatedAt()
+DA:259,0
+FN:264,System.DateTime WileyWidget.Models.AiResponseCache::get_ExpiresAt()
+FNDA:0,System.DateTime WileyWidget.Models.AiResponseCache::get_ExpiresAt()
+DA:265,0
+FN:270,System.Int32 WileyWidget.Models.AiResponseCache::get_AccessCount()
+FNDA:0,System.Int32 WileyWidget.Models.AiResponseCache::get_AccessCount()
+DA:271,0
+FN:276,System.DateTime WileyWidget.Models.AiResponseCache::get_LastAccessedAt()
+FNDA:0,System.DateTime WileyWidget.Models.AiResponseCache::get_LastAccessedAt()
+DA:277,0
+FN:282,System.Boolean WileyWidget.Models.AiResponseCache::get_IsExpired()
+FNDA:0,System.Boolean WileyWidget.Models.AiResponseCache::get_IsExpired()
+DA:283,0
+LF:41
+LH:24
+BRF:0
+BRH:0
+FNF:41
+FNH:24
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Models\AppSettings.cs
+FN:12,System.String WileyWidget.Models.AppSettings::get_Theme()
+FNDA:31,System.String WileyWidget.Models.AppSettings::get_Theme()
+DA:13,31
+FN:13,System.Nullable`1<System.Double> WileyWidget.Models.AppSettings::get_WindowWidth()
+FNDA:13,System.Nullable`1<System.Double> WileyWidget.Models.AppSettings::get_WindowWidth()
+DA:14,13
+FN:14,System.Nullable`1<System.Double> WileyWidget.Models.AppSettings::get_WindowHeight()
+FNDA:11,System.Nullable`1<System.Double> WileyWidget.Models.AppSettings::get_WindowHeight()
+DA:15,11
+FN:15,System.Nullable`1<System.Double> WileyWidget.Models.AppSettings::get_WindowLeft()
+FNDA:8,System.Nullable`1<System.Double> WileyWidget.Models.AppSettings::get_WindowLeft()
+DA:16,8
+FN:16,System.Nullable`1<System.Double> WileyWidget.Models.AppSettings::get_WindowTop()
+FNDA:8,System.Nullable`1<System.Double> WileyWidget.Models.AppSettings::get_WindowTop()
+DA:17,8
+FN:17,System.Nullable`1<System.Boolean> WileyWidget.Models.AppSettings::get_WindowMaximized()
+FNDA:8,System.Nullable`1<System.Boolean> WileyWidget.Models.AppSettings::get_WindowMaximized()
+DA:18,8
+FN:20,System.String WileyWidget.Models.AppSettings::get_QuickBooksAccessToken()
+FNDA:12,System.String WileyWidget.Models.AppSettings::get_QuickBooksAccessToken()
+DA:21,12
+FN:21,System.String WileyWidget.Models.AppSettings::get_QuickBooksRefreshToken()
+FNDA:10,System.String WileyWidget.Models.AppSettings::get_QuickBooksRefreshToken()
+DA:22,10
+FN:22,System.String WileyWidget.Models.AppSettings::get_QuickBooksRealmId()
+FNDA:8,System.String WileyWidget.Models.AppSettings::get_QuickBooksRealmId()
+DA:23,8
+FN:23,System.String WileyWidget.Models.AppSettings::get_QuickBooksEnvironment()
+FNDA:24,System.String WileyWidget.Models.AppSettings::get_QuickBooksEnvironment()
+DA:24,24
+FN:24,System.Nullable`1<System.DateTime> WileyWidget.Models.AppSettings::get_QuickBooksTokenExpiresUtc()
+FNDA:11,System.Nullable`1<System.DateTime> WileyWidget.Models.AppSettings::get_QuickBooksTokenExpiresUtc()
+DA:25,11
+FN:27,System.String WileyWidget.Models.AppSettings::get_QboAccessToken()
+FNDA:12,System.String WileyWidget.Models.AppSettings::get_QboAccessToken()
+DA:28,12
+FN:28,System.String WileyWidget.Models.AppSettings::get_QboRefreshToken()
+FNDA:10,System.String WileyWidget.Models.AppSettings::get_QboRefreshToken()
+DA:29,10
+FN:29,System.DateTime WileyWidget.Models.AppSettings::get_QboTokenExpiry()
+FNDA:10,System.DateTime WileyWidget.Models.AppSettings::get_QboTokenExpiry()
+DA:30,10
+FN:32,System.String WileyWidget.Models.AppSettings::get_XaiApiKey()
+FNDA:8,System.String WileyWidget.Models.AppSettings::get_XaiApiKey()
+DA:33,8
+FN:33,System.String WileyWidget.Models.AppSettings::get_XaiModel()
+FNDA:24,System.String WileyWidget.Models.AppSettings::get_XaiModel()
+DA:34,24
+FN:34,System.Int32 WileyWidget.Models.AppSettings::get_XaiMaxRetries()
+FNDA:24,System.Int32 WileyWidget.Models.AppSettings::get_XaiMaxRetries()
+DA:35,24
+FN:35,System.Int32 WileyWidget.Models.AppSettings::get_XaiTimeoutSeconds()
+FNDA:24,System.Int32 WileyWidget.Models.AppSettings::get_XaiTimeoutSeconds()
+DA:36,24
+FN:36,System.Int32 WileyWidget.Models.AppSettings::get_XaiCacheTtlMinutes()
+FNDA:24,System.Int32 WileyWidget.Models.AppSettings::get_XaiCacheTtlMinutes()
+DA:37,24
+FN:37,System.Decimal WileyWidget.Models.AppSettings::get_XaiDailyBudget()
+FNDA:24,System.Decimal WileyWidget.Models.AppSettings::get_XaiDailyBudget()
+DA:38,24
+FN:38,System.Decimal WileyWidget.Models.AppSettings::get_XaiMonthlyBudget()
+FNDA:24,System.Decimal WileyWidget.Models.AppSettings::get_XaiMonthlyBudget()
+DA:39,24
+FN:39,System.Boolean WileyWidget.Models.AppSettings::get_XaiEnabled()
+FNDA:24,System.Boolean WileyWidget.Models.AppSettings::get_XaiEnabled()
+DA:40,24
+LF:22
+LH:22
+BRF:0
+BRH:0
+FNF:22
+FNH:22
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Models\BudgetAnalytics.cs
+FN:22,System.Decimal WileyWidget.Models.BudgetMetrics::get_TotalRevenue()
+FNDA:55,System.Decimal WileyWidget.Models.BudgetMetrics::get_TotalRevenue()
+DA:23,55
+FN:27,System.Decimal WileyWidget.Models.BudgetMetrics::get_TotalExpenses()
+FNDA:51,System.Decimal WileyWidget.Models.BudgetMetrics::get_TotalExpenses()
+DA:28,51
+FN:32,System.Decimal WileyWidget.Models.BudgetMetrics::get_MonthlyBalance()
+FNDA:40,System.Decimal WileyWidget.Models.BudgetMetrics::get_MonthlyBalance()
+DA:33,40
+DA:34,40
+BRDA:33,6,0,40
+BRDA:33,6,1,0
+FN:38,System.Decimal WileyWidget.Models.BudgetMetrics::get_MonthlyDeficit()
+FNDA:0,System.Decimal WileyWidget.Models.BudgetMetrics::get_MonthlyDeficit()
+DA:39,0
+FN:43,System.Int32 WileyWidget.Models.BudgetMetrics::get_TotalCitizens()
+FNDA:16,System.Int32 WileyWidget.Models.BudgetMetrics::get_TotalCitizens()
+DA:44,16
+FN:48,System.String WileyWidget.Models.BudgetMetrics::get_Status()
+FNDA:6,System.String WileyWidget.Models.BudgetMetrics::get_Status()
+DA:49,6
+DA:50,6
+BRDA:49,16,0,4
+BRDA:49,34,0,2
+BRDA:49,34,1,2
+BRDA:49,16,1,2
+FN:54,System.String WileyWidget.Models.BudgetMetrics::get_StatusIcon()
+FNDA:3,System.String WileyWidget.Models.BudgetMetrics::get_StatusIcon()
+DA:55,3
+DA:56,3
+BRDA:55,16,0,2
+BRDA:55,34,0,1
+BRDA:55,34,1,1
+BRDA:55,16,1,1
+FN:60,System.String WileyWidget.Models.BudgetMetrics::get_StatusMessage()
+FNDA:3,System.String WileyWidget.Models.BudgetMetrics::get_StatusMessage()
+DA:61,3
+FN:68,System.String WileyWidget.Models.BudgetMetrics::get_StatusDescription()
+FNDA:0,System.String WileyWidget.Models.BudgetMetrics::get_StatusDescription()
+DA:69,0
+DA:70,0
+DA:71,0
+DA:72,0
+DA:73,0
+DA:75,0
+DA:76,0
+BRDA:70,19,0,0
+BRDA:70,19,1,0
+BRDA:72,104,0,0
+BRDA:72,104,1,0
+FN:84,System.Windows.Media.Brush WileyWidget.Models.BudgetMetrics::get_StatusBackground()
+FNDA:3,System.Windows.Media.Brush WileyWidget.Models.BudgetMetrics::get_StatusBackground()
+DA:85,3
+DA:86,3
+DA:87,1
+DA:88,2
+DA:89,1
+DA:91,1
+DA:92,3
+BRDA:86,19,0,1
+BRDA:86,19,1,2
+BRDA:88,67,0,1
+BRDA:88,67,1,1
+FN:100,System.Windows.Media.Brush WileyWidget.Models.BudgetMetrics::get_StatusBorder()
+FNDA:0,System.Windows.Media.Brush WileyWidget.Models.BudgetMetrics::get_StatusBorder()
+DA:101,0
+DA:102,0
+DA:103,0
+DA:104,0
+DA:105,0
+DA:107,0
+DA:108,0
+BRDA:102,19,0,0
+BRDA:102,19,1,0
+BRDA:104,61,0,0
+BRDA:104,61,1,0
+FN:116,System.Windows.Media.Brush WileyWidget.Models.BudgetMetrics::get_BalanceColor()
+FNDA:0,System.Windows.Media.Brush WileyWidget.Models.BudgetMetrics::get_BalanceColor()
+DA:117,0
+DA:118,0
+DA:119,0
+DA:120,0
+DA:121,0
+DA:123,0
+DA:124,0
+BRDA:118,19,0,0
+BRDA:118,19,1,0
+BRDA:120,67,0,0
+BRDA:120,67,1,0
+FN:132,System.Windows.Media.Brush WileyWidget.Models.BudgetMetrics::get_BalanceBorderColor()
+FNDA:0,System.Windows.Media.Brush WileyWidget.Models.BudgetMetrics::get_BalanceBorderColor()
+DA:133,0
+DA:134,0
+DA:135,0
+DA:136,0
+DA:137,0
+DA:139,0
+DA:140,0
+BRDA:134,19,0,0
+BRDA:134,19,1,0
+BRDA:136,61,0,0
+BRDA:136,61,1,0
+FN:14,System.Void WileyWidget.Models.BudgetMetrics::.ctor(WileyWidget.Services.GrokSupercomputer)
+FNDA:22,System.Void WileyWidget.Models.BudgetMetrics::.ctor(WileyWidget.Services.GrokSupercomputer)
+DA:15,22
+DA:16,22
+DA:17,22
+DA:18,22
+FN:152,System.String WileyWidget.Models.BudgetInsights::get_MainInsight()
+FNDA:21,System.String WileyWidget.Models.BudgetInsights::get_MainInsight()
+DA:153,21
+FN:157,System.Collections.ObjectModel.ObservableCollection`1<System.String> WileyWidget.Models.BudgetInsights::get_Recommendations()
+FNDA:56,System.Collections.ObjectModel.ObservableCollection`1<System.String> WileyWidget.Models.BudgetInsights::get_Recommendations()
+DA:158,56
+FN:162,System.String WileyWidget.Models.BudgetInsights::get_Disclaimer()
+FNDA:15,System.String WileyWidget.Models.BudgetInsights::get_Disclaimer()
+DA:163,15
+FN:168,System.Void WileyWidget.Models.BudgetInsights::GenerateInsights(WileyWidget.Models.BudgetMetrics)
+FNDA:4,System.Void WileyWidget.Models.BudgetInsights::GenerateInsights(WileyWidget.Models.BudgetMetrics)
+DA:169,4
+DA:170,4
+DA:173,4
+DA:174,2
+DA:175,2
+DA:176,2
+DA:177,2
+DA:178,1
+DA:179,1
+DA:180,1
+DA:182,1
+DA:183,1
+DA:184,1
+DA:187,4
+DA:188,1
+DA:189,1
+DA:190,1
+DA:191,1
+DA:192,1
+DA:193,1
+DA:194,3
+DA:195,2
+DA:196,2
+DA:197,2
+DA:198,2
+DA:199,2
+DA:200,2
+DA:202,1
+DA:203,1
+DA:204,1
+DA:205,1
+DA:206,1
+DA:209,4
+DA:210,4
+DA:211,4
+DA:212,4
+DA:213,4
+DA:216,4
+DA:217,4
+DA:218,4
+DA:219,4
+BRDA:173,31,0,2
+BRDA:173,31,1,2
+BRDA:177,124,0,1
+BRDA:177,124,1,1
+BRDA:187,236,0,1
+BRDA:187,236,1,3
+BRDA:194,333,0,2
+BRDA:194,333,1,1
+BRDA:209,473,0,4
+BRDA:209,473,1,4
+LF:94
+LH:65
+BRF:40
+BRH:23
+FNF:18
+FNH:13
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Models\BudgetInteraction.cs
+FN:19,System.Int32 WileyWidget.Models.BudgetInteraction::get_Id()
+FNDA:0,System.Int32 WileyWidget.Models.BudgetInteraction::get_Id()
+DA:20,0
+FN:25,System.Int32 WileyWidget.Models.BudgetInteraction::get_PrimaryEnterpriseId()
+FNDA:46,System.Int32 WileyWidget.Models.BudgetInteraction::get_PrimaryEnterpriseId()
+DA:26,46
+FN:30,System.Nullable`1<System.Int32> WileyWidget.Models.BudgetInteraction::get_SecondaryEnterpriseId()
+FNDA:4,System.Nullable`1<System.Int32> WileyWidget.Models.BudgetInteraction::get_SecondaryEnterpriseId()
+DA:31,4
+FN:37,System.String WileyWidget.Models.BudgetInteraction::get_InteractionType()
+FNDA:71,System.String WileyWidget.Models.BudgetInteraction::get_InteractionType()
+DA:38,71
+FN:44,System.String WileyWidget.Models.BudgetInteraction::get_Description()
+FNDA:71,System.String WileyWidget.Models.BudgetInteraction::get_Description()
+DA:45,71
+FN:52,System.Decimal WileyWidget.Models.BudgetInteraction::get_MonthlyAmount()
+FNDA:46,System.Decimal WileyWidget.Models.BudgetInteraction::get_MonthlyAmount()
+DA:53,46
+FN:58,System.Boolean WileyWidget.Models.BudgetInteraction::get_IsCost()
+FNDA:72,System.Boolean WileyWidget.Models.BudgetInteraction::get_IsCost()
+DA:59,72
+FN:64,System.String WileyWidget.Models.BudgetInteraction::get_Notes()
+FNDA:50,System.String WileyWidget.Models.BudgetInteraction::get_Notes()
+DA:65,50
+FN:70,WileyWidget.Models.Enterprise WileyWidget.Models.BudgetInteraction::get_PrimaryEnterprise()
+FNDA:25,WileyWidget.Models.Enterprise WileyWidget.Models.BudgetInteraction::get_PrimaryEnterprise()
+DA:71,25
+FN:76,WileyWidget.Models.Enterprise WileyWidget.Models.BudgetInteraction::get_SecondaryEnterprise()
+FNDA:0,WileyWidget.Models.Enterprise WileyWidget.Models.BudgetInteraction::get_SecondaryEnterprise()
+DA:77,0
+FN:82,System.String WileyWidget.Models.BudgetInteraction::get_QboAccountId()
+FNDA:20,System.String WileyWidget.Models.BudgetInteraction::get_QboAccountId()
+DA:83,20
+FN:88,System.String WileyWidget.Models.BudgetInteraction::get_QboAccountRef()
+FNDA:20,System.String WileyWidget.Models.BudgetInteraction::get_QboAccountRef()
+DA:89,20
+FN:93,WileyWidget.Models.QboSyncStatus WileyWidget.Models.BudgetInteraction::get_QboSyncStatus()
+FNDA:25,WileyWidget.Models.QboSyncStatus WileyWidget.Models.BudgetInteraction::get_QboSyncStatus()
+DA:94,25
+FN:98,System.Nullable`1<System.DateTime> WileyWidget.Models.BudgetInteraction::get_QboLastSync()
+FNDA:0,System.Nullable`1<System.DateTime> WileyWidget.Models.BudgetInteraction::get_QboLastSync()
+DA:99,0
+FN:109,System.Decimal WileyWidget.Models.BudgetInteraction::SharedCostImpact()
+FNDA:0,System.Decimal WileyWidget.Models.BudgetInteraction::SharedCostImpact()
+DA:110,0
+DA:112,0
+DA:113,0
+DA:114,0
+DA:116,0
+DA:118,0
+DA:120,0
+DA:121,0
+DA:123,0
+DA:124,0
+DA:126,0
+BRDA:113,13,0,0
+BRDA:113,13,1,0
+BRDA:116,37,0,0
+BRDA:116,37,1,0
+LF:25
+LH:11
+BRF:4
+BRH:0
+FNF:15
+FNH:11
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Models\Enterprise.cs
+FN:20,System.Int32 WileyWidget.Models.Enterprise::get_Id()
+FNDA:24,System.Int32 WileyWidget.Models.Enterprise::get_Id()
+DA:21,24
+FN:28,System.String WileyWidget.Models.Enterprise::get_Name()
+FNDA:418,System.String WileyWidget.Models.Enterprise::get_Name()
+DA:29,418
+FN:37,System.Decimal WileyWidget.Models.Enterprise::get_CurrentRate()
+FNDA:267,System.Decimal WileyWidget.Models.Enterprise::get_CurrentRate()
+DA:38,267
+FN:46,System.Decimal WileyWidget.Models.Enterprise::get_MonthlyExpenses()
+FNDA:254,System.Decimal WileyWidget.Models.Enterprise::get_MonthlyExpenses()
+DA:47,254
+FN:55,System.Decimal WileyWidget.Models.Enterprise::get_MonthlyRevenue()
+FNDA:132,System.Decimal WileyWidget.Models.Enterprise::get_MonthlyRevenue()
+DA:56,132
+FN:68,System.Int32 WileyWidget.Models.Enterprise::get_CitizenCount()
+FNDA:270,System.Int32 WileyWidget.Models.Enterprise::get_CitizenCount()
+DA:69,270
+FN:74,System.String WileyWidget.Models.Enterprise::get_Notes()
+FNDA:234,System.String WileyWidget.Models.Enterprise::get_Notes()
+DA:75,234
+FN:79,System.Collections.Generic.ICollection`1<WileyWidget.Models.BudgetInteraction> WileyWidget.Models.Enterprise::get_BudgetInteractions()
+FNDA:186,System.Collections.Generic.ICollection`1<WileyWidget.Models.BudgetInteraction> WileyWidget.Models.Enterprise::get_BudgetInteractions()
+DA:80,186
+FN:88,System.Decimal WileyWidget.Models.Enterprise::get_MonthlyBalance()
+FNDA:45,System.Decimal WileyWidget.Models.Enterprise::get_MonthlyBalance()
+DA:89,45
+FN:98,System.Decimal WileyWidget.Models.Enterprise::get_MonthlyDeficit()
+FNDA:0,System.Decimal WileyWidget.Models.Enterprise::get_MonthlyDeficit()
+DA:99,0
+FN:106,System.Decimal WileyWidget.Models.Enterprise::get_Deficit()
+FNDA:15,System.Decimal WileyWidget.Models.Enterprise::get_Deficit()
+DA:107,15
+FN:112,System.Nullable`1<System.Decimal> WileyWidget.Models.Enterprise::get_ComputedDeficit()
+FNDA:0,System.Nullable`1<System.Decimal> WileyWidget.Models.Enterprise::get_ComputedDeficit()
+DA:113,0
+FN:118,System.Nullable`1<System.Decimal> WileyWidget.Models.Enterprise::get_SuggestedRateHike()
+FNDA:0,System.Nullable`1<System.Decimal> WileyWidget.Models.Enterprise::get_SuggestedRateHike()
+DA:119,0
+FN:127,System.String WileyWidget.Models.Enterprise::get_BudgetStatus()
+FNDA:3,System.String WileyWidget.Models.Enterprise::get_BudgetStatus()
+DA:128,3
+DA:129,3
+DA:130,1
+DA:131,2
+DA:132,1
+DA:134,1
+DA:135,3
+BRDA:129,19,0,1
+BRDA:129,19,1,2
+BRDA:131,47,0,1
+BRDA:131,47,1,1
+FN:143,System.Decimal WileyWidget.Models.Enterprise::get_BreakEvenRate()
+FNDA:9,System.Decimal WileyWidget.Models.Enterprise::get_BreakEvenRate()
+DA:144,9
+BRDA:144,8,0,1
+BRDA:144,8,1,2
+FN:153,System.Decimal WileyWidget.Models.Enterprise::get_ProfitMargin()
+FNDA:0,System.Decimal WileyWidget.Models.Enterprise::get_ProfitMargin()
+DA:154,0
+DA:155,0
+DA:156,0
+DA:157,0
+BRDA:155,19,0,0
+BRDA:155,19,1,0
+FN:165,System.Decimal WileyWidget.Models.Enterprise::get_RevenuePerCitizen()
+FNDA:0,System.Decimal WileyWidget.Models.Enterprise::get_RevenuePerCitizen()
+DA:166,0
+BRDA:166,8,0,0
+BRDA:166,8,1,0
+FN:175,System.Decimal WileyWidget.Models.Enterprise::get_ExpenseRatio()
+FNDA:0,System.Decimal WileyWidget.Models.Enterprise::get_ExpenseRatio()
+DA:176,0
+DA:177,0
+DA:178,0
+DA:179,0
+BRDA:177,19,0,0
+BRDA:177,19,1,0
+FN:185,System.String WileyWidget.Models.Enterprise::get_QboClassId()
+FNDA:33,System.String WileyWidget.Models.Enterprise::get_QboClassId()
+DA:186,33
+FN:190,WileyWidget.Models.QboSyncStatus WileyWidget.Models.Enterprise::get_QboSyncStatus()
+FNDA:186,WileyWidget.Models.QboSyncStatus WileyWidget.Models.Enterprise::get_QboSyncStatus()
+DA:191,186
+FN:195,System.Nullable`1<System.DateTime> WileyWidget.Models.Enterprise::get_QboLastSync()
+FNDA:0,System.Nullable`1<System.DateTime> WileyWidget.Models.Enterprise::get_QboLastSync()
+DA:196,0
+FN:203,System.Boolean WileyWidget.Models.Enterprise::get_SyncToQboReady()
+FNDA:0,System.Boolean WileyWidget.Models.Enterprise::get_SyncToQboReady()
+DA:204,0
+BRDA:204,11,0,0
+BRDA:204,11,1,0
+FN:225,System.String WileyWidget.Models.Enterprise::ToString()
+FNDA:0,System.String WileyWidget.Models.Enterprise::ToString()
+DA:226,0
+DA:227,0
+DA:228,0
+DA:229,0
+DA:230,0
+BRDA:227,17,0,0
+BRDA:227,17,1,0
+FN:213,System.Boolean WileyWidget.Models.Enterprise/<Validate>d__68::MoveNext()
+FNDA:15,System.Boolean WileyWidget.Models.Enterprise/<Validate>d__68::MoveNext()
+DA:214,15
+DA:215,15
+DA:216,4
+DA:217,4
+DA:218,4
+DA:219,15
+BRDA:215,55,0,4
+BRDA:215,55,1,15
+LF:45
+LH:26
+BRF:18
+BRH:8
+FNF:24
+FNH:15
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Models\OverallBudget.cs
+FN:14,System.Int32 WileyWidget.Models.OverallBudget::get_Id()
+FNDA:0,System.Int32 WileyWidget.Models.OverallBudget::get_Id()
+DA:15,0
+FN:20,System.DateTime WileyWidget.Models.OverallBudget::get_SnapshotDate()
+FNDA:96,System.DateTime WileyWidget.Models.OverallBudget::get_SnapshotDate()
+DA:21,96
+FN:27,System.Decimal WileyWidget.Models.OverallBudget::get_TotalMonthlyRevenue()
+FNDA:48,System.Decimal WileyWidget.Models.OverallBudget::get_TotalMonthlyRevenue()
+DA:28,48
+FN:34,System.Decimal WileyWidget.Models.OverallBudget::get_TotalMonthlyExpenses()
+FNDA:48,System.Decimal WileyWidget.Models.OverallBudget::get_TotalMonthlyExpenses()
+DA:35,48
+FN:40,System.Decimal WileyWidget.Models.OverallBudget::get_TotalMonthlyBalance()
+FNDA:0,System.Decimal WileyWidget.Models.OverallBudget::get_TotalMonthlyBalance()
+DA:41,0
+FN:46,System.Int32 WileyWidget.Models.OverallBudget::get_TotalCitizensServed()
+FNDA:48,System.Int32 WileyWidget.Models.OverallBudget::get_TotalCitizensServed()
+DA:47,48
+FN:52,System.Decimal WileyWidget.Models.OverallBudget::get_AverageRatePerCitizen()
+FNDA:48,System.Decimal WileyWidget.Models.OverallBudget::get_AverageRatePerCitizen()
+DA:53,48
+FN:58,System.String WileyWidget.Models.OverallBudget::get_Notes()
+FNDA:96,System.String WileyWidget.Models.OverallBudget::get_Notes()
+DA:59,96
+FN:64,System.Boolean WileyWidget.Models.OverallBudget::get_IsCurrent()
+FNDA:96,System.Boolean WileyWidget.Models.OverallBudget::get_IsCurrent()
+DA:65,96
+FN:70,System.Boolean WileyWidget.Models.OverallBudget::get_IsSurplus()
+FNDA:0,System.Boolean WileyWidget.Models.OverallBudget::get_IsSurplus()
+DA:71,0
+FN:76,System.Decimal WileyWidget.Models.OverallBudget::get_DeficitPercentage()
+FNDA:0,System.Decimal WileyWidget.Models.OverallBudget::get_DeficitPercentage()
+DA:77,0
+DA:78,0
+BRDA:77,16,0,0
+BRDA:77,16,1,0
+LF:12
+LH:7
+BRF:2
+BRH:0
+FNF:11
+FNH:7
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Models\Widget.cs
+FN:13,System.Int32 WileyWidget.Models.Widget::get_Id()
+FNDA:37,System.Int32 WileyWidget.Models.Widget::get_Id()
+DA:14,37
+FN:20,System.String WileyWidget.Models.Widget::get_Name()
+FNDA:154,System.String WileyWidget.Models.Widget::get_Name()
+DA:21,154
+FN:26,System.String WileyWidget.Models.Widget::get_Description()
+FNDA:77,System.String WileyWidget.Models.Widget::get_Description()
+DA:27,77
+FN:33,System.Decimal WileyWidget.Models.Widget::get_Price()
+FNDA:81,System.Decimal WileyWidget.Models.Widget::get_Price()
+DA:34,81
+FN:39,System.Int32 WileyWidget.Models.Widget::get_Quantity()
+FNDA:17,System.Int32 WileyWidget.Models.Widget::get_Quantity()
+DA:40,17
+FN:44,System.Boolean WileyWidget.Models.Widget::get_IsActive()
+FNDA:69,System.Boolean WileyWidget.Models.Widget::get_IsActive()
+DA:45,69
+FN:50,System.DateTime WileyWidget.Models.Widget::get_CreatedDate()
+FNDA:76,System.DateTime WileyWidget.Models.Widget::get_CreatedDate()
+DA:51,76
+FN:56,System.Nullable`1<System.DateTime> WileyWidget.Models.Widget::get_ModifiedDate()
+FNDA:16,System.Nullable`1<System.DateTime> WileyWidget.Models.Widget::get_ModifiedDate()
+DA:57,16
+FN:62,System.String WileyWidget.Models.Widget::get_Category()
+FNDA:120,System.String WileyWidget.Models.Widget::get_Category()
+DA:63,120
+FN:68,System.String WileyWidget.Models.Widget::get_SKU()
+FNDA:86,System.String WileyWidget.Models.Widget::get_SKU()
+DA:69,86
+FN:74,System.Void WileyWidget.Models.Widget::MarkAsModified()
+FNDA:1,System.Void WileyWidget.Models.Widget::MarkAsModified()
+DA:75,1
+DA:76,1
+DA:77,1
+FN:81,System.String WileyWidget.Models.Widget::get_FormattedPrice()
+FNDA:4,System.String WileyWidget.Models.Widget::get_FormattedPrice()
+DA:82,4
+FN:86,System.String WileyWidget.Models.Widget::get_DisplayName()
+FNDA:4,System.String WileyWidget.Models.Widget::get_DisplayName()
+DA:87,4
+BRDA:87,11,0,1
+BRDA:87,11,1,3
+LF:15
+LH:15
+BRF:2
+BRH:2
+FNF:13
+FNH:13
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250829235428_InitialCreate.cs
+FN:12,System.Void WileyWidget.Migrations.InitialCreate::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.InitialCreate::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:13,4
+DA:14,4
+DA:15,4
+DA:16,4
+DA:17,4
+DA:18,4
+DA:19,4
+DA:20,4
+DA:21,4
+DA:22,4
+DA:23,4
+DA:24,4
+DA:25,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,8
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:42,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:49,8
+DA:51,4
+DA:52,4
+DA:53,4
+DA:54,4
+DA:55,4
+DA:56,4
+DA:57,4
+DA:58,4
+DA:59,4
+DA:60,4
+DA:61,4
+DA:62,4
+DA:63,4
+DA:64,4
+DA:65,4
+DA:66,4
+DA:67,4
+DA:68,4
+DA:69,4
+DA:70,4
+DA:71,4
+DA:72,4
+DA:73,4
+DA:74,4
+DA:75,4
+DA:76,4
+DA:77,4
+DA:78,4
+DA:79,4
+DA:80,8
+DA:82,4
+DA:83,4
+DA:84,4
+DA:85,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:90,4
+DA:92,4
+DA:93,4
+DA:94,4
+DA:95,4
+DA:97,4
+DA:98,4
+DA:99,4
+DA:100,4
+DA:101,4
+DA:103,4
+DA:104,4
+DA:105,4
+DA:106,4
+DA:107,4
+DA:108,4
+DA:110,4
+DA:111,4
+DA:112,4
+DA:113,4
+DA:114,4
+FN:117,System.Void WileyWidget.Migrations.InitialCreate::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:0,System.Void WileyWidget.Migrations.InitialCreate::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:118,0
+DA:119,0
+DA:120,0
+DA:122,0
+DA:123,0
+DA:125,0
+DA:126,0
+DA:127,0
+LF:102
+LH:94
+BRF:0
+BRH:0
+FNF:2
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250829235428_InitialCreate.Designer.cs
+FN:19,System.Void WileyWidget.Migrations.InitialCreate::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.InitialCreate::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+DA:20,4
+DA:22,4
+DA:23,4
+DA:24,4
+DA:26,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:42,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:49,4
+DA:50,4
+DA:51,4
+DA:52,4
+DA:53,4
+DA:54,4
+DA:55,4
+DA:56,4
+DA:57,4
+DA:58,4
+DA:59,4
+DA:60,4
+DA:61,4
+DA:62,4
+DA:63,4
+DA:64,4
+DA:65,4
+DA:66,4
+DA:67,4
+DA:68,4
+DA:69,4
+DA:70,4
+DA:71,4
+DA:72,4
+DA:73,8
+DA:75,4
+DA:76,4
+DA:77,4
+DA:78,4
+DA:79,4
+DA:80,4
+DA:81,4
+DA:82,4
+DA:83,4
+DA:84,4
+DA:85,4
+DA:86,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:90,4
+DA:91,4
+DA:92,4
+DA:93,4
+DA:94,4
+DA:95,4
+DA:96,4
+DA:97,4
+DA:98,4
+DA:99,4
+DA:100,4
+DA:101,4
+DA:102,4
+DA:103,4
+DA:104,4
+DA:105,4
+DA:106,4
+DA:107,8
+DA:109,4
+DA:110,4
+DA:111,4
+DA:112,4
+DA:113,4
+DA:114,4
+DA:115,4
+DA:116,4
+DA:117,4
+DA:118,4
+DA:119,4
+DA:120,4
+DA:121,4
+DA:122,4
+DA:123,4
+DA:124,4
+DA:125,4
+DA:126,4
+DA:127,4
+DA:128,4
+DA:129,4
+DA:130,4
+DA:131,4
+DA:132,4
+DA:133,4
+DA:134,4
+DA:135,4
+DA:136,4
+DA:137,4
+DA:138,4
+DA:139,4
+DA:140,4
+DA:141,4
+DA:142,4
+DA:143,4
+DA:144,4
+DA:145,4
+DA:146,4
+DA:147,4
+DA:148,4
+DA:149,4
+DA:150,4
+DA:151,4
+DA:152,4
+DA:153,4
+DA:154,4
+DA:155,8
+DA:157,4
+DA:158,4
+DA:159,4
+DA:160,4
+DA:161,4
+DA:162,4
+DA:163,4
+DA:164,4
+DA:165,4
+DA:166,4
+DA:167,4
+DA:168,4
+DA:169,4
+DA:170,4
+DA:171,4
+DA:172,4
+DA:173,8
+DA:175,4
+DA:176,4
+DA:177,4
+DA:178,8
+DA:180,4
+LF:153
+LH:153
+BRF:0
+BRH:0
+FNF:1
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250830012453_AddQboFields.cs
+FN:12,System.Void WileyWidget.Migrations.AddQboFields::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.AddQboFields::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:13,4
+DA:14,4
+DA:15,4
+DA:16,4
+DA:17,4
+DA:18,4
+DA:19,4
+DA:20,4
+DA:22,4
+DA:23,4
+DA:24,4
+DA:25,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:49,4
+DA:50,4
+DA:51,4
+DA:53,4
+DA:54,4
+DA:55,4
+DA:56,4
+DA:57,4
+DA:58,4
+DA:59,4
+DA:60,4
+DA:61,4
+DA:63,4
+DA:64,4
+DA:65,4
+DA:66,4
+DA:67,4
+DA:68,4
+DA:69,4
+DA:71,4
+DA:72,4
+DA:73,4
+DA:74,4
+DA:75,4
+DA:76,4
+DA:77,4
+DA:78,4
+DA:80,4
+DA:81,4
+DA:82,4
+DA:83,4
+DA:84,4
+DA:85,4
+DA:86,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:91,4
+DA:92,4
+DA:93,4
+DA:94,4
+DA:95,4
+DA:96,4
+DA:97,4
+DA:98,4
+DA:99,4
+DA:100,4
+DA:102,4
+DA:103,4
+DA:104,4
+DA:105,4
+DA:106,4
+DA:107,4
+DA:108,4
+DA:109,4
+DA:110,4
+DA:112,4
+DA:113,4
+DA:114,4
+DA:115,4
+DA:116,4
+DA:117,4
+DA:118,4
+DA:120,4
+DA:121,4
+DA:122,4
+DA:123,4
+DA:124,4
+DA:125,4
+DA:126,4
+DA:127,4
+DA:128,4
+DA:130,4
+DA:131,4
+DA:132,4
+DA:133,4
+DA:134,4
+DA:135,4
+DA:136,4
+DA:137,4
+DA:139,4
+DA:140,4
+DA:141,4
+DA:142,4
+DA:143,4
+DA:144,4
+DA:145,4
+DA:147,4
+DA:148,4
+DA:149,4
+DA:150,4
+DA:151,4
+DA:152,4
+DA:153,4
+DA:154,4
+DA:156,4
+DA:157,4
+DA:158,4
+DA:159,4
+DA:160,4
+DA:161,4
+DA:162,4
+DA:163,4
+DA:164,4
+DA:165,4
+DA:167,4
+DA:168,4
+DA:169,4
+DA:170,4
+DA:171,4
+DA:172,4
+DA:173,4
+DA:175,4
+DA:176,4
+DA:177,4
+DA:178,4
+DA:179,4
+DA:180,4
+DA:181,4
+DA:182,4
+DA:183,4
+DA:184,4
+DA:186,4
+DA:187,4
+DA:188,4
+DA:189,4
+DA:190,4
+DA:191,4
+DA:192,4
+DA:193,4
+DA:194,4
+DA:196,4
+DA:197,4
+DA:198,4
+DA:199,4
+DA:200,4
+DA:201,4
+DA:202,4
+DA:203,4
+DA:204,4
+DA:206,4
+DA:207,4
+DA:208,4
+DA:209,4
+DA:210,4
+DA:211,4
+DA:212,4
+DA:213,4
+DA:214,4
+DA:216,4
+DA:217,4
+DA:218,4
+DA:219,4
+DA:220,4
+DA:221,4
+DA:222,4
+DA:223,4
+DA:224,4
+DA:225,4
+FN:228,System.Void WileyWidget.Migrations.AddQboFields::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:0,System.Void WileyWidget.Migrations.AddQboFields::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:229,0
+DA:230,0
+DA:231,0
+DA:232,0
+DA:233,0
+DA:234,0
+DA:235,0
+DA:236,0
+DA:238,0
+DA:239,0
+DA:240,0
+DA:241,0
+DA:242,0
+DA:243,0
+DA:244,0
+DA:245,0
+DA:246,0
+DA:248,0
+DA:249,0
+DA:250,0
+DA:251,0
+DA:252,0
+DA:253,0
+DA:254,0
+DA:255,0
+DA:256,0
+DA:257,0
+DA:259,0
+DA:260,0
+DA:261,0
+DA:262,0
+DA:263,0
+DA:264,0
+DA:265,0
+DA:266,0
+DA:267,0
+DA:269,0
+DA:270,0
+DA:271,0
+DA:272,0
+DA:273,0
+DA:274,0
+DA:275,0
+DA:276,0
+DA:277,0
+DA:279,0
+DA:280,0
+DA:281,0
+DA:282,0
+DA:283,0
+DA:284,0
+DA:285,0
+DA:287,0
+DA:288,0
+DA:289,0
+DA:290,0
+DA:291,0
+DA:292,0
+DA:293,0
+DA:294,0
+DA:296,0
+DA:297,0
+DA:298,0
+DA:299,0
+DA:300,0
+DA:301,0
+DA:302,0
+DA:303,0
+DA:304,0
+DA:305,0
+DA:307,0
+DA:308,0
+DA:309,0
+DA:310,0
+DA:311,0
+DA:312,0
+DA:313,0
+DA:314,0
+DA:315,0
+DA:316,0
+DA:318,0
+DA:319,0
+DA:320,0
+DA:321,0
+DA:322,0
+DA:323,0
+DA:324,0
+DA:325,0
+DA:326,0
+DA:328,0
+DA:329,0
+DA:330,0
+DA:331,0
+DA:332,0
+DA:333,0
+DA:334,0
+DA:336,0
+DA:337,0
+DA:338,0
+DA:339,0
+DA:340,0
+DA:341,0
+DA:342,0
+DA:343,0
+DA:344,0
+DA:346,0
+DA:347,0
+DA:348,0
+DA:349,0
+DA:350,0
+DA:351,0
+DA:352,0
+DA:353,0
+DA:355,0
+DA:356,0
+DA:357,0
+DA:358,0
+DA:359,0
+DA:360,0
+DA:361,0
+DA:363,0
+DA:364,0
+DA:365,0
+DA:366,0
+DA:367,0
+DA:368,0
+DA:369,0
+DA:370,0
+DA:372,0
+DA:373,0
+DA:374,0
+DA:375,0
+DA:376,0
+DA:377,0
+DA:378,0
+DA:379,0
+DA:380,0
+DA:381,0
+DA:383,0
+DA:384,0
+DA:385,0
+DA:386,0
+DA:387,0
+DA:388,0
+DA:389,0
+DA:391,0
+DA:392,0
+DA:393,0
+DA:394,0
+DA:395,0
+DA:396,0
+DA:397,0
+DA:398,0
+DA:399,0
+DA:400,0
+DA:402,0
+DA:403,0
+DA:404,0
+DA:405,0
+DA:406,0
+DA:407,0
+DA:408,0
+DA:409,0
+DA:410,0
+DA:412,0
+DA:413,0
+DA:414,0
+DA:415,0
+DA:416,0
+DA:417,0
+DA:418,0
+DA:419,0
+DA:420,0
+DA:422,0
+DA:423,0
+DA:424,0
+DA:425,0
+DA:426,0
+DA:427,0
+DA:428,0
+DA:429,0
+DA:430,0
+DA:432,0
+DA:433,0
+DA:434,0
+DA:435,0
+DA:436,0
+DA:437,0
+DA:438,0
+DA:439,0
+DA:440,0
+DA:441,0
+LF:384
+LH:192
+BRF:0
+BRH:0
+FNF:2
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250830012453_AddQboFields.Designer.cs
+FN:18,System.Void WileyWidget.Migrations.AddQboFields::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.AddQboFields::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+DA:19,4
+DA:21,4
+DA:23,4
+DA:24,4
+DA:25,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:42,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:49,4
+DA:50,4
+DA:51,4
+DA:52,4
+DA:53,4
+DA:54,4
+DA:55,4
+DA:56,4
+DA:57,4
+DA:58,4
+DA:59,4
+DA:60,4
+DA:61,4
+DA:62,4
+DA:63,4
+DA:64,4
+DA:65,4
+DA:66,4
+DA:67,4
+DA:68,4
+DA:69,4
+DA:70,4
+DA:71,4
+DA:72,4
+DA:73,4
+DA:74,4
+DA:75,4
+DA:76,8
+DA:78,4
+DA:79,4
+DA:80,4
+DA:81,4
+DA:82,4
+DA:83,4
+DA:84,4
+DA:85,4
+DA:86,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:90,4
+DA:91,4
+DA:92,4
+DA:93,4
+DA:94,4
+DA:95,4
+DA:96,4
+DA:97,4
+DA:98,4
+DA:99,4
+DA:100,4
+DA:101,4
+DA:102,4
+DA:103,4
+DA:104,4
+DA:105,4
+DA:106,4
+DA:107,4
+DA:108,4
+DA:109,4
+DA:110,4
+DA:111,4
+DA:112,4
+DA:113,4
+DA:114,4
+DA:115,4
+DA:116,4
+DA:117,4
+DA:118,8
+DA:120,4
+DA:121,4
+DA:122,4
+DA:123,4
+DA:124,4
+DA:125,4
+DA:126,4
+DA:127,4
+DA:128,4
+DA:129,4
+DA:130,4
+DA:131,4
+DA:132,4
+DA:133,4
+DA:134,4
+DA:135,4
+DA:136,4
+DA:137,4
+DA:138,4
+DA:139,4
+DA:140,4
+DA:141,4
+DA:142,4
+DA:143,4
+DA:144,4
+DA:145,4
+DA:146,4
+DA:147,4
+DA:148,4
+DA:149,4
+DA:150,4
+DA:151,4
+DA:152,4
+DA:153,4
+DA:154,4
+DA:155,4
+DA:156,4
+DA:157,4
+DA:158,4
+DA:159,4
+DA:160,4
+DA:161,4
+DA:162,4
+DA:163,4
+DA:164,8
+DA:166,4
+DA:167,4
+DA:168,4
+DA:169,4
+DA:170,4
+DA:171,4
+DA:172,4
+DA:173,4
+DA:174,4
+DA:175,4
+DA:176,4
+DA:177,4
+DA:178,4
+DA:179,4
+DA:180,4
+DA:181,4
+DA:182,8
+DA:184,4
+DA:185,4
+DA:186,4
+DA:187,8
+DA:189,4
+LF:164
+LH:164
+BRF:0
+BRH:0
+FNF:1
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250830022925_UpdateModelChanges.cs
+FN:11,System.Void WileyWidget.Migrations.UpdateModelChanges::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.UpdateModelChanges::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:12,4
+DA:13,4
+DA:14,4
+DA:15,4
+DA:16,4
+DA:17,4
+DA:18,4
+DA:19,4
+DA:20,4
+DA:21,4
+DA:22,4
+DA:23,4
+DA:25,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+FN:39,System.Void WileyWidget.Migrations.UpdateModelChanges::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:0,System.Void WileyWidget.Migrations.UpdateModelChanges::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:40,0
+DA:41,0
+DA:42,0
+DA:43,0
+DA:44,0
+DA:45,0
+DA:46,0
+DA:47,0
+DA:48,0
+DA:49,0
+DA:51,0
+DA:52,0
+DA:53,0
+DA:54,0
+DA:55,0
+DA:56,0
+DA:57,0
+DA:58,0
+DA:59,0
+DA:60,0
+LF:44
+LH:24
+BRF:0
+BRH:0
+FNF:2
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250830022925_UpdateModelChanges.Designer.cs
+FN:18,System.Void WileyWidget.Migrations.UpdateModelChanges::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.UpdateModelChanges::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+DA:19,4
+DA:21,4
+DA:23,4
+DA:24,4
+DA:25,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:42,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:49,4
+DA:50,4
+DA:51,4
+DA:52,4
+DA:53,4
+DA:54,4
+DA:55,4
+DA:56,4
+DA:57,4
+DA:58,4
+DA:59,4
+DA:60,4
+DA:61,4
+DA:62,4
+DA:63,4
+DA:64,4
+DA:65,4
+DA:66,4
+DA:67,4
+DA:68,4
+DA:69,4
+DA:70,4
+DA:71,4
+DA:72,4
+DA:73,4
+DA:74,4
+DA:75,4
+DA:76,4
+DA:77,8
+DA:79,4
+DA:80,4
+DA:81,4
+DA:82,4
+DA:83,4
+DA:84,4
+DA:85,4
+DA:86,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:90,4
+DA:91,4
+DA:92,4
+DA:93,4
+DA:94,4
+DA:95,4
+DA:96,4
+DA:97,4
+DA:98,4
+DA:99,4
+DA:100,4
+DA:101,4
+DA:102,4
+DA:103,4
+DA:104,4
+DA:105,4
+DA:106,4
+DA:107,4
+DA:108,4
+DA:109,4
+DA:110,4
+DA:111,4
+DA:112,4
+DA:113,4
+DA:114,4
+DA:115,4
+DA:116,4
+DA:117,4
+DA:118,4
+DA:119,4
+DA:120,8
+DA:122,4
+DA:123,4
+DA:124,4
+DA:125,4
+DA:126,4
+DA:127,4
+DA:128,4
+DA:129,4
+DA:130,4
+DA:131,4
+DA:132,4
+DA:133,4
+DA:134,4
+DA:135,4
+DA:136,4
+DA:137,4
+DA:138,4
+DA:139,4
+DA:140,4
+DA:141,4
+DA:142,4
+DA:143,4
+DA:144,4
+DA:145,4
+DA:146,4
+DA:147,4
+DA:148,4
+DA:149,4
+DA:150,4
+DA:151,4
+DA:152,4
+DA:153,4
+DA:154,4
+DA:155,4
+DA:156,4
+DA:157,4
+DA:158,4
+DA:159,4
+DA:160,4
+DA:161,4
+DA:162,4
+DA:163,4
+DA:164,4
+DA:165,4
+DA:166,8
+DA:168,4
+DA:169,4
+DA:170,4
+DA:171,4
+DA:172,4
+DA:173,4
+DA:174,4
+DA:175,4
+DA:176,4
+DA:177,4
+DA:178,4
+DA:179,4
+DA:180,4
+DA:181,4
+DA:182,4
+DA:183,4
+DA:184,8
+DA:186,4
+DA:187,4
+DA:188,4
+DA:189,8
+DA:191,4
+LF:166
+LH:166
+BRF:0
+BRH:0
+FNF:1
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250830115845_PendingModelChanges.cs
+FN:11,System.Void WileyWidget.Migrations.PendingModelChanges::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.PendingModelChanges::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:12,4
+DA:13,4
+DA:14,4
+DA:15,4
+DA:16,4
+DA:17,4
+DA:18,4
+DA:19,4
+FN:22,System.Void WileyWidget.Migrations.PendingModelChanges::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:0,System.Void WileyWidget.Migrations.PendingModelChanges::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:23,0
+DA:24,0
+DA:25,0
+DA:26,0
+DA:27,0
+LF:13
+LH:8
+BRF:0
+BRH:0
+FNF:2
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250830115845_PendingModelChanges.Designer.cs
+FN:18,System.Void WileyWidget.Migrations.PendingModelChanges::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.PendingModelChanges::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+DA:19,4
+DA:21,4
+DA:23,4
+DA:24,4
+DA:25,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:42,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:49,4
+DA:50,4
+DA:51,4
+DA:52,4
+DA:53,4
+DA:54,4
+DA:55,4
+DA:56,4
+DA:57,4
+DA:58,4
+DA:59,4
+DA:60,4
+DA:61,4
+DA:62,4
+DA:63,4
+DA:64,4
+DA:65,4
+DA:66,4
+DA:67,4
+DA:68,4
+DA:69,4
+DA:70,4
+DA:71,4
+DA:72,4
+DA:73,4
+DA:74,4
+DA:75,4
+DA:76,4
+DA:77,4
+DA:78,4
+DA:79,4
+DA:80,4
+DA:81,8
+DA:83,4
+DA:84,4
+DA:85,4
+DA:86,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:90,4
+DA:91,4
+DA:92,4
+DA:93,4
+DA:94,4
+DA:95,4
+DA:96,4
+DA:97,4
+DA:98,4
+DA:99,4
+DA:100,4
+DA:101,4
+DA:102,4
+DA:103,4
+DA:104,4
+DA:105,4
+DA:106,4
+DA:107,4
+DA:108,4
+DA:109,4
+DA:110,4
+DA:111,4
+DA:112,4
+DA:113,4
+DA:114,4
+DA:115,4
+DA:116,4
+DA:117,4
+DA:118,4
+DA:119,4
+DA:120,4
+DA:121,4
+DA:122,4
+DA:123,4
+DA:124,4
+DA:125,4
+DA:126,4
+DA:127,4
+DA:128,4
+DA:129,8
+DA:131,4
+DA:132,4
+DA:133,4
+DA:134,4
+DA:135,4
+DA:136,4
+DA:137,4
+DA:138,4
+DA:139,4
+DA:140,4
+DA:141,4
+DA:142,4
+DA:143,4
+DA:144,4
+DA:145,4
+DA:146,4
+DA:147,4
+DA:148,4
+DA:149,4
+DA:150,4
+DA:151,4
+DA:152,4
+DA:153,4
+DA:154,4
+DA:155,4
+DA:156,4
+DA:157,4
+DA:158,4
+DA:159,4
+DA:160,4
+DA:161,4
+DA:162,4
+DA:163,4
+DA:164,4
+DA:165,4
+DA:166,4
+DA:167,4
+DA:168,4
+DA:169,4
+DA:170,4
+DA:171,4
+DA:172,4
+DA:173,4
+DA:174,4
+DA:175,8
+DA:177,4
+DA:178,4
+DA:179,4
+DA:180,4
+DA:181,4
+DA:182,4
+DA:183,4
+DA:184,4
+DA:185,4
+DA:186,4
+DA:187,4
+DA:188,4
+DA:189,4
+DA:190,4
+DA:191,4
+DA:192,4
+DA:193,8
+DA:195,4
+DA:196,4
+DA:197,4
+DA:198,8
+DA:200,4
+LF:175
+LH:175
+BRF:0
+BRH:0
+FNF:1
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250830192332_AddAiEntities.cs
+FN:12,System.Void WileyWidget.Migrations.AddAiEntities::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.AddAiEntities::Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:13,4
+DA:14,4
+DA:15,4
+DA:16,4
+DA:17,4
+DA:18,4
+DA:20,4
+DA:21,4
+DA:22,4
+DA:23,4
+DA:24,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:42,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:49,4
+DA:50,4
+DA:51,4
+DA:52,8
+DA:54,4
+DA:55,4
+DA:56,4
+DA:57,4
+DA:58,4
+DA:59,4
+DA:60,4
+DA:61,4
+DA:62,4
+DA:63,4
+DA:64,4
+DA:65,4
+DA:66,4
+DA:67,4
+DA:68,4
+DA:69,4
+DA:70,4
+DA:71,4
+DA:72,4
+DA:73,8
+DA:75,4
+DA:76,4
+DA:77,4
+DA:78,4
+DA:79,4
+DA:80,4
+DA:81,4
+DA:82,4
+DA:83,4
+DA:84,4
+DA:85,4
+DA:86,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:90,4
+DA:91,4
+DA:92,4
+DA:93,4
+DA:94,4
+DA:95,4
+DA:96,4
+DA:97,4
+DA:98,4
+DA:99,4
+DA:100,4
+DA:101,8
+DA:103,4
+DA:104,4
+DA:105,4
+DA:106,4
+DA:107,4
+DA:108,4
+DA:109,4
+DA:110,4
+DA:111,4
+DA:112,4
+DA:113,4
+DA:114,4
+DA:115,4
+DA:116,4
+DA:117,8
+DA:119,4
+DA:120,4
+DA:121,4
+DA:122,4
+DA:124,4
+DA:125,4
+DA:126,4
+DA:127,4
+DA:129,4
+DA:130,4
+DA:131,4
+DA:132,4
+DA:134,4
+DA:135,4
+DA:136,4
+DA:137,4
+DA:139,4
+DA:140,4
+DA:141,4
+DA:142,4
+DA:144,4
+DA:145,4
+DA:146,4
+DA:147,4
+DA:149,4
+DA:150,4
+DA:151,4
+DA:152,4
+DA:153,4
+DA:155,4
+DA:156,4
+DA:157,4
+DA:158,4
+DA:160,4
+DA:161,4
+DA:162,4
+DA:163,4
+DA:165,4
+DA:166,4
+DA:167,4
+DA:168,4
+DA:170,4
+DA:171,4
+DA:172,4
+DA:173,4
+DA:175,4
+DA:176,4
+DA:177,4
+DA:178,4
+DA:179,4
+FN:182,System.Void WileyWidget.Migrations.AddAiEntities::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+FNDA:0,System.Void WileyWidget.Migrations.AddAiEntities::Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)
+DA:183,0
+DA:184,0
+DA:185,0
+DA:187,0
+DA:188,0
+DA:190,0
+DA:191,0
+DA:193,0
+DA:194,0
+DA:196,0
+DA:197,0
+DA:198,0
+DA:200,0
+DA:201,0
+DA:202,0
+DA:203,0
+LF:166
+LH:150
+BRF:0
+BRH:0
+FNF:2
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\20250830192332_AddAiEntities.Designer.cs
+FN:18,System.Void WileyWidget.Migrations.AddAiEntities::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+FNDA:4,System.Void WileyWidget.Migrations.AddAiEntities::BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+DA:19,4
+DA:21,4
+DA:23,4
+DA:24,4
+DA:25,4
+DA:26,4
+DA:27,4
+DA:28,4
+DA:29,4
+DA:30,4
+DA:31,4
+DA:32,4
+DA:33,4
+DA:34,4
+DA:35,4
+DA:36,4
+DA:37,4
+DA:38,4
+DA:39,4
+DA:40,4
+DA:41,4
+DA:42,4
+DA:43,4
+DA:44,4
+DA:45,4
+DA:46,4
+DA:47,4
+DA:48,4
+DA:49,4
+DA:50,4
+DA:51,4
+DA:52,4
+DA:53,4
+DA:54,4
+DA:55,4
+DA:56,4
+DA:57,4
+DA:58,4
+DA:59,4
+DA:60,4
+DA:61,4
+DA:62,4
+DA:63,4
+DA:64,4
+DA:65,4
+DA:66,4
+DA:67,4
+DA:68,4
+DA:69,4
+DA:70,4
+DA:71,4
+DA:72,4
+DA:73,4
+DA:74,4
+DA:75,4
+DA:76,4
+DA:77,4
+DA:78,4
+DA:79,4
+DA:80,4
+DA:81,4
+DA:82,4
+DA:83,4
+DA:84,4
+DA:85,4
+DA:86,4
+DA:87,4
+DA:88,4
+DA:89,4
+DA:90,8
+DA:92,4
+DA:93,4
+DA:94,4
+DA:95,4
+DA:96,4
+DA:97,4
+DA:98,4
+DA:99,4
+DA:100,4
+DA:101,4
+DA:102,4
+DA:103,4
+DA:104,4
+DA:105,4
+DA:106,4
+DA:107,4
+DA:108,4
+DA:109,4
+DA:110,4
+DA:111,4
+DA:112,4
+DA:113,4
+DA:114,4
+DA:115,4
+DA:116,4
+DA:117,4
+DA:118,4
+DA:119,4
+DA:120,4
+DA:121,4
+DA:122,4
+DA:123,4
+DA:124,4
+DA:125,4
+DA:126,4
+DA:127,4
+DA:128,4
+DA:129,4
+DA:130,4
+DA:131,4
+DA:132,4
+DA:133,4
+DA:134,4
+DA:135,4
+DA:136,4
+DA:137,4
+DA:138,4
+DA:139,4
+DA:140,4
+DA:141,4
+DA:142,4
+DA:143,4
+DA:144,4
+DA:145,4
+DA:146,4
+DA:147,4
+DA:148,4
+DA:149,8
+DA:151,4
+DA:152,4
+DA:153,4
+DA:154,4
+DA:155,4
+DA:156,4
+DA:157,4
+DA:158,4
+DA:159,4
+DA:160,4
+DA:161,4
+DA:162,4
+DA:163,4
+DA:164,4
+DA:165,4
+DA:166,4
+DA:167,4
+DA:168,4
+DA:169,4
+DA:170,4
+DA:171,4
+DA:172,4
+DA:173,4
+DA:174,4
+DA:175,4
+DA:176,4
+DA:177,4
+DA:178,4
+DA:179,4
+DA:180,4
+DA:181,4
+DA:182,4
+DA:183,4
+DA:184,4
+DA:185,4
+DA:186,4
+DA:187,4
+DA:188,4
+DA:189,4
+DA:190,4
+DA:191,4
+DA:192,4
+DA:193,4
+DA:194,4
+DA:195,4
+DA:196,4
+DA:197,4
+DA:198,4
+DA:199,4
+DA:200,4
+DA:201,4
+DA:202,4
+DA:203,4
+DA:204,4
+DA:205,4
+DA:206,4
+DA:207,4
+DA:208,4
+DA:209,4
+DA:210,4
+DA:211,4
+DA:212,4
+DA:213,4
+DA:214,4
+DA:215,4
+DA:216,4
+DA:217,8
+DA:219,4
+DA:220,4
+DA:221,4
+DA:222,4
+DA:223,4
+DA:224,4
+DA:225,4
+DA:226,4
+DA:227,4
+DA:228,4
+DA:229,4
+DA:230,4
+DA:231,4
+DA:232,4
+DA:233,4
+DA:234,4
+DA:235,4
+DA:236,4
+DA:237,4
+DA:238,4
+DA:239,4
+DA:240,4
+DA:241,4
+DA:242,4
+DA:243,4
+DA:244,4
+DA:245,4
+DA:246,4
+DA:247,4
+DA:248,4
+DA:249,4
+DA:250,4
+DA:251,4
+DA:252,8
+DA:254,4
+DA:255,4
+DA:256,4
+DA:257,4
+DA:258,4
+DA:259,4
+DA:260,4
+DA:261,4
+DA:262,4
+DA:263,4
+DA:264,4
+DA:265,4
+DA:266,4
+DA:267,4
+DA:268,4
+DA:269,4
+DA:270,4
+DA:271,4
+DA:272,4
+DA:273,4
+DA:274,4
+DA:275,4
+DA:276,4
+DA:277,4
+DA:278,4
+DA:279,4
+DA:280,4
+DA:281,4
+DA:282,4
+DA:283,4
+DA:284,4
+DA:285,4
+DA:286,4
+DA:287,4
+DA:288,4
+DA:289,4
+DA:290,4
+DA:291,4
+DA:292,4
+DA:293,4
+DA:294,4
+DA:295,4
+DA:296,4
+DA:297,4
+DA:298,4
+DA:299,4
+DA:300,4
+DA:301,4
+DA:302,4
+DA:303,4
+DA:304,4
+DA:305,4
+DA:306,4
+DA:307,4
+DA:308,4
+DA:309,4
+DA:310,4
+DA:311,4
+DA:312,8
+DA:314,4
+DA:315,4
+DA:316,4
+DA:317,4
+DA:318,4
+DA:319,4
+DA:320,4
+DA:321,4
+DA:322,4
+DA:323,4
+DA:324,4
+DA:325,4
+DA:326,4
+DA:327,4
+DA:328,4
+DA:329,4
+DA:330,4
+DA:331,4
+DA:332,4
+DA:333,4
+DA:334,4
+DA:335,4
+DA:336,4
+DA:337,4
+DA:338,4
+DA:339,4
+DA:340,4
+DA:341,4
+DA:342,4
+DA:343,4
+DA:344,4
+DA:345,4
+DA:346,4
+DA:347,4
+DA:348,4
+DA:349,4
+DA:350,4
+DA:351,4
+DA:352,4
+DA:353,4
+DA:354,4
+DA:355,4
+DA:356,4
+DA:357,4
+DA:358,4
+DA:359,4
+DA:360,4
+DA:361,4
+DA:362,4
+DA:363,4
+DA:364,4
+DA:365,4
+DA:366,8
+DA:368,4
+DA:369,4
+DA:370,4
+DA:371,4
+DA:372,4
+DA:373,4
+DA:374,4
+DA:375,4
+DA:376,4
+DA:377,4
+DA:378,4
+DA:379,4
+DA:380,4
+DA:381,4
+DA:382,4
+DA:383,4
+DA:384,4
+DA:385,4
+DA:386,4
+DA:387,4
+DA:388,4
+DA:389,4
+DA:390,4
+DA:391,4
+DA:392,4
+DA:393,4
+DA:394,4
+DA:395,4
+DA:396,4
+DA:397,4
+DA:398,4
+DA:399,4
+DA:400,4
+DA:401,4
+DA:402,4
+DA:403,4
+DA:404,4
+DA:405,4
+DA:406,4
+DA:407,4
+DA:408,4
+DA:409,4
+DA:410,4
+DA:411,4
+DA:412,8
+DA:414,4
+DA:415,4
+DA:416,4
+DA:417,4
+DA:418,4
+DA:419,4
+DA:420,4
+DA:421,4
+DA:422,8
+DA:424,4
+DA:425,4
+DA:426,4
+DA:427,4
+DA:428,4
+DA:429,4
+DA:430,4
+DA:431,4
+DA:432,4
+DA:433,8
+DA:435,4
+DA:436,4
+DA:437,4
+DA:438,4
+DA:439,4
+DA:440,4
+DA:441,4
+DA:442,4
+DA:443,4
+DA:444,4
+DA:445,4
+DA:446,4
+DA:447,4
+DA:448,4
+DA:449,4
+DA:450,4
+DA:451,8
+DA:453,4
+DA:454,4
+DA:455,4
+DA:456,8
+DA:458,4
+LF:427
+LH:427
+BRF:0
+BRH:0
+FNF:1
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Migrations\AppDbContextModelSnapshot.cs
+FN:15,System.Void WileyWidget.Migrations.AppDbContextModelSnapshot::BuildModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+FNDA:6,System.Void WileyWidget.Migrations.AppDbContextModelSnapshot::BuildModel(Microsoft.EntityFrameworkCore.ModelBuilder)
+DA:16,6
+DA:18,6
+DA:20,6
+DA:21,6
+DA:22,6
+DA:23,6
+DA:24,6
+DA:25,6
+DA:26,6
+DA:27,6
+DA:28,6
+DA:29,6
+DA:30,6
+DA:31,6
+DA:32,6
+DA:33,6
+DA:34,6
+DA:35,6
+DA:36,6
+DA:37,6
+DA:38,6
+DA:39,6
+DA:40,6
+DA:41,6
+DA:42,6
+DA:43,6
+DA:44,6
+DA:45,6
+DA:46,6
+DA:47,6
+DA:48,6
+DA:49,6
+DA:50,6
+DA:51,6
+DA:52,6
+DA:53,6
+DA:54,6
+DA:55,6
+DA:56,6
+DA:57,6
+DA:58,6
+DA:59,6
+DA:60,6
+DA:61,6
+DA:62,6
+DA:63,6
+DA:64,6
+DA:65,6
+DA:66,6
+DA:67,6
+DA:68,6
+DA:69,6
+DA:70,6
+DA:71,6
+DA:72,6
+DA:73,6
+DA:74,6
+DA:75,6
+DA:76,6
+DA:77,6
+DA:78,6
+DA:79,6
+DA:80,6
+DA:81,6
+DA:82,6
+DA:83,6
+DA:84,6
+DA:85,6
+DA:86,6
+DA:87,12
+DA:89,6
+DA:90,6
+DA:91,6
+DA:92,6
+DA:93,6
+DA:94,6
+DA:95,6
+DA:96,6
+DA:97,6
+DA:98,6
+DA:99,6
+DA:100,6
+DA:101,6
+DA:102,6
+DA:103,6
+DA:104,6
+DA:105,6
+DA:106,6
+DA:107,6
+DA:108,6
+DA:109,6
+DA:110,6
+DA:111,6
+DA:112,6
+DA:113,6
+DA:114,6
+DA:115,6
+DA:116,6
+DA:117,6
+DA:118,6
+DA:119,6
+DA:120,6
+DA:121,6
+DA:122,6
+DA:123,6
+DA:124,6
+DA:125,6
+DA:126,6
+DA:127,6
+DA:128,6
+DA:129,6
+DA:130,6
+DA:131,6
+DA:132,6
+DA:133,6
+DA:134,6
+DA:135,6
+DA:136,6
+DA:137,6
+DA:138,6
+DA:139,6
+DA:140,6
+DA:141,6
+DA:142,6
+DA:143,6
+DA:144,6
+DA:145,6
+DA:146,12
+DA:148,6
+DA:149,6
+DA:150,6
+DA:151,6
+DA:152,6
+DA:153,6
+DA:154,6
+DA:155,6
+DA:156,6
+DA:157,6
+DA:158,6
+DA:159,6
+DA:160,6
+DA:161,6
+DA:162,6
+DA:163,6
+DA:164,6
+DA:165,6
+DA:166,6
+DA:167,6
+DA:168,6
+DA:169,6
+DA:170,6
+DA:171,6
+DA:172,6
+DA:173,6
+DA:174,6
+DA:175,6
+DA:176,6
+DA:177,6
+DA:178,6
+DA:179,6
+DA:180,6
+DA:181,6
+DA:182,6
+DA:183,6
+DA:184,6
+DA:185,6
+DA:186,6
+DA:187,6
+DA:188,6
+DA:189,6
+DA:190,6
+DA:191,6
+DA:192,6
+DA:193,6
+DA:194,6
+DA:195,6
+DA:196,6
+DA:197,6
+DA:198,6
+DA:199,6
+DA:200,6
+DA:201,6
+DA:202,6
+DA:203,6
+DA:204,6
+DA:205,6
+DA:206,6
+DA:207,6
+DA:208,6
+DA:209,6
+DA:210,6
+DA:211,6
+DA:212,6
+DA:213,6
+DA:214,12
+DA:216,6
+DA:217,6
+DA:218,6
+DA:219,6
+DA:220,6
+DA:221,6
+DA:222,6
+DA:223,6
+DA:224,6
+DA:225,6
+DA:226,6
+DA:227,6
+DA:228,6
+DA:229,6
+DA:230,6
+DA:231,6
+DA:232,6
+DA:233,6
+DA:234,6
+DA:235,6
+DA:236,6
+DA:237,6
+DA:238,6
+DA:239,6
+DA:240,6
+DA:241,6
+DA:242,6
+DA:243,6
+DA:244,6
+DA:245,6
+DA:246,6
+DA:247,6
+DA:248,6
+DA:249,12
+DA:251,6
+DA:252,6
+DA:253,6
+DA:254,6
+DA:255,6
+DA:256,6
+DA:257,6
+DA:258,6
+DA:259,6
+DA:260,6
+DA:261,6
+DA:262,6
+DA:263,6
+DA:264,6
+DA:265,6
+DA:266,6
+DA:267,6
+DA:268,6
+DA:269,6
+DA:270,6
+DA:271,6
+DA:272,6
+DA:273,6
+DA:274,6
+DA:275,6
+DA:276,6
+DA:277,6
+DA:278,6
+DA:279,6
+DA:280,6
+DA:281,6
+DA:282,6
+DA:283,6
+DA:284,6
+DA:285,6
+DA:286,6
+DA:287,6
+DA:288,6
+DA:289,6
+DA:290,6
+DA:291,6
+DA:292,6
+DA:293,6
+DA:294,6
+DA:295,6
+DA:296,6
+DA:297,6
+DA:298,6
+DA:299,6
+DA:300,6
+DA:301,6
+DA:302,6
+DA:303,6
+DA:304,6
+DA:305,6
+DA:306,6
+DA:307,6
+DA:308,6
+DA:309,12
+DA:311,6
+DA:312,6
+DA:313,6
+DA:314,6
+DA:315,6
+DA:316,6
+DA:317,6
+DA:318,6
+DA:319,6
+DA:320,6
+DA:321,6
+DA:322,6
+DA:323,6
+DA:324,6
+DA:325,6
+DA:326,6
+DA:327,6
+DA:328,6
+DA:329,6
+DA:330,6
+DA:331,6
+DA:332,6
+DA:333,6
+DA:334,6
+DA:335,6
+DA:336,6
+DA:337,6
+DA:338,6
+DA:339,6
+DA:340,6
+DA:341,6
+DA:342,6
+DA:343,6
+DA:344,6
+DA:345,6
+DA:346,6
+DA:347,6
+DA:348,6
+DA:349,6
+DA:350,6
+DA:351,6
+DA:352,6
+DA:353,6
+DA:354,6
+DA:355,6
+DA:356,6
+DA:357,6
+DA:358,6
+DA:359,6
+DA:360,6
+DA:361,6
+DA:362,6
+DA:363,12
+DA:365,6
+DA:366,6
+DA:367,6
+DA:368,6
+DA:369,6
+DA:370,6
+DA:371,6
+DA:372,6
+DA:373,6
+DA:374,6
+DA:375,6
+DA:376,6
+DA:377,6
+DA:378,6
+DA:379,6
+DA:380,6
+DA:381,6
+DA:382,6
+DA:383,6
+DA:384,6
+DA:385,6
+DA:386,6
+DA:387,6
+DA:388,6
+DA:389,6
+DA:390,6
+DA:391,6
+DA:392,6
+DA:393,6
+DA:394,6
+DA:395,6
+DA:396,6
+DA:397,6
+DA:398,6
+DA:399,6
+DA:400,6
+DA:401,6
+DA:402,6
+DA:403,6
+DA:404,6
+DA:405,6
+DA:406,6
+DA:407,6
+DA:408,6
+DA:409,12
+DA:411,6
+DA:412,6
+DA:413,6
+DA:414,6
+DA:415,6
+DA:416,6
+DA:417,6
+DA:418,6
+DA:419,12
+DA:421,6
+DA:422,6
+DA:423,6
+DA:424,6
+DA:425,6
+DA:426,6
+DA:427,6
+DA:428,6
+DA:429,6
+DA:430,12
+DA:432,6
+DA:433,6
+DA:434,6
+DA:435,6
+DA:436,6
+DA:437,6
+DA:438,6
+DA:439,6
+DA:440,6
+DA:441,6
+DA:442,6
+DA:443,6
+DA:444,6
+DA:445,6
+DA:446,6
+DA:447,6
+DA:448,12
+DA:450,6
+DA:451,6
+DA:452,6
+DA:453,12
+DA:455,6
+LF:427
+LH:427
+BRF:0
+BRH:0
+FNF:1
+FNH:1
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Data\AppDbContext.cs
+FN:16,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.Enterprise> WileyWidget.Data.AppDbContext::get_Enterprises()
+FNDA:103,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.Enterprise> WileyWidget.Data.AppDbContext::get_Enterprises()
+DA:17,103
+FN:21,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.BudgetInteraction> WileyWidget.Data.AppDbContext::get_BudgetInteractions()
+FNDA:51,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.BudgetInteraction> WileyWidget.Data.AppDbContext::get_BudgetInteractions()
+DA:22,51
+FN:26,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.OverallBudget> WileyWidget.Data.AppDbContext::get_OverallBudgets()
+FNDA:104,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.OverallBudget> WileyWidget.Data.AppDbContext::get_OverallBudgets()
+DA:27,104
+FN:31,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.AiAnalysisResult> WileyWidget.Data.AppDbContext::get_AiAnalysisResults()
+FNDA:60,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.AiAnalysisResult> WileyWidget.Data.AppDbContext::get_AiAnalysisResults()
+DA:32,60
+FN:36,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.AiRecommendation> WileyWidget.Data.AppDbContext::get_AiRecommendations()
+FNDA:57,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.AiRecommendation> WileyWidget.Data.AppDbContext::get_AiRecommendations()
+DA:37,57
+FN:41,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.AiAnalysisAudit> WileyWidget.Data.AppDbContext::get_AiAnalysisAudits()
+FNDA:60,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.AiAnalysisAudit> WileyWidget.Data.AppDbContext::get_AiAnalysisAudits()
+DA:42,60
+FN:46,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.AiResponseCache> WileyWidget.Data.AppDbContext::get_AiResponseCache()
+FNDA:51,Microsoft.EntityFrameworkCore.DbSet`1<WileyWidget.Models.AiResponseCache> WileyWidget.Data.AppDbContext::get_AiResponseCache()
+DA:47,51
+FN:60,System.Void WileyWidget.Data.AppDbContext::OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)
+FNDA:3,System.Void WileyWidget.Data.AppDbContext::OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)
+DA:61,3
+DA:62,3
+DA:65,3
+DA:66,3
+DA:67,3
+DA:68,3
+DA:69,3
+DA:70,3
+DA:71,3
+DA:72,3
+DA:73,3
+DA:74,3
+DA:75,3
+DA:76,3
+DA:77,3
+DA:78,3
+DA:79,3
+DA:80,3
+DA:81,3
+DA:82,3
+DA:83,3
+DA:84,3
+DA:85,3
+DA:86,3
+DA:87,3
+DA:88,3
+DA:89,3
+DA:90,3
+DA:91,3
+DA:92,3
+DA:93,3
+DA:94,6
+DA:97,3
+DA:98,3
+DA:99,3
+DA:100,3
+DA:101,3
+DA:102,3
+DA:103,3
+DA:104,3
+DA:105,3
+DA:106,3
+DA:107,3
+DA:108,3
+DA:109,3
+DA:110,3
+DA:111,3
+DA:112,3
+DA:113,3
+DA:114,3
+DA:115,3
+DA:116,3
+DA:117,3
+DA:118,3
+DA:119,3
+DA:120,3
+DA:121,3
+DA:122,3
+DA:123,3
+DA:124,3
+DA:125,3
+DA:126,3
+DA:127,3
+DA:128,3
+DA:129,3
+DA:130,3
+DA:131,3
+DA:132,3
+DA:133,3
+DA:134,3
+DA:135,3
+DA:136,3
+DA:137,3
+DA:138,3
+DA:139,3
+DA:140,3
+DA:141,6
+DA:144,3
+DA:145,3
+DA:146,3
+DA:147,3
+DA:148,3
+DA:149,3
+DA:150,3
+DA:151,3
+DA:152,3
+DA:153,3
+DA:154,3
+DA:155,3
+DA:156,3
+DA:157,3
+DA:158,3
+DA:159,3
+DA:160,3
+DA:161,3
+DA:162,3
+DA:163,3
+DA:164,3
+DA:165,3
+DA:166,3
+DA:167,3
+DA:168,3
+DA:169,3
+DA:170,3
+DA:171,3
+DA:172,3
+DA:173,3
+DA:174,3
+DA:175,3
+DA:176,3
+DA:177,3
+DA:178,3
+DA:179,3
+DA:180,3
+DA:181,3
+DA:182,3
+DA:183,3
+DA:184,3
+DA:185,3
+DA:186,3
+DA:187,3
+DA:188,6
+DA:191,3
+DA:192,3
+DA:193,3
+DA:194,3
+DA:195,3
+DA:196,3
+DA:197,3
+DA:198,3
+DA:199,3
+DA:200,3
+DA:201,3
+DA:202,3
+DA:203,3
+DA:204,3
+DA:205,3
+DA:206,3
+DA:207,3
+DA:208,3
+DA:209,3
+DA:210,3
+DA:211,3
+DA:212,3
+DA:213,3
+DA:214,3
+DA:215,3
+DA:216,3
+DA:217,3
+DA:218,3
+DA:219,3
+DA:220,3
+DA:221,3
+DA:222,3
+DA:223,3
+DA:224,3
+DA:225,3
+DA:226,3
+DA:227,3
+DA:228,3
+DA:229,6
+DA:232,3
+DA:233,3
+DA:234,3
+DA:235,3
+DA:236,3
+DA:237,3
+DA:238,3
+DA:239,3
+DA:240,3
+DA:241,3
+DA:242,3
+DA:243,3
+DA:244,3
+DA:245,3
+DA:246,3
+DA:247,3
+DA:248,3
+DA:249,3
+DA:250,3
+DA:251,3
+DA:252,3
+DA:253,3
+DA:254,3
+DA:255,3
+DA:256,3
+DA:257,3
+DA:258,3
+DA:259,3
+DA:260,3
+DA:261,3
+DA:262,3
+DA:263,3
+DA:264,3
+DA:265,3
+DA:266,3
+DA:267,3
+DA:268,3
+DA:269,3
+DA:270,3
+DA:271,3
+DA:272,3
+DA:273,3
+DA:274,3
+DA:275,3
+DA:276,3
+DA:277,3
+DA:278,3
+DA:279,6
+DA:282,3
+DA:283,3
+DA:284,3
+DA:285,3
+DA:286,3
+DA:287,3
+DA:288,3
+DA:289,3
+DA:290,3
+DA:291,3
+DA:292,3
+DA:293,3
+DA:294,3
+DA:295,3
+DA:296,3
+DA:297,3
+DA:298,3
+DA:299,3
+DA:300,3
+DA:301,3
+DA:302,3
+DA:303,3
+DA:304,3
+DA:305,3
+DA:306,3
+DA:307,3
+DA:308,3
+DA:309,3
+DA:310,3
+DA:311,3
+DA:312,3
+DA:313,3
+DA:314,3
+DA:315,3
+DA:316,3
+DA:317,3
+DA:318,3
+DA:319,3
+DA:320,3
+DA:321,3
+DA:322,3
+DA:323,3
+DA:324,3
+DA:325,3
+DA:326,3
+DA:327,3
+DA:328,6
+DA:331,3
+DA:332,3
+DA:333,3
+DA:334,3
+DA:335,3
+DA:336,3
+DA:337,3
+DA:338,3
+DA:339,3
+DA:340,3
+DA:341,3
+DA:342,3
+DA:343,3
+DA:344,3
+DA:345,3
+DA:346,3
+DA:347,3
+DA:348,3
+DA:349,3
+DA:350,3
+DA:351,3
+DA:352,3
+DA:353,3
+DA:354,3
+DA:355,3
+DA:356,3
+DA:357,3
+DA:358,3
+DA:359,6
+DA:360,3
+FN:365,System.Void WileyWidget.Data.AppDbContext::OnConfiguring(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder)
+FNDA:37,System.Void WileyWidget.Data.AppDbContext::OnConfiguring(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder)
+DA:366,37
+DA:367,37
+DA:370,37
+DA:371,0
+DA:372,0
+DA:373,0
+DA:376,37
+DA:377,37
+DA:378,37
+DA:379,37
+DA:380,74
+DA:381,37
+BRDA:370,16,0,0
+BRDA:370,16,1,37
+FN:394,System.Int32 WileyWidget.Data.AppDbContext::SaveChanges()
+FNDA:5,System.Int32 WileyWidget.Data.AppDbContext::SaveChanges()
+DA:395,5
+DA:396,5
+DA:397,5
+FN:52,System.Void WileyWidget.Data.AppDbContext::.ctor(Microsoft.EntityFrameworkCore.DbContextOptions`1<WileyWidget.Data.AppDbContext>)
+FNDA:51,System.Void WileyWidget.Data.AppDbContext::.ctor(Microsoft.EntityFrameworkCore.DbContextOptions`1<WileyWidget.Data.AppDbContext>)
+DA:53,51
+DA:54,51
+DA:55,51
+FN:386,System.Void WileyWidget.Data.AppDbContext/<SaveChangesAsync>d__31::MoveNext()
+FNDA:13,System.Void WileyWidget.Data.AppDbContext/<SaveChangesAsync>d__31::MoveNext()
+DA:387,13
+DA:388,13
+DA:389,13
+LF:314
+LH:311
+BRF:2
+BRH:1
+FNF:12
+FNH:12
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Data\AppDbContextFactory.cs
+FN:18,WileyWidget.Data.AppDbContext WileyWidget.Data.AppDbContextFactory::CreateDbContext(System.String[])
+FNDA:0,WileyWidget.Data.AppDbContext WileyWidget.Data.AppDbContextFactory::CreateDbContext(System.String[])
+DA:19,0
+DA:21,0
+DA:22,0
+DA:23,0
+DA:24,0
+DA:25,0
+DA:26,0
+DA:29,0
+DA:32,0
+DA:33,0
+DA:34,0
+DA:35,0
+DA:36,0
+DA:39,0
+DA:40,0
+DA:42,0
+DA:43,0
+LF:17
+LH:0
+BRF:0
+BRH:0
+FNF:1
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Data\DatabaseSeeder.cs
+FN:17,System.Void WileyWidget.Data.DatabaseSeeder::.ctor(WileyWidget.Data.AppDbContext)
+FNDA:0,System.Void WileyWidget.Data.DatabaseSeeder::.ctor(WileyWidget.Data.AppDbContext)
+DA:18,0
+DA:19,0
+DA:20,0
+DA:21,0
+BRDA:20,11,0,0
+BRDA:20,11,1,0
+FN:90,System.Boolean WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_0(WileyWidget.Models.Enterprise)
+FNDA:0,System.Boolean WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_0(WileyWidget.Models.Enterprise)
+DA:91,0
+FN:91,System.Boolean WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_1(WileyWidget.Models.Enterprise)
+FNDA:0,System.Boolean WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_1(WileyWidget.Models.Enterprise)
+DA:92,0
+FN:100,System.Boolean WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_2(WileyWidget.Models.Enterprise)
+FNDA:0,System.Boolean WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_2(WileyWidget.Models.Enterprise)
+DA:101,0
+FN:115,System.Decimal WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_3(WileyWidget.Models.Enterprise)
+FNDA:0,System.Decimal WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_3(WileyWidget.Models.Enterprise)
+DA:116,0
+FN:116,System.Decimal WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_4(WileyWidget.Models.Enterprise)
+FNDA:0,System.Decimal WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_4(WileyWidget.Models.Enterprise)
+DA:117,0
+FN:117,System.Int32 WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_5(WileyWidget.Models.Enterprise)
+FNDA:0,System.Int32 WileyWidget.Data.DatabaseSeeder/<>c::<SeedAsync>b__3_5(WileyWidget.Models.Enterprise)
+DA:118,0
+FN:26,System.Void WileyWidget.Data.DatabaseSeeder/<SeedAsync>d__2::MoveNext()
+FNDA:0,System.Void WileyWidget.Data.DatabaseSeeder/<SeedAsync>d__2::MoveNext()
+DA:27,0
+DA:28,0
+DA:29,0
+FN:34,System.Void WileyWidget.Data.DatabaseSeeder/<SeedAsync>d__3::MoveNext()
+FNDA:0,System.Void WileyWidget.Data.DatabaseSeeder/<SeedAsync>d__3::MoveNext()
+DA:35,0
+DA:37,0
+DA:38,0
+DA:39,0
+DA:40,0
+DA:43,0
+DA:46,0
+DA:47,0
+DA:48,0
+DA:49,0
+DA:50,0
+DA:51,0
+DA:52,0
+DA:53,0
+DA:54,0
+DA:55,0
+DA:56,0
+DA:57,0
+DA:58,0
+DA:59,0
+DA:60,0
+DA:61,0
+DA:62,0
+DA:63,0
+DA:64,0
+DA:65,0
+DA:66,0
+DA:67,0
+DA:68,0
+DA:69,0
+DA:70,0
+DA:71,0
+DA:72,0
+DA:73,0
+DA:74,0
+DA:75,0
+DA:76,0
+DA:77,0
+DA:78,0
+DA:79,0
+DA:80,0
+DA:83,0
+DA:84,0
+DA:87,0
+DA:88,0
+DA:89,0
+DA:90,0
+DA:93,0
+DA:94,0
+DA:95,0
+DA:96,0
+DA:97,0
+DA:98,0
+DA:99,0
+DA:100,0
+DA:102,0
+DA:103,0
+DA:104,0
+DA:105,0
+DA:106,0
+DA:107,0
+DA:108,0
+DA:110,0
+DA:111,0
+DA:114,0
+DA:115,0
+DA:119,0
+DA:120,0
+DA:121,0
+DA:123,0
+DA:124,0
+DA:125,0
+DA:127,0
+DA:128,0
+DA:130,0
+DA:131,0
+DA:132,0
+DA:133,0
+DA:134,0
+DA:135,0
+DA:136,0
+BRDA:37,205,0,0
+BRDA:37,205,1,0
+BRDA:124,1644,0,0
+BRDA:124,1644,1,0
+LF:94
+LH:0
+BRF:6
+BRH:0
+FNF:9
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Data\EnterpriseRepository.cs
+FN:16,System.Void WileyWidget.Data.EnterpriseRepository::.ctor(WileyWidget.Data.AppDbContext)
+FNDA:25,System.Void WileyWidget.Data.EnterpriseRepository::.ctor(WileyWidget.Data.AppDbContext)
+DA:17,25
+DA:18,25
+DA:19,25
+DA:20,25
+BRDA:19,11,0,0
+BRDA:19,11,1,25
+FN:53,System.Void WileyWidget.Data.EnterpriseRepository/<AddAsync>d__5::MoveNext()
+FNDA:2,System.Void WileyWidget.Data.EnterpriseRepository/<AddAsync>d__5::MoveNext()
+DA:54,2
+DA:55,2
+DA:56,2
+DA:57,2
+DA:58,2
+FN:73,System.Void WileyWidget.Data.EnterpriseRepository/<DeleteAsync>d__7::MoveNext()
+FNDA:1,System.Void WileyWidget.Data.EnterpriseRepository/<DeleteAsync>d__7::MoveNext()
+DA:74,1
+DA:75,1
+DA:76,1
+DA:77,0
+DA:79,1
+DA:80,1
+DA:81,1
+DA:82,1
+BRDA:76,170,0,0
+BRDA:76,170,1,1
+FN:87,System.Void WileyWidget.Data.EnterpriseRepository/<ExistsByNameAsync>d__8::MoveNext()
+FNDA:0,System.Void WileyWidget.Data.EnterpriseRepository/<ExistsByNameAsync>d__8::MoveNext()
+DA:88,0
+DA:89,0
+DA:91,0
+DA:92,0
+DA:93,0
+DA:94,0
+DA:96,0
+DA:97,0
+BRDA:91,306,0,0
+BRDA:91,306,1,0
+FN:25,System.Void WileyWidget.Data.EnterpriseRepository/<GetAllAsync>d__2::MoveNext()
+FNDA:2,System.Void WileyWidget.Data.EnterpriseRepository/<GetAllAsync>d__2::MoveNext()
+DA:26,2
+DA:27,2
+DA:28,2
+DA:29,2
+DA:30,2
+FN:35,System.Void WileyWidget.Data.EnterpriseRepository/<GetByIdAsync>d__3::MoveNext()
+FNDA:17,System.Void WileyWidget.Data.EnterpriseRepository/<GetByIdAsync>d__3::MoveNext()
+DA:36,17
+DA:37,17
+DA:38,17
+DA:39,17
+FN:44,System.Void WileyWidget.Data.EnterpriseRepository/<GetByNameAsync>d__4::MoveNext()
+FNDA:0,System.Void WileyWidget.Data.EnterpriseRepository/<GetByNameAsync>d__4::MoveNext()
+DA:45,0
+DA:46,0
+DA:47,0
+DA:48,0
+FN:102,System.Void WileyWidget.Data.EnterpriseRepository/<GetCountAsync>d__9::MoveNext()
+FNDA:0,System.Void WileyWidget.Data.EnterpriseRepository/<GetCountAsync>d__9::MoveNext()
+DA:103,0
+DA:104,0
+DA:105,0
+FN:110,System.Void WileyWidget.Data.EnterpriseRepository/<GetWithInteractionsAsync>d__10::MoveNext()
+FNDA:0,System.Void WileyWidget.Data.EnterpriseRepository/<GetWithInteractionsAsync>d__10::MoveNext()
+DA:111,0
+DA:112,0
+DA:113,0
+DA:114,0
+DA:115,0
+DA:116,0
+FN:63,System.Void WileyWidget.Data.EnterpriseRepository/<UpdateAsync>d__6::MoveNext()
+FNDA:1,System.Void WileyWidget.Data.EnterpriseRepository/<UpdateAsync>d__6::MoveNext()
+DA:64,1
+DA:65,1
+DA:66,1
+DA:67,1
+DA:68,1
+LF:52
+LH:30
+BRF:6
+BRH:2
+FNF:10
+FNH:6
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Converters\DashboardConverters.cs
+FN:22,System.Object WileyWidget.Converters.BalanceToColorConverter::Convert(System.Object,System.Type,System.Object,System.Globalization.CultureInfo)
+FNDA:0,System.Object WileyWidget.Converters.BalanceToColorConverter::Convert(System.Object,System.Type,System.Object,System.Globalization.CultureInfo)
+DA:23,0
+DA:24,0
+DA:25,0
+DA:26,0
+DA:27,0
+DA:28,0
+DA:29,0
+DA:31,0
+DA:33,0
+DA:34,0
+BRDA:24,7,0,0
+BRDA:24,7,1,0
+BRDA:24,22,0,0
+BRDA:26,38,0,0
+BRDA:26,38,1,0
+BRDA:28,63,0,0
+BRDA:28,63,1,0
+BRDA:24,22,1,0
+FN:39,System.Object WileyWidget.Converters.BalanceToColorConverter::ConvertBack(System.Object,System.Type,System.Object,System.Globalization.CultureInfo)
+FNDA:0,System.Object WileyWidget.Converters.BalanceToColorConverter::ConvertBack(System.Object,System.Type,System.Object,System.Globalization.CultureInfo)
+DA:40,0
+DA:41,0
+FN:59,System.Object WileyWidget.Converters.StatusToColorConverter::Convert(System.Object,System.Type,System.Object,System.Globalization.CultureInfo)
+FNDA:0,System.Object WileyWidget.Converters.StatusToColorConverter::Convert(System.Object,System.Type,System.Object,System.Globalization.CultureInfo)
+DA:60,0
+DA:61,0
+DA:62,0
+DA:63,0
+DA:64,0
+DA:65,0
+DA:66,0
+DA:67,0
+DA:68,0
+DA:69,0
+DA:71,0
+DA:72,0
+BRDA:61,14,0,0
+BRDA:63,44,0,0
+BRDA:63,57,0,0
+BRDA:63,44,1,0
+BRDA:63,57,1,0
+BRDA:63,70,1,0
+BRDA:63,70,0,0
+BRDA:61,14,1,0
+FN:77,System.Object WileyWidget.Converters.StatusToColorConverter::ConvertBack(System.Object,System.Type,System.Object,System.Globalization.CultureInfo)
+FNDA:0,System.Object WileyWidget.Converters.StatusToColorConverter::ConvertBack(System.Object,System.Type,System.Object,System.Globalization.CultureInfo)
+DA:78,0
+DA:79,0
+LF:26
+LH:0
+BRF:16
+BRH:0
+FNF:4
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Configuration\DatabaseConfiguration.cs
+FN:26,Microsoft.Extensions.DependencyInjection.IServiceCollection WileyWidget.Configuration.DatabaseConfiguration::AddDatabaseServices(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)
+FNDA:10,Microsoft.Extensions.DependencyInjection.IServiceCollection WileyWidget.Configuration.DatabaseConfiguration::AddDatabaseServices(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)
+DA:27,10
+DA:29,10
+DA:30,16
+DA:31,16
+DA:32,16
+DA:33,16
+DA:34,16
+DA:35,10
+DA:36,10
+DA:37,16
+DA:38,16
+DA:39,10
+DA:40,16
+DA:41,3
+DA:42,3
+DA:43,3
+DA:44,3
+DA:45,10
+DA:46,10
+DA:47,10
+DA:48,13
+DA:49,10
+DA:50,10
+DA:51,13
+DA:52,13
+DA:53,13
+DA:54,13
+DA:55,26
+DA:56,13
+DA:57,10
+DA:58,10
+DA:59,10
+DA:60,0
+DA:61,0
+DA:62,0
+DA:63,0
+DA:64,0
+DA:65,0
+DA:66,0
+DA:67,0
+DA:68,0
+DA:69,0
+DA:70,10
+DA:71,10
+DA:72,0
+DA:73,0
+DA:74,0
+DA:75,10
+DA:76,10
+DA:77,10
+DA:78,13
+DA:79,23
+DA:82,10
+DA:85,10
+DA:87,10
+DA:88,10
+BRDA:32,35,0,16
+BRDA:32,55,0,16
+BRDA:32,35,1,16
+BRDA:32,55,1,16
+BRDA:40,96,0,3
+BRDA:40,96,1,13
+BRDA:48,132,0,0
+BRDA:48,145,0,0
+BRDA:48,132,1,13
+BRDA:48,145,1,0
+BRDA:48,158,1,0
+BRDA:48,158,0,0
+FN:95,Microsoft.Extensions.DependencyInjection.IServiceCollection WileyWidget.Configuration.DatabaseConfiguration::AddApplicationServices(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)
+FNDA:0,Microsoft.Extensions.DependencyInjection.IServiceCollection WileyWidget.Configuration.DatabaseConfiguration::AddApplicationServices(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)
+DA:96,0
+DA:98,0
+DA:101,0
+DA:102,0
+DA:103,0
+DA:104,0
+DA:107,0
+DA:110,0
+DA:111,0
+DA:112,0
+DA:115,0
+DA:116,0
+DA:119,0
+DA:120,0
+DA:121,0
+DA:123,0
+DA:124,0
+DA:125,0
+DA:128,0
+DA:129,0
+DA:132,0
+DA:133,0
+DA:134,0
+DA:137,0
+DA:140,0
+DA:143,0
+DA:146,0
+DA:148,0
+DA:149,0
+FN:154,System.Void WileyWidget.Configuration.DatabaseConfiguration::ConfigureDbContextOptions(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder)
+FNDA:13,System.Void WileyWidget.Configuration.DatabaseConfiguration::ConfigureDbContextOptions(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder)
+DA:155,13
+DA:161,13
+DA:162,13
+DA:164,13
+FN:170,System.Void WileyWidget.Configuration.DatabaseConfiguration/<EnsureDatabaseCreatedAsync>d__3::MoveNext()
+FNDA:8,System.Void WileyWidget.Configuration.DatabaseConfiguration/<EnsureDatabaseCreatedAsync>d__3::MoveNext()
+DA:171,8
+DA:172,8
+DA:173,8
+DA:174,7
+DA:177,6
+DA:179,6
+DA:180,6
+DA:181,6
+DA:183,6
+DA:184,0
+DA:186,0
+DA:187,0
+DA:189,6
+DA:191,6
+DA:192,5
+DA:195,5
+DA:196,5
+DA:197,1
+DA:198,1
+DA:200,1
+DA:203,1
+DA:204,1
+DA:205,1
+DA:208,6
+DA:210,6
+DA:211,6
+DA:212,5
+BRDA:180,130,0,0
+BRDA:180,130,1,6
+BRDA:180,146,0,6
+BRDA:180,155,0,0
+BRDA:180,155,1,6
+BRDA:180,146,1,0
+BRDA:183,187,0,0
+BRDA:183,187,1,6
+LF:116
+LH:71
+BRF:20
+BRH:11
+FNF:4
+FNH:3
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Configuration\ExternalApiHealthCheck.cs
+FN:17,System.Void WileyWidget.Configuration.ExternalApiHealthCheck::.ctor(System.Net.Http.HttpClient,Microsoft.Extensions.Configuration.IConfiguration)
+FNDA:0,System.Void WileyWidget.Configuration.ExternalApiHealthCheck::.ctor(System.Net.Http.HttpClient,Microsoft.Extensions.Configuration.IConfiguration)
+DA:18,0
+DA:19,0
+DA:20,0
+DA:21,0
+DA:22,0
+BRDA:20,11,0,0
+BRDA:20,11,1,0
+BRDA:21,33,0,0
+BRDA:21,33,1,0
+FN:26,System.Void WileyWidget.Configuration.ExternalApiHealthCheck/<CheckHealthAsync>d__3::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.ExternalApiHealthCheck/<CheckHealthAsync>d__3::MoveNext()
+DA:27,0
+DA:29,0
+DA:30,0
+DA:31,0
+DA:33,0
+DA:34,0
+DA:35,0
+DA:39,0
+DA:40,0
+DA:42,0
+DA:44,0
+DA:45,0
+DA:46,0
+DA:49,0
+DA:50,0
+DA:53,0
+DA:54,0
+DA:55,0
+DA:57,0
+BRDA:31,77,0,0
+BRDA:31,77,1,0
+BRDA:33,103,0,0
+BRDA:33,103,1,0
+BRDA:44,360,0,0
+BRDA:44,360,1,0
+LF:24
+LH:0
+BRF:10
+BRH:0
+FNF:2
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Configuration\HealthMonitoringService.cs
+FN:17,System.Void WileyWidget.Configuration.HealthMonitoringService::.ctor(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService)
+FNDA:0,System.Void WileyWidget.Configuration.HealthMonitoringService::.ctor(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService)
+DA:18,0
+DA:19,0
+DA:20,0
+DA:21,0
+BRDA:20,11,0,0
+BRDA:20,11,1,0
+FN:70,System.Boolean WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_0(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+FNDA:0,System.Boolean WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_0(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+DA:71,0
+FN:71,System.Boolean WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_1(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+FNDA:0,System.Boolean WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_1(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+DA:72,0
+FN:72,System.Boolean WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_2(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+FNDA:0,System.Boolean WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_2(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+DA:73,0
+FN:74,System.String WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_3(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+FNDA:0,System.String WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_3(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+DA:75,0
+FN:75,WileyWidget.Configuration.HealthCheckResult WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_4(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+FNDA:0,WileyWidget.Configuration.HealthCheckResult WileyWidget.Configuration.HealthMonitoringService/<>c::<GetHealthSummaryAsync>b__3_4(System.Collections.Generic.KeyValuePair`2<System.String,Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry>)
+DA:76,0
+DA:77,0
+DA:78,0
+DA:79,0
+DA:80,0
+DA:81,0
+FN:26,System.Void WileyWidget.Configuration.HealthMonitoringService/<CheckHealthAsync>d__2::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.HealthMonitoringService/<CheckHealthAsync>d__2::MoveNext()
+DA:27,0
+DA:29,0
+DA:30,0
+DA:32,0
+DA:33,0
+DA:36,0
+DA:37,0
+DA:38,0
+DA:39,0
+DA:40,0
+DA:41,0
+DA:42,0
+DA:43,0
+DA:44,0
+DA:45,0
+DA:46,0
+DA:47,0
+DA:48,0
+DA:50,0
+DA:52,0
+DA:53,0
+DA:54,0
+DA:55,0
+DA:57,0
+BRDA:36,424,1,0
+BRDA:38,279,0,0
+BRDA:38,279,1,0
+BRDA:43,354,0,0
+BRDA:43,354,1,0
+BRDA:36,424,0,0
+FN:62,System.Void WileyWidget.Configuration.HealthMonitoringService/<GetHealthSummaryAsync>d__3::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.HealthMonitoringService/<GetHealthSummaryAsync>d__3::MoveNext()
+DA:63,0
+DA:64,0
+DA:66,0
+DA:67,0
+DA:68,0
+DA:69,0
+DA:70,0
+DA:74,0
+DA:82,0
+DA:84,0
+DA:85,0
+FN:90,System.Void WileyWidget.Configuration.HealthMonitoringService/<IsHealthyAsync>d__4::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.HealthMonitoringService/<IsHealthyAsync>d__4::MoveNext()
+DA:91,0
+DA:92,0
+DA:93,0
+DA:94,0
+FN:101,Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus WileyWidget.Configuration.HealthStatusSummary::get_OverallStatus()
+FNDA:0,Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus WileyWidget.Configuration.HealthStatusSummary::get_OverallStatus()
+DA:102,0
+FN:102,System.TimeSpan WileyWidget.Configuration.HealthStatusSummary::get_TotalDuration()
+FNDA:0,System.TimeSpan WileyWidget.Configuration.HealthStatusSummary::get_TotalDuration()
+DA:103,0
+FN:103,System.Int32 WileyWidget.Configuration.HealthStatusSummary::get_CheckCount()
+FNDA:0,System.Int32 WileyWidget.Configuration.HealthStatusSummary::get_CheckCount()
+DA:104,0
+FN:104,System.Int32 WileyWidget.Configuration.HealthStatusSummary::get_HealthyCount()
+FNDA:0,System.Int32 WileyWidget.Configuration.HealthStatusSummary::get_HealthyCount()
+DA:105,0
+FN:105,System.Int32 WileyWidget.Configuration.HealthStatusSummary::get_DegradedCount()
+FNDA:0,System.Int32 WileyWidget.Configuration.HealthStatusSummary::get_DegradedCount()
+DA:106,0
+FN:106,System.Int32 WileyWidget.Configuration.HealthStatusSummary::get_UnhealthyCount()
+FNDA:0,System.Int32 WileyWidget.Configuration.HealthStatusSummary::get_UnhealthyCount()
+DA:107,0
+FN:107,System.Collections.Generic.Dictionary`2<System.String,WileyWidget.Configuration.HealthCheckResult> WileyWidget.Configuration.HealthStatusSummary::get_CheckResults()
+FNDA:0,System.Collections.Generic.Dictionary`2<System.String,WileyWidget.Configuration.HealthCheckResult> WileyWidget.Configuration.HealthStatusSummary::get_CheckResults()
+DA:108,0
+FN:115,Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus WileyWidget.Configuration.HealthCheckResult::get_Status()
+FNDA:0,Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus WileyWidget.Configuration.HealthCheckResult::get_Status()
+DA:116,0
+FN:116,System.String WileyWidget.Configuration.HealthCheckResult::get_Description()
+FNDA:0,System.String WileyWidget.Configuration.HealthCheckResult::get_Description()
+DA:117,0
+FN:117,System.TimeSpan WileyWidget.Configuration.HealthCheckResult::get_Duration()
+FNDA:0,System.TimeSpan WileyWidget.Configuration.HealthCheckResult::get_Duration()
+DA:118,0
+LF:63
+LH:0
+BRF:8
+BRH:0
+FNF:19
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Configuration\ServiceLocator.cs
+FN:20,System.Void WileyWidget.Configuration.ServiceLocator::Initialize(System.IServiceProvider)
+FNDA:11,System.Void WileyWidget.Configuration.ServiceLocator::Initialize(System.IServiceProvider)
+DA:21,11
+DA:22,11
+DA:23,11
+BRDA:22,3,0,0
+BRDA:22,3,1,11
+FN:28,T WileyWidget.Configuration.ServiceLocator::GetService()
+FNDA:11,T WileyWidget.Configuration.ServiceLocator::GetService()
+DA:29,11
+DA:30,11
+DA:31,0
+DA:32,0
+DA:35,11
+DA:36,11
+BRDA:30,11,0,0
+BRDA:30,11,1,11
+FN:41,T WileyWidget.Configuration.ServiceLocator::GetServiceOrDefault()
+FNDA:55,T WileyWidget.Configuration.ServiceLocator::GetServiceOrDefault()
+DA:42,55
+DA:43,55
+DA:44,0
+DA:45,0
+DA:49,55
+DA:50,0
+DA:51,0
+DA:54,55
+DA:55,55
+BRDA:43,11,0,0
+BRDA:43,11,1,55
+BRDA:49,52,0,0
+BRDA:49,52,1,55
+FN:60,Microsoft.Extensions.DependencyInjection.IServiceScope WileyWidget.Configuration.ServiceLocator::CreateScope()
+FNDA:0,Microsoft.Extensions.DependencyInjection.IServiceScope WileyWidget.Configuration.ServiceLocator::CreateScope()
+DA:61,0
+DA:62,0
+DA:63,0
+DA:64,0
+DA:67,0
+DA:68,0
+BRDA:62,11,0,0
+BRDA:62,11,1,0
+LF:24
+LH:12
+BRF:10
+BRH:4
+FNF:4
+FNH:3
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Configuration\ServiceValidation.cs
+FN:14,System.String WileyWidget.Configuration.XAiSettings::get_ApiKey()
+FNDA:0,System.String WileyWidget.Configuration.XAiSettings::get_ApiKey()
+DA:15,0
+FN:18,System.String WileyWidget.Configuration.XAiSettings::get_BaseUrl()
+FNDA:0,System.String WileyWidget.Configuration.XAiSettings::get_BaseUrl()
+DA:19,0
+FN:21,System.Int32 WileyWidget.Configuration.XAiSettings::get_TimeoutSeconds()
+FNDA:0,System.Int32 WileyWidget.Configuration.XAiSettings::get_TimeoutSeconds()
+DA:22,0
+FN:24,System.Int32 WileyWidget.Configuration.XAiSettings::get_MaxRetries()
+FNDA:0,System.Int32 WileyWidget.Configuration.XAiSettings::get_MaxRetries()
+DA:25,0
+FN:33,System.String WileyWidget.Configuration.DatabaseSettings::get_Provider()
+FNDA:0,System.String WileyWidget.Configuration.DatabaseSettings::get_Provider()
+DA:34,0
+FN:37,System.String WileyWidget.Configuration.DatabaseSettings::get_ConnectionString()
+FNDA:0,System.String WileyWidget.Configuration.DatabaseSettings::get_ConnectionString()
+DA:38,0
+FN:40,System.Int32 WileyWidget.Configuration.DatabaseSettings::get_CommandTimeout()
+FNDA:0,System.Int32 WileyWidget.Configuration.DatabaseSettings::get_CommandTimeout()
+DA:41,0
+FN:43,System.Int32 WileyWidget.Configuration.DatabaseSettings::get_MaxRetryCount()
+FNDA:0,System.Int32 WileyWidget.Configuration.DatabaseSettings::get_MaxRetryCount()
+DA:44,0
+FN:46,System.Int32 WileyWidget.Configuration.DatabaseSettings::get_MaxRetryDelaySeconds()
+FNDA:0,System.Int32 WileyWidget.Configuration.DatabaseSettings::get_MaxRetryDelaySeconds()
+DA:47,0
+FN:57,Microsoft.Extensions.Options.ValidateOptionsResult WileyWidget.Configuration.ServiceValidation/XAiSettingsValidation::Validate(System.String,WileyWidget.Configuration.XAiSettings)
+FNDA:0,Microsoft.Extensions.Options.ValidateOptionsResult WileyWidget.Configuration.ServiceValidation/XAiSettingsValidation::Validate(System.String,WileyWidget.Configuration.XAiSettings)
+DA:58,0
+DA:59,0
+DA:60,0
+DA:62,0
+DA:63,0
+DA:64,0
+DA:65,0
+DA:68,0
+DA:69,0
+BRDA:62,28,0,0
+BRDA:62,28,1,0
+BRDA:64,7,0,0
+BRDA:64,7,1,0
+FN:74,Microsoft.Extensions.Options.ValidateOptionsResult WileyWidget.Configuration.ServiceValidation/DatabaseSettingsValidation::Validate(System.String,WileyWidget.Configuration.DatabaseSettings)
+FNDA:0,Microsoft.Extensions.Options.ValidateOptionsResult WileyWidget.Configuration.ServiceValidation/DatabaseSettingsValidation::Validate(System.String,WileyWidget.Configuration.DatabaseSettings)
+DA:75,0
+DA:76,0
+DA:77,0
+DA:79,0
+DA:80,0
+DA:81,0
+DA:82,0
+DA:85,0
+DA:86,0
+BRDA:79,28,0,0
+BRDA:79,28,1,0
+BRDA:81,7,0,0
+BRDA:81,7,1,0
+LF:27
+LH:0
+BRF:8
+BRH:0
+FNF:11
+FNH:0
+end_of_record
+SF:C:\Users\biges\Desktop\Wiley_Widget\Configuration\WpfMiddleware.cs
+FN:24,System.String WileyWidget.Configuration.WpfMiddlewareContext::get_OperationName()
+FNDA:0,System.String WileyWidget.Configuration.WpfMiddlewareContext::get_OperationName()
+DA:25,0
+FN:25,System.Object WileyWidget.Configuration.WpfMiddlewareContext::get_Input()
+FNDA:0,System.Object WileyWidget.Configuration.WpfMiddlewareContext::get_Input()
+DA:26,0
+FN:26,System.Object WileyWidget.Configuration.WpfMiddlewareContext::get_Output()
+FNDA:0,System.Object WileyWidget.Configuration.WpfMiddlewareContext::get_Output()
+DA:27,0
+FN:27,System.Exception WileyWidget.Configuration.WpfMiddlewareContext::get_Exception()
+FNDA:0,System.Exception WileyWidget.Configuration.WpfMiddlewareContext::get_Exception()
+DA:28,0
+FN:28,System.Collections.Generic.Dictionary`2<System.String,System.Object> WileyWidget.Configuration.WpfMiddlewareContext::get_Properties()
+FNDA:0,System.Collections.Generic.Dictionary`2<System.String,System.Object> WileyWidget.Configuration.WpfMiddlewareContext::get_Properties()
+DA:29,0
+FN:29,System.Boolean WileyWidget.Configuration.WpfMiddlewareContext::get_Handled()
+FNDA:0,System.Boolean WileyWidget.Configuration.WpfMiddlewareContext::get_Handled()
+DA:30,0
+FN:40,System.Void WileyWidget.Configuration.WpfMiddlewarePipeline::AddMiddleware(WileyWidget.Configuration.IWpfMiddleware)
+FNDA:44,System.Void WileyWidget.Configuration.WpfMiddlewarePipeline::AddMiddleware(WileyWidget.Configuration.IWpfMiddleware)
+DA:41,44
+DA:42,44
+DA:43,44
+FN:37,System.Void WileyWidget.Configuration.WpfMiddlewarePipeline::.ctor()
+FNDA:11,System.Void WileyWidget.Configuration.WpfMiddlewarePipeline::.ctor()
+DA:38,11
+FN:49,System.Void WileyWidget.Configuration.WpfMiddlewarePipeline/<>c__DisplayClass2_0/<<ExecuteAsync>g__Next|0>d::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.WpfMiddlewarePipeline/<>c__DisplayClass2_0/<<ExecuteAsync>g__Next|0>d::MoveNext()
+DA:50,0
+DA:51,0
+DA:52,0
+DA:53,0
+DA:54,0
+DA:55,0
+DA:56,0
+DA:57,0
+BRDA:51,54,0,0
+BRDA:51,54,1,0
+FN:45,System.Void WileyWidget.Configuration.WpfMiddlewarePipeline/<ExecuteAsync>d__2::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.WpfMiddlewarePipeline/<ExecuteAsync>d__2::MoveNext()
+DA:46,0
+DA:47,0
+DA:59,0
+DA:60,0
+FN:68,System.Void WileyWidget.Configuration.LoggingMiddleware/<ExecuteAsync>d__0::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.LoggingMiddleware/<ExecuteAsync>d__0::MoveNext()
+DA:69,0
+DA:70,0
+DA:73,0
+DA:74,0
+DA:76,0
+DA:78,0
+DA:80,0
+DA:81,0
+DA:82,0
+DA:83,0
+DA:84,0
+DA:86,0
+DA:87,0
+DA:88,0
+DA:89,0
+DA:90,0
+DA:91,0
+DA:92,0
+DA:93,0
+DA:94,0
+DA:96,0
+BRDA:80,186,0,0
+BRDA:80,186,1,0
+FN:104,System.Void WileyWidget.Configuration.ErrorHandlingMiddleware/<ExecuteAsync>d__0::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.ErrorHandlingMiddleware/<ExecuteAsync>d__0::MoveNext()
+DA:105,0
+DA:107,0
+DA:108,0
+DA:109,0
+DA:110,0
+DA:111,0
+DA:112,0
+DA:113,0
+DA:115,0
+DA:119,0
+DA:121,0
+FN:131,System.Void WileyWidget.Configuration.PerformanceMiddleware/<ExecuteAsync>d__1::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.PerformanceMiddleware/<ExecuteAsync>d__1::MoveNext()
+DA:132,0
+DA:133,0
+DA:135,0
+DA:137,0
+DA:139,0
+DA:140,0
+DA:141,0
+DA:142,0
+DA:143,0
+DA:144,0
+BRDA:139,160,0,0
+BRDA:139,160,1,0
+FN:179,System.Collections.Generic.List`1<System.String> WileyWidget.Configuration.ValidationMiddleware::ValidateObject(System.Object)
+FNDA:0,System.Collections.Generic.List`1<System.String> WileyWidget.Configuration.ValidationMiddleware::ValidateObject(System.Object)
+DA:180,0
+DA:181,0
+DA:182,0
+DA:183,0
+DA:185,0
+DA:186,0
+DA:187,0
+DA:188,0
+DA:190,0
+DA:191,0
+BRDA:185,34,0,0
+BRDA:185,34,1,0
+BRDA:187,7,0,0
+BRDA:187,7,1,0
+FN:152,System.Void WileyWidget.Configuration.ValidationMiddleware/<ExecuteAsync>d__0::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.ValidationMiddleware/<ExecuteAsync>d__0::MoveNext()
+DA:153,0
+DA:155,0
+DA:156,0
+DA:157,0
+DA:158,0
+DA:159,0
+DA:160,0
+DA:161,0
+DA:163,0
+DA:165,0
+DA:168,0
+DA:169,0
+DA:170,0
+DA:171,0
+DA:172,0
+DA:173,0
+DA:174,0
+DA:175,0
+DA:176,0
+DA:177,0
+BRDA:155,34,0,0
+BRDA:158,78,0,0
+BRDA:158,78,1,0
+BRDA:155,34,1,0
+BRDA:168,257,0,0
+BRDA:171,303,0,0
+BRDA:171,303,1,0
+BRDA:168,257,1,0
+FN:200,System.Void WileyWidget.Configuration.WpfMiddlewareService::.ctor()
+FNDA:11,System.Void WileyWidget.Configuration.WpfMiddlewareService::.ctor()
+DA:201,11
+DA:202,11
+DA:203,11
+DA:206,11
+DA:207,11
+DA:208,11
+DA:209,11
+DA:210,11
+FN:212,System.Void WileyWidget.Configuration.WpfMiddlewareService/<ExecuteAsync>d__2::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.WpfMiddlewareService/<ExecuteAsync>d__2::MoveNext()
+DA:213,0
+DA:214,0
+DA:215,0
+DA:216,0
+DA:217,0
+DA:218,0
+DA:220,0
+DA:222,0
+DA:223,0
+DA:224,0
+DA:226,0
+BRDA:222,175,0,0
+BRDA:222,175,1,0
+BRDA:222,196,0,0
+BRDA:222,196,1,0
+FN:228,System.Void WileyWidget.Configuration.WpfMiddlewareService/<ExecuteAsync>d__3`1::MoveNext()
+FNDA:0,System.Void WileyWidget.Configuration.WpfMiddlewareService/<ExecuteAsync>d__3`1::MoveNext()
+DA:229,0
+DA:230,0
+DA:231,0
+DA:232,0
+DA:233,0
+DA:234,0
+DA:236,0
+DA:238,0
+DA:239,0
+DA:240,0
+DA:243,0
+DA:244,0
+BRDA:238,175,0,0
+BRDA:238,175,1,0
+BRDA:238,198,0,0
+BRDA:238,198,1,0
+LF:125
+LH:12
+BRF:26
+BRH:0
+FNF:18
+FNH:3
+end_of_record

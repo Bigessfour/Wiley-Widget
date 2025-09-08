@@ -10,7 +10,6 @@ This project uses Azure Key Vault to securely store API keys and secrets instead
 - **URL**: `https://wiley-widget-secrets.vault.azure.net/`
 
 ## Stored Secrets
-- `BRIGHTDATA-API-KEY`: Bright Data API key for MCP server
 - `SYNCFUSION-LICENSE-KEY`: Syncfusion license key
 - `XAI-API-KEY`: XAI API key
 
@@ -35,9 +34,6 @@ This project uses Azure Key Vault to securely store API keys and secrets instead
 
 ### Manual Secret Retrieval
 ```powershell
-# Get Bright Data API Key
-az keyvault secret show --vault-name "wiley-widget-secrets" --name "BRIGHTDATA-API-KEY"
-
 # Get Syncfusion License Key
 az keyvault secret show --vault-name "wiley-widget-secrets" --name "SYNCFUSION-LICENSE-KEY"
 
@@ -54,8 +50,7 @@ az keyvault secret show --vault-name "wiley-widget-secrets" --name "XAI-API-KEY"
 - ✅ Automatic secret rotation support
 
 ## MCP Configuration
-The `mcp-config.json` uses environment variables that are populated by the Key Vault loading script:
-- `${BRIGHTDATA_API_KEY}` → Loaded from Key Vault secret `BRIGHTDATA-API-KEY`
+The `mcp-config.json` uses environment variables that are populated by the Key Vault loading script.
 
 ## Maintenance
 - Secrets are loaded into session environment variables only

@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "azure": {
+      "command": "npx",
+      "args": ["@azure/mcp-win32-x64", "--stdio"],
+      "env": {
+        "AZURE_MCP_COLLECT_TELEMETRY": "false",
+        "AZURE_CLI_DISABLE_CONNECTION_VERIFICATION": "true"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    },
+    "microsoft-docs": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/mcp-docs"],
+      "env": {
+        "MICROSOFT_DOCS_API_KEY": "${MICROSOFT_DOCS_API_KEY}",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
+        "MICROSOFT_DOCS_BASE_URL": "https://learn.microsoft.com",
+        "MICROSOFT_DOCS_TIMEOUT": "30000",
+        "MICROSOFT_DOCS_CACHE_ENABLED": "true"
+      }
+    }
+  }
+}

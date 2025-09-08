@@ -27,7 +27,6 @@ azd env get-values
 ### **Step 3: Set Up True Key Vault Secrets (Recommended)**
 ```bash
 # Use azd env set-secret for each secret (Microsoft recommended)
-azd env set-secret BRIGHTDATA_API_KEY
 azd env set-secret SYNCFUSION_LICENSE_KEY  
 azd env set-secret XAI_API_KEY
 azd env set-secret GITHUB_TOKEN
@@ -45,7 +44,7 @@ azd env set-secret GITHUB_TOKEN
 azd env get-values
 
 # Should show Key Vault references like:
-# BRIGHTDATA_API_KEY=@Microsoft.KeyVault(SecretUri=https://...)
+# SYNCFUSION_LICENSE_KEY=@Microsoft.KeyVault(SecretUri=https://...)
 ```
 
 ### **Step 5: Deploy Application**
@@ -92,7 +91,6 @@ foreach ($line in (& azd env get-values)) {
 1. **Complete the subscription selection** (in the current terminal)
 2. **Set up Key Vault secrets:**
    ```bash
-   azd env set-secret BRIGHTDATA_API_KEY
    azd env set-secret SYNCFUSION_LICENSE_KEY
    azd env set-secret XAI_API_KEY
    azd env set-secret GITHUB_TOKEN

@@ -1,0 +1,58 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Color primitives (immutable) -->
+  <Color x:Key="Color.Base.Background.Light">#FFFDFDFE</Color>
+  <Color x:Key="Color.Base.Background.Dark">#FF1E1F22</Color>
+  <Color x:Key="Color.Base.Surface.Light">#FFFFFFFF</Color>
+  <Color x:Key="Color.Base.Surface.Dark">#FF2A2C30</Color>
+  <Color x:Key="Color.Base.Border.Light">#FFE1E1E1</Color>
+  <Color x:Key="Color.Base.Border.Dark">#FF3C3F43</Color>
+  <Color x:Key="Color.Base.Text.Primary.Light">#FF1B1D21</Color>
+  <Color x:Key="Color.Base.Text.Primary.Dark">#FFF5F6F8</Color>
+  <Color x:Key="Color.Base.Text.Muted.Light">#FF555A60</Color>
+  <Color x:Key="Color.Base.Text.Muted.Dark">#FF9AA0A6</Color>
+
+  <!-- Accent & semantic (dynamic indirection allowed) -->
+  <Color x:Key="AccentColorKey">#FF3A6FE2</Color>
+  <Color x:Key="Color.Semantic.Success">#FF107C10</Color>
+  <Color x:Key="Color.Semantic.Warning">#FFFF8C00</Color>
+  <Color x:Key="Color.Semantic.Error">#FFD13438</Color>
+  <Color x:Key="Color.Semantic.Info">#FF0078D4</Color>
+
+  <!-- Brush layer (use DynamicResource for theme-volatile references) -->
+  <SolidColorBrush x:Key="Brush.Window.Background" Color="{DynamicResource Color.Base.Background.Light}" />
+  <SolidColorBrush x:Key="Brush.Surface" Color="{DynamicResource Color.Base.Surface.Light}" />
+  <SolidColorBrush x:Key="Brush.Border" Color="{DynamicResource Color.Base.Border.Light}" />
+  <SolidColorBrush x:Key="Brush.Text.Primary" Color="{DynamicResource Color.Base.Text.Primary.Light}" />
+  <SolidColorBrush x:Key="Brush.Text.Muted" Color="{DynamicResource Color.Base.Text.Muted.Light}" />
+  <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentColorKey}" />
+  <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource Color.Semantic.Success}" />
+  <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource Color.Semantic.Warning}" />
+  <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource Color.Semantic.Error}" />
+  <SolidColorBrush x:Key="InfoBrush" Color="{DynamicResource Color.Semantic.Info}" />
+
+  <!-- Compatibility aliases (mapping to prior keys used in existing views) -->
+  <SolidColorBrush x:Key="PrimaryBrush" Color="{DynamicResource AccentColorKey}" />
+  <SolidColorBrush x:Key="PrimaryAccentBrush" Color="{DynamicResource AccentColorKey}" />
+  <SolidColorBrush x:Key="ContentBackground" Color="{DynamicResource Color.Base.Surface.Light}" />
+  <SolidColorBrush x:Key="ContentForeground" Color="{DynamicResource Color.Base.Text.Primary.Light}" />
+  <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource Color.Base.Border.Light}" />
+
+  <!-- Status / state brushes -->
+  <SolidColorBrush x:Key="HoverBackground" Color="#E6F3FF" />
+  <SolidColorBrush x:Key="PressedBackground" Color="#C7E4F7" />
+  <SolidColorBrush x:Key="DisabledBackground" Color="#CCCCCC" />
+  <SolidColorBrush x:Key="DisabledForeground" Color="#666666" />
+  <SolidColorBrush x:Key="FocusBorderBrush" Color="{DynamicResource AccentColorKey}" />
+
+  <!-- Cards / layout specific -->
+  <SolidColorBrush x:Key="CardBackground" Color="{DynamicResource Color.Base.Surface.Light}" />
+  <SolidColorBrush x:Key="CardForeground" Color="{DynamicResource Color.Base.Text.Primary.Light}" />
+  <SolidColorBrush x:Key="RevenueChartColor" Color="{DynamicResource Color.Semantic.Success}" />
+  <SolidColorBrush x:Key="ExpensesChartColor" Color="{DynamicResource Color.Semantic.Error}" />
+
+  <!-- Warning block specific -->
+  <SolidColorBrush x:Key="WarningBackground" Color="#FFF8E7" />
+  <SolidColorBrush x:Key="WarningBorderBrush" Color="{DynamicResource Color.Semantic.Warning}" />
+  <SolidColorBrush x:Key="WarningTextForeground" Color="{DynamicResource Color.Base.Text.Primary.Light}" />
+</ResourceDictionary>

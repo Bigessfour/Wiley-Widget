@@ -1,5 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+  SYNCFUSION LICENSING UPDATE - EXPLICIT METHOD
+  ===============================================
+  As of this update, Syncfusion license is registered using the EXPLICIT method
+  documented by Syncfusion: direct Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense() call
+  in App.xaml.cs constructor.
+
+  DEPRECATED: File-based licensing (license.key) and environment variable approaches
+  are no longer used as they are not explicitly documented by Syncfusion.
+
+  Reference: https://help.syncfusion.com/wpf/licensing/how-to-register-in-an-application
+  ===============================================
+  -->
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
@@ -78,11 +92,6 @@
     <Compile Include="Program.cs" />
     <Compile Include="Wiley Widget\**\*.cs" />
   </ItemGroup>
-
-  <!-- Copy Syncfusion license file to output directory -->
-  <Target Name="CopyLicenseFile" AfterTargets="Build">
-    <Copy SourceFiles="license.key" DestinationFolder="$(OutDir)" Condition="Exists('license.key')" />
-  </Target>
 
   <!-- Clean WPF temp files before build to prevent accumulation -->
   <Target Name="CleanTempFiles" BeforeTargets="Build">
@@ -189,6 +198,12 @@
     <PackageReference Include="Syncfusion.SfChart.WPF" />
     <PackageReference Include="Syncfusion.Shared.WPF" />
     <PackageReference Include="Syncfusion.SfInput.WPF" />
+  <PackageReference Include="Syncfusion.Pdf.NET">
+    <Aliases>pdfnet</Aliases>
+  </PackageReference>
+  <PackageReference Include="Syncfusion.PdfViewer.WPF" />
+  <PackageReference Include="System.Drawing.Common" />
+  <PackageReference Include="Syncfusion.XlsIO.Net.Core" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
   <PackageReference Include="Microsoft.Extensions.Http" />
   <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
@@ -219,8 +234,20 @@
 
   <!-- Include Wiley Widget folder resources as Page items for pack URI access -->
   <ItemGroup>
-    <Page Include="Wiley Widget\**\*.xaml" Exclude="App.xaml" />
-    <Page Include="Resources\*.xaml" />
+  <!-- Exclude resource dictionaries from wildcard so they can be explicitly ordered below -->
+  <Page Include="Wiley Widget\**\*.xaml" Exclude="App.xaml;Wiley Widget\Resources\**\*.xaml" />
+  <!-- Explicit resource dictionary inclusion for spaced folder (stable relative URIs) -->
+  <Page Include="Wiley Widget\Resources\Colors.xaml" />
+  <Page Include="Wiley Widget\Resources\Typography.xaml" />
+  <Page Include="Wiley Widget\Resources\Spacing.xaml" />
+  <Page Include="Wiley Widget\Resources\SyncfusionThemeAdapter.xaml" />
+  <Page Include="Wiley Widget\Resources\Controls.Base.xaml" />
+  <Page Include="Wiley Widget\Resources\Features\Dashboard.Stub.xaml" />
+  <Page Include="Wiley Widget\Resources\Features\Reports.Stub.xaml" />
+  <Page Include="Wiley Widget\Resources\SyncfusionResources.xaml" />
+  <Page Include="Wiley Widget\Resources\UserOverrides.xaml" />
+  <!-- Retain any root-level resources (if present) -->
+  <Page Include="Resources\*.xaml" />
   </ItemGroup>
 
 </Project>

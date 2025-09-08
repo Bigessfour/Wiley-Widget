@@ -36,14 +36,6 @@ Your current `.vscode/mcp.json` includes the following servers:
     "microsoft-docs": {
       "url": "https://learn.microsoft.com/mcp/",
       "type": "http"
-    },
-    "brightdata": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@brightdata/mcp"],
-      "env": {
-        "API_TOKEN": "${env:BRIGHTDATA_API_KEY}"
-      }
     }
   },
   "inputs": []
@@ -79,9 +71,6 @@ pip install mcp-server-sqlite
 Install from npm or pip as specified in their documentation:
 
 ```bash
-# Bright Data MCP Server
-npm install -g @brightdata/mcp
-
 # Azure MCP
 # Download from: https://github.com/Azure/azure-mcp
 ```
@@ -106,9 +95,6 @@ AZURE_CLIENT_ID=your_client_id
 AZURE_CLIENT_SECRET=your_client_secret
 AZURE_TENANT_ID=your_tenant_id
 AZURE_SUBSCRIPTION_ID=your_subscription_id
-
-# Bright Data API Key
-BRIGHTDATA_API_KEY=your_api_key
 ```
 
 ## Server Types

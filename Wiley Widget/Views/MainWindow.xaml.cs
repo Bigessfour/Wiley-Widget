@@ -79,14 +79,10 @@ public partial class MainWindow : Window
 
         try
         {
-            // Set SfSkinManager theme before InitializeComponent() to ensure themes load during XAML parsing
-            Log.Information("Setting SfSkinManager theme...");
-            SfSkinManager.ApplyThemeAsDefaultStyle = true;
-            SfSkinManager.ApplicationTheme = new Syncfusion.SfSkinManager.Theme(DefaultTheme);
-            Log.Information("SfSkinManager theme set to {Theme}", DefaultTheme);
+            // ThemeManager integration removed: relying on existing ThemeService + ThemeCoordinator
 
             Log.Information("Initializing MainWindow components (XAML load first)...");
-            InitializeComponent();
+            TryInitializeComponent();
             Log.Information("MainWindow components initialized successfully");
 
             Log.Information("Setting up data context with MainViewModel...");
@@ -161,6 +157,20 @@ public partial class MainWindow : Window
         }
     }
 
+    // Safe wrapper: call generated InitializeComponent if present
+    private void TryInitializeComponent()
+    {
+        var mi = GetType().GetMethod("InitializeComponent", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+        if (mi != null)
+        {
+            mi.Invoke(this, null);
+        }
+        else
+        {
+            InitializeComponentFallbackGuard();
+        }
+    }
+
     /// <summary>
     /// Handles the Loaded event for MainWindow.
     /// 
@@ -181,6 +191,7 @@ public partial class MainWindow : Window
         ApplyDeferredTheme();
         ApplyMaximized();
         OptimizePerformance();
+    OptimizeRendering();
         VerifyCriticalResources(new [] { "DashboardCard", "CardTitle", "CardValue", "WarningBackground" });
         // Once executed, detach to avoid duplicate calls if window is reloaded (defensive)
         Loaded -= OnLoaded;
@@ -583,7 +594,7 @@ public partial class MainWindow : Window
     private void UpdateThemeToggleVisuals()
     {
         Log.Information("=== Updating Theme Menu Visuals ===");
-        var current = WileyWidget.UI.Theming.ThemeService.NormalizeTheme(SettingsService.Instance.Current.Theme);
+    var current = WileyWidget.UI.Theming.ThemeService.NormalizeTheme(SettingsService.Instance.Current.Theme);
         var themeMenu = FindName("ThemeMenu") as MenuItem;
         if (themeMenu?.Items != null)
         {
@@ -780,6 +791,30 @@ public partial class MainWindow : Window
     {
         Application.Current.Shutdown();
     }
+
+    // Added: RenderOptions optimization to reduce bitmap caching log spam and tune caching thresholds
+    private void OptimizeRendering()
+    {
+        try
+        {
+            Log.Information("Optimizing rendering options (bitmap scaling + caching hints)...");
+            var images = this.FindVisualChildren<System.Windows.Controls.Image>();
+            foreach (var img in images)
+            {
+                RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.LowQuality); // trade-off for speed
+                RenderOptions.SetCachingHint(img, CachingHint.Cache);
+                RenderOptions.SetCacheInvalidationThresholdMinimum(img, 0.5);
+                RenderOptions.SetCacheInvalidationThresholdMaximum(img, 2.0);
+            }
+            Log.Information("Rendering optimization complete (Images processed: {Count})", images.Count());
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Rendering optimization failed – non-fatal");
+        }
+    }
+
+    // ThemeManager removed; central theming handled by ThemeCoordinator + ThemeService
 
     #endregion
 }

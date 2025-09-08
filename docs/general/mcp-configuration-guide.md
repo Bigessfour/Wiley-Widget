@@ -69,28 +69,6 @@ This guide documents the Model Context Protocol (MCP) servers configured for the
 - Troubleshooting guides
 - Best practices and patterns
 
-### Bright Data MCP Server
-**Purpose**: Web data collection, search, and market research
-```json
-{
-  "brightdata": {
-    "url": "https://api.brightdata.com/mcp/",
-    "type": "http",
-    "headers": {
-      "Authorization": "Bearer ${env:BRIGHTDATA_API_KEY}",
-      "Content-Type": "application/json"
-    }
-  }
-}
-```
-
-**Capabilities**:
-- Web search and scraping
-- Data extraction from websites
-- Market research and competitive analysis
-- Real-time data collection
-- Structured data parsing
-
 ## Configuration Files
 
 ### Workspace MCP Configuration
@@ -118,11 +96,6 @@ AZURE_CLIENT_ID=your_client_id
 AZURE_CLIENT_SECRET=your_client_secret
 AZURE_TENANT_ID=your_tenant_id
 AZURE_SUBSCRIPTION_ID=your_subscription_id
-```
-
-### Bright Data MCP
-```bash
-BRIGHTDATA_API_KEY=your_brightdata_api_key
 ```
 
 ## Usage Examples
@@ -208,7 +181,6 @@ MCP servers are integrated with the CI/CD pipeline for:
 - **Azure MCP Server**: https://github.com/microsoft/azure-mcp
 - **GitHub MCP**: https://docs.github.com/en/copilot
 - **Microsoft Docs MCP**: https://learn.microsoft.com/
-- **Bright Data Documentation**: https://docs.brightdata.com/
 
 ---
 

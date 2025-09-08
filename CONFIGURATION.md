@@ -46,8 +46,6 @@ The application supports various feature flags that can be configured in `appset
 - `QBO_CLIENT_SECRET`: QuickBooks Online client secret
 - `QBO_REDIRECT_URI`: QuickBooks Online redirect URI
 - `QBO_ENVIRONMENT`: QuickBooks Online environment (sandbox/production)
-- `BRIGHTDATA_API_KEY`: BrightData API key
-- `BRIGHTDATA_BASE_URL`: BrightData base URL (default: https://mcp.brightdata.com/)
 
 ## Command Line Arguments
 

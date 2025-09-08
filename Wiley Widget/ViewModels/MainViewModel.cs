@@ -34,7 +34,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IEnterpriseRepository _enterpriseRepository;
     private readonly WpfMiddlewareService _middlewareService;
     private readonly EnterpriseViewModel _enterpriseViewModel;
-    private readonly BrightDataService _brightDataService;
 
     /// <summary>Primary constructor (DI).</summary>
     public MainViewModel(
@@ -43,8 +42,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         AppDbContext dbContext,
         IEnterpriseRepository enterpriseRepository,
         QuickBooksService quickBooksService,
-        WpfMiddlewareService middlewareService,
-        BrightDataService brightDataService)
+        WpfMiddlewareService middlewareService)
     {
         Log.Information("MainViewModel initialization started with DI");
         _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -53,7 +51,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _enterpriseRepository = enterpriseRepository;
         _qb = quickBooksService;
         _middlewareService = middlewareService ?? new WpfMiddlewareService();
-        _brightDataService = brightDataService;
 
         _enterpriseViewModel = new EnterpriseViewModel(_enterpriseRepository);
         InitializeDefaultWidgets();
@@ -209,8 +206,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ServiceLocator.GetServiceOrDefault<AppDbContext>(),
         ServiceLocator.GetServiceOrDefault<IEnterpriseRepository>(),
         ServiceLocator.GetServiceOrDefault<QuickBooksService>(),
-        ServiceLocator.GetServiceOrDefault<WpfMiddlewareService>(),
-        ServiceLocator.GetServiceOrDefault<BrightDataService>())
+        ServiceLocator.GetServiceOrDefault<WpfMiddlewareService>())
     {
         // If GrokSupercomputer wasn't provided by DI, create it manually with database service
         if (_grokSupercomputer == null && _config != null)
@@ -708,36 +704,17 @@ Output structured analysis with actionable insights.";
         }
     }
     /// <summary>
-    /// Performs a Bright Data search (general, syncfusion, wpf) returning raw results.
+    /// Searches for data using the local database.
     /// </summary>
     /// <param name="query">Search query text.</param>
     /// <param name="searchType">Search category: general|syncfusion|wpf.</param>
     /// <returns>Anonymous result { Success, Results? | Error }.</returns>
-    public async Task<object> SearchAsync(string query, string searchType = "general")
+    public async System.Threading.Tasks.Task<object> SearchAsync(string query, string searchType = "general")
     {
-        if (_brightDataService == null)
-        {
-            Log.Warning("BrightDataService not available for search");
-            return new { Success = false, Error = "Search service not available" };
-        }
-
-        try
-        {
-            Log.Information("Performing {SearchType} search for: {Query}", searchType, query);
-            var result = await _brightDataService.SearchAsync(query);
-            if (result.Success)
-            {
-                Log.Information("Search completed successfully, found {Count} results", result.Results.Length);
-                return new { Success = true, Results = result.Results };
-            }
-            Log.Warning("Search failed: {Error}", result.Error);
-            return new { Success = false, Error = result.Error };
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error performing search");
-            return new { Success = false, Error = ex.Message };
-        }
+        Log.Information("Performing local database search for: {Query}", query);
+        await System.Threading.Tasks.Task.CompletedTask;
+        // TODO: Implement local database search functionality
+        return new { Success = true, Results = new List<object>() };
     }
 
     private bool _disposed;

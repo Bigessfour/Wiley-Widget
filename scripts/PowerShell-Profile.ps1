@@ -176,3 +176,7 @@ function Test-WriteHostUsage {
 
 # Export functions for use in scripts
 Export-ModuleMember -Function Test-WriteHostUsage
+
+# Syncfusion license initialization (quiet). Falls back gracefully if script missing.
+$syncInit = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'profile-syncfusion-license-init.ps1'
+if(Test-Path $syncInit){ . $syncInit } else { Write-Information 'Syncfusion init script not found.' -InformationAction Continue }

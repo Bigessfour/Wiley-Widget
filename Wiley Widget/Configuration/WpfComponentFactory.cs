@@ -35,8 +35,7 @@ public class WpfComponentFactory
             sp.GetService<Data.AppDbContext>(),
             sp.GetService<IEnterpriseRepository>(),
             sp.GetService<QuickBooksService>(),
-            sp.GetService<WpfMiddlewareService>(),
-            sp.GetService<BrightDataService>());
+            sp.GetService<WpfMiddlewareService>());
     }
 
     /// <summary>

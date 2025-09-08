@@ -1,15 +1,9 @@
 # Python requirements for Wiley Widget MCP integration
-# Enhanced terminal and BrightData support
 
 # Core MCP dependencies
 requests>=2.32.4
 urllib3>=2.5.0
 httpx>=0.25.0
-
-# BrightData specific
-beautifulsoup4>=4.12.0
-lxml>=5.3.0
-selenium>=4.15.0
 
 # Terminal and development tools
 rich>=13.7.0

@@ -36,5 +36,17 @@
 			"github.copilot-chat"
 		]
 	},
-	"name": "Wiley Widget Workspace"
+	"name": "Wiley Widget Workspace",
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "ensure-syncfusion-license",
+				"type": "shell",
+				"command": "pwsh",
+				"args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/ensure-syncfusion-license.ps1"],
+				"problemMatcher": []
+			}
+		]
+	}
 }

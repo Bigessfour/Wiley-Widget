@@ -7,6 +7,8 @@
     <!-- Syncfusion themes are loaded automatically by SfSkinManager -->
     <!-- This file contains only custom application styles that complement the active theme -->
 
+    <!-- Global converters moved to App.xaml fallback dictionary (BoolToVis) -->
+
     <!-- Custom application styles that complement Fluent theme -->
     <Style x:Key="ThemeButton" TargetType="Button">
         <Setter Property="Background" Value="#0078D4"/>
@@ -42,39 +44,6 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-    </Style>
-
-    <!-- DashboardCard Border Style (Simplified) -->
-    <Style x:Key="DashboardCard" TargetType="Border">
-        <Setter Property="Background" Value="White"/>
-        <Setter Property="BorderBrush" Value="#E1E1E1"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Margin" Value="5"/>
-        <Setter Property="Padding" Value="15"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="#CCCCCC" BlurRadius="5" ShadowDepth="2"/>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <!-- CardTitle TextBlock Style (Simplified) -->
-    <Style x:Key="CardTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#333333"/>
-        <Setter Property="FontFamily" Value="Segoe UI"/>
-        <Setter Property="TextAlignment" Value="Left"/>
-    </Style>
-
-    <!-- CardValue TextBlock Style (Simplified) -->
-    <Style x:Key="CardValue" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="20"/>
-        <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="Foreground" Value="#0078D4"/>
-        <Setter Property="FontFamily" Value="Segoe UI"/>
-        <Setter Property="TextAlignment" Value="Left"/>
     </Style>
 
     <!-- StatusTextSuccess TextBlock Style -->
@@ -125,60 +94,8 @@
         <Setter Property="FontFamily" Value="Segoe UI"/>
     </Style>
 
-    <!-- Standard Theme Brushes (defined with static colors for early loading) -->
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#0078D4"/>
-    <SolidColorBrush x:Key="SecondaryBrush" Color="#106EBE"/>
-    <SolidColorBrush x:Key="SuccessBrush" Color="#107C10"/>
-    <SolidColorBrush x:Key="WarningBrush" Color="#FF8C00"/>
-    <SolidColorBrush x:Key="ErrorBrush" Color="#D13438"/>
-    <SolidColorBrush x:Key="InfoBrush" Color="#0078D4"/>
+    <!-- Primitive brushes & common colors removed (now sourced from Colors.xaml / palette). Only keep unique module-specific brushes below if any truly differ. -->
 
-    <!-- Background and Foreground Brushes -->
-    <SolidColorBrush x:Key="ContentBackground" Color="White"/>
-    <SolidColorBrush x:Key="ContentForeground" Color="#333333"/>
-    <SolidColorBrush x:Key="BorderBrush" Color="#CCCCCC"/>
-    <SolidColorBrush x:Key="SelectionBackground" Color="#E6F3FF"/>
-    <SolidColorBrush x:Key="SelectionForeground" Color="#333333"/>
-
-    <!-- Custom Theme Colors for Wiley Widget -->
-    <SolidColorBrush x:Key="TestConfigBackground" Color="White"/>
-    <SolidColorBrush x:Key="TestConfigForeground" Color="#333333"/>
-    <SolidColorBrush x:Key="GrokButtonBackground" Color="#107C10"/>
-    <SolidColorBrush x:Key="GrokButtonForeground" Color="White"/>
-    <SolidColorBrush x:Key="WarningBackground" Color="#FFF8E7"/>
-    <SolidColorBrush x:Key="WarningBorderBrush" Color="#FF8C00"/>
-    <SolidColorBrush x:Key="WarningTextForeground" Color="#333333"/>
-    <SolidColorBrush x:Key="ExportButtonBackground" Color="#0078D4"/>
-    <SolidColorBrush x:Key="ExportButtonForeground" Color="White"/>
-    <SolidColorBrush x:Key="TestApiBackground" Color="#107C10"/>
-    <SolidColorBrush x:Key="SaveSettingsBackground" Color="#0078D4"/>
-    <SolidColorBrush x:Key="LoadSettingsBackground" Color="White"/>
-    <SolidColorBrush x:Key="RemoveApiBackground" Color="#D13438"/>
-    <SolidColorBrush x:Key="ApiInfoBackground" Color="#0078D4"/>
-    <SolidColorBrush x:Key="StatusBorderBrush" Color="#CCCCCC"/>
-    <SolidColorBrush x:Key="GuideButtonBackground" Color="#0078D4"/>
-    <SolidColorBrush x:Key="GuideButtonForeground" Color="White"/>
-    <SolidColorBrush x:Key="DiagramBackground" Color="White"/>
-    <SolidColorBrush x:Key="RevenueChartColor" Color="#107C10"/>
-    <SolidColorBrush x:Key="ExpensesChartColor" Color="#D13438"/>
-
-    <!-- Validation Error Styles -->
-    <Style x:Key="ValidationErrorStyle" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="#D13438"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Margin" Value="0,2,0,0"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
-    </Style>
-
-    <Style x:Key="ValidationErrorBorderStyle" TargetType="Border">
-        <Setter Property="BorderBrush" Value="#D13438"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="3"/>
-        <Setter Property="Background" Value="#FFF5F5"/>
-        <Setter Property="Padding" Value="8,4"/>
-        <Setter Property="Margin" Value="0,2,0,0"/>
-    </Style>
 
     <!-- Status Bar Border Style -->
     <Style x:Key="ThemeStatusBarBorder" TargetType="Border">
@@ -188,16 +105,7 @@
         <Setter Property="Height" Value="25"/>
     </Style>
 
-    <!-- Enhanced TextBox Style with Validation -->
-    <Style x:Key="ValidatedTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-        <Style.Triggers>
-            <Trigger Property="Validation.HasError" Value="True">
-                <Setter Property="BorderBrush" Value="#D13438"/>
-                <Setter Property="BorderThickness" Value="2"/>
-                <Setter Property="Background" Value="#FFF5F5"/>
-            </Trigger>
-        </Style.Triggers>
-    </Style>
+    <!-- Duplicate validation styles removed; authoritative definitions reside in Controls.Base.xaml -->
 
     <!-- Ribbon Styles (Uncommented and properly defined per Syncfusion documentation) -->
     <Style x:Key="ThemeRibbon" TargetType="syncfusion:Ribbon">
@@ -352,24 +260,7 @@
     <!-- Default theme resources are loaded from merged dictionaries in App.xaml -->
 
     <!-- Additional Theme Resources for Enhanced Theming -->
-    <SolidColorBrush x:Key="HoverBackground" Color="#E6F3FF"/>
-    <SolidColorBrush x:Key="PressedBackground" Color="#C7E4F7"/>
-    <SolidColorBrush x:Key="DisabledBackground" Color="#CCCCCC"/>
-    <SolidColorBrush x:Key="DisabledForeground" Color="#666666"/>
-    <SolidColorBrush x:Key="FocusBorderBrush" Color="#0078D4"/>
-    <SolidColorBrush x:Key="HeaderBackground" Color="#F3F3F3"/>
-    <SolidColorBrush x:Key="HeaderForeground" Color="#333333"/>
-    <SolidColorBrush x:Key="RowHoverBackground" Color="#F5F5F5"/>
-    <SolidColorBrush x:Key="AlternatingRowBackground" Color="#FAFAFA"/>
-    <SolidColorBrush x:Key="CardBackground" Color="White"/>
-    <SolidColorBrush x:Key="CardForeground" Color="#333333"/>
-    <SolidColorBrush x:Key="ButtonBackground" Color="#0078D4"/>
-    <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
-    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#0078D4"/>
-    <SolidColorBrush x:Key="ButtonHoverBackground" Color="#106EBE"/>
-    <SolidColorBrush x:Key="ButtonHoverForeground" Color="White"/>
-    <SolidColorBrush x:Key="ButtonPressedBackground" Color="#005A9E"/>
-    <SolidColorBrush x:Key="ButtonPressedBorderBrush" Color="#005A9E"/>
+    <!-- Interaction brushes now defined in Colors.xaml (HoverBackground, PressedBackground, etc.) -->
 
     <!-- Chart Colors -->
     <!-- ExpensesChartColor already defined above -->

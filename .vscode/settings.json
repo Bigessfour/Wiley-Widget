@@ -126,7 +126,7 @@
   },
 
   // MCP (Model Context Protocol) Configuration
-  // Current: Multi-server setup with GitHub, Azure, Microsoft Docs, and BrightData
+  // Current: Multi-server setup with GitHub, Azure, and Microsoft Docs
   "mcp": {
     "servers": {
       "github": {
@@ -149,19 +149,12 @@
       "microsoft-docs": {
         "url": "https://mcp.microsoft.com/docs/",
         "type": "http"
-      },
-      "brightdata": {
-        "url": "https://mcp.brightdata.com/mcp?token=${env:BRIGHTDATA_API_KEY}",
-        "type": "http",
-        "headers": {
-          "Content-Type": "application/json"
-        }
       }
     },
     // MCP Autostart Configuration
     "autostart": {
       "enabled": true,
-      "servers": ["github", "azure", "microsoft-docs", "brightdata"],
+      "servers": ["github", "azure", "microsoft-docs"],
       "delay": 2000,
       "timeout": 10000,
       "retryAttempts": 3,

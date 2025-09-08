@@ -28,7 +28,6 @@ Based on official Microsoft documentation:
 
 ```powershell
 # RECOMMENDED: Create Key Vault references (not plain values)
-azd env set-secret BRIGHTDATA_API_KEY
 azd env set-secret SYNCFUSION_LICENSE_KEY
 azd env set-secret XAI_API_KEY
 azd env set-secret GITHUB_TOKEN
@@ -76,7 +75,6 @@ azd init
 azd env new dev
 
 # Create Key Vault references (prompts for values)
-azd env set-secret BRIGHTDATA_API_KEY
 azd env set-secret SYNCFUSION_LICENSE_KEY
 azd env set-secret XAI_API_KEY
 azd env set-secret GITHUB_TOKEN
@@ -92,7 +90,6 @@ azd env set-secret GITHUB_TOKEN
 ```yaml
 # GitHub Actions automatically has access
 env:
-  BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
   # azd handles Key Vault resolution automatically
 ```
 
@@ -114,7 +111,6 @@ env:
 #### **Step 1: Migrate to azd commands**
 ```powershell
 # Replace current load-mcp-secrets.ps1 with:
-azd env set-secret BRIGHTDATA_API_KEY
 azd env set-secret SYNCFUSION_LICENSE_KEY
 azd env set-secret XAI_API_KEY
 azd env set-secret GITHUB_TOKEN
@@ -123,7 +119,6 @@ azd env set-secret GITHUB_TOKEN
 #### **Step 2: Update .env template**
 ```bash
 # Add to .env.template
-BRIGHTDATA_API_KEY=@Microsoft.KeyVault(SecretUri=...)
 SYNCFUSION_LICENSE_KEY=@Microsoft.KeyVault(SecretUri=...)
 XAI_API_KEY=@Microsoft.KeyVault(SecretUri=...)
 GITHUB_TOKEN=@Microsoft.KeyVault(SecretUri=...)

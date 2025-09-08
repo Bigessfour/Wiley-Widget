@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Font sizes (static) -->
+  <sys:Double x:Key="Font.Size.Small" xmlns:sys="clr-namespace:System;assembly=mscorlib">11</sys:Double>
+  <sys:Double x:Key="Font.Size.Medium" xmlns:sys="clr-namespace:System;assembly=mscorlib">13</sys:Double>
+  <sys:Double x:Key="Font.Size.Large" xmlns:sys="clr-namespace:System;assembly=mscorlib">16</sys:Double>
+  <sys:Double x:Key="Font.Size.Header" xmlns:sys="clr-namespace:System;assembly=mscorlib">22</sys:Double>
+
+  <!-- Font families -->
+  <FontFamily x:Key="Font.Primary">Segoe UI</FontFamily>
+
+  <!-- Text styles (prefer referencing fonts + sizes instead of repeating) -->
+  <Style x:Key="Text.Header" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="{StaticResource Font.Size.Header}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+  </Style>
+  <Style x:Key="Text.Body" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="{StaticResource Font.Size.Medium}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+  </Style>
+  <Style x:Key="Text.Muted" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+  </Style>
+</ResourceDictionary>

@@ -97,7 +97,6 @@ Wiley Widget implements enterprise-grade security through Azure Key Vault for al
 
 | Secret Name | Purpose | Status |
 |-------------|---------|--------|
-| `BRIGHTDATA-API-KEY` | Bright Data MCP server authentication | ✅ Active |
 | `SYNCFUSION-LICENSE-KEY` | Syncfusion UI controls licensing | ✅ Active |
 | `XAI-API-KEY` | xAI Grok API authentication | ✅ Active |
 
@@ -399,6 +398,46 @@ Wiley Widget supports multiple database providers with **Azure Managed Identity*
 - **Location:** East US 2 (selected to bypass temporary East US restrictions)
 - **Authentication:** Azure Managed Identity (RECOMMENDED)
 - **Connection:** `wileywidget-sql.database.windows.net`
+
+---
+
+## 🔑 Syncfusion License Persistence & .env Automation
+
+To guarantee the `SYNCFUSION_LICENSE_KEY` is always present when you open a new terminal, a helper script automates acquisition and persistence.
+
+Script: `scripts/ensure-syncfusion-license.ps1`
+
+Acquisition priority (first valid wins):
+1. Existing non-placeholder value already in `.env`
+2. Current environment (Process/User/Machine) variable
+3. Azure Key Vault secret (if `-KeyVaultName` or `KEYVAULT_NAME` is set) — default secret name: `SYNCFUSION-LICENSE`
+4. `license.key` file in project root
+5. Interactive secure prompt (masked input)
+
+Actions performed:
+* Writes/updates `.env` with `SYNCFUSION_LICENSE_KEY=...`
+* Sets process-level environment variable (non-destructive to user/machine scope)
+* Creates sentinel file `.syncfusion.license.synced` with audit metadata
+* Warns if key length appears abnormally short (<40 chars)
+
+Manual run example:
+```powershell
+pwsh ./scripts/ensure-syncfusion-license.ps1 -KeyVaultName wiley-widget-secrets
+```
+
+Already available as VS Code task: `ensure-syncfusion-license` (Run Task → select task).
+
+Optional automation (add to your personal PowerShell profile):
+```powershell
+& "$PSScriptRoot/scripts/ensure-syncfusion-license.ps1" -KeyVaultName wiley-widget-secrets -Quiet
+```
+
+If you rotate the key in Key Vault, re-run with `-Force` to pull the updated value:
+```powershell
+pwsh ./scripts/ensure-syncfusion-license.ps1 -KeyVaultName wiley-widget-secrets -Force
+```
+
+This ensures consistent positive submission of the key into `.env` across sessions without committing secrets to source control.
 
 ### **🔧 Azure Managed Identity Setup**
 

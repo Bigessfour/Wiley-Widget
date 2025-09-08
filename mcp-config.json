@@ -5,7 +5,14 @@
       "args": ["--stdio"],
       "env": {
         "AZURE_MCP_COLLECT_TELEMETRY": "false",
-        "AZURE_CLI_DISABLE_CONNECTION_VERIFICATION": "true"
+        "AZURE_CLI_DISABLE_CONNECTION_VERIFICATION": "true",
+        "AZURE_MCP_DISABLE_DISCOVERY": "true",
+        "AZURE_MCP_DISABLE_REGISTRY": "true",
+        "AZURE_MCP_FEATURE_DISCOVERY": "0",
+        "AZURE_MCP_FEATURE_REGISTRY": "0",
+        "AZURE_MCP_REGISTRY_URL": "https://management.azure.com",
+        "AZURE_MCP_COMMAND_GROUPS": "Subscriptions,Resources",
+        "AZURE_MCP_LOG_LEVEL": "debug"
       }
     },
     "github": {
@@ -23,17 +30,6 @@
         "User-Agent": "WileyWidget-MCP/1.0"
       },
       "env": {
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      }
-    },
-    "brightdata": {
-      "command": "npx",
-      "args": ["-y", "@brightdata/mcp"],
-      "env": {
-        "API_TOKEN": "${BRIGHTDATA_API_KEY}",
-        "BRIGHTDATA_MODE": "MCP",
-        "BRIGHTDATA_MCP_DEBUG": "1",
-        "BRIGHTDATA_MCP_TIMEOUT": "25000",
         "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
     }

@@ -4,7 +4,7 @@
 
 ### ✅ Comprehensive Environment Setup
 - **Complete .env file** with 150+ configuration variables
-- **All MCP servers** properly configured (Azure, GitHub, Microsoft Docs, BrightData, Pylance)
+- **All MCP servers** properly configured (Azure, GitHub, Microsoft Docs, Pylance)
 - **Extension requirements** documented and configured
 - **Development tools** fully integrated (PowerShell 7.5.2, Node.js 20.19.0, Python 3.12.10)
 - **Security settings** implemented with Azure Key Vault integration
@@ -21,7 +21,7 @@
 - **Azure MCP**: Official Microsoft integration with stdio mode
 - **GitHub MCP**: Repository management with secure token loading
 - **Microsoft Docs MCP**: Official documentation integration
-- **BrightData MCP**: Web scraping with enterprise configuration
+- **Microsoft Docs MCP**: Official Microsoft documentation access
 - **Pylance MCP**: Python language server integration
 
 #### **Development Environment**

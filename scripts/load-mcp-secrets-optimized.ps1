@@ -43,7 +43,6 @@ if ($UseAzdCommands) {
     Write-Host "📦 Setting up Key Vault references using azd..." -ForegroundColor Cyan
     
     $secrets = @(
-        "BRIGHTDATA_API_KEY",
         "SYNCFUSION_LICENSE_KEY",
         "XAI_API_KEY", 
         "GITHUB_TOKEN"
@@ -61,7 +60,6 @@ if ($UseAzdCommands) {
     }
     
     Write-Host "💡 To complete setup, run:" -ForegroundColor Yellow
-    Write-Host "  azd env set-secret BRIGHTDATA_API_KEY" -ForegroundColor Cyan
     Write-Host "  azd env set-secret SYNCFUSION_LICENSE_KEY" -ForegroundColor Cyan
     Write-Host "  azd env set-secret XAI_API_KEY" -ForegroundColor Cyan
     Write-Host "  azd env set-secret GITHUB_TOKEN" -ForegroundColor Cyan
@@ -86,7 +84,6 @@ if ($BulkLoad) {
         
         # Target secrets mapping (Key Vault name -> Environment Variable)
         $secretMapping = @{
-            "BRIGHTDATA-API-KEY" = @("BRIGHTDATA_API_KEY", "API_TOKEN")
             "SYNCFUSION-LICENSE-KEY" = @("SYNCFUSION_LICENSE_KEY")
             "XAI-API-KEY" = @("XAI_API_KEY")
             "GITHUB-PAT" = @("GITHUB_TOKEN")

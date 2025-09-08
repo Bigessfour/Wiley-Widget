@@ -21,10 +21,36 @@ public class ThemeService : IThemeService
         "HighContrast"
     ];
 
+    private static bool _syncfusionLicenseVerified = false;
+
     public string CurrentTheme { get; private set; }
+
+    /// <summary>
+    /// Verifies Syncfusion license is registered before using any Syncfusion controls.
+    /// CRITICAL: This prevents license errors by ensuring proper registration order.
+    /// </summary>
+    private void VerifySyncfusionLicenseRegistration()
+    {
+        if (!_syncfusionLicenseVerified)
+        {
+            // Check the global flag set by App.xaml.cs when license registration succeeds
+            if (!WileyWidget.App.SyncfusionLicenseRegistered)
+            {
+                var error = "CRITICAL: Syncfusion license not properly registered before ThemeService initialization";
+                Serilog.Log.Fatal(error);
+                throw new InvalidOperationException(error);
+            }
+            
+            _syncfusionLicenseVerified = true;
+            Serilog.Log.Information("✅ Syncfusion license verification passed in ThemeService");
+        }
+    }
 
     public async Task InitializeAsync()
     {
+        // CRITICAL: Verify license registration before touching any Syncfusion controls
+        VerifySyncfusionLicenseRegistration();
+        
         // Initialize theme system with Syncfusion requirements
         SfSkinManager.ApplyStylesOnApplication = true;
         await Task.CompletedTask;
@@ -34,6 +60,9 @@ public class ThemeService : IThemeService
     {
         try
         {
+            // CRITICAL: Verify license registration before touching any Syncfusion controls
+            VerifySyncfusionLicenseRegistration();
+            
             // Validate theme name
             var normalizedTheme = ValidateAndNormalizeTheme(themeName);
 

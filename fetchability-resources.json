@@ -772,13 +772,6 @@
       "extension": ".cs"
     },
     {
-      "path": "Wiley Widget/Services/BrightDataService.cs",
-      "sha256": "c73cf4c8deddf909f1d9f9bb5ea8aa84adc7b64c7bb815effe88c498f258112d",
-      "size": 12394,
-      "last_modified": "2025-09-07T12:38:40.153414Z",
-      "extension": ".cs"
-    },
-    {
       "path": "Wiley Widget/Services/CachedQuickBooksService.cs",
       "sha256": "5a38f4f0e7627955a3a1fdd1e833721aea9520ab2ff65c8bb53b455347d02fda",
       "size": 8129,
@@ -1913,20 +1906,6 @@
       "extension": ".md"
     },
     {
-      "path": "docs/general/BRIGHTDATA-MCP-README.md",
-      "sha256": "36df9f294e3bc335e5ec758d62136baca0d1063cc6d7937e3a63ccf8f98a723a",
-      "size": 3548,
-      "last_modified": "2025-09-07T12:38:40.329259Z",
-      "extension": ".md"
-    },
-    {
-      "path": "docs/general/BRIGHTDATA_HOSTED_MCP.md",
-      "sha256": "c94a3bfcd8fdcd06b79c5f56912c46f9b866e0a8f936dbd35a111f1ad3405388",
-      "size": 816,
-      "last_modified": "2025-09-07T12:38:40.329259Z",
-      "extension": ".md"
-    },
-    {
       "path": "docs/general/CHANGELOG.md",
       "sha256": "ee058badc208f23e7ccec4489a3d442588c83c8cad68247863ec86f33c2fe92b",
       "size": 4707,
@@ -2289,27 +2268,6 @@
       "size": 2939,
       "last_modified": "2025-09-06T17:52:11.146697Z",
       "extension": ".ps1"
-    },
-    {
-      "path": "scripts/brightdata-diagnostic.ps1",
-      "sha256": "710327503fca9e8056b3c23aac3b3304a00f3bcb71e7a3729c6d3fe1ca8c3008",
-      "size": 6604,
-      "last_modified": "2025-09-06T17:52:11.188998Z",
-      "extension": ".ps1"
-    },
-    {
-      "path": "scripts/brightdata-selftest.ps1",
-      "sha256": "3aa24cafd5d8d4da596135ebad1500276799d6b2576104dff897ced2aee44fe6",
-      "size": 1637,
-      "last_modified": "2025-09-06T17:52:11.229259Z",
-      "extension": ".ps1"
-    },
-    {
-      "path": "scripts/brightdata-startup-diagnostics.js",
-      "sha256": "77ac60ea17bd5ab93e96d58bba2d46be58a952d63ecd513d3c39c089214bf6d5",
-      "size": 28469,
-      "last_modified": "2025-09-02T03:37:46.957115Z",
-      "extension": ".js"
     },
     {
       "path": "scripts/build-enhanced.ps1",
@@ -2704,13 +2662,6 @@
       "extension": ".js"
     },
     {
-      "path": "scripts/test-brightdata-mcp.ps1",
-      "sha256": "6051ed0f056e5e3c338043d5f086aeae3c8db3ac617521e006a3e80498870117",
-      "size": 7000,
-      "last_modified": "2025-09-07T12:38:40.492968Z",
-      "extension": ".ps1"
-    },
-    {
       "path": "scripts/test-database-connection.ps1",
       "sha256": "08b507724562d0cbc6e6d9527dfa4aa6b8b069c2830eb0fa2ae3b36b07b4ac77",
       "size": 10193,
@@ -2764,13 +2715,6 @@
       "sha256": "9bfc409647bdb36d2fa9a70b5a24990ae9caef8b9e8e92df54ea4ba9f5f4f089",
       "size": 13685,
       "last_modified": "2025-09-07T12:38:40.497841Z",
-      "extension": ".ps1"
-    },
-    {
-      "path": "scripts/update-brightdata-key.ps1",
-      "sha256": "c2301a297794d9937f7b5134830d6ac2165a38b858a3274a4aa83c611d82b01e",
-      "size": 5330,
-      "last_modified": "2025-09-06T17:52:13.862092Z",
       "extension": ".ps1"
     },
     {

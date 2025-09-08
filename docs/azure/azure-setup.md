@@ -447,12 +447,6 @@ az role assignment create `
 #### 3. Store API Keys
 
 ```powershell
-# Store Bright Data API Key
-az keyvault secret set `
-    --vault-name "wiley-widget-secrets" `
-    --name "BRIGHTDATA-API-KEY" `
-    --value "your-brightdata-api-key"
-
 # Store Syncfusion License Key
 az keyvault secret set `
     --vault-name "wiley-widget-secrets" `

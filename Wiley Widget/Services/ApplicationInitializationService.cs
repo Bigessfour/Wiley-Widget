@@ -19,6 +19,7 @@ public class ApplicationInitializationService : IDisposable
     private readonly SplashScreenService _splashScreenService;
     private readonly StartupPerformanceService _performanceService;
     private readonly ResourceMonitorService _resourceMonitorService;
+    private readonly IResourceManagementService _resourceManagementService;
 
     private bool _disposed;
 
@@ -32,6 +33,7 @@ public class ApplicationInitializationService : IDisposable
     /// <param name="splashScreenService">The splash screen service.</param>
     /// <param name="performanceService">The startup performance service.</param>
     /// <param name="resourceMonitorService">The resource monitor service.</param>
+    /// <param name="resourceManagementService">The resource management service.</param>
     public ApplicationInitializationService(
         IConfiguration configuration,
         LoggingService loggingService,
@@ -39,7 +41,8 @@ public class ApplicationInitializationService : IDisposable
         AssemblyValidationService assemblyValidationService,
         SplashScreenService splashScreenService,
         StartupPerformanceService performanceService,
-        ResourceMonitorService resourceMonitorService)
+        ResourceMonitorService resourceMonitorService,
+        IResourceManagementService resourceManagementService)
     {
         _configuration = configuration;
         _loggingService = loggingService;
@@ -48,6 +51,7 @@ public class ApplicationInitializationService : IDisposable
         _splashScreenService = splashScreenService;
         _performanceService = performanceService;
         _resourceMonitorService = resourceMonitorService;
+        _resourceManagementService = resourceManagementService;
     }
 
     /// <summary>
@@ -116,7 +120,31 @@ public class ApplicationInitializationService : IDisposable
         _errorHandlingService.SafeExecute("Validate Syncfusion Assemblies",
             () => _assemblyValidationService.ValidateSyncfusionAssemblies());
 
-        // Step 6: Configure services
+        // Step 6: Load core resources
+        _errorHandlingService.SafeExecute("Load Core Resources",
+            () => _resourceManagementService.LoadCoreResources());
+
+        // Step 7: Ensure critical resource fallbacks
+        _errorHandlingService.SafeExecute("Ensure Critical Resource Fallbacks",
+            () => _resourceManagementService.EnsureCriticalResourceFallbacks());
+
+        // Step 8: Diagnose duplicate resource keys
+        _errorHandlingService.SafeExecute("Diagnose Duplicate Resource Keys",
+            () => _resourceManagementService.DiagnoseDuplicateResourceKeys());
+
+        // Step 9: Ensure extended fallbacks
+        _errorHandlingService.SafeExecute("Ensure Extended Fallbacks",
+            () => _resourceManagementService.EnsureExtendedFallbacks());
+
+        // Step 10: Remove duplicate merged dictionaries
+        _errorHandlingService.SafeExecute("Remove Duplicate Merged Dictionaries",
+            () => _resourceManagementService.RemoveDuplicateMergedDictionaries());
+
+        // Step 11: Prevent custom overrides of theme keys
+        _errorHandlingService.SafeExecute("Prevent Custom Overrides of Theme Keys",
+            () => _resourceManagementService.PreventCustomOverridesOfThemeKeys());
+
+        // Step 12: Configure services
         _errorHandlingService.SafeExecute("Configure Services",
             () => ConfigureServices());
     }
@@ -128,6 +156,15 @@ public class ApplicationInitializationService : IDisposable
     {
         // Configure any additional services here
         Log.Information("🔧 Additional services configured");
+    }
+
+    /// <summary>
+    /// Verifies critical global resources after resource loading.
+    /// </summary>
+    public void VerifyPostLoadResources()
+    {
+        var criticalKeys = new[] { "DashboardCard", "CardTitle", "CardValue", "WarningBackground", "BoolToVis", "ValidatedTextBox" };
+        _resourceManagementService.VerifyGlobalResources(criticalKeys);
     }
 
     /// <summary>

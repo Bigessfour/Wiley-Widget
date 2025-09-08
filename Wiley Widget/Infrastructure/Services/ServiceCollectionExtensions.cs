@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using WileyWidget.Services;
+using WileyWidget.Services; // includes ISettingsService, ThemeManager, export pipeline
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
 using WileyWidget.UI.Theming;
@@ -36,7 +36,8 @@ public static class ServiceCollectionExtensions
         // Core application services
         services.AddSingleton<ISettingsService>(sp => WileyWidget.Services.SettingsService.Instance);
         services.AddSingleton<WileyWidget.Services.SettingsService>(sp => WileyWidget.Services.SettingsService.Instance);
-        services.AddSingleton<IThemeService, WileyWidget.Services.ThemeService>();
+    services.AddSingleton<IThemeService, WileyWidget.Services.ThemeService>(); // legacy simple service (can be deprecated)
+    services.AddSingleton<WileyWidget.Services.IThemeManager, WileyWidget.Services.ThemeManager>(); // central theme manager
         services.AddSingleton<IConfigurationService, ConfigurationService>();
 
         // Startup and initialization services
@@ -50,9 +51,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<AssemblyValidationService>();
         services.AddSingleton<SplashScreenService>();
         services.AddSingleton<ResourceMonitorService>();
+        services.AddSingleton<IResourceManagementService, ResourceManagementService>();
 
         // Additional service registrations
-        services.AddTransient<IThemeCoordinator, ThemeCoordinator>();
+    services.AddTransient<IThemeCoordinator, ThemeCoordinator>(); // coordinator works atop ThemeManager
         services.AddTransient<IWindowStateService, WindowStateService>();
 
         // View models
@@ -82,6 +84,17 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IBusinessLogicService, BusinessLogicService>();
         services.AddTransient<IDataService, DataService>();
         services.AddTransient<IValidationService, ValidationService>();
+        services.AddTransient<IDiagramBuilderService, DiagramBuilderService>();
+
+        // API Key services
+        services.AddSingleton<WileyWidget.Services.IApiKeyFacade, WileyWidget.Services.ApiKeyFacade>();
+        services.AddSingleton<WileyWidget.Services.ApiKeyService>(WileyWidget.Services.ApiKeyService.Instance);
+
+        // Logging services
+        services.AddLogging();
+
+    // Document export pipeline (PDF + Excel) using Syncfusion documented APIs
+    WileyWidget.Services.ExportServiceCollectionExtensions.AddDocumentExport(services);
 
         // QuickBooks services with caching
         services.AddSingleton<QuickBooksService>();

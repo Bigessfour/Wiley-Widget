@@ -15,11 +15,6 @@ This document provides comprehensive guidance for configuring and maintaining MC
 - **Azure MCP Server**: https://github.com/microsoft/mcp/tree/main/servers/Azure.Mcp.Server
 - **Documentation**: https://learn.microsoft.com/azure/developer/azure-mcp-server/
 
-### Bright Data MCP Server
-- **Documentation**: https://docs.brightdata.com/mcp-server/
-- **Remote Setup**: https://docs.brightdata.com/mcp-server/remote/quickstart
-- **Local Setup**: https://docs.brightdata.com/mcp-server/local/quickstart
-
 ### GitHub MCP Server
 - **Package**: `@modelcontextprotocol/server-github`
 - **Installation**: Via npm/npx
@@ -56,17 +51,6 @@ This document provides comprehensive guidance for configuring and maintaining MC
       "env": {
         "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
-    },
-    "brightdata": {
-      "command": "npx",
-      "args": ["-y", "@brightdata/mcp"],
-      "env": {
-        "API_TOKEN": "${BRIGHTDATA_API_KEY}",
-        "BRIGHTDATA_MODE": "MCP",
-        "BRIGHTDATA_MCP_DEBUG": "1",
-        "BRIGHTDATA_MCP_TIMEOUT": "25000",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      }
     }
   }
 }
@@ -93,14 +77,6 @@ This document provides comprehensive guidance for configuring and maintaining MC
 			"headers": {
 				"User-Agent": "WileyWidget-MCP/1.0"
 			}
-		},
-		"brightdata": {
-			"type": "stdio",
-			"command": "npx",
-			"args": [
-				"--yes",
-				"@brightdata/mcp"
-			]
 		}
 	}
 }
@@ -131,14 +107,6 @@ This document provides comprehensive guidance for configuring and maintaining MC
 - **Status**: ✅ Connected and functional
 - **Test Results**: Successfully accessed Microsoft Learn documentation site
 
-### 4. Bright Data MCP Server ✅ VALIDATED
-- **Purpose**: Web scraping and data collection
-- **Transport**: stdio (local process)
-- **Command**: `npx -y @brightdata/mcp`
-- **Authentication**: Bright Data API key (stored in Azure Key Vault)
-- **Status**: ✅ Connected and functional
-- **Test Results**: MCP server package loaded and responding
-
 ## Security Configuration
 
 ### Azure Key Vault Integration
@@ -146,7 +114,6 @@ This document provides comprehensive guidance for configuring and maintaining MC
 - **Resource Group**: `WileyWidgetRG`
 - **Location**: `eastus`
 - **Stored Secrets**:
-  - `BRIGHTDATA-API-KEY`: Bright Data API key
   - `GITHUB-PAT`: GitHub Personal Access Token
   - `SYNCFUSION-LICENSE-KEY`: Syncfusion license key
   - `XAI-API-KEY`: XAI API key
@@ -157,7 +124,6 @@ This document provides comprehensive guidance for configuring and maintaining MC
 .\scripts\load-mcp-secrets.ps1
 
 # This sets the following environment variables:
-# - BRIGHTDATA_API_KEY
 # - GITHUB_TOKEN
 # - SYNCFUSION_LICENSE_KEY
 # - XAI_API_KEY
@@ -168,7 +134,7 @@ This document provides comprehensive guidance for configuring and maintaining MC
 ### MCP Server Startup Issues
 
 #### Problem: "Multiple MCP servers were unable to start successfully"
-**Symptoms**: Azure, Microsoft Docs, Bright Data servers fail to start
+**Symptoms**: Azure, Microsoft Docs servers fail to start
 
 **Root Causes & Solutions**:
 
@@ -221,19 +187,6 @@ gh auth login
 
 # Update GitHub token in Azure Key Vault
 az keyvault secret set --vault-name "wiley-widget-secrets" --name "GITHUB-PAT" --value "your-new-token"
-```
-
-#### Problem: Bright Data MCP Server Environment Variable Issues
-**Symptoms**: API_TOKEN environment variable not recognized
-**Solutions**:
-```powershell
-# Ensure both environment variables are set
-$env:BRIGHTDATA_API_KEY = "your-api-key"
-$env:API_TOKEN = $env:BRIGHTDATA_API_KEY
-
-# Reload from Azure Key Vault
-.\scripts\load-mcp-secrets.ps1
-```
 
 ### Testing MCP Server Connectivity
 
@@ -246,7 +199,6 @@ $env:API_TOKEN = $env:BRIGHTDATA_API_KEY
 .\scripts\test-mcp-connections.ps1 -TestAzure
 .\scripts\test-mcp-connections.ps1 -TestGitHub
 .\scripts\test-mcp-connections.ps1 -TestMicrosoftDocs
-.\scripts\test-mcp-connections.ps1 -TestBrightData
 ```
 
 #### Manual Testing
@@ -268,11 +220,6 @@ gh repo list --limit 3
 Invoke-WebRequest -Uri "https://learn.microsoft.com/en-us/" -Method Head
 ```
 
-**Bright Data MCP Test**:
-```powershell
-Write-Host "API Key loaded: $($env:BRIGHTDATA_API_KEY.Length) characters"
-```
-
 ### Recovery Procedures
 
 #### Complete MCP Reset
@@ -281,7 +228,6 @@ Write-Host "API Key loaded: $($env:BRIGHTDATA_API_KEY.Length) characters"
 Get-Process | Where-Object { $_.Name -like "*mcp*" -or $_.Name -like "*node*" } | Stop-Process -Force
 
 # 2. Clear environment variables
-Remove-Item Env:\BRIGHTDATA_API_KEY -ErrorAction SilentlyContinue
 Remove-Item Env:\GITHUB_TOKEN -ErrorAction SilentlyContinue
 Remove-Item Env:\API_TOKEN -ErrorAction SilentlyContinue
 
@@ -297,7 +243,6 @@ Remove-Item Env:\API_TOKEN -ErrorAction SilentlyContinue
 #### Emergency Azure Key Vault Access
 ```powershell
 # Direct secret retrieval
-az keyvault secret show --vault-name "wiley-widget-secrets" --name "BRIGHTDATA-API-KEY"
 az keyvault secret show --vault-name "wiley-widget-secrets" --name "GITHUB-PAT"
 
 # List all secrets
@@ -343,7 +288,6 @@ az keyvault secret list --vault-name "wiley-widget-secrets" --query "[].name" -o
 
 - **Microsoft MCP Documentation**: https://github.com/microsoft/mcp
 - **Azure Key Vault Guide**: https://learn.microsoft.com/azure/key-vault/
-- **Bright Data MCP Docs**: https://docs.brightdata.com/mcp-server/
 - **GitHub MCP Package**: https://www.npmjs.com/package/@modelcontextprotocol/server-github
 
 ---
@@ -390,16 +334,6 @@ az keyvault secret list --vault-name "wiley-widget-secrets" --query "[].name" -o
   - Retrieve technical articles
   - Access API references
 
-### 4. Bright Data MCP Server
-- **Purpose**: Web scraping and data collection
-- **Transport**: stdio (local process)
-- **Command**: `npx -y @brightdata/mcp`
-- **Authentication**: Bright Data API key
-- **Capabilities**:
-  - Web scraping
-  - Search engine results
-  - Data extraction from websites
-
 ## Setup Instructions
 
 ### Prerequisites
@@ -407,7 +341,6 @@ az keyvault secret list --vault-name "wiley-widget-secrets" --query "[].name" -o
 1. **Node.js**: Required for npx and npm packages
 2. **Azure CLI**: For Azure MCP server authentication
 3. **GitHub CLI**: Optional, for GitHub MCP server authentication
-4. **Bright Data Account**: For web scraping capabilities
 
 ### Installation Steps
 
@@ -423,17 +356,12 @@ az keyvault secret list --vault-name "wiley-widget-secrets" --query "[].name" -o
    # Extension ID: ms-azuretools.vscode-azure-mcp-server
    ```
 
-3. **Install Bright Data MCP Server**:
-   ```bash
-   npm install -g @brightdata/mcp
-   ```
-
-4. **Install GitHub MCP Server**:
+3. **Install GitHub MCP Server**:
    ```bash
    npm install -g @modelcontextprotocol/server-github
    ```
 
-5. **Configure Authentication**:
+4. **Configure Authentication**:
 
    **Azure**:
    ```bash
@@ -444,11 +372,6 @@ az keyvault secret list --vault-name "wiley-widget-secrets" --query "[].name" -o
    ```bash
    gh auth login
    # OR set GITHUB_PERSONAL_ACCESS_TOKEN in .env
-   ```
-
-   **Bright Data**:
-   ```bash
-   # Set BRIGHTDATA_API_KEY in .env file
    ```
 
 ### Testing Configuration
@@ -462,7 +385,6 @@ Use the provided test script to validate your MCP server setup:
 # Test individual servers
 .\scripts\test-mcp-connections.ps1 -TestAzure
 .\scripts\test-mcp-connections.ps1 -TestGitHub
-.\scripts\test-mcp-connections.ps1 -TestBrightData
 
 # Validate configuration files only
 .\scripts\test-mcp-connections.ps1 -ValidateConfig
@@ -512,7 +434,6 @@ AZURE_MCP_COLLECT_TELEMETRY=false
 3. **Authentication failures**:
    - Verify Azure CLI login: `az account show`
    - Verify GitHub auth: `gh auth status`
-   - Verify Bright Data API key
 
 4. **Missing dependencies**:
    - Install Node.js and npm
@@ -534,7 +455,6 @@ Check the following log files for troubleshooting:
 4. **Test with prompts** like:
    - "List my Azure storage accounts"
    - "Search GitHub for MCP server issues"
-   - "Scrape data from example.com"
 
 ## Security Considerations
 
@@ -546,7 +466,6 @@ Wiley Widget uses Azure Key Vault for enterprise-grade secret management of all 
 - **Vault Name**: `wiley-widget-secrets`
 - **Security Model**: RBAC authorization
 - **Stored Secrets**:
-  - `BRIGHTDATA-API-KEY`: Bright Data MCP authentication
   - `XAI-API-KEY`: xAI API access (if used by MCP servers)
 
 #### **Secret Loading Process**
@@ -560,15 +479,6 @@ Wiley Widget uses Azure Key Vault for enterprise-grade secret management of all 
 
 #### **Environment Variable Mapping**
 The MCP configuration uses these environment variables (populated from Key Vault):
-```json
-{
-  "brightdata": {
-    "env": {
-      "BRIGHTDATA_API_KEY": "${BRIGHTDATA_API_KEY}"
-    }
-  }
-}
-```
 
 ### Production Deployment
 
@@ -606,12 +516,10 @@ The current configuration is optimized for development with:
 ### Official Documentation
 - [Microsoft MCP Overview](https://modelcontextprotocol.io/)
 - [Azure MCP Server Docs](https://learn.microsoft.com/azure/developer/azure-mcp-server/)
-- [Bright Data MCP Docs](https://docs.brightdata.com/mcp-server/)
 
 ### Community Support
 - [GitHub Issues - Microsoft MCP](https://github.com/microsoft/mcp/issues)
 - [GitHub Issues - Azure MCP](https://github.com/Azure/azure-mcp/issues)
-- [Bright Data Support](https://docs.brightdata.com/general/account/support)
 
 ### Updates
 - Monitor the official repositories for updates
