@@ -56,7 +56,6 @@ namespace WileyWidget.Services
             {
                 if (_initialized) return true;
 
-                TryRegisterLicense();
                 WileyWidget.UI.Theming.ThemeService.Initialize();
 
                 // Apply persisted or default theme
@@ -107,36 +106,6 @@ namespace WileyWidget.Services
                     Log.Error(inner, "Fallback theme application failed – continuing with system defaults");
                 }
                 return false;
-            }
-        }
-
-        private void TryRegisterLicense()
-        {
-            try
-            {
-                var licensePath = Path.Combine(AppContext.BaseDirectory, "license.key");
-                if (File.Exists(licensePath))
-                {
-                    var key = File.ReadAllText(licensePath).Trim();
-                    if (!string.IsNullOrWhiteSpace(key))
-                    {
-                        Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(key);
-                        Log.Information("Syncfusion license registered successfully");
-                    }
-                    else
-                    {
-                        Log.Warning("license.key empty – proceeding without license");
-                    }
-                }
-                else
-                {
-                    Log.Warning("license.key missing – proceeding without license");
-                }
-            }
-            catch (Exception ex)
-            {
-                // Do not crash – theming must still function
-                Log.Warning(ex, "Syncfusion license registration failed – using evaluation mode");
             }
         }
 

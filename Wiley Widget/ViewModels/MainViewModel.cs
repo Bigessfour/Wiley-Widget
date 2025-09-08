@@ -29,8 +29,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly QuickBooksService _qb;
     private readonly IConfiguration _config;
-    private readonly GrokSupercomputer _grokSupercomputer;
-    private readonly AppDbContext _dbContext;
+    private GrokSupercomputer _grokSupercomputer;
+    private AppDbContext _dbContext;
     private readonly IEnterpriseRepository _enterpriseRepository;
     private readonly WpfMiddlewareService _middlewareService;
     private readonly EnterpriseViewModel _enterpriseViewModel;
@@ -115,6 +115,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool isBusy;
 
+    /// <summary>Watch mode for detailed button press logging.</summary>
+    [ObservableProperty]
+    private bool watchMode;
+
+    /// <summary>Command to toggle watch mode on/off.</summary>
+    [RelayCommand]
+    private void ToggleWatchMode()
+    {
+        WatchMode = !WatchMode;
+        Log.Information("🎯 Watch Mode {Status} - Button press logging is now {State}",
+                       WatchMode ? "ENABLED" : "DISABLED",
+                       WatchMode ? "active" : "inactive");
+    }
+
     /// <summary>Command to handle SfDataGrid SelectionChanged event.</summary>
     [RelayCommand]
     private void HandleEnterpriseSelectionChanged()
@@ -150,6 +164,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void SelectNext()
     {
+        if (WatchMode)
+        {
+            Log.Information("🎯 WATCH MODE: Select Next Widget button pressed");
+            Log.Information("🎯 WATCH MODE: Current widget count: {Count}", Widgets.Count);
+            Log.Information("🎯 WATCH MODE: Currently selected widget: {Name} (ID: {Id})",
+                           SelectedWidget?.Name ?? "None", SelectedWidget?.Id ?? 0);
+        }
+
         if (Widgets.Count == 0)
         {
             Log.Warning("Attempted to select next widget but widget list is empty");
@@ -176,6 +198,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void AddWidget()
     {
+        if (WatchMode)
+        {
+            Log.Information("🎯 WATCH MODE: Add Widget button pressed");
+            Log.Information("🎯 WATCH MODE: Current widget count before add: {Count}", Widgets.Count);
+        }
+
         var nextId = Widgets.Count == 0 ? 1 : Widgets[^1].Id + 1;
         var category = nextId % 2 == 0 ? "Core" : "Extended";
         var price = 10M + nextId * 1.5M;
@@ -208,30 +236,38 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ServiceLocator.GetServiceOrDefault<QuickBooksService>(),
         ServiceLocator.GetServiceOrDefault<WpfMiddlewareService>())
     {
-        // If GrokSupercomputer wasn't provided by DI, create it manually with database service
+        // If GrokSupercomputer wasn't provided by DI, initialize it asynchronously
         if (_grokSupercomputer == null && _config != null)
         {
-            try
-            {
-                using var loggerFactory = new LoggerFactory();
-                loggerFactory.AddSerilog(Log.Logger);
-                var logger = loggerFactory.CreateLogger<GrokSupercomputer>();
+            System.Threading.Tasks.Task.Run(() => InitializeGrokSupercomputerAsync()).ConfigureAwait(false);
+        }
+    }
 
-                var contextFactory = new AppDbContextFactory();
-                _dbContext = contextFactory.CreateDbContext(new string[0]);
+    /// <summary>
+    /// Asynchronously initialize the GrokSupercomputer to avoid blocking the UI thread
+    /// </summary>
+    private async System.Threading.Tasks.Task InitializeGrokSupercomputerAsync()
+    {
+        try
+        {
+            using var loggerFactory = new LoggerFactory();
+            loggerFactory.AddSerilog(Log.Logger);
+            var logger = loggerFactory.CreateLogger<GrokSupercomputer>();
 
-                // Try to get the database service from DI
-                var dbService = ServiceLocator.GetServiceOrDefault<GrokDatabaseService>();
+            var contextFactory = new AppDbContextFactory();
+            _dbContext = await System.Threading.Tasks.Task.Run(() => contextFactory.CreateDbContext(new string[0]));
 
-                _grokSupercomputer = new GrokSupercomputer(_config, logger, _dbContext, dbService);
-                Log.Information("GrokSupercomputer initialized successfully with database service");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to initialize GrokSupercomputer - AI features will be disabled");
-                _grokSupercomputer = null;
-                _dbContext = null;
-            }
+            // Try to get the database service from DI
+            var dbService = ServiceLocator.GetServiceOrDefault<GrokDatabaseService>();
+
+            _grokSupercomputer = await System.Threading.Tasks.Task.Run(() => new GrokSupercomputer(_config, logger, _dbContext, dbService));
+            Log.Information("GrokSupercomputer initialized successfully with database service");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to initialize GrokSupercomputer - AI features will be disabled");
+            _grokSupercomputer = null;
+            _dbContext = null;
         }
     }
 
@@ -254,6 +290,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async System.Threading.Tasks.Task LoadEnterprisesAsync()
     {
+        if (WatchMode)
+        {
+            Log.Information("🎯 WATCH MODE: Load Enterprises button pressed");
+            Log.Information("🎯 WATCH MODE: Current enterprise count: {Count}", _enterpriseViewModel?.Enterprises.Count ?? 0);
+            Log.Information("🎯 WATCH MODE: Enterprise system available: {Available}", _enterpriseViewModel != null);
+        }
+
         try
         {
             IsBusy = true;
@@ -313,6 +356,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async System.Threading.Tasks.Task AddEnterpriseAsync()
     {
+        if (WatchMode)
+        {
+            Log.Information("🎯 WATCH MODE: Add Enterprise button pressed");
+            Log.Information("🎯 WATCH MODE: Current enterprise count before add: {Count}", _enterpriseViewModel?.Enterprises.Count ?? 0);
+            Log.Information("🎯 WATCH MODE: Enterprise system available: {Available}", _enterpriseViewModel != null);
+        }
+
         if (_enterpriseViewModel == null)
         {
             Log.Warning("Attempted to add enterprise but enterprise management system is not available");
@@ -327,6 +377,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async System.Threading.Tasks.Task SaveEnterpriseAsync()
     {
+        if (WatchMode)
+        {
+            Log.Information("🎯 WATCH MODE: Save Enterprise button pressed");
+            var watchSelectedEnterprise = _enterpriseViewModel?.SelectedEnterprise;
+            Log.Information("🎯 WATCH MODE: Selected enterprise: {Name} (ID: {Id})", 
+                           watchSelectedEnterprise?.Name ?? "None", watchSelectedEnterprise?.Id ?? 0);
+            Log.Information("🎯 WATCH MODE: Enterprise system available: {Available}", _enterpriseViewModel != null);
+        }
+
         if (_enterpriseViewModel == null)
         {
             Log.Warning("Attempted to save enterprise but enterprise management system is not available");
@@ -351,6 +410,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async System.Threading.Tasks.Task DeleteEnterpriseAsync()
     {
+        if (WatchMode)
+        {
+            Log.Information("🎯 WATCH MODE: Delete Enterprise button pressed");
+            var watchSelectedEnterprise = _enterpriseViewModel?.SelectedEnterprise;
+            Log.Information("🎯 WATCH MODE: Selected enterprise for deletion: {Name} (ID: {Id})", 
+                           watchSelectedEnterprise?.Name ?? "None", watchSelectedEnterprise?.Id ?? 0);
+            Log.Information("🎯 WATCH MODE: Enterprise system available: {Available}", _enterpriseViewModel != null);
+        }
+
         if (_enterpriseViewModel == null)
         {
             Log.Warning("Attempted to delete enterprise but enterprise management system is not available");
@@ -403,8 +471,9 @@ Calculate for each enterprise:
 Output structured analysis with actionable insights.";
 
             // Run the AI-powered analysis
+            var enterprisesList = await System.Threading.Tasks.Task.Run(() => _enterpriseViewModel.Enterprises.ToList());
             var updatedEnterprises = await _grokSupercomputer.CrunchNumbersAsync(
-                _enterpriseViewModel.Enterprises.ToList(),
+                enterprisesList,
                 algoDescription);
 
             // Update the enterprise collection (this will trigger UI refresh via ObservableCollection)
@@ -429,6 +498,14 @@ Output structured analysis with actionable insights.";
     [RelayCommand]
     private async System.Threading.Tasks.Task CrunchWithGrokAsync()
     {
+        if (WatchMode)
+        {
+            Log.Information("🎯 WATCH MODE: Crunch with Grok button pressed");
+            Log.Information("🎯 WATCH MODE: Enterprise count: {Count}", _enterpriseViewModel?.Enterprises.Count ?? 0);
+            Log.Information("🎯 WATCH MODE: GrokSupercomputer available: {Available}", _grokSupercomputer != null);
+            Log.Information("🎯 WATCH MODE: Enterprise system available: {Available}", _enterpriseViewModel != null);
+        }
+
         if (_enterpriseViewModel == null)
         {
             Log.Warning("Attempted to crunch enterprises with Grok but enterprise management system is not available");
@@ -445,8 +522,8 @@ Output structured analysis with actionable insights.";
 
         try
         {
-            // Get current enterprises list
-            var enterprisesList = _enterpriseViewModel.Enterprises.ToList();
+            // Get current enterprises list (offload to background thread)
+            var enterprisesList = await System.Threading.Tasks.Task.Run(() => _enterpriseViewModel.Enterprises.ToList());
 
             // Call GrokSupercomputer to compute enterprises
             var analyzedEnterprises = await _grokSupercomputer.ComputeEnterprisesAsync(enterprisesList);
@@ -475,6 +552,12 @@ Output structured analysis with actionable insights.";
     [RelayCommand]
     private void TestConfigurationAsync()
     {
+        if (WatchMode)
+        {
+            Log.Information("🎯 WATCH MODE: Test Configuration button pressed");
+            Log.Information("🎯 WATCH MODE: Configuration object available: {Available}", _config != null);
+        }
+
         try
         {
             var apiKey = _config["xAI:ApiKey"];
@@ -676,7 +759,8 @@ Output structured analysis with actionable insights.";
 
         try
         {
-            var enterprisesList = _enterpriseViewModel.Enterprises.ToList();
+            // Get enterprises list (offload to background thread to avoid UI blocking)
+            var enterprisesList = await System.Threading.Tasks.Task.Run(() => _enterpriseViewModel.Enterprises.ToList());
 
             // Get advanced analytics from Grok
             var budgetMetrics = await _grokSupercomputer.ComputeBudgetAnalyticsAsync(enterprisesList);

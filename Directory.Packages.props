@@ -1,7 +1,7 @@
 <Project>
   <!-- Central Package Management for Wiley Widget -->
   <PropertyGroup>
-    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
     <!-- Azure Packages -->
@@ -44,26 +44,34 @@
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <!-- Syncfusion -->
-    <PackageVersion Include="Syncfusion.Licensing" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfAccordion.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfChart.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfDiagram.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfInput.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfScheduler.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.Shared.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="30.2.7" />
-    <PackageVersion Include="Syncfusion.Tools.WPF" Version="30.2.7" />
-  <PackageVersion Include="Syncfusion.Pdf.NET" Version="30.2.7" />
-  <!-- WPF PDF Viewer per official docs: https://help.syncfusion.com/wpf/pdf-viewer/getting-started -->
-  <PackageVersion Include="Syncfusion.PdfViewer.WPF" Version="30.2.7" />
-  <!-- System.Drawing.Common for legacy GDI+ drawing needs (Windows-only in .NET 9) -->
-  <PackageVersion Include="System.Drawing.Common" Version="9.0.0" />
-  <!-- Excel (XlsIO) engine -->
-  <PackageVersion Include="Syncfusion.XlsIO.Net.Core" Version="30.2.7" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfAccordion.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfChart.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfDiagram.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfInput.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfScheduler.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Shared.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Tools.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Pdf.NET" Version="30.2.7.0" />
+    <!-- WPF PDF Viewer per official docs: https://help.syncfusion.com/wpf/pdf-viewer/getting-started -->
+    <PackageVersion Include="Syncfusion.PdfViewer.WPF" Version="30.2.7.0" />
+    <!-- Additional Syncfusion dependencies for proper version management -->
+    <PackageVersion Include="Syncfusion.Compression.Base" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Compression.NET" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Compression.Net.Core" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Data.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.Pdf.Wpf" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.PdfToImageConverter.WPF" Version="30.2.7.0" />
+    <PackageVersion Include="Syncfusion.SfBusyIndicator.WPF" Version="30.2.7.0" />
+    <!-- System.Drawing.Common for legacy GDI+ drawing needs (Windows-only in .NET 9) -->
+    <PackageVersion Include="System.Drawing.Common" Version="9.0.0" />
+    <!-- Excel (XlsIO) engine -->
+    <PackageVersion Include="Syncfusion.XlsIO.Net.Core" Version="30.2.7.0" />
     <!-- Code Analysis -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     <!-- Test Packages -->

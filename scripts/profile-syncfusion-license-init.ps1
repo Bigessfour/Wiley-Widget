@@ -1,73 +1,65 @@
-<#
-.SYNOPSIS
-    Syncfusion license profile initialization script.
+# Profile Syncfusion License Initialization Script
+# Runs during PowerShell profile loading to ensure Syncfusion license is properly configured
 
-.DESCRIPTION
-    This script initializes the Syncfusion license for the current PowerShell session.
-    It can optionally persist the license to environment files.
+Write-Information "🔧 Initializing Syncfusion license configuration..." -InformationAction Continue
 
-.PARAMETER Persist
-    If specified, persists the license key to the .env file.
-#>
-[CmdletBinding()]
-param(
-    [switch]$Persist
-)
+# Get script directory and project root
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptDir
 
-$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ensure = Join-Path $scriptRoot 'ensure-syncfusion-license.ps1'
+# Check if Python is available
+$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+if (-not $pythonCmd) {
+    $pythonCmd = Get-Command python3 -ErrorAction SilentlyContinue
+}
 
-if (-not (Test-Path $ensure)) {
-    Write-Warning "ensure-syncfusion-license.ps1 not found; skipping Syncfusion license init."
+if (-not $pythonCmd) {
+    Write-Warning "Python not found. Cannot run Syncfusion environment propagation script."
+    Write-Information "To install Python: https://www.python.org/downloads/" -InformationAction Continue
     return
 }
 
-# Clean any previously malformed multi-line entry (retain header comments)
-$envFile = Join-Path (Split-Path -Parent $scriptRoot) '.env'
-if (Test-Path $envFile) {
-    $lines = Get-Content $envFile
-    $fixed = @()
-    $inKeyBlock = $false
+# Path to the Syncfusion environment propagation script
+$syncfusionScript = Join-Path $scriptDir "syncfusion_env_propagate.py"
 
-    foreach ($l in $lines) {
-        if ($l -match '^SYNCFUSION_LICENSE_KEY=') {
-            if ($l -match '=#') {
-                $fixed += 'SYNCFUSION_LICENSE_KEY=YOUR_SYNCFUSION_LICENSE_KEY_HERE'
-            } else {
-                $fixed += $l
-            }
-            $inKeyBlock = $true
-            continue
-        }
+if (-not (Test-Path $syncfusionScript)) {
+    Write-Warning "Syncfusion environment propagation script not found: $syncfusionScript"
+    return
+}
 
-        if ($inKeyBlock) {
-            if ([string]::IsNullOrWhiteSpace($l) -or ($l -match '^[A-Z0-9_]+=')) {
-                $inKeyBlock = $false
-            } else {
-                continue
-            }
-        }
+# Run the Python script to propagate Syncfusion license key
+Write-Information "📄 Running Syncfusion environment propagation..." -InformationAction Continue
 
-        if (-not $inKeyBlock) {
-            $fixed += $l
-        }
+try {
+    # Change to project root directory
+    Push-Location $projectRoot
+
+    # Run the Python script
+    $result = & $pythonCmd.Path $syncfusionScript 2>&1
+
+    # Check exit code
+    if ($LASTEXITCODE -eq 0) {
+        Write-Information "✅ Syncfusion license configuration updated successfully" -InformationAction Continue
     }
-
-    if ($null -ne $fixed) {
-        $fixed | Set-Content -Encoding UTF8 $envFile
+    elseif ($LASTEXITCODE -eq 2) {
+        Write-Warning "⚠️ Syncfusion license key not found in machine/user environment"
+        Write-Information "Set SYNCFUSION_LICENSE_KEY environment variable or run Azure Key Vault resolution" -InformationAction Continue
+    }
+    elseif ($LASTEXITCODE -eq 3) {
+        Write-Warning "⚠️ Syncfusion license key appears to be a placeholder"
+        Write-Information "Update with a valid Syncfusion license key" -InformationAction Continue
+    }
+    else {
+        Write-Warning "❌ Syncfusion environment propagation failed (Exit code: $LASTEXITCODE)"
+        Write-Information "Output: $result" -InformationAction Continue
     }
 }
-
-$argsList = @('-PreferMachine', '-SyncMachineToEnv', '-Quiet')
-if ($Persist) {
-    $argsList += '-PersistToEnvFile'
+catch {
+    Write-Warning "❌ Error running Syncfusion environment propagation: $($_.Exception.Message)"
+}
+finally {
+    # Restore original location
+    Pop-Location
 }
 
-& pwsh $ensure @argsList | Out-Null
-
-$k = [Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', 'Process')
-if ($k) {
-    Write-Information "Syncfusion license loaded (len=$($k.Length))" -InformationAction Continue
-} else {
-    Write-Warning 'Syncfusion license not loaded.'
-}
+Write-Information "🔧 Syncfusion license initialization complete" -InformationAction Continue

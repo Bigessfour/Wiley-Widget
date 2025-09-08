@@ -73,8 +73,16 @@ public partial class MainWindow : Window
     /// <summary>
     /// Initializes the main application window with comprehensive setup.
     /// </summary>
-    public MainWindow()
+    public MainWindow(
+        Services.IDiagramBuilderService diagramBuilder,
+        Services.IApiKeyFacade apiKeyFacade,
+        Services.IThemeCoordinator themeCoordinator,
+        Services.IThemeService themeService)
     {
+        _diagramBuilder = diagramBuilder ?? new Services.DiagramBuilderService();
+        _apiKeyFacade = apiKeyFacade ?? new Services.ApiKeyFacade(ApiKeyService.Instance, SettingsService.Instance);
+        _themeCoordinator = themeCoordinator ?? new Services.ThemeCoordinator(SettingsService.Instance, themeService);
+
         Log.Information("=== MainWindow Constructor Started ===");
 
         try
@@ -109,11 +117,6 @@ public partial class MainWindow : Window
             Log.Information("Locating Syncfusion controls...");
             // InitializeSyncfusionControls(); // Commented out - controls not in simplified XAML
             Log.Information("Syncfusion controls located and referenced");
-
-            // Resolve new coordination services (best-effort, fallback to simple instances)
-            _diagramBuilder = ServiceLocator.GetService<Services.IDiagramBuilderService>() ?? new Services.DiagramBuilderService();
-            _apiKeyFacade = ServiceLocator.GetService<Services.IApiKeyFacade>() ?? new Services.ApiKeyFacade(ApiKeyService.Instance, SettingsService.Instance);
-            _themeCoordinator = ServiceLocator.GetService<Services.IThemeCoordinator>() ?? new Services.ThemeCoordinator(SettingsService.Instance, ServiceLocator.GetService<Services.IThemeService>());
 
             // Theme applied at application level; window-level adjustments (if any) can occur on Loaded
 
@@ -702,7 +705,7 @@ public partial class MainWindow : Window
     /// Initializes the budget interactions diagram with nodes and connectors
     /// Includes comprehensive logging for Syncfusion diagram setup and data binding.
     /// </summary>
-    private void InitializeBudgetDiagram()
+    private async Task InitializeBudgetDiagram()
     {
         try
         {
@@ -711,7 +714,12 @@ public partial class MainWindow : Window
             if (vm == null || diagram == null) return;
             (diagram.Nodes as System.Collections.IList)?.Clear();
             (diagram.Connectors as System.Collections.IList)?.Clear();
-            var built = _diagramBuilder.BuildEnterpriseDiagram(vm.Enterprises.ToList(), vm.BudgetInteractions.ToList());
+
+            // Offload collection copying to background thread to avoid UI blocking
+            var enterprises = await System.Threading.Tasks.Task.Run(() => vm.Enterprises.ToList());
+            var interactions = await System.Threading.Tasks.Task.Run(() => vm.BudgetInteractions.ToList());
+
+            var built = _diagramBuilder.BuildEnterpriseDiagram(enterprises, interactions);
             foreach (var n in built.nodes) (diagram.Nodes as System.Collections.IList)?.Add(n);
             foreach (var c in built.connectors) (diagram.Connectors as System.Collections.IList)?.Add(c);
             Log.Information("Diagram built: {NodeCount} nodes, {ConnectorCount} connectors", (diagram.Nodes as System.Collections.ICollection)?.Count, (diagram.Connectors as System.Collections.ICollection)?.Count);
@@ -725,9 +733,9 @@ public partial class MainWindow : Window
     /// <summary>
     /// Event handler for when budget interactions are loaded
     /// </summary>
-    private void OnBudgetInteractionsLoaded()
+    private async void OnBudgetInteractionsLoaded()
     {
-        InitializeBudgetDiagram();
+        await InitializeBudgetDiagram();
     }
 
     #region Settings Event Handlers

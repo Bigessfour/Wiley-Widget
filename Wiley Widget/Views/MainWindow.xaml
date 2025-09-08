@@ -37,6 +37,10 @@
                 <MenuItem Header="Next" Command="{Binding SelectNextCommand}" />
                 <MenuItem Header="Add" Command="{Binding AddWidgetCommand}" />
             </MenuItem>
+            <MenuItem Header="Debug">
+                <MenuItem Header="Watch Mode" Command="{Binding ToggleWatchModeCommand}" 
+                         IsCheckable="True" IsChecked="{Binding WatchMode, Mode=TwoWay}" />
+            </MenuItem>
             <MenuItem Header="Help">
                 <MenuItem Header="About" Click="OnAbout" />
             </MenuItem>
@@ -46,22 +50,21 @@
             <TabControl x:Name="MainTabControl">
                 <TabItem Header="Widgets">
                     <!-- Added deferred scrolling & pixel snapping per Microsoft WPF performance guidelines -->
-                    <DataGrid ItemsSource="{Binding Widgets}" SelectedItem="{Binding SelectedWidget, Mode=TwoWay}" 
-                             AutoGenerateColumns="False" x:Name="Grid" IsReadOnly="True"
-                             VirtualizingPanel.IsVirtualizing="True"
-                             VirtualizingPanel.VirtualizationMode="Recycling"
-                             VirtualizingPanel.IsVirtualizingWhenGrouping="True"
-                             ScrollViewer.IsDeferredScrollingEnabled="True"
-                             EnableRowVirtualization="True"
-                             EnableColumnVirtualization="True"
-                             SnapsToDevicePixels="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="70" />
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" />
-                            <DataGridTextColumn Header="Category" Binding="{Binding Category}" />
-                            <DataGridTextColumn Header="Price" Binding="{Binding Price}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <syncfusion:SfDataGrid ItemsSource="{Binding Widgets}" SelectedItem="{Binding SelectedWidget, Mode=TwoWay}" 
+                                         AutoGenerateColumns="False" x:Name="Grid"
+                                         AllowEditing="False" AllowGrouping="True" AllowSorting="True"
+                                         VirtualizingPanel.IsVirtualizing="True"
+                                         VirtualizingPanel.VirtualizationMode="Recycling"
+                                         VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                                         ScrollViewer.IsDeferredScrollingEnabled="True"
+                                         SnapsToDevicePixels="True">
+                        <syncfusion:SfDataGrid.Columns>
+                            <syncfusion:GridTextColumn HeaderText="Id" MappingName="Id" Width="70" />
+                            <syncfusion:GridTextColumn HeaderText="Name" MappingName="Name" />
+                            <syncfusion:GridTextColumn HeaderText="Category" MappingName="Category" />
+                            <syncfusion:GridTextColumn HeaderText="Price" MappingName="Price" />
+                        </syncfusion:SfDataGrid.Columns>
+                    </syncfusion:SfDataGrid>
                 </TabItem>
                 <TabItem Header="Enterprises">
                     <DockPanel>
@@ -76,26 +79,25 @@
                                     FontWeight="Bold" ToolTip="Analyze enterprises with AI"/>
                         </StackPanel>
                         <!-- Named EnterprisesGrid to align with code-behind expectations & enable diagnostics -->
-                        <DataGrid x:Name="EnterprisesGrid" ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" 
-                                 AutoGenerateColumns="False" IsReadOnly="True"
-                                 VirtualizingPanel.IsVirtualizing="True"
-                                 VirtualizingPanel.VirtualizationMode="Recycling"
-                                 VirtualizingPanel.IsVirtualizingWhenGrouping="True"
-                                 ScrollViewer.IsDeferredScrollingEnabled="True"
-                                 EnableRowVirtualization="True"
-                                 EnableColumnVirtualization="True"
-                                 SnapsToDevicePixels="True">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="200" />
-                                <DataGridTextColumn Header="Rate" Binding="{Binding CurrentRate}" Width="100" />
-                                <DataGridTextColumn Header="Rate Payers" Binding="{Binding CitizenCount}" Width="100" />
-                                <DataGridTextColumn Header="Expenses" Binding="{Binding MonthlyExpenses}" Width="120" />
-                                <DataGridTextColumn Header="Revenue" Binding="{Binding MonthlyRevenue}" Width="120" />
-                                <DataGridTextColumn Header="Balance" Binding="{Binding MonthlyBalance}" Width="120" />
-                                <DataGridTextColumn Header="Deficit" Binding="{Binding Deficit}" Width="100" />
-                                <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="200" />
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        <syncfusion:SfDataGrid x:Name="EnterprisesGrid" ItemsSource="{Binding Enterprises}" SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}" 
+                                             AutoGenerateColumns="False"
+                                             AllowEditing="False" AllowGrouping="True" AllowSorting="True"
+                                             VirtualizingPanel.IsVirtualizing="True"
+                                             VirtualizingPanel.VirtualizationMode="Recycling"
+                                             VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                                             ScrollViewer.IsDeferredScrollingEnabled="True"
+                                             SnapsToDevicePixels="True">
+                            <syncfusion:SfDataGrid.Columns>
+                                <syncfusion:GridTextColumn HeaderText="Name" MappingName="Name" Width="200" />
+                                <syncfusion:GridTextColumn HeaderText="Rate" MappingName="CurrentRate" Width="100" />
+                                <syncfusion:GridTextColumn HeaderText="Rate Payers" MappingName="CitizenCount" Width="100" />
+                                <syncfusion:GridTextColumn HeaderText="Expenses" MappingName="MonthlyExpenses" Width="120" />
+                                <syncfusion:GridTextColumn HeaderText="Revenue" MappingName="MonthlyRevenue" Width="120" />
+                                <syncfusion:GridTextColumn HeaderText="Balance" MappingName="MonthlyBalance" Width="120" />
+                                <syncfusion:GridTextColumn HeaderText="Deficit" MappingName="Deficit" Width="100" />
+                                <syncfusion:GridTextColumn HeaderText="Notes" MappingName="Notes" Width="200" />
+                            </syncfusion:SfDataGrid.Columns>
+                        </syncfusion:SfDataGrid>
                     </DockPanel>
                 </TabItem>
                 <TabItem Header="Budget Summary">

@@ -312,6 +312,30 @@
           "Serilog": "4.2.0"
         }
       },
+      "Syncfusion.Compression.Base": {
+        "type": "Direct",
+        "requested": "[30.2.7, )",
+        "resolved": "30.2.7",
+        "contentHash": "70aDgcFFz1DEGPcll4ViZl2Ylcfd2fN3eKVMVubc0WpaEVNNo00P7V/MHj55qu37wh2v4hzMAhQod6/POZ+RXg=="
+      },
+      "Syncfusion.Compression.NET": {
+        "type": "Direct",
+        "requested": "[30.2.7, )",
+        "resolved": "30.2.7",
+        "contentHash": "lPvzAMOIxond382338RpVx/gWl+KFiwvpWE9KlyoPPObD1p8IKFv8oHBKCygEif6d39WmUf/xkRg8GJLERa1Qg=="
+      },
+      "Syncfusion.Compression.Net.Core": {
+        "type": "Direct",
+        "requested": "[30.2.7, )",
+        "resolved": "30.2.7",
+        "contentHash": "iQP+5hauksMHspYR/NEze4pHhtgZPPD9MhdKwlGGbdqclHlb5YB/W6tDdPt5URodGwi4J60YOVb3GKtkW86VAA=="
+      },
+      "Syncfusion.Data.WPF": {
+        "type": "Direct",
+        "requested": "[30.2.7, )",
+        "resolved": "30.2.7",
+        "contentHash": "y2AhqvXwPN20Ow9meSW0KttlYdXsDD/d7IvDlGIfGmLHab6FUNF4MWBFXiRy9DO0dOvrXe+XqiklgdQP7LK8pA=="
+      },
       "Syncfusion.Licensing": {
         "type": "Direct",
         "requested": "[30.2.7, )",
@@ -327,6 +351,25 @@
           "Syncfusion.Compression.NET": "30.2.7",
           "Syncfusion.Licensing": "30.2.7",
           "System.Text.Encoding.CodePages": "6.0.0"
+        }
+      },
+      "Syncfusion.Pdf.Wpf": {
+        "type": "Direct",
+        "requested": "[30.2.7, )",
+        "resolved": "30.2.7",
+        "contentHash": "WD1I1kY+TGktoaXm+i61uavSqlKkpH1RkHU1cMW1LlMSLxrPSVVgYe2Rf1x72840xyDyWh+irZFSj/cmRuK1yQ==",
+        "dependencies": {
+          "Syncfusion.Compression.Base": "30.2.7",
+          "Syncfusion.Licensing": "30.2.7"
+        }
+      },
+      "Syncfusion.PdfToImageConverter.WPF": {
+        "type": "Direct",
+        "requested": "[30.2.7, )",
+        "resolved": "30.2.7",
+        "contentHash": "0wkCl5zbVzAO9misvDLdK+QCSvZTt+te+gji09l1m3KtudFMo8GASMb7XseAlk+E4bbdjw5DhwO9kM+9UxUgnA==",
+        "dependencies": {
+          "Syncfusion.Licensing": "30.2.7"
         }
       },
       "Syncfusion.PdfViewer.WPF": {
@@ -347,6 +390,15 @@
         "requested": "[30.2.7, )",
         "resolved": "30.2.7",
         "contentHash": "EYDFadqWKiK2iPSa57Va6dI+C1n47rrNJX8GmnbgFpE53GTMg4j6lKgH1PNB2xQGIAnywDTY8bG8jsnPcgXv4A==",
+        "dependencies": {
+          "Syncfusion.Licensing": "30.2.7"
+        }
+      },
+      "Syncfusion.SfBusyIndicator.WPF": {
+        "type": "Direct",
+        "requested": "[30.2.7, )",
+        "resolved": "30.2.7",
+        "contentHash": "gEJNnA09cSD2PQEkk3sdhpKE7iE9opoTJuwD08igE6dXG1xEEpS+LkfkTjTzoueta4Cs8jHzNOFl4+yKi5K6bw==",
         "dependencies": {
           "Syncfusion.Licensing": "30.2.7"
         }
@@ -1240,51 +1292,6 @@
         "contentHash": "uZVTi02C1SxqzgT0HqTWatIbWGb40iIkfc3FpFCpE/r7g6K0PqzDUeefL6P6HPhDtc6BacN3yQysfzP7ks+wSQ==",
         "dependencies": {
           "SQLitePCLRaw.core": "2.1.10"
-        }
-      },
-      "Syncfusion.Compression.Base": {
-        "type": "Transitive",
-        "resolved": "30.2.7",
-        "contentHash": "70aDgcFFz1DEGPcll4ViZl2Ylcfd2fN3eKVMVubc0WpaEVNNo00P7V/MHj55qu37wh2v4hzMAhQod6/POZ+RXg=="
-      },
-      "Syncfusion.Compression.NET": {
-        "type": "Transitive",
-        "resolved": "30.2.7",
-        "contentHash": "lPvzAMOIxond382338RpVx/gWl+KFiwvpWE9KlyoPPObD1p8IKFv8oHBKCygEif6d39WmUf/xkRg8GJLERa1Qg=="
-      },
-      "Syncfusion.Compression.Net.Core": {
-        "type": "Transitive",
-        "resolved": "30.2.7",
-        "contentHash": "iQP+5hauksMHspYR/NEze4pHhtgZPPD9MhdKwlGGbdqclHlb5YB/W6tDdPt5URodGwi4J60YOVb3GKtkW86VAA=="
-      },
-      "Syncfusion.Data.WPF": {
-        "type": "Transitive",
-        "resolved": "30.2.7",
-        "contentHash": "y2AhqvXwPN20Ow9meSW0KttlYdXsDD/d7IvDlGIfGmLHab6FUNF4MWBFXiRy9DO0dOvrXe+XqiklgdQP7LK8pA=="
-      },
-      "Syncfusion.Pdf.Wpf": {
-        "type": "Transitive",
-        "resolved": "30.2.7",
-        "contentHash": "WD1I1kY+TGktoaXm+i61uavSqlKkpH1RkHU1cMW1LlMSLxrPSVVgYe2Rf1x72840xyDyWh+irZFSj/cmRuK1yQ==",
-        "dependencies": {
-          "Syncfusion.Compression.Base": "30.2.7",
-          "Syncfusion.Licensing": "30.2.7"
-        }
-      },
-      "Syncfusion.PdfToImageConverter.WPF": {
-        "type": "Transitive",
-        "resolved": "30.2.7",
-        "contentHash": "0wkCl5zbVzAO9misvDLdK+QCSvZTt+te+gji09l1m3KtudFMo8GASMb7XseAlk+E4bbdjw5DhwO9kM+9UxUgnA==",
-        "dependencies": {
-          "Syncfusion.Licensing": "30.2.7"
-        }
-      },
-      "Syncfusion.SfBusyIndicator.WPF": {
-        "type": "Transitive",
-        "resolved": "30.2.7",
-        "contentHash": "gEJNnA09cSD2PQEkk3sdhpKE7iE9opoTJuwD08igE6dXG1xEEpS+LkfkTjTzoueta4Cs8jHzNOFl4+yKi5K6bw==",
-        "dependencies": {
-          "Syncfusion.Licensing": "30.2.7"
         }
       },
       "System.AppContext": {

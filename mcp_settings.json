@@ -1,0 +1,152 @@
+{
+  "version": "1.0.0",
+  "description": "Advanced MCP Settings - Aligned with Wiley Widget Environment",
+  "lastUpdated": "2025-09-07T19:15:00.0000000-06:00",
+
+  "globalSettings": {
+    "autoStart": "${MCP_AUTO_START}",
+    "serverTimeout": "${MCP_SERVER_TIMEOUT}",
+    "healthCheckInterval": "${MCP_HEALTH_CHECK_INTERVAL}",
+    "batchSize": "${MCP_BATCH_SIZE}",
+    "connectionPoolSize": "${MCP_CONNECTION_POOL_SIZE}",
+    "logLevel": "info",
+    "enableMetrics": true,
+    "enableTracing": false
+  },
+
+  "servers": {
+    "github": {
+      "enabled": "${GITHUB_MCP_ENABLED}",
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}",
+        "X-API-Key": "${XAI_API_KEY}",
+        "User-Agent": "WileyWidget-MCP/1.0"
+      },
+      "timeout": "${MCP_SERVER_TIMEOUT}",
+      "retryAttempts": 3,
+      "retryDelay": 1000,
+      "rateLimit": {
+        "requestsPerMinute": 60,
+        "burstLimit": 10
+      }
+    },
+
+    "azure": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "azmcp-win32-x64",
+      "args": ["--stdio"],
+      "env": {
+        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
+        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
+        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
+        "AZURE_SUBSCRIPTION_ID": "${AZURE_SUBSCRIPTION_ID}",
+        "AZURE_MCP_COLLECT_TELEMETRY": "false",
+        "AZURE_CLI_DISABLE_CONNECTION_VERIFICATION": "true",
+        "AZURE_MCP_DISABLE_DISCOVERY": "true",
+        "AZURE_MCP_DISABLE_REGISTRY": "true",
+        "AZURE_MCP_FEATURE_DISCOVERY": "0",
+        "AZURE_MCP_FEATURE_REGISTRY": "0",
+        "AZURE_MCP_REGISTRY_URL": "https://management.azure.com",
+        "AZURE_MCP_COMMAND_GROUPS": "Subscriptions,Resources,Storage,Functions",
+        "AZURE_MCP_LOG_LEVEL": "info"
+      },
+      "timeout": "${MCP_SERVER_TIMEOUT}",
+      "healthCheck": {
+        "enabled": true,
+        "interval": "${MCP_HEALTH_CHECK_INTERVAL}",
+        "timeout": 5000
+      }
+    },
+
+    "microsoft-docs": {
+      "enabled": "${MICROSOFT_DOCS_MCP_ENABLED}",
+      "type": "http",
+      "url": "https://learn.microsoft.com/mcp/",
+      "headers": {
+        "User-Agent": "WileyWidget-MCP/1.0",
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9"
+      },
+      "timeout": "${MCP_SERVER_TIMEOUT}",
+      "cache": {
+        "enabled": true,
+        "ttl": 3600000,
+        "maxSize": "100MB"
+      },
+      "retryAttempts": 3,
+      "retryDelay": 2000
+    },
+
+    "pylance": {
+      "enabled": "${PYLANCE_MCP_ENABLED}",
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "pylance", "--mcp"],
+      "env": {
+        "PYTHONPATH": "${PYTHONPATH}",
+        "PYTHON_ENV_ACTIVATION_SCRIPT": "${PYTHON_ENV_ACTIVATION_SCRIPT}"
+      },
+      "timeout": "${MCP_SERVER_TIMEOUT}"
+    }
+  },
+
+  "security": {
+    "enableTls": true,
+    "certificateValidation": true,
+    "tokenRefresh": {
+      "enabled": true,
+      "interval": 3600000,
+      "gracePeriod": 300000
+    },
+    "rateLimiting": {
+      "enabled": true,
+      "globalLimit": 1000,
+      "perServerLimit": 100
+    }
+  },
+
+  "monitoring": {
+    "metrics": {
+      "enabled": true,
+      "endpoint": "http://localhost:9090/metrics",
+      "interval": 30000
+    },
+    "logging": {
+      "level": "info",
+      "format": "json",
+      "outputs": ["console", "file"],
+      "file": {
+        "path": "logs/mcp-server.log",
+        "maxSize": "10MB",
+        "maxFiles": 5
+      }
+    },
+    "healthChecks": {
+      "enabled": true,
+      "interval": "${MCP_HEALTH_CHECK_INTERVAL}",
+      "timeout": 5000,
+      "failureThreshold": 3
+    }
+  },
+
+  "performance": {
+    "connectionPooling": {
+      "enabled": true,
+      "maxConnections": "${MCP_CONNECTION_POOL_SIZE}",
+      "idleTimeout": 300000,
+      "maxLifetime": 3600000
+    },
+    "caching": {
+      "enabled": true,
+      "ttl": 1800000,
+      "maxMemory": "50MB"
+    },
+    "concurrency": {
+      "maxConcurrentRequests": 10,
+      "queueSize": 100
+    }
+  }
+}

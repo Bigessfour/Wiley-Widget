@@ -58,7 +58,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IWindowStateService, WindowStateService>();
 
         // View models
-        services.AddTransient<MainWindowViewModel>();
+        services.AddTransient<MainViewModel>(); // Main ViewModel for MainWindow
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<SettingsViewModel>();
 

@@ -198,6 +198,14 @@
     <PackageReference Include="Syncfusion.SfChart.WPF" />
     <PackageReference Include="Syncfusion.Shared.WPF" />
     <PackageReference Include="Syncfusion.SfInput.WPF" />
+    <!-- Additional Syncfusion dependencies for proper version management -->
+    <PackageReference Include="Syncfusion.Compression.Base" />
+    <PackageReference Include="Syncfusion.Compression.NET" />
+    <PackageReference Include="Syncfusion.Compression.Net.Core" />
+    <PackageReference Include="Syncfusion.Data.WPF" />
+    <PackageReference Include="Syncfusion.Pdf.Wpf" />
+    <PackageReference Include="Syncfusion.PdfToImageConverter.WPF" />
+    <PackageReference Include="Syncfusion.SfBusyIndicator.WPF" />
   <PackageReference Include="Syncfusion.Pdf.NET">
     <Aliases>pdfnet</Aliases>
   </PackageReference>

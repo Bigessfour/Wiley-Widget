@@ -105,7 +105,6 @@ public static class DatabaseConfiguration
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<GrokDatabaseService>();
 
-        services.AddTransient<MainViewModel>();
         services.AddTransient<EnterpriseViewModel>();
 
         services.AddOptions<DatabaseSettings>()

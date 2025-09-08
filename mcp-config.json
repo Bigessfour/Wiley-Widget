@@ -4,6 +4,10 @@
       "command": "azmcp-win32-x64",
       "args": ["--stdio"],
       "env": {
+        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
+        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
+        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
+        "AZURE_SUBSCRIPTION_ID": "${AZURE_SUBSCRIPTION_ID}",
         "AZURE_MCP_COLLECT_TELEMETRY": "false",
         "AZURE_CLI_DISABLE_CONNECTION_VERIFICATION": "true",
         "AZURE_MCP_DISABLE_DISCOVERY": "true",
@@ -12,7 +16,7 @@
         "AZURE_MCP_FEATURE_REGISTRY": "0",
         "AZURE_MCP_REGISTRY_URL": "https://management.azure.com",
         "AZURE_MCP_COMMAND_GROUPS": "Subscriptions,Resources",
-        "AZURE_MCP_LOG_LEVEL": "debug"
+        "AZURE_MCP_LOG_LEVEL": "info"
       }
     },
     "github": {
@@ -20,6 +24,7 @@
       "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "XAI_API_KEY": "${XAI_API_KEY}",
         "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
     },
@@ -27,7 +32,8 @@
       "type": "http",
       "url": "https://learn.microsoft.com/mcp/",
       "headers": {
-        "User-Agent": "WileyWidget-MCP/1.0"
+        "User-Agent": "WileyWidget-MCP/1.0",
+        "Accept": "application/json"
       },
       "env": {
         "NODE_TLS_REJECT_UNAUTHORIZED": "0"

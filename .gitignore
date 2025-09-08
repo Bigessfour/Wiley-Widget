@@ -34,17 +34,14 @@ CoverageReport/
 license.key
 WileyWidget/LicenseKey.Private.cs
 
-# Environment variables (NEVER commit)
+# Environment variables (NEVER commit - contains secrets and local config)
 .env
 .env.local
 .env.*.local
+.env.*
 
-# Rider / VS Code
-.idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
+# VS Code workspace settings (environment-specific, should not be shared)
+.vscode/
 !.vscode/extensions.json
 
 # OS

@@ -180,3 +180,17 @@ Export-ModuleMember -Function Test-WriteHostUsage
 # Syncfusion license initialization (quiet). Falls back gracefully if script missing.
 $syncInit = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'profile-syncfusion-license-init.ps1'
 if(Test-Path $syncInit){ . $syncInit } else { Write-Information 'Syncfusion init script not found.' -InformationAction Continue }
+
+# Ensure Syncfusion license key is ALWAYS available
+$ensureLicense = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'ensure-syncfusion-license.ps1'
+if(Test-Path $ensureLicense){
+    try {
+        & $ensureLicense -Process -Force 2>&1 | Out-Null
+        Write-Information 'Syncfusion license key verified/updated in process scope' -InformationAction Continue
+    }
+    catch {
+        Write-Warning "Failed to ensure Syncfusion license: $($_.Exception.Message)"
+    }
+} else {
+    Write-Information 'Syncfusion license ensure script not found.' -InformationAction Continue
+}

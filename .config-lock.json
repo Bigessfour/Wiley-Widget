@@ -1,0 +1,23 @@
+{
+  "secrets": {
+    "SYNCFUSION_LICENSE_KEY": {
+      "length": 92,
+      "checksum": "C56941EFF09E3194C418808C61C06BD2B5C3C202AB9D42FA3CE70FA16DD5704B",
+      "keyVaultName": "SYNCFUSION-LICENSE-KEY"
+    },
+    "GITHUB_TOKEN": {
+      "length": 40,
+      "checksum": "96463A139182106DE2E89A43475EF4CEC22671DC3F2418EC80EAD77E7DFDFBAD",
+      "keyVaultName": "GITHUB-PAT"
+    },
+    "XAI_API_KEY": {
+      "length": 84,
+      "checksum": "62361634F8FAF30D5E5A80BB82EF87EB5E50A968D14679FA83069F51C01DD504",
+      "keyVaultName": "XAI-API-KEY"
+    }
+  },
+  "resourceGroup": "WileyWidgetRG",
+  "checksums": {},
+  "vaultName": "wiley-widget-secrets",
+  "timestamp": "2025-09-07T19:09:45.0924532-06:00"
+}

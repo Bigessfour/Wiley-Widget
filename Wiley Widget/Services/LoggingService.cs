@@ -228,19 +228,17 @@ public class LoggingService
         {
             Log.Information("🔑 === Syncfusion License Status Check ===");
 
-            // Check license via SecureLicenseProvider if available
-            try
-            {
-                var licenseStatus = WileyWidget.Licensing.SecureLicenseProvider.GetLicenseStatus();
-                Log.Information("📋 License Sources:\n{Status}", licenseStatus);
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "Could not get detailed license status from SecureLicenseProvider");
-            }
+            // Check if license was registered during app startup
+            var licenseRegistered = App.SyncfusionLicenseRegistered;
+            Log.Information("📋 License Registration Status: {Status}",
+                licenseRegistered ? "✅ REGISTERED" : "⚠️ NOT REGISTERED (Trial Mode)");
 
-            // Attempt to validate license registration by checking for known Syncfusion behavior
-            ValidateSyncfusionLicenseRegistration();
+            // Check environment variable
+            var envKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+            var hasEnvKey = !string.IsNullOrWhiteSpace(envKey) &&
+                           !envKey.Contains("YOUR_SYNCFUSION_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase);
+            Log.Information("📋 Environment Variable: {Status}",
+                hasEnvKey ? "✅ SET" : "⚠️ NOT SET OR PLACEHOLDER");
 
             Log.Information("🔑 === End License Status Check ===");
         }

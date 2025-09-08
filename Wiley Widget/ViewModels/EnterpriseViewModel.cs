@@ -24,7 +24,7 @@ namespace WileyWidget.ViewModels;
 public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotifyPropertyChanged
 {
     private readonly IEnterpriseRepository _enterpriseRepository;
-    private readonly GrokSupercomputer grokSupercomputer;
+    private GrokSupercomputer grokSupercomputer;
     private readonly UI.Dialogs.IEnterpriseEditorDialog _editorDialog;
     private bool disposed;
     // Tracks last persisted names to allow reverting UI edits that violate uniqueness rules
@@ -95,7 +95,15 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
         // Initialize theme monitoring
         InitializeThemeMonitoring();
 
-        // Try to initialize GrokSupercomputer if configuration is available
+        // Initialize GrokSupercomputer asynchronously to avoid blocking UI thread
+        System.Threading.Tasks.Task.Run(() => InitializeGrokSupercomputerAsync()).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Asynchronously initialize the GrokSupercomputer to avoid blocking the UI thread
+    /// </summary>
+    private async Task InitializeGrokSupercomputerAsync()
+    {
         try
         {
             // Build configuration for GrokSupercomputer
@@ -106,8 +114,8 @@ public partial class EnterpriseViewModel : ObservableObject, IDisposable, INotif
                 .AddEnvironmentVariables()
                 .Build();
 
-            grokSupercomputer = new GrokSupercomputer(configuration);
-            Log.Information("GrokSupercomputer initialized");
+            await System.Threading.Tasks.Task.Run(() => grokSupercomputer = new GrokSupercomputer(configuration));
+            Log.Information("GrokSupercomputer initialized asynchronously");
         }
         catch (Exception ex)
         {

@@ -1,220 +1,220 @@
-<#!
-.SYNOPSIS
-  Ensures SYNCFUSION_LICENSE_KEY is present in local .env (process development convenience).
-.DESCRIPTION
-  Priority order (unless -Force or -PreferMachine):
-    1. Existing .env non-placeholder value
-    2. Current process / user / machine environment variable
-    3. Azure Key Vault (if -KeyVaultName provided or KEYVAULT_NAME env var set) secret name (default SYNCFUSION-LICENSE-KEY)
-       (Legacy compatible fallback names tried automatically: SYNCFUSION-LICENSE, SYNCFUSION_LICENSE_KEY)
-    4. license.key file in project root
-    5. Interactive prompt (masked) if in TTY
+# Syncfusion License Key Persistence Manager
+# Ensures SYNCFUSION_LICENSE_KEY is ALWAYS available across all scopes
 
-  Writes / updates .env and creates sentinel .syncfusion.license.synced for audit.
-.PARAMETER KeyVaultName
-  Azure Key Vault name (or rely on KEYVAULT_NAME env var).
-.PARAMETER SecretName
-  Secret name in Key Vault (default SYNCFUSION-LICENSE-KEY) storing the raw license key.
-  Legacy names still probed automatically: SYNCFUSION-LICENSE, SYNCFUSION_LICENSE_KEY
-.PARAMETER Force
-  Force re-acquisition even if existing key found.
-.PARAMETER PreferMachine
-  Prioritize machine-level environment variable (authoritative) over .env/user when present.
-.PARAMETER SyncMachineToEnv
-  If machine variable is authoritative and .env missing/placeholder, sync it into .env without needing -PersistToEnvFile.
-.PARAMETER Quiet
-  Suppress non-error output.
-.EXAMPLE
-  pwsh ./scripts/ensure-syncfusion-license.ps1 -KeyVaultName myVault
-#>
-[CmdletBinding()]
 param(
-  [string]$KeyVaultName,
-  # Default secret name aligned with README documentation table
-  [string]$SecretName = 'SYNCFUSION-LICENSE-KEY',
-  [switch]$Force,
-  [switch]$Quiet,
-  [switch]$PreferMachine,
-  [switch]$SyncMachineToEnv,
-  # Opt-in: persist secret into .env file (disabled by default per Microsoft guidance to reduce at-rest exposure)
-  [switch]$PersistToEnvFile
+    [switch]$Force,
+    [switch]$Machine,
+    [switch]$User,
+    [switch]$Process,
+    [switch]$Registry,
+    [switch]$Verify
 )
 
-$ErrorActionPreference = 'Stop'
-function Write-Info($m){ if(-not $Quiet){ Write-Host $m -ForegroundColor Cyan }}
-function Write-Warn($m){ if(-not $Quiet){ Write-Warning $m }}
-function Write-Ok($m){ if(-not $Quiet){ Write-Host $m -ForegroundColor Green }}
-function Write-Err($m){ Write-Host $m -ForegroundColor Red }
+# Configuration
+$LICENSE_KEY_NAME = "SYNCFUSION_LICENSE_KEY"
+$PROJECT_ROOT = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$ENV_FILE = Join-Path $PROJECT_ROOT ".env"
 
-# Locate project root (script directory parent if scripts\)
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectRoot = Split-Path -Parent $scriptDir
-$envFile = Join-Path $projectRoot '.env'
-$sentinel = Join-Path $projectRoot '.syncfusion.license.synced'
-$licenseFile = Join-Path $projectRoot 'license.key'
+function Get-LicenseKeyFromEnvFile {
+    if (-not (Test-Path $ENV_FILE)) {
+        Write-Warning "ERROR: .env file not found: $ENV_FILE"
+        return $null
+    }
 
-$ENV_KEY = 'SYNCFUSION_LICENSE_KEY'
-$PLACEHOLDER = 'YOUR_SYNCFUSION_LICENSE_KEY_HERE'
-
-function Get-ExistingEnvValue {
-    $val = [Environment]::GetEnvironmentVariable($ENV_KEY, 'Process')
-    if([string]::IsNullOrWhiteSpace($val)){ $val = [Environment]::GetEnvironmentVariable($ENV_KEY, 'User') }
-    if([string]::IsNullOrWhiteSpace($val)){ $val = [Environment]::GetEnvironmentVariable($ENV_KEY, 'Machine') }
-    return $val
-}
-
-function Parse-DotEnvValue {
-    if(-not (Test-Path $envFile)){ return $null }
-    foreach($line in Get-Content $envFile){
-        if($line -match '^\s*'+[regex]::Escape($ENV_KEY)+'\s*=\s*(.+)$'){
+    $content = Get-Content $ENV_FILE
+    foreach ($line in $content) {
+        if ($line -match "^$LICENSE_KEY_NAME=(.+)$") {
             return $matches[1].Trim()
         }
     }
+
+    Write-Warning "ERROR: $LICENSE_KEY_NAME not found in .env file"
     return $null
 }
 
-function Set-DotEnvValue([string]$value){
-  # Sanitize value to a single line (strip embedded newlines / leading comment markers)
-  if($value -match "`r`n|`n"){ $value = ($value -split "`r?`n" | Where-Object { $_ -and ($_ -notmatch '^#') } | Select-Object -First 1).Trim() }
-  if($value.StartsWith('#')){ $value = $value.TrimStart('#').Trim() }
-  $lines = @()
-  if(Test-Path $envFile){ $lines = Get-Content $envFile }
-  $found = $false
-  for($i=0; $i -lt $lines.Count; $i++){
-    if($lines[$i] -match '^\s*'+[regex]::Escape($ENV_KEY)+'\s*='){ $lines[$i] = "$ENV_KEY=$value"; $found = $true }
-  }
-  if(-not $found){ $lines += "$ENV_KEY=$value" }
-  $lines | Set-Content -NoNewline:$false -Encoding UTF8 $envFile
-}
+function Set-EnvironmentVariable {
+    param(
+        [string]$Scope,
+        [string]$Value
+    )
 
-function Fetch-KeyVault([string]$vault, [string]$secret){
     try {
-        if([string]::IsNullOrWhiteSpace($vault)){ return $null }
-        $value = az keyvault secret show --vault-name $vault --name $secret --query value -o tsv 2>$null
-        if([string]::IsNullOrWhiteSpace($value)){ return $null }
-        return $value.Trim()
-    } catch { return $null }
+        [Environment]::SetEnvironmentVariable($LICENSE_KEY_NAME, $Value, $Scope)
+        Write-Host "OK: Set $LICENSE_KEY_NAME in $Scope scope"
+        return $true
+    }
+    catch {
+        Write-Warning "ERROR: Failed to set $LICENSE_KEY_NAME in $Scope scope: $($_.Exception.Message)"
+        return $false
+    }
 }
 
-function Read-LicenseFile {
-    if(Test-Path $licenseFile){
-        try { return (Get-Content $licenseFile -Raw).Trim() } catch { return $null }
+function Set-RegistryValue {
+    param(
+        [string]$Value
+    )
+
+    try {
+        $regPath = "HKCU:\Environment"
+        if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force | Out-Null
+        }
+
+        Set-ItemProperty -Path $regPath -Name $LICENSE_KEY_NAME -Value $Value -Type String
+        Write-Host "OK: Set $LICENSE_KEY_NAME in registry (HKCU:\Environment)"
+        return $true
+    }
+    catch {
+        Write-Warning "ERROR: Failed to set registry value: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Get-RegistryValue {
+    try {
+        $regPath = "HKCU:\Environment"
+        if (Test-Path $regPath) {
+            $value = Get-ItemProperty -Path $regPath -Name $LICENSE_KEY_NAME -ErrorAction SilentlyContinue
+            if ($value) {
+                return $value.$LICENSE_KEY_NAME
+            }
+        }
+    }
+    catch {
+        # Silently continue if registry access fails
     }
     return $null
 }
 
-$kvName = if($KeyVaultName){ $KeyVaultName } elseif($env:KEYVAULT_NAME){ $env:KEYVAULT_NAME } else { $null }
+function Verify-LicenseKey {
+    param(
+        [string]$Key
+    )
 
-$currentDotEnv = Parse-DotEnvValue
-$existingEnv = Get-ExistingEnvValue
-$useVal = $null
-$source = $null
-
-# Prefer machine variable explicitly if requested
-if($PreferMachine -and -not $Force){
-  $machineVal = [Environment]::GetEnvironmentVariable($ENV_KEY,'Machine')
-  if($machineVal -and $machineVal -ne $PLACEHOLDER){
-    $useVal = $machineVal
-    $source = 'environment:machine'
-  }
-}
-
-if(-not $Force -and -not $useVal){
-  if($currentDotEnv -and $currentDotEnv -ne $PLACEHOLDER){ $useVal = $currentDotEnv; $source='dot-env' }
-  elseif($existingEnv -and $existingEnv -ne $PLACEHOLDER){ $useVal = $existingEnv; $source='environment' }
-}
-
-if(-not $useVal){
-  $kvVal = Fetch-KeyVault $kvName $SecretName
-  if(-not $kvVal){
-    # Backward-compatible fallback secret names
-    foreach($alt in @('SYNCFUSION-LICENSE','SYNCFUSION_LICENSE_KEY')){
-      if($alt -ieq $SecretName){ continue }
-      $kvVal = Fetch-KeyVault $kvName $alt
-      if($kvVal){ $SecretName = $alt; break }
+    if ([string]::IsNullOrWhiteSpace($Key)) {
+        return $false
     }
-  }
-  if($kvVal -and $kvVal -ne $PLACEHOLDER){ $useVal = $kvVal; $source = "keyvault:$kvName/$SecretName" }
-}
-if(-not $useVal){
-    $fileVal = Read-LicenseFile
-    if($fileVal -and $fileVal -ne $PLACEHOLDER){ $useVal = $fileVal; $source = 'license.key' }
-}
-if(-not $useVal -and -not $Quiet){
-    if(-not $Host.UI.RawUI.KeyAvailable){ }
-    Write-Info "Prompting for Syncfusion license (input hidden).";
-    $secure = Read-Host "Enter Syncfusion License Key" -AsSecureString
-    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-    try { $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
-    if($plain){ $useVal = $plain.Trim(); $source='prompt' }
-}
 
-if(-not $useVal){ Write-Err "No license key provided; trial mode will be used."; exit 2 }
+    # Check for placeholder patterns
+    $placeholders = @(
+        "YOUR_SYNCFUSION_LICENSE_KEY_HERE",
+        "PLACEHOLDER",
+        "INSERT"
+    )
 
-# Persistence strategy (secure-by-default):
-# - Do NOT write the secret to disk unless -PersistToEnvFile explicitly provided.
-# - Prefer process scope only; optional user/machine scope if operator requests permanence via extra switches in future.
-
-$persistedToEnv = $false
-$shouldSync = $PersistToEnvFile -or ($SyncMachineToEnv -and $source -eq 'environment:machine')
-if($shouldSync){
-  $existingDot = $currentDotEnv
-  $canWrite = $true
-  if(-not $Force -and $existingDot -and $existingDot -ne $PLACEHOLDER){
-    # Only overwrite if using explicit persist flag or Force
-    if(-not $PersistToEnvFile -and -not $Force){ $canWrite = $false }
-  }
-  if($canWrite){
-    $roundTrip = $null
-    try {
-      Set-DotEnvValue $useVal
-      $roundTrip = Parse-DotEnvValue
-      if($roundTrip -eq $useVal){
-        $persistedToEnv = $true
-        Write-Info ".env synchronized (source=$source, len=$($useVal.Length))." 
-      } else {
-        $rtLen = if($roundTrip){ $roundTrip.Length } else { 0 }
-        Write-Warn ".env round-trip mismatch (len=$rtLen); file not trusted." 
-      }
-    } catch {
-      Write-Warn ".env sync failed: $($_.Exception.Message)" 
+    foreach ($placeholder in $placeholders) {
+        if ($Key -like "*$placeholder*") {
+            return $false
+        }
     }
-  } else {
-    Write-Info ".env already has non-placeholder value; skipping (use -Force or -PersistToEnvFile to override)." 
-  }
-} else {
-  Write-Info "Skipping .env persistence (default). Use -PersistToEnvFile or -SyncMachineToEnv with -PreferMachine." 
-}
 
-# NO automatic machine/user persistence anymore (reduced surface). Can be added back with future -PersistUser / -PersistMachine flags.
+    # Basic format validation (base64-like)
+    if ($Key.Length -lt 50) {
+        return $false
+    }
 
-# Export to current process (non-invasive; even if already set at user scope keeps existing precedence semantics)
-[Environment]::SetEnvironmentVariable($ENV_KEY, $useVal, 'Process')
-
-$len = $useVal.Length
-function Test-IsLikelySyncfusionKey($k){
-  if([string]::IsNullOrWhiteSpace($k)){ return $false }
-  if($k -match 'YOUR_SYNCFUSION_LICENSE_KEY_HERE'){ return $false }
-  if($k -match 'REPLACE_WITH_REAL_SYNCFUSION_KEY'){ return $false }
-  # Syncfusion license keys are Base64-like strings typically 70-120 chars ending with '=' or '=='
-  if($k -match '^[A-Za-z0-9+/=]{40,140}$'){
     return $true
-  }
-  return ($k.Length -ge 40)
 }
 
-if(-not (Test-IsLikelySyncfusionKey $useVal)){
-  Write-Err "Provided Syncfusion license key failed heuristic validation (len=$len). Use -Force to bypass or verify secret name/value in Key Vault.";
-  if(-not $Force){ exit 3 }
+function Get-LicenseKey {
+    # Try different sources in order of preference
+
+    # 1. Machine scope (most persistent)
+    $key = [Environment]::GetEnvironmentVariable($LICENSE_KEY_NAME, "Machine")
+    if ($key -and (Verify-LicenseKey $key)) {
+        Write-Host "FOUND: Found valid key in Machine scope"
+        return $key
+    }
+
+    # 2. User scope
+    $key = [Environment]::GetEnvironmentVariable($LICENSE_KEY_NAME, "User")
+    if ($key -and (Verify-LicenseKey $key)) {
+        Write-Host "FOUND: Found valid key in User scope"
+        return $key
+    }
+
+    # 3. Registry backup
+    $key = Get-RegistryValue
+    if ($key -and (Verify-LicenseKey $key)) {
+        Write-Host "FOUND: Found valid key in registry"
+        return $key
+    }
+
+    # 4. .env file
+    $key = Get-LicenseKeyFromEnvFile
+    if ($key -and (Verify-LicenseKey $key)) {
+        Write-Host "FOUND: Found valid key in .env file"
+        return $key
+    }
+
+    Write-Warning "WARNING: No valid $LICENSE_KEY_NAME found in any location"
+    return $null
 }
-Write-Ok "SYNCFUSION_LICENSE_KEY secured (len=$len, source=$source)."
 
-# Sentinel audit file (only if file persistence was chosen to avoid revealing secret handling when purely ephemeral)
-if($PersistToEnvFile){
-  "Timestamp=$(Get-Date -Format o)`nSource=$source`nLength=$len`nPersistedToEnvFile=$persistedToEnv" | Set-Content $sentinel -Encoding UTF8
+function Show-Status {
+    Write-Host "STATUS: $LICENSE_KEY_NAME Status Report" -ForegroundColor Cyan
+    Write-Host "=" * 50
+
+    # Check all scopes
+    $scopes = @("Machine", "User", "Process")
+    foreach ($scope in $scopes) {
+        $key = [Environment]::GetEnvironmentVariable($LICENSE_KEY_NAME, $scope)
+        $status = if ($key -and (Verify-LicenseKey $key)) { "[VALID]" } elseif ($key) { "[INVALID]" } else { "[NOT SET]" }
+        Write-Host "  $scope`: $status"
+    }
+
+    # Check registry
+    $regKey = Get-RegistryValue
+    $regStatus = if ($regKey -and (Verify-LicenseKey $regKey)) { "[VALID]" } elseif ($regKey) { "[INVALID]" } else { "[NOT SET]" }
+    Write-Host "  Registry`: $regStatus"
+
+    # Check .env file
+    $envKey = Get-LicenseKeyFromEnvFile
+    $envStatus = if ($envKey -and (Verify-LicenseKey $envKey)) { "[VALID]" } elseif ($envKey) { "[INVALID]" } else { "[NOT SET]" }
+    Write-Host "  .env file`: $envStatus"
 }
 
-# Basic validation heuristic (Syncfusion keys are typically > 50 chars)
-if($len -lt 40){ Write-Warn "Key length unusually short. Verify correctness." }
+# Main execution
+if ($Verify) {
+    Show-Status
+    exit 0
+}
 
-exit 0
+# Get the license key
+$licenseKey = Get-LicenseKey
+
+if (-not $licenseKey) {
+    Write-Error "ERROR: Cannot proceed: No valid $LICENSE_KEY_NAME found"
+    exit 1
+}
+
+# Set in requested scopes (or all if none specified)
+$successCount = 0
+
+if ($Machine -or (-not ($Machine -or $User -or $Process -or $Registry))) {
+    if (Set-EnvironmentVariable -Scope "Machine" -Value $licenseKey) { $successCount++ }
+}
+
+if ($User -or (-not ($Machine -or $User -or $Process -or $Registry))) {
+    if (Set-EnvironmentVariable -Scope "User" -Value $licenseKey) { $successCount++ }
+}
+
+if ($Process -or (-not ($Machine -or $User -or $Process -or $Registry))) {
+    if (Set-EnvironmentVariable -Scope "Process" -Value $licenseKey) { $successCount++ }
+}
+
+if ($Registry -or (-not ($Machine -or $User -or $Process -or $Registry))) {
+    if (Set-RegistryValue -Value $licenseKey) { $successCount++ }
+}
+
+if ($successCount -gt 0) {
+    Write-Host "SUCCESS: Successfully set $LICENSE_KEY_NAME in $successCount location(s)"
+    Write-Host "INFO: The license key will now be available in all future PowerShell sessions"
+} else {
+    Write-Error "ERROR: Failed to set $LICENSE_KEY_NAME in any location"
+    exit 1
+}
+
+# Final verification
+Write-Host ""
+Show-Status

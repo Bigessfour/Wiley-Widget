@@ -7,6 +7,7 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
 using Serilog.Sinks.File;
+using Serilog.Extensions.Logging;
 using WileyWidget.Infrastructure.Logging;
 using WileyWidget.Infrastructure.Security;
 using WileyWidget.Infrastructure.Monitoring;
@@ -95,6 +96,12 @@ public class ApplicationBootstrapper
 
         // Application services
         WileyWidget.Infrastructure.Services.ServiceCollectionExtensions.AddApplicationServices(services, _configuration);
+
+        // Configure Serilog integration with Microsoft.Extensions.Logging
+        services.AddLogging(loggingBuilder =>
+        {
+            loggingBuilder.AddSerilog(Log.Logger, dispose: true);
+        });
 
         // Bootstrapper logging: Log service count
         _logger.Information("Services Registered: {Count}", services.Count);

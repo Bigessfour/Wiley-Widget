@@ -32,18 +32,40 @@ public partial class App : Application, IDisposable
     /// </summary>
     public App()
     {
-        // 🔑 CRITICAL: SYNCFUSION LICENSE MUST BE REGISTERED FIRST
+        // 🔑 CRITICAL: Load .env file FIRST to ensure SYNCFUSION_LICENSE_KEY is available
+        // BEFORE attempting license registration
+        LoadDotEnvIfPresent();
+
+        // 🔑 CRITICAL: SYNCFUSION LICENSE MUST BE REGISTERED AFTER .env loading
         // NO SYNCFUSION CONTROLS CAN BE TOUCHED BEFORE THIS POINT
-        // Based on: https://help.syncfusion.com/wpf/licensing/how-to-register-in-an-application
-        InitializeAndRegisterSyncfusionLicense();
-        
+        // Official Syncfusion WPF licensing approach: https://help.syncfusion.com/wpf/licensing/how-to-register-in-an-application
+
+        // Register Syncfusion license key (official pattern)
+        // Check all environment scopes: Process → User → Machine
+        var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY") ?? // Process scope
+                        Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.User) ?? // User scope
+                        Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.Machine); // Machine scope
+
+        if (!string.IsNullOrWhiteSpace(licenseKey) &&
+            !licenseKey.Contains("YOUR_SYNCFUSION_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+        {
+            // Official Syncfusion registration call
+            Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey.Trim());
+            SyncfusionLicenseRegistered = true;
+            Console.WriteLine($"🔑 ✅ SYNCFUSION LICENSE REGISTERED (len={licenseKey.Length})");
+        }
+        else
+        {
+            Console.WriteLine("⚠️ SYNCFUSION LICENSE NOT REGISTERED - Running in trial mode");
+        }
+
         // Essential timing for performance monitoring only
         var startupTimer = Stopwatch.StartNew();
 
         try
         {
-            // Load .env (process scope) AFTER license registration - EXCLUDES SYNCFUSION_LICENSE_KEY
-            LoadDotEnvIfPresent();
+            // Load .env (process scope) - MOVED TO CONSTRUCTOR START for license key availability
+            // LoadDotEnvIfPresent(); // REMOVED - now called at constructor start
 
             // DEBUG: Wait for debugger attachment to conhost.exe if requested
             if (Environment.GetEnvironmentVariable("WILEY_WIDGET_DEBUG_CONHOST") == "true")
@@ -77,107 +99,6 @@ public partial class App : Application, IDisposable
     }
 
     /// <summary>
-    /// Acquires Syncfusion license key from Azure Key Vault (bypassing environment variables), validates, logs, and registers.
-    /// No hardcoded key. Fails fast (throws) if key missing or invalid to avoid silent trial mode.
-    /// Uses Azure CLI to get key from Key Vault directly to avoid confusion with GitHub tokens.
-    /// </summary>
-    private void InitializeAndRegisterSyncfusionLicense()
-    {
-        const string vaultName = "wiley-widget-secrets";
-        const string secretName = "SYNCFUSION-LICENSE-KEY";
-        
-        string selected = null;
-
-        // Try Azure Key Vault first (preferred method)
-        try
-        {
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = "az",
-                Arguments = $"keyvault secret show --vault-name {vaultName} --name {secretName} --query value -o tsv",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using (var process = Process.Start(processInfo))
-            {
-                string output = process.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-
-                if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
-                {
-                    selected = output.Trim();
-                    Log.Information("[SyncfusionLicense] Retrieved from Azure Key Vault: {VaultName}/{SecretName}", vaultName, secretName);
-                }
-                else
-                {
-                    Log.Warning("[SyncfusionLicense] Azure Key Vault failed: {Error}", error);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[SyncfusionLicense] Azure Key Vault access failed");
-        }
-
-        // Fallback to environment variables (process → user → machine) if Azure Key Vault failed
-        if (string.IsNullOrWhiteSpace(selected))
-        {
-            const string envName = "SYNCFUSION_LICENSE_KEY";
-            string processVal = Environment.GetEnvironmentVariable(envName, EnvironmentVariableTarget.Process);
-            string userVal = Environment.GetEnvironmentVariable(envName, EnvironmentVariableTarget.User);
-            string machineVal = Environment.GetEnvironmentVariable(envName, EnvironmentVariableTarget.Machine);
-
-            selected = processVal ?? userVal ?? machineVal;
-
-            // Structured diagnostics for fallback
-            Log.Information("[SyncfusionLicense] Fallback Discovery: processLen={ProcessLen}, userLen={UserLen}, machineLen={MachineLen}",
-                processVal?.Length, userVal?.Length, machineVal?.Length);
-        }
-
-        if (string.IsNullOrWhiteSpace(selected))
-        {
-            var msg = "Syncfusion license key not found in any environment scope (Process/User/Machine).";
-            Log.Error("[SyncfusionLicense] MISSING: {Message}", msg);
-            Console.WriteLine($"❌ {msg} Application will NOT continue.");
-            throw new InvalidOperationException(msg);
-        }
-
-        if (selected.Contains("YOUR_SYNCFUSION_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
-        {
-            var msg = "Placeholder Syncfusion license key detected. Aborting startup.";
-            Log.Error("[SyncfusionLicense] PLACEHOLDER: {Message}", msg);
-            throw new InvalidOperationException(msg);
-        }
-
-        // Heuristic validation (Syncfusion WPF license keys: base64-like, usually >= 60 chars, contain '@' and '=')
-        bool plausible = selected.Length >= 60 && selected.Length <= 140 && selected.Contains('@') && selected.EndsWith('=');
-        if (!plausible)
-        {
-            var warn = $"Syncfusion license key length/pattern unexpected (len={selected.Length}). Proceeding but verify.";
-            Log.Warning("[SyncfusionLicense] {Warning}", warn);
-            Console.WriteLine("⚠️ " + warn);
-        }
-
-        try
-        {
-            SyncfusionLicenseProvider.RegisterLicense(selected.Trim());
-            SyncfusionLicenseRegistered = true; // Mark as successfully registered
-            Log.Information("[SyncfusionLicense] Registered (len={Length}, prefix={Prefix})", selected.Length, selected.Substring(0, Math.Min(8, selected.Length)));
-            Console.WriteLine($"🔑 ✅ SYNCFUSION LICENSE REGISTERED (len={selected.Length}).");
-        }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "[SyncfusionLicense] Registration failed");
-            Console.WriteLine($"❌ Syncfusion license registration failed: {ex.Message}");
-            throw; // fail fast to avoid inconsistent state
-        }
-    }
-
-    /// <summary>
     /// Application startup event handler.
     /// Uses the ApplicationInitializationService to handle the startup sequence.
     /// </summary>
@@ -188,6 +109,9 @@ public partial class App : Application, IDisposable
         try
         {
             Console.WriteLine("🚀 === Core Startup Sequence Started ===");
+
+            // Initialize the bootstrapper first
+            await _bootstrapper.InitializeAsync();
 
             // Load configuration first
             var configuration = LoadConfiguration();
@@ -314,7 +238,7 @@ public partial class App : Application, IDisposable
     /// <summary>
     /// Loads a .env file from project root (one level above bin output) and sets variables in Process scope.
     /// Does NOT overwrite existing environment variables to respect explicit configuration.
-    /// EXCLUDES SYNCFUSION_LICENSE_KEY to prevent confusion with Azure Key Vault.
+    /// SPECIAL CASE: SYNCFUSION_LICENSE_KEY is loaded from .env if not set in machine/user scope.
     /// </summary>
     private void LoadDotEnvIfPresent()
     {
@@ -342,12 +266,24 @@ public partial class App : Application, IDisposable
                 var value = line.Substring(eq + 1).Trim();
                 if (string.IsNullOrEmpty(key)) continue;
 
-                // EXCLUDE SYNCFUSION_LICENSE_KEY - managed by Azure Key Vault
+                // SPECIAL HANDLING: Allow SYNCFUSION_LICENSE_KEY from .env if not set in machine/user scope
                 if (key.Equals("SYNCFUSION_LICENSE_KEY", StringComparison.OrdinalIgnoreCase))
                 {
-                    skipped++;
-                    Console.WriteLine($"🔐 SYNCFUSION_LICENSE_KEY excluded from .env (using Azure Key Vault)");
-                    continue;
+                    // Check if it's already set in machine or user scope
+                    var existingKey = Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Machine) ??
+                                     Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.User);
+
+                    if (!string.IsNullOrWhiteSpace(existingKey))
+                    {
+                        skipped++;
+                        Console.WriteLine($"🔐 SYNCFUSION_LICENSE_KEY already set in machine/user scope (Azure Key Vault)");
+                        continue;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"📄 Loading SYNCFUSION_LICENSE_KEY from .env file");
+                        // Allow loading from .env if not set elsewhere
+                    }
                 }
 
                 // Do not overwrite existing (machine/user) environment variable
