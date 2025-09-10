@@ -28,4 +28,14 @@ public class AppSettings
     public string QboAccessToken { get; set; }
     public string QboRefreshToken { get; set; }
     public DateTime QboTokenExpiry { get; set; } // UTC absolute expiry of access token
+
+    // xAI API Configuration
+    public string XaiApiKey { get; set; }
+    public string XaiModel { get; set; } = "grok-4-0709";
+    public int XaiMaxRetries { get; set; } = 3;
+    public int XaiTimeoutSeconds { get; set; } = 30;
+    public int XaiCacheTtlMinutes { get; set; } = 30;
+    public decimal XaiDailyBudget { get; set; } = 10.00M;
+    public decimal XaiMonthlyBudget { get; set; } = 300.00M;
+    public bool XaiEnabled { get; set; } = true;
 }

@@ -25,8 +25,16 @@ public class DatabaseSeeder
     /// </summary>
     public async Task SeedAsync()
     {
+        await SeedAsync(_context);
+    }
+
+    /// <summary>
+    /// Seeds the database with sample enterprise data using a specific context
+    /// </summary>
+    public async Task SeedAsync(AppDbContext context)
+    {
         // Only seed if no enterprises exist
-        if (await _context.Enterprises.AnyAsync())
+        if (await context.Enterprises.AnyAsync())
         {
             Console.WriteLine("Database already seeded. Skipping...");
             return;
@@ -72,8 +80,8 @@ public class DatabaseSeeder
         };
 
         // MonthlyRevenue is now automatically calculated from CitizenCount * CurrentRate
-        await _context.Enterprises.AddRangeAsync(enterprises);
-        await _context.SaveChangesAsync();
+        await context.Enterprises.AddRangeAsync(enterprises);
+        await context.SaveChangesAsync();
 
         // Create sample budget interactions
         var interactions = new List<BudgetInteraction>
@@ -99,8 +107,8 @@ public class DatabaseSeeder
             }
         };
 
-        await _context.BudgetInteractions.AddRangeAsync(interactions);
-        await _context.SaveChangesAsync();
+        await context.BudgetInteractions.AddRangeAsync(interactions);
+        await context.SaveChangesAsync();
 
         // Create initial overall budget snapshot
         var overallBudget = new OverallBudget
@@ -116,8 +124,8 @@ public class DatabaseSeeder
         overallBudget.AverageRatePerCitizen = overallBudget.TotalCitizensServed > 0 ?
             overallBudget.TotalMonthlyRevenue / overallBudget.TotalCitizensServed : 0;
 
-        await _context.OverallBudgets.AddAsync(overallBudget);
-        await _context.SaveChangesAsync();
+        await context.OverallBudgets.AddAsync(overallBudget);
+        await context.SaveChangesAsync();
 
         Console.WriteLine("Database seeded successfully!");
         Console.WriteLine($"Created {enterprises.Count} enterprises");

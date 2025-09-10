@@ -1,21 +1,9 @@
-# .NET / WPF standard ignores
+# Build artifacts and logs
+build/
 bin/
 obj/
-*.user
-*.suo
-*.userprefs
-*.ide
-.vs/
-TestResults/
-*.cache
 *.log
-*.nupkg
-*.snupkg
-packages/
-
-# Logs / diagnostics
-logs/
-*.log
+msbuild.binlog
 
 # Publish artifacts
 publish/
@@ -25,10 +13,16 @@ coverage/
 CoverageReport/
 *.cobertura.xml
 
-# Tool state
-.sonarqube/
-.fleet/
-.trunk/
+# Tool state (keep configs for consistency)
+.trunk/out/
+.trunk/tools/
+.trunk/logs/
+.trunk/notifications/
+.trunk/actions/
+.trunk/setup-ci/
+# Keep trunk configs for CI/CD consistency
+!.trunk/configs/
+!.trunk/trunk.yaml
 
 # Settings (leave example templates instead)
 *.user.settings

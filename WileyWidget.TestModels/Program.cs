@@ -23,7 +23,7 @@ class Program
         {
             // Setup configuration
             var configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), ".."))
+                .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: false)
                 .AddEnvironmentVariables()
                 .Build();
@@ -39,9 +39,8 @@ class Program
                 options.EnableSensitiveDataLogging();
             });
 
-            // Register services
-            services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
-            services.AddScoped<DatabaseSeeder>();
+            // Register services using the comprehensive application services method
+            services.AddApplicationServices(configuration);
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -54,13 +53,30 @@ class Program
                 Console.WriteLine("📊 Testing Database Connection...");
                 try
                 {
-                    await context.Database.EnsureCreatedAsync();
-                    Console.WriteLine("✅ Database connection successful");
+                    // Test basic connection
+                    Console.WriteLine("🔍 Testing basic database connection...");
+                    var canConnect = await context.Database.CanConnectAsync();
+                    Console.WriteLine($"✅ Database connectivity: {canConnect}");
 
-                    Console.WriteLine("\n🌱 Seeding Database...");
-                    await seeder.SeedAsync();
+                    if (canConnect)
+                    {
+                        Console.WriteLine("✅ Database connection successful");
 
-                    Console.WriteLine("\n📋 Testing Enterprise Repository...");
+                        Console.WriteLine("\n🌱 Checking Database Data...");
+                        // Check if data already exists
+                        var existingEnterprises = await repository.GetAllAsync();
+                        if (existingEnterprises.Any())
+                        {
+                            Console.WriteLine($"✅ Found {existingEnterprises.Count()} existing enterprises");
+                        }
+                        else
+                        {
+                            Console.WriteLine("🌱 Seeding Database...");
+                            await seeder.SeedAsync();
+                        }
+
+                        Console.WriteLine("\n📋 Testing Enterprise Repository...");
+                    }
 
                     // Test GetAllAsync
                     var enterprises = await repository.GetAllAsync();
@@ -114,6 +130,15 @@ class Program
                     Console.WriteLine($"   Total Expenses: ${totalExpenses:F2}");
                     Console.WriteLine($"   Monthly Balance: ${totalBalance:F2}");
                     Console.WriteLine($"   Status: {(totalBalance >= 0 ? "SURPLUS 🎉" : "DEFICIT ⚠️")}");
+
+                    // Test GrokSupercomputer GenerateTalkingPoints
+                    Console.WriteLine("\n🤖 Testing GrokSupercomputer GenerateTalkingPoints...");
+                    var grokService = scope.ServiceProvider.GetRequiredService<WileyWidget.Services.GrokSupercomputer>();
+                    var talkingPoints = grokService.GenerateTalkingPoints(enterprises.ToList());
+                    Console.WriteLine("✅ Generated Talking Points:");
+                    Console.WriteLine("==============================");
+                    Console.WriteLine(talkingPoints);
+                    Console.WriteLine("==============================");
 
                     Console.WriteLine("\n✅ Phase 1 Test Complete!");
                     Console.WriteLine("Ready to proceed to Phase 2: UI Dashboards & Basic Analytics");

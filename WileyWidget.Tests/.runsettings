@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <!-- Test execution settings -->
+  <RunConfiguration>
+    <TargetPlatform>x64</TargetPlatform>
+    <TargetFrameworkVersion>net9.0</TargetFrameworkVersion>
+    <TestSessionTimeout>120000</TestSessionTimeout>
+    <TreatNoTestsAsError>true</TreatNoTestsAsError>
+    <ResultsDirectory>$(MSBuildProjectDirectory)\TestResults</ResultsDirectory>
+  </RunConfiguration>
+
+  <!-- Data collectors for code coverage -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>lcov,cobertura</Format>
+          <Include>[WileyWidget*]*</Include>
+          <Exclude>[xunit.*]*,[Moq]*,[FluentAssertions]*,[AutoFixture]*,[Bogus]*,[Microsoft.Extensions.*]*,[System.*]*,[Newtonsoft.Json]*</Exclude>
+          <IncludeTestAssembly>true</IncludeTestAssembly>
+          <SingleHit>true</SingleHit>
+          <UseSourceLink>true</UseSourceLink>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+
+  <!-- xUnit settings -->
+  <xUnit>
+    <ParallelizeTestCollections>true</ParallelizeTestCollections>
+    <MaxParallelThreads>4</MaxParallelThreads>
+    <ParallelizeAssemblies>true</ParallelizeAssemblies>
+  </xUnit>
+
+  <!-- Logger settings -->
+  <LoggerRunSettings>
+    <Loggers>
+      <Logger friendlyName="console">
+        <Configuration>
+          <Verbosity>minimal</Verbosity>
+        </Configuration>
+      </Logger>
+      <Logger friendlyName="trx">
+        <Configuration>
+          <LogFileName>test_results.trx</LogFileName>
+        </Configuration>
+      </Logger>
+    </Loggers>
+  </LoggerRunSettings>
+</RunSettings>

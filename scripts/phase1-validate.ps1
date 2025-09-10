@@ -25,7 +25,6 @@ foreach ($model in $models) {
     if (!(Test-Path $modelPath)) {
         $errors += "Missing model file: $model"
     } else {
-        $content = Get-Content $modelPath -Raw
         if ($Detailed) {
             Write-Host "  ✅ Found $model" -ForegroundColor Green
         }

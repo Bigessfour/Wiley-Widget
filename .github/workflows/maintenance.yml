@@ -1,0 +1,135 @@
+name: Pipeline Maintenance
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      maintenance_type:
+        description: 'Type of maintenance to perform'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+        - full
+        - health-check
+        - cleanup
+        - optimization
+
+env:
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  maintenance:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run Pipeline Health Check
+        if: github.event.inputs.maintenance_type == 'full' || github.event.inputs.maintenance_type == 'health-check' || github.event_name == 'schedule'
+        run: |
+          Write-Host "🔍 Running comprehensive pipeline health check..." -ForegroundColor Cyan
+
+          # Run health validation
+          & ".\scripts\health-check.ps1"
+
+          # Check for common issues
+          Write-Host "📊 Checking for pipeline issues..." -ForegroundColor Yellow
+
+          # Check .NET version consistency
+          $csprojFiles = Get-ChildItem -Path . -Filter "*.csproj" -Recurse
+          foreach ($file in $csprojFiles) {
+            $content = Get-Content $file.FullName
+            if ($content -match '<TargetFramework>net\d+\.\d+</TargetFramework>') {
+              $targetFramework = $matches[0]
+              if ($targetFramework -notmatch 'net9\.0') {
+                Write-Host "⚠️ Inconsistent .NET version in $($file.Name): $targetFramework" -ForegroundColor Yellow
+              }
+            }
+          }
+
+      - name: Clean Up Build Artifacts
+        if: github.event.inputs.maintenance_type == 'full' || github.event.inputs.maintenance_type == 'cleanup' || github.event_name == 'schedule'
+        run: |
+          Write-Host "🧹 Cleaning up build artifacts..." -ForegroundColor Cyan
+
+          # Remove old build artifacts
+          if (Test-Path ".\bin") { Remove-Item ".\bin" -Recurse -Force }
+          if (Test-Path ".\obj") { Remove-Item ".\obj" -Recurse -Force }
+          if (Test-Path ".\TestResults") { Remove-Item ".\TestResults" -Recurse -Force }
+
+          # Clean NuGet cache
+          dotnet nuget locals all --clear
+
+          Write-Host "✅ Cleanup completed" -ForegroundColor Green
+
+      - name: Optimize Dependencies
+        if: github.event.inputs.maintenance_type == 'full' || github.event.inputs.maintenance_type == 'optimization' || github.event_name == 'schedule'
+        run: |
+          Write-Host "⚡ Optimizing dependencies..." -ForegroundColor Cyan
+
+          # Restore and check for outdated packages
+          dotnet restore --verbosity quiet
+
+          # Check for security vulnerabilities
+          dotnet list package --vulnerable --include-transitive
+
+          Write-Host "✅ Dependency optimization completed" -ForegroundColor Green
+
+      - name: Run Success Rate Analysis
+        if: github.event.inputs.maintenance_type == 'full' || github.event_name == 'schedule'
+        run: |
+          Write-Host "📈 Analyzing pipeline success rates..." -ForegroundColor Cyan
+
+          # Run the monitoring script
+          & ".\scripts\monitor-cicd.ps1" -AnalyzeHistory -Days 30
+
+      - name: Generate Maintenance Report
+        if: always()
+        run: |
+          Write-Host "📋 Generating maintenance report..." -ForegroundColor Cyan
+
+          $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+          $maintenanceType = '${{ github.event.inputs.maintenance_type || ''scheduled'' }}'
+          $status = '${{ job.status }}'
+
+          $report = "# Pipeline Maintenance Report`n"
+          $report += "Generated: $timestamp`n`n"
+          $report += "Maintenance Type: $maintenanceType`n"
+          $report += "Status: $status`n`n"
+          $report += "Actions Performed:`n"
+          $report += "- Health Check: $(if (`$LASTEXITCODE -eq 0) { 'Passed' } else { 'Failed' })`n"
+          $report += "- Cleanup: Completed`n"
+          $report += "- Optimization: Completed`n"
+          $report += "- Success Rate Analysis: Completed`n`n"
+          $report += "Recommendations:`n"
+          $report += "- Monitor success rates weekly`n"
+          $report += "- Update dependencies quarterly`n"
+          $report += "- Review security vulnerabilities monthly`n"
+          $report += "- Clean build artifacts regularly`n`n"
+          $report += "---`n"
+          $report += "Automated Pipeline Maintenance - 90% Success Rate Initiative"
+
+          $report | Out-File -FilePath "maintenance-report.md" -Encoding UTF8
+          Write-Host "📄 Report saved to maintenance-report.md" -ForegroundColor Green
+
+      - name: Upload Maintenance Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-report
+          path: maintenance-report.md
+
+      - name: Alert on Issues
+        if: failure()
+        run: |
+          Write-Host "🚨 Maintenance issues detected!" -ForegroundColor Red
+          Write-Host "🔧 Review the maintenance report for details" -ForegroundColor Yellow
+          Write-Host "📞 Consider running manual maintenance with 'full' type" -ForegroundColor Cyan

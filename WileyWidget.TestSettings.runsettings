@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <!-- Test run parameters -->
+  <TestRunParameters>
+    <Parameter name="webAppUrl" value="http://localhost:8080" />
+    <Parameter name="webAppUserName" value="admin" />
+    <Parameter name="webAppPassword" value="password" />
+  </TestRunParameters>
+
+  <!-- Adapter specific settings -->
+  <RunConfiguration>
+    <!-- Use STA threading for WPF tests -->
+    <ExecutionThreadApartmentState>STA</ExecutionThreadApartmentState>
+
+    <!-- Target .NET 9.0 for WPF compatibility -->
+    <TargetFrameworkVersion>net9.0</TargetFrameworkVersion>
+
+    <!-- Test execution settings -->
+    <TreatNoTestsAsError>true</TreatNoTestsAsError>
+    <TestSessionTimeout>120000</TestSessionTimeout>
+
+    <!-- Results directory -->
+    <ResultsDirectory>.\TestResults</ResultsDirectory>
+
+    <!-- Disable AppDomain for better performance -->
+    <DisableAppDomain>true</DisableAppDomain>
+
+    <!-- Disable parallel execution for UI tests -->
+    <DisableParallelization>true</DisableParallelization>
+  </RunConfiguration>
+
+  <!-- Data collectors -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <!-- Code Coverage -->
+      <DataCollector friendlyName="Code Coverage" uri="datacollector://Microsoft/CodeCoverage/2.0" assemblyQualifiedName="Microsoft.VisualStudio.Coverage.DynamicCoverageDataCollector, Microsoft.VisualStudio.TraceCollector, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+        <Configuration>
+          <CodeCoverage>
+            <!-- Include WileyWidget assemblies -->
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*WileyWidget.*</ModulePath>
+              </Include>
+            </ModulePaths>
+
+            <!-- Exclude test assemblies and external libraries -->
+            <ModulePaths>
+              <Exclude>
+                <ModulePath>.*Tests.*</ModulePath>
+                <ModulePath>.*xunit.*</ModulePath>
+                <ModulePath>.*Moq.*</ModulePath>
+                <ModulePath>.*Syncfusion.*</ModulePath>
+                <ModulePath>.*Microsoft.*</ModulePath>
+                <ModulePath>.*System.*</ModulePath>
+              </Exclude>
+            </ModulePaths>
+
+            <!-- Include specific file types -->
+            <Sources>
+              <Include>
+                <Source>.*\.cs$</Source>
+              </Include>
+            </Sources>
+
+            <!-- Exclude generated and test files -->
+            <Sources>
+              <Exclude>
+                <Source>.*\\obj\\.*</Source>
+                <Source>.*\\bin\\.*</Source>
+                <Source>.*Tests\.cs$</Source>
+                <Source>.*TestModels\.cs$</Source>
+              </Exclude>
+            </Sources>
+
+            <!-- Coverage reporting settings -->
+            <UseVerifiableInstrumentation>True</UseVerifiableInstrumentation>
+            <AllowLowIntegrityProcesses>True</AllowLowIntegrityProcesses>
+            <CollectFromChildProcesses>True</CollectFromChildProcesses>
+            <CollectOnlyManagedCode>True</CollectOnlyManagedCode>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+
+  <!-- Logger settings -->
+  <LoggerRunSettings>
+    <Loggers>
+      <Logger friendlyName="console" uri="logger://microsoft/TestPlatform/ConsoleLogger/v1.0" />
+      <Logger friendlyName="trx" uri="logger://microsoft/TestPlatform/TrxLogger/v1.0" />
+    </Loggers>
+  </LoggerRunSettings>
+
+  <!-- WPF-specific test settings -->
+  <WpfTestSettings>
+    <!-- Enable WPF test framework -->
+    <EnableWpfTestFramework>true</EnableWpfTestFramework>
+
+    <!-- STA thread requirement -->
+    <RequireStaThread>true</RequireStaThread>
+
+    <!-- UI test timeout -->
+    <UiTestTimeout>30000</UiTestTimeout>
+
+    <!-- Screenshot on failure -->
+    <CaptureScreenshotOnFailure>true</CaptureScreenshotOnFailure>
+  </WpfTestSettings>
+</RunSettings>

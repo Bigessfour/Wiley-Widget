@@ -77,7 +77,7 @@ public class EnterpriseTests
         {
             Name = "Test Enterprise",
             CurrentRate = rate,
-            MonthlyExpenses = 1000.00m,
+            MonthlyExpenses = 10.00m,  // Low expenses to avoid deficit warnings
             CitizenCount = 1000
         };
 

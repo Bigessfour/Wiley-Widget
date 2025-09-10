@@ -29,7 +29,7 @@ public class Widget
     /// <summary>
     /// Price of the widget (must be greater than 0)
     /// </summary>
-    [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
+    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ErrorMessage = "Price must be greater than 0")]
     [DataType(DataType.Currency)]
     public decimal Price { get; set; }
 
