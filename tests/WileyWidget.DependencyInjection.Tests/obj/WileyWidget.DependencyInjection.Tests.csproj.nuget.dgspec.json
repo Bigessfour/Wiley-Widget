@@ -1,0 +1,668 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\biges\\Desktop\\Wiley_Widget\\tests\\WileyWidget.DependencyInjection.Tests\\WileyWidget.DependencyInjection.Tests.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\biges\\Desktop\\Wiley_Widget\\tests\\WileyWidget.DependencyInjection.Tests\\WileyWidget.DependencyInjection.Tests.csproj": {
+      "version": "0.1.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\tests\\WileyWidget.DependencyInjection.Tests\\WileyWidget.DependencyInjection.Tests.csproj",
+        "projectName": "WileyWidget.DependencyInjection.Tests",
+        "projectPath": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\tests\\WileyWidget.DependencyInjection.Tests\\WileyWidget.DependencyInjection.Tests.csproj",
+        "packagesPath": "C:\\Users\\biges\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\tests\\WileyWidget.DependencyInjection.Tests\\obj\\",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Syncfusion\\Essential Studio\\WPF\\31.1.17\\ToolboxNuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\biges\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Syncfusion Toolbox for WPF.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0-windows"
+        ],
+        "sources": {
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0-windows7.0": {
+            "targetAlias": "net9.0-windows",
+            "projectReferences": {
+              "C:\\Users\\biges\\Desktop\\Wiley_Widget\\WileyWidget.csproj": {
+                "projectPath": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\WileyWidget.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0-windows7.0": {
+          "targetAlias": "net9.0-windows",
+          "dependencies": {
+            "FluentAssertions": {
+              "target": "Package",
+              "version": "[6.12.1, )"
+            },
+            "Microsoft.Extensions.Configuration.EnvironmentVariables": {
+              "target": "Package",
+              "version": "[9.0.9, )"
+            },
+            "Microsoft.Extensions.Configuration.Json": {
+              "target": "Package",
+              "version": "[9.0.9, )"
+            },
+            "Microsoft.Extensions.Configuration.UserSecrets": {
+              "target": "Package",
+              "version": "[9.0.9, )"
+            },
+            "Microsoft.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[9.0.9, )"
+            },
+            "Microsoft.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[9.0.9, )"
+            },
+            "Microsoft.NET.Test.Sdk": {
+              "target": "Package",
+              "version": "[17.11.1, )"
+            },
+            "Moq": {
+              "target": "Package",
+              "version": "[4.20.72, )"
+            },
+            "coverlet.collector": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[6.0.2, )"
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.9.2, )"
+            },
+            "xunit.runner.visualstudio": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.8.2, )"
+            }
+          },
+          "centralPackageVersions": {
+            "Azure.AI.OpenAI": "2.1.0",
+            "Azure.Extensions.AspNetCore.Configuration.Secrets": "1.3.0",
+            "Azure.Identity": "1.15.0",
+            "Azure.Security.KeyVault.Secrets": "4.6.0",
+            "CommunityToolkit.Mvvm": "8.4.0",
+            "coverlet.collector": "6.0.4",
+            "FlaUI.Core": "5.0.0",
+            "FlaUI.UIA3": "5.0.0",
+            "FluentAssertions": "7.0.0",
+            "IppDotNetSdkForQuickBooksApiV3": "14.7.0",
+            "IppOAuth2PlatformSdk": "14.0.0",
+            "Microsoft.ApplicationInsights": "2.22.0",
+            "Microsoft.ApplicationInsights.AspNetCore": "2.22.0",
+            "Microsoft.ApplicationInsights.WorkerService": "2.22.0",
+            "Microsoft.CodeAnalysis.NetAnalyzers": "9.0.0",
+            "Microsoft.Data.SqlClient": "6.1.1",
+            "Microsoft.EntityFrameworkCore": "9.0.8",
+            "Microsoft.EntityFrameworkCore.InMemory": "9.0.8",
+            "Microsoft.EntityFrameworkCore.Sqlite": "9.0.8",
+            "Microsoft.EntityFrameworkCore.SqlServer": "9.0.8",
+            "Microsoft.EntityFrameworkCore.Tools": "9.0.8",
+            "Microsoft.Extensions.AI": "9.0.0-preview.9.24556.5",
+            "Microsoft.Extensions.Caching.Memory": "9.0.8",
+            "Microsoft.Extensions.Configuration": "9.0.8",
+            "Microsoft.Extensions.Configuration.EnvironmentVariables": "9.0.8",
+            "Microsoft.Extensions.Configuration.Json": "9.0.8",
+            "Microsoft.Extensions.Configuration.UserSecrets": "9.0.8",
+            "Microsoft.Extensions.DependencyInjection": "9.0.8",
+            "Microsoft.Extensions.Diagnostics.HealthChecks.Common": "9.0.0",
+            "Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization": "9.0.0",
+            "Microsoft.Extensions.Hosting": "9.0.8",
+            "Microsoft.Extensions.Http": "9.0.8",
+            "Microsoft.Extensions.Logging": "9.0.8",
+            "Microsoft.Extensions.Logging.Console": "9.0.8",
+            "Microsoft.Graph": "5.67.0",
+            "Microsoft.Identity.Client": "4.77.0",
+            "Microsoft.Identity.Client.Broker": "4.77.0",
+            "Microsoft.NET.Test.Sdk": "17.14.1",
+            "Microsoft.SemanticKernel": "1.65.0",
+            "Moq": "4.20.70",
+            "OpenAI": "2.1.0",
+            "Polly": "8.4.2",
+            "Prism.Core": "9.0.537",
+            "Prism.DryIoc": "9.0.537",
+            "Prism.Wpf": "9.0.537",
+            "RichardSzalay.MockHttp": "7.0.0",
+            "Serilog": "4.3.0",
+            "Serilog.Enrichers.Environment": "3.0.1",
+            "Serilog.Enrichers.Process": "3.0.0",
+            "Serilog.Enrichers.Thread": "4.0.0",
+            "Serilog.Sinks.Async": "2.0.0",
+            "Serilog.Sinks.Email": "3.0.0",
+            "Serilog.Sinks.File": "7.0.0",
+            "Syncfusion.Licensing": "31.1.20",
+            "Syncfusion.SfBusyIndicator.WPF": "31.1.20",
+            "Syncfusion.SfChart.WPF": "31.1.20",
+            "Syncfusion.SfChat.WPF": "31.1.20",
+            "Syncfusion.SfGrid.WPF": "31.1.20",
+            "Syncfusion.SfInput.WPF": "31.1.20",
+            "Syncfusion.SfProgressBar.WPF": "31.1.20",
+            "Syncfusion.SfRichTextBoxAdv.WPF": "31.1.20",
+            "Syncfusion.SfSkinManager.WPF": "31.1.20",
+            "Syncfusion.SfSpreadsheet.WPF": "31.1.20",
+            "Syncfusion.Shared.WPF": "31.1.20",
+            "Syncfusion.Themes.FluentDark.WPF": "31.1.20",
+            "Syncfusion.Themes.FluentLight.WPF": "31.1.20",
+            "Syncfusion.Tools.WPF": "31.1.20",
+            "System.Management": "9.0.0",
+            "xunit": "2.9.2",
+            "xunit.runner.visualstudio": "2.8.2"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            },
+            "Microsoft.WindowsDesktop.App.WPF": {
+              "privateAssets": "none"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\biges\\Desktop\\Wiley_Widget\\WileyWidget.csproj": {
+      "version": "0.1.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\WileyWidget.csproj",
+        "projectName": "WileyWidget",
+        "projectPath": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\WileyWidget.csproj",
+        "packagesPath": "C:\\Users\\biges\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\obj\\",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Syncfusion\\Essential Studio\\WPF\\31.1.17\\ToolboxNuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\biges\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Syncfusion Toolbox for WPF.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0-windows"
+        ],
+        "sources": {
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0-windows7.0": {
+            "targetAlias": "net9.0-windows",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "noWarn": [
+            "NU1605"
+          ],
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0-windows7.0": {
+          "targetAlias": "net9.0-windows",
+          "dependencies": {
+            "Azure.AI.OpenAI": {
+              "target": "Package",
+              "version": "[2.1.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Azure.Extensions.AspNetCore.Configuration.Secrets": {
+              "target": "Package",
+              "version": "[1.3.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Azure.Identity": {
+              "target": "Package",
+              "version": "[1.15.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Azure.Security.KeyVault.Secrets": {
+              "target": "Package",
+              "version": "[4.6.0, )",
+              "versionCentrallyManaged": true
+            },
+            "CommunityToolkit.Mvvm": {
+              "target": "Package",
+              "version": "[8.4.0, )",
+              "versionCentrallyManaged": true
+            },
+            "IppDotNetSdkForQuickBooksApiV3": {
+              "target": "Package",
+              "version": "[14.7.0, )",
+              "versionCentrallyManaged": true
+            },
+            "IppOAuth2PlatformSdk": {
+              "target": "Package",
+              "version": "[14.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.ApplicationInsights": {
+              "target": "Package",
+              "version": "[2.22.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.ApplicationInsights.AspNetCore": {
+              "target": "Package",
+              "version": "[2.22.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.ApplicationInsights.WorkerService": {
+              "target": "Package",
+              "version": "[2.22.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.CodeAnalysis.NetAnalyzers": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.EntityFrameworkCore.SqlServer": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.EntityFrameworkCore.Sqlite": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.AI": {
+              "target": "Package",
+              "version": "[9.0.0-preview.9.24556.5, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.Caching.Memory": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.Configuration.EnvironmentVariables": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.Configuration.UserSecrets": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.Diagnostics.HealthChecks.Common": {
+              "target": "Package",
+              "version": "[9.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization": {
+              "target": "Package",
+              "version": "[9.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.Http": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Extensions.Logging": {
+              "target": "Package",
+              "version": "[9.0.8, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Graph": {
+              "target": "Package",
+              "version": "[5.67.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Identity.Client": {
+              "target": "Package",
+              "version": "[4.77.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Identity.Client.Broker": {
+              "target": "Package",
+              "version": "[4.77.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.SemanticKernel": {
+              "target": "Package",
+              "version": "[1.65.0, )",
+              "versionCentrallyManaged": true
+            },
+            "OpenAI": {
+              "target": "Package",
+              "version": "[2.1.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Polly": {
+              "target": "Package",
+              "version": "[8.4.2, )",
+              "versionCentrallyManaged": true
+            },
+            "Prism.Core": {
+              "target": "Package",
+              "version": "[9.0.537, )",
+              "versionCentrallyManaged": true
+            },
+            "Prism.DryIoc": {
+              "target": "Package",
+              "version": "[9.0.537, )",
+              "versionCentrallyManaged": true
+            },
+            "Prism.Wpf": {
+              "target": "Package",
+              "version": "[9.0.537, )",
+              "versionCentrallyManaged": true
+            },
+            "Serilog": {
+              "target": "Package",
+              "version": "[4.3.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Serilog.Enrichers.Environment": {
+              "target": "Package",
+              "version": "[3.0.1, )",
+              "versionCentrallyManaged": true
+            },
+            "Serilog.Enrichers.Process": {
+              "target": "Package",
+              "version": "[3.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Serilog.Enrichers.Thread": {
+              "target": "Package",
+              "version": "[4.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Serilog.Sinks.Async": {
+              "target": "Package",
+              "version": "[2.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Serilog.Sinks.Email": {
+              "target": "Package",
+              "version": "[3.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Serilog.Sinks.File": {
+              "target": "Package",
+              "version": "[7.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.Licensing": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfBusyIndicator.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfChart.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfChat.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfGrid.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfInput.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfProgressBar.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfRichTextBoxAdv.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfSkinManager.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.SfSpreadsheet.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.Shared.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.Themes.FluentDark.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.Themes.FluentLight.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "Syncfusion.Tools.WPF": {
+              "target": "Package",
+              "version": "[31.1.20, )",
+              "versionCentrallyManaged": true
+            },
+            "System.Management": {
+              "target": "Package",
+              "version": "[9.0.0, )",
+              "versionCentrallyManaged": true
+            }
+          },
+          "centralPackageVersions": {
+            "Azure.AI.OpenAI": "2.1.0",
+            "Azure.Extensions.AspNetCore.Configuration.Secrets": "1.3.0",
+            "Azure.Identity": "1.15.0",
+            "Azure.Security.KeyVault.Secrets": "4.6.0",
+            "CommunityToolkit.Mvvm": "8.4.0",
+            "coverlet.collector": "6.0.4",
+            "FlaUI.Core": "5.0.0",
+            "FlaUI.UIA3": "5.0.0",
+            "FluentAssertions": "7.0.0",
+            "IppDotNetSdkForQuickBooksApiV3": "14.7.0",
+            "IppOAuth2PlatformSdk": "14.0.0",
+            "Microsoft.ApplicationInsights": "2.22.0",
+            "Microsoft.ApplicationInsights.AspNetCore": "2.22.0",
+            "Microsoft.ApplicationInsights.WorkerService": "2.22.0",
+            "Microsoft.CodeAnalysis.NetAnalyzers": "9.0.0",
+            "Microsoft.Data.SqlClient": "6.1.1",
+            "Microsoft.EntityFrameworkCore": "9.0.8",
+            "Microsoft.EntityFrameworkCore.InMemory": "9.0.8",
+            "Microsoft.EntityFrameworkCore.Sqlite": "9.0.8",
+            "Microsoft.EntityFrameworkCore.SqlServer": "9.0.8",
+            "Microsoft.EntityFrameworkCore.Tools": "9.0.8",
+            "Microsoft.Extensions.AI": "9.0.0-preview.9.24556.5",
+            "Microsoft.Extensions.Caching.Memory": "9.0.8",
+            "Microsoft.Extensions.Configuration": "9.0.8",
+            "Microsoft.Extensions.Configuration.EnvironmentVariables": "9.0.8",
+            "Microsoft.Extensions.Configuration.Json": "9.0.8",
+            "Microsoft.Extensions.Configuration.UserSecrets": "9.0.8",
+            "Microsoft.Extensions.DependencyInjection": "9.0.8",
+            "Microsoft.Extensions.Diagnostics.HealthChecks.Common": "9.0.0",
+            "Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization": "9.0.0",
+            "Microsoft.Extensions.Hosting": "9.0.8",
+            "Microsoft.Extensions.Http": "9.0.8",
+            "Microsoft.Extensions.Logging": "9.0.8",
+            "Microsoft.Extensions.Logging.Console": "9.0.8",
+            "Microsoft.Graph": "5.67.0",
+            "Microsoft.Identity.Client": "4.77.0",
+            "Microsoft.Identity.Client.Broker": "4.77.0",
+            "Microsoft.NET.Test.Sdk": "17.14.1",
+            "Microsoft.SemanticKernel": "1.65.0",
+            "Moq": "4.20.70",
+            "OpenAI": "2.1.0",
+            "Polly": "8.4.2",
+            "Prism.Core": "9.0.537",
+            "Prism.DryIoc": "9.0.537",
+            "Prism.Wpf": "9.0.537",
+            "RichardSzalay.MockHttp": "7.0.0",
+            "Serilog": "4.3.0",
+            "Serilog.Enrichers.Environment": "3.0.1",
+            "Serilog.Enrichers.Process": "3.0.0",
+            "Serilog.Enrichers.Thread": "4.0.0",
+            "Serilog.Sinks.Async": "2.0.0",
+            "Serilog.Sinks.Email": "3.0.0",
+            "Serilog.Sinks.File": "7.0.0",
+            "Syncfusion.Licensing": "31.1.20",
+            "Syncfusion.SfBusyIndicator.WPF": "31.1.20",
+            "Syncfusion.SfChart.WPF": "31.1.20",
+            "Syncfusion.SfChat.WPF": "31.1.20",
+            "Syncfusion.SfGrid.WPF": "31.1.20",
+            "Syncfusion.SfInput.WPF": "31.1.20",
+            "Syncfusion.SfProgressBar.WPF": "31.1.20",
+            "Syncfusion.SfRichTextBoxAdv.WPF": "31.1.20",
+            "Syncfusion.SfSkinManager.WPF": "31.1.20",
+            "Syncfusion.SfSpreadsheet.WPF": "31.1.20",
+            "Syncfusion.Shared.WPF": "31.1.20",
+            "Syncfusion.Themes.FluentDark.WPF": "31.1.20",
+            "Syncfusion.Themes.FluentLight.WPF": "31.1.20",
+            "Syncfusion.Tools.WPF": "31.1.20",
+            "System.Management": "9.0.0",
+            "xunit": "2.9.2",
+            "xunit.runner.visualstudio": "2.8.2"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[9.0.9, 9.0.9]"
+            },
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x86",
+              "version": "[9.0.9, 9.0.9]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Crossgen2.win-x64",
+              "version": "[9.0.9, 9.0.9]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[9.0.9, 9.0.9]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x86",
+              "version": "[9.0.9, 9.0.9]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[9.0.9, 9.0.9]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x86",
+              "version": "[9.0.9, 9.0.9]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            },
+            "Microsoft.WindowsDesktop.App.WPF": {
+              "privateAssets": "none"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
+        },
+        "win-x86": {
+          "#import": []
+        }
+      }
+    }
+  }
+}

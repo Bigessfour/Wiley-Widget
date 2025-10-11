@@ -1,0 +1,27 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "Microsoft": "Warning"
+    }
+  },
+  "Database": {
+    "Provider": "SqlServer",
+    "ConnectionString": "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetTest;Trusted_Connection=True;MultipleActiveResultSets=true"
+  },
+  "Azure": {
+    "KeyVaultName": "",
+    "EnableKeyVault": false
+  },
+  "Syncfusion": {
+    "LicenseKey": "test-key-for-di-validation"
+  },
+  "ApplicationInsights": {
+    "ConnectionString": "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://test.applicationinsights.azure.com/",
+    "InstrumentationKey": null
+  },
+  "XAI": {
+    "ApiKey": "",
+    "RequireService": false
+  }
+}

@@ -1,0 +1,32 @@
+# Enhanced ruff configuration for security and code quality
+# Documentation: https://docs.astral.sh/ruff/rules/
+
+# Rule categories to enable:
+# B = flake8-bugbear (common bug patterns)
+# E = pycodestyle errors  
+# F = pyflakes (undefined names, unused imports)
+# S = flake8-bandit (security issues)
+# C90 = mccabe (complexity checking)
+# I = isort (import sorting)
+# N = pep8-naming (naming conventions)
+# W = pycodestyle warnings
+# UP = pyupgrade (upgrade syntax for newer Python)
+select = ["B", "E", "F", "S", "C90", "I", "N", "W", "UP"]
+
+# Ignore specific rules that conflict with formatters or are too aggressive
+ignore = [
+    "E501",   # Line too long (handled by formatters)
+    "S101",   # Use of assert (common in tests)
+    "S603",   # subprocess call without shell=True check (often false positive)
+    "S607",   # Starting process with partial executable path (often false positive)
+    "W503",   # Line break before binary operator (conflicts with black)
+]
+
+# Set complexity threshold
+mccabe = { max-complexity = 10 }
+
+# Configure import sorting to match your project structure
+[tool.ruff.isort]
+known-first-party = ["wileywidget"]
+force-single-line = false
+combine-as-imports = true

@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "dgSpecHash": "ELbfBZ/YoU4=",
+  "success": false,
+  "projectFilePath": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\tests\\WileyWidget.DependencyInjection.Tests\\WileyWidget.DependencyInjection.Tests.csproj",
+  "expectedPackageFiles": [],
+  "logs": [
+    {
+      "code": "NU1008",
+      "level": "Error",
+      "message": "Projects that use central package version management should not define the version on the PackageReference items but on the PackageVersion items: Microsoft.NET.Test.Sdk;xunit;xunit.runner.visualstudio;coverlet.collector;FluentAssertions;Moq;Microsoft.Extensions.DependencyInjection;Microsoft.Extensions.Hosting;Microsoft.Extensions.Configuration.Json;Microsoft.Extensions.Configuration.EnvironmentVariables;Microsoft.Extensions.Configuration.UserSecrets.",
+      "projectPath": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\tests\\WileyWidget.DependencyInjection.Tests\\WileyWidget.DependencyInjection.Tests.csproj",
+      "filePath": "C:\\Users\\biges\\Desktop\\Wiley_Widget\\tests\\WileyWidget.DependencyInjection.Tests\\WileyWidget.DependencyInjection.Tests.csproj",
+      "targetGraphs": []
+    }
+  ]
+}
