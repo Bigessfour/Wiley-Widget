@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:WileyWidget"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:gauge="clr-namespace:Syncfusion.UI.Xaml.Gauges;assembly=Syncfusion.SfGauge.Wpf"
              xmlns:chart="clr-namespace:Syncfusion.UI.Xaml.Charts;assembly=Syncfusion.SfChart.WPF"
@@ -11,6 +12,7 @@
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
              xmlns:prism="http://prismlibrary.com/"
+             syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
              mc:Ignorable="d"
              prism:ViewModelLocator.AutoWireViewModel="True">
     <UserControl.Resources>
@@ -27,8 +29,13 @@
         </Style>
     </UserControl.Resources>
 
-    <!-- Apply declarative theming to prevent XAML loading crashes -->
-    <Grid syncfusionskin:SfSkinManager.VisualStyle="FluentDark">
+    <!-- Theme applied globally via SfSkinManager.ApplicationTheme in App.xaml.cs -->
+    <!-- Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application -->
+    <Grid behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="DashboardFocusAnchor"
+        behaviors:MouseFocusBehavior.EnableOnClick="True"
+        behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
+        <!-- Invisible focus anchor to guarantee a focusable target (must be visible to receive focus) -->
+        <Border x:Name="DashboardFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
         <DockPanel>
         <!-- Ribbon Toolbar -->
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="DashboardRibbon">

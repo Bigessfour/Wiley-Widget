@@ -1,7 +1,6 @@
 #nullable enable
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
 
@@ -25,19 +24,6 @@ public class AppDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        if (!optionsBuilder.IsConfigured)
-        {
-            // Only configure if not already configured
-            optionsBuilder.ConfigureWarnings(warnings =>
-                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
-        }
-
-        // Add data seeding using UseSeeding for dynamic data
-        optionsBuilder.UseSeeding((context, _) =>
-        {
-            SeedData(context);
-        });
-
         base.OnConfiguring(optionsBuilder);
     }
 
@@ -138,7 +124,7 @@ public class AppDbContext : DbContext
             entity.HasOne(t => t.BudgetEntry)
                   .WithMany(be => be.Transactions)
                   .HasForeignKey(t => t.BudgetEntryId)
-                  .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(t => t.TransactionDate);
             entity.Property(t => t.Amount).HasColumnType("decimal(18,2)");
             entity.Property(t => t.Type).HasMaxLength(50);
@@ -168,11 +154,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<BudgetInteraction>(entity =>
         {
             entity.HasOne(bi => bi.PrimaryEnterprise)
-                  .WithMany() // No inverse navigation
+                  .WithMany()
                   .HasForeignKey(bi => bi.PrimaryEnterpriseId)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(bi => bi.SecondaryEnterprise)
-                  .WithMany() // No inverse navigation
+                  .WithMany()
                   .HasForeignKey(bi => bi.SecondaryEnterpriseId)
                   .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(bi => bi.PrimaryEnterpriseId);
@@ -209,217 +195,6 @@ public class AppDbContext : DbContext
             .WithMany(ma => ma.Invoices)
             .HasForeignKey(i => i.MunicipalAccountId)
             .OnDelete(DeleteBehavior.Cascade);
-    }
-
-    // Data seeding method for UseSeeding
-    private void SeedData(DbContext context)
-    {
-        var dbContext = (AppDbContext)context;
-
-        // Seed Departments
-        if (!dbContext.Departments.Any())
-        {
-            dbContext.Departments.AddRange(
-                new Department { Name = "General Government", DepartmentCode = "GEN" },
-                new Department { Name = "Public Works", DepartmentCode = "PW" }
-            );
-            dbContext.SaveChanges();
-        }
-
-        // Get department IDs
-        var generalGovDept = dbContext.Departments.FirstOrDefault(d => d.DepartmentCode == "GEN");
-        var publicWorksDept = dbContext.Departments.FirstOrDefault(d => d.DepartmentCode == "PW");
-
-        // Seed Budget Periods
-        if (!dbContext.BudgetPeriods.Any())
-        {
-            dbContext.BudgetPeriods.Add(
-                new BudgetPeriod 
-                { 
-                    Year = 2026,
-                    Name = "FY 2026 Budget",
-                    Status = BudgetStatus.Adopted,
-                    StartDate = DateTime.Parse("2026-01-01"),
-                    EndDate = DateTime.Parse("2026-12-31"),
-                    IsActive = true
-                }
-            );
-            dbContext.SaveChanges();
-        }
-
-        // Get budget period ID
-        var budgetPeriod = dbContext.BudgetPeriods.FirstOrDefault(bp => bp.Year == 2026);
-
-        // Seed Enterprises
-        if (!dbContext.Enterprises.Any())
-        {
-            dbContext.Enterprises.AddRange(
-                new Enterprise 
-                { 
-                    Name = "Town of Wiley", 
-                    Description = "Municipal government for Wiley, CO (pop ~300)",
-                    CitizenCount = 300,
-                    CurrentRate = 8.5m,
-                    TotalBudget = 2500000m,
-                    Type = "General",
-                    Status = EnterpriseStatus.Active,
-                    CreatedDate = DateTime.UtcNow,
-                    ModifiedDate = DateTime.UtcNow
-                },
-                new Enterprise 
-                { 
-                    Name = "Wiley Sanitation District", 
-                    Description = "Sanitation services for Wiley area",
-                    CitizenCount = 250,
-                    CurrentRate = 38.0m,
-                    TotalBudget = 1500000m,
-                    Type = "Sanitation",
-                    Status = EnterpriseStatus.Active,
-                    CreatedDate = DateTime.UtcNow,
-                    ModifiedDate = DateTime.UtcNow
-                }
-            );
-            dbContext.SaveChanges();
-        }
-
-        // Seed Utility Customers
-        if (!dbContext.UtilityCustomers.Any())
-        {
-            dbContext.UtilityCustomers.AddRange(
-                new UtilityCustomer 
-                { 
-                    AccountNumber = "CUST001",
-                    FirstName = "John",
-                    LastName = "Doe",
-                    ServiceAddress = "123 Main St",
-                    ServiceCity = "Wiley",
-                    ServiceState = "CO",
-                    ServiceZipCode = "81092",
-                    CustomerType = CustomerType.Residential,
-                    CurrentBalance = 45.67m,
-                    LastPaymentDate = DateTime.Parse("2025-10-01"),
-                    CreatedDate = DateTime.UtcNow,
-                    LastModifiedDate = DateTime.UtcNow
-                },
-                new UtilityCustomer 
-                { 
-                    AccountNumber = "CUST002",
-                    CompanyName = "Jane Smith Business",
-                    ServiceAddress = "456 Oak Ave",
-                    ServiceCity = "Wiley",
-                    ServiceState = "CO",
-                    ServiceZipCode = "81092",
-                    CustomerType = CustomerType.Commercial,
-                    CurrentBalance = 150.25m,
-                    LastPaymentDate = DateTime.Parse("2025-09-15"),
-                    CreatedDate = DateTime.UtcNow,
-                    LastModifiedDate = DateTime.UtcNow
-                }
-            );
-            dbContext.SaveChanges();
-        }
-
-        // Seed Municipal Accounts
-        if (!dbContext.MunicipalAccounts.Any() && generalGovDept != null && publicWorksDept != null && budgetPeriod != null)
-        {
-            dbContext.MunicipalAccounts.AddRange(
-                new MunicipalAccount 
-                { 
-                    AccountNumber = new AccountNumber("101.100"),
-                    Name = "General Fund Checking",
-                    Type = AccountType.Asset,
-                    Fund = MunicipalFundType.General,
-                    DepartmentId = generalGovDept.Id,
-                    BudgetPeriodId = budgetPeriod.Id,
-                    Balance = 500000m,
-                    BudgetAmount = 500000m,
-                    IsActive = true
-                },
-                new MunicipalAccount 
-                { 
-                    AccountNumber = new AccountNumber("201.100"),
-                    Name = "Enterprise Fund Checking",
-                    Type = AccountType.Asset,
-                    Fund = MunicipalFundType.Enterprise,
-                    DepartmentId = publicWorksDept.Id,
-                    BudgetPeriodId = budgetPeriod.Id,
-                    Balance = 200000m,
-                    BudgetAmount = 200000m,
-                    IsActive = true
-                }
-            );
-            dbContext.SaveChanges();
-        }
-
-        // Seed Budget Entries
-        if (!dbContext.BudgetEntries.Any() && generalGovDept != null && publicWorksDept != null)
-        {
-            dbContext.BudgetEntries.AddRange(
-                new BudgetEntry 
-                { 
-                    AccountNumber = "110",
-                    Description = "CASH IN BANK",
-                    BudgetedAmount = 100000m,
-                    ActualAmount = 95000m,
-                    FiscalYear = 2026,
-                    StartPeriod = DateOnly.Parse("2026-01-01"),
-                    EndPeriod = DateOnly.Parse("2026-12-31"),
-                    FundType = FundType.GeneralFund,
-                    DepartmentId = generalGovDept.Id
-                },
-                new BudgetEntry 
-                { 
-                    AccountNumber = "310",
-                    Description = "STATE APPORTIONMENT",
-                    BudgetedAmount = 50000m,
-                    ActualAmount = 45000m,
-                    FiscalYear = 2026,
-                    StartPeriod = DateOnly.Parse("2026-01-01"),
-                    EndPeriod = DateOnly.Parse("2026-12-31"),
-                    FundType = FundType.GeneralFund,
-                    DepartmentId = generalGovDept.Id
-                },
-                new BudgetEntry 
-                { 
-                    AccountNumber = "410",
-                    Description = "CAPITAL IMP - BALL COMPLEX",
-                    BudgetedAmount = 150000m,
-                    ActualAmount = 120000m,
-                    FiscalYear = 2026,
-                    StartPeriod = DateOnly.Parse("2026-01-01"),
-                    EndPeriod = DateOnly.Parse("2026-12-31"),
-                    FundType = FundType.GeneralFund,
-                    DepartmentId = generalGovDept.Id
-                },
-                new BudgetEntry 
-                { 
-                    AccountNumber = "101",
-                    Description = "CHECKING ACCOUNT-Enterprise",
-                    BudgetedAmount = 200000m,
-                    ActualAmount = 180000m,
-                    FiscalYear = 2026,
-                    StartPeriod = DateOnly.Parse("2026-01-01"),
-                    EndPeriod = DateOnly.Parse("2026-12-31"),
-                    FundType = FundType.EnterpriseFund,
-                    DepartmentId = publicWorksDept.Id
-                },
-                new BudgetEntry 
-                { 
-                    AccountNumber = "301",
-                    Description = "SEWER SALES",
-                    BudgetedAmount = 300000m,
-                    ActualAmount = 275000m,
-                    FiscalYear = 2026,
-                    StartPeriod = DateOnly.Parse("2026-01-01"),
-                    EndPeriod = DateOnly.Parse("2026-12-31"),
-                    FundType = FundType.EnterpriseFund,
-                    DepartmentId = publicWorksDept.Id
-                }
-            );
-            dbContext.SaveChanges();
-        }
-
-        dbContext.SaveChanges();
     }
 
     // Hierarchy query for UI (e.g., BudgetView SfTreeGrid)

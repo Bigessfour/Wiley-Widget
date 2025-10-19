@@ -19,6 +19,7 @@
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         Visibility="Hidden"
+        syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
         prism:ViewModelLocator.AutoWireViewModel="True"
         DataContext="{Binding}">
 
@@ -231,25 +232,36 @@
                                  DockStateChanged="DockingManager_DockStateChanged"
                                  ActiveWindowChanged="DockingManager_ActiveWindowChanged">
 
-            <!-- Document Regions (Tabbed Interface) -->
-            <ContentControl x:Name="DashboardRegion"
+          <!-- Document Regions (Tabbed Interface)
+              Keep the canvas focused: show only Dashboard and Reports by default.
+              Other views (Enterprise, Budget, Accounts, Analytics, Settings, AI) are registered by modules
+              and will appear when navigated to. -->
+          <ContentControl x:Name="DashboardRegion"
                           prism:RegionManager.RegionName="DashboardRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Dashboard"
                           syncfusion:DockingManager.CanClose="False"
                           MinWidth="400" MinHeight="300"/>
 
+            <ContentControl x:Name="ReportsRegion"
+                          prism:RegionManager.RegionName="ReportsRegion"
+                          syncfusion:DockingManager.State="Document"
+                          syncfusion:DockingManager.Header="Reports"
+                          syncfusion:DockingManager.CanClose="False"
+                          MinWidth="400" MinHeight="300"/>
+
+            <!-- Additional Document Regions for Modules -->
             <ContentControl x:Name="EnterpriseRegion"
                           prism:RegionManager.RegionName="EnterpriseRegion"
                           syncfusion:DockingManager.State="Document"
-                          syncfusion:DockingManager.Header="Enterprises"
+                          syncfusion:DockingManager.Header="Enterprise"
                           syncfusion:DockingManager.CanClose="False"
                           MinWidth="400" MinHeight="300"/>
 
             <ContentControl x:Name="MunicipalAccountRegion"
                           prism:RegionManager.RegionName="MunicipalAccountRegion"
                           syncfusion:DockingManager.State="Document"
-                          syncfusion:DockingManager.Header="Municipal Accounts"
+                          syncfusion:DockingManager.Header="Accounts"
                           syncfusion:DockingManager.CanClose="False"
                           MinWidth="400" MinHeight="300"/>
 
@@ -257,13 +269,6 @@
                           prism:RegionManager.RegionName="BudgetRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Budget"
-                          syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
-
-            <ContentControl x:Name="AIAssistRegion"
-                          prism:RegionManager.RegionName="AIAssistRegion"
-                          syncfusion:DockingManager.State="Document"
-                          syncfusion:DockingManager.Header="AI Assistant"
                           syncfusion:DockingManager.CanClose="False"
                           MinWidth="400" MinHeight="300"/>
 
@@ -281,17 +286,10 @@
                           syncfusion:DockingManager.CanClose="False"
                           MinWidth="400" MinHeight="300"/>
 
-            <ContentControl x:Name="ReportsRegion"
-                          prism:RegionManager.RegionName="ReportsRegion"
-                          syncfusion:DockingManager.State="Document"
-                          syncfusion:DockingManager.Header="Reports"
-                          syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
-
             <!-- Panel Regions (Fixed Docking Positions) -->
             <ContentControl x:Name="LeftPanelRegion"
                           prism:RegionManager.RegionName="LeftPanelRegion"
-                          syncfusion:DockingManager.State="Dock"
+                     syncfusion:DockingManager.State="AutoHidden"
                           syncfusion:DockingManager.SideInDockedMode="Left"
                           syncfusion:DockingManager.DesiredWidthInDockedMode="280"
                           syncfusion:DockingManager.Header="Navigation"
@@ -299,7 +297,7 @@
 
             <ContentControl x:Name="RightPanelRegion"
                           prism:RegionManager.RegionName="RightPanelRegion"
-                          syncfusion:DockingManager.State="Dock"
+                     syncfusion:DockingManager.State="AutoHidden"
                           syncfusion:DockingManager.SideInDockedMode="Right"
                           syncfusion:DockingManager.DesiredWidthInDockedMode="320"
                           syncfusion:DockingManager.Header="Properties"

@@ -6,37 +6,92 @@ import json
 
 import pytest
 
-# Defensive import: skip the entire module when CLR or required assemblies are
-# not available at collection time. This prevents pytest from aborting
-# collection with ModuleNotFoundError in environments without pythonnet or the
-# expected framework assemblies.
+# Check for pythonnet availability
 try:
-    from Microsoft.Extensions.Configuration import (  # type: ignore[attr-defined, import-not-found]
-        ConfigurationBuilder,
-    )
-    from System import (  # type: ignore[attr-defined, import-not-found]
-        Activator,
-        ArgumentException,
-        Array,
-        InvalidOperationException,
-        Object,
-        String,
-    )
-    from System.Collections.Generic import Dictionary  # type: ignore[attr-defined]
-    from System.Net import HttpStatusCode  # type: ignore[attr-defined]
-    from System.Net.Http import (  # type: ignore[attr-defined, import-not-found]
-        HttpClient,
-        HttpMessageHandler,
-        HttpRequestException,
-        HttpRequestMessage,
-        HttpResponseMessage,
-        IHttpClientFactory,
-        StringContent,
-    )
-    from System.Text import Encoding  # type: ignore[attr-defined]
-    from System.Threading.Tasks import Task  # type: ignore[attr-defined, import-not-found]
-except Exception as exc:  # pragma: no cover - environment guard
-    pytest.skip(f"Skipping CLR-backed tests (missing CLR or assemblies): {exc}", allow_module_level=True)
+    import clr  # type: ignore[import-not-found]
+    HAS_PYTHONNET = True
+except (ImportError, RuntimeError, AttributeError):
+    HAS_PYTHONNET = False
+
+pytestmark = [
+    pytest.mark.clr,
+    pytest.mark.integration,
+    pytest.mark.skipif(not HAS_PYTHONNET, reason="pythonnet required for CLR tests"),
+]
+
+# Import CLR types only if available
+if HAS_PYTHONNET:
+    clr.AddReference("Microsoft.Extensions.Configuration")
+    try:
+        from Microsoft.Extensions.Configuration import (  # type: ignore[attr-defined, import-not-found]
+            ConfigurationBuilder,
+        )
+        from System import (  # type: ignore[attr-defined, import-not-found]
+            Activator,
+            ArgumentException,
+            Array,
+            InvalidOperationException,
+            Object,
+            String,
+        )
+        from System.Collections.Generic import Dictionary  # type: ignore[attr-defined]
+        from System.Net import HttpStatusCode  # type: ignore[attr-defined]
+        from System.Net.Http import (  # type: ignore[attr-defined, import-not-found]
+            HttpClient,
+            HttpMessageHandler,
+            HttpRequestException,
+            HttpRequestMessage,
+            HttpResponseMessage,
+            IHttpClientFactory,
+            StringContent,
+        )
+        from System.Text import Encoding  # type: ignore[attr-defined]
+        from System.Threading.Tasks import (
+            Task,  # type: ignore[attr-defined, import-not-found]
+        )
+    except Exception:
+        # If imports fail, set to None
+        ConfigurationBuilder = None
+        Activator = None
+        ArgumentException = None
+        Array = None
+        InvalidOperationException = None
+        Object = None
+        String = None
+        Dictionary = None
+        HttpStatusCode = None
+        HttpClient = None
+        HttpMessageHandler = None
+        HttpRequestException = None
+        HttpRequestMessage = None
+        HttpResponseMessage = None
+        IHttpClientFactory = None
+        StringContent = None
+        Encoding = None
+        Task = None
+else:
+    # Define dummy classes to avoid NameError
+    ConfigurationBuilder = None
+    Activator = None
+    ArgumentException = None
+    Array = None
+    InvalidOperationException = None
+    Object = None
+    String = None
+    Dictionary = None
+    HttpStatusCode = None
+    HttpClient = None
+    HttpMessageHandler = None
+    HttpRequestException = None
+    HttpRequestMessage = None
+    HttpResponseMessage = None
+    IHttpClientFactory = None
+    StringContent = None
+    Encoding = None
+    Task = None
+
+if HAS_PYTHONNET and ConfigurationBuilder is None:
+    pytest.skip("Required CLR types not available", allow_module_level=True)
 
 from .helpers import dotnet_utils
 
@@ -45,37 +100,38 @@ def _await(task):
     return task.GetAwaiter().GetResult()
 
 
-class SequenceHandler(HttpMessageHandler):
-    def __init__(self, responders):
-        super().__init__()
-        self._responders = responders
-        self.calls = 0
+if HAS_PYTHONNET:
+    class SequenceHandler(HttpMessageHandler):
+        def __init__(self, responders):
+            super().__init__()
+            self._responders = responders
+            self.calls = 0
 
-    def SendAsync(self, request: HttpRequestMessage, cancellation_token):  # type: ignore[override]
-        index = min(self.calls, len(self._responders) - 1)
-        responder = self._responders[index]
-        self.calls += 1
-        result = responder(request)
-        if isinstance(result, HttpResponseMessage):
-            return Task.FromResult(result)
-        if isinstance(result, Exception):
-            raise result
-        raise InvalidOperationException("Responder returned unsupported type")
-
-
-class HttpClientFactoryStub(IHttpClientFactory):
-    def __init__(self, handler: SequenceHandler):
-        self._handler = handler
-
-    def CreateClient(self, name):  # type: ignore[override]
-        return HttpClient(self._handler, False)
+        def SendAsync(self, request: HttpRequestMessage, cancellation_token):  # type: ignore[override]
+            index = min(self.calls, len(self._responders) - 1)
+            responder = self._responders[index]
+            self.calls += 1
+            result = responder(request)
+            if isinstance(result, HttpResponseMessage):
+                return Task.FromResult(result)
+            if isinstance(result, Exception):
+                raise result
+            raise InvalidOperationException("Responder returned unsupported type")
 
 
-def _json_response(payload: dict, status: HttpStatusCode = HttpStatusCode.OK):
-    message = HttpResponseMessage(status)
-    content = json.dumps(payload)
-    message.Content = StringContent(content, Encoding.UTF8, "application/json")
-    return message
+    class HttpClientFactoryStub(IHttpClientFactory):
+        def __init__(self, handler: SequenceHandler):
+            self._handler = handler
+
+        def CreateClient(self, name):  # type: ignore[override]
+            return HttpClient(self._handler, False)
+
+
+    def _json_response(payload: dict, status: HttpStatusCode = HttpStatusCode.OK):
+        message = HttpResponseMessage(status)
+        content = json.dumps(payload)
+        message.Content = StringContent(content, Encoding.UTF8, "application/json")
+        return message
 
 
 def _build_configuration(clr_loader, overrides=None):

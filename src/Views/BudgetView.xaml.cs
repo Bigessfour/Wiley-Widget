@@ -91,28 +91,16 @@ public partial class BudgetView : UserControl
     /// </summary>
     public static void ShowBudgetWindow()
     {
-        IServiceProvider? provider = null;
+        BudgetViewModel? viewModel = null;
         try
         {
-            provider = App.GetActiveServiceProvider();
+            var containerProvider = App.GetContainerProvider();
+            viewModel = containerProvider.Resolve<BudgetViewModel>();
         }
-        catch (InvalidOperationException)
+        catch (Exception ex)
         {
-            provider = Application.Current?.Properties["ServiceProvider"] as IServiceProvider;
-        }
-
-        BudgetViewModel? viewModel = null;
-
-        if (provider != null)
-        {
-            try
-            {
-                viewModel = provider.GetService<BudgetViewModel>();
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to resolve BudgetViewModel from DI container");
-            }
+            Log.Warning(ex, "Failed to resolve BudgetViewModel from DI container");
+            viewModel = null;
         }
 
         if (viewModel == null)

@@ -29,7 +29,7 @@ namespace WileyWidget.ViewModels
         private readonly IQuickBooksService _quickBooksService;
         private readonly ISyncfusionLicenseService _syncfusionLicenseService;
         private readonly IAIService _aiService;
-        private readonly IThemeManager _themeManager;
+        // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles all theming globally
         private readonly ISettingsService _settingsService;
         private readonly IInteractionRequestService _interactionRequestService;
 
@@ -143,7 +143,21 @@ namespace WileyWidget.ViewModels
         partial void OnSelectedThemeChanged(string value)
         {
             IsDarkMode = value?.Contains("Dark", StringComparison.OrdinalIgnoreCase) == true;
-            _themeManager.ApplyTheme(value);
+            
+            // Apply theme globally using SfSkinManager.ApplicationTheme
+            // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
+            try
+            {
+                if (!string.IsNullOrEmpty(value))
+                {
+                    SfSkinManager.ApplicationTheme = new Theme(value);
+                    _logger.LogInformation("Theme changed to: {Theme}", value);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to apply theme: {Theme}", value);
+            }
         }
 
         [ObservableProperty]
@@ -541,7 +555,6 @@ namespace WileyWidget.ViewModels
             IQuickBooksService quickBooksService,
             ISyncfusionLicenseService syncfusionLicenseService,
             IAIService aiService,
-            IThemeManager themeManager,
             ISettingsService settingsService,
             IInteractionRequestService interactionRequestService)
         {
@@ -555,7 +568,7 @@ namespace WileyWidget.ViewModels
             _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
             _syncfusionLicenseService = syncfusionLicenseService ?? throw new ArgumentNullException(nameof(syncfusionLicenseService));
             _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
-            _themeManager = themeManager ?? throw new ArgumentNullException(nameof(themeManager));
+            // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles theming globally
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _interactionRequestService = interactionRequestService ?? throw new ArgumentNullException(nameof(interactionRequestService));
 

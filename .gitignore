@@ -52,6 +52,8 @@ license.key
 *.license.key
 WileyWidget/LicenseKey.Private.cs
 LicenseKey.Private.cs
+secrets/
+my.secrets
 
 # Environment variables (NEVER commit)
 .env

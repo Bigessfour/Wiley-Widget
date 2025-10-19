@@ -14,8 +14,11 @@ _tools_python_dir = Path(__file__).resolve().parent.parent
 if str(_tools_python_dir) not in sys.path:
     sys.path.insert(0, str(_tools_python_dir))
 
-import xaml_sleuth  # noqa: E402
-from xaml_sleuth import Issue  # noqa: E402
+try:
+    import xaml_sleuth  # noqa: E402
+    from xaml_sleuth import Issue  # noqa: E402
+except Exception as exc:
+    pytest.skip(f"xaml_sleuth not available: {exc}", allow_module_level=True)
 
 SAMPLES_DIR = Path(__file__).resolve().parents[1] / "samples"
 

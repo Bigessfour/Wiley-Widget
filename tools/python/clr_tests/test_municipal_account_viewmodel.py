@@ -4,36 +4,46 @@ from __future__ import annotations
 
 import pytest
 
-# Defensive import: skip the entire module when CLR or required assemblies are
-# not available at collection time. This prevents pytest from aborting
-# collection with ModuleNotFoundError in environments without pythonnet or the
-# expected framework assemblies.
+# Check for pythonnet availability
 try:
-    import clr  # type: ignore[attr-defined, import-not-found]
+    import clr  # type: ignore[import-not-found]
+    HAS_PYTHONNET = True
+except (ImportError, RuntimeError, AttributeError):
+    HAS_PYTHONNET = False
+
+pytestmark = [
+    pytest.mark.clr,
+    pytest.mark.integration,
+    pytest.mark.skipif(not HAS_PYTHONNET, reason="pythonnet required for CLR tests"),
+]
+
+# Import CLR types only if available
+if HAS_PYTHONNET:
     clr.AddReference("System")
     clr.AddReference("System.Collections")
-    clr.AddReference("WileyWidget.Business")
-    clr.AddReference("WileyWidget.Models")
-    clr.AddReference("WileyWidget.Services")
-    from System import (  # type: ignore[attr-defined, import-not-found]
-        Activator,
-        Array,
-        Object,
-    )
-    from System import (
-        Exception as NetException,
-    )
-    from System.Collections.Generic import (
-        List,  # type: ignore[attr-defined, import-not-found]
-    )
-    from System.Threading.Tasks import (
-        Task,  # type: ignore[attr-defined, import-not-found]
-    )
--except Exception as exc:  # pragma: no cover - environment guard
-    pytest.skip(
-        f"Skipping CLR-backed tests (missing CLR or assemblies): {exc}",
-        allow_module_level=True,
-    )
+    clr.AddReference("WileyWidget")
+    try:
+        from System import (  # type: ignore[attr-defined, import-not-found]
+            Activator,
+            Array,
+            Object,
+        )
+        from System import (
+            Exception as NetException,
+        )
+        from System.Collections.Generic import (
+            List,  # type: ignore[attr-defined, import-not-found]
+        )
+        from System.Threading.Tasks import (
+            Task,  # type: ignore[attr-defined, import-not-found]
+        )
+    except Exception:
+        Activator = None
+        Array = None
+        Object = None
+        NetException = None
+        List = None
+        Task = None
 
 from .helpers import dotnet_utils
 

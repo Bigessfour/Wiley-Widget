@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:WileyWidget"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:prism="http://prismlibrary.com/"
@@ -27,7 +28,8 @@
         </Style>
     </Window.Resources>
 
-    <Grid Background="#FF0F1724">
+    <Grid Background="#FF0F1724" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="CustomerFocusAnchor">
+    <Border x:Name="CustomerFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
     <DockPanel>
         <!-- Ribbon Toolbar -->
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="CustomerRibbon">

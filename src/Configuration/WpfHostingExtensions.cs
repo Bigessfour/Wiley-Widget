@@ -430,18 +430,13 @@ public static class WpfHostingExtensions
     {
         public static SplashScreenWindow Create(IServiceProvider serviceProvider)
         {
-            if (WileyWidget.App.SplashScreenInstance is SplashScreenWindow existing)
-            {
-                return existing;
-            }
-
+            // Splash screen functionality removed - Prism handles window initialization
             SplashScreenWindow? splash = null;
 
             void CreateSplash()
             {
                 var created = ActivatorUtilities.CreateInstance<SplashScreenWindow>(serviceProvider);
                 splash = created;
-                WileyWidget.App.SetSplashScreenInstance(created);
             }
 
             if (Application.Current?.Dispatcher?.CheckAccess() == true)

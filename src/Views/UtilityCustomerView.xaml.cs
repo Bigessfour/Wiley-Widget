@@ -4,75 +4,27 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Windows.Shared;
 using Syncfusion.Windows.Tools.Controls;
-using WileyWidget.Data;
-using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
-using WileyWidget.Business.Interfaces;
-using BusinessInterfaces = WileyWidget.Business.Interfaces;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace WileyWidget;
 
 /// <summary>
 /// Customer Management Window - Provides full CRUD interface for utility customers
+/// Prism auto-wires ViewModel via ViewModelLocator.AutoWireViewModel
 /// </summary>
 public partial class UtilityCustomerView : Window
 {
-    private IServiceScope? _viewScope;
-
     public UtilityCustomerView()
-        : this(serviceProvider: null, viewModel: null)
-    {
-    }
-
-    public UtilityCustomerView(IServiceProvider serviceProvider)
-        : this(serviceProvider, viewModel: null)
-    {
-    }
-
-    public UtilityCustomerView(UtilityCustomerViewModel viewModel)
-        : this(serviceProvider: null, viewModel: viewModel)
-    {
-    }
-
-    private UtilityCustomerView(IServiceProvider? serviceProvider, UtilityCustomerViewModel? viewModel)
     {
         InitializeComponent();
 
         // Apply current theme
         ThemeUtility.TryApplyTheme(this, SettingsService.Instance.Current.Theme);
-
-        if (viewModel is not null)
-        {
-            _viewScope = null;
-            // DataContext will be auto-wired by Prism ViewModelLocator
-        }
-        else
-        {
-            var resolvedProvider = ResolveServiceProvider(serviceProvider);
-            // DataContext will be auto-wired by Prism ViewModelLocator
-        }
-
-        if (_viewScope != null)
-        {
-            Closed += (_, _) =>
-            {
-                try
-                {
-                    _viewScope.Dispose();
-                }
-                catch
-                {
-                }
-            };
-        }
 
         Loaded += (_, _) =>
         {
@@ -81,57 +33,6 @@ public partial class UtilityCustomerView : Window
                 vm.LoadCustomersCommand.Execute();
             }
         };
-    }
-
-    private sealed class FallbackUtilityCustomerRepository : IUtilityCustomerRepository
-    {
-        public Task<UtilityCustomer> AddAsync(UtilityCustomer customer) => Task.FromResult(customer);
-        public Task<bool> DeleteAsync(int id) => Task.FromResult(false);
-        public Task<bool> ExistsByAccountNumberAsync(string accountNumber, int? excludeId = null) => Task.FromResult(false);
-        public Task<IEnumerable<UtilityCustomer>> GetActiveCustomersAsync() => Task.FromResult<IEnumerable<UtilityCustomer>>(Array.Empty<UtilityCustomer>());
-        public Task<IEnumerable<UtilityCustomer>> GetAllAsync() => Task.FromResult<IEnumerable<UtilityCustomer>>(Array.Empty<UtilityCustomer>());
-        public Task<UtilityCustomer?> GetByAccountNumberAsync(string accountNumber) => Task.FromResult<UtilityCustomer?>(null);
-        public Task<IEnumerable<UtilityCustomer>> GetByCustomerTypeAsync(CustomerType customerType) => Task.FromResult<IEnumerable<UtilityCustomer>>(Array.Empty<UtilityCustomer>());
-        public Task<UtilityCustomer?> GetByIdAsync(int id) => Task.FromResult<UtilityCustomer?>(null);
-        public Task<IEnumerable<UtilityCustomer>> GetByServiceLocationAsync(ServiceLocation serviceLocation) => Task.FromResult<IEnumerable<UtilityCustomer>>(Array.Empty<UtilityCustomer>());
-        public Task<int> GetCountAsync() => Task.FromResult(0);
-        public Task<IEnumerable<UtilityCustomer>> GetCustomersOutsideCityLimitsAsync() => Task.FromResult<IEnumerable<UtilityCustomer>>(Array.Empty<UtilityCustomer>());
-        public Task<IEnumerable<UtilityCustomer>> GetCustomersWithBalanceAsync() => Task.FromResult<IEnumerable<UtilityCustomer>>(Array.Empty<UtilityCustomer>());
-        public Task<IEnumerable<UtilityCustomer>> SearchAsync(string searchTerm) => Task.FromResult<IEnumerable<UtilityCustomer>>(Array.Empty<UtilityCustomer>());
-        public Task<UtilityCustomer> UpdateAsync(UtilityCustomer customer) => Task.FromResult(customer);
-    }
-
-    private sealed class FallbackUnitOfWork : IUnitOfWork
-    {
-        public FallbackUnitOfWork()
-        {
-            UtilityCustomers = new FallbackUtilityCustomerRepository();
-        }
-
-        public BusinessInterfaces.IEnterpriseRepository Enterprises => throw new NotSupportedException("Fallback unit of work does not provide enterprise repository support.");
-        public BusinessInterfaces.IMunicipalAccountRepository MunicipalAccounts => throw new NotSupportedException("Fallback unit of work does not provide municipal account repository support.");
-        public BusinessInterfaces.IBudgetRepository Budgets => throw new NotSupportedException("Fallback unit of work does not provide budget repository support.");
-        public BusinessInterfaces.IDepartmentRepository Departments => throw new NotSupportedException("Fallback unit of work does not provide department repository support.");
-        public IUtilityCustomerRepository UtilityCustomers { get; }
-        public BusinessInterfaces.IAuditRepository Audits => throw new NotSupportedException("Fallback unit of work does not provide audit repository support.");
-
-        public Task<FiscalYearSettings?> GetFiscalYearSettingsAsync() => Task.FromResult<FiscalYearSettings?>(null);
-        public Task SaveFiscalYearSettingsAsync(FiscalYearSettings settings) => Task.CompletedTask;
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
-        public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException("Fallback unit of work does not support transactions.");
-        public Task CommitTransactionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task RollbackTransactionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<TResult> ExecuteInTransactionAsync<TResult>(Func<Task<TResult>> operation, CancellationToken cancellationToken = default) => throw new NotSupportedException("Fallback unit of work does not support transactional execution.");
-        public Task ExecuteInTransactionAsync(Func<Task> operation, CancellationToken cancellationToken = default) => throw new NotSupportedException("Fallback unit of work does not support transactional execution.");
-        public void Dispose()
-        {
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            Dispose();
-            return ValueTask.CompletedTask;
-        }
     }
 
     /// <summary>
@@ -150,84 +51,5 @@ public partial class UtilityCustomerView : Window
     {
         var window = new UtilityCustomerView();
         return window.ShowDialog();
-    }
-
-    // Change to a regular method (remove 'override' since base.FindName is not overridable)
-    // This shadows the base method but allows custom name resolution for specific controls
-    public new object? FindName(string name)
-    {
-        var result = base.FindName(name);
-        if (result is not null)
-        {
-            return result;
-        }
-
-        // Controls with x:Name should be found by base.FindName
-        return null;
-    }
-
-    private IServiceProvider? ResolveServiceProvider(IServiceProvider? overrideProvider)
-    {
-        if (overrideProvider is not null)
-        {
-            return overrideProvider;
-        }
-
-        IServiceProvider? provider = null;
-
-#if DEBUG
-        try
-        {
-            var testDiSetupType = Type.GetType("WileyWidget.UiTests.TestDiSetup, WileyWidget.UiTests");
-            if (testDiSetupType != null)
-            {
-                var serviceProviderProperty = testDiSetupType.GetProperty("ServiceProvider");
-                provider = serviceProviderProperty?.GetValue(null) as IServiceProvider;
-            }
-        }
-        catch
-        {
-            // Ignore if not in test environment.
-        }
-#endif
-
-        if (provider is not null)
-        {
-            return provider;
-        }
-
-        try
-        {
-            return App.GetActiveServiceProvider();
-        }
-        catch (InvalidOperationException)
-        {
-            return Application.Current?.Properties["ServiceProvider"] as IServiceProvider;
-        }
-    }
-
-    private UtilityCustomerViewModel CreateViewModel(IServiceProvider? provider)
-    {
-        if (provider is not null)
-        {
-            try
-            {
-                _viewScope = provider.CreateScope();
-                var scopedProvider = _viewScope.ServiceProvider;
-                var unitOfWork = scopedProvider.GetRequiredService<IUnitOfWork>();
-                var grokSupercomputer = scopedProvider.GetRequiredService<IGrokSupercomputer>();
-                return new UtilityCustomerViewModel(unitOfWork, grokSupercomputer);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to resolve utility customer dependencies; using in-memory fallback.");
-                _viewScope?.Dispose();
-                _viewScope = null;
-            }
-        }
-
-#pragma warning disable CA2000 // The ViewModel takes ownership of the FallbackUnitOfWork and disposes it
-        return new UtilityCustomerViewModel(new FallbackUnitOfWork(), new NullGrokSupercomputer());
-#pragma warning restore CA2000
     }
 }

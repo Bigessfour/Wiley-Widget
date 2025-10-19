@@ -323,7 +323,8 @@ namespace WileyWidget.Views
                             XDocument doc = XDocument.Load(isoStream);
                             
 // Comprehensive validation and filtering of DockState values
-var validStates = new[] { "Dock", "Float", "AutoHidden" };
+// Include 'Document' to preserve tabbed documents
+var validStates = new[] { "Dock", "Float", "AutoHidden", "Document" };
 var stateElements = doc.Descendants().Where(e => e.Name.LocalName.Contains("State"));
 foreach (var stateElement in stateElements)
 {
@@ -373,20 +374,108 @@ foreach (var combo in invalidCombinations)
                 var dockingManager = this.FindName("MainDockingManager") as DockingManager;
                 if (dockingManager != null)
                 {
-                    foreach (var dockingChild in dockingManager.Children)
+                    // Identify regions by name to apply sensible defaults
+                    string[] documentRegions =
                     {
-                        if (dockingChild is FrameworkElement element)
+                        "DashboardRegion",
+                        "EnterpriseRegion",
+                        "MunicipalAccountRegion",
+                        "BudgetRegion",
+                        "AIAssistRegion",
+                        "AnalyticsRegion",
+                        "SettingsRegion",
+                        "ReportsRegion"
+                    };
+
+                    string[] leftRightBottomPanels =
+                    {
+                        "LeftPanelRegion",
+                        "RightPanelRegion",
+                        "BottomPanelRegion"
+                    };
+
+                    // Apply defaults per group
+                    foreach (var child in dockingManager.Children)
+                    {
+                        if (child is FrameworkElement element)
                         {
-                            // Set default docking properties
-                            DockingManager.SetState(element, DockState.Dock);
-                            DockingManager.SetDesiredWidthInDockedMode(element, 200);
-                            DockingManager.SetDesiredHeightInDockedMode(element, 200);
-                            
-                            Log.Debug("Set default dock state for: {ElementName}", element.Name ?? element.GetType().Name);
+                            var name = element.Name ?? element.GetType().Name;
+
+                            if (documentRegions.Contains(name))
+                            {
+                                // Ensure all main content areas are true documents (tabbed)
+                                DockingManager.SetState(element, DockState.Document);
+                                DockingManager.SetDesiredWidthInDockedMode(element, double.NaN);
+                                DockingManager.SetDesiredHeightInDockedMode(element, double.NaN);
+                                Log.Debug("Set Document state for: {ElementName}", name);
+                            }
+                            else if (leftRightBottomPanels.Contains(name))
+                            {
+                                // Panels: start auto-hidden for a cleaner initial canvas
+                                // Left/Right as auto-hidden, Bottom docked but small
+                                if (name.Equals("BottomPanelRegion", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    DockingManager.SetState(element, DockState.Dock);
+                                    DockingManager.SetDesiredHeightInDockedMode(element, 160);
+                                    Log.Debug("Set Dock state for Bottom panel: {ElementName}", name);
+                                }
+                                else
+                                {
+                                    DockingManager.SetState(element, DockState.AutoHidden);
+                                    DockingManager.SetDesiredWidthInDockedMode(element, 260);
+                                    Log.Debug("Set AutoHidden state for side panel: {ElementName}", name);
+                                }
+                            }
+                            else
+                            {
+                                // Fallback: keep docked and reasonable size
+                                DockingManager.SetState(element, DockState.Dock);
+                                DockingManager.SetDesiredWidthInDockedMode(element, 220);
+                                DockingManager.SetDesiredHeightInDockedMode(element, 200);
+                                Log.Debug("Set fallback Dock state for: {ElementName}", name);
+                            }
                         }
                     }
-                    
-                    Log.Information("Default docking layout applied successfully");
+
+                    // Prefer Dashboard as the initially active document if present
+                    var dashboard = dockingManager.Children
+                        .OfType<FrameworkElement>()
+                        .FirstOrDefault(e => string.Equals(e.Name, "DashboardRegion", StringComparison.OrdinalIgnoreCase));
+
+                    if (dashboard != null)
+                    {
+                        try
+                        {
+                            // Activate the Dashboard document tab
+                            dockingManager.ActivateWindow(dashboard.Name);
+                            Log.Information("Dashboard document activated by default");
+
+                            // Attempt to move keyboard focus into the dashboard content
+                            this.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                if (dashboard is System.Windows.Controls.ContentControl host && host.Content is FrameworkElement fe)
+                                {
+                                    var window = Window.GetWindow(this);
+                                    if (window != null && !window.IsActive)
+                                    {
+                                        window.Activate();
+                                    }
+                                    if (!fe.Focusable)
+                                    {
+                                        fe.Focusable = true;
+                                    }
+                                    fe.Focus();
+                                    Log.Debug("Keyboard focus set to Dashboard content element: {Element}", fe.GetType().Name);
+                                }
+                            }), System.Windows.Threading.DispatcherPriority.Loaded);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Debug(ex, "Unable to explicitly activate Dashboard document; relying on region activation");
+                        }
+                    }
+
+                    Log.Information("Default docking layout applied successfully (Documents tabbed, panels minimized)");
                 }
                 else
                 {
@@ -423,41 +512,9 @@ foreach (var combo in invalidCombinations)
                     var availableRegions = _regionManager.Regions.Select(r => r.Name).ToArray();
                     Log.Information("Available regions from XAML: [{Regions}]", string.Join(", ", availableRegions));
 
-                    // Explicitly create MainRegion if it doesn't exist
-                    if (!_regionManager.Regions.ContainsRegionWithName("MainRegion"))
-                    {
-                        Log.Information("MainRegion not found - creating explicitly");
-                        var mainRegionControl = new System.Windows.Controls.ContentControl
-                        {
-                            Name = "MainRegionControl",
-                            HorizontalAlignment = HorizontalAlignment.Stretch,
-                            VerticalAlignment = VerticalAlignment.Stretch
-                        };
-                        RegionManager.SetRegionName(mainRegionControl, "MainRegion");
-                        RegionManager.SetRegionManager(mainRegionControl, _regionManager);
-
-                        // Add to the DockingManager as a docked element
-                        var dockingManager = this.FindName("MainDockingManager") as DockingManager;
-                        if (dockingManager != null)
-                        {
-                            DockingManager.SetState(mainRegionControl, DockState.Dock);
-                            DockingManager.SetDesiredWidthInDockedMode(mainRegionControl, double.NaN); // Auto width
-                            DockingManager.SetDesiredHeightInDockedMode(mainRegionControl, double.NaN); // Auto height
-                            dockingManager.Children.Add(mainRegionControl);
-                            Log.Information("MainRegion created and added to DockingManager");
-                        }
-                        else
-                        {
-                            Log.Warning("MainDockingManager not found - cannot add MainRegion control");
-                        }
-                    }
-                    else
-                    {
-                        Log.Information("MainRegion already exists");
-                    }
-
                     // Note: View registration is now handled by Prism modules
-                    // Each module (DashboardModule, etc.) registers its own views
+                    // Each module (DashboardModule, etc.) registers its own views with specific regions
+                    // Expected regions from MainWindow.xaml: DashboardRegion, EnterpriseRegion, MunicipalAccountRegion, etc.
                     Log.Information("Prism regions initialization completed - modules will register views");
                 }
                 catch (Exception ex)
@@ -526,17 +583,17 @@ foreach (var combo in invalidCombinations)
                     }
                 }
                 
-                // Check specifically for MainRegion since it's critical
-                if (_regionManager.Regions.ContainsRegionWithName("MainRegion"))
+                // Check specifically for DashboardRegion since it's critical for initial view
+                if (_regionManager.Regions.ContainsRegionWithName("DashboardRegion"))
                 {
-                    var mainRegion = _regionManager.Regions["MainRegion"];
-                    Log.Information("MainRegion status: {ViewCount} views, Active: {ActiveView}",
-                        mainRegion.Views?.Count() ?? 0,
-                        mainRegion.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
+                    var dashboardRegion = _regionManager.Regions["DashboardRegion"];
+                    Log.Information("DashboardRegion status: {ViewCount} views, Active: {ActiveView}",
+                        dashboardRegion.Views?.Count() ?? 0,
+                        dashboardRegion.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
                 }
                 else
                 {
-                    Log.Warning("MainRegion not found in region manager!");
+                    Log.Warning("DashboardRegion not found in region manager!");
                 }
                 
                 Log.Information("=== End Region Status Report ===");

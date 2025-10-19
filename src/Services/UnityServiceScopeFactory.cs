@@ -30,7 +30,7 @@ public class UnityServiceScopeFactory : IServiceScopeFactory
 /// Unity-based implementation of IServiceScope that wraps a Unity child container.
 /// Provides isolated service resolution for scoped operations (e.g., per-scenario DB contexts).
 /// </summary>
-public class UnityServiceScope : IServiceScope
+public sealed class UnityServiceScope : IServiceScope, IDisposable
 {
     private readonly IUnityContainer _childContainer;
     private bool _disposed;
@@ -42,12 +42,24 @@ public class UnityServiceScope : IServiceScope
 
     public IServiceProvider ServiceProvider => (IServiceProvider)_childContainer;
 
+    // Standard IDisposable pattern
+    private void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // Dispose managed state (managed objects)
+            _childContainer?.Dispose();
+        }
+
+        // Free unmanaged resources (none) and set large fields to null (none)
+        _disposed = true;
+    }
+
     public void Dispose()
     {
-        if (!_disposed)
-        {
-            _childContainer?.Dispose();
-            _disposed = true;
-        }
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

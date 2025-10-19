@@ -27,8 +27,8 @@ public partial class DashboardPanelView : UserControl
         DashboardViewModel? resolvedViewModel = null;
         try
         {
-            var provider = App.GetActiveServiceProvider();
-            resolvedViewModel = provider.GetService(typeof(DashboardViewModel)) as DashboardViewModel;
+            var containerProvider = App.GetContainerProvider();
+            resolvedViewModel = containerProvider.Resolve<DashboardViewModel>();
         }
         catch (InvalidOperationException)
         {

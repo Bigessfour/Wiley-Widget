@@ -92,6 +92,16 @@ namespace WileyWidget.Data.Migrations
                 keyColumn: "Id",
                 keyValue: 3);
 
+            migrationBuilder.Sql(@"
+DELETE FROM [Transactions] WHERE [Id] = 1;
+DELETE FROM [BudgetEntries] WHERE [Id] IN (1, 2, 3, 4);
+DELETE FROM [MunicipalAccounts] WHERE [Id] IN (1, 2);
+DELETE FROM [UtilityCustomers] WHERE [Id] IN (1, 2);
+DELETE FROM [BudgetPeriods] WHERE [Id] = 1;
+DELETE FROM [Departments] WHERE [Id] IN (3, 2, 1);
+DELETE FROM [Funds] WHERE [Id] IN (2, 1);
+");
+
             migrationBuilder.RenameTable(
                 name: "Invoice",
                 newName: "Invoices");
@@ -332,7 +342,7 @@ namespace WileyWidget.Data.Migrations
                 column: "ParentAccountId",
                 principalTable: "MunicipalAccounts",
                 principalColumn: "Id",
-                onDelete: ReferentialAction.Restrict);
+                onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Transactions_BudgetEntries_BudgetEntryId",
@@ -340,7 +350,7 @@ namespace WileyWidget.Data.Migrations
                 column: "BudgetEntryId",
                 principalTable: "BudgetEntries",
                 principalColumn: "Id",
-                onDelete: ReferentialAction.Restrict);
+                onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Transactions_MunicipalAccounts_MunicipalAccountId",
@@ -349,6 +359,290 @@ namespace WileyWidget.Data.Migrations
                 principalTable: "MunicipalAccounts",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.InsertData(
+                table: "Enterprises",
+                columns: new[]
+                {
+                    "Id",
+                    "Name",
+                    "Description",
+                    "CurrentRate",
+                    "MonthlyExpenses",
+                    "CitizenCount",
+                    "TotalBudget",
+                    "BudgetAmount",
+                    "Status",
+                    "Type",
+                    "Notes",
+                    "CreatedBy",
+                    "CreatedDate",
+                    "ModifiedBy",
+                    "ModifiedDate",
+                    "DeletedBy",
+                    "DeletedDate",
+                    "IsDeleted",
+                    "MeterReading",
+                    "MeterReadDate",
+                    "PreviousMeterReading",
+                    "PreviousMeterReadDate",
+                    "CreatedAt",
+                    "UpdatedAt"
+                },
+                values: new object[,]
+                {
+                    {
+                        1,
+                        "Town of Wiley",
+                        "Municipal government for Wiley, CO (pop ~300)",
+                        8.50m,
+                        0m,
+                        300,
+                        2500000m,
+                        285755.00m,
+                        0,
+                        "General",
+                        null,
+                        null,
+                        new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                        null,
+                        new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                        null,
+                        null,
+                        false,
+                        null,
+                        null,
+                        null,
+                        null,
+                        new DateTime(2025, 10, 16, 0, 0, 0, DateTimeKind.Utc),
+                        null
+                    },
+                    {
+                        2,
+                        "Wiley Sanitation District",
+                        "Sanitation services for Wiley area",
+                        38.00m,
+                        0m,
+                        250,
+                        1500000m,
+                        5879527.00m,
+                        0,
+                        "Sanitation",
+                        null,
+                        null,
+                        new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                        null,
+                        new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                        null,
+                        null,
+                        false,
+                        null,
+                        null,
+                        null,
+                        null,
+                        new DateTime(2025, 10, 16, 0, 0, 0, DateTimeKind.Utc),
+                        null
+                    },
+                    {
+                        3,
+                        "Wiley Electric Cooperative",
+                        "Electric utility provider for Wiley community",
+                        0.12m,
+                        0m,
+                        180,
+                        1200000m,
+                        285755.00m,
+                        0,
+                        "Electric",
+                        null,
+                        null,
+                        new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                        null,
+                        new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                        null,
+                        null,
+                        false,
+                        null,
+                        null,
+                        null,
+                        null,
+                        new DateTime(2025, 10, 16, 0, 0, 0, DateTimeKind.Utc),
+                        null
+                    }
+                });
+
+            migrationBuilder.Sql(@"
+SET IDENTITY_INSERT [Funds] ON;
+
+IF NOT EXISTS (SELECT 1 FROM [Funds] WHERE [Id] = 1)
+    INSERT INTO [Funds] ([Id], [FundCode], [Name], [Type]) VALUES (1, '100', 'General Fund', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [Funds] WHERE [Id] = 2)
+    INSERT INTO [Funds] ([Id], [FundCode], [Name], [Type]) VALUES (2, '200', 'Utility Fund', 2);
+
+SET IDENTITY_INSERT [Funds] OFF;
+");
+
+            migrationBuilder.Sql(@"
+SET IDENTITY_INSERT [Departments] ON;
+
+IF NOT EXISTS (SELECT 1 FROM [Departments] WHERE [Id] = 1)
+    INSERT INTO [Departments] ([Id], [DepartmentCode], [Name], [ParentId]) VALUES (1, 'GEN', 'General Government', NULL);
+
+IF NOT EXISTS (SELECT 1 FROM [Departments] WHERE [Id] = 2)
+    INSERT INTO [Departments] ([Id], [DepartmentCode], [Name], [ParentId]) VALUES (2, 'PW', 'Public Works', NULL);
+
+IF NOT EXISTS (SELECT 1 FROM [Departments] WHERE [Id] = 3)
+    INSERT INTO [Departments] ([Id], [DepartmentCode], [Name], [ParentId]) VALUES (3, 'SAN', 'Sanitation', 2);
+
+SET IDENTITY_INSERT [Departments] OFF;
+");
+
+            migrationBuilder.Sql(@"
+SET IDENTITY_INSERT [BudgetPeriods] ON;
+
+IF NOT EXISTS (SELECT 1 FROM [BudgetPeriods] WHERE [Id] = 1)
+    INSERT INTO [BudgetPeriods] ([Id], [Year], [Name], [CreatedDate], [Status], [StartDate], [EndDate], [IsActive])
+    VALUES (1, 2026, 'FY 2026 Budget', '2025-01-01T00:00:00', 2, '2026-01-01T00:00:00', '2026-12-31T00:00:00', 1);
+
+SET IDENTITY_INSERT [BudgetPeriods] OFF;
+");
+
+            migrationBuilder.Sql(@"
+SET IDENTITY_INSERT [UtilityCustomers] ON;
+
+IF NOT EXISTS (SELECT 1 FROM [UtilityCustomers] WHERE [Id] = 1)
+    INSERT INTO [UtilityCustomers] (
+        [Id], [AccountNumber], [FirstName], [LastName], [CompanyName], [CustomerType],
+        [ServiceAddress], [ServiceCity], [ServiceState], [ServiceZipCode],
+        [MailingAddress], [MailingCity], [MailingState], [MailingZipCode],
+        [PhoneNumber], [EmailAddress], [MeterNumber], [ServiceLocation], [Status],
+        [AccountOpenDate], [AccountCloseDate], [CurrentBalance], [TaxId], [BusinessLicenseNumber], [Notes],
+        [ConnectDate], [DisconnectDate], [LastPaymentAmount], [LastPaymentDate], [CreatedDate], [LastModifiedDate]
+    )
+    VALUES (
+        1, 'CUST001', 'John', 'Doe', NULL, 0,
+        '123 Main St', 'Wiley', 'CO', '81092',
+        NULL, NULL, NULL, NULL,
+        '719-555-0100', 'john.doe@example.com', NULL, 0, 0,
+        '2018-01-15T00:00:00', NULL, 45.67, NULL, NULL, NULL,
+        '2018-01-15T00:00:00', NULL, 45.67, '2025-10-01T00:00:00', '2025-10-01T00:00:00', '2025-10-01T00:00:00'
+    );
+
+IF NOT EXISTS (SELECT 1 FROM [UtilityCustomers] WHERE [Id] = 2)
+    INSERT INTO [UtilityCustomers] (
+        [Id], [AccountNumber], [FirstName], [LastName], [CompanyName], [CustomerType],
+        [ServiceAddress], [ServiceCity], [ServiceState], [ServiceZipCode],
+        [MailingAddress], [MailingCity], [MailingState], [MailingZipCode],
+        [PhoneNumber], [EmailAddress], [MeterNumber], [ServiceLocation], [Status],
+        [AccountOpenDate], [AccountCloseDate], [CurrentBalance], [TaxId], [BusinessLicenseNumber], [Notes],
+        [ConnectDate], [DisconnectDate], [LastPaymentAmount], [LastPaymentDate], [CreatedDate], [LastModifiedDate]
+    )
+    VALUES (
+        2, 'CUST002', 'Jane', 'Smith', 'Jane Smith Business', 1,
+        '456 Oak Ave', 'Wiley', 'CO', '81092',
+        NULL, NULL, NULL, NULL,
+        '719-555-0123', 'hello@janesmithbiz.com', NULL, 1, 0,
+        '2016-05-10T00:00:00', NULL, 150.25, NULL, NULL, NULL,
+        '2016-05-10T00:00:00', NULL, 150.25, '2025-09-15T00:00:00', '2025-09-15T00:00:00', '2025-09-15T00:00:00'
+    );
+
+SET IDENTITY_INSERT [UtilityCustomers] OFF;
+");
+
+            migrationBuilder.Sql(@"
+SET IDENTITY_INSERT [MunicipalAccounts] ON;
+
+IF NOT EXISTS (SELECT 1 FROM [MunicipalAccounts] WHERE [Id] = 1)
+    INSERT INTO [MunicipalAccounts] (
+        [Id], [AccountNumber], [FundClass], [DepartmentId], [ParentAccountId], [BudgetPeriodId],
+        [Name], [Type], [Fund], [Balance], [BudgetAmount], [IsActive], [QuickBooksId], [LastSyncDate], [Notes]
+    )
+    VALUES (
+        1, '101.100', NULL, 1, NULL, 1,
+        'General Fund Checking', 5, 0, 500000.00, 500000.00, 1, NULL, NULL, NULL
+    );
+
+IF NOT EXISTS (SELECT 1 FROM [MunicipalAccounts] WHERE [Id] = 2)
+    INSERT INTO [MunicipalAccounts] (
+        [Id], [AccountNumber], [FundClass], [DepartmentId], [ParentAccountId], [BudgetPeriodId],
+        [Name], [Type], [Fund], [Balance], [BudgetAmount], [IsActive], [QuickBooksId], [LastSyncDate], [Notes]
+    )
+    VALUES (
+        2, '201.100', NULL, 2, NULL, 1,
+        'Enterprise Fund Checking', 5, 4, 200000.00, 200000.00, 1, NULL, NULL, NULL
+    );
+
+SET IDENTITY_INSERT [MunicipalAccounts] OFF;
+");
+
+            migrationBuilder.Sql(@"
+SET IDENTITY_INSERT [BudgetEntries] ON;
+
+IF NOT EXISTS (SELECT 1 FROM [BudgetEntries] WHERE [Id] = 1)
+    INSERT INTO [BudgetEntries] (
+        [Id], [AccountNumber], [Description], [BudgetedAmount], [ActualAmount], [Variance], [ParentId],
+        [FiscalYear], [StartPeriod], [EndPeriod], [FundType], [EncumbranceAmount], [IsGASBCompliant],
+        [DepartmentId], [FundId], [MunicipalAccountId], [SourceFilePath], [SourceRowNumber], [ActivityCode], [CreatedAt], [UpdatedAt]
+    )
+    VALUES (
+        1, '110', 'CASH IN BANK', 100000.00, 95000.00, 5000.00, NULL,
+        2026, '2026-01-01', '2026-12-31', 1, 0, 1,
+        1, 1, 1, NULL, NULL, 'GOV', '2025-10-16T00:00:00', NULL
+    );
+
+IF NOT EXISTS (SELECT 1 FROM [BudgetEntries] WHERE [Id] = 2)
+    INSERT INTO [BudgetEntries] (
+        [Id], [AccountNumber], [Description], [BudgetedAmount], [ActualAmount], [Variance], [ParentId],
+        [FiscalYear], [StartPeriod], [EndPeriod], [FundType], [EncumbranceAmount], [IsGASBCompliant],
+        [DepartmentId], [FundId], [MunicipalAccountId], [SourceFilePath], [SourceRowNumber], [ActivityCode], [CreatedAt], [UpdatedAt]
+    )
+    VALUES (
+        2, '310', 'STATE APPORTIONMENT', 50000.00, 45000.00, 5000.00, NULL,
+        2026, '2026-01-01', '2026-12-31', 1, 0, 1,
+        1, 1, 1, NULL, NULL, 'GOV', '2025-10-16T00:00:00', NULL
+    );
+
+IF NOT EXISTS (SELECT 1 FROM [BudgetEntries] WHERE [Id] = 3)
+    INSERT INTO [BudgetEntries] (
+        [Id], [AccountNumber], [Description], [BudgetedAmount], [ActualAmount], [Variance], [ParentId],
+        [FiscalYear], [StartPeriod], [EndPeriod], [FundType], [EncumbranceAmount], [IsGASBCompliant],
+        [DepartmentId], [FundId], [MunicipalAccountId], [SourceFilePath], [SourceRowNumber], [ActivityCode], [CreatedAt], [UpdatedAt]
+    )
+    VALUES (
+        3, '410', 'CAPITAL IMP - BALL COMPLEX', 150000.00, 120000.00, 30000.00, NULL,
+        2026, '2026-01-01', '2026-12-31', 1, 0, 1,
+        1, 1, 1, NULL, NULL, 'CAP', '2025-10-16T00:00:00', NULL
+    );
+
+IF NOT EXISTS (SELECT 1 FROM [BudgetEntries] WHERE [Id] = 4)
+    INSERT INTO [BudgetEntries] (
+        [Id], [AccountNumber], [Description], [BudgetedAmount], [ActualAmount], [Variance], [ParentId],
+        [FiscalYear], [StartPeriod], [EndPeriod], [FundType], [EncumbranceAmount], [IsGASBCompliant],
+        [DepartmentId], [FundId], [MunicipalAccountId], [SourceFilePath], [SourceRowNumber], [ActivityCode], [CreatedAt], [UpdatedAt]
+    )
+    VALUES (
+        4, '101', 'CHECKING ACCOUNT-Enterprise', 200000.00, 180000.00, 20000.00, NULL,
+        2026, '2026-01-01', '2026-12-31', 2, 0, 1,
+        2, 2, 2, NULL, NULL, 'ENT', '2025-10-16T00:00:00', NULL
+    );
+
+SET IDENTITY_INSERT [BudgetEntries] OFF;
+");
+
+            migrationBuilder.Sql(@"
+SET IDENTITY_INSERT [Transactions] ON;
+
+IF NOT EXISTS (SELECT 1 FROM [Transactions] WHERE [Id] = 1)
+    INSERT INTO [Transactions] (
+        [Id], [MunicipalAccountId], [Amount], [Description], [TransactionDate], [Type], [BudgetEntryId], [CreatedAt], [UpdatedAt]
+    )
+    VALUES (
+        1, 1, 10000.00, 'Initial payment for road work', '2025-10-10T00:00:00', 'Payment', 1, '2025-10-16T00:00:00', NULL
+    );
+
+SET IDENTITY_INSERT [Transactions] OFF;
+");
         }
 
         /// <inheritdoc />
@@ -524,6 +818,21 @@ namespace WileyWidget.Data.Migrations
                 name: "PK_BudgetPeriod",
                 table: "BudgetPeriod",
                 column: "Id");
+
+            migrationBuilder.DeleteData(
+                table: "Enterprises",
+                keyColumn: "Id",
+                keyValue: 1);
+
+            migrationBuilder.DeleteData(
+                table: "Enterprises",
+                keyColumn: "Id",
+                keyValue: 2);
+
+            migrationBuilder.DeleteData(
+                table: "Enterprises",
+                keyColumn: "Id",
+                keyValue: 3);
 
             migrationBuilder.InsertData(
                 table: "Enterprises",

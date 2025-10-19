@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:WileyWidget"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="http://schemas.syncfusion.com/wpf"
@@ -40,7 +41,8 @@
         </Style>
     </UserControl.Resources>
 
-    <DockPanel>
+    <DockPanel behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="SettingsFocusAnchor">
+        <Border x:Name="SettingsFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
         <!-- Ribbon Toolbar -->
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="SettingsRibbon">
             <syncfusion:RibbonTab Caption="Settings">

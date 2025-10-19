@@ -17,7 +17,9 @@
     </UserControl.Resources>
 
     <!-- Apply declarative theming to prevent XAML loading crashes -->
-    <Grid syncfusionskin:SfSkinManager.VisualStyle="FluentDark">
+    <Grid syncfusionskin:SfSkinManager.VisualStyle="FluentDark" xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
+        behaviors:MouseFocusBehavior.EnableOnClick="True"
+        behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <DockPanel>
         <!-- Ribbon Toolbar -->
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="DashboardRibbon">

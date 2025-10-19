@@ -9,11 +9,18 @@ from __future__ import annotations
 
 import pytest
 
-# Defensive import guard
+# Check for pythonnet availability
 try:
-    pass  # type: ignore[attr-defined]
-except Exception as exc:  # pragma: no cover
-    pytest.skip(f"CLR not available: {exc}", allow_module_level=True)
+    from System import Activator  # type: ignore[attr-defined]
+    HAS_SYSTEM = True
+except (ImportError, ModuleNotFoundError):
+    HAS_SYSTEM = False
+
+pytestmark = [
+    pytest.mark.clr,
+    pytest.mark.integration,
+    pytest.mark.skipif(not HAS_SYSTEM, reason="pythonnet required for CLR tests"),
+]
 
 from .helpers import dotnet_utils
 

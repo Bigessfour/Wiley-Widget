@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:WileyWidget"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
@@ -15,7 +16,8 @@
         <local:BalanceColorConverter x:Key="BalanceColorConverter" />
     </UserControl.Resources>
 
-    <DockPanel>
+    <DockPanel behaviors:MouseFocusBehavior.EnableOnClick="True"
+               behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <!-- Ribbon Toolbar -->
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="EnterpriseRibbon">
             <syncfusion:RibbonTab Caption="Enterprise">

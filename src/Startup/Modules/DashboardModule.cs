@@ -53,7 +53,7 @@ namespace WileyWidget.Startup.Modules
         }
 
         /// <summary>
-        /// Registers the DashboardView with the MainRegion using a simplified approach.
+        /// Registers the DashboardView with the DashboardRegion and explicitly activates it.
         /// Includes retry logic for cases where the region might not be immediately available.
         /// </summary>
         /// <param name="regionManager">The region manager to use for registration</param>
@@ -66,30 +66,44 @@ namespace WileyWidget.Startup.Modules
             {
                 try
                 {
-                    if (regionManager.Regions.ContainsRegionWithName("MainRegion"))
+                    if (regionManager.Regions.ContainsRegionWithName("DashboardRegion"))
                     {
-                        regionManager.RegisterViewWithRegion("MainRegion", typeof(DashboardView));
-                        Log.Information("Successfully registered DashboardView with MainRegion on attempt {Attempt}", attempt);
+                        var region = regionManager.Regions["DashboardRegion"];
+                        
+                        // First, register the view with the region
+                        regionManager.RegisterViewWithRegion("DashboardRegion", typeof(DashboardView));
+                        
+                        // Then explicitly activate the first view (DashboardView)
+                        if (region.Views.Any())
+                        {
+                            region.Activate(region.Views.First());
+                            Log.Information("DashboardView registered and activated on attempt {Attempt}", attempt);
+                        }
+                        else
+                        {
+                            Log.Warning("DashboardView registered but no views found in region");
+                        }
+                        
                         return;
                     }
                     else if (attempt < maxRetries)
                     {
-                        Log.Debug("MainRegion not available on attempt {Attempt}, retrying in {Delay}ms", attempt, retryDelayMs);
+                        Log.Debug("DashboardRegion not available on attempt {Attempt}, retrying in {Delay}ms", attempt, retryDelayMs);
                         System.Threading.Thread.Sleep(retryDelayMs);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Failed to register DashboardView with MainRegion on attempt {Attempt}", attempt);
+                    Log.Error(ex, "Failed to navigate to DashboardView in DashboardRegion on attempt {Attempt}", attempt);
                     if (attempt == maxRetries)
                     {
-                        Log.Error("Exhausted all {MaxRetries} attempts to register DashboardView. Module initialization may be incomplete.", maxRetries);
-                        throw new InvalidOperationException("Failed to register DashboardView with MainRegion after all retry attempts", ex);
+                        Log.Error("Exhausted all {MaxRetries} attempts to load DashboardView. Module initialization may be incomplete.", maxRetries);
+                        throw new InvalidOperationException("Failed to load DashboardView into DashboardRegion after all retry attempts", ex);
                     }
                 }
             }
 
-            Log.Warning("MainRegion not found after {MaxRetries} attempts. DashboardView registration deferred.", maxRetries);
+            Log.Warning("DashboardRegion not found after {MaxRetries} attempts. DashboardView navigation deferred.", maxRetries);
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)

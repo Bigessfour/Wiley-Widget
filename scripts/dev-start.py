@@ -31,7 +31,7 @@ def cleanup_dotnet_processes():
                         processes.append((name, pid))
 
         if not processes:
-            print("✅ No orphaned .NET processes found")
+            print("[OK] No orphaned .NET processes found")
             return True
 
         print(f"Found {len(processes)} .NET-related process(es):")
@@ -44,10 +44,10 @@ def cleanup_dotnet_processes():
             try:
                 subprocess.run(['taskkill', '/PID', pid, '/F'],
                              capture_output=True, check=True)
-                print(f"✅ Killed {name} (PID: {pid})")
+                print(f"[OK] Killed {name} (PID: {pid})")
                 killed_count += 1
             except subprocess.CalledProcessError as e:
-                print(f"❌ Failed to kill {name} (PID: {pid}): {e}")
+                print(f"[ERROR] Failed to kill {name} (PID: {pid}): {e}")
 
         print(f"Cleaned up {killed_count} process(es)")
 
@@ -57,12 +57,12 @@ def cleanup_dotnet_processes():
             if os.path.exists(dir_name):
                 import shutil
                 shutil.rmtree(dir_name, ignore_errors=True)
-        print("✅ Temporary build files cleaned")
+        print("[OK] Temporary build files cleaned")
 
         return True
 
     except Exception as e:
-        print(f"❌ Error during cleanup: {e}")
+        print(f"[ERROR] Error during cleanup: {e}")
         return False
 
 def check_conflicts():
@@ -77,7 +77,7 @@ def check_conflicts():
         conflicts = [line for line in lines if line.strip() and 'WileyWidget.exe' in line]
 
         if conflicts:
-            print(f"⚠️  Found {len(conflicts)} WileyWidget process(es) still running")
+            print(f"[WARN] Found {len(conflicts)} WileyWidget process(es) still running")
             for conflict in conflicts:
                 parts = conflict.split(',')
                 if len(parts) >= 2:
@@ -93,16 +93,16 @@ def check_conflicts():
                         try:
                             subprocess.run(['taskkill', '/PID', pid, '/F'],
                                          capture_output=True, check=True)
-                            print(f"✅ Killed process (PID: {pid})")
+                            print(f"[OK] Killed process (PID: {pid})")
                         except subprocess.CalledProcessError as e:
-                            print(f"❌ Failed to kill process (PID: {pid}): {e}")
+                            print(f"[ERROR] Failed to kill process (PID: {pid}): {e}")
                 return True
 
-        print("✅ No conflicting processes found")
+        print("[OK] No conflicting processes found")
         return True
 
     except Exception as e:
-        print(f"❌ Error checking conflicts: {e}")
+        print(f"[ERROR] Error checking conflicts: {e}")
         return False
 
 def clean_build_artifacts():
@@ -114,14 +114,14 @@ def clean_build_artifacts():
                               capture_output=True, text=True, cwd=os.getcwd())
 
         if result.returncode == 0:
-            print("✅ Build artifacts cleaned")
+            print("[OK] Build artifacts cleaned")
             return True
         else:
-            print(f"⚠️  Clean failed: {result.stderr}")
+            print(f"[WARN] Clean failed: {result.stderr}")
             return False
 
     except Exception as e:
-        print(f"❌ Error cleaning build: {e}")
+        print(f"[ERROR] Error cleaning build: {e}")
         return False
 
 def lock_azure_performance():
@@ -131,13 +131,13 @@ def lock_azure_performance():
         result = subprocess.run(['pwsh', '-File', 'scripts/lock-azure-performance.ps1', '-SkipAuth'],
                               capture_output=True, text=True, cwd=os.getcwd())
         if result.returncode == 0:
-            print("✅ Azure performance enhancements locked")
+            print("[OK] Azure performance enhancements locked")
             return True
         else:
-            print(f"⚠️  Performance locking failed: {result.stderr}")
+            print(f"[WARN] Performance locking failed: {result.stderr}")
             return False
     except Exception as e:
-        print(f"❌ Error locking performance: {e}")
+        print(f"[ERROR] Error locking performance: {e}")
         return False
 
 def start_development(no_watch=False):
@@ -159,7 +159,7 @@ def start_development(no_watch=False):
         print("Development session interrupted")
         return True
     except Exception as e:
-        print(f"❌ Error starting development: {e}")
+        print(f"[ERROR] Error starting development: {e}")
         return False
 
 def main():
@@ -178,7 +178,7 @@ def main():
     # Step 1: Clean up orphaned processes
     print("Step 1: Cleaning up orphaned processes...")
     if not cleanup_dotnet_processes():
-        print("❌ Cleanup failed")
+        print("[ERROR] Cleanup failed")
         return 1
 
     if args.clean_only:
@@ -188,13 +188,13 @@ def main():
     # Step 2: Check for conflicts
     print("Step 2: Checking for conflicts...")
     if not check_conflicts():
-        print("❌ Conflict check failed")
+        print("[ERROR] Conflict check failed")
         return 1
 
     # Step 3: Clean build artifacts
     print("Step 3: Cleaning build artifacts...")
     if not clean_build_artifacts():
-        print("⚠️  Build clean failed, continuing...")
+        print("[WARN] Build clean failed, continuing...")
 
     # Step 3.5: Lock Azure performance
     print("Step 3.5: Locking Azure performance enhancements...")
@@ -203,7 +203,7 @@ def main():
     # Step 4: Start development
     print("Step 4: Starting development...")
     if not start_development(args.no_watch):
-        print("❌ Failed to start development")
+        print("[ERROR] Failed to start development")
         return 1
 
     print("Development session ended")

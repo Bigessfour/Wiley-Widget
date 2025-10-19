@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+    xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
         mc:Ignorable="d"
         d:DesignHeight="900"
         d:DesignWidth="1400"
@@ -12,11 +13,12 @@
         <syncfusion:Theme ThemeName="FluentDark" />
     </syncfusion:SfSkinManager.Theme>
 
-    <Grid x:Name="RootGrid" Background="#FF0F1826">
+    <Grid x:Name="RootGrid" Background="#FF0F1826" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="AnalyticsFocusAnchor">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Border x:Name="AnalyticsFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
 
         <!-- Header Controls -->
         <Border Grid.Row="0" Margin="16" Padding="16" Background="#66161F2D" CornerRadius="10">

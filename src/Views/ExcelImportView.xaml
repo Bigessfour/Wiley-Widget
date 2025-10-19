@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:WileyWidget.Views"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:converters="clr-namespace:WileyWidget"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              DataContext="{Binding ExcelImportViewModel}"
@@ -48,7 +49,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="20">
+    <Grid Margin="20" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="ExcelImportFocusAnchor">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -56,6 +57,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Border x:Name="ExcelImportFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">

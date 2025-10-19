@@ -4,17 +4,26 @@ from __future__ import annotations
 
 import uuid
 
-from System import Activator, Array, Object, Type  # type: ignore[attr-defined]
-from System.Reflection import Assembly, BindingFlags  # type: ignore[attr-defined]
+# Conditional imports for CLR types
+try:
+    from System import Activator, Array, Object, Type  # type: ignore[attr-defined]
+    from System.Reflection import Assembly, BindingFlags  # type: ignore[attr-defined]
+    HAS_SYSTEM = True
+except (ImportError, ModuleNotFoundError):
+    HAS_SYSTEM = False
 
 
 def load_assembly(assemblies_dir, name):
     """Load an assembly by name from the test assemblies folder."""
+    if not HAS_SYSTEM:
+        raise RuntimeError("CLR not available")
     return Assembly.LoadFrom(str(assemblies_dir / f"{name}.dll"))
 
 
 def get_type(assemblies_dir, assembly_name: str, type_name: str):
     """Return a System.Type from the given assembly."""
+    if not HAS_SYSTEM:
+        raise RuntimeError("CLR not available")
     assembly = load_assembly(assemblies_dir, assembly_name)
     target = assembly.GetType(type_name)
     if target is None:
@@ -24,6 +33,8 @@ def get_type(assemblies_dir, assembly_name: str, type_name: str):
 
 def create_inmemory_options(assemblies_dir, app_db_context_type, database_name: str | None = None):
     """Create DbContextOptions<AppDbContext> configured for EF InMemory."""
+    if not HAS_SYSTEM:
+        raise RuntimeError("CLR not available")
     db_name = database_name or f"pytests-{uuid.uuid4()}"
 
     ef_core = Assembly.Load("Microsoft.EntityFrameworkCore")
@@ -51,6 +62,8 @@ def create_inmemory_options(assemblies_dir, app_db_context_type, database_name: 
 
 def create_app_db_context(assemblies_dir, database_name: str | None = None) -> tuple[object, object, str]:
     """Instantiate AppDbContext configured with an in-memory provider."""
+    if not HAS_SYSTEM:
+        raise RuntimeError("CLR not available")
     data_type = get_type(assemblies_dir, "WileyWidget.Data", "AppDbContext")
     options, db_name = create_inmemory_options(assemblies_dir, data_type, database_name)
     context = Activator.CreateInstance(data_type, Array[Object]([options]))

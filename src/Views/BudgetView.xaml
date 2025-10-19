@@ -9,6 +9,7 @@
     xmlns:notification="http://schemas.syncfusion.com/wpf"
     xmlns:chart="http://schemas.syncfusion.com/wpf"
         xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+    xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
         mc:Ignorable="d"
         d:DesignHeight="900" d:DesignWidth="1200"
         Loaded="BudgetView_Loaded" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
@@ -63,13 +64,14 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid>
+    <Grid behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="BudgetFocusAnchor">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /><!-- Toolbar -->
             <RowDefinition Height="*" /><!-- Tree Grid -->
             <RowDefinition Height="Auto" /><!-- Total Calculator -->
             <RowDefinition Height="250" /><!-- Charts -->
         </Grid.RowDefinitions>
+        <Border x:Name="BudgetFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
 
         <!-- Top Toolbar with Import/Export/Add functionality -->
         <ToolBar Grid.Row="0" 

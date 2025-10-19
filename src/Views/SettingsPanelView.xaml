@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:WileyWidget"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:notification="http://schemas.syncfusion.com/wpf"
              mc:Ignorable="d"
@@ -13,7 +14,8 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
 
-    <DockPanel>
+    <DockPanel behaviors:MouseFocusBehavior.EnableOnClick="True"
+               behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <!-- Ribbon Toolbar -->
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="SettingsRibbon">
             <syncfusion:RibbonTab Caption="Settings">

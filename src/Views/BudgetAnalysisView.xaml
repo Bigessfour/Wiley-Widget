@@ -56,7 +56,9 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="20">
+    <Grid Margin="20" xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
+        behaviors:MouseFocusBehavior.EnableOnClick="True"
+        behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>

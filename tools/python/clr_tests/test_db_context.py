@@ -8,31 +8,37 @@ available.
 
 from __future__ import annotations
 
-import importlib.util
 from collections.abc import Generator
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-# Load the local helper module (defensive - do not raise at import time)
-_helper_path = Path(__file__).parent / "helpers" / "dotnet_utils.py"
-_dotnet_utils = None
-if _helper_path.exists():
-    _spec = importlib.util.spec_from_file_location("dotnet_utils", str(_helper_path))
-    if _spec and _spec.loader:
-        _dotnet_utils = importlib.util.module_from_spec(_spec)
-        _spec.loader.exec_module(_dotnet_utils)
-
-
-# Try to import pythonnet/CLR types; if unavailable we'll skip tests at runtime
+# Check for pythonnet availability
 try:
     import clr  # type: ignore[import-not-found]
+    HAS_PYTHONNET = True
+except (ImportError, RuntimeError, AttributeError):
+    HAS_PYTHONNET = False
+
+pytestmark = [
+    pytest.mark.clr,
+    pytest.mark.integration,
+    pytest.mark.skipif(not HAS_PYTHONNET, reason="pythonnet required for CLR tests"),
+]
+
+# Import CLR types only if available
+if HAS_PYTHONNET:
     from System import Activator, Array, Object  # type: ignore[attr-defined]
     from System.Linq import Enumerable  # type: ignore[attr-defined]
-except Exception:  # pragma: no cover - environment-specific
+else:
     clr = None  # type: ignore[assignment]
     Array = Activator = Object = Enumerable = None  # type: ignore[assignment]
+
+# Import helper using standard package import
+try:
+    from .helpers import dotnet_utils
+except ImportError:
+    dotnet_utils = None  # type: ignore[assignment]
 
 
 @pytest.fixture()
@@ -43,14 +49,17 @@ def app_db_context(clr_loader, ensure_assemblies_present, load_wileywidget_core)
     test environment.
     """
 
-    if clr is None or _dotnet_utils is None or Activator is None:
+    if clr is None or dotnet_utils is None or Activator is None:
         pytest.skip("pythonnet, dotnet helper, or required .NET types not available in this environment")
 
     # Ensure EF Core assemblies are available to pythonnet
-    clr_loader("Microsoft.EntityFrameworkCore")
-    clr_loader("Microsoft.EntityFrameworkCore.InMemory")
+    try:
+        clr_loader("Microsoft.EntityFrameworkCore")
+        clr_loader("Microsoft.EntityFrameworkCore.InMemory")
+    except Exception as exc:
+        pytest.skip(f"EF Core assemblies not available: {exc}")
 
-    context, context_type, db_name = _dotnet_utils.create_app_db_context(ensure_assemblies_present)
+    context, context_type, db_name = dotnet_utils.create_app_db_context(ensure_assemblies_present)
     try:
         yield context, context_type, db_name
     finally:
@@ -74,13 +83,13 @@ def test_smoke_query(app_db_context, ensure_assemblies_present):
     context, _, _ = app_db_context
     assemblies_dir = ensure_assemblies_present
 
-    if _dotnet_utils is None:
+    if dotnet_utils is None:
         pytest.skip("dotnet_utils not available in this environment")
 
     if Activator is None:
         pytest.skip("Activator not available in this environment")
 
-    customer_type = _dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
+    customer_type = dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
     customer = Activator.CreateInstance(customer_type)
     customer.AccountNumber = "SMOKE-1"
 
@@ -101,11 +110,11 @@ def test_add_multiple_customers(app_db_context, ensure_assemblies_present):
     context, _, _ = app_db_context
     assemblies_dir = ensure_assemblies_present
 
-    if _dotnet_utils is None or Activator is None:
+    if dotnet_utils is None or Activator is None:
         pytest.skip("dotnet_utils or Activator not available")
 
     # Create customer type
-    customer_type = _dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
+    customer_type = dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
 
     # Add three customers
     customers_set = context.UtilityCustomers
@@ -127,10 +136,10 @@ def test_customer_properties(app_db_context, ensure_assemblies_present):
     context, _, _ = app_db_context
     assemblies_dir = ensure_assemblies_present
 
-    if _dotnet_utils is None or Activator is None:
+    if dotnet_utils is None or Activator is None:
         pytest.skip("dotnet_utils or Activator not available")
 
-    customer_type = _dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
+    customer_type = dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
     customer = Activator.CreateInstance(customer_type)
 
     # Set properties
@@ -149,10 +158,10 @@ def test_context_savechanges(app_db_context, ensure_assemblies_present):
     context, _, _ = app_db_context
     assemblies_dir = ensure_assemblies_present
 
-    if _dotnet_utils is None or Activator is None:
+    if dotnet_utils is None or Activator is None:
         pytest.skip("dotnet_utils or Activator not available")
 
-    customer_type = _dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
+    customer_type = dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
     customer = Activator.CreateInstance(customer_type)
     customer.AccountNumber = "SAVE-TEST"
 
@@ -170,10 +179,10 @@ def test_query_filtering(app_db_context, ensure_assemblies_present):
     context, _, _ = app_db_context
     assemblies_dir = ensure_assemblies_present
 
-    if _dotnet_utils is None or Activator is None:
+    if dotnet_utils is None or Activator is None:
         pytest.skip("dotnet_utils or Activator not available")
 
-    customer_type = _dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
+    customer_type = dotnet_utils.get_type(assemblies_dir, "WileyWidget.Models", "WileyWidget.Models.UtilityCustomer")
 
     # Add two customers with different account numbers
     customers_set = context.UtilityCustomers

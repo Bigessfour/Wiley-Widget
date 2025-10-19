@@ -3,19 +3,46 @@
 from __future__ import annotations
 
 import pytest
-from System import (  # type: ignore[attr-defined]
-    Activator,
-    ArgumentException,  # type: ignore[attr-defined]
-    Array,
-    Object,
-)
 
+# Check for pythonnet and Prism availability
 try:
-    from Prism.Regions import Region, RegionManager  # type: ignore[attr-defined]
-except Exception as exc:  # pragma: no cover - environment guard
-    pytest.skip(f"Skipping Prism-backed tests: {exc}", allow_module_level=True)
+    import clr  # type: ignore[import-not-found]
+    HAS_PYTHONNET = True
+    try:
+        from Prism.Regions import Region, RegionManager  # type: ignore[attr-defined]
+        HAS_PRISM = True
+    except Exception:
+        HAS_PRISM = False
+except (ImportError, RuntimeError, AttributeError):
+    HAS_PYTHONNET = False
+    HAS_PRISM = False
 
-import pytest
+pytestmark = [
+    pytest.mark.clr,
+    pytest.mark.prism,
+    pytest.mark.skipif(not HAS_PYTHONNET, reason="pythonnet required for CLR tests"),
+    pytest.mark.skipif(not HAS_PRISM, reason="Prism assemblies required for Prism tests"),
+]
+
+# Import CLR types only if available
+if HAS_PYTHONNET:
+    from System import (  # type: ignore[attr-defined]
+        Activator,
+        ArgumentException,  # type: ignore[attr-defined]
+        Array,
+        Object,
+    )
+else:
+    Activator = None
+    ArgumentException = None
+    Array = None
+    Object = None
+
+if HAS_PRISM:
+    from Prism.Regions import Region, RegionManager  # type: ignore[attr-defined]
+else:
+    Region = None
+    RegionManager = None
 
 from .helpers import dotnet_utils
 

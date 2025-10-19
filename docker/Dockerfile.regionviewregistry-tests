@@ -5,36 +5,36 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
 # Install required dependencies for WPF testing
 RUN apt-get update && apt-get install -y \
-    libx11-6 \
-    libx11-xcb1 \
-    libxcb1 \
-    libxrender1 \
-    libxrandr2 \
-    libxi6 \
-    libxext6 \
-    libxfixes3 \
-    libxcursor1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libfontconfig1 \
-    libcairo2 \
-    libcups2 \
-    libdbus-1-3 \
-    libexpat1 \
-    libffi8 \
-    libgcc1 \
-    libglib2.0-0 \
-    libgpg-error0 \
-    libice6 \
-    libsm6 \
-    libpcre3 \
-    libstdc++6 \
-    libuuid1 \
-    libx11-xcb1 \
-    libxau6 \
-    libxcb1 \
-    libxdmcp6 \
-    zlib1g \
+    libx11-6=2:1.8.4-2+deb12u2 \
+    libx11-xcb1=2:1.8.4-2+deb12u2 \
+    libxcb1=1.15-1 \
+    libxrender1=1:0.9.10-1.1 \
+    libxrandr2=2:1.5.2-2+b1 \
+    libxi6=2:1.8-1+b1 \
+    libxext6=2:1.3.4-1+b1 \
+    libxfixes3=1:6.0.0-2 \
+    libxcursor1=1:1.2.1-1 \
+    libxcomposite1=1:0.4.5-1 \
+    libxdamage1=1:1.1.6-1 \
+    libfontconfig1=2.14.1-4 \
+    libcairo2=1.16.0-7 \
+    libcups2=2.4.2-3+deb12u5 \
+    libdbus-1-3=1.14.10-1~deb12u1 \
+    libexpat1=2.5.0-1 \
+    libffi8=3.4.4-1 \
+    libgcc1=1:12.2.0-14 \
+    libglib2.0-0=2.74.6-2 \
+    libgpg-error0=1.46-1 \
+    libice6=2:1.0.10-1 \
+    libsm6=2:1.2.3-1 \
+    libpcre3=2:8.39-15 \
+    libstdc++6=12.2.0-14 \
+    libuuid1=2.38.1-5+b1 \
+    libx11-xcb1=2:1.8.4-2+deb12u2 \
+    libxau6=1:1.0.9-1 \
+    libxcb1=1.15-1 \
+    libxdmcp6=1:1.1.3-1 \
+    zlib1g=1:1.2.13.dfsg-1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory

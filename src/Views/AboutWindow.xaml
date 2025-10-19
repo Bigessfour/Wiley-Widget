@@ -4,8 +4,11 @@
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
         xmlns:viewModels="clr-namespace:WileyWidget.ViewModels"
         xmlns:prism="http://prismlibrary.com/"
+    xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
         Title="About Wiley Widget" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize" Width="600" Height="500"
+    ResizeMode="NoResize" Width="600" Height="500"
+    behaviors:MouseFocusBehavior.EnableOnClick="True"
+    behaviors:MouseFocusBehavior.EnableOnFirstMove="True"
         prism:ViewModelLocator.AutoWireViewModel="True">
     <Window.Resources>
         <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource WileyHeaderStyle}" />

@@ -6,11 +6,11 @@ The Wiley Widget application now runs on a fully modernized startup pipeline tha
 
 ## 🚀 Executive Summary
 
-- ✅ **Generic Host everywhere** – `Program.Main` bootstraps Serilog, ensures STA threading, and defers all heavy work to `App.OnStartup`.
-- ✅ **Phased startup pipeline** – Splash screen + progress telemetry, host construction, StartupTaskRunner, and hosted services coordinate work without blocking the UI.
-- ✅ **Hosted WPF integration** – `HostedWpfApplication` creates the main window from DI, closes the splash on `ContentRendered`, and logs performance metrics.
-- ✅ **Background initialization** – `BackgroundInitializationService`, `ParallelStartupService`, and health checks run asynchronously after the UI is live.
-- ✅ **Instrumentation-first** – `WILEY_DEBUG_STARTUP=true` emits `logs/startup-*` diagnostics, with structured telemetry for every phase.
+- ✅ **Prism-first bootstrap** – `Program.Main` still bootstraps Serilog and STA, but all dependency wiring now flows through `App.RegisterTypes` (Unity container).
+- ✅ **Phased startup pipeline** – Splash screen + progress telemetry coordinate with Prism module initialization without blocking the UI thread.
+- ✅ **Shell initialization** – `MainWindow` is resolved directly from Prism, and splash closure happens on `ContentRendered` with timing metrics.
+- ✅ **Module-driven warm-up** – Prism modules and `ModuleHealthService` handle asynchronous warm-up work instead of Microsoft.Extensions.Hosting services.
+- ✅ **Instrumentation-first** – `WILEY_DEBUG_STARTUP=true` still emits `logs/startup-*` diagnostics with structured telemetry for every phase.
 
 The refactor is complete; ongoing work focuses on incremental performance tuning and optional telemetry expansion.
 
@@ -24,9 +24,9 @@ The following phases are implemented in `App.OnStartup` (see `src/App.xaml.cs`).
 |-------|----------|------------------|-----------|
 | Phase 0 | 0–15% | Debug instrumentation, global exception wiring, orphaned process cleanup | `App.InitializeDebugInstrumentation`, `ConfigureGlobalExceptionHandling` |
 | Phase 1 | 15–25% | Splash screen creation and attachment to progress reporter | `SplashScreenWindow`, `StartupProgressService` |
-| Phase 2 | 25–75% | Host builder, configuration hierarchy, Serilog takeover, DI registrations, startup task pipeline | `Host.CreateApplicationBuilder`, `WpfHostingExtensions`, `StartupTaskRunner` |
-| Phase 3 | 80–95% | Host start, `HostedWpfApplication` shows `MainWindow`, splash fades on `ContentRendered` | `HostedWpfApplication`, `ViewManager` |
-| Phase 4 | 95–100% | Prism `base.OnStartup`, background services kick in, startup telemetry recorded | `PrismApplication.OnStartup`, `BackgroundInitializationService`, `HealthCheckHostedService` |
+| Phase 2 | 25–75% | Prism container registration, configuration loading, module catalog population | `App.RegisterTypes`, `App.ConfigureModuleCatalog`, `ModuleCatalog` |
+| Phase 3 | 80–95% | Prism resolves `MainWindow`, splash fades on `ContentRendered`, telemetry checkpoints recorded | `MainWindow`, `StartupProgressService` |
+| Phase 4 | 95–100% | Prism `base.OnStartup`, module post-initialization tasks, startup telemetry recorded | `PrismApplication.OnStartup`, `ModuleHealthService`, `StartupProgressService` |
 
 The progress reporter also feeds automated logs, enabling regression detection when a phase slows down.
 
@@ -37,15 +37,13 @@ The progress reporter also feeds automated logs, enabling regression detection w
 | Area | Purpose | Highlights |
 |------|---------|------------|
 | `Program.cs` | Entry point | STA enforced, Serilog bootstrap logger, optional `testmain` harness for UI smoke tests. |
-| `App.xaml.cs` | Startup orchestrator | Progress tracking, host creation, .env loading, splash coordination, startup timing logs, Prism integration. |
-| `Configuration/WpfHostingExtensions.cs` | Host composition | Central location for configuration sources, Serilog setup, hosted services, DbContext factory registration, Options binding, HttpClient policies. |
-| `Services/Startup/*.cs` + `StartupTaskRunner` | Deterministic early work | Syncfusion license, settings hydration, diagnostics snapshot executed before host start with DI scopes and cancellation support. |
-| `Services/HostedWpfApplication.cs` | WPF + host bridge | Creates `MainWindow`, ties into `IHostApplicationLifetime`, tracks warm vs cold startups, and closes the splash. |
-| `Services/BackgroundInitializationService.cs` & friends | Async follow-up | Database validation, health check activation, telemetry warm-up without blocking UI thread. |
-| `Services/ParallelStartupService.cs` | Performance optimization | Concurrent background operations guarded by semaphores and comprehensive logging. |
+| `App.xaml.cs` | Startup orchestrator | Progress tracking, .env loading, Unity registration via `RegisterTypes`, module catalog configuration, splash coordination. |
+| `Startup/Modules/*.cs` | Feature composition | Each module registers its views, navigation, and services directly with Prism's Unity container. |
+| `Services/ModuleHealthService.cs` | Module monitoring | Tracks initialization health, logs success/failure, and feeds telemetry. |
 | `Services/StartupProgressService.cs` | UX feedback | Single source of truth for splash screen progress and completion messaging. |
+| `Services/PrismErrorHandler.cs` | Centralized error handling | Surfaces container resolution failures and routes to Serilog + user dialogs. |
 
-All of the above are covered by the service validation hosted service (`ServiceProviderValidationHostedService`) that runs immediately after the host is built.
+All of the above are validated via Prism diagnostics (`ModuleHealthService`, `UnityDebugExtension`) immediately after the container is ready.
 
 ---
 
@@ -95,12 +93,12 @@ Follow this flow for day-to-day development. All commands assume a PowerShell se
 |------|---------------|--------------|
 | Startup instrumentation | `setx WILEY_DEBUG_STARTUP true` (persist) or `$env:WILEY_DEBUG_STARTUP = "true"` (session) | Detailed `logs/startup-debug.log` with phase timings, assembly loads, and configuration decisions. |
 | Splash analytics | Automatic | `StartupProgressService` logs every progress update via Serilog using the `StartupProgressService` context. |
-| Host health | Always on | `HealthCheckHostedService` updates `App.LatestHealthReport`; expose in UI dashboards or telemetry as needed. |
+| Module health | Always on | `ModuleHealthService` emits initialization status for each module; surface in dashboards as needed. |
 | Self-log | Automatic | `logs/serilog-selflog.txt` captures sink misconfiguration without crashing the app. |
 | Startup timing regression | `scripts/profile-startup.ps1` outputs CSV + Markdown summary under `logs/profile/`. |
 | Debug cleanup | `python scripts/dev-start.py --clean-only` prior to profiling ensures consistent baselines. |
 
-For production telemetry, hook `ApplicationInsights:ConnectionString` in `appsettings.*.json`; `WpfHostingExtensions` already wires telemetry services when a connection string is present.
+For production telemetry, set `ApplicationInsights:ConnectionString` in `appsettings.*.json`; Prism registrations in `App.RegisterTypes` pick up telemetry services when configured.
 
 ---
 

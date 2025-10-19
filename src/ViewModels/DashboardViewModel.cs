@@ -403,7 +403,7 @@ namespace WileyWidget.ViewModels
     public DelegateCommand NavigateBackCommand { get; private set; }
     public DelegateCommand NavigateForwardCommand { get; private set; }
     public DelegateCommand OpenEnterpriseManagementCommand { get; private set; }
-    public DelegateCommand<int> RunGrowthScenarioCommand { get; private set; }
+    public DelegateCommand<object> RunGrowthScenarioCommand { get; private set; }
 
     public DashboardViewModel(
         ILogger<DashboardViewModel> logger,
@@ -459,11 +459,11 @@ namespace WileyWidget.ViewModels
         NavigateBackCommand = new DelegateCommand(ExecuteNavigateBack, () => CanNavigateBack);
         NavigateForwardCommand = new DelegateCommand(ExecuteNavigateForward, () => CanNavigateForward);
         OpenEnterpriseManagementCommand = new DelegateCommand(ExecuteOpenEnterpriseManagement);
-        RunGrowthScenarioCommand = new DelegateCommand<int>(async (id) => await ExecuteRunGrowthScenarioAsync(id), (id) => !IsScenarioRunning);
+        RunGrowthScenarioCommand = new DelegateCommand<object>(async (param) => await ExecuteRunGrowthScenarioAsync(Convert.ToInt32(param)), (param) => !IsScenarioRunning);
     }
 
-    private bool CanNavigateBack => _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoBack;
-    private bool CanNavigateForward => _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoForward;
+    private bool CanNavigateBack => _regionManager.Regions.ContainsRegionWithName("MainRegion") && _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoBack;
+    private bool CanNavigateForward => _regionManager.Regions.ContainsRegionWithName("MainRegion") && _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoForward;
 
     private void SetupAutoRefreshTimer()
     {

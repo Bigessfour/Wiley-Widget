@@ -3,9 +3,22 @@
 from __future__ import annotations
 
 import pytest
-from System import Activator, Array, Object  # type: ignore[attr-defined]
+
+# Conditional imports for CLR types
+try:
+    from System import Activator, Array, Object  # type: ignore[attr-defined]
+    from System.Reflection import Assembly  # type: ignore[attr-defined]
+    HAS_SYSTEM = True
+except (ImportError, ModuleNotFoundError):
+    HAS_SYSTEM = False
 
 from .helpers import dotnet_utils
+
+pytestmark = [
+    pytest.mark.clr,
+    pytest.mark.integration,
+    pytest.mark.skipif(not HAS_SYSTEM, reason="pythonnet required for CLR tests"),
+]
 
 
 def _await(task):
@@ -20,8 +33,6 @@ def _create_repository(assemblies_dir, database_name: str | None = None):
     factory = Activator.CreateInstance(factory_type, Array[Object]([options]))
 
     repo_type = dotnet_utils.get_type(assemblies_dir, "WileyWidget.Data", "WileyWidget.Data.EnterpriseRepository")
-
-    from System.Reflection import Assembly  # type: ignore[attr-defined]
 
     logging = Assembly.Load("Microsoft.Extensions.Logging.Abstractions")
     null_factory_type = logging.GetType("Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory")

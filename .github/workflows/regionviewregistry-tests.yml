@@ -55,9 +55,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
+    - name: Build MCP CI image
+      run: docker build -f docker/Dockerfile.mcp-ci -t wiley-mcp-ci .
+
     - name: Build test image
       run: |
         docker build \
@@ -78,8 +86,7 @@ jobs:
     - name: Register MCP Tools
       run: |
         sleep 5
-        # Assuming mcp client is available or we use curl for testing
-        curl -X GET http://localhost:8080/health
+        node scripts/mcp-client.js client register-tool --url http://localhost:8080/ --manifest ci-tools.json
     
     - name: Run .NET Tests
       run: dotnet test WileyWidget.sln
@@ -89,15 +96,8 @@ jobs:
     
     - name: AI Diagnostic with MCP
       run: |
-        # Call MCP tools for diagnostics
-        curl -X POST http://localhost:8080/tools/get_build_logs \
-          -H "Content-Type: application/json" \
-          -d "{\"sha\": \"${{ github.sha }}\"}"
-        
-        # Analyze XAML for Syncfusion issues
-        curl -X POST http://localhost:8080/tools/analyze_xaml \
-          -H "Content-Type: application/json" \
-          -d "{\"path\": \".\"}"
+        node scripts/mcp-client.js client call --url http://localhost:8080/ --tool-id get_build_logs --params '{"sha": "${{ github.sha }}"}'
+        node scripts/mcp-client.js client call --url http://localhost:8080/ --tool-id analyze_xaml --params '{"path": "."}'
     
     - name: Upload Docker test results
       uses: actions/upload-artifact@v4
@@ -106,4 +106,8 @@ jobs:
         name: regionviewregistry-docker-results
         path: ${{ env.TEST_RESULTS_PATH }}
         retention-days: 30
+
+    - name: Stop MCP Server
+      if: always()
+      run: docker rm -f wiley-mcp-ci
 

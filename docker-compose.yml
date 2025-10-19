@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  github-mcp:
+    image: mcp/github:latest
+    command: ["--transport", "sse"]
+    read_only: true
+    tmpfs: ["/tmp:rw,size=64m"]
+    networks: ["mcp_net"]
+    ports: ["8000:8000"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges"]
+    mem_limit: 512m
+    pids_limit: 128
+    secrets:
+      - github_token
+    environment:
+      GITHUB_PERSONAL_ACCESS_TOKEN_FILE: /run/secrets/github_token
+  filesystem-mcp:
+    image: mcp/filesystem:latest
+    command: ["--transport=sse", "/workspace"]
+    read_only: true
+    tmpfs: ["/tmp:rw,size=64m"]
+    networks: ["mcp_net"]
+    ports: ["8001:8000"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges"]
+    mem_limit: 512m
+    pids_limit: 128
+    volumes:
+      - .:/workspace:rw  # Mount Wiley-Widget repo
+networks:
+  mcp_net:
+    driver: bridge
+secrets:
+  github_token:
+    file: ./secrets/github_token

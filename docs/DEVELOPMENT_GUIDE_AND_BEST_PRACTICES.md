@@ -259,11 +259,7 @@ protected override async void OnStartup(StartupEventArgs e)
     ConfigureGlobalExceptionHandling();
     StartupProgress.Report(5, "Initializing application...", true);
 
-    var hostBuilder = Host.CreateApplicationBuilder();
-    hostBuilder.ConfigureWpfApplication();
-    _host = hostBuilder.Build();
-
-    await _host.StartAsync();
+    await Container.Resolve<IModuleHealthService>().WarmupAsync();
     base.OnStartup(e);
 }
 

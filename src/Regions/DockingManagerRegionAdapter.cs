@@ -50,6 +50,24 @@ public class DockingManagerRegionAdapter : RegionAdapterBase<DockingManager>
                         if (contentControl is System.Windows.Controls.ContentControl cc)
                         {
                             cc.Content = view;
+                            // Make the newly added view the active one
+                            if (!region.ActiveViews.Contains(view))
+                            {
+                                region.Activate(view);
+                            }
+
+                            // If the host is a DockingManager document, bring it to front
+                            try
+                            {
+                                if (cc is FrameworkElement fe && !string.IsNullOrEmpty(fe.Name))
+                                {
+                                    regionTarget.ActivateWindow(fe.Name);
+                                }
+                            }
+                            catch
+                            {
+                                // Best-effort activation; ignore failures
+                            }
                         }
                     }
                     break;

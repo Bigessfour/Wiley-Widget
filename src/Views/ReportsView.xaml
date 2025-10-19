@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:prism="http://prismlibrary.com/"
@@ -12,11 +13,14 @@
              Width="1200"
              FontFamily="Segoe UI">
 
-    <Grid Background="#FF0F1724">
+    <Grid Background="#FF0F1724" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="ReportsFocusAnchor"
+        behaviors:MouseFocusBehavior.EnableOnClick="True"
+        behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Border x:Name="ReportsFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
 
         <Border Grid.Row="0" Margin="16" Padding="16" Background="#661C283A" CornerRadius="12">
             <Grid>

@@ -7,6 +7,7 @@
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
         xmlns:syncProgress="clr-namespace:Syncfusion.UI.Xaml.ProgressBar;assembly=Syncfusion.SfProgressBar.WPF"
         xmlns:syncfusionskin ="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+    xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
         mc:Ignorable="d"
         Title="Wiley Widget"
         Height="400"
@@ -21,7 +22,9 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         RenderOptions.EdgeMode="Aliased"
-        RenderOptions.BitmapScalingMode="HighQuality" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+    RenderOptions.BitmapScalingMode="HighQuality" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True"
+    behaviors:MouseFocusBehavior.EnableOnClick="True"
+    behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
     <Window.Resources>
         <!-- Smooth progress transition with enhanced easing -->
         <Storyboard x:Key="ProgressTransition">

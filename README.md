@@ -512,27 +512,28 @@ WileyWidget leverages the **Prism framework** for building modular, maintainable
 ### Prism Configuration
 
 ```csharp
-// Program.cs - Application Entry Point
-var builder = Host.CreateApplicationBuilder(args);
+// App.xaml.cs - Prism owns dependency injection via Unity
+using Prism.Ioc;
+using Prism.Modularity;
+using Prism.Unity;
 
-// Configure Prism with Unity
-builder.Services.AddPrismSetup(options =>
+public class App : PrismApplication
 {
-    options.UseUnityContainer();
-    options.RegisterTypes = containerRegistry =>
-    {
-        // Register services and ViewModels
-        containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
-        containerRegistry.RegisterSingleton<IDialogService, DialogService>();
-    };
-    options.ConfigureModuleCatalog = moduleCatalog =>
-    {
-        // Register application modules
-        moduleCatalog.AddModule<DashboardModule>();
-        moduleCatalog.AddModule<BudgetModule>();
-        // ... other modules
-    };
-});
+   protected override void RegisterTypes(IContainerRegistry containerRegistry)
+   {
+      // Register services and ViewModels here
+      containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
+      containerRegistry.RegisterSingleton<IDialogService, DialogService>();
+   }
+
+   protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
+   {
+      // Register application modules
+      moduleCatalog.AddModule<DashboardModule>();
+      moduleCatalog.AddModule<BudgetModule>();
+      // ... other modules
+   }
+}
 ```
 
 ---

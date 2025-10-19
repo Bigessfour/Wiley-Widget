@@ -19,6 +19,23 @@ try {
 catch { Write-Warning "Failed to create MSBuildDebug marker: $_" }
 Write-Host "MSBuild logs will be written to $env:MSBUILDDEBUGPATH"
 
+# Load environment variables before any build operations
+Write-Host '== Load Environment Variables ==' -ForegroundColor Cyan
+$loadEnvScript = Join-Path $PSScriptRoot 'load-env.ps1'
+if (Test-Path $loadEnvScript) {
+    try {
+        & $loadEnvScript
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Environment loading completed with warnings"
+        }
+    }
+    catch {
+        Write-Warning "Failed to load environment variables: $_"
+    }
+} else {
+    Write-Warning "load-env.ps1 script not found at $loadEnvScript"
+}
+
 Write-Host '== Pre-clean (terminate lingering UI/test processes & remove stale dirs) =='
 foreach ($name in 'WileyWidget', 'testhost', 'vstest.console') {
     try { Get-Process -Name $name -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Stopping $($_.ProcessName) (pid=$($_.Id))"; $_ | Stop-Process -Force -ErrorAction SilentlyContinue } } catch { }

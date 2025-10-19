@@ -1,39 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
-    <UseWPF>true</UseWPF>
+    <NoBuild>true</NoBuild>
+    <Description>Retired test project. Prism is the only supported dependency injection surface.</Description>
   </PropertyGroup>
-
-  <ItemGroup>
-  <PackageReference Include="Microsoft.NET.Test.Sdk" />
-  <PackageReference Include="xunit" />
-  <PackageReference Include="xunit.runner.visualstudio">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  <PackageReference Include="coverlet.collector">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  <PackageReference Include="FluentAssertions" />
-  <PackageReference Include="Moq" />
-    <PackageReference Include="Prism.Unity" />
-    <PackageReference Include="Prism.Wpf" />
-    <PackageReference Include="Unity.Container" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\WileyWidget.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Copy test configuration files to output -->
-    <None Include="testappsettings.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
 </Project>

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
@@ -25,7 +26,9 @@
         </ObjectDataProvider>
     </UserControl.Resources>
 
-    <Grid Background="#FF0F1724" syncfusionskin:SfSkinManager.VisualStyle="FluentDark">
+    <Grid Background="#FF0F1724" syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
+        behaviors:MouseFocusBehavior.EnableOnClick="True"
+        behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <DockPanel>
             <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="AccountsRibbon">
                 <syncfusion:RibbonTab Caption="Accounts">
@@ -117,4 +120,3 @@
         </DockPanel>
     </Grid>
 </UserControl>
-

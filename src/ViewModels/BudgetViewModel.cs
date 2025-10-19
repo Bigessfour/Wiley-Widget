@@ -27,7 +27,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
     private readonly IEnterpriseRepository _enterpriseRepository;
     private readonly IBudgetRepository _budgetRepository;
     private readonly IEventAggregator? _eventAggregator;
-    private readonly IThemeManager _themeManager;
+    // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles theming globally
     private readonly DispatcherTimer _refreshTimer;
     private bool _disposed;
 
@@ -368,14 +368,13 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
     /// Constructor with dependency injection
     /// Subscribes to enterprise change messages for automatic refresh
     /// </summary>
-    public BudgetViewModel(IEnterpriseRepository enterpriseRepository, IBudgetRepository budgetRepository, IEventAggregator eventAggregator, IThemeManager? themeManager = null)
+    public BudgetViewModel(IEnterpriseRepository enterpriseRepository, IBudgetRepository budgetRepository, IEventAggregator eventAggregator)
     {
         _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
         _budgetRepository = budgetRepository;
         _eventAggregator = eventAggregator;
-        _themeManager = themeManager ?? new ThemeManager();
-        _themeManager.ThemeChanged += OnThemeChanged;
-        Log.Debug("BudgetViewModel initialized with theme {Theme}", _themeManager.CurrentTheme);
+        // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles all theming globally
+        Log.Debug("BudgetViewModel initialized");
 
         // Initialize live update timer (refresh every 5 minutes)
         _refreshTimer = new DispatcherTimer
@@ -708,16 +707,14 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
 
     #endregion
 
-    public BudgetViewModel(IEnterpriseRepository enterpriseRepository, IBudgetRepository budgetRepository, IEventAggregator eventAggregator)
-        : this(enterpriseRepository, budgetRepository, eventAggregator, null)
-    {
-    }
+    // NOTE: Overload constructors removed - ThemeManager parameter no longer needed
+    // Use primary constructor with 3 parameters only
 
     /// <summary>
     /// Constructor with dependency injection (original signature for backward compatibility)
     /// </summary>
     public BudgetViewModel(IEnterpriseRepository enterpriseRepository) 
-        : this(enterpriseRepository, null!, null!, null!)
+        : this(enterpriseRepository, null!, null!)
     {
         // Fallback constructor - budget repository and event aggregator will be null
         // This maintains compatibility with existing tests
@@ -988,7 +985,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
                 BudgetDetails.CollectionChanged -= OnBudgetDetailsChanged;
                 BudgetAccounts.CollectionChanged -= OnBudgetAccountsChanged;
                 // Prism EventAggregator subscriptions are automatically cleaned up
-                _themeManager.ThemeChanged -= OnThemeChanged;
+                // NOTE: ThemeManager event unsubscription removed
                 Log.Debug("BudgetViewModel disposed");
             }
             _disposed = true;

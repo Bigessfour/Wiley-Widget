@@ -48,6 +48,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
     <PackageReference Include="Prism.Core" />
     <PackageReference Include="Prism.Unity" />
     <PackageReference Include="Prism.Wpf" />
@@ -106,8 +107,6 @@
     <PackageReference Include="OpenAI" />
     <PackageReference Include="Microsoft.SemanticKernel" />
     <!-- Azure Configuration Packages -->
-    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" />
-    <PackageReference Include="Azure.Identity" />
   <!-- No external QuickBooks SDK yet; using raw HTTP + PKCE. Add Intuit packages later if desired. -->
   <!-- QuickBooks SDK packages (Step 2) - modern package IDs differ from older docs -->
     <PackageReference Include="IppOAuth2PlatformSdk" />
@@ -166,7 +165,11 @@
   <None Remove="temp-grant\**" />
   </ItemGroup>
 
-  <!-- PNG splash screen removed; using XAML-based splash only -->
+  <ItemGroup>
+    <Content Include="src\Resources\SplashScreen.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <!-- Ensure configuration files are copied to output directory -->
   <ItemGroup>

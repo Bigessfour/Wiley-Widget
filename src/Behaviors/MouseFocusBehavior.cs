@@ -1,0 +1,84 @@
+using System;
+using System.Windows;
+using System.Windows.Input;
+
+namespace WileyWidget.Behaviors
+{
+    /// <summary>
+    /// Sets keyboard focus to the element on mouse interaction.
+    /// - OnClick: focus on left mouse button down
+    /// - OnFirstMove: optional; focus on first mouse move after load to prime input without stealing focus repeatedly.
+    /// Based on Microsoft WPF focus guidance: use Keyboard.Focus and respect focus scopes.
+    /// </summary>
+    public static class MouseFocusBehavior
+    {
+        public static readonly DependencyProperty EnableOnClickProperty = DependencyProperty.RegisterAttached(
+            "EnableOnClick",
+            typeof(bool),
+            typeof(MouseFocusBehavior),
+            new PropertyMetadata(false, OnEnableOnClickChanged));
+
+        public static void SetEnableOnClick(DependencyObject element, bool value) => element.SetValue(EnableOnClickProperty, value);
+        public static bool GetEnableOnClick(DependencyObject element) => (bool)element.GetValue(EnableOnClickProperty);
+
+        public static readonly DependencyProperty EnableOnFirstMoveProperty = DependencyProperty.RegisterAttached(
+            "EnableOnFirstMove",
+            typeof(bool),
+            typeof(MouseFocusBehavior),
+            new PropertyMetadata(false, OnEnableOnFirstMoveChanged));
+
+        public static void SetEnableOnFirstMove(DependencyObject element, bool value) => element.SetValue(EnableOnFirstMoveProperty, value);
+        public static bool GetEnableOnFirstMove(DependencyObject element) => (bool)element.GetValue(EnableOnFirstMoveProperty);
+
+        private static void OnEnableOnClickChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is UIElement ui)
+            {
+                if ((bool)e.NewValue)
+                {
+                    ui.PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
+                }
+                else
+                {
+                    ui.PreviewMouseLeftButtonDown -= OnPreviewMouseLeftButtonDown;
+                }
+            }
+        }
+
+        private static void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is IInputElement input)
+            {
+                Keyboard.Focus(input);
+            }
+        }
+
+        private static void OnEnableOnFirstMoveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is UIElement ui)
+            {
+                if ((bool)e.NewValue)
+                {
+                    ui.Loaded += OnLoadedAttachMove;
+                }
+                else
+                {
+                    ui.Loaded -= OnLoadedAttachMove;
+                }
+            }
+        }
+
+        private static void OnLoadedAttachMove(object? sender, RoutedEventArgs e)
+        {
+            if (sender is UIElement ui)
+            {
+                void handler(object? s, MouseEventArgs args)
+                {
+                    ui.MouseMove -= handler;
+                    Keyboard.Focus(ui);
+                }
+                ui.MouseMove += handler;
+            }
+        }
+    }
+}

@@ -17,8 +17,8 @@ public partial class AboutWindow : Window
         ViewModels.AboutViewModel? viewModel = null;
         try
         {
-            var provider = App.GetActiveServiceProvider();
-            viewModel = provider.GetService(typeof(ViewModels.AboutViewModel)) as ViewModels.AboutViewModel;
+            var containerProvider = App.GetContainerProvider();
+            viewModel = containerProvider.Resolve<ViewModels.AboutViewModel>();
         }
         catch (InvalidOperationException)
         {

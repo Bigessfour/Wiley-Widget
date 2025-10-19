@@ -3,10 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              mc:Ignorable="d"
              d:DesignHeight="200" d:DesignWidth="400"
-             syncfusionskin:SfSkinManager.VisualStyle="FluentDark">
+             syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
+             behaviors:MouseFocusBehavior.EnableOnClick="True"
+             behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

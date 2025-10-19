@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
@@ -56,12 +57,13 @@
             <Setter Property="Fill" Value="#FF4ADE80" />
         </Style>
 
-    </UserControl.Resources>    <Grid Background="#FF0F1724">
+    </UserControl.Resources>    <Grid Background="#FF0F1724" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="MunicipalFocusAnchor">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+        <Border x:Name="MunicipalFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
         
         <!-- Top Navigation and Command Bar -->
         <Grid Grid.Row="0" Background="#FF1A2C41">

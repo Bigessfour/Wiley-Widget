@@ -25,7 +25,7 @@ def _has_pythonnet() -> bool:
     try:
         import clr  # type: ignore[import-not-found] # noqa: F401
         return True
-    except ImportError:
+    except (ImportError, RuntimeError, AttributeError):
         return False
 
 
@@ -48,7 +48,7 @@ def _ensure_pythonnet():
     """Ensure pythonnet is available or skip tests."""
     try:
         import clr  # type: ignore[import-not-found]
-    except ImportError as exc:  # pragma: no cover - infrastructure guard
+    except (ImportError, RuntimeError, AttributeError) as exc:  # pragma: no cover - infrastructure guard
         pytest.skip(f"pythonnet is required for CLR integration: {exc}")
     return clr  # type: ignore[return-value]
 

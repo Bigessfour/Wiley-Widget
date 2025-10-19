@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:WileyWidget"
              xmlns:views="clr-namespace:WileyWidget.Views"
              xmlns:converters="clr-namespace:WileyWidget.Converters"
+             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:notification="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
@@ -68,7 +69,8 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid>
+    <Grid behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="EnterpriseFocusAnchor">
+        <Border x:Name="EnterpriseFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
     <DockPanel>
         <!-- Ribbon Toolbar -->
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="EnterpriseRibbon">
