@@ -6,6 +6,7 @@
              xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:models="clr-namespace:WileyWidget.Models;assembly=WileyWidget.Models"
@@ -57,7 +58,9 @@
             <Setter Property="Fill" Value="#FF4ADE80" />
         </Style>
 
-    </UserControl.Resources>    <Grid Background="#FF0F1724" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="MunicipalFocusAnchor">
+    </UserControl.Resources>
+    <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03">
+    <Grid Background="#FF0F1724" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="MunicipalFocusAnchor">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -753,4 +756,5 @@
         </Border>
         
     </Grid>
+    </darkTheme:SfAcrylicPanel>
 </UserControl>

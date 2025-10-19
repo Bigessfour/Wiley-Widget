@@ -9,8 +9,7 @@
       "editor.lineHighlightBackground": "#1e1e2e",
       "editor.selectionBackground": "#264f78",
       "editor.inactiveSelectionBackground": "#3a3d4100",
-      "editorSuggestWidget.foreground": "#CCCCCC",
-      "copilotEditor.background": "#1E1E2E"
+  "editorSuggestWidget.foreground": "#CCCCCC"
     }
   },
   "editor.tokenColorCustomizations": {
@@ -138,13 +137,15 @@
 
   // Enhanced context for C# development
   "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
-  "omnisharp.enableEditorConfigSupport": true,
-  "omnisharp.enableRoslynAnalyzers": true,
+  // Prefer C# Dev Kit; disable OmniSharp to avoid duplicate IntelliSense
+  "omnisharp.enableEditorConfigSupport": false,
+  "omnisharp.enableRoslynAnalyzers": false,
 
   // SQL Server Extension Settings (ms-mssql.mssql) - Migrated to local development
   // Removed: Azure SQL connections deprecated with Azure Account retirement Jan 2025
   "mssql.connections": [
     {
+      "id": "8b8f4b8e-9c92-4e9a-9e3f-5c2a6f0f7f31",
       "server": "(localdb)\\mssqllocaldb",
       "database": "WileyWidgetDb",
       "authenticationType": "Integrated"
@@ -228,6 +229,10 @@
   "git.autorefresh": false,
   "workbench.editor.wrapWord": "on",
 
+  // Pin SDK and solution for C# Dev Kit
+  "dotnet.defaultSolution": "WileyWidget.sln",
+  "dotnet.defaultSdkVersion": "9.0.305",
+
   // Python Configuration
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
   "python.terminal.activateEnvironment": true,
@@ -236,18 +241,21 @@
   "python.linting.flake8Enabled": false,
   "python.formatting.provider": "black",
   "python.formatting.blackArgs": ["--line-length", "120"],
+  "python.analysis.logLevel": "Error",
   // Exclude common generated and environment folders from analysis to avoid third-party package lint noise
   "files.exclude": {
     "**/.venv/**": true,
     "**/%APPDATA%/**": true,
-    "**/node_modules/**": true
+    "**/node_modules/**": true,
+    "**/*_wpftmp.csproj": true
   },
-  "python.analysis.logLevel": "Error",
-  "python.analysis.extraPaths": ["${workspaceFolder}/scripts"],
+  // Hide wpftmp in search
+  "search.exclude": {
+    "**/*_wpftmp.csproj": true
+  },
 
-  // Testing Configuration
+  // Testing Configuration (applies to Python, C#, and general VS Code test explorer)
   "testing.autoRun.mode": "rerun",
-  "testing.openTesting": "openOnTestStart",
   "testing.defaultGutterClickAction": "run",
   "testing.gutterEnabled": true,
   "testing.countBadge": "failed",

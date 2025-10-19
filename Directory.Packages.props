@@ -32,7 +32,7 @@
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.77.0" />
     <PackageVersion Include="Microsoft.Graph" Version="5.67.0" />
     <PackageVersion Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
-    <!-- Serilog -->
+  <!-- Serilog -->
     <PackageVersion Include="Serilog" Version="4.3.0" />
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
@@ -40,6 +40,8 @@
     <PackageVersion Include="Serilog.Settings.Configuration" Version="9.0.0" />
     <PackageVersion Include="Serilog.Sinks.Async" Version="2.1.0" />
     <PackageVersion Include="Serilog.Sinks.Email" Version="4.1.0" />
+    <!-- IMPORTANT: Intuit.Ipp.OAuth2PlatformClient.Diagnostics uses the overload with FileLifecycleHooks introduced in newer
+      Serilog.Sinks.File versions. We pin to 7.0.0 to ensure the required API exists and avoid MissingMethodException. -->
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <!-- Syncfusion WPF -->
     <PackageVersion Include="Syncfusion.Licensing" Version="31.2.2" />

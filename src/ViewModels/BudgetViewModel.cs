@@ -490,7 +490,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
             }
 
             // Use Task.Run for async data loading to avoid UI thread blocking
-            var budgets = await Task.Run(() => _budgetRepository.GetBudgetHierarchyAsync(fiscalYear));
+            var budgets = await _budgetRepository.GetBudgetHierarchyAsync(fiscalYear);
 
             // Update UI on dispatcher thread
             Application.Current?.Dispatcher.Invoke(() =>
@@ -578,27 +578,25 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
             IsBusy = true;
             ProgressText = "Saving budget changes...";
 
-            // Save logic here (update repository)
-            await Task.Run(async () =>
+            // Save logic here (update repository). Await repository async methods directly
+            foreach (var account in BudgetAccounts)
             {
-                foreach (var account in BudgetAccounts)
+                // Convert back to BudgetEntry and update
+                var entry = new BudgetEntry
                 {
-                    // Convert back to BudgetEntry and update
-                    var entry = new BudgetEntry
-                    {
-                        Id = account.Id,
-                        AccountNumber = account.AccountNumber,
-                        Description = account.Description,
-                        FundType = Enum.TryParse<WileyWidget.Models.Entities.FundType>(account.FundType, out var fundType) 
-                            ? fundType 
-                            : WileyWidget.Models.Entities.FundType.GeneralFund,
-                        BudgetedAmount = account.BudgetAmount,
-                        ActualAmount = account.ActualAmount,
-                        ParentId = account.ParentId == -1 ? null : account.ParentId
-                    };
-                    await _budgetRepository.UpdateAsync(entry);
-                }
-            });
+                    Id = account.Id,
+                    AccountNumber = account.AccountNumber,
+                    Description = account.Description,
+                    FundType = Enum.TryParse<WileyWidget.Models.Entities.FundType>(account.FundType, out var fundType) 
+                        ? fundType 
+                        : WileyWidget.Models.Entities.FundType.GeneralFund,
+                    BudgetedAmount = account.BudgetAmount,
+                    ActualAmount = account.ActualAmount,
+                    ParentId = account.ParentId == -1 ? null : account.ParentId
+                };
+
+                await _budgetRepository.UpdateAsync(entry);
+            }
 
             MessageBox.Show("Budget saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             ProgressText = "Budget saved successfully";

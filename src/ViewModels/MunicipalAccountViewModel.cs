@@ -256,12 +256,9 @@ public partial class MunicipalAccountViewModel : ObservableObject, IDataErrorInf
 
             App.LogDebugEvent("DATA_LOADING", "Querying account repository in background");
             
-            // Use Task.Run for async background processing per requirements
-            var accounts = await Task.Run(async () =>
-            {
-                var accountsEnum = await _accountRepository.GetAllAsync();
-                return accountsEnum.ToList();
-            });
+            // Async repository call without unnecessary Task.Run
+            var accountsEnum = await _accountRepository.GetAllAsync();
+            var accounts = accountsEnum.ToList();
 
             App.LogDebugEvent("DATA_LOADING", $"Retrieved {accounts.Count} accounts, clearing and repopulating collection");
             MunicipalAccounts.Clear();

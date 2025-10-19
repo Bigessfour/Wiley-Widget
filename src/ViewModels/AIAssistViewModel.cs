@@ -323,19 +323,8 @@ public class ConversationModeInfo
             // Parse enterprise ID from query (e.g., "Calculate charge for Enterprise 1")
             var enterpriseId = ExtractEnterpriseId(userQuery);
 
-            // Execute charge calculation asynchronously
-            var recommendation = await Task.Run(async () =>
-            {
-                if (enterpriseId.HasValue)
-                {
-                    return await _chargeCalculator.CalculateRecommendedChargeAsync(enterpriseId.Value);
-                }
-                else
-                {
-                    // Default to enterprise ID 1 for testing
-                    return await _chargeCalculator.CalculateRecommendedChargeAsync(1);
-                }
-            });
+            // Execute charge calculation asynchronously without Task.Run
+            var recommendation = await _chargeCalculator.CalculateRecommendedChargeAsync(enterpriseId ?? 1);
 
             // Format response message
             var responseText = FormatServiceChargeResponse(recommendation);
@@ -840,7 +829,7 @@ public class ConversationModeInfo
         try
         {
             // Get the first enterprise as current (you may want to implement proper selection logic)
-            var enterprises = await Task.Run(() => _enterpriseRepository.GetAllAsync());
+            var enterprises = await _enterpriseRepository.GetAllAsync();
             return enterprises.FirstOrDefault() ?? new Enterprise
             {
                 Id = 0,

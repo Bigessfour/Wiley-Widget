@@ -249,6 +249,18 @@ namespace WileyWidget.ViewModels
         [property: Browsable(false)]
         private Brush quickBooksStatusColor = Brushes.Red;
 
+    // QuickBooks URL ACL readiness
+    [ObservableProperty]
+    [property: Category("QuickBooks")]
+    [property: DisplayName("OAuth Callback URL Status")]
+    [property: Description("Checks if the local HTTP listener URL is permitted (URL ACL). Required for OAuth callback.")]
+    [property: ReadOnly(true)]
+    private string quickBooksUrlAclStatus = "Unknown";
+
+    [ObservableProperty]
+    [property: Browsable(false)]
+    private Brush quickBooksUrlAclStatusColor = Brushes.Orange;
+
         // Syncfusion License
         [ObservableProperty]
         [property: Category("Syncfusion")]
@@ -586,6 +598,8 @@ namespace WileyWidget.ViewModels
             ResetSettingsCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteResetSettingsAsync(), () => !IsBusy);
             TestConnectionCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteTestConnectionAsync(), () => !IsBusy);
             TestQuickBooksConnectionCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteTestQuickBooksConnectionAsync(), () => !IsBusy);
+            ConnectQuickBooksCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteConnectQuickBooksAsync(), () => !IsBusy);
+            CheckQuickBooksUrlAclCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteCheckQuickBooksUrlAclAsync(), () => !IsBusy);
             ValidateLicenseCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteValidateLicenseAsync(), () => !IsBusy);
             TestXaiConnectionCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteTestXaiConnectionAsync(), () => !IsBusy);
             SaveFiscalYearSettingsCommand = new Prism.Commands.DelegateCommand(async () => await SaveFiscalYearSettingsAsync(), () => !IsBusy);
@@ -605,6 +619,7 @@ namespace WileyWidget.ViewModels
         {
             try
             {
+                IsLoading = true;
                 SettingsStatus = "Loading settings...";
 
                 // Load from configuration and database
@@ -626,6 +641,10 @@ namespace WileyWidget.ViewModels
             {
                 SettingsStatus = "Error loading settings";
                 _logger.LogError(ex, "Error loading settings");
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
@@ -701,11 +720,16 @@ namespace WileyWidget.ViewModels
                     var isConnected = await _quickBooksService.TestConnectionAsync();
                     QuickBooksConnectionStatus = isConnected ? "Connected" : "Connection Failed";
                     QuickBooksStatusColor = isConnected ? Brushes.Green : Brushes.Red;
+
+                    // Also check URL ACL readiness for a smoother auth flow
+                    await ExecuteCheckQuickBooksUrlAclAsync();
                 }
                 else
                 {
                     QuickBooksConnectionStatus = "Not Configured";
                     QuickBooksStatusColor = Brushes.Orange;
+                    QuickBooksUrlAclStatus = "Not Checked";
+                    QuickBooksUrlAclStatusColor = Brushes.Orange;
                 }
             }
             catch (Exception ex)
@@ -871,9 +895,11 @@ namespace WileyWidget.ViewModels
     public Prism.Commands.DelegateCommand ResetSettingsCommand { get; private set; }
     public Prism.Commands.DelegateCommand TestConnectionCommand { get; private set; }
     public Prism.Commands.DelegateCommand TestQuickBooksConnectionCommand { get; private set; }
+    public Prism.Commands.DelegateCommand ConnectQuickBooksCommand { get; private set; }
     public Prism.Commands.DelegateCommand ValidateLicenseCommand { get; private set; }
     public Prism.Commands.DelegateCommand TestXaiConnectionCommand { get; private set; }
     public Prism.Commands.DelegateCommand SaveFiscalYearSettingsCommand { get; private set; }
+    public Prism.Commands.DelegateCommand CheckQuickBooksUrlAclCommand { get; private set; }
     private async Task ExecuteSaveSettingsAsync()
         {
             try
@@ -914,10 +940,8 @@ namespace WileyWidget.ViewModels
         {
             try
             {
-                // Save general settings to database using async operation
-                await Task.Run(async () =>
-                {
-                    var settings = await _dbContext.AppSettings.FindAsync(1);
+                // Save general settings to database using async EF operations
+                var settings = await _dbContext.AppSettings.FindAsync(1);
 
                     if (settings == null)
                     {
@@ -939,8 +963,7 @@ namespace WileyWidget.ViewModels
                         settings.WindowMaximized = MaximizeOnStartup;
                     }
 
-                    await _unitOfWork.SaveChangesAsync();
-                });
+                await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -990,10 +1013,8 @@ namespace WileyWidget.ViewModels
         {
             try
             {
-                // Save advanced settings to database using async operation
-                await Task.Run(async () =>
-                {
-                    var settings = await _dbContext.AppSettings.FindAsync(1);
+                // Save advanced settings to database using async EF operations
+                var settings = await _dbContext.AppSettings.FindAsync(1);
 
                     if (settings == null)
                     {
@@ -1019,8 +1040,7 @@ namespace WileyWidget.ViewModels
                         settings.LogFilePath = LogFilePath;
                     }
 
-                    await _unitOfWork.SaveChangesAsync();
-                });
+                await _unitOfWork.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -1075,6 +1095,60 @@ namespace WileyWidget.ViewModels
             {
                 QuickBooksConnectionStatus = $"Error: {ex.Message}";
                 QuickBooksStatusColor = Brushes.Red;
+            }
+        }
+
+        private async Task ExecuteConnectQuickBooksAsync()
+        {
+            try
+            {
+                QuickBooksConnectionStatus = "Authorizing...";
+                QuickBooksStatusColor = Brushes.Orange;
+
+                var authorized = await _quickBooksService.AuthorizeAsync();
+                if (authorized)
+                {
+                    // Re-test the connection now that tokens should be present
+                    var isConnected = await _quickBooksService.TestConnectionAsync();
+                    QuickBooksConnectionStatus = isConnected ? "Connected" : "Connection Failed";
+                    QuickBooksStatusColor = isConnected ? Brushes.Green : Brushes.Red;
+                }
+                else
+                {
+                    QuickBooksConnectionStatus = "Authorization Cancelled or Failed";
+                    QuickBooksStatusColor = Brushes.Orange;
+                }
+            }
+            catch (Exception ex)
+            {
+                QuickBooksConnectionStatus = $"Error: {ex.Message}";
+                QuickBooksStatusColor = Brushes.Red;
+            }
+        }
+
+        private async Task ExecuteCheckQuickBooksUrlAclAsync()
+        {
+            try
+            {
+                QuickBooksUrlAclStatus = "Checking...";
+                QuickBooksUrlAclStatusColor = Brushes.Orange;
+
+                var result = await _quickBooksService.CheckUrlAclAsync(QuickBooksRedirectUri);
+                if (result.IsReady)
+                {
+                    QuickBooksUrlAclStatus = $"Ready for {result.ListenerPrefix}";
+                    QuickBooksUrlAclStatusColor = Brushes.Green;
+                }
+                else
+                {
+                    QuickBooksUrlAclStatus = string.IsNullOrWhiteSpace(result.Guidance) ? "Not configured" : result.Guidance;
+                    QuickBooksUrlAclStatusColor = Brushes.Red;
+                }
+            }
+            catch (Exception ex)
+            {
+                QuickBooksUrlAclStatus = $"Error: {ex.Message}";
+                QuickBooksUrlAclStatusColor = Brushes.Red;
             }
         }
 
@@ -1180,31 +1254,28 @@ namespace WileyWidget.ViewModels
             {
                 SettingsStatus = "Saving fiscal year settings...";
 
-                // Update FiscalYearSettings in database using async operation
-                await Task.Run(async () =>
-                {
-                    var fySettings = await _dbContext.FiscalYearSettings.FindAsync(1);
-                    
-                    if (fySettings == null)
-                    {
-                        fySettings = new Models.FiscalYearSettings
-                        {
-                            Id = 1,
-                            FiscalYearStartMonth = FiscalYearStartMonth,
-                            FiscalYearStartDay = FiscalYearStartDay,
-                            LastModified = DateTime.UtcNow
-                        };
-                        _dbContext.FiscalYearSettings.Add(fySettings);
-                    }
-                    else
-                    {
-                        fySettings.FiscalYearStartMonth = FiscalYearStartMonth;
-                        fySettings.FiscalYearStartDay = FiscalYearStartDay;
-                        fySettings.LastModified = DateTime.UtcNow;
-                    }
+                // Update FiscalYearSettings in database using async EF calls (no Task.Run)
+                var fySettings = await _dbContext.FiscalYearSettings.FindAsync(1);
 
-                    await _unitOfWork.SaveChangesAsync();
-                });
+                if (fySettings == null)
+                {
+                    fySettings = new Models.FiscalYearSettings
+                    {
+                        Id = 1,
+                        FiscalYearStartMonth = FiscalYearStartMonth,
+                        FiscalYearStartDay = FiscalYearStartDay,
+                        LastModified = DateTime.UtcNow
+                    };
+                    _dbContext.FiscalYearSettings.Add(fySettings);
+                }
+                else
+                {
+                    fySettings.FiscalYearStartMonth = FiscalYearStartMonth;
+                    fySettings.FiscalYearStartDay = FiscalYearStartDay;
+                    fySettings.LastModified = DateTime.UtcNow;
+                }
+
+                await _unitOfWork.SaveChangesAsync();
                 
                 await LoadFiscalYearDisplayAsync();
 

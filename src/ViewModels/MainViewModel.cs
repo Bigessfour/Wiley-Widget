@@ -560,10 +560,10 @@ namespace WileyWidget.ViewModels
                     region.Views?.Count() ?? 0,
                     region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
 
-                // Perform navigation with callback for result tracking
-                var navigationResult = await Task.Run(() =>
+                // Perform navigation on the UI thread with callback for result tracking
+                var tcs = new TaskCompletionSource<bool>();
+                await DispatcherHelper.InvokeAsync(() =>
                 {
-                    var tcs = new TaskCompletionSource<bool>();
                     regionManager.RequestNavigate(regionName, viewName, (result) =>
                     {
                         tcs.SetResult(result.Success);
@@ -578,8 +578,9 @@ namespace WileyWidget.ViewModels
                                 displayName, regionName, result.Exception?.Message ?? "Unknown navigation error");
                         }
                     });
-                    return tcs.Task;
                 });
+
+                var navigationResult = await tcs.Task;
 
                 if (!navigationResult)
                 {
@@ -618,19 +619,22 @@ namespace WileyWidget.ViewModels
                     region.Views?.Count() ?? 0,
                     region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
 
-                // Perform navigation with callback for result tracking
-                regionManager.RequestNavigate(regionName, viewName, (result) =>
+                // Perform navigation with callback for result tracking on the UI thread
+                DispatcherHelper.Invoke(() =>
                 {
-                    if (result.Success)
+                    regionManager.RequestNavigate(regionName, viewName, (result) =>
                     {
-                        Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
-                            displayName, regionName);
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Navigation to {DisplayName} failed. Region: {RegionName}, Error: {Error}",
-                            displayName, regionName, result.Exception?.Message ?? "Unknown navigation error");
-                    }
+                        if (result.Success)
+                        {
+                            Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
+                                displayName, regionName);
+                        }
+                        else
+                        {
+                            Logger.LogWarning("Navigation to {DisplayName} failed. Region: {RegionName}, Error: {Error}",
+                                displayName, regionName, result.Exception?.Message ?? "Unknown navigation error");
+                        }
+                    });
                 });
             }
             catch (Exception ex)
@@ -682,12 +686,8 @@ namespace WileyWidget.ViewModels
                 // Refresh all data sources
                 Logger.LogInformation("Refreshing all data sources");
                 
-                // Simulate async data loading
-                await Task.Run(() =>
-                {
-                    // Clear and reload enterprises on UI thread
-                    DispatcherHelper.Invoke(() => Enterprises.Clear());
-                });
+                // Clear and reload enterprises on UI thread without unnecessary Task.Run
+                await DispatcherHelper.InvokeAsync(() => Enterprises.Clear(), System.Windows.Threading.DispatcherPriority.Background);
                 
                 // Trigger navigation refresh on all regions
                 foreach (var region in regionManager.Regions)
@@ -716,8 +716,8 @@ namespace WileyWidget.ViewModels
             Logger.LogInformation("MainViewModel: Open settings command executed");
             try
             {
-                // Navigate to settings view
-                await Task.Run(() => NavigateToRegionSafely("SettingsRegion", "SettingsView", "Settings"));
+                // Navigate to settings view (ensure UI thread)
+                await NavigateToRegionSafelyAsync("SettingsRegion", "SettingsView", "Settings");
             }
             catch (Exception ex)
             {
@@ -737,7 +737,10 @@ namespace WileyWidget.ViewModels
                     Type = "Water"
                 };
                 
-                await Task.Run(() =>
+                #if DEBUG
+                DispatcherHelper.EnsureOnUIThread("AddTestEnterpriseAsync");
+                #endif
+                await DispatcherHelper.InvokeAsync(() =>
                 {
                     Enterprises.Add(testEnterprise);
                     SelectedEnterprise = testEnterprise;
@@ -773,12 +776,12 @@ namespace WileyWidget.ViewModels
         // UI Command Implementations
         private async Task OpenReportsAsync()
         {
-            await Task.Run(() => NavigateToRegionSafely("ReportsRegion", "ReportsView", "Reports"));
+            await NavigateToRegionSafelyAsync("ReportsRegion", "ReportsView", "Reports");
         }
 
         private async Task OpenAIAssistAsync()
         {
-            await Task.Run(() => NavigateToRegionSafely("AIAssistRegion", "AIAssistView", "AI Assistant"));
+            await NavigateToRegionSafelyAsync("AIAssistRegion", "AIAssistView", "AI Assistant");
         }
 
         // AI Command Implementations
@@ -1182,11 +1185,15 @@ namespace WileyWidget.ViewModels
 
             var count = AIInsights.Count;
             
-            var result = await Task.Run(() => MessageBox.Show(
-                $"Are you sure you want to clear all {count} AI insights? This action cannot be undone.",
-                "Clear AI Insights",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question));
+            MessageBoxResult result = MessageBoxResult.No;
+            await DispatcherHelper.InvokeAsync(() => 
+            {
+                result = MessageBox.Show(
+                    $"Are you sure you want to clear all {count} AI insights? This action cannot be undone.",
+                    "Clear AI Insights",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+            });
 
             if (result == MessageBoxResult.Yes)
             {
@@ -1195,8 +1202,11 @@ namespace WileyWidget.ViewModels
                 AIResponse = string.Empty;
                 SelectedAIInsight = null;
                 
-                await Task.Run(() => MessageBox.Show($"Successfully cleared {count} AI insights.", "Insights Cleared", 
-                    MessageBoxButton.OK, MessageBoxImage.Information));
+                await DispatcherHelper.InvokeAsync(() => 
+                {
+                    MessageBox.Show($"Successfully cleared {count} AI insights.", "Insights Cleared", 
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                });
             }
             else
             {
@@ -1578,12 +1588,12 @@ namespace WileyWidget.ViewModels
         // View Command Implementations  
         private async Task ShowDashboardAsync()
         {
-            await Task.Run(() => NavigateToRegionSafely("DashboardRegion", "DashboardView", "Dashboard"));
+            await NavigateToRegionSafelyAsync("DashboardRegion", "DashboardView", "Dashboard");
         }
 
         private async Task ShowAnalyticsAsync()
         {
-            await Task.Run(() => NavigateToRegionSafely("AnalyticsRegion", "AnalyticsView", "Analytics"));
+            await NavigateToRegionSafelyAsync("AnalyticsRegion", "AnalyticsView", "Analytics");
         }
 
         // Budget Command Implementations
@@ -1770,7 +1780,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to budget analysis view
-                await Task.Run(() => NavigateToRegionSafely("AnalyticsRegion", "BudgetAnalysisView", "Budget Analysis"));
+                await NavigateToRegionSafelyAsync("AnalyticsRegion", "BudgetAnalysisView", "Budget Analysis");
             }
             catch (Exception ex)
             {
@@ -1784,7 +1794,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to rate calculator view
-                await Task.Run(() => NavigateToRegionSafely("AnalyticsRegion", "RateCalculatorView", "Rate Calculator"));
+                await NavigateToRegionSafelyAsync("AnalyticsRegion", "RateCalculatorView", "Rate Calculator");
             }
             catch (Exception ex)
             {
@@ -1996,7 +2006,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to service charges management view
-                await Task.Run(() => NavigateToRegionSafely("EnterpriseRegion", "ServiceChargesView", "Service Charges"));
+                await NavigateToRegionSafelyAsync("EnterpriseRegion", "ServiceChargesView", "Service Charges");
             }
             catch (Exception ex)
             {
@@ -2010,7 +2020,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to utility bills management view
-                await Task.Run(() => NavigateToRegionSafely("EnterpriseRegion", "UtilityBillsView", "Utility Bills"));
+                await NavigateToRegionSafelyAsync("EnterpriseRegion", "UtilityBillsView", "Utility Bills");
             }
             catch (Exception ex)
             {
@@ -2025,7 +2035,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to financial summary report view
-                await Task.Run(() => NavigateToRegionSafely("ReportsRegion", "FinancialSummaryReportView", "Financial Summary Report"));
+                await NavigateToRegionSafelyAsync("ReportsRegion", "FinancialSummaryReportView", "Financial Summary Report");
             }
             catch (Exception ex)
             {
@@ -2039,7 +2049,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to budget vs actual report view
-                await Task.Run(() => NavigateToRegionSafely("ReportsRegion", "BudgetVsActualReportView", "Budget vs Actual Report"));
+                await NavigateToRegionSafelyAsync("ReportsRegion", "BudgetVsActualReportView", "Budget vs Actual Report");
             }
             catch (Exception ex)
             {
@@ -2053,7 +2063,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to enterprise performance report view
-                await Task.Run(() => NavigateToRegionSafely("ReportsRegion", "EnterprisePerformanceReportView", "Enterprise Performance Report"));
+                await NavigateToRegionSafelyAsync("ReportsRegion", "EnterprisePerformanceReportView", "Enterprise Performance Report");
             }
             catch (Exception ex)
             {
@@ -2067,7 +2077,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to custom report builder view
-                await Task.Run(() => NavigateToRegionSafely("ReportsRegion", "CustomReportBuilderView", "Custom Report Builder"));
+                await NavigateToRegionSafelyAsync("ReportsRegion", "CustomReportBuilderView", "Custom Report Builder");
             }
             catch (Exception ex)
             {
@@ -2081,7 +2091,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Navigate to saved reports view
-                await Task.Run(() => NavigateToRegionSafely("ReportsRegion", "SavedReportsView", "Saved Reports"));
+                await NavigateToRegionSafelyAsync("ReportsRegion", "SavedReportsView", "Saved Reports");
             }
             catch (Exception ex)
             {

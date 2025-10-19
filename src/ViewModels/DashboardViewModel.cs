@@ -1369,7 +1369,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Get the first enterprise as current (you may want to implement proper selection logic)
-                var enterprises = await Task.Run(() => _enterpriseRepository.GetAllAsync());
+                var enterprises = await _enterpriseRepository.GetAllAsync();
                 return enterprises.FirstOrDefault()?.Id ?? 0;
             }
             catch
@@ -1387,7 +1387,7 @@ namespace WileyWidget.ViewModels
                 if (customerCount == 0) return 0;
 
                 // Get enterprise to determine fund type
-                var enterprise = await Task.Run(() => _enterpriseRepository.GetByIdAsync(enterpriseId));
+                var enterprise = await _enterpriseRepository.GetByIdAsync(enterpriseId);
                 if (enterprise == null) return 0;
 
                 // Map enterprise type to fund type (same logic as WhatIfScenarioEngine)

@@ -6,6 +6,7 @@ using WileyWidget.Business.Interfaces;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using Serilog;
 using System.Threading;
 using System.Globalization;
@@ -13,52 +14,27 @@ using System.Diagnostics;
 using System.ComponentModel;
 using Prism.Events;
 using WileyWidget.ViewModels.Messages;
+using WileyWidget.Services;
 using Syncfusion.Pdf;
-using Syncfusion.Pdf.Graphics;
+// using Prism.Regions; // Remove for now; avoid dependency if not referenced elsewhere
+using WileyWidget.Services.Threading;
 
 namespace WileyWidget.ViewModels;
 
-/// <summary>
-/// View model for managing municipal enterprises (Phase 1)
-/// Provides data binding for enterprise CRUD operations and budget calculations
-/// </summary>
-public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
+public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDisposable
 {
+    // Dependencies
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEventAggregator _eventAggregator;
+    private readonly IReportExportService _reportExportService;
+    private readonly IDispatcherHelper _dispatcherHelper;
 
-    /// <summary>
-    /// Event aggregator for pub/sub messaging
-    /// </summary>
+    // Expose services for View scenarios that need them (e.g., export helpers, event subscriptions)
     public IEventAggregator EventAggregator => _eventAggregator;
+    public IReportExportService ReportExportService => _reportExportService;
 
-    /// <summary>
-    /// Collection of all enterprises for data binding
-    /// </summary>
-    public ObservableCollection<Enterprise> EnterpriseList { get; } = new();
-
-    /// <summary>
-    /// Currently selected enterprise in the UI
-    /// </summary>
-    private Enterprise _selectedEnterprise;
-    public Enterprise SelectedEnterprise
-    {
-        get => _selectedEnterprise;
-        set
-        {
-            if (_selectedEnterprise != value)
-            {
-                _selectedEnterprise = value;
-                RaisePropertyChanged();
-                SelectionChangedCommand?.Execute();
-            }
-        }
-    }
-
-    /// <summary>
-    /// Status message for user feedback
-    /// </summary>
-    private string _statusMessage = "Ready";
+    // Core state
+    private string _statusMessage = string.Empty;
     public string StatusMessage
     {
         get => _statusMessage;
@@ -72,9 +48,6 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
         }
     }
 
-    /// <summary>
-    /// Error message for repository operations
-    /// </summary>
     private string _errorMessage = string.Empty;
     public string ErrorMessage
     {
@@ -89,6 +62,22 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
         }
     }
 
+    // Primary data
+    public ObservableCollection<Enterprise> EnterpriseList { get; } = new();
+
+    private Enterprise _selectedEnterprise;
+    public Enterprise SelectedEnterprise
+    {
+        get => _selectedEnterprise;
+        set
+        {
+            if (!EqualityComparer<Enterprise>.Default.Equals(_selectedEnterprise, value))
+            {
+                _selectedEnterprise = value;
+                RaisePropertyChanged();
+            }
+        }
+    }
     /// <summary>
     /// Loading state for async operations
     /// </summary>
@@ -426,6 +415,7 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
 
     private async Task GenerateEnterprisePdfReportAsync(IEnumerable<Enterprise> enterprises, string filePath)
     {
+        // PDF generation is CPU/disk-bound (drawing + file save). Run off the UI thread.
         await Task.Run(() =>
         {
             using (var document = new Syncfusion.Pdf.PdfDocument())
@@ -499,6 +489,7 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
 
     private async Task GenerateEnterpriseCsvExportAsync(IEnumerable<Enterprise> enterprises, string filePath)
     {
+        // CSV generation (string formatting + file I/O) is CPU/disk-bound. Run off the UI thread.
         await Task.Run(() =>
         {
             using (var writer = new System.IO.StreamWriter(filePath, false, System.Text.Encoding.UTF8))
@@ -525,6 +516,7 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
 
     private async Task GenerateEnterpriseAdvancedExcelExportAsync(IEnumerable<Enterprise> enterprises, string filePath)
     {
+        // Excel (Syncfusion) export is CPU and I/O heavy; keep on background thread.
         await Task.Run(() =>
         {
             using (var excelEngine = new Syncfusion.XlsIO.ExcelEngine())
@@ -616,6 +608,7 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
 
     private async Task GenerateEnterpriseComprehensiveReportAsync(IEnumerable<Enterprise> enterprises, string filePath)
     {
+        // Comprehensive report generation can be expensive; run on background thread to keep UI responsive.
         await Task.Run(() =>
         {
             using (var document = new Syncfusion.Pdf.PdfDocument())
@@ -688,6 +681,7 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
 
     private async Task GenerateEnterpriseComprehensiveExcelReportAsync(IEnumerable<Enterprise> enterprises, string filePath)
     {
+        // Large Excel generation (Syncfusion) - CPU/disk-bound work. Keep off UI thread.
         await Task.Run(() =>
         {
             using (var excelEngine = new Syncfusion.XlsIO.ExcelEngine())
@@ -787,20 +781,18 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
 
     private async Task<int> ImportEnterpriseDataFromCsvAsync(string filePath)
     {
-        return await Task.Run(() =>
+        // Parsing CSV (file I/O and string processing) is CPU/disk-bound; parse on background thread then persist.
+        var parsed = await Task.Run(() =>
         {
-            int importedCount = 0;
+            var list = new List<Enterprise>();
 
             using (var reader = new System.IO.StreamReader(filePath))
             {
-                // Read header line
                 var headerLine = reader.ReadLine();
                 if (string.IsNullOrEmpty(headerLine))
-                    return 0;
+                    return list;
 
                 var headers = headerLine.Split(',').Select(h => h.Trim('"')).ToArray();
-
-                // Find column indices
                 var nameIndex = Array.IndexOf(headers, "Name");
                 var typeIndex = Array.IndexOf(headers, "Type");
                 var rateIndex = Array.IndexOf(headers, "Current Rate");
@@ -817,7 +809,6 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
                         continue;
 
                     var values = line.Split(',').Select(v => v.Trim('"')).ToArray();
-
                     if (values.Length <= Math.Max(nameIndex, typeIndex))
                         continue;
 
@@ -835,21 +826,28 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
 
                     if (!string.IsNullOrWhiteSpace(enterprise.Name) && !string.IsNullOrWhiteSpace(enterprise.Type))
                     {
-                        _unitOfWork.Enterprises.AddAsync(enterprise);
-                        importedCount++;
+                        list.Add(enterprise);
                     }
                 }
             }
 
-            return importedCount;
+            return list;
         });
+
+        foreach (var enterprise in parsed)
+        {
+            await _unitOfWork.Enterprises.AddAsync(enterprise);
+        }
+
+        return parsed.Count;
     }
 
     private async Task<int> ImportEnterpriseDataFromExcelAsync(string filePath)
     {
-        return await Task.Run(() =>
+        // Parsing Excel with Syncfusion is CPU/disk-bound; parse on background thread then call async persistence.
+        var parsed = await Task.Run(() =>
         {
-            int importedCount = 0;
+            var list = new List<Enterprise>();
 
             using (var excelEngine = new Syncfusion.XlsIO.ExcelEngine())
             {
@@ -857,7 +855,6 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
                 var workbook = application.Workbooks.Open(filePath);
                 var worksheet = workbook.Worksheets[0];
 
-                // Find header row (assume first non-empty row)
                 int headerRow = 1;
                 while (headerRow <= worksheet.Rows.Length)
                 {
@@ -867,9 +864,8 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
                 }
 
                 if (headerRow > worksheet.Rows.Length)
-                    return 0;
+                    return list;
 
-                // Read headers
                 var headers = new Dictionary<string, int>();
                 for (int col = 1; col <= worksheet.Columns.Length; col++)
                 {
@@ -881,7 +877,6 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
                 if (!headers.ContainsKey("Name") || !headers.ContainsKey("Type"))
                     throw new InvalidOperationException("Excel file must contain 'Name' and 'Type' columns");
 
-                // Read data rows
                 for (int row = headerRow + 1; row <= worksheet.Rows.Length; row++)
                 {
                     var name = worksheet.Range[row, headers["Name"]].Text;
@@ -902,14 +897,28 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
                         Notes = "Imported from Excel"
                     };
 
-                    _unitOfWork.Enterprises.AddAsync(enterprise);
-                    importedCount++;
+                    list.Add(enterprise);
                 }
             }
 
-            return importedCount;
+            return list;
         });
+
+        foreach (var enterprise in parsed)
+        {
+            await _unitOfWork.Enterprises.AddAsync(enterprise);
+        }
+
+        return parsed.Count;
     }
+
+    // Duplicate method definitions removed during cleanup
+
+    // Duplicate ExecuteExportSelectionAsync removed
+
+    // Duplicate ExecuteWithRetryAsync/LoadEnterprisesAsync implementations removed (kept single source earlier in file)
+
+    // --- remaining original members restored below ---
 
     /// <summary>
     /// Export to Excel advanced command
@@ -1186,10 +1195,12 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public EnterpriseViewModel(IUnitOfWork unitOfWork, IEventAggregator eventAggregator)
+    public EnterpriseViewModel(IUnitOfWork unitOfWork, IEventAggregator eventAggregator, IReportExportService reportExportService)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+        _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
+        _dispatcherHelper = new DispatcherHelper();
 
         InitializeCommands();
     }
@@ -1245,7 +1256,7 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
                 Notes = "New enterprise - update details"
             };
 
-            var addedEnterprise = await Task.Run(() => _unitOfWork.Enterprises.AddAsync(newEnterprise));
+            var addedEnterprise = await _unitOfWork.Enterprises.AddAsync(newEnterprise);
             EnterpriseList.Add(addedEnterprise);
             SelectedEnterprise = addedEnterprise;
             
@@ -1295,7 +1306,7 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
             IsLoading = true;
             StatusMessage = $"Saving '{SelectedEnterprise.Name}'...";
 
-            await Task.Run(() => _unitOfWork.Enterprises.UpdateAsync(SelectedEnterprise));
+            await _unitOfWork.Enterprises.UpdateAsync(SelectedEnterprise);
             
             StatusMessage = $"Enterprise '{SelectedEnterprise.Name}' saved successfully";
             Log.Information("Updated enterprise with ID: {EnterpriseId}", SelectedEnterprise.Id);
@@ -1333,7 +1344,7 @@ public class EnterpriseViewModel : BindableBase, IDisposable, IDataErrorInfo
             IsLoading = true;
             StatusMessage = $"Deleting '{enterpriseName}'...";
 
-            var success = await Task.Run(() => _unitOfWork.Enterprises.DeleteAsync(enterpriseId));
+            var success = await _unitOfWork.Enterprises.DeleteAsync(enterpriseId);
             
             if (success)
             {

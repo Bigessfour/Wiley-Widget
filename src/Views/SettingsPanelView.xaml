@@ -6,14 +6,31 @@
              xmlns:local="clr-namespace:WileyWidget"
              xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
-             xmlns:notification="http://schemas.syncfusion.com/wpf"
+             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
+             xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="800"
-             xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+             xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True"
+             syncfusionskin:SfSkinManager.VisualStyle="FluentDark">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <!-- Collapses validation label when empty -->
+        <Style x:Key="ValidationTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFDA4453"/>
+            <Setter Property="Margin" Value="0,2,0,8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
+    <!-- Acrylic Panel wrapper per Syncfusion theme guidance -->
+    <!-- Reference: https://help.syncfusion.com/wpf/themes/skin-manager and acrylic panel usage in themes -->
+    <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03">
     <DockPanel behaviors:MouseFocusBehavior.EnableOnClick="True"
                behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <!-- Ribbon Toolbar -->
@@ -27,97 +44,144 @@
             </syncfusion:RibbonTab>
         </syncfusion:Ribbon>
 
-        <!-- Main Content Area -->
-        <TabControl Margin="8">
+        <!-- Main Content Area (Syncfusion TabControlExt for a richer tab experience) -->
+        <!-- Reference: https://help.syncfusion.com/wpf/tabcontrol/overview -->
+        <syncfusion:TabControlExt Margin="8" EnableLabelEdit="False" CloseButtonType="Hide">
             <!-- General Settings -->
-            <TabItem Header="General">
+            <syncfusion:TabItemExt Header="General">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8">
                         <GroupBox Header="Application Settings" Margin="0,0,0,8">
-                            <StackPanel>
-                                <Label Content="Theme:" />
-                                <ComboBox ItemsSource="{Binding AvailableThemes}"
-                                         SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
-                                         Margin="0,0,0,8" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                                <Label Content="Window Width:" />
-                                <syncfusion:IntegerTextBox Value="{Binding WindowWidth, Mode=TwoWay}"
-                                                         Margin="0,0,0,8" />
+                                <Label Grid.Row="0" Grid.Column="0" Content="Theme:" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Row="0" Grid.Column="1"
+                                          ItemsSource="{Binding AvailableThemes}"
+                                          SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                                          Margin="0,0,0,8"
+                                          ToolTipService.ToolTip="Select FluentDark or FluentLight theme" />
 
-                                <Label Content="Window Height:" />
-                                <syncfusion:IntegerTextBox Value="{Binding WindowHeight, Mode=TwoWay}"
-                                                         Margin="0,0,0,8" />
+                                <Label Grid.Row="1" Grid.Column="0" Content="Window Width:" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Row="1" Grid.Column="1">
+                                    <syncfusion:IntegerTextBox Value="{Binding WindowWidth, Mode=TwoWay}" Margin="0,0,0,0"
+                                                               ToolTipService.ToolTip="Default window width (800-3840)"/>
+                                    <TextBlock Text="{Binding WindowWidthValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                </StackPanel>
 
-                                <CheckBox Content="Maximize window on startup"
-                                         IsChecked="{Binding MaximizeOnStartup, Mode=TwoWay}"
-                                         Margin="0,0,0,8" />
+                                <Label Grid.Row="2" Grid.Column="0" Content="Window Height:" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Row="2" Grid.Column="1">
+                                    <syncfusion:IntegerTextBox Value="{Binding WindowHeight, Mode=TwoWay}"
+                                                               ToolTipService.ToolTip="Default window height (600-2160)"/>
+                                    <TextBlock Text="{Binding WindowHeightValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                </StackPanel>
 
-                                <CheckBox Content="Show splash screen"
-                                         IsChecked="{Binding ShowSplashScreen, Mode=TwoWay}"
-                                         Margin="0,0,0,8" />
-                            </StackPanel>
+                                <CheckBox Grid.Row="3" Grid.ColumnSpan="2"
+                                          Content="Maximize window on startup"
+                                          IsChecked="{Binding MaximizeOnStartup, Mode=TwoWay}"
+                                          Margin="0,8,0,0"/>
+
+                                <CheckBox Grid.Row="4" Grid.ColumnSpan="2"
+                                          Content="Show splash screen"
+                                          IsChecked="{Binding ShowSplashScreen, Mode=TwoWay}"
+                                          Margin="0,8,0,0"/>
+                            </Grid>
                         </GroupBox>
 
                         <GroupBox Header="Data Settings" Margin="0,0,0,8">
-                            <StackPanel>
-                                <Label Content="Database Connection:" />
-                                <TextBox Text="{Binding DatabaseConnectionString, Mode=TwoWay}"
-                                       IsReadOnly="True"
-                                       Background="LightGray"
-                                       Margin="0,0,0,8" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                                <Label Content="Database Status:" />
-                                <TextBlock Text="{Binding DatabaseStatus}"
-                                         Foreground="{Binding DatabaseStatusColor}"
-                                         Margin="0,0,0,8" />
-                            </StackPanel>
+                                <Label Grid.Row="0" Grid.Column="0" Content="Database Connection:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding DatabaseConnectionString, Mode=TwoWay}"
+                                         IsReadOnly="True" Background="#222" Foreground="#ddd" Margin="0,0,0,8"/>
+
+                                <Label Grid.Row="1" Grid.Column="0" Content="Database Status:" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DatabaseStatus}"
+                                           Foreground="{Binding DatabaseStatusColor}"/>
+                            </Grid>
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
-            </TabItem>
+            </syncfusion:TabItemExt>
 
             <!-- QuickBooks Integration -->
-            <TabItem Header="QuickBooks Integration">
+            <syncfusion:TabItemExt Header="QuickBooks Integration">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8">
                         <GroupBox Header="OAuth2 Configuration" Margin="0,0,0,8">
-                            <StackPanel>
-                                <Label Content="Client ID:" />
-                                <TextBox Text="{Binding QuickBooksClientId, Mode=TwoWay}"
-                                       Margin="0,0,0,8" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Label Grid.Row="0" Grid.Column="0" Content="Client ID:"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding QuickBooksClientId, Mode=TwoWay}" Margin="0,0,0,8"
+                                         ToolTipService.ToolTip="From Intuit Developer Portal (App Credentials)"/>
 
-                                <Label Content="Client Secret:" />
-                                <TextBox Text="{Binding QuickBooksClientSecret, Mode=TwoWay}"
-                                       Margin="0,0,0,8" />
+                                <Label Grid.Row="1" Grid.Column="0" Content="Client Secret:"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding QuickBooksClientSecret, Mode=TwoWay}" Margin="0,0,0,8"
+                                         ToolTipService.ToolTip="Treat as secret; stored securely via Secret Vault"/>
 
-                                <Label Content="Redirect URI:" />
-                                <TextBox Text="{Binding QuickBooksRedirectUri, Mode=TwoWay}"
-                                       Margin="0,0,0,8" />
+                                <Label Grid.Row="2" Grid.Column="0" Content="Redirect URI:"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding QuickBooksRedirectUri, Mode=TwoWay}" Margin="0,0,0,8"
+                                         ToolTipService.ToolTip="e.g., http://localhost:5001/callback"/>
 
-                                <Label Content="Environment:" />
-                                <ComboBox ItemsSource="{Binding QuickBooksEnvironments}"
-                                         SelectedItem="{Binding SelectedQuickBooksEnvironment, Mode=TwoWay}"
-                                         Margin="0,0,0,8" />
-                            </StackPanel>
+                                <Label Grid.Row="3" Grid.Column="0" Content="Environment:"/>
+                                <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding QuickBooksEnvironments}"
+                                          SelectedItem="{Binding SelectedQuickBooksEnvironment, Mode=TwoWay}"/>
+                            </Grid>
                         </GroupBox>
 
                         <GroupBox Header="Connection Status" Margin="0,0,0,8">
                             <StackPanel>
                                 <TextBlock Text="{Binding QuickBooksConnectionStatus}"
-                                         Foreground="{Binding QuickBooksStatusColor}"
-                                         Margin="0,0,0,8" />
+                                           Foreground="{Binding QuickBooksStatusColor}"
+                                           Margin="0,0,0,8" />
 
-                                <Button Content="Test QuickBooks Connection"
-                                       Command="{Binding TestQuickBooksConnectionCommand}"
-                                       HorizontalAlignment="Left" />
+                                <StackPanel Orientation="Horizontal" >
+                                    <Button Content="Test QuickBooks Connection"
+                                            Command="{Binding TestQuickBooksConnectionCommand}"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,0,8,0" />
+
+                                    <Button Content="Connect to QuickBooks"
+                                            Command="{Binding ConnectQuickBooksCommand}"
+                                            HorizontalAlignment="Left" />
+                                </StackPanel>
+                                <TextBlock Text="If a listener binding error appears, run the logged netsh command as Administrator and retry."
+                                           Foreground="#aaa" FontStyle="Italic" Margin="0,8,0,0"/>
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
-            </TabItem>
+            </syncfusion:TabItemExt>
 
             <!-- Syncfusion License -->
-            <TabItem Header="Syncfusion License">
+            <syncfusion:TabItemExt Header="Syncfusion License">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8">
                         <GroupBox Header="License Information" Margin="0,0,0,8">
@@ -146,10 +210,100 @@
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
-            </TabItem>
+            </syncfusion:TabItemExt>
+
+            <!-- AI (XAI) Settings -->
+            <syncfusion:TabItemExt Header="AI (XAI)">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+                        <GroupBox Header="Connection" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Label Grid.Row="0" Grid.Column="0" Content="API Key:"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding XaiApiKey, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <Label Grid.Row="1" Grid.Column="0" Content="Base URL:"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding XaiBaseUrl, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <Label Grid.Row="2" Grid.Column="0" Content="Model:"/>
+                                <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding AvailableModels}"
+                                          SelectedItem="{Binding XaiModel, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <Label Grid.Row="3" Grid.Column="0" Content="Timeout (sec):"/>
+                                <StackPanel Grid.Row="3" Grid.Column="1">
+                                    <syncfusion:IntegerTextBox Value="{Binding XaiTimeoutSeconds, Mode=TwoWay}"/>
+                                    <TextBlock Text="{Binding XaiTimeoutValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Generation Options" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Label Grid.Row="0" Grid.Column="0" Content="Response Style:"/>
+                                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding AvailableResponseStyles}"
+                                          SelectedItem="{Binding ResponseStyle, Mode=TwoWay}" Margin="0,0,0,8"/>
+
+                                <Label Grid.Row="1" Grid.Column="0" Content="Personality:"/>
+                                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding AvailablePersonalities}"
+                                          SelectedItem="{Binding Personality, Mode=TwoWay}" Margin="0,0,0,8"/>
+
+                                <Label Grid.Row="2" Grid.Column="0" Content="Context Window:"/>
+                                <StackPanel Grid.Row="2" Grid.Column="1">
+                                    <syncfusion:IntegerTextBox Value="{Binding ContextWindowSize, Mode=TwoWay}"/>
+                                    <TextBlock Text="{Binding ContextWindowValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                </StackPanel>
+
+                                <Label Grid.Row="3" Grid.Column="0" Content="Temperature:"/>
+                                <StackPanel Grid.Row="3" Grid.Column="1">
+                                    <syncfusion:DoubleTextBox Value="{Binding Temperature, Mode=TwoWay}" NumberDecimalDigits="2"/>
+                                    <TextBlock Text="{Binding TemperatureValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                </StackPanel>
+
+                                <Label Grid.Row="4" Grid.Column="0" Content="Max Tokens:"/>
+                                <StackPanel Grid.Row="4" Grid.Column="1">
+                                    <syncfusion:IntegerTextBox Value="{Binding MaxTokens, Mode=TwoWay}"/>
+                                    <TextBlock Text="{Binding MaxTokensValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Preferences" Margin="0,0,0,8">
+                            <StackPanel>
+                                <CheckBox Content="Enable Safety Filters" IsChecked="{Binding EnableSafetyFilters, Mode=TwoWay}"/>
+                                <CheckBox Content="Enable Streaming" IsChecked="{Binding EnableStreaming, Mode=TwoWay}"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Connection Status" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="{Binding XaiConnectionStatus}" Foreground="{Binding XaiStatusColor}" Margin="0,0,0,8"/>
+                                <Button Content="Test XAI Connection" Command="{Binding TestXaiConnectionCommand}" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </syncfusion:TabItemExt>
 
             <!-- Advanced Settings -->
-            <TabItem Header="Advanced">
+            <syncfusion:TabItemExt Header="Advanced">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8">
                         <GroupBox Header="Performance Settings" Margin="0,0,0,8">
@@ -192,8 +346,49 @@
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
-            </TabItem>
-        </TabControl>
+            </syncfusion:TabItemExt>
+
+            <!-- Fiscal Year Settings -->
+            <syncfusion:TabItemExt Header="Fiscal Year">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+                        <GroupBox Header="Fiscal Year Configuration" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Label Grid.Row="0" Grid.Column="0" Content="Start Month:"/>
+                                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding FiscalYearMonths}"
+                                          SelectedValuePath="Value" DisplayMemberPath="Name"
+                                          SelectedValue="{Binding FiscalYearStartMonth, Mode=TwoWay}"/>
+                                <Label Grid.Row="1" Grid.Column="0" Content="Start Day:"/>
+                                <StackPanel Grid.Row="1" Grid.Column="1">
+                                    <syncfusion:IntegerTextBox Value="{Binding FiscalYearStartDay, Mode=TwoWay}"/>
+                                    <TextBlock Text="{Binding FiscalYearDayValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                </StackPanel>
+                                <Label Grid.Row="2" Grid.Column="0" Content="Current Fiscal Year:"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CurrentFiscalYearDisplay}"/>
+                                <Label Grid.Row="3" Grid.Column="0" Content="Period:"/>
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding FiscalYearPeriodDisplay}"/>
+                                <Label Grid.Row="4" Grid.Column="0" Content="Days Remaining:"/>
+                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding DaysRemainingInFiscalYear}"/>
+                                <Button Grid.Row="5" Grid.ColumnSpan="2" Content="Save Fiscal Year Settings"
+                                        Command="{Binding SaveFiscalYearSettingsCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                            </Grid>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </syncfusion:TabItemExt>
+        </syncfusion:TabControlExt>
 
         <!-- Status Bar -->
         <StatusBar DockPanel.Dock="Bottom" Background="Transparent">
@@ -214,4 +409,5 @@
             </StatusBarItem>
         </StatusBar>
     </DockPanel>
+    </darkTheme:SfAcrylicPanel>
 </UserControl>

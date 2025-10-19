@@ -10,6 +10,7 @@
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:notification="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d">
@@ -69,6 +70,7 @@
         </DataTemplate>
     </UserControl.Resources>
 
+    <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03">
     <Grid behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="EnterpriseFocusAnchor">
         <Border x:Name="EnterpriseFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
     <DockPanel>
@@ -556,4 +558,5 @@
         </StatusBar>
     </DockPanel>
     </Grid>
+    </darkTheme:SfAcrylicPanel>
 </UserControl>

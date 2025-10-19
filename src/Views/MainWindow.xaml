@@ -4,7 +4,10 @@
         xmlns:prism="http://prismlibrary.com/"
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
         xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
-        xmlns:vm="clr-namespace:WileyWidget.ViewModels"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+    xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
+    xmlns:vm="clr-namespace:WileyWidget.ViewModels"
+    xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
         xmlns:converters="clr-namespace:WileyWidget.Converters"
         Title="{Binding CurrentViewTitle, FallbackValue='Wiley Widget - Municipal Enterprise Management'}"
         AutomationProperties.Name="Main Application Window"
@@ -219,72 +222,131 @@
             </syncfusion:RibbonTab>
         </syncfusion:Ribbon>
 
-        <!-- DockingManager with Complete Region Configuration -->
-        <syncfusion:DockingManager x:Name="MainDockingManager"
-                                 Grid.Row="1"
+        <!-- DockingManager with Acrylic background wrapper (documented SfAcrylicPanel) -->
+        <darkTheme:SfAcrylicPanel Grid.Row="1"
+                                  TintBrush="#202020"
+                                  TintOpacity="0.25"
+                                  BlurRadius="30"
+                                  NoiseOpacity="0.03">
+            <syncfusion:DockingManager x:Name="MainDockingManager"
                                  AutomationProperties.Name="Main Docking Manager"
                                  AutomationProperties.HelpText="Main content area with dockable panels"
                                  UseDocumentContainer="True"
                                  ContainerMode="TDI"
-                                 PersistState="False"
+                                 PersistState="True"
                                  DockToFill="True"
                                  IsVS2010DraggingEnabled="True"
                                  DockStateChanged="DockingManager_DockStateChanged"
                                  ActiveWindowChanged="DockingManager_ActiveWindowChanged">
 
+                <i:Interaction.Behaviors>
+                    <behaviors:DockingManagerBehavior />
+                </i:Interaction.Behaviors>
+
           <!-- Document Regions (Tabbed Interface)
               Keep the canvas focused: show only Dashboard and Reports by default.
               Other views (Enterprise, Budget, Accounts, Analytics, Settings, AI) are registered by modules
               and will appear when navigated to. -->
-          <ContentControl x:Name="DashboardRegion"
+                    <ContentControl x:Name="DashboardRegion"
                           prism:RegionManager.RegionName="DashboardRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Dashboard"
                           syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                    </ContentControl>
 
-            <ContentControl x:Name="ReportsRegion"
+                        <ContentControl x:Name="ReportsRegion"
                           prism:RegionManager.RegionName="ReportsRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Reports"
                           syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
 
             <!-- Additional Document Regions for Modules -->
-            <ContentControl x:Name="EnterpriseRegion"
+                        <ContentControl x:Name="EnterpriseRegion"
                           prism:RegionManager.RegionName="EnterpriseRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Enterprise"
                           syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
 
-            <ContentControl x:Name="MunicipalAccountRegion"
+                        <ContentControl x:Name="MunicipalAccountRegion"
                           prism:RegionManager.RegionName="MunicipalAccountRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Accounts"
                           syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
 
-            <ContentControl x:Name="BudgetRegion"
+                        <ContentControl x:Name="BudgetRegion"
                           prism:RegionManager.RegionName="BudgetRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Budget"
                           syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
 
-            <ContentControl x:Name="AnalyticsRegion"
+                        <ContentControl x:Name="AnalyticsRegion"
                           prism:RegionManager.RegionName="AnalyticsRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Analytics"
                           syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
 
-            <ContentControl x:Name="SettingsRegion"
+                        <ContentControl x:Name="SettingsRegion"
                           prism:RegionManager.RegionName="SettingsRegion"
                           syncfusion:DockingManager.State="Document"
                           syncfusion:DockingManager.Header="Settings"
                           syncfusion:DockingManager.CanClose="False"
-                          MinWidth="400" MinHeight="300"/>
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
+
+                        <!-- Additional Modules: Utility Customers and AI Assistant -->
+                        <ContentControl x:Name="UtilityCustomerRegion"
+                          prism:RegionManager.RegionName="UtilityCustomerRegion"
+                          syncfusion:DockingManager.State="Document"
+                          syncfusion:DockingManager.Header="Utility Customers"
+                          syncfusion:DockingManager.CanClose="False"
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
+
+                        <ContentControl x:Name="AIAssistRegion"
+                          prism:RegionManager.RegionName="AIAssistRegion"
+                          syncfusion:DockingManager.State="Document"
+                          syncfusion:DockingManager.Header="AI Assistant"
+                          syncfusion:DockingManager.CanClose="False"
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
 
             <!-- Panel Regions (Fixed Docking Positions) -->
             <ContentControl x:Name="LeftPanelRegion"
@@ -310,7 +372,8 @@
                           syncfusion:DockingManager.DesiredHeightInDockedMode="180"
                           syncfusion:DockingManager.Header="System Alerts"
                           syncfusion:DockingManager.CanClose="False"/>
-        </syncfusion:DockingManager>
+            </syncfusion:DockingManager>
+        </darkTheme:SfAcrylicPanel>
 
         <!-- Status Bar in Row 2 -->
         <StatusBar Grid.Row="2"

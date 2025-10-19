@@ -11,6 +11,7 @@
              xmlns:grid="clr-namespace:Syncfusion.UI.Xaml.Grid;assembly=Syncfusion.SfGrid.WPF"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
+             xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
              xmlns:prism="http://prismlibrary.com/"
              syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
              mc:Ignorable="d"
@@ -31,6 +32,7 @@
 
     <!-- Theme applied globally via SfSkinManager.ApplicationTheme in App.xaml.cs -->
     <!-- Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application -->
+    <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03">
     <Grid behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="DashboardFocusAnchor"
         behaviors:MouseFocusBehavior.EnableOnClick="True"
         behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
@@ -771,4 +773,5 @@
         </StatusBar>
     </DockPanel>
     </Grid>
+    </darkTheme:SfAcrylicPanel>
 </UserControl>

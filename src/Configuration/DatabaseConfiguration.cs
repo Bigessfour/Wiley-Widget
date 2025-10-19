@@ -699,7 +699,7 @@ public static class DatabaseConfiguration
 
         // Priority order: Environment variable -> local secret vault -> appsettings
             var xaiApiKey = Environment.GetEnvironmentVariable("XAI_API_KEY") ??
-                           TryGetFromSecretVault(secretVaultService, "XAI-API-KEY", logger) ??
+                           TryGetFromSecretVaultAsync(secretVaultService, "XAI-API-KEY", logger).GetAwaiter().GetResult() ??
                            configuration["XAI:ApiKey"];
 
             var requireAi = string.Equals(Environment.GetEnvironmentVariable("REQUIRE_AI_SERVICE"), "true", StringComparison.OrdinalIgnoreCase) ||
@@ -756,18 +756,15 @@ public static class DatabaseConfiguration
         // Do not register it here to avoid conflicting lifetimes.
     }
 
-    private static string? TryGetFromSecretVault(ISecretVaultService? secretVaultService, string secretName, ILogger logger)
+    private static async Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? secretVaultService, string secretName, ILogger logger)
     {
         if (secretVaultService == null)
             return null;
 
         try
         {
-            // For now, we'll use a synchronous approach. In a real scenario, you might want to
-            // preload the secret or use a different pattern
-            var task = secretVaultService.GetSecretAsync(secretName);
-            task.Wait(); // Synchronous wait - not ideal but works for DI registration
-            var secret = task.Result;
+            // Retrieve secret asynchronously to avoid blocking the UI thread
+            var secret = await secretVaultService.GetSecretAsync(secretName);
 
             if (!string.IsNullOrEmpty(secret))
             {

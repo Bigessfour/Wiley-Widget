@@ -6,6 +6,7 @@
              xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
              xmlns:prism="http://prismlibrary.com/"
              mc:Ignorable="d"
              prism:ViewModelLocator.AutoWireViewModel="True"
@@ -13,6 +14,7 @@
              Width="1200"
              FontFamily="Segoe UI">
 
+    <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03">
     <Grid Background="#FF0F1724" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="ReportsFocusAnchor"
         behaviors:MouseFocusBehavior.EnableOnClick="True"
         behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
@@ -40,12 +42,12 @@
 
                 <StackPanel Orientation="Vertical">
                     <TextBlock Text="Start Date" Foreground="#FFE1F2FF" FontWeight="SemiBold" />
-                    <syncfusion:SfDatePicker Value="{Binding StartDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" />
+                    <syncfusion:SfDatePicker Value="{Binding StartDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SetValueOnLostFocus="True" Width="180" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Vertical">
                     <TextBlock Text="End Date" Foreground="#FFE1F2FF" FontWeight="SemiBold" />
-                    <syncfusion:SfDatePicker Value="{Binding EndDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" />
+                    <syncfusion:SfDatePicker Value="{Binding EndDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SetValueOnLostFocus="True" Width="180" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="4" Orientation="Vertical">
@@ -118,4 +120,5 @@
             </TabItem>
         </TabControl>
     </Grid>
+    </darkTheme:SfAcrylicPanel>
 </UserControl>

@@ -20,6 +20,7 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToPdfAsync(object data, string filePath)
     {
+        // Offload PDF generation to a background thread (CPU/disk-bound)
         await Task.Run(() =>
         {
             using (var document = new PdfDocument())
@@ -102,6 +103,7 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToExcelAsync(object data, string filePath)
     {
+        // Offload Excel generation to a background thread (CPU/disk-bound)
         await Task.Run(() =>
         {
             using (var excelEngine = new ExcelEngine())

@@ -111,6 +111,9 @@ namespace WileyWidget
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Enable WPF binding diagnostics
+            System.Diagnostics.PresentationTraceSources.DataBindingSource.Switch.Level = System.Diagnostics.SourceLevels.Warning;
+            System.Diagnostics.PresentationTraceSources.DataBindingSource.Listeners.Add(new System.Diagnostics.DefaultTraceListener());
             // Set up global exception handling before anything else
             SetupGlobalExceptionHandling();
 
@@ -467,6 +470,7 @@ namespace WileyWidget
             containerRegistry.Register<AboutViewModel>();
             containerRegistry.Register<ExcelImportViewModel>();
             containerRegistry.Register<ProgressViewModel>();
+            containerRegistry.Register<EnterpriseViewModel>();
             
             // Register Region Adapters
             containerRegistry.RegisterSingleton<WileyWidget.Regions.DockingManagerRegionAdapter>();
@@ -1116,8 +1120,9 @@ namespace WileyWidget
                 ["BudgetModule"] = InitializationMode.OnDemand,
                 ["MunicipalAccountModule"] = InitializationMode.OnDemand,
                 ["UtilityCustomerModule"] = InitializationMode.OnDemand,
-                ["ReportsModule"] = InitializationMode.OnDemand,
-                ["AIAssistModule"] = InitializationMode.OnDemand,
+                // Load these at startup so navigation by name succeeds immediately
+                ["ReportsModule"] = InitializationMode.WhenAvailable,
+                ["AIAssistModule"] = InitializationMode.WhenAvailable,
 
                 // Panel modules - load when their dependencies are loaded
                 ["PanelModule"] = InitializationMode.WhenAvailable,
@@ -1134,13 +1139,14 @@ namespace WileyWidget
         /// <param name="moduleHealthService">The module health service for status checking</param>
         private void ValidateModuleInitialization(IModuleHealthService moduleHealthService)
         {
+            // Align expected regions with actual regions declared in MainWindow.xaml
             var moduleRegionMap = new Dictionary<string, string[]>
             {
-                ["DashboardModule"] = new[] { "MainContentRegion" },
-                ["EnterpriseModule"] = new[] { "MainContentRegion" },
-                ["BudgetModule"] = new[] { "MainContentRegion" },
-                ["MunicipalAccountModule"] = new[] { "MainContentRegion" },
-                ["UtilityCustomerModule"] = new[] { "MainContentRegion" },
+                ["DashboardModule"] = new[] { "DashboardRegion" },
+                ["EnterpriseModule"] = new[] { "EnterpriseRegion" },
+                ["BudgetModule"] = new[] { "BudgetRegion" },
+                ["MunicipalAccountModule"] = new[] { "MunicipalAccountRegion" },
+                ["UtilityCustomerModule"] = new[] { "UtilityCustomerRegion" },
                 ["ReportsModule"] = new[] { "ReportsRegion" },
                 ["AIAssistModule"] = new[] { "AIAssistRegion" },
                 ["PanelModule"] = new[] { "LeftPanelRegion", "RightPanelRegion", "BottomPanelRegion" },

@@ -439,6 +439,7 @@ public partial class BudgetViewModel
     /// </summary>
     private async Task<List<MunicipalAccount>> ImportBudgetFromExcelAsync(string filePath)
     {
+        // Parse on a background thread; no UI updates inside this block
         return await Task.Run(() =>
         {
             var accounts = new List<MunicipalAccount>();
@@ -500,6 +501,7 @@ public partial class BudgetViewModel
     /// </summary>
     private async Task ExportBudgetToExcelAsync(string filePath)
     {
+        // Generate Excel on a background thread; no UI updates inside this block
         await Task.Run(() =>
         {
             using (var excelEngine = new ExcelEngine())

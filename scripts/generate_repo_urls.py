@@ -24,9 +24,10 @@ import datetime
 import hashlib
 import json
 import mimetypes
+import re
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, List, Optional, Set
 
 
 class RepoManifestGenerator:
@@ -81,10 +82,14 @@ class RepoManifestGenerator:
         '.gitattributes': 'Git Attributes',
     }
 
-    def __init__(self, repo_path: str = "."):
+    def __init__(self, repo_path: str = ".", include_categories: Optional[List[str]] = None):
         self.repo_path = Path(repo_path).resolve()
         self.repo_info = self._get_repo_info()
         self.tracked_files = self._get_tracked_files()
+        # Normalize include categories to a lowercase set for fast checks
+        self.include_categories: Optional[Set[str]] = (
+            {c.strip().lower() for c in include_categories} if include_categories else None
+        )
 
     def _run_git_command(self, command: list[str]) -> str:
         """Run a git command and return the output."""
@@ -231,7 +236,8 @@ class RepoManifestGenerator:
 
         context["description"] = descriptions.get(file_path, f"{metadata['language']} file containing project code/data")
 
-        # Extract dependencies for certain files
+        # Extract dependencies and relationships for certain files
+        # 1) Python requirements
         if file_path == "requirements.txt" and not metadata["is_binary"]:
             try:
                 with open(self.repo_path / file_path, encoding='utf-8') as f:
@@ -240,7 +246,91 @@ class RepoManifestGenerator:
             except Exception:
                 pass
 
+        # 2) XAML <-> ViewModel and code-behind mapping (WPF/Prism convention)
+        try:
+            if metadata["language"] == "XAML" and file_path.startswith("src/Views/") and file_path.endswith(".xaml"):
+                base = Path(file_path).stem  # e.g., BudgetView
+                # Code-behind
+                code_behind = Path(file_path + ".cs")
+                if (self.repo_path / code_behind).exists():
+                    context["related_files"].append(str(code_behind).replace("\\", "/"))
+                # ViewModel naming: BudgetViewModel.cs (same base minus 'View' + 'ViewModel')
+                vm_name = base
+                if vm_name.endswith("View"):
+                    vm_name = vm_name[:-4]
+                vm_path = Path("src/ViewModels") / f"{vm_name}ViewModel.cs"
+                if (self.repo_path / vm_path).exists():
+                    context["related_files"].append(str(vm_path).replace("\\", "/"))
+
+                # Lightweight dependency tags based on common namespaces used in views
+                # Only read a small chunk to avoid heavy I/O
+                with open(self.repo_path / file_path, encoding="utf-8", errors="ignore") as xf:
+                    head = xf.read(4096)
+                    deps = []
+                    if "prismlibrary.com" in head or "prism:" in head:
+                        deps.append("Prism")
+                    if "schemas.syncfusion.com/wpf" in head or "syncfusion:" in head:
+                        deps.append("Syncfusion.WPF")
+                    if "schemas.microsoft.com/winfx/2006/xaml/presentation" in head:
+                        deps.append("WPF")
+                    if "schemas.microsoft.com/xaml/behaviors" in head or "WileyWidget.Behaviors" in head:
+                        deps.append("Behaviors")
+                    context["dependencies"] = list(dict.fromkeys(context["dependencies"] + deps))
+
+            # 3) Behavior classes: relate to XAML views that import the behaviors namespace
+            if file_path.startswith("src/Behaviors/") and file_path.endswith(".cs"):
+                # Heuristic: find views that declare the behaviors namespace; avoid full scan by sampling a subset
+                views_dir = self.repo_path / "src/Views"
+                if views_dir.exists():
+                    # Limit to a reasonable number to keep generation fast
+                    count = 0
+                    for xaml in views_dir.rglob("*.xaml"):
+                        if count > 50:
+                            break
+                        try:
+                            with open(xaml, encoding="utf-8", errors="ignore") as xf:
+                                head = xf.read(2048)
+                                if "WileyWidget.Behaviors" in head:
+                                    context["related_files"].append(str(xaml.relative_to(self.repo_path)).replace("\\", "/"))
+                                    count += 1
+                        except Exception:
+                            continue
+        except Exception:
+            # Best-effort heuristics; ignore failures silently
+            pass
+
         return context
+
+    def _should_include(self, category: str) -> bool:
+        if self.include_categories is None:
+            return True
+        return category.lower() in self.include_categories
+
+    def _collect_search_terms(self, files_data: list[dict[str, Any]]) -> list[str]:
+        """Build a lightweight search index from file paths and descriptions."""
+        terms: Set[str] = set()
+        splitter = re.compile(r"[\\/._\-\s]+")
+        stop = {
+            "src", "views", "viewmodels", "models", "business", "wileywidget",
+            "obj", "bin", "docs", "tests", "test", "resources", "properties",
+            "xaml", "cs", "md", "json", "xml", "yml", "yaml", "ps1", "py"
+        }
+
+        for entry in files_data:
+            path = entry["metadata"]["path"]
+            desc = entry.get("context", {}).get("description", "") or ""
+            for token in splitter.split(path) + splitter.split(desc):
+                t = token.strip().lower()
+                if len(t) >= 3 and t not in stop and not t.isnumeric():
+                    terms.add(t)
+
+        # Emphasize likely keywords based on repo content
+        # Add known frameworks when present
+        keywords = {"prism", "syncfusion", "wpf", "xaml", "csharp", "dotnet", "azure", "ai"}
+        terms |= keywords
+
+        # Return sorted for stability and cap to a reasonable size
+        return sorted(list(terms))[:500]
 
     def generate_manifest(self) -> dict[str, Any]:
         """Generate the complete repository manifest."""
@@ -254,6 +344,10 @@ class RepoManifestGenerator:
             metadata = self._get_file_metadata(file_path)
             urls = self._generate_file_urls(file_path)
             context = self._get_file_context(file_path, metadata)
+
+            # Apply category filter early if requested
+            if not self._should_include(context["category"]):
+                continue
 
             file_entry = {
                 "metadata": metadata,
@@ -274,6 +368,7 @@ class RepoManifestGenerator:
                 "categories": {},
                 "languages": {}
             },
+            "search_index": [],
             "files": files_data
         }
 
@@ -284,6 +379,9 @@ class RepoManifestGenerator:
 
             manifest["summary"]["categories"][cat] = manifest["summary"]["categories"].get(cat, 0) + 1
             manifest["summary"]["languages"][lang] = manifest["summary"]["languages"].get(lang, 0) + 1
+
+        # Build search index
+        manifest["search_index"] = self._collect_search_terms(files_data)
 
         return manifest
 
@@ -319,10 +417,22 @@ def main():
         default=".",
         help="Repository path (default: current directory)"
     )
+    parser.add_argument(
+        "--include-categories", "-c",
+        default=None,
+        help=(
+            "Comma-separated categories to include (e.g., source_code,documentation,automation). "
+            "If omitted, all categories are included."
+        ),
+    )
 
     args = parser.parse_args()
 
-    generator = RepoManifestGenerator(args.repo_path)
+    include_categories = (
+        [c.strip() for c in args.include_categories.split(",")]
+        if args.include_categories else None
+    )
+    generator = RepoManifestGenerator(args.repo_path, include_categories=include_categories)
     output_path = generator.save_manifest(args.output)
 
     print("\nManifest generation complete!")

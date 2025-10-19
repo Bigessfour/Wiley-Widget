@@ -13,6 +13,7 @@ using Intuit.Ipp.OAuth2PlatformClient;
 using Intuit.Ipp.Security;
 using Intuit.Ipp.QueryFilter;
 using Microsoft.Extensions.Logging;
+using System.IO;
 
 namespace WileyWidget.Services;
 
@@ -20,17 +21,23 @@ namespace WileyWidget.Services;
 /// QuickBooks service using Intuit SDK with OAuth2 authentication.
 /// Handles token refresh and DataService access for QuickBooks Online integration.
 /// </summary>
-public sealed class QuickBooksService : IQuickBooksService
+public sealed class QuickBooksService : IQuickBooksService, IDisposable
 {
     private readonly ILogger<QuickBooksService> _logger;
-    private readonly string _clientId;
-    private readonly string _clientSecret;
-    private readonly string _redirectUri = "http://localhost:8080/callback";
-    private readonly string _realmId;
-    private readonly string _environment;
-    private readonly OAuth2Client _oauthClient;
     private readonly SettingsService _settings;
+    private readonly ISecretVaultService? _secretVault;
+
+    // Values loaded lazily from secret vault or environment
+    private string? _clientId;
+    private string? _clientSecret;
+    private string _redirectUri = "http://localhost:8080/callback";
+    private string? _realmId;
+    private string _environment = "sandbox";
+    private OAuth2Client? _oauthClient;
     private bool _settingsLoaded;
+
+    private volatile bool _initialized;
+    private readonly SemaphoreSlim _initSemaphore = new(1, 1);
 
     // Intuit sandbox base URL documented at https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes
     private static readonly IReadOnlyList<string> DefaultScopes = new[] { "com.intuit.quickbooks.accounting" };
@@ -39,43 +46,18 @@ public sealed class QuickBooksService : IQuickBooksService
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _secretVault = keyVaultService; // may be null in some test contexts
 
-        // Load QBO credentials from secret vault with fallback to environment variables
-    _clientId = TryGetFromSecretVault(keyVaultService, "QBO-CLIENT-ID", logger) ??
-           Environment.GetEnvironmentVariable("QBO_CLIENT_ID", EnvironmentVariableTarget.User) ??
-           throw new InvalidOperationException("QBO_CLIENT_ID not found in the secret vault or environment variables.");
-
-        _clientSecret = TryGetFromSecretVault(keyVaultService, "QBO-CLIENT-SECRET", logger) ??
-                       Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET", EnvironmentVariableTarget.User) ??
-                       string.Empty;
-
-    _realmId = TryGetFromSecretVault(keyVaultService, "QBO-REALM-ID", logger) ??
-          Environment.GetEnvironmentVariable("QBO_REALM_ID", EnvironmentVariableTarget.User) ??
-          throw new InvalidOperationException("QBO_REALM_ID not found in the secret vault or environment variables.");
-
-        _environment = TryGetFromSecretVault(keyVaultService, "QBO-ENVIRONMENT", logger) ??
-                      Environment.GetEnvironmentVariable("QBO_ENVIRONMENT", EnvironmentVariableTarget.User) ??
-                      "sandbox";
-
-        try
-        {
-            _oauthClient = new OAuth2Client(_clientId, _clientSecret, _redirectUri, _environment);
-        }
-        catch (System.MissingMethodException ex)
-        {
-            // Intuit OAuth2 library has Serilog version conflict - disable advanced logging
-            _logger.LogWarning(ex, "QuickBooks OAuth2Client failed to initialize with advanced logging - continuing without it");
-            // OAuth2Client still works for basic operations even if logging initialization fails
-            _oauthClient = null; // Will need to handle null checks
-        }
-
-        _logger.LogInformation("QuickBooks service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}",
-            _clientId.Substring(0, Math.Min(8, _clientId.Length)), _realmId, _environment);
-
-    EnsureSettingsLoaded();
+        // Secrets and OAuth client are loaded lazily via EnsureInitializedAsync()
+        EnsureSettingsLoaded();
     }
 
-    private static string? TryGetFromSecretVault(ISecretVaultService? keyVaultService, string secretName, ILogger logger)
+    public void Dispose()
+    {
+        _initSemaphore.Dispose();
+    }
+
+    private static async System.Threading.Tasks.Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService, string secretName, ILogger logger)
     {
         try
         {
@@ -85,7 +67,7 @@ public sealed class QuickBooksService : IQuickBooksService
                 return null;
             }
 
-            var secretValue = keyVaultService.GetSecretAsync(secretName).GetAwaiter().GetResult();
+            var secretValue = await keyVaultService.GetSecretAsync(secretName).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(secretValue))
             {
                 logger.LogInformation("Successfully loaded {SecretName} from secret vault", secretName);
@@ -104,6 +86,65 @@ public sealed class QuickBooksService : IQuickBooksService
         }
     }
 
+    private async System.Threading.Tasks.Task EnsureInitializedAsync()
+    {
+        if (_initialized) return;
+        await _initSemaphore.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_initialized) return;
+
+            // Load QBO credentials from secret vault with fallback to environment variables
+            _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _logger).ConfigureAwait(false)
+                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientId", _logger).ConfigureAwait(false)
+                        ?? Environment.GetEnvironmentVariable("QBO_CLIENT_ID", EnvironmentVariableTarget.User)
+                        ?? throw new InvalidOperationException("QBO_CLIENT_ID not found in the secret vault or environment variables.");
+
+            _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
+                            ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientSecret", _logger).ConfigureAwait(false)
+                            ?? Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET", EnvironmentVariableTarget.User)
+                            ?? string.Empty;
+
+            _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)
+                       ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
+                       ?? Environment.GetEnvironmentVariable("QBO_REALM_ID", EnvironmentVariableTarget.User)
+                       ?? throw new InvalidOperationException("QBO_REALM_ID not found in the secret vault or environment variables.");
+
+            // Redirect URI is configurable; fall back to default local listener
+            var redirectFromVault = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
+                                    ?? Environment.GetEnvironmentVariable("QBO_REDIRECT_URI", EnvironmentVariableTarget.User);
+            if (!string.IsNullOrWhiteSpace(redirectFromVault))
+            {
+                _redirectUri = redirectFromVault!;
+            }
+
+            _environment = await TryGetFromSecretVaultAsync(_secretVault, "QBO-ENVIRONMENT", _logger).ConfigureAwait(false)
+                           ?? Environment.GetEnvironmentVariable("QBO_ENVIRONMENT", EnvironmentVariableTarget.User)
+                           ?? _environment;
+
+            try
+            {
+                _oauthClient = new OAuth2Client(_clientId, _clientSecret, _redirectUri, _environment);
+            }
+            catch (System.MissingMethodException ex)
+            {
+                // Intuit OAuth2 library has Serilog version conflict - disable advanced logging
+                _logger.LogWarning(ex, "QuickBooks OAuth2Client failed to initialize with advanced logging - continuing without it");
+                // OAuth2Client still works for basic operations even if logging initialization fails
+                _oauthClient = null; // Will need to handle null checks
+            }
+
+            _logger.LogInformation("QuickBooks service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}",
+                _clientId.Substring(0, Math.Min(8, _clientId.Length)), _realmId, _environment);
+
+            _initialized = true;
+        }
+        finally
+        {
+            _initSemaphore.Release();
+        }
+    }
+
     public bool HasValidAccessToken()
     {
         var s = EnsureSettingsLoaded();
@@ -116,6 +157,7 @@ public sealed class QuickBooksService : IQuickBooksService
 
     public async System.Threading.Tasks.Task RefreshTokenIfNeededAsync()
     {
+        await EnsureInitializedAsync().ConfigureAwait(false);
         var s = EnsureSettingsLoaded();
         if (HasValidAccessToken()) return;
 
@@ -134,8 +176,9 @@ public sealed class QuickBooksService : IQuickBooksService
 
     public async System.Threading.Tasks.Task RefreshTokenAsync()
     {
+        await EnsureInitializedAsync().ConfigureAwait(false);
         var s = EnsureSettingsLoaded();
-        var response = await _oauthClient.RefreshTokenAsync(s.QboRefreshToken);
+        var response = await _oauthClient!.RefreshTokenAsync(s.QboRefreshToken).ConfigureAwait(false);
         s.QboAccessToken = response.AccessToken;
         s.QboRefreshToken = response.RefreshToken;
         // SDK response no longer exposes ExpiresIn strongly-typed; assume 55 minutes (typical 60) unless reflection finds property.
@@ -160,13 +203,14 @@ public sealed class QuickBooksService : IQuickBooksService
         var s = EnsureSettingsLoaded();
         if (!HasValidAccessToken()) throw new InvalidOperationException("Access token invalid – refresh required.");
         var validator = new OAuth2RequestValidator(s.QboAccessToken);
-        var ctx = new ServiceContext(_realmId, IntuitServicesType.QBO, validator);
+        var ctx = new ServiceContext(_realmId!, IntuitServicesType.QBO, validator);
         ctx.IppConfiguration.BaseUrl.Qbo = _environment == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
         return (ctx, new DataService(ctx));
     }
 
     public async System.Threading.Tasks.Task<bool> TestConnectionAsync()
     {
+        await EnsureInitializedAsync().ConfigureAwait(false);
         if (_oauthClient == null)
         {
             _logger.LogWarning("QuickBooks OAuth client not initialized - skipping connection test");
@@ -188,10 +232,98 @@ public sealed class QuickBooksService : IQuickBooksService
         }
     }
 
+    public async System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null)
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        var prefix = (redirectUri ?? _redirectUri);
+        if (!prefix.EndsWith("/", StringComparison.Ordinal))
+            prefix += "/";
+
+        // netsh requires http scheme
+        if (!prefix.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        {
+            // If HTTPS or custom, we can't check via netsh easily; return guidance
+            return new UrlAclCheckResult
+            {
+                IsReady = false,
+                ListenerPrefix = prefix,
+                Guidance = "The redirect URI is not using HTTP. For local dev with HttpListener, use http://localhost:PORT/ and run: netsh http add urlacl url=http://localhost:PORT/ user=%USERNAME%"
+            };
+        }
+
+        try
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "netsh",
+                    Arguments = "http show urlacl",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            var error = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
+
+            // Look for an entry matching our prefix
+            // Example line:    Reserved URL            : http://localhost:8080/
+            var isPresent = output?.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0;
+            string? owner = null;
+            if (isPresent)
+            {
+                // Try to capture owner following the prefix block
+                // Owner: S-1-5-32-545\User or similar
+                var prefixIndex = output!.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
+                if (prefixIndex >= 0)
+                {
+                    var tail = output.Substring(prefixIndex, Math.Min(500, output.Length - prefixIndex));
+                    var ownerIdx = tail.IndexOf("Owner:", StringComparison.OrdinalIgnoreCase);
+                    if (ownerIdx >= 0)
+                    {
+                        var line = tail.Substring(ownerIdx).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                        if (line != null)
+                        {
+                            var parts = line.Split(':');
+                            if (parts.Length > 1) owner = parts[1].Trim();
+                        }
+                    }
+                }
+            }
+
+            return new UrlAclCheckResult
+            {
+                IsReady = isPresent,
+                ListenerPrefix = prefix,
+                Owner = owner,
+                RawNetshOutput = output,
+                Guidance = isPresent
+                    ? "URL ACL is configured. You should be able to complete OAuth sign-in."
+                    : $"URL ACL not found. Run as admin: netsh http add urlacl url={prefix} user=%USERNAME%"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check URL ACL via netsh");
+            return new UrlAclCheckResult
+            {
+                IsReady = false,
+                ListenerPrefix = prefix,
+                Guidance = $"Couldn't verify URL ACL automatically. Try running as admin: netsh http add urlacl url={prefix} user=%USERNAME%"
+            };
+        }
+    }
+
     public async System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync()
     {
         try
         {
+            await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
             var p = GetDataService();
             // Fetch customers from QuickBooks
@@ -208,6 +340,7 @@ public sealed class QuickBooksService : IQuickBooksService
     {
         try
         {
+            await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
             var p = GetDataService();
             if (string.IsNullOrWhiteSpace(enterprise))
@@ -227,6 +360,7 @@ public sealed class QuickBooksService : IQuickBooksService
     {
         try
         {
+            await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
             var p = GetDataService();
             // Fetch all active accounts from QuickBooks
@@ -243,6 +377,7 @@ public sealed class QuickBooksService : IQuickBooksService
     {
         try
         {
+            await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
             var p = GetDataService();
 
@@ -262,6 +397,7 @@ public sealed class QuickBooksService : IQuickBooksService
     {
         try
         {
+            await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
             var p = GetDataService();
             // Fetch budgets from QuickBooks
@@ -272,6 +408,12 @@ public sealed class QuickBooksService : IQuickBooksService
             Serilog.Log.Error(ex, "QBO budgets fetch failed");
             throw;
         }
+    }
+
+    public Task<bool> AuthorizeAsync()
+    {
+        // Expose the interactive OAuth flow to the UI
+        return AcquireTokensInteractiveAsync();
     }
 
     private WileyWidget.Models.AppSettings EnsureSettingsLoaded()
@@ -285,6 +427,12 @@ public sealed class QuickBooksService : IQuickBooksService
 
     private async Task<bool> AcquireTokensInteractiveAsync()
     {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        if (_oauthClient == null)
+        {
+            _logger.LogWarning("QuickBooks OAuth client not initialized; cannot start interactive authorization.");
+            return false;
+        }
         if (!HttpListener.IsSupported)
         {
             _logger.LogError("HttpListener is not supported on this platform; cannot perform QuickBooks OAuth authorization.");
@@ -312,8 +460,8 @@ public sealed class QuickBooksService : IQuickBooksService
             return false;
         }
 
-        var state = Guid.NewGuid().ToString("N");
-        var authUrl = _oauthClient.GetAuthorizationURL(DefaultScopes.ToList(), state);
+    var state = Guid.NewGuid().ToString("N");
+    var authUrl = _oauthClient.GetAuthorizationURL(DefaultScopes.ToList(), state);
         _logger.LogWarning("Launching QuickBooks OAuth flow. Complete sign-in for realm {RealmId}.", _realmId);
         LaunchOAuthBrowser(authUrl);
 

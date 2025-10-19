@@ -63,6 +63,7 @@
                 <StackPanel Grid.Column="4" Orientation="Vertical">
                     <TextBlock Text="Start Date" Foreground="#FFCEE6FF" FontWeight="SemiBold" />
                     <syncfusion:SfDatePicker Value="{Binding StartDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           SetValueOnLostFocus="True"
                                            Width="140"
                                            AutomationProperties.Name="Start date picker"
                                            AutomationProperties.HelpText="Select the start date for custom range" />
@@ -72,6 +73,7 @@
                 <StackPanel Grid.Column="6" Orientation="Vertical">
                     <TextBlock Text="End Date" Foreground="#FFCEE6FF" FontWeight="SemiBold" />
                     <syncfusion:SfDatePicker Value="{Binding EndDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           SetValueOnLostFocus="True"
                                            Width="140"
                                            AutomationProperties.Name="End date picker"
                                            AutomationProperties.HelpText="Select the end date for custom range" />
@@ -82,7 +84,7 @@
                     <TextBlock Text="Enterprise" Foreground="#FFCEE6FF" FontWeight="SemiBold" />
                     <syncfusion:ComboBoxAdv ItemsSource="{Binding Enterprises}"
                                             DisplayMemberPath="Name"
-                                            SelectedValuePath="Name"
+                                            SelectedValuePath="Id"
                                             SelectedValue="{Binding EnterpriseId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             Width="180"
                                             AutomationProperties.Name="Enterprise selector"

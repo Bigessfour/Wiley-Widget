@@ -220,7 +220,26 @@
 
                                 <Button Content="Test QuickBooks Connection"
                                        Command="{Binding TestQuickBooksConnectionCommand}"
+                                       HorizontalAlignment="Left"
+                                       Margin="0,0,8,0" />
+
+                                <Button Content="Connect to QuickBooks"
+                                       Command="{Binding ConnectQuickBooksCommand}"
                                        HorizontalAlignment="Left" />
+
+                <Separator Margin="0,8,0,8" />
+
+                <TextBlock Text="OAuth Callback URL ACL"
+                       FontWeight="Bold"
+                       Margin="0,0,0,4" />
+                <TextBlock Text="{Binding QuickBooksUrlAclStatus}"
+                       Foreground="{Binding QuickBooksUrlAclStatusColor}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8" />
+                <Button Content="Check URL ACL"
+                    Command="{Binding CheckQuickBooksUrlAclCommand}"
+                    HorizontalAlignment="Left"
+                    ToolTip="Checks if netsh URL ACL is configured for the redirect URI. If not, shows the exact command to run as Administrator." />
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>

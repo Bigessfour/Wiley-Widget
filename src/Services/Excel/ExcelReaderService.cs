@@ -25,6 +25,7 @@ public class ExcelReaderService : IExcelReaderService
 
         try
         {
+            // Parse Excel off the UI thread (I/O + CPU-bound)
             return await Task.Run(() =>
             {
                 var budgetEntries = new List<BudgetEntry>();
@@ -122,6 +123,7 @@ public class ExcelReaderService : IExcelReaderService
 
         try
         {
+            // Validate structure off the UI thread; no UI mutations here
             return await Task.Run(() =>
             {
                 using (var excelEngine = new ExcelEngine())

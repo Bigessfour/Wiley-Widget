@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using WileyWidget.ViewModels;
 using WileyWidget.ViewModels.Messages;
+using WileyWidget.Services.Threading;
 
 namespace WileyWidget;
 
@@ -14,6 +15,9 @@ namespace WileyWidget;
 public partial class EnterpriseView : UserControl
 {
     private IEventAggregator? _eventAggregator;
+    // Optional dispatcher helper used to marshal UI updates. If not provided via DI/ViewModel,
+    // a default DispatcherHelper will be created on first use.
+    private IDispatcherHelper? _dispatcherHelper;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EnterpriseView"/> class.
@@ -84,21 +88,49 @@ public partial class EnterpriseView : UserControl
 
             if (saveFileDialog.ShowDialog() == true)
             {
-                await Task.Run(() =>
-                {
-                    // Use CSV export as reliable fallback - Excel export requires additional Syncfusion licensing
-                    var csvFileName = System.IO.Path.ChangeExtension(saveFileDialog.FileName, ".csv");
-                    ExportToCsv(csvFileName);
-                });
+                // Capture UI data on the UI thread, then perform CPU/disk-bound CSV generation on a background thread.
+                // NOTE: ExportItemsToCsv is performing CPU and disk I/O (enumeration, reflection, and file writes).
+                // Using Task.Run here is appropriate to avoid blocking the UI thread while writing files.
+                var csvFileName = System.IO.Path.ChangeExtension(saveFileDialog.FileName, ".csv");
+                var items = (dataGrid.ItemsSource as System.Collections.IEnumerable)?.Cast<object>().ToList() ?? new List<object>();
 
-                MessageBox.Show($"Data exported successfully to {saveFileDialog.FileName}",
-                    "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Use injected ReportExportService from ViewModel for better testability and DI
+                if (DataContext is EnterpriseViewModel vm)
+                {
+                    await vm.ReportExportService.ExportToCsvAsync(items.Cast<object>(), csvFileName).ConfigureAwait(false);
+                }
+                else
+                {
+                    // Fallback to new instance if ViewModel not available (shouldn't happen in normal operation)
+                    var exporter = new WileyWidget.Services.ReportExportService();
+                    await exporter.ExportToCsvAsync(items.Cast<object>(), csvFileName).ConfigureAwait(false);
+                }
+
+                // Ensure MessageBox (UI interaction) runs on the UI thread.
+                if (_dispatcherHelper == null)
+                {
+                    _dispatcherHelper = new DispatcherHelper();
+                }
+
+                await _dispatcherHelper.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Data exported successfully to {saveFileDialog.FileName}",
+                        "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                }).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error exporting to Excel: {ex.Message}",
-                "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (_dispatcherHelper == null)
+            {
+                _dispatcherHelper = new DispatcherHelper();
+            }
+
+            await _dispatcherHelper.InvokeAsync(() =>
+            {
+                MessageBox.Show($"Error exporting to Excel: {ex.Message}",
+                    "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }).ConfigureAwait(false);
         }
     }
 
@@ -122,21 +154,36 @@ public partial class EnterpriseView : UserControl
 
             if (saveFileDialog.ShowDialog() == true)
             {
-                await Task.Run(() =>
-                {
-                    // Use CSV export as reliable fallback - PDF export requires additional Syncfusion licensing
-                    var csvFileName = System.IO.Path.ChangeExtension(saveFileDialog.FileName, ".csv");
-                    ExportToCsv(csvFileName);
-                });
+                // See notes in ExportToExcelAsync: CSV export is CPU/disk-bound so Task.Run is appropriate here.
+                var csvFileName = System.IO.Path.ChangeExtension(saveFileDialog.FileName, ".csv");
+                var items = (dataGrid.ItemsSource as System.Collections.IEnumerable)?.Cast<object>().ToList() ?? new List<object>();
 
-                MessageBox.Show($"Data exported successfully to {saveFileDialog.FileName}",
-                    "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                await Task.Run(() => ExportItemsToCsv(items, csvFileName)).ConfigureAwait(false);
+
+                if (_dispatcherHelper == null)
+                {
+                    _dispatcherHelper = new DispatcherHelper();
+                }
+
+                await _dispatcherHelper.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Data exported successfully to {saveFileDialog.FileName}",
+                        "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                }).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error exporting to PDF: {ex.Message}",
-                "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (_dispatcherHelper == null)
+            {
+                _dispatcherHelper = new DispatcherHelper();
+            }
+
+            await _dispatcherHelper.InvokeAsync(() =>
+            {
+                MessageBox.Show($"Error exporting to PDF: {ex.Message}",
+                    "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }).ConfigureAwait(false);
         }
     }
 
@@ -147,38 +194,42 @@ public partial class EnterpriseView : UserControl
     {
         try
         {
+            // Back-compat: if called directly, attempt to get items from the UI
+            IEnumerable<object> items = Enumerable.Empty<object>();
             var dataGrid = FindName("EnterpriseDataGrid") as Syncfusion.UI.Xaml.Grid.SfDataGrid;
-            if (dataGrid?.ItemsSource == null) return;
-
-            using var writer = new System.IO.StreamWriter(fileName);
-            var items = dataGrid.ItemsSource as System.Collections.IEnumerable;
-
-            if (items != null)
+            if (dataGrid?.ItemsSource != null)
             {
-                // Write CSV header
-                var firstItem = items.Cast<object>().FirstOrDefault();
-                if (firstItem != null)
-                {
-                    var properties = firstItem.GetType().GetProperties()
-                        .Where(p => p.CanRead)
-                        .Select(p => p.Name);
-                    writer.WriteLine(string.Join(",", properties));
-                }
-
-                // Write CSV data
-                foreach (var item in items)
-                {
-                    var values = item.GetType().GetProperties()
-                        .Where(p => p.CanRead)
-                        .Select(p => p.GetValue(item)?.ToString() ?? "");
-                    writer.WriteLine(string.Join(",", values));
-                }
+                items = (dataGrid.ItemsSource as System.Collections.IEnumerable)?.Cast<object>() ?? Enumerable.Empty<object>();
             }
+
+            ExportItemsToCsv(items, fileName);
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Error exporting to CSV: {ex.Message}",
                 "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExportItemsToCsv(IEnumerable<object> items, string fileName)
+    {
+        using var writer = new System.IO.StreamWriter(fileName);
+
+        var firstItem = items.FirstOrDefault();
+        if (firstItem != null)
+        {
+            var properties = firstItem.GetType().GetProperties()
+                .Where(p => p.CanRead)
+                .Select(p => p.Name);
+            writer.WriteLine(string.Join(",", properties));
+        }
+
+        foreach (var item in items)
+        {
+            var values = item.GetType().GetProperties()
+                .Where(p => p.CanRead)
+                .Select(p => (p.GetValue(item)?.ToString() ?? string.Empty).Replace("\"", "\"\""));
+            writer.WriteLine(string.Join(",", values));
         }
     }
 }

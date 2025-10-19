@@ -124,6 +124,8 @@ debug_harness.py
 
 # WPF temporary project files
 *_wpftmp.csproj
+*_wpftmp/
+WileyWidget_*_wpftmp.csproj
 
 # Installers and large binaries
 *.msi
@@ -163,6 +165,9 @@ startup-performance-results.json
 test-error.txt
 test-output.txt
 build-diag.txt
+build-errors.log
+test-logs/
+coverage.xml
 
 # Windows system files
 %APPDATA%/

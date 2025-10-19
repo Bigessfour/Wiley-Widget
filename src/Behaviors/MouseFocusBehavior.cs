@@ -55,15 +55,16 @@ namespace WileyWidget.Behaviors
 
         private static void OnEnableOnFirstMoveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is UIElement ui)
+            // Loaded exists on FrameworkElement, not UIElement
+            if (d is FrameworkElement fe)
             {
                 if ((bool)e.NewValue)
                 {
-                    ui.Loaded += OnLoadedAttachMove;
+                    fe.Loaded += OnLoadedAttachMove;
                 }
                 else
                 {
-                    ui.Loaded -= OnLoadedAttachMove;
+                    fe.Loaded -= OnLoadedAttachMove;
                 }
             }
         }

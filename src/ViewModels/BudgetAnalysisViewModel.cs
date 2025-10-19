@@ -404,7 +404,7 @@ public partial class BudgetAnalysisViewModel : AsyncViewModelBase
 
             // Load real budget data for the current fiscal year
             var currentYear = DateTime.Now.Year;
-            var budgetEntries = await Task.Run(() => _budgetRepository.GetByFiscalYearAsync(currentYear));
+            var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentYear);
 
             // Convert to array for analysis
             var budgetData = budgetEntries.ToArray();

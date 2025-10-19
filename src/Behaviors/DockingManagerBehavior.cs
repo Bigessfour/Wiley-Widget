@@ -13,6 +13,7 @@ namespace WileyWidget.Behaviors
     public class DockingManagerBehavior : Behavior<DockingManager>
     {
         private readonly System.Windows.Threading.DispatcherTimer _saveStateTimer;
+        private const int MaxFloatingWindows = 3; // enforce a soft cap to reduce clutter
 
         public DockingManagerBehavior()
         {
@@ -67,6 +68,44 @@ namespace WileyWidget.Behaviors
             _saveStateTimer.Start();
 
             // Docking state change logged - ViewModel notification removed for simplicity
+
+            try
+            {
+                // Soft policy: if too many floating windows exist, move latest active to Document to declutter
+                if (AssociatedObject != null)
+                {
+                    // ActiveWindow is documented; ChangeState is a documented static method
+                    var active = AssociatedObject.ActiveWindow as FrameworkElement;
+                    // Count floating windows by checking state on DockingManager children
+                    int floatCount = 0;
+                    foreach (var child in AssociatedObject.Children)
+                    {
+                        if (child is FrameworkElement fe)
+                        {
+                            var state = DockingManager.GetState(fe);
+                            if (state == DockState.Float)
+                            {
+                                floatCount++;
+                            }
+                        }
+                    }
+
+                    if (floatCount > MaxFloatingWindows && active != null)
+                    {
+                        Log.Information("DockingManagerBehavior: Float windows={FloatCount} exceeds cap={Cap}; moving active to Document", floatCount, MaxFloatingWindows);
+                        DockingManager.ChangeState(active, DockState.Document);
+                        Log.Information("DockingManagerBehavior: Reduced float clutter by converting active to Document; float windows: {Count}", floatCount);
+                    }
+                    else
+                    {
+                        Log.Debug("DockingManagerBehavior: Float windows within cap (count={FloatCount}, cap={Cap})", floatCount, MaxFloatingWindows);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "DockingManagerBehavior: Failed to enforce float window cap policy");
+            }
         }
 
         private void OnActiveWindowChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -94,6 +133,7 @@ namespace WileyWidget.Behaviors
             {
                 if (AssociatedObject != null)
                 {
+                    Log.Debug("DockingManagerBehavior: Calling SaveDockState()");
                     AssociatedObject.SaveDockState();
                     Log.Debug("DockingManagerBehavior: Docking state saved successfully");
                 }
