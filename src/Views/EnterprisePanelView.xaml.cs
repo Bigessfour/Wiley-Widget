@@ -15,44 +15,16 @@ namespace WileyWidget.Views;
 
 /// <summary>
 /// Enterprise Management panel view for embedding in docking layout
+/// Prism auto-wires EnterpriseViewModel via ViewModelLocator.AutoWireViewModel
 /// </summary>
 public partial class EnterprisePanelView : UserControl
 {
-    private readonly IServiceScope? _viewScope;
-
     public EnterprisePanelView()
     {
         InitializeComponent();
-
         EnsureNamedElementsAreDiscoverable();
 
-        // Create a scope for the view and resolve the repository from the scope
-        IServiceProvider? provider = null;
-        try
-        {
-            provider = App.GetActiveServiceProvider();
-        }
-        catch (InvalidOperationException)
-        {
-            provider = Application.Current?.Properties["ServiceProvider"] as IServiceProvider;
-        }
-
-        if (provider != null)
-        {
-            _viewScope = provider.CreateScope();
-            var unitOfWork = _viewScope.ServiceProvider.GetRequiredService<BusinessInterfaces.IUnitOfWork>();
-            var eventAggregator = _viewScope.ServiceProvider.GetRequiredService<Prism.Events.IEventAggregator>();
-            DataContext = new EnterpriseViewModel(unitOfWork, eventAggregator);
-
-            // Dispose the scope when the control is unloaded
-            this.Unloaded += (_, _) => { try { _viewScope.Dispose(); } catch { } };
-        }
-        else
-        {
-            // For testing purposes, allow view to load without ViewModel
-            _viewScope = null;
-            DataContext = null;
-        }
+        // Prism ViewModelLocator automatically wires the ViewModel
 
         // Load enterprises when control loads
         Loaded += async (s, e) =>
@@ -86,10 +58,10 @@ public partial class EnterprisePanelView : UserControl
 
     private void EnsureNamedElementsAreDiscoverable()
     {
-        RegisterNameIfMissing(nameof(EnterpriseTreeGrid), EnterpriseTreeGrid);
-        RegisterNameIfMissing(nameof(SearchTextBox), SearchTextBox);
-        RegisterNameIfMissing(nameof(StatusFilterCombo), StatusFilterCombo);
-        RegisterNameIfMissing(nameof(dataPager), dataPager);
+        RegisterNameIfMissing("EnterpriseTreeGrid", base.FindName("EnterpriseTreeGrid") as FrameworkElement);
+        RegisterNameIfMissing("SearchTextBox", base.FindName("SearchTextBox") as FrameworkElement);
+        RegisterNameIfMissing("StatusFilterCombo", base.FindName("StatusFilterCombo") as FrameworkElement);
+        RegisterNameIfMissing("dataPager", base.FindName("dataPager") as FrameworkElement);
     }
 
     private void RegisterNameIfMissing(string name, FrameworkElement? element)
@@ -113,14 +85,7 @@ public partial class EnterprisePanelView : UserControl
 
     public new object? FindName(string name)
     {
-        return name switch
-        {
-            nameof(EnterpriseTreeGrid) when EnterpriseTreeGrid is not null => EnterpriseTreeGrid,
-            nameof(SearchTextBox) when SearchTextBox is not null => SearchTextBox,
-            nameof(StatusFilterCombo) when StatusFilterCombo is not null => StatusFilterCombo,
-            nameof(dataPager) when dataPager is not null => dataPager,
-            _ => base.FindName(name) ?? TryResolveField(name) ?? TryFindInVisualTree(name)
-        };
+        return base.FindName(name) ?? TryResolveField(name) ?? TryFindInVisualTree(name);
     }
 
     private object? TryResolveField(string name)

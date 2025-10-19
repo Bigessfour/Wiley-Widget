@@ -118,18 +118,31 @@ namespace WileyWidget
             // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
             try
             {
+                // CRITICAL: Set ApplyStylesOnApplication FIRST per Syncfusion documentation
+                // This ensures all theme resources are merged into Application.Current.Resources
                 SfSkinManager.ApplyStylesOnApplication = true;
+                
                 // Default to FluentDark for the entire application
 #pragma warning disable CA2000 // Theme objects are managed by SfSkinManager
                 SfSkinManager.ApplicationTheme = new Theme("FluentDark");
 #pragma warning restore CA2000
+                
+                Log.Information("SfSkinManager initialized with FluentDark theme globally");
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Error(ex, "Failed to initialize SfSkinManager theme - falling back to default");
                 // Fallback to FluentLight if FluentDark is unavailable for any reason
+                try
+                {
 #pragma warning disable CA2000
-                SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+                    SfSkinManager.ApplicationTheme = new Theme("FluentLight");
 #pragma warning restore CA2000
+                }
+                catch
+                {
+                    Log.Error("FluentLight fallback also failed - continuing without theme");
+                }
             }
 
             ConfigureLogging();
@@ -318,13 +331,14 @@ namespace WileyWidget
             containerRegistry.RegisterSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
             containerRegistry.RegisterSingleton<SettingsService>();
             containerRegistry.RegisterSingleton<ISettingsService>(provider => provider.Resolve<SettingsService>());
-            containerRegistry.RegisterSingleton<IThemeManager, ThemeManager>();
+            // NOTE: ThemeManager removed - SfSkinManager handles all theming globally per Syncfusion documentation
+            // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
             containerRegistry.RegisterSingleton<IDispatcherHelper>(provider => new DispatcherHelper());
             containerRegistry.RegisterSingleton<AppOptionsConfigurator>();
 
             IUnityContainer unityContainer = containerRegistry.GetContainer();
             EnableUnityDiagnostics(unityContainer);
-            Log.Information("✓ Registered core infrastructure services (Syncfusion, Settings, ThemeManager, Dispatcher)");
+            Log.Information("✓ Registered core infrastructure services (Syncfusion, Settings, Dispatcher)");
 
             // Initialize production secrets (synchronous for reliability)
             try
@@ -375,6 +389,10 @@ namespace WileyWidget
             // Ensure Prism-resolved ViewModels can obtain the UnitOfWork infrastructure
             containerRegistry.Register<IUnitOfWork, UnitOfWork>();
             Log.Information("✓ Registered IUnitOfWork infrastructure for Prism ViewModels");
+            
+            // Register IServiceScopeFactory for Unity-based scoped services (required by WhatIfScenarioEngine)
+            containerRegistry.RegisterSingleton<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory, UnityServiceScopeFactory>();
+            Log.Information("✓ Registered IServiceScopeFactory using Unity child container adapter");
             
             // Register business services
             containerRegistry.RegisterSingleton<IWhatIfScenarioEngine, WhatIfScenarioEngine>();
