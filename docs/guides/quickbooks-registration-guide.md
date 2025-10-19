@@ -11,24 +11,29 @@
 #### ✅ Step 2: Add Privacy Policy and End-User License Agreement
 
 **For Sandbox/Development:**
-- **Privacy Policy URL**: `https://localhost:5001/privacy`
-- **End-User License Agreement**: `https://localhost:5001/eula`
+- **Privacy Policy URL**: `https://app.townofwiley.gov/privacy`
+- **End-User License Agreement**: `https://app.townofwiley.gov/eula`
 
 **For Production** (create actual pages later):
 - Host these on your company website or GitHub Pages
 - Example: `https://yourdomain.com/wiley-widget/privacy`
 
-#### ✅ Step 3: Add Host Domain, Launch URL, and Disconnect URL
+#### ✅ Step 3: Add Host Domain, Launch URL, Disconnect URL, and Redirect URIs
 
-**Desktop Application Settings:**
-- **App Host Domain**: `localhost`
-- **Launch URL**: `https://localhost:5001/`
-- **Disconnect URL**: `https://localhost:5001/disconnect`
+We’re using a desktop loopback redirect and a public domain for launch/disconnect/webhooks.
 
-**Redirect URIs (OAuth Callbacks):**
-- `https://localhost:5001/callback` ✅ Primary
-- `http://localhost:8080/callback` (alternative)
-- `http://127.0.0.1:5001/callback` (alternative)
+**Host Domain (Portal field):**
+- `app.townofwiley.gov` (no protocol)
+
+**Launch URL (Portal field):**
+- `https://app.townofwiley.gov/app/launch`
+
+**Disconnect URL (Portal field):**
+- `https://app.townofwiley.gov/app/disconnect`
+
+**Redirect URIs (OAuth callback for desktop loopback):**
+- `http://localhost:8080/callback` ✅ Primary
+- Optional: `http://127.0.0.1:8080/callback`
 
 **Important**: Check the box for "Desktop App" if available.
 
@@ -76,7 +81,7 @@ Once registered, you'll get:
 # Set environment variables
 [Environment]::SetEnvironmentVariable('QBO_CLIENT_ID', 'your_client_id', 'User')
 [Environment]::SetEnvironmentVariable('QBO_CLIENT_SECRET', 'your_client_secret', 'User')
-[Environment]::SetEnvironmentVariable('QBO_REDIRECT_URI', 'https://localhost:5001/callback', 'User')
+[Environment]::SetEnvironmentVariable('QBO_REDIRECT_URI', 'http://localhost:8080/callback', 'User')
 [Environment]::SetEnvironmentVariable('QBO_ENVIRONMENT', 'sandbox', 'User')
 
 # Verify they're set
@@ -92,7 +97,7 @@ Edit `appsettings.Development.json`:
   "QuickBooks": {
     "ClientId": "YOUR_CLIENT_ID_HERE",
     "ClientSecret": "YOUR_CLIENT_SECRET_HERE",
-    "RedirectUri": "https://localhost:5001/callback",
+  "RedirectUri": "http://localhost:8080/callback",
     "Environment": "sandbox"
   }
 }
@@ -138,7 +143,7 @@ Intuit provides a sandbox company for testing:
 ## Troubleshooting
 
 ### "Invalid Redirect URI" Error
-- Ensure `https://localhost:5001/callback` is added to your app's redirect URIs
+- Ensure `http://localhost:8080/callback` is added to your app's redirect URIs
 - Match the exact URL (including https/http and port)
 
 ### "Invalid Client" Error
@@ -192,6 +197,21 @@ Current configuration in your project:
   "RedirectUri": "${QBO_REDIRECT_URI}",
   "Environment": "${QBO_ENVIRONMENT}"
 }
+---
+
+## Webhooks (recommended for sandbox verification)
+
+Enable Webhooks in your Intuit app and set:
+
+- Endpoint URL: `https://app.townofwiley.gov/qbo/webhooks`
+- Webhooks Verifier Token: copy the value from Intuit portal and set it locally:
+
+```powershell
+[Environment]::SetEnvironmentVariable('QBO_WEBHOOKS_VERIFIER','<verifier-from-intuit>','User')
+```
+
+Local service listens at `https://localhost:7207/qbo/webhooks` and is exposed via the Cloudflare Tunnel to the public URL above.
+
 ```
 
 These reference environment variables (recommended for security).

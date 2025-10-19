@@ -583,6 +583,22 @@
 				"/flp:LogFile=build-errors.log;errorsonly"
 			],
 			"group": "build"
+		},
+		{
+			"label": "run-webhooks",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"${workspaceFolder}/WileyWidget.Webhooks/WileyWidget.Webhooks.csproj",
+				"--no-build"
+			],
+			"isBackground": true,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
 		}
 	],
 	"inputs": [

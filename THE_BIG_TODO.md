@@ -2,13 +2,36 @@
 
 A living backlog of technical debt, follow-ups, and “swing back” work. Keep items small and actionable. Move done items to the Changelog when complete.
 
-## High-priority (near-term wins)
+## High
 
-- Threading: replace Task.Run around UI with Dispatcher calls
-  - Replace Task.Run(() => DispatcherHelper.Invoke(...)) with direct DispatcherHelper.Invoke/InvokeAsync.
-  - Ensure all ObservableCollection mutations and selection changes occur on the UI thread.
-  - Owner: Core UI team
-  - Status: Done (core sweep completed across primary ViewModels; retained Task.Run only for CPU/disk-bound exports).
+- QuickBooks OAuth: Serilog package mismatch crash
+  - Symptom: MissingMethodException in Intuit.Ipp.OAuth2PlatformClient when constructing OAuthAdvancedLogging (Serilog.FileLoggerConfigurationExtensions.File overload with FileLifecycleHooks not found).
+  - Evidence: logs/wiley-widget-20251019*.log at 09:41:33–09:42:16 while opening Settings > QuickBooks; stack points to AcquireTokensInteractiveAsync()/RefreshTokenIfNeededAsync() in `src/Services/QuickBooksService.cs`.
+  - Likely cause: Serilog.Sinks.File version mismatch vs. the version Intuit SDK was compiled against.
+  - Proposed fixes (choose one):
+    - Align package versions: pin Serilog.Sinks.File to a compatible version (e.g., 4.x) or upgrade Intuit.Ipp.OAuth2PlatformClient to a version compatible with our Serilog stack; ensure only one Serilog.Sinks.File loads at runtime.
+    - Temporary mitigation: disable Intuit “advanced logging” to Serilog file sink via client options/flags so OAuth no longer touches the incompatible API.
+  - Acceptance criteria:
+    - Navigating to Settings > QuickBooks no longer throws MissingMethodException.
+    - TestConnectionAsync completes without crash (handles auth flow or reports a controlled error).
+    - Normal application logging remains intact (no Serilog binding errors in logs).
+  - Owner: Settings/OAuth
+  - Status 2025-10-19:
+    - Repro persists. Fresh run still logs MissingMethodException in Intuit.Ipp.OAuth2PlatformClient.Diagnostics when calling GetAuthorizationURL.
+    - Output DLL confirms Serilog.Sinks.File.dll ProductVersion: 7.0.0 (present in bin). Likely runtime binding conflict or API mismatch inside Intuit Diagnostics assembly.
+  - Next actions:
+    - Force-align Serilog stack used by Intuit packages: explicitly pin Serilog, Serilog.Enrichers.Thread/Environment, Serilog.Settings.Configuration, Serilog.Sinks.Console/Debug to versions compatible with IppOAuth2PlatformSdk 14.0.0 and IppDotNetSdkForQuickBooksApiV3 14.7.0.1.
+    - If mismatch remains, disable Intuit advanced logging to file sink for OAuth by configuring the OAuth2 client/logging helper (avoid invoking the File(...) sink overload with FileLifecycleHooks).
+    - Validate by launching Settings > QuickBooks and running Test Connection; confirm no new MissingMethodException in logs.
+
+- Remove blocking waits on UI paths
+  - Replace .Wait()/.Result with async/await end-to-end.
+  - If unavoidable during non-UI startup, isolate on background thread and document rationale.
+  - Files: DatabaseConfiguration.cs (fixed: async TryGetFromSecretVaultAsync + GetAwaiter().GetResult at registration), QuickBooksService.cs (pending under Settings/OAuth follow-ups)
+
+Done: QuickBooks service made async and lazy-initialized; Settings tab flow validated. Added URL ACL readiness check and surfaced status in Settings > QuickBooks Integration.
+
+## Medium
 
 - Async I/O: stop wrapping async repo calls in Task.Run
   - Replace await Task.Run(() => repo.AsyncMethod()) with await repo.AsyncMethod().
@@ -16,62 +39,38 @@ A living backlog of technical debt, follow-ups, and “swing back” work. Keep 
   - Validate repositories use true async EF Core calls.
   - Owner: Data layer
 
-- Remove blocking waits on UI paths
-  - Replace .Wait()/.Result with async/await end-to-end.
-  - If unavoidable during non-UI startup, isolate on background thread and document rationale.
-  - Files: DatabaseConfiguration.cs (fixed: async TryGetFromSecretVaultAsync + GetAwaiter().GetResult at registration), QuickBooksService.cs (pending under Settings/OAuth follow-ups)
-
-- Add DEBUG-only UI thread guard
-  - Introduce EnsureOnUIThread() used before UI mutations; assert/log when off-thread.
-  - Implemented: DispatcherGuard + usage in MainViewModel AddTestEnterpriseAsync and applied in additional hotspots.
-  - Scope: Extended to other ViewModels that touch UI/ObservableCollection.
-
-Done: QuickBooks service made async and lazy-initialized; Settings tab flow validated. Added URL ACL readiness check and surfaced status in Settings > QuickBooks Integration.
-
-## WPF/Prism UI polish
-
-- Regions: verify initial activation states
-  - Ensure SettingsPanelView is activated when expected; review RightPanelRegion auto-hide behavior.
-  - Add navigation breadcrumbs or visual cues when a region is collapsed/hidden.
-
-- Busy indicators standardization
-  - Ensure IsBusy/BusyIndicator usage is consistent; prefer central BusyService.
-
-- Validation UX pass
-  - Consolidate validation styles; ensure consistent tooltip and inline messages across Settings tabs.
-
-## Settings/OAuth follow-ups
-
-- See: docs/progress/2025-10-19-oauth-followups.md
-
 - OAuth listener binding fix automation
   - Detect and apply netsh http add urlacl when binding fails; log the exact command and outcome.
   - Add post-token verification and persistence checks.
+  - See also: docs/progress/2025-10-19-oauth-followups.md
 
 - QuickBooks integration hardening
   - Timeouts, retry, and structured error messages (non-blocking UI).
 
-## Observability & diagnostics
+- Observability & diagnostics
+  - Structured logging alignment: ensure correlation IDs for long-running ops; enrich logs with Region/VM context.
+  - UI freeze diagnostics checklist: document steps and VS diagnostics tools; add a scriptable “debug mode” switch.
 
-- Structured logging alignment
-  - Ensure correlation IDs for long-running ops; enrich logs with Region/VM context.
+- Performance & startup
+  - Defer heavy initialization until after shell shows: convert startup blocking work to background async tasks with UI-ready checks.
+  - Repository batching: reduce chatty calls; prefer batched/async streaming where possible.
 
-- UI freeze diagnostics checklist
-  - Document steps and VS diagnostics tools; add a scriptable “debug mode” switch.
+## Low
 
-## Performance & startup
+- WPF/Prism UI polish
+  - Regions: verify initial activation states; ensure SettingsPanelView activation and review RightPanelRegion auto-hide behavior; add breadcrumbs when regions are collapsed.
+  - Busy indicators standardization: ensure IsBusy/BusyIndicator usage is consistent; prefer central BusyService.
+  - Validation UX pass: consolidate validation styles; ensure consistent tooltip and inline messages across Settings tabs.
 
-- Defer heavy initialization until after shell shows
-  - Convert startup blocking work to background async tasks with UI-ready checks.
+- Add DEBUG-only UI thread guard
+  - Introduce EnsureOnUIThread() used before UI mutations; assert/log when off-thread.
+  - Implemented: DispatcherGuard + usage in MainViewModel AddTestEnterpriseAsync and applied in additional hotspots.
+  - Scope: Extend to other ViewModels that touch UI/ObservableCollection as needed.
 
-- Repository batching
-  - Reduce chatty calls; prefer batched/async streaming where possible.
-
-## Future candidates (schedule when capacity allows)
-
-- Multiple UI windows on separate dispatchers (only if we add independent top-level tools)
-- Background indexing for large datasets (progress reporting to UI)
-- Unified Dialog/Interaction service abstraction with async patterns
+- Future candidates (schedule when capacity allows)
+  - Multiple UI windows on separate dispatchers (only if we add independent top-level tools)
+  - Background indexing for large datasets (progress reporting to UI)
+  - Unified Dialog/Interaction service abstraction with async patterns
 
 ---
 

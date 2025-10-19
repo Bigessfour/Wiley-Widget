@@ -97,6 +97,33 @@ namespace WileyWidget.Startup.Modules
             }
             END COMMENTED OUT SECTION */
 
+            // Seed QuickBooks secrets programmatically from environment variables so setup can proceed without the Settings UI
+            try
+            {
+                ISecretVaultService secretVaultService = null;
+                try
+                {
+                    secretVaultService = containerProvider.Resolve<ISecretVaultService>();
+                }
+                catch
+                {
+                    Log.Debug("ISecretVaultService not available");
+                }
+
+                if (secretVaultService != null)
+                {
+                    SeedQuickBooksSecretsFromEnvironmentAsync(secretVaultService).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    Log.Warning("Secret vault service not available; cannot seed QuickBooks secrets programmatically.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to seed QuickBooks secrets from environment");
+            }
+
             Log.Information("QuickBooksModule initialization completed (QB init disabled)");
         }
 
@@ -104,6 +131,66 @@ namespace WileyWidget.Startup.Modules
         {
             // QuickBooks services are registered in the main bootstrapper or service registrations
             // This module only initializes the service
+        }
+
+        /// <summary>
+        /// Programmatically installs QuickBooks settings into the encrypted secret vault from environment variables.
+        /// It writes values only when the corresponding secret is missing or empty.
+        /// Supported env vars (checked in order):
+        ///   QBO_CLIENT_ID | QUICKBOOKS_CLIENT_ID
+        ///   QBO_CLIENT_SECRET | QUICKBOOKS_CLIENT_SECRET
+        ///   QBO_REDIRECT_URI | QUICKBOOKS_REDIRECT_URI
+        ///   QBO_ENVIRONMENT | QUICKBOOKS_ENVIRONMENT
+        /// Secrets written (for compatibility with existing loaders):
+        ///   QuickBooks-ClientId, QBO-CLIENT-ID
+        ///   QuickBooks-ClientSecret, QBO-CLIENT-SECRET
+        ///   QuickBooks-RedirectUri, QBO-REDIRECT-URI
+        ///   QuickBooks-Environment, QBO-ENVIRONMENT
+        /// </summary>
+        private static async System.Threading.Tasks.Task SeedQuickBooksSecretsFromEnvironmentAsync(WileyWidget.Services.ISecretVaultService secretVault)
+        {
+            static string? ReadEnv(string name)
+            {
+                // Prefer User scope, then Process scope
+                return System.Environment.GetEnvironmentVariable(name, System.EnvironmentVariableTarget.User)
+                       ?? System.Environment.GetEnvironmentVariable(name, System.EnvironmentVariableTarget.Process)
+                       ?? System.Environment.GetEnvironmentVariable(name);
+            }
+
+            async System.Threading.Tasks.Task EnsureSecretAsync(string primaryKey, string altKey, string? value)
+            {
+                if (string.IsNullOrWhiteSpace(value)) return;
+
+                var existing = await secretVault.GetSecretAsync(primaryKey).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(existing))
+                {
+                    await secretVault.SetSecretAsync(primaryKey, value!).ConfigureAwait(false);
+                    Log.Information("Seeded secret '{SecretKey}' from environment.", primaryKey);
+                }
+
+                // Also write alternate key for broader compatibility if it doesn't exist
+                if (!string.IsNullOrWhiteSpace(altKey))
+                {
+                    var existingAlt = await secretVault.GetSecretAsync(altKey).ConfigureAwait(false);
+                    if (string.IsNullOrWhiteSpace(existingAlt))
+                    {
+                        await secretVault.SetSecretAsync(altKey, value!).ConfigureAwait(false);
+                        Log.Information("Seeded secret '{SecretKey}' from environment.", altKey);
+                    }
+                }
+            }
+
+            // Read env vars (multiple aliases supported)
+            var clientId = ReadEnv("QBO_CLIENT_ID") ?? ReadEnv("QUICKBOOKS_CLIENT_ID");
+            var clientSecret = ReadEnv("QBO_CLIENT_SECRET") ?? ReadEnv("QUICKBOOKS_CLIENT_SECRET");
+            var redirectUri = ReadEnv("QBO_REDIRECT_URI") ?? ReadEnv("QUICKBOOKS_REDIRECT_URI") ?? "http://localhost:8080/callback";
+            var environment = ReadEnv("QBO_ENVIRONMENT") ?? ReadEnv("QUICKBOOKS_ENVIRONMENT") ?? "Sandbox";
+
+            // Persist into vault (both canonical and alternate keys)
+            await EnsureSecretAsync("QuickBooks-ClientId", "QBO-CLIENT-ID", clientId);
+            await EnsureSecretAsync("QuickBooks-ClientSecret", "QBO-CLIENT-SECRET", clientSecret);
+            await EnsureSecretAsync("QuickBooks-RedirectUri", "QBO-REDIRECT-URI", redirectUri);
+            await EnsureSecretAsync("QuickBooks-Environment", "QBO-ENVIRONMENT", environment);
         }
     }
 }

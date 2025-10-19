@@ -1,0 +1,9 @@
+tunnel: ddd24f98-673d-43cb-b8a8-21a2329fffec
+credentials-file: C:\Users\biges\.cloudflared\ddd24f98-673d-43cb-b8a8-21a2329fffec.json
+
+ingress:
+  - hostname: app.townofwiley.gov
+    service: https://localhost:7207
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404

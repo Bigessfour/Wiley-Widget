@@ -132,6 +132,7 @@
   <Compile Remove="WileyWidget.Business\**" />
   <Compile Remove="WileyWidget.Data\**" />
   <Compile Remove="WileyWidget.Models\**" />
+  <Compile Remove="WileyWidget.Webhooks\**" />
   <Compile Remove="src\Models\**\*.cs" />
   <Compile Remove="WileyWidget.IntegrationTests\**" />
   <Compile Remove="WileyWidget.Tests\**" />
@@ -147,6 +148,7 @@
   <EmbeddedResource Remove="WileyWidget.Business\**" />
   <EmbeddedResource Remove="WileyWidget.Data\**" />
   <EmbeddedResource Remove="WileyWidget.Models\**" />
+  <EmbeddedResource Remove="WileyWidget.Webhooks\**" />
   <EmbeddedResource Remove="src\Models\**\*.*" />
   <EmbeddedResource Remove="WileyWidget.IntegrationTests\**" />
   <EmbeddedResource Remove="WileyWidget.Tests\**" />
@@ -156,6 +158,7 @@
   <None Remove="WileyWidget.Business\**" />
   <None Remove="WileyWidget.Data\**" />
   <None Remove="WileyWidget.Models\**" />
+  <None Remove="WileyWidget.Webhooks\**" />
   <None Remove="src\Models\**\*.*" />
   <None Remove="WileyWidget.IntegrationTests\**" />
   <None Remove="WileyWidget.Tests\**" />

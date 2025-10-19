@@ -140,19 +140,20 @@
                                 </Grid.RowDefinitions>
                                 <Label Grid.Row="0" Grid.Column="0" Content="Client ID:"/>
                                 <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding QuickBooksClientId, Mode=TwoWay}" Margin="0,0,0,8"
-                                         ToolTipService.ToolTip="From Intuit Developer Portal (App Credentials)"/>
+                                         ToolTipService.ToolTip="Sandbox: Intuit → My Apps → (Your App) → Keys &amp; OAuth → Client ID. See docs/integrations/quickbooks-oauth-setup.md"/>
 
                                 <Label Grid.Row="1" Grid.Column="0" Content="Client Secret:"/>
                                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding QuickBooksClientSecret, Mode=TwoWay}" Margin="0,0,0,8"
-                                         ToolTipService.ToolTip="Treat as secret; stored securely via Secret Vault"/>
+                                         ToolTipService.ToolTip="Sandbox secret from Keys &amp; OAuth; stored via Secret Vault. Do not share."/>
 
                                 <Label Grid.Row="2" Grid.Column="0" Content="Redirect URI:"/>
                                 <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding QuickBooksRedirectUri, Mode=TwoWay}" Margin="0,0,0,8"
-                                         ToolTipService.ToolTip="e.g., http://localhost:5001/callback"/>
+                                         ToolTipService.ToolTip="Use EXACTLY http://localhost:8080/callback and add it under Intuit → Keys &amp; OAuth → Redirect URIs"/>
 
                                 <Label Grid.Row="3" Grid.Column="0" Content="Environment:"/>
                                 <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding QuickBooksEnvironments}"
-                                          SelectedItem="{Binding SelectedQuickBooksEnvironment, Mode=TwoWay}"/>
+                                          SelectedItem="{Binding SelectedQuickBooksEnvironment, Mode=TwoWay}"
+                                          ToolTipService.ToolTip="Select Sandbox for development. Use Production only with approved credentials."/>
                             </Grid>
                         </GroupBox>
 
@@ -172,7 +173,7 @@
                                             Command="{Binding ConnectQuickBooksCommand}"
                                             HorizontalAlignment="Left" />
                                 </StackPanel>
-                                <TextBlock Text="If a listener binding error appears, run the logged netsh command as Administrator and retry."
+                                <TextBlock Text="We are integrating with Sandbox first. Quick reference: docs/integrations/quickbooks-oauth-setup.md"
                                            Foreground="#aaa" FontStyle="Italic" Margin="0,8,0,0"/>
                             </StackPanel>
                         </GroupBox>

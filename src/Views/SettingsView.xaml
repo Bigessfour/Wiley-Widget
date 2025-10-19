@@ -178,7 +178,7 @@
                                                        Value="{Binding QuickBooksClientId, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
                                                        Style="{StaticResource ValidationSfMaskedEdit}"
                                                        PromptChar=" "
-                                                       ToolTip="Enter your QuickBooks OAuth2 Client ID from the Intuit Developer Portal. Required for API authentication." />
+                                                       ToolTip="Sandbox setup: Intuit Developer Portal → My Apps → (Your App) → Keys &amp; OAuth → Client ID.\nWe are integrating against Sandbox for now. Do not use production keys yet.\nQuick reference: docs/integrations/quickbooks-oauth-setup.md" />
                                 <TextBlock Text="{Binding QuickBooksClientIdValidation}"
                                          Foreground="Red"
                                          FontSize="10"
@@ -189,7 +189,7 @@
                                                        Value="{Binding QuickBooksClientSecret, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
                                                        Style="{StaticResource ValidationSfMaskedEdit}"
                                                        PromptChar=" "
-                                                       ToolTip="Enter your QuickBooks OAuth2 Client Secret. This is securely stored in the local vault." />
+                                                       ToolTip="Sandbox setup: Intuit Developer Portal → My Apps → (Your App) → Keys &amp; OAuth → Client Secret.\nStored via Secret Vault; keep this confidential.\nQuick reference: docs/integrations/quickbooks-oauth-setup.md" />
                                 <TextBlock Text="{Binding QuickBooksClientSecretValidation}"
                                          Foreground="Red"
                                          FontSize="10"
@@ -198,7 +198,7 @@
                                 <Label Content="Redirect URI:*" />
                                 <TextBox Text="{Binding QuickBooksRedirectUri, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
                                        Style="{StaticResource ValidationTextBox}"
-                                       ToolTip="OAuth2 redirect URI configured in Intuit Developer Portal (e.g., https://localhost:5001/callback)" />
+                                       ToolTip="Use EXACTLY: http://localhost:8080/callback (must match Intuit → Keys &amp; OAuth → Redirect URIs).\nIf listener binding fails, run netsh URL ACL as admin. See quick reference doc." />
                                 <TextBlock Text="{Binding QuickBooksRedirectUriValidation}"
                                          Foreground="Red"
                                          FontSize="10"
@@ -208,7 +208,13 @@
                                 <syncfusion:ComboBoxAdv ItemsSource="{Binding QuickBooksEnvironments}"
                                                      SelectedItem="{Binding SelectedQuickBooksEnvironment, Mode=TwoWay}"
                                                      Margin="0,0,0,8"
-                                                     ToolTip="Select Sandbox for testing or Production for live data operations" />
+                                                     ToolTip="Select Sandbox for development (recommended). Production should be used only with approved credentials." />
+
+                                <TextBlock Text="Note: We are targeting a Sandbox integration first. Use the quick reference at docs/integrations/quickbooks-oauth-setup.md"
+                                           Foreground="#888"
+                                           FontStyle="Italic"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,8" />
                             </StackPanel>
                         </GroupBox>
 

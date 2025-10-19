@@ -3,17 +3,18 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Intuit.Ipp.Core;
 using Intuit.Ipp.Data;
 using Intuit.Ipp.DataService;
-using Intuit.Ipp.OAuth2PlatformClient;
 using Intuit.Ipp.Security;
 using Intuit.Ipp.QueryFilter;
 using Microsoft.Extensions.Logging;
 using System.IO;
+using System.Text.Json;
 
 namespace WileyWidget.Services;
 
@@ -33,7 +34,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private string _redirectUri = "http://localhost:8080/callback";
     private string? _realmId;
     private string _environment = "sandbox";
-    private OAuth2Client? _oauthClient;
+    private string? _intuitPreLoginUrl; // optional convenience URL to pre-authenticate account
     private bool _settingsLoaded;
 
     private volatile bool _initialized;
@@ -41,6 +42,10 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     // Intuit sandbox base URL documented at https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes
     private static readonly IReadOnlyList<string> DefaultScopes = new[] { "com.intuit.quickbooks.accounting" };
+
+    // Intuit OAuth 2.0 endpoints (per official docs)
+    private const string AuthorizationEndpoint = "https://appcenter.intuit.com/connect/oauth2";
+    private const string TokenEndpoint = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 
     public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger)
     {
@@ -107,8 +112,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
             _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)
                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
-                       ?? Environment.GetEnvironmentVariable("QBO_REALM_ID", EnvironmentVariableTarget.User)
-                       ?? throw new InvalidOperationException("QBO_REALM_ID not found in the secret vault or environment variables.");
+                       ?? Environment.GetEnvironmentVariable("QBO_REALM_ID", EnvironmentVariableTarget.User);
 
             // Redirect URI is configurable; fall back to default local listener
             var redirectFromVault = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
@@ -122,17 +126,9 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                            ?? Environment.GetEnvironmentVariable("QBO_ENVIRONMENT", EnvironmentVariableTarget.User)
                            ?? _environment;
 
-            try
-            {
-                _oauthClient = new OAuth2Client(_clientId, _clientSecret, _redirectUri, _environment);
-            }
-            catch (System.MissingMethodException ex)
-            {
-                // Intuit OAuth2 library has Serilog version conflict - disable advanced logging
-                _logger.LogWarning(ex, "QuickBooks OAuth2Client failed to initialize with advanced logging - continuing without it");
-                // OAuth2Client still works for basic operations even if logging initialization fails
-                _oauthClient = null; // Will need to handle null checks
-            }
+            // Optional pre-login URL to smooth user sign-in; can be provided via secret or env var
+            _intuitPreLoginUrl = await TryGetFromSecretVaultAsync(_secretVault, "QBO-PRELOGIN-URL", _logger).ConfigureAwait(false)
+                                 ?? Environment.GetEnvironmentVariable("QBO_PRELOGIN_URL", EnvironmentVariableTarget.User);
 
             _logger.LogInformation("QuickBooks service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}",
                 _clientId.Substring(0, Math.Min(8, _clientId.Length)), _realmId, _environment);
@@ -178,22 +174,10 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         var s = EnsureSettingsLoaded();
-        var response = await _oauthClient!.RefreshTokenAsync(s.QboRefreshToken).ConfigureAwait(false);
-        s.QboAccessToken = response.AccessToken;
-        s.QboRefreshToken = response.RefreshToken;
-        // SDK response no longer exposes ExpiresIn strongly-typed; assume 55 minutes (typical 60) unless reflection finds property.
-        var assumedLifetime = TimeSpan.FromMinutes(55);
-        var expiresInProp = response.GetType().GetProperty("ExpiresIn");
-        if (expiresInProp != null)
-        {
-            try
-            {
-                var val = expiresInProp.GetValue(response);
-                if (val is int seconds && seconds > 0) assumedLifetime = TimeSpan.FromSeconds(seconds);
-            }
-            catch { }
-        }
-        s.QboTokenExpiry = DateTime.UtcNow.Add(assumedLifetime);
+        var result = await RefreshAccessTokenAsync(s.QboRefreshToken!).ConfigureAwait(false);
+        s.QboAccessToken = result.AccessToken;
+        s.QboRefreshToken = result.RefreshToken;
+        s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
         _settings.Save();
         Serilog.Log.Information("QBO token refreshed (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
     }
@@ -202,6 +186,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         var s = EnsureSettingsLoaded();
         if (!HasValidAccessToken()) throw new InvalidOperationException("Access token invalid – refresh required.");
+        if (string.IsNullOrWhiteSpace(_realmId))
+            throw new InvalidOperationException("QuickBooks company (realmId) is not set. Connect to QuickBooks first.");
         var validator = new OAuth2RequestValidator(s.QboAccessToken);
         var ctx = new ServiceContext(_realmId!, IntuitServicesType.QBO, validator);
         ctx.IppConfiguration.BaseUrl.Qbo = _environment == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
@@ -211,12 +197,6 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     public async System.Threading.Tasks.Task<bool> TestConnectionAsync()
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
-        if (_oauthClient == null)
-        {
-            _logger.LogWarning("QuickBooks OAuth client not initialized - skipping connection test");
-            return false;
-        }
-
         try
         {
             await RefreshTokenIfNeededAsync();
@@ -428,11 +408,6 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private async Task<bool> AcquireTokensInteractiveAsync()
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
-        if (_oauthClient == null)
-        {
-            _logger.LogWarning("QuickBooks OAuth client not initialized; cannot start interactive authorization.");
-            return false;
-        }
         if (!HttpListener.IsSupported)
         {
             _logger.LogError("HttpListener is not supported on this platform; cannot perform QuickBooks OAuth authorization.");
@@ -460,9 +435,22 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             return false;
         }
 
+    // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
     var state = Guid.NewGuid().ToString("N");
-    var authUrl = _oauthClient.GetAuthorizationURL(DefaultScopes.ToList(), state);
+    var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
         _logger.LogWarning("Launching QuickBooks OAuth flow. Complete sign-in for realm {RealmId}.", _realmId);
+        // If provided, launch pre-login URL to ensure correct account context, then launch OAuth
+        if (!string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
+        {
+            try
+            {
+                LaunchOAuthBrowser(_intuitPreLoginUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to open Intuit pre-login URL; continuing with OAuth");
+            }
+        }
         LaunchOAuthBrowser(authUrl);
 
         HttpListenerContext? context = null;
@@ -492,8 +480,9 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         var request = context.Request;
         var response = context.Response;
         var query = request.QueryString;
-        var returnedState = query["state"];
-        var code = query["code"];
+    var returnedState = query["state"];
+    var code = query["code"];
+    var realmIdFromCallback = query["realmId"]; // provided by Intuit on success
         var error = query["error"];
         var success = !string.IsNullOrWhiteSpace(code) && string.Equals(state, returnedState, StringComparison.Ordinal);
 
@@ -511,23 +500,38 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
         try
         {
-            var tokenResponse = await _oauthClient.GetBearerTokenAsync(code, _redirectUri).ConfigureAwait(false);
+            var tokenResponse = await ExchangeAuthorizationCodeForTokensAsync(code).ConfigureAwait(false);
             s.QboAccessToken = tokenResponse.AccessToken;
             s.QboRefreshToken = tokenResponse.RefreshToken;
+            s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
 
-            var assumedLifetime = TimeSpan.FromMinutes(55);
-            var expiresInProp = tokenResponse.GetType().GetProperty("ExpiresIn");
-            if (expiresInProp != null)
+            // Capture realmId automatically if provided
+            if (!string.IsNullOrWhiteSpace(realmIdFromCallback))
             {
+                _realmId = realmIdFromCallback;
+                // Persist realmId for future runs if a secret vault is available
+                try { await _secretVault?.SetSecretAsync("QBO-REALM-ID", _realmId); } catch { }
+            }
+            else if (string.IsNullOrWhiteSpace(_realmId) && !string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
+            {
+                // As a safety, detect account_id_hint from pre-login URL if user provided one
                 try
                 {
-                    var val = expiresInProp.GetValue(tokenResponse);
-                    if (val is int seconds && seconds > 0) assumedLifetime = TimeSpan.FromSeconds(seconds);
+                    var uri = new Uri(_intuitPreLoginUrl);
+                    var qs = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                    var hint = qs["account_id_hint"];
+                    if (!string.IsNullOrWhiteSpace(hint))
+                    {
+                        _realmId = hint;
+                        try { await _secretVault?.SetSecretAsync("QBO-REALM-ID", _realmId); } catch { }
+                        _logger.LogInformation("Captured realmId from account_id_hint: {RealmId}", _realmId);
+                    }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to parse account_id_hint from Intuit pre-login URL");
+                }
             }
-
-            s.QboTokenExpiry = DateTime.UtcNow.Add(assumedLifetime);
             _settings.Save();
             Serilog.Log.Information("QBO tokens acquired interactively (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
             await WriteCallbackResponseAsync(response, "Authorization complete. You may close this tab and return to Wiley Widget.").ConfigureAwait(false);
@@ -539,6 +543,77 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             await WriteCallbackResponseAsync(response, "Authorization encountered an error. Check application logs for details.").ConfigureAwait(false);
             return false;
         }
+    }
+
+    private string BuildAuthorizationUrl(IReadOnlyList<string> scopes, string state)
+    {
+        // space-delimited scope string must be URL-encoded
+        var scopeParam = Uri.EscapeDataString(string.Join(' ', scopes));
+        var redirectParam = Uri.EscapeDataString(_redirectUri);
+        var clientIdParam = Uri.EscapeDataString(_clientId!);
+        var stateParam = Uri.EscapeDataString(state);
+        var url = $"{AuthorizationEndpoint}?client_id={clientIdParam}&response_type=code&scope={scopeParam}&redirect_uri={redirectParam}&state={stateParam}";
+        return url;
+    }
+
+    private sealed record TokenResult(string AccessToken, string RefreshToken, int ExpiresIn, int RefreshTokenExpiresIn);
+
+    private async Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code)
+    {
+        using var client = new HttpClient();
+        using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
+        var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
+        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
+        req.Headers.Accept.ParseAdd("application/json");
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("grant_type", "authorization_code"),
+            new("code", code),
+            new("redirect_uri", _redirectUri)
+        };
+        req.Content = new FormUrlEncodedContent(form);
+        using var resp = await client.SendAsync(req).ConfigureAwait(false);
+        var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Intuit token exchange failed ({(int)resp.StatusCode}): {json}");
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var access = root.GetProperty("access_token").GetString()!;
+        var refresh = root.GetProperty("refresh_token").GetString()!;
+        var expires = root.GetProperty("expires_in").GetInt32();
+        var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) ? x.GetInt32() : 0;
+        return new TokenResult(access, refresh, expires, refreshExpires);
+    }
+
+    private async Task<TokenResult> RefreshAccessTokenAsync(string refreshToken)
+    {
+        using var client = new HttpClient();
+        using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
+        var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
+        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
+        req.Headers.Accept.ParseAdd("application/json");
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("grant_type", "refresh_token"),
+            new("refresh_token", refreshToken)
+        };
+        req.Content = new FormUrlEncodedContent(form);
+        using var resp = await client.SendAsync(req).ConfigureAwait(false);
+        var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Intuit token refresh failed ({(int)resp.StatusCode}): {json}");
+        }
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var access = root.GetProperty("access_token").GetString()!;
+        var refresh = root.TryGetProperty("refresh_token", out var r) ? r.GetString()! : refreshToken; // may rotate
+        var expires = root.GetProperty("expires_in").GetInt32();
+        var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) ? x.GetInt32() : 0;
+        return new TokenResult(access, refresh, expires, refreshExpires);
     }
 
     private static async System.Threading.Tasks.Task WriteCallbackResponseAsync(HttpListenerResponse response, string message)

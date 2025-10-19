@@ -69,7 +69,34 @@ The application will:
 
 ---
 
-## 🔐 Configuration & Secret Management
+## � QuickBooks Sandbox Integration (New)
+
+Use your townofwiley.gov domain with Cloudflare Tunnel to expose the local webhooks receiver and complete Intuit Sandbox setup.
+
+Paste these into Intuit Developer (Development environment):
+- Host Domain: app.townofwiley.gov (no protocol)
+- Launch URL: https://app.townofwiley.gov/app/launch
+- Disconnect URL: https://app.townofwiley.gov/app/disconnect
+- Webhooks Endpoint URL: https://app.townofwiley.gov/qbo/webhooks
+- OAuth Redirect URI (desktop loopback): http://localhost:8080/callback
+
+Environment variables (User scope) the app reads:
+- QBO_CLIENT_ID, QBO_CLIENT_SECRET
+- QBO_REDIRECT_URI = http://localhost:8080/callback
+- QBO_ENVIRONMENT = sandbox
+- QBO_WEBHOOKS_VERIFIER = <value from Intuit Webhooks settings>
+
+Helpful guides:
+- docs/integrations/quickbooks-oauth-setup.md
+- docs/guides/quickbooks-registration-guide.md
+- WileyWidget.Webhooks/README.md
+
+Health check to verify tunnel and receiver:
+- https://app.townofwiley.gov/health → should return { "status": "ok" }
+
+---
+
+## �🔐 Configuration & Secret Management
 
 WileyWidget implements a **secure, encrypted secret management system** using Windows Data Protection API (DPAPI) for enterprise-grade credential storage. All sensitive data (API keys, client secrets, licenses) are automatically encrypted and can only be accessed by the Windows user who stored them.
 
