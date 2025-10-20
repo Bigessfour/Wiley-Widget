@@ -1,641 +1,565 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "build",
-			"command": "dotnet",
-			"type": "process",
-			"args": [
-				"build",
-				"${workspaceFolder}/WileyWidget.csproj",
-				"/property:GenerateFullPaths=true",
-				"/consoleloggerparameters:NoSummary",
-				"/flp:LogFile=build-errors.log;errorsonly"
-			],
-			"problemMatcher": "$msCompile",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		},
-		{
-			"label": "build-incremental",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/incremental-build.ps1"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"problemMatcher": "$msCompile",
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "profile-startup",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/profile-startup.ps1",
-				"-Iterations",
-				"3"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "build-cache-stats",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/manage-build-cache.ps1",
-				"-Stats"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "build-cache-clear",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/manage-build-cache.ps1",
-				"-Clear"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "publish",
-			"command": "dotnet",
-			"type": "process",
-			"args": [
-				"publish",
-				"${workspaceFolder}/WileyWidget.csproj",
-				"-c",
-				"Release",
-				"-o",
-				"${workspaceFolder}/publish"
-			],
-			"problemMatcher": "$msCompile"
-		},
-		{
-			"label": "run",
-			"command": "dotnet",
-			"type": "process",
-			"args": [
-				"run",
-				"--project",
-				"${workspaceFolder}/WileyWidget.csproj"
-			],
-			"problemMatcher": "$msCompile",
-			"group": "build"
-		},
-		{
-			"label": "watch",
-			"command": "dotnet",
-			"type": "process",
-			"args": [
-				"watch",
-				"run",
-				"--project",
-				"${workspaceFolder}/WileyWidget.csproj"
-			],
-			"problemMatcher": "$msCompile",
-			"isBackground": true,
-			"group": "build"
-		},
-		{
-			"label": "cleanup-dotnet",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"${workspaceFolder}/scripts/cleanup-dotnet.py",
-				"--force"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "kill-dotnet",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-Command",
-				"Get-Process -Name 'dotnet','WileyWidget','testhost','vstest.console' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host '✅ Killed orphaned .NET processes'"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "watch-py",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"${workspaceFolder}/scripts/watch-py.py",
-				"python",
-				"${workspaceFolder}/scripts/dev-start.py"
-			],
-			"group": "build",
-			"isBackground": true,
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "load-env",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"${workspaceFolder}/scripts/load-env.py",
-				"--load"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "test-fast",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"-m",
-				"pytest",
-				"-m",
-				"unit or smoke",
-				"--tb=short",
-				"--maxfail=5"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "test-all-python",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"-m",
-				"pytest",
-				"${workspaceFolder}/tests",
-				"--verbose",
-				"--tb=short",
-				"--maxfail=5",
-				"-m",
-				"not slow"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "test-python-coverage",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"-m",
-				"pytest",
-				"${workspaceFolder}/tests",
-				"--verbose",
-				"--tb=short",
-				"--maxfail=5",
-				"--cov=${workspaceFolder}",
-				"--cov-report=html:htmlcov",
-				"--cov-report=term-missing",
-				"--cov-report=xml",
-				"-m",
-				"not slow"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "test-csharp",
-			"dependsOn": [
-				"cleanup-dotnet"
-			],
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"${workspaceFolder}/WileyWidget.Tests/WileyWidget.Tests.csproj",
-				"--verbosity",
-				"normal",
-				"--logger",
-				"console"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": "$msCompile"
-		},
-		{
-			"label": "test-stafact",
-			"dependsOn": [
-				"cleanup-dotnet"
-			],
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/test-stafact-with-cleanup.ps1",
-				"-Verbosity",
-				"normal"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": "$msCompile"
-		},
-		{
-			"label": "test-stafact-phase2",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/test-stafact-phase2.ps1",
-				"-Quick"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": "$msCompile"
-		},
-		{
-			"label": "test-csharp-coverage",
-			"dependsOn": [
-				"cleanup-dotnet"
-			],
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"${workspaceFolder}/WileyWidget.Tests/WileyWidget.Tests.csproj",
-				"--verbosity",
-				"normal",
-				"--logger",
-				"console",
-				"--collect:\"XPlat Code Coverage\"",
-				"--results-directory:${workspaceFolder}/TestResults/Coverage"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": "$msCompile"
-		},
-		{
-			"label": "test-ui",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/test-with-kill.ps1",
-				"-Project",
-				"${workspaceFolder}/WileyWidget.UiTests/WileyWidget.UiTests.csproj",
-				"-Verbosity",
-				"normal",
-				"-Filter",
-				"FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
-				">",
-				"${workspaceFolder}/logs/test-ui.log"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": "$msCompile"
-		},
-		{
-			"label": "test-all",
-			"dependsOn": [
-				"test-all-python",
-				"test-csharp",
-				"test-ui"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "test-all-with-coverage",
-			"dependsOn": [
-				"test-python-coverage",
-				"test-csharp-coverage"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "debug-startup-debugpy",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"${workspaceFolder}/scripts/dev-start-debugpy.py",
-				"--timing"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "new"
-			},
-			"options": {
-				"env": {
-					"PYTHONPATH": "${workspaceFolder}",
-					"DEBUG_STARTUP": "true"
-				}
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "test-debugpy",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"${workspaceFolder}/scripts/test-debugpy.py"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "new"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "update-ps-modules",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-c",
-				"Update-Module -Force"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "verify-ps75",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-c",
-				"$PSVersionTable.PSVersion"
-			],
-			"options": {
-				"env": {
-					"POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-				}
-			},
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "view-coverage",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"-m",
-				"http.server",
-				"8000",
-				"--directory",
-				"${workspaceFolder}/coverage"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "grok-test-syncfusion",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-c",
-				"dotnet test WileyWidget.UiTests --filter SfDataGrid; if ($LASTEXITCODE -ne 0) { code --wait .; }"
-			],
-			"group": "test",
-			"presentation": {
-				"reveal": "always"
-			}
-		},
-		{
-			"label": "build-once",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"${workspaceFolder}/WileyWidget.csproj",
-				"/property:GenerateFullPaths=true",
-				"/consoleloggerparameters:NoSummary",
-				"/flp:LogFile=build-errors.log;errorsonly"
-			],
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "build-once-now",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"${workspaceFolder}/WileyWidget.csproj",
-				"/property:GenerateFullPaths=true",
-				"/consoleloggerparameters:NoSummary",
-				"/flp:LogFile=build-errors.log;errorsonly"
-			],
-			"group": "build"
-		},
-		{
-			"label": "run-webhooks",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"run",
-				"--project",
-				"${workspaceFolder}/WileyWidget.Webhooks/WileyWidget.Webhooks.csproj",
-				"--no-build"
-			],
-			"isBackground": true,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "pytest-single-quickbooksstructure",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"-m",
-				"pytest",
-				"tools/python/clr_tests/test_quickbooksstructuretest.py",
-				"-q",
-				"--maxfail=1",
-				"--tb=short"
-			]
-		}
-	],
-	"inputs": [
-		{
-			"id": "migrationName",
-			"description": "Name of the migration",
-			"default": "NewMigration",
-			"type": "promptString"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary",
+        "/flp:LogFile=build-errors.log;errorsonly"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "build-incremental",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/incremental-build.ps1"
+      ],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "profile-startup",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/profile-startup.ps1",
+        "-Iterations",
+        "3"
+      ],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "build-cache-stats",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/manage-build-cache.ps1",
+        "-Stats"
+      ],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "build-cache-clear",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/manage-build-cache.ps1",
+        "-Clear"
+      ],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "publish",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "publish",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "-c",
+        "Release",
+        "-o",
+        "${workspaceFolder}/publish"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["run", "--project", "${workspaceFolder}/WileyWidget.csproj"],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "watch",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "watch",
+        "run",
+        "--project",
+        "${workspaceFolder}/WileyWidget.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "isBackground": true,
+      "group": "build"
+    },
+    {
+      "label": "cleanup-dotnet",
+      "type": "shell",
+      "command": "python",
+      "args": ["${workspaceFolder}/scripts/cleanup-dotnet.py", "--force"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "kill-dotnet",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        "Get-Process -Name 'dotnet','WileyWidget','testhost','vstest.console' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host '✅ Killed orphaned .NET processes'"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "watch-py",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "${workspaceFolder}/scripts/watch-py.py",
+        "python",
+        "${workspaceFolder}/scripts/dev-start.py"
+      ],
+      "group": "build",
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "load-env",
+      "type": "shell",
+      "command": "python",
+      "args": ["${workspaceFolder}/scripts/load-env.py", "--load"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "test-fast",
+      "type": "shell",
+      "command": "python",
+      "args": ["-m", "unittest", "discover", "-v", "--buffer"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "test-with-config",
+      "type": "shell",
+      "command": "python",
+      "args": ["${workspaceFolder}/tools/python/test_config.py", "--verbose"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "test-coverage",
+      "type": "shell",
+      "command": "python",
+      "args": ["${workspaceFolder}/tools/python/test_config.py", "--coverage"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "test-all-python",
+      "type": "shell",
+      "command": "python",
+      "args": ["-m", "unittest", "discover", "-v", "--buffer"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "test-python-coverage",
+      "type": "shell",
+      "command": "coverage",
+      "args": [
+        "run",
+        "--source=${workspaceFolder}",
+        "-m",
+        "unittest",
+        "discover",
+        "-v"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    
+    {
+      "label": "test-stafact",
+      "dependsOn": ["cleanup-dotnet"],
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/test-stafact-with-cleanup.ps1",
+        "-Verbosity",
+        "normal"
+      ],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test-stafact-phase2",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/test-stafact-phase2.ps1",
+        "-Quick"
+      ],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile"
+    },
+    
+    {
+      "label": "test-ui",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/test-with-kill.ps1",
+        "-Project",
+        "${workspaceFolder}/WileyWidget.UiTests/WileyWidget.UiTests.csproj",
+        "-Verbosity",
+        "normal",
+        "-Filter",
+        "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
+        ">",
+        "${workspaceFolder}/logs/test-ui.log"
+      ],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test-all",
+      "dependsOn": ["test-all-python", "test-ui"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "test-all-with-coverage",
+      "dependsOn": ["test-python-coverage"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "debug-startup-debugpy",
+      "type": "shell",
+      "command": "python",
+      "args": ["${workspaceFolder}/scripts/dev-start-debugpy.py", "--timing"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "DEBUG_STARTUP": "true"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "test-debugpy",
+      "type": "shell",
+      "command": "python",
+      "args": ["${workspaceFolder}/scripts/test-debugpy.py"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "update-ps-modules",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-c", "Update-Module -Force"],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "verify-ps75",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-c", "$PSVersionTable.PSVersion"],
+      "options": {
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
+      },
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "view-coverage",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "http.server",
+        "8000",
+        "--directory",
+        "${workspaceFolder}/coverage"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "grok-test-syncfusion",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-c",
+        "dotnet test WileyWidget.UiTests --filter SfDataGrid; if ($LASTEXITCODE -ne 0) { code --wait .; }"
+      ],
+      "group": "test",
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "build-once",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary",
+        "/flp:LogFile=build-errors.log;errorsonly"
+      ],
+      "problemMatcher": ["$msCompile"],
+      "group": "build"
+    },
+    {
+      "label": "build-once-now",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary",
+        "/flp:LogFile=build-errors.log;errorsonly"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "run-webhooks",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/WileyWidget.Webhooks/WileyWidget.Webhooks.csproj",
+        "--no-build"
+      ],
+      "isBackground": true,
+      "problemMatcher": ["$msCompile"],
+      "group": "build"
+    },
+    {
+      "label": "pytest-single-quickbooksstructure",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "pytest",
+        "tools/python/clr_tests/test_quickbooksstructuretest.py",
+        "-q",
+        "--maxfail=1",
+        "--tb=short"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "migrationName",
+      "description": "Name of the migration",
+      "default": "NewMigration",
+      "type": "promptString"
+    }
+  ]
 }

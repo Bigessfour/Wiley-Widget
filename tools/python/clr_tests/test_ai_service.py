@@ -19,10 +19,15 @@ pytestmark = [
     pytest.mark.skipif(not HAS_PYTHONNET, reason="pythonnet required for CLR tests"),
 ]
 
-# Import CLR types only if available
+# Import CLR types only if available. Use the clr_loader fixture pattern in
+# the module where possible. For module-level discovery we still try to do a
+# best-effort import but ensure failures cause a clear skip rather than
+# crashing test discovery.
 if HAS_PYTHONNET:
-    clr.AddReference("Microsoft.Extensions.Configuration")
     try:
+        # Prefer explicit name-based reference here only for commonly available
+        # framework assemblies. Other assemblies are loaded via fixtures.
+        clr.AddReference("Microsoft.Extensions.Configuration")
         from Microsoft.Extensions.Configuration import (  # type: ignore[attr-defined, import-not-found]
             ConfigurationBuilder,
         )
@@ -49,26 +54,13 @@ if HAS_PYTHONNET:
         from System.Threading.Tasks import (
             Task,  # type: ignore[attr-defined, import-not-found]
         )
-    except Exception:
-        # If imports fail, set to None
-        ConfigurationBuilder = None
-        Activator = None
-        ArgumentException = None
-        Array = None
-        InvalidOperationException = None
-        Object = None
-        String = None
-        Dictionary = None
-        HttpStatusCode = None
-        HttpClient = None
-        HttpMessageHandler = None
-        HttpRequestException = None
-        HttpRequestMessage = None
-        HttpResponseMessage = None
-        IHttpClientFactory = None
-        StringContent = None
-        Encoding = None
-        Task = None
+    except Exception as exc:  # pragma: no cover - environment dependent
+        # If we cannot import the required CLR framework types at module import
+        # time, mark the module as unusable for CLR integration and skip.
+        HAS_PYTHONNET = False
+        # Provide a clearer message for why these tests are skipped.
+        skip_reason = f"Missing required CLR types: {exc}"
+        pytest.skip(skip_reason, allow_module_level=True)
 else:
     # Define dummy classes to avoid NameError
     ConfigurationBuilder = None

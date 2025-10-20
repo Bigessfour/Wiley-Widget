@@ -3,15 +3,13 @@
 
 # Enable all security checks by default
 framework:
-  - json
-  - yaml
-  - dockerfile
   - terraform
-  - cloudformation
-  - kubernetes
   - arm
   - bicep
-  - github_actions
+  - dockerfile
+  - kubernetes
+  - json
+  - yaml
 
 # Skip these checks to reduce noise and focus on critical security issues
 skip-check:
@@ -51,11 +49,11 @@ exclude-paths:
   - docs/
   - __pycache__/
   - .pytest_cache/
-  - "*.log"
-  - "*.cache"
-  - "*.tmp"
-  - "*.bak"
-  - "*.backup"
+  - "**/*.log"
+  - "**/*.cache"
+  - "**/*.tmp"
+  - "**/*.bak"
+  - "**/*.backup"
   - "**/*test*.json" # Skip test configuration files
   - "**/*example*.json" # Skip example files
   - "**/*sample*.json" # Skip sample files

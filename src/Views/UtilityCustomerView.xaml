@@ -13,9 +13,32 @@
              Title="Utility Customer Management"
              Height="800"
              Width="1200"
-             WindowStartupLocation="CenterScreen">
+             WindowStartupLocation="CenterScreen"
+             AutomationProperties.Name="Utility Customer Management Window"
+             AutomationProperties.HelpText="Main window for managing municipal utility customers, including customer information, billing history, and account management">
+    <Window.InputBindings>
+        <KeyBinding Key="F5" Command="{Binding LoadCustomersCommand}" />
+        <KeyBinding Key="N" Modifiers="Ctrl" Command="{Binding AddCustomerCommand}" />
+        <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding SaveCustomerCommand}" />
+        <KeyBinding Key="Delete" Command="{Binding DeleteCustomerCommand}" />
+        <KeyBinding Key="F" Modifiers="Ctrl" Command="{Binding SearchCustomersCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}" />
+    </Window.InputBindings>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        
+        <!-- Error Template for validation errors -->
+        <ControlTemplate x:Key="ErrorTemplate">
+            <DockPanel LastChildFill="True">
+                <Border BorderBrush="Red" BorderThickness="1" CornerRadius="2" DockPanel.Dock="Right" 
+                        Background="White" Margin="5,0,0,0" Width="20" Height="20">
+                    <TextBlock Text="!" FontWeight="Bold" Foreground="Red" 
+                              HorizontalAlignment="Center" VerticalAlignment="Center" 
+                              ToolTip="{Binding ElementName=adornerPlaceholder, Path=AdornedElement.(Validation.Errors)[0].ErrorContent}" />
+                </Border>
+                <AdornedElementPlaceholder x:Name="adornerPlaceholder" />
+            </DockPanel>
+        </ControlTemplate>
         
         <!-- Style for overdue bill rows -->
         <Style x:Key="OverdueCellStyle" TargetType="syncfusion:GridCell">
@@ -28,7 +51,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid Background="#FF0F1724" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="CustomerFocusAnchor">
+    <Grid Background="{DynamicResource ContentBackgroundBrush}" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="CustomerFocusAnchor">
     <Border x:Name="CustomerFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
     <DockPanel>
         <!-- Ribbon Toolbar -->
@@ -47,6 +70,9 @@
                     <syncfusion:RibbonButton Label="Add New" SizeForm="Large" 
                                             Command="{Binding AddCustomerAsyncCommand}"
                                             ToolTip="Add a new customer account" />
+                    <syncfusion:RibbonButton Label="Edit" 
+                                            Command="{Binding EditCustomerCommand}"
+                                            ToolTip="Edit the selected customer" />
                     <syncfusion:RibbonButton Label="Save" 
                                             Command="{Binding SaveCustomerAsyncCommand}"
                                             ToolTip="Save changes to selected customer" />
@@ -86,8 +112,8 @@
 
             <!-- Customer List Section -->
             <Border Grid.Row="0" Grid.Column="0" 
-                    Background="#1A2C41" 
-                    BorderBrush="#2A4A6A" 
+                    Background="{DynamicResource ContentBackgroundAlt2Brush}" 
+                    BorderBrush="{DynamicResource BorderAltBrush}" 
                     BorderThickness="1" 
                     CornerRadius="6" 
                     Margin="0,0,4,4">
@@ -97,7 +123,7 @@
                               FontSize="16" 
                               FontWeight="Bold" 
                               Margin="12,12,12,8"
-                              Foreground="#FFE0E6F0" />
+                              Foreground="{DynamicResource ContentForegroundBrush}" />
 
                     <syncfusion:SfDataGrid
                         x:Name="CustomerGrid"
@@ -115,7 +141,9 @@
                         GroupDropAreaText="Drag a column header here to group customers"
                         ColumnSizer="AutoWithLastColumnFill"
                         Margin="12,0,12,12"
-                        SelectionMode="Single">
+                        SelectionMode="Single"
+                        AutomationProperties.Name="Customer List Grid"
+                        AutomationProperties.HelpText="Grid displaying all utility customers with account information, contact details, and service status">
 
                         <syncfusion:SfDataGrid.Columns>
                             <syncfusion:GridTextColumn HeaderText="Account #" 
@@ -150,8 +178,8 @@
 
                         <syncfusion:SfDataGrid.ContextMenu>
                             <ContextMenu>
-                                <MenuItem Header="Load Bills" Command="{Binding LoadCustomerBillsAsyncCommand}" />
-                                <MenuItem Header="Edit Customer" />
+                                <MenuItem Header="Load Bills" Command="{Binding PlacementTarget.DataContext.LoadCustomerBillsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Edit Customer" Command="{Binding PlacementTarget.DataContext.EditCustomerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                 <Separator />
                                 <MenuItem Header="Export to Excel" />
                             </ContextMenu>
@@ -162,8 +190,8 @@
 
             <!-- Bill History Section -->
             <Border Grid.Row="1" Grid.Column="0" 
-                    Background="#1A2C41" 
-                    BorderBrush="#2A4A6A" 
+                    Background="{DynamicResource ContentBackgroundAlt2Brush}" 
+                    BorderBrush="{DynamicResource BorderAltBrush}" 
                     BorderThickness="1" 
                     CornerRadius="6" 
                     Margin="0,4,4,0">
@@ -172,7 +200,7 @@
                         <TextBlock Text="Billing History" 
                                   FontSize="16" 
                                   FontWeight="Bold"
-                                  Foreground="#FFE0E6F0" />
+                                  Foreground="{DynamicResource ContentForegroundBrush}" />
                         <TextBlock Text="{Binding SelectedCustomer.DisplayName, StringFormat=' - {0}'}"
                                   FontSize="14"
                                   Margin="8,2,0,0"
@@ -192,7 +220,9 @@
                         RowHeight="32"
                         ColumnSizer="Star"
                         Margin="12,0,12,12"
-                        SelectionMode="Single">
+                        SelectionMode="Single"
+                        AutomationProperties.Name="Billing History Grid"
+                        AutomationProperties.HelpText="Grid showing billing history for the selected customer including bill dates, amounts, and payment status">
 
                         <syncfusion:SfDataGrid.Columns>
                             <syncfusion:GridTextColumn HeaderText="Bill #" 
@@ -290,11 +320,14 @@
                 </DockPanel>
             </Border>
             <!-- Customer Details Panel -->
-            <Border Grid.Column="1" BorderBrush="LightGray" BorderThickness="1" Margin="0,8,8,8" CornerRadius="4">
+            <Border Grid.Column="1" BorderBrush="{DynamicResource BorderAltBrush}" BorderThickness="1" Margin="0,8,8,8" CornerRadius="4">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="Customer Details" FontSize="14" FontWeight="Bold" Margin="8" />
+                    <TextBlock DockPanel.Dock="Top" Text="Customer Details" FontSize="14" FontWeight="Bold" Margin="8" 
+                              AutomationProperties.Name="Customer Details Section Header" />
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                 AutomationProperties.Name="Customer Details Scroll Viewer"
+                                 AutomationProperties.HelpText="Scrollable area containing customer information form fields">
                         <StackPanel Margin="8" Orientation="Vertical">
                             <!-- Selected Customer Info -->
                             <GroupBox Header="Selected Customer" Margin="0,0,0,8">
@@ -312,16 +345,19 @@
                             <GroupBox Header="Basic Information" Margin="0,0,0,8">
                                 <StackPanel>
                                     <Label Content="Account Number:" />
-                                    <TextBox Text="{Binding SelectedCustomer.AccountNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" />
+                                    <TextBox Text="{Binding SelectedCustomer.AccountNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="First Name:" />
-                                    <TextBox Text="{Binding SelectedCustomer.FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" />
+                                    <TextBox Text="{Binding SelectedCustomer.FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="Last Name:" />
-                                    <TextBox Text="{Binding SelectedCustomer.LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" />
+                                    <TextBox Text="{Binding SelectedCustomer.LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="Company Name:" />
                                     <TextBox Text="{Binding SelectedCustomer.CompanyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -348,20 +384,24 @@
                                             Margin="0,0,0,8" />
 
                                     <Label Content="Address:" />
-                                    <TextBox Text="{Binding SelectedCustomer.ServiceAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" />
+                                    <TextBox Text="{Binding SelectedCustomer.ServiceAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="City:" />
-                                    <TextBox Text="{Binding SelectedCustomer.ServiceCity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" />
+                                    <TextBox Text="{Binding SelectedCustomer.ServiceCity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="State:" />
-                                    <TextBox Text="{Binding SelectedCustomer.ServiceState, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" MaxLength="2" />
+                                    <TextBox Text="{Binding SelectedCustomer.ServiceState, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" MaxLength="2" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="ZIP Code:" />
-                                    <TextBox Text="{Binding SelectedCustomer.ServiceZipCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" MaxLength="10" />
+                                    <TextBox Text="{Binding SelectedCustomer.ServiceZipCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" MaxLength="10" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
                                 </StackPanel>
                             </GroupBox>
 
@@ -390,12 +430,14 @@
                             <GroupBox Header="Contact Information" Margin="0,0,0,8">
                                 <StackPanel>
                                     <Label Content="Phone Number:" />
-                                    <TextBox Text="{Binding SelectedCustomer.PhoneNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" />
+                                    <TextBox Text="{Binding SelectedCustomer.PhoneNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="Email Address:" />
-                                    <TextBox Text="{Binding SelectedCustomer.EmailAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                           Margin="0,0,0,8" />
+                                    <TextBox Text="{Binding SelectedCustomer.EmailAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" 
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="Meter Number:" />
                                     <TextBox Text="{Binding SelectedCustomer.MeterNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

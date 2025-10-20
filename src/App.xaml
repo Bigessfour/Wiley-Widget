@@ -4,16 +4,14 @@
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF">
     <Application.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <!-- NOTE: SfSkinManager.ApplicationTheme handles ALL Syncfusion control theming globally -->
-                <!-- Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application -->
-                <!-- DO NOT add Syncfusion theme assemblies here - they are managed by SfSkinManager -->
-                
-                <!-- Custom application-specific resources only -->
-                <ResourceDictionary Source="Themes/Generic.xaml" />
-                <ResourceDictionary Source="Themes/WileyTheme.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
+        <!--
+            Resource dictionaries are intentionally NOT merged here at XAML parse time.
+            Previous runtime issues caused XAML parsing failures when some theme files
+            contained color tokens that failed the XAML Color parser on certain runs.
+
+            To make startup resilient, merged dictionaries are loaded programmatically
+            from App.xaml.cs using a sanitizer/loader which validates color tokens and
+            falls back safely when needed.
+        -->
     </Application.Resources>
 </Application>

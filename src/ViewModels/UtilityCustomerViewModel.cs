@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Collections;
+using System.ComponentModel;
 using Prism.Mvvm;
 using Prism.Commands;
 using WileyWidget.Data;
@@ -9,6 +11,7 @@ using System.Threading.Tasks;
 using Serilog;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services;
+using PrismDialog = Prism.Dialogs;
 
 namespace WileyWidget.ViewModels;
 
@@ -16,10 +19,12 @@ namespace WileyWidget.ViewModels;
 /// View model for managing utility customers
 /// Provides data binding for customer CRUD operations and search functionality
 /// </summary>
-public class UtilityCustomerViewModel : BindableBase
+public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDisposable
 {
     private readonly IUtilityCustomerRepository _customerRepository;
     private readonly IGrokSupercomputer _grokSupercomputer;
+    private readonly Prism.Dialogs.IDialogService? _dialogService;
+    private CancellationTokenSource? _cancellationTokenSource;
 
     /// <summary>
     /// Collection of all customers for data binding
@@ -57,8 +62,32 @@ public class UtilityCustomerViewModel : BindableBase
         {
             if (_selectedCustomer != value)
             {
+                // Unsubscribe from previous customer
+                if (_selectedCustomer != null)
+                {
+                    _selectedCustomer.PropertyChanged -= OnSelectedCustomerPropertyChanged;
+                }
+
                 _selectedCustomer = value;
                 RaisePropertyChanged();
+
+                // Subscribe to new customer
+                if (_selectedCustomer != null)
+                {
+                    _selectedCustomer.PropertyChanged += OnSelectedCustomerPropertyChanged;
+                    // Validate all customer properties
+                    ValidateAllCustomerProperties();
+                }
+                else
+                {
+                    // Clear customer-related errors
+                    ClearCustomerErrors();
+                }
+                // Update commands that depend on the selected customer
+                EditCustomerCommand?.RaiseCanExecuteChanged();
+                SaveCustomerCommand?.RaiseCanExecuteChanged();
+                DeleteCustomerCommand?.RaiseCanExecuteChanged();
+                LoadCustomerBillsCommand?.RaiseCanExecuteChanged();
             }
         }
     }
@@ -76,6 +105,17 @@ public class UtilityCustomerViewModel : BindableBase
             {
                 _isLoading = value;
                 RaisePropertyChanged();
+                // Update commands that consider loading state
+                EditCustomerCommand?.RaiseCanExecuteChanged();
+                LoadCustomersCommand?.RaiseCanExecuteChanged();
+                LoadActiveCustomersCommand?.RaiseCanExecuteChanged();
+                LoadCustomersOutsideCityLimitsCommand?.RaiseCanExecuteChanged();
+                SearchCustomersCommand?.RaiseCanExecuteChanged();
+                AddCustomerCommand?.RaiseCanExecuteChanged();
+                SaveCustomerCommand?.RaiseCanExecuteChanged();
+                DeleteCustomerCommand?.RaiseCanExecuteChanged();
+                PayBillCommand?.RaiseCanExecuteChanged();
+                AnalyzeSelectedCustomerCommand?.RaiseCanExecuteChanged();
             }
         }
     }
@@ -93,6 +133,7 @@ public class UtilityCustomerViewModel : BindableBase
             {
                 _searchTerm = value;
                 RaisePropertyChanged();
+                ValidateProperty(nameof(SearchTerm), value);
             }
         }
     }
@@ -212,11 +253,13 @@ public class UtilityCustomerViewModel : BindableBase
     public DelegateCommand LoadCustomerBillsCommand { get; private set; }
     public DelegateCommand PayBillCommand { get; private set; }
     public DelegateCommand AnalyzeSelectedCustomerCommand { get; private set; }
+    // Command to open the edit dialog for the selected customer
+    public DelegateCommand EditCustomerCommand { get; private set; }
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public UtilityCustomerViewModel(IUnitOfWork unitOfWork, IGrokSupercomputer grokSupercomputer)
+    public UtilityCustomerViewModel(IUnitOfWork unitOfWork, IGrokSupercomputer grokSupercomputer, Prism.Dialogs.IDialogService? dialogService = null)
     {
         if (unitOfWork is null)
         {
@@ -226,6 +269,7 @@ public class UtilityCustomerViewModel : BindableBase
         _customerRepository = unitOfWork.UtilityCustomers
             ?? throw new ArgumentNullException(nameof(IUnitOfWork.UtilityCustomers));
         _grokSupercomputer = grokSupercomputer ?? throw new ArgumentNullException(nameof(grokSupercomputer));
+        _dialogService = dialogService;
 
         InitializeCommands();
     }
@@ -244,6 +288,7 @@ public class UtilityCustomerViewModel : BindableBase
         LoadCustomerBillsCommand = new DelegateCommand(async () => await ExecuteLoadCustomerBillsAsync(), () => SelectedCustomer != null);
         PayBillCommand = new DelegateCommand(async () => await ExecutePayBillAsync(), () => !IsLoading && SelectedBill != null);
         AnalyzeSelectedCustomerCommand = new DelegateCommand(async () => await ExecuteAnalyzeSelectedCustomerAsync(), () => !IsLoading && SelectedCustomer != null && !IsAnalyzingCustomer);
+        EditCustomerCommand = new DelegateCommand(() => ShowEditCustomerDialog(), () => !IsLoading && SelectedCustomer != null);
     }
 
     /// <summary>
@@ -251,6 +296,11 @@ public class UtilityCustomerViewModel : BindableBase
     /// </summary>
     private async Task ExecuteLoadCustomersAsync()
     {
+        // Cancel any previous operation
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource = new CancellationTokenSource();
+        var token = _cancellationTokenSource.Token;
+
         try
         {
             IsLoading = true;
@@ -259,6 +309,9 @@ public class UtilityCustomerViewModel : BindableBase
             StatusMessage = "Loading customers...";
 
             var customers = await _customerRepository.GetAllAsync();
+
+            // Check if operation was cancelled
+            token.ThrowIfCancellationRequested();
 
             Customers.Clear();
             foreach (var customer in customers)
@@ -269,6 +322,11 @@ public class UtilityCustomerViewModel : BindableBase
             UpdateSummaryText();
             StatusMessage = $"Loaded {Customers.Count} customers.";
             Log.Information("Successfully loaded {Count} customers", customers.Count());
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Customer loading was cancelled.";
+            Log.Information("Customer loading operation was cancelled");
         }
         catch (Exception ex)
         {
@@ -400,39 +458,97 @@ public class UtilityCustomerViewModel : BindableBase
     
     private async Task ExecuteAddCustomerAsync()
     {
+        // Use dialog service for creating a new customer if available
+        if (_dialogService != null)
+        {
+            var temp = new UtilityCustomer { AccountNumber = await GenerateNextAccountNumberAsync() };
+            var parameters = new Prism.Dialogs.DialogParameters { { "customer", temp } };
+            _dialogService.ShowDialog(nameof(Views.CustomerEditDialogView), parameters, r =>
+            {
+                if (r.Parameters.ContainsKey("canceled") && r.Parameters.GetValue<bool>("canceled")) return;
+                if (r.Parameters.ContainsKey("customer"))
+                {
+                    var returned = r.Parameters.GetValue<UtilityCustomer>("customer");
+                    // Persist via repository
+                    _ = PersistNewCustomerAsync(returned);
+                }
+            });
+        }
+        else
+        {
+            // Fallback: create and persist without dialog
+            try
+            {
+                StatusMessage = "Adding new customer...";
+                var newCustomer = new UtilityCustomer
+                {
+                    AccountNumber = await GenerateNextAccountNumberAsync(),
+                    FirstName = "New",
+                    LastName = "Customer",
+                    ServiceAddress = "Enter service address",
+                    ServiceCity = "City",
+                    ServiceState = "ST",
+                    ServiceZipCode = "12345",
+                    CustomerType = CustomerType.Residential,
+                    ServiceLocation = ServiceLocation.InsideCityLimits,
+                    Status = CustomerStatus.Active,
+                    AccountOpenDate = DateTime.Now,
+                    Notes = "New customer - update details"
+                };
+
+                var addedCustomer = await _customerRepository.AddAsync(newCustomer);
+                Customers.Add(addedCustomer);
+                SelectedCustomer = addedCustomer;
+                UpdateSummaryText();
+                StatusMessage = $"Customer {addedCustomer.AccountNumber} added.";
+                Log.Information("Successfully added new customer with account number {AccountNumber}", addedCustomer.AccountNumber);
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Failed to add customer: {ex.Message}";
+                HasError = true;
+                StatusMessage = ErrorMessage;
+                Log.Error(ex, "Failed to add new customer");
+            }
+        }
+    }
+
+    private async Task PersistNewCustomerAsync(UtilityCustomer customer)
+    {
         try
         {
-            StatusMessage = "Adding new customer...";
-            var newCustomer = new UtilityCustomer
-            {
-                AccountNumber = await GenerateNextAccountNumberAsync(),
-                FirstName = "New",
-                LastName = "Customer",
-                ServiceAddress = "Enter service address",
-                ServiceCity = "City",
-                ServiceState = "ST",
-                ServiceZipCode = "12345",
-                CustomerType = CustomerType.Residential,
-                ServiceLocation = ServiceLocation.InsideCityLimits,
-                Status = CustomerStatus.Active,
-                AccountOpenDate = DateTime.Now,
-                Notes = "New customer - update details"
-            };
-
-            var addedCustomer = await _customerRepository.AddAsync(newCustomer);
+            var addedCustomer = await _customerRepository.AddAsync(customer);
             Customers.Add(addedCustomer);
             SelectedCustomer = addedCustomer;
             UpdateSummaryText();
-            StatusMessage = $"Customer {addedCustomer.AccountNumber} added.";
-            Log.Information("Successfully added new customer with account number {AccountNumber}", addedCustomer.AccountNumber);
+            StatusMessage = $"Customer {addedCustomer.AccountNumber} added via dialog.";
+            Log.Information("Successfully added new customer via dialog with account number {AccountNumber}", addedCustomer.AccountNumber);
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Failed to add customer: {ex.Message}";
+            ErrorMessage = $"Failed to persist new customer: {ex.Message}";
             HasError = true;
             StatusMessage = ErrorMessage;
-            Log.Error(ex, "Failed to add new customer");
+            Log.Error(ex, "Failed to persist new customer from dialog");
         }
+    }
+
+    // New method to invoke edit dialog for existing customer
+    private void ShowEditCustomerDialog()
+    {
+        if (_dialogService == null || SelectedCustomer == null) return;
+
+    var parameters = new Prism.Dialogs.DialogParameters { { "customer", SelectedCustomer } };
+        _dialogService.ShowDialog(nameof(Views.CustomerEditDialogView), parameters, r =>
+        {
+            if (r.Parameters.ContainsKey("canceled") && r.Parameters.GetValue<bool>("canceled")) return;
+            if (r.Parameters.ContainsKey("customer"))
+            {
+                var returned = r.Parameters.GetValue<UtilityCustomer>("customer");
+                // Persist changes
+                _ = _customerRepository.UpdateAsync(returned);
+            }
+        });
     }
 
     /// <summary>
@@ -556,6 +672,7 @@ public class UtilityCustomerViewModel : BindableBase
         ErrorMessage = string.Empty;
         HasError = false;
         StatusMessage = "Ready";
+        ClearErrors();
         Log.Information("Error cleared by user");
     }
 
@@ -792,6 +909,241 @@ public class UtilityCustomerViewModel : BindableBase
         finally
         {
             IsAnalyzingCustomer = false;
+        }
+    }
+
+    #endregion
+
+    #region INotifyDataErrorInfo Implementation
+
+    private readonly Dictionary<string, List<string>> _errors = new();
+
+    /// <summary>
+    /// Event raised when validation errors change
+    /// </summary>
+    public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
+
+    /// <summary>
+    /// Gets whether the ViewModel has validation errors
+    /// </summary>
+    public bool HasErrors => _errors.Any();
+
+    /// <summary>
+    /// Gets validation errors for a specific property or all properties
+    /// </summary>
+    public IEnumerable GetErrors(string? propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName))
+        {
+            return _errors.Values.SelectMany(errors => errors);
+        }
+
+        return _errors.TryGetValue(propertyName, out var errors) ? errors : Enumerable.Empty<string>();
+    }
+
+    /// <summary>
+    /// Validates a property and updates error collection
+    /// </summary>
+    private void ValidateProperty(string propertyName, object? value)
+    {
+        var errors = new List<string>();
+
+        switch (propertyName)
+        {
+            case nameof(SearchTerm):
+                if (!string.IsNullOrWhiteSpace(value as string) && (value as string)?.Length > 100)
+                {
+                    errors.Add("Search term cannot exceed 100 characters.");
+                }
+                break;
+        }
+
+        if (SelectedCustomer != null)
+        {
+            ValidateCustomerProperty(propertyName, value, errors);
+        }
+
+        _errors[propertyName] = errors;
+        ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(propertyName));
+    }
+
+    /// <summary>
+    /// Validates customer-specific properties
+    /// </summary>
+    private void ValidateCustomerProperty(string propertyName, object? value, List<string> errors)
+    {
+        if (SelectedCustomer == null) return;
+
+        switch (propertyName)
+        {
+            case nameof(SelectedCustomer.FirstName):
+                if (string.IsNullOrWhiteSpace(value as string))
+                {
+                    errors.Add("First name is required.");
+                }
+                else if ((value as string)?.Length > 50)
+                {
+                    errors.Add("First name cannot exceed 50 characters.");
+                }
+                break;
+
+            case nameof(SelectedCustomer.LastName):
+                if (string.IsNullOrWhiteSpace(value as string))
+                {
+                    errors.Add("Last name is required.");
+                }
+                else if ((value as string)?.Length > 50)
+                {
+                    errors.Add("Last name cannot exceed 50 characters.");
+                }
+                break;
+
+            case nameof(SelectedCustomer.AccountNumber):
+                if (string.IsNullOrWhiteSpace(value as string))
+                {
+                    errors.Add("Account number is required.");
+                }
+                else if ((value as string)?.Length > 20)
+                {
+                    errors.Add("Account number cannot exceed 20 characters.");
+                }
+                break;
+
+            case nameof(SelectedCustomer.ServiceAddress):
+                if (string.IsNullOrWhiteSpace(value as string))
+                {
+                    errors.Add("Service address is required.");
+                }
+                else if ((value as string)?.Length > 100)
+                {
+                    errors.Add("Service address cannot exceed 100 characters.");
+                }
+                break;
+
+            case nameof(SelectedCustomer.ServiceCity):
+                if (string.IsNullOrWhiteSpace(value as string))
+                {
+                    errors.Add("Service city is required.");
+                }
+                else if ((value as string)?.Length > 50)
+                {
+                    errors.Add("Service city cannot exceed 50 characters.");
+                }
+                break;
+
+            case nameof(SelectedCustomer.ServiceState):
+                if (string.IsNullOrWhiteSpace(value as string))
+                {
+                    errors.Add("Service state is required.");
+                }
+                else if ((value as string)?.Length != 2)
+                {
+                    errors.Add("Service state must be exactly 2 characters.");
+                }
+                break;
+
+            case nameof(SelectedCustomer.ServiceZipCode):
+                if (string.IsNullOrWhiteSpace(value as string))
+                {
+                    errors.Add("Service ZIP code is required.");
+                }
+                else if (!System.Text.RegularExpressions.Regex.IsMatch(value as string ?? "", @"^\d{5}(-\d{4})?$"))
+                {
+                    errors.Add("Service ZIP code must be in format 12345 or 12345-6789.");
+                }
+                break;
+
+            case nameof(SelectedCustomer.PhoneNumber):
+                if (!string.IsNullOrWhiteSpace(value as string) &&
+                    !System.Text.RegularExpressions.Regex.IsMatch(value as string ?? "", @"^[\d\s\-\(\)\+\.]{10,20}$"))
+                {
+                    errors.Add("Phone number format is invalid.");
+                }
+                break;
+
+            case nameof(SelectedCustomer.EmailAddress):
+                if (!string.IsNullOrWhiteSpace(value as string) &&
+                    !System.Text.RegularExpressions.Regex.IsMatch(value as string ?? "",
+                        @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"))
+                {
+                    errors.Add("Email address format is invalid.");
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Handles property changes on the selected customer for validation
+    /// </summary>
+    private void OnSelectedCustomerPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (SelectedCustomer != null && e.PropertyName != null)
+        {
+            var propertyInfo = typeof(UtilityCustomer).GetProperty(e.PropertyName);
+            var value = propertyInfo?.GetValue(SelectedCustomer);
+            ValidateProperty($"SelectedCustomer.{e.PropertyName}", value);
+        }
+    }
+
+    /// <summary>
+    /// Validates all properties of the selected customer
+    /// </summary>
+    private void ValidateAllCustomerProperties()
+    {
+        if (SelectedCustomer == null) return;
+
+        var properties = typeof(UtilityCustomer).GetProperties();
+        foreach (var property in properties)
+        {
+            if (property.CanRead)
+            {
+                var value = property.GetValue(SelectedCustomer);
+                ValidateProperty($"SelectedCustomer.{property.Name}", value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clears validation errors related to customer properties
+    /// </summary>
+    private void ClearCustomerErrors()
+    {
+        var customerErrorKeys = _errors.Keys.Where(key => key.StartsWith("SelectedCustomer.")).ToList();
+        foreach (var key in customerErrorKeys)
+        {
+            _errors.Remove(key);
+            ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(key));
+        }
+    }
+
+    /// <summary>
+    /// Clears all validation errors
+    /// </summary>
+    private void ClearErrors()
+    {
+        _errors.Clear();
+        ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(null));
+    }
+
+    /// <summary>
+    /// Disposes the ViewModel and cancels any ongoing operations
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes managed resources
+    /// </summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
         }
     }
 

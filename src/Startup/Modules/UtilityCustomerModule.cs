@@ -36,6 +36,9 @@ namespace WileyWidget.Startup.Modules
             // Register views for navigation
             containerRegistry.RegisterForNavigation<UtilityCustomerView, UtilityCustomerViewModel>();
 
+            // Register dialog for editing/creating customers (Prism Dialog)
+            containerRegistry.RegisterDialog<WileyWidget.Views.CustomerEditDialogView, WileyWidget.ViewModels.CustomerEditDialogViewModel>();
+
             Log.Debug("Utility customer types registered");
         }
     }

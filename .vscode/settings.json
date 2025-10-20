@@ -278,15 +278,13 @@
   "coverage-gutters.partialHighlightBackground": "#FF000055",
 
   // Python Testing Configuration
-  "python.testing.pytestEnabled": true,
-  "python.testing.pytestArgs": [
-    "--verbose",
-    "--tb=short",
-    "--maxfail=5",
-    "-m",
-    "not slow"
+  "python.testing.unittestEnabled": true,
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "-p",
+    "test_*.py"
   ],
-  "python.testing.pytestPath": "pytest",
 
   // C# Testing Configuration
   "dotnet-test-explorer.testProjectPath": "**/*Test*.csproj",
@@ -306,12 +304,7 @@
   "testExplorer.sort": "byLocation",
   "testExplorer.useNativeTesting": true,
 
-  // Pytest Runner Configuration
-  "pytestRunner.cwd": "${workspaceFolder}",
-  "pytestRunner.args": ["--verbose", "--tb=short", "--maxfail=5"],
-  "pytestRunner.env": {
-    "PYTHONPATH": "${workspaceFolder}"
-  },
+  // unittest Runner Configurationsults": "openOnTestStart",
+  "python.testing.cwd": "${workspaceFolder}","
   "testing.automaticallyOpenTestResults": "openOnTestStart",
-  "workbench.editor.tabActionLocation": "left"
-}
+  "workbench.editor.tabActionLocation": "left"}

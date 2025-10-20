@@ -21,6 +21,16 @@ public class ErrorReportingService
     private readonly Dictionary<string, ErrorRecoveryStrategy> _recoveryStrategies = new();
     private readonly ConcurrentDictionary<string, long> _counters = new();
 
+    /// <summary>
+    /// When true, user dialogs are suppressed (useful for automated tests and headless runs).
+    /// </summary>
+    public bool SuppressUserDialogs { get; set; } = false;
+
+    /// <summary>
+    /// Raised whenever an error is reported. Useful for tests to observe errors without UI.
+    /// </summary>
+    public event Action<Exception, string?>? ErrorReported;
+
     private ErrorReportingService()
     {
         // Register default recovery strategies
@@ -45,8 +55,11 @@ public class ErrorReportingService
 
         logContext.Write(level, exception, "Error occurred in {Context}: {Message}", context, exception.Message);
 
-        // Show user-friendly dialog if requested
-        if (showToUser && Application.Current?.Dispatcher != null)
+        // Notify subscribers (tests, telemetry listeners)
+        try { ErrorReported?.Invoke(exception, context); } catch { /* do not fail reporting */ }
+
+        // Show user-friendly dialog if requested and not suppressed
+        if (showToUser && !SuppressUserDialogs && Application.Current?.Dispatcher != null)
         {
             Application.Current.Dispatcher.InvokeAsync(() =>
                 ShowErrorDialog(exception, context, correlationId));
@@ -222,6 +235,11 @@ public class ErrorReportingService
     {
         try
         {
+            if (SuppressUserDialogs)
+            {
+                // Respect suppression setting
+                return;
+            }
             var message = $"An error occurred in {context ?? "the application"}.\n\n" +
                          $"Error: {exception.Message}\n\n" +
                          $"Reference ID: {correlationId}\n\n" +

@@ -215,7 +215,27 @@ public class XAIService : IAIService, IDisposable
             var response = await _retryPolicy.ExecuteAsync(() =>
                 _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken));
 
-            response.EnsureSuccessStatusCode();
+            // Handle non-successful status codes gracefully
+            if (!response.IsSuccessStatusCode)
+            {
+                var status = (int)response.StatusCode;
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                Log.Error("xAI API returned non-success status {Status} with body: {Body}", status, body);
+                _aiLoggingService.LogError(question, body ?? string.Empty, response.StatusCode.ToString());
+
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    // Authentication or permission problem - surface clear guidance
+                    return "AI service returned 403 Forbidden. Please verify the configured API key and permissions.";
+                }
+
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    return "AI service is rate limiting requests. Please try again shortly.";
+                }
+
+                return "AI service returned an error. Please try again later.";
+            }
 
             var result = await response.Content.ReadFromJsonAsync<XAIResponse>(cancellationToken: cancellationToken);
             if (result?.error != null)
@@ -434,7 +454,25 @@ public class XAIService : IAIService, IDisposable
         var response = await _retryPolicy.ExecuteAsync(() =>
             _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken));
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var status = (int)response.StatusCode;
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            Log.Error("xAI API returned non-success status {Status} with body: {Body}", status, body);
+            _aiLoggingService.LogError(question, body ?? string.Empty, response.StatusCode.ToString());
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                return "AI service returned 403 Forbidden. Please verify the configured API key and permissions.";
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                return "AI service is rate limiting requests. Please try again shortly.";
+            }
+
+            return "AI service returned an error. Please try again later.";
+        }
 
         var result = await response.Content.ReadFromJsonAsync<XAIResponse>(cancellationToken: cancellationToken);
         if (result?.error != null)
@@ -476,6 +514,74 @@ public class XAIService : IAIService, IDisposable
     {
         var question = $"Please analyze the following {analysisType} data and provide insights: {data}";
         return await GetInsightsAsync("Data Analysis", question, cancellationToken);
+    }
+
+    /// <summary>
+    /// Typed insights method which returns status codes and error details for UI handling
+    /// </summary>
+    public async Task<AIResponseResult> GetInsightsWithStatusAsync(string context, string question, CancellationToken cancellationToken = default)
+    {
+        // Validate and sanitize
+        ValidateAndSanitizeInputs(ref context, ref question);
+
+        var startTime = DateTime.UtcNow;
+        var model = _configuration["XAI:Model"] ?? "grok-4-0709";
+
+        var systemContext = await _contextService.BuildCurrentSystemContextAsync(cancellationToken);
+        _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", model);
+
+        var request = new
+        {
+            messages = new[]
+            {
+                new { role = "system", content = $"You are a helpful AI assistant for Wiley Widget. System Context: {systemContext}. Context: {context}" },
+                new { role = "user", content = question }
+            },
+            model = model,
+            stream = false,
+            temperature = 0.7
+        };
+
+        var response = await _retryPolicy.ExecuteAsync(() => _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var status = (int)response.StatusCode;
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            Log.Error("xAI API returned non-success status {Status} with body: {Body}", status, body);
+            _aiLoggingService.LogError(question, body ?? string.Empty, response.StatusCode.ToString());
+
+            var errorCode = response.StatusCode == System.Net.HttpStatusCode.Forbidden ? "AuthFailure" :
+                            response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ? "RateLimited" : "ServerError";
+
+            var userMessage = response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                ? "AI service returned 403 Forbidden. Please verify the configured API key and permissions."
+                : response.StatusCode == System.Net.HttpStatusCode.TooManyRequests
+                    ? "AI service is rate limiting requests. Please try again shortly."
+                    : "AI service returned an error. Please try again later.";
+
+            return new AIResponseResult(userMessage, status, errorCode, body);
+        }
+
+        var xaiResponse = await response.Content.ReadFromJsonAsync<XAIResponse>(cancellationToken: cancellationToken);
+        if (xaiResponse?.error != null)
+        {
+            Log.Error("xAI API error: {ErrorType} - {ErrorMessage}", xaiResponse.error.type, xaiResponse.error.message);
+            _aiLoggingService.LogError(question, xaiResponse.error.message, xaiResponse.error.type ?? "API Error");
+            return new AIResponseResult($"API error: {xaiResponse.error.message}", 500, xaiResponse.error.type, xaiResponse.error.message);
+        }
+
+        var content = xaiResponse?.choices?.Length > 0 ? xaiResponse.choices[0].message?.content : null;
+
+        if (!string.IsNullOrEmpty(content))
+        {
+            var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+            _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+            Log.Information("Successfully received xAI response for question: {Question}", question);
+            return new AIResponseResult(content, 200, null, null);
+        }
+
+        return new AIResponseResult("I apologize, but I received an empty response.", 204, "EmptyResponse", null);
     }
 
     /// <summary>

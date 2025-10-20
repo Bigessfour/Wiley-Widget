@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ViewMeta>
+  <Name>AIAssistView</Name>
+  <Description>Fixture: minimal representation of AIAssist view metadata for unit tests.</Description>
+</ViewMeta>

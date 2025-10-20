@@ -123,6 +123,74 @@ namespace WileyWidget
             // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
             try
             {
+                // Load application ResourceDictionaries safely to avoid XAML parse errors
+                try
+                {
+                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                    var candidatePaths = new[]
+                    {
+                        System.IO.Path.Combine(baseDir, "Themes", "Generic.xaml"),
+                        System.IO.Path.Combine(baseDir, "Themes", "WileyTheme.xaml")
+                    };
+
+                    foreach (var p in candidatePaths)
+                    {
+                        try
+                        {
+                            if (!System.IO.File.Exists(p))
+                            {
+                                LogDebugEvent("Theme", $"Resource dictionary not found: {p}");
+                                continue;
+                            }
+
+                            var xaml = System.IO.File.ReadAllText(p);
+                            using var sr = new System.IO.StringReader(xaml);
+                            using var xr = System.Xml.XmlReader.Create(sr);
+                            var rdObj = System.Windows.Markup.XamlReader.Load(xr);
+                            if (rdObj is ResourceDictionary rd && rd.Count > 0)
+                            {
+                                // Validate brushes/colors quickly to avoid late XAML parse exceptions
+                                foreach (var key in rd.Keys.OfType<object>().ToList())
+                                {
+                                    try
+                                    {
+                                        var val = rd[key];
+                                        if (val is System.Windows.Media.SolidColorBrush scb)
+                                        {
+                                            // access Color to force a parse
+                                            var c = scb.Color;
+                                        }
+                                    }
+                                    catch (Exception innerEx)
+                                    {
+                                        Log.Warning(innerEx, "Invalid resource '{Key}' in {Path} - replacing with Transparent.", key, p);
+                                        rd[key] = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Transparent);
+                                    }
+                                }
+
+                                Application.Current.Resources.MergedDictionaries.Add(rd);
+                                LogDebugEvent("Theme", $"Merged resource dictionary: {p}");
+                            }
+                            else
+                            {
+                                LogDebugEvent("Theme", $"Parsed empty or non-dictionary resource: {p}");
+                            }
+                        }
+                        catch (System.Xaml.XamlParseException xex)
+                        {
+                            Log.Warning(xex, "Failed to parse resource dictionary {Path} - skipping.", p);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "Unexpected error loading resource dictionary {Path} - skipping.", p);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to safely load resource dictionaries; continuing without them.");
+                }
+
                 // CRITICAL: Set ApplyStylesOnApplication FIRST per Syncfusion documentation
                 // This ensures all theme resources are merged into Application.Current.Resources
                 SfSkinManager.ApplyStylesOnApplication = true;

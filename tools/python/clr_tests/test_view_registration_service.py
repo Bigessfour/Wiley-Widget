@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
+import unittest
 
 # Check for pythonnet and Prism availability
 try:
     import clr  # type: ignore[import-not-found]
+
     HAS_PYTHONNET = True
     try:
         from Prism.Regions import Region, RegionManager  # type: ignore[attr-defined]
+
         HAS_PRISM = True
     except Exception:
         HAS_PRISM = False
@@ -17,18 +19,11 @@ except (ImportError, RuntimeError, AttributeError):
     HAS_PYTHONNET = False
     HAS_PRISM = False
 
-pytestmark = [
-    pytest.mark.clr,
-    pytest.mark.prism,
-    pytest.mark.skipif(not HAS_PYTHONNET, reason="pythonnet required for CLR tests"),
-    pytest.mark.skipif(not HAS_PRISM, reason="Prism assemblies required for Prism tests"),
-]
-
 # Import CLR types only if available
 if HAS_PYTHONNET:
+    from System import ArgumentException  # type: ignore[attr-defined]
     from System import (  # type: ignore[attr-defined]
         Activator,
-        ArgumentException,  # type: ignore[attr-defined]
         Array,
         Object,
     )
@@ -47,60 +42,95 @@ else:
 from .helpers import dotnet_utils
 
 
-@pytest.fixture()
-def view_service(clr_loader, ensure_assemblies_present, load_wileywidget_core):
-    clr_loader("Prism.Wpf")
-    region_manager = RegionManager()
-    service_type = dotnet_utils.get_type(ensure_assemblies_present, "WileyWidget", "WileyWidget.Services.ViewRegistrationService")
-    service = Activator.CreateInstance(service_type, Array[Object]([region_manager]))
-    return service, region_manager
+@unittest.skipUnless(HAS_PYTHONNET, "pythonnet required for CLR tests")
+@unittest.skipUnless(HAS_PRISM, "Prism assemblies required for Prism tests")
+class TestViewRegistrationService(unittest.TestCase):
 
+    def _get_assemblies_dir(self):
+        """Get the assemblies directory."""
+        from pathlib import Path
 
-def _add_region(region_manager, name: str):
-    region = Region()
-    region.Name = name
-    region_manager.Regions.Add(region)
+        repo_root = Path(__file__).resolve().parents[3]
+        return repo_root / "tools" / "python" / "clr_tests" / "assemblies"
 
+    def _clr_loader(self, name: str):
+        """Add CLR assembly reference."""
+        import clr
 
-def _dashboard_view(assemblies_dir):
-    return dotnet_utils.get_type(assemblies_dir, "WileyWidget", "WileyWidget.Views.DashboardView")
+        assemblies_dir = self._get_assemblies_dir()
+        assembly_path = assemblies_dir / f"{name}.dll"
+        if assembly_path.exists():
+            clr.AddReference(str(assembly_path))
+        else:
+            clr.AddReference(name)
 
+    def _create_view_service(self):
+        """Create view service instance."""
+        # Load Prism.Wpf
+        self._clr_loader("Prism.Wpf")
 
-def _settings_view(assemblies_dir):
-    return dotnet_utils.get_type(assemblies_dir, "WileyWidget", "WileyWidget.Views.SettingsView")
+        region_manager = RegionManager()
+        assemblies_dir = self._get_assemblies_dir()
+        service_type = dotnet_utils.get_type(
+            assemblies_dir,
+            "WileyWidget",
+            "WileyWidget.Services.ViewRegistrationService",
+        )
+        service = Activator.CreateInstance(
+            service_type, Array[Object]([region_manager])
+        )
+        return service, region_manager
 
+    def _add_region(self, region_manager, name: str):
+        region = Region()
+        region.Name = name
+        region_manager.Regions.Add(region)
 
-def test_register_single_region(view_service, ensure_assemblies_present):
-    service, region_manager = view_service
-    _add_region(region_manager, "DashboardRegion")
+    def _dashboard_view(self, assemblies_dir):
+        return dotnet_utils.get_type(
+            assemblies_dir, "WileyWidget", "WileyWidget.Views.DashboardView"
+        )
 
-    dashboard_view = _dashboard_view(ensure_assemblies_present)
-    assert service.RegisterView("DashboardRegion", dashboard_view)
-    assert service.IsViewRegistered("DashboardView")
+    def _settings_view(self, assemblies_dir):
+        return dotnet_utils.get_type(
+            assemblies_dir, "WileyWidget", "WileyWidget.Views.SettingsView"
+        )
 
+    def test_register_single_region(self):
+        service, region_manager = self._create_view_service()
+        self._add_region(region_manager, "DashboardRegion")
 
-def test_register_multiple_views(view_service, ensure_assemblies_present):
-    service, region_manager = view_service
-    for name in ("DashboardRegion", "SettingsRegion"):
-        _add_region(region_manager, name)
+        assemblies_dir = self._get_assemblies_dir()
+        dashboard_view = self._dashboard_view(assemblies_dir)
+        self.assertTrue(service.RegisterView("DashboardRegion", dashboard_view))
+        self.assertTrue(service.IsViewRegistered("DashboardView"))
 
-    dashboard_view = _dashboard_view(ensure_assemblies_present)
-    settings_view = _settings_view(ensure_assemblies_present)
+    def test_register_multiple_views(self):
+        service, region_manager = self._create_view_service()
+        for name in ("DashboardRegion", "SettingsRegion"):
+            self._add_region(region_manager, name)
 
-    assert service.RegisterView("DashboardRegion", dashboard_view)
-    assert service.RegisterView("SettingsRegion", settings_view)
+        assemblies_dir = self._get_assemblies_dir()
+        dashboard_view = self._dashboard_view(assemblies_dir)
+        settings_view = self._settings_view(assemblies_dir)
 
-    dashboard_views = list(service.GetRegisteredViews("DashboardRegion"))
-    assert dashboard_views and dashboard_views[0].Name == "DashboardView"
+        self.assertTrue(service.RegisterView("DashboardRegion", dashboard_view))
+        self.assertTrue(service.RegisterView("SettingsRegion", settings_view))
 
-    result = service.ValidateRegions()
-    assert result.TotalRegions >= 1
-    assert "DashboardRegion" in result.ValidRegions or "DashboardRegion" in result.MissingRegions
+        dashboard_views = list(service.GetRegisteredViews("DashboardRegion"))
+        self.assertTrue(dashboard_views and dashboard_views[0].Name == "DashboardView")
 
+        result = service.ValidateRegions()
+        self.assertGreaterEqual(result.TotalRegions, 1)
+        self.assertTrue(
+            "DashboardRegion" in result.ValidRegions
+            or "DashboardRegion" in result.MissingRegions
+        )
 
-def test_register_invalid_region(view_service, ensure_assemblies_present):
-    service, _ = view_service
-    dashboard_view = _dashboard_view(ensure_assemblies_present)
+    def test_register_invalid_region(self):
+        service, _ = self._create_view_service()
+        assemblies_dir = self._get_assemblies_dir()
+        dashboard_view = self._dashboard_view(assemblies_dir)
 
-    with pytest.raises(ArgumentException):
-        service.RegisterView("", dashboard_view)
+        with self.assertRaises(ArgumentException):
+            service.RegisterView("", dashboard_view)

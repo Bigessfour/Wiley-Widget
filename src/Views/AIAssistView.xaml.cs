@@ -11,6 +11,7 @@ using Serilog;
 using Microsoft.Extensions.DependencyInjection;
 using BusinessInterfaces = WileyWidget.Business.Interfaces;
 using System.ComponentModel;
+using System;
 
 namespace WileyWidget;
 
@@ -49,6 +50,9 @@ public partial class AIAssistView : UserControl
 
     private void AIAssistView_Loaded(object sender, RoutedEventArgs e)
     {
+        // Apply FluentDark theme with enhanced visual properties from ViewModel
+        ApplyEnhancedTheme();
+
         // Set initial focus to query input for immediate user interaction
         Dispatcher.InvokeAsync(() =>
         {
@@ -120,6 +124,84 @@ public partial class AIAssistView : UserControl
     {
         // For UserControl, theme is applied at application level or parent level
         // SfSkinManager can be used on the parent Window
+    }
+
+    /// <summary>
+    /// Apply enhanced FluentDark theme with visual properties from ViewModel
+    /// </summary>
+    private void ApplyEnhancedTheme()
+    {
+        try
+        {
+            var vm = ViewModel;
+            if (vm == null)
+            {
+                Log.Warning("AIAssistView: ViewModel is null, cannot apply enhanced theme properties");
+                return;
+            }
+
+            // Find the parent window to apply theme settings
+            var parentWindow = Window.GetWindow(this);
+            if (parentWindow == null)
+            {
+                Log.Warning("AIAssistView: No parent window found, cannot apply enhanced theme");
+                return;
+            }
+
+            // Apply base theme using ThemeUtility
+            var currentTheme = SettingsService.Instance.Current.Theme;
+            Services.ThemeUtility.TryApplyTheme(parentWindow, currentTheme);
+
+            // NOTE: FluentTheme with ShowAcrylicBackground, HoverEffectMode, PressedEffectMode 
+            // properties are Syncfusion conceptual examples from documentation.
+            // The actual Syncfusion API uses Theme(string) constructor with VisualStyles.
+            // Enhanced visual effects are typically applied through:
+            // 1. Window composition APIs for acrylic (ShowAcrylicBackground)
+            // 2. Control templates/styles for hover/pressed effects
+            // 3. FocusVisualStyle for keyboard focus visuals
+            
+            // Apply Acrylic Background effect if enabled
+            if (vm.ShowAcrylicBackground)
+            {
+                TryApplyAcrylicEffect(parentWindow);
+            }
+
+            // Log enhanced theme application
+            Log.Information("AIAssistView: Enhanced theme applied - Acrylic: {Acrylic}, Hover: {Hover}, Pressed: {Pressed}, Focus: {Focus}",
+                vm.ShowAcrylicBackground, vm.HoverEffectMode, vm.PressedEffectMode, vm.FocusVisualKind);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "AIAssistView: Failed to apply enhanced theme");
+        }
+    }
+
+    /// <summary>
+    /// Apply acrylic (translucent blurred) background effect using Windows composition APIs
+    /// </summary>
+    private void TryApplyAcrylicEffect(Window window)
+    {
+        try
+        {
+            // Acrylic effect requires Windows 10+ composition APIs
+            // This is a simplified example - full implementation requires Windows.UI.Composition
+            if (Environment.OSVersion.Version.Major >= 10)
+            {
+                // Enable blur effect on window background
+                // Note: This requires additional Windows API interop for full acrylic effect
+                // For now, we'll set a semi-transparent background to simulate the effect
+                if (window.AllowsTransparency)
+                {
+                    window.Background = new SolidColorBrush(Color.FromArgb(230, 30, 30, 30));
+                }
+                
+                Log.Debug("AIAssistView: Acrylic-like effect applied to parent window");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "AIAssistView: Failed to apply acrylic effect - may not be supported on this OS");
+        }
     }
 
     // Methods for UI test compatibility

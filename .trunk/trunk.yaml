@@ -36,7 +36,16 @@ lint:
   enabled:
     # .NET code formatting and style (optimized for .NET 8+)
     - black@25.9.0
-    - checkov@3.2.484
+    - checkov@3.2.484:
+        direct_configs:
+          - .checkov.yaml
+        commands:
+          - name: lint
+            run: checkov --framework all --file ${target} --output sarif --soft-fail-on-check ${tmpfile}
+            output: sarif
+            success_codes: [0, 1]
+            read_output_from: tmp_file
+            disable_upstream: false
     - git-diff-check
     - hadolint@2.14.0
     - isort@7.0.0
@@ -161,6 +170,10 @@ lint:
         - '*.txt'
         - '*.yml'
         - '*.yaml'
+    - linters: [checkov]
+      paths:
+        - .vscode/**
+        - "**/*.vscode/**"
 actions:
   enabled:
     - trunk-announce
@@ -169,22 +182,17 @@ actions:
     - trunk-upgrade-available
 tools:
   disabled:
-    - dotnet
+    - dotnetlint
     - shfmt
     - osv-scanner
-    - buildifier
-    - ansible-lint
-    - cfnlint
-    - semgrep
-    - golangci-lint
+    - black
+    - yamllint
     - taplo
     - bandit
     - hadolint
     - shellcheck
     - markdownlint
     - isort
-    - black
-    - yamllint
   enabled:
     - pwsh@7.5.3
     - converttosarif@1.0.0

@@ -69,7 +69,9 @@
                              Foreground="{DynamicResource ErrorBrush}" MaxWidth="400" Margin="0,0,0,15" />
                     <syncfusion:ButtonAdv Label="Try _Again"
                                         Command="{Binding RefreshLiveDataCommand}"
-                                        HorizontalAlignment="Center" />
+                                        HorizontalAlignment="Center"
+                                        AutomationProperties.Name="Retry Button"
+                                        AutomationProperties.HelpText="Retry loading the AI assistant" />
                 </StackPanel>
             </Border>
 
@@ -81,7 +83,9 @@
                     <syncfusion:SfBusyIndicator IsBusy="{Binding IsLoading}"
                                               AnimationType="Gear"
                                               ViewboxWidth="50" ViewboxHeight="50"
-                                              Margin="0,0,0,15" />
+                                              Margin="0,0,0,15"
+                                              AutomationProperties.Name="AI Assistant Loading Indicator"
+                                              AutomationProperties.HelpText="Indicates that the AI assistant is loading" />
                     <TextBlock Text="Loading AI Assistant..."
                              FontSize="16" HorizontalAlignment="Center" />
                 </StackPanel>
@@ -89,8 +93,11 @@
 
             <!-- Chat Content -->
             <chat:SfAIAssistView CurrentUser="{Binding CurrentUser}"
-                                  Messages="{Binding Messages}"
-                                  Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                                  Messages="{Binding AiMessages}"
+                                  Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                  syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
+                                  AutomationProperties.Name="AI Assistant Chat Area"
+                                  AutomationProperties.HelpText="Displays conversation with AI assistant for municipal utility management and financial planning" />
         </Grid>
 
         <!-- Input Area with Validation -->
@@ -152,22 +159,55 @@
                        AutomationProperties.HelpText="The AI assistant is currently processing your request" />
 
             <!-- Suggestions -->
-            <ItemsControl ItemsSource="{Binding Suggestions}" Margin="0,0,0,10">
+            <ItemsControl ItemsSource="{Binding Suggestions}" Margin="0,8,0,16">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <WrapPanel />
+                        <WrapPanel Orientation="Horizontal" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Button Content="{Binding}"
-                                Margin="0,0,8,8"
-                                Padding="10,6"
+                                Margin="0,0,16,12"
+                                Padding="20,10"
+                                Background="{DynamicResource PanelBackgroundBrush}"
+                                BorderBrush="{DynamicResource PrimaryBrush}"
+                                BorderThickness="1"
+                                Foreground="{DynamicResource PrimaryBrush}"
+                                Cursor="Hand"
                                 Command="{Binding DataContext.ApplySuggestionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}"
                                 AutomationProperties.Name="{Binding StringFormat='Suggestion: {0}'}"
                                 AutomationProperties.HelpText="Click to send this suggestion as your message to the AI assistant"
-                                ToolTip="{Binding}" />
+                                ToolTip="{Binding}">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource SecondaryBrush}" />
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

@@ -93,11 +93,23 @@ def clr_loader() -> Callable[[str], None]:
     os.environ["PATH"] = existing_path
 
     def _add_reference(name: str) -> None:
+        # Prefer explicit file path to avoid CLR probing surprises. If the
+        # assembly file exists in the `assemblies` folder, use the full path.
+        # Otherwise, fall back to name-based AddReference and propagate a
+        # friendly exception if that also fails.
         assembly_path = ASSEMBLIES_DIR / f"{name}.dll"
-        if assembly_path.exists():
-            clr.AddReference(str(assembly_path))
-        else:
-            clr.AddReference(name)
+        try:
+            if assembly_path.exists():
+                # Use AddReference with path for deterministic loading
+                clr.AddReference(str(assembly_path))
+            else:
+                # Name-based loading may rely on runtime probing / GAC
+                clr.AddReference(name)
+        except Exception as exc:  # pragma: no cover - environment dependent
+            # Re-raise as RuntimeError with context so tests can skip gracefully
+            raise RuntimeError(
+                f"Failed to add CLR reference '{name}'. Ensure assemblies exist or call dotnet build. Original error: {exc}"
+            )
 
     return _add_reference
 

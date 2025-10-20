@@ -1,259 +1,415 @@
-# WileyWidget Testing Guide
+# WileyWidget Testing Guide (unittest standard)
 
-## Overview
-
-This document provides comprehensive information about the xUnit testing environment configured for the WileyWidget project, including setup details, package dependencies, and execution instructions.
-# WileyWidget Testing Guide (Python-first)
-
-We have standardized on Python (pytest) for all unit, integration, and UI automation testing. .NET/xUnit projects were retired to reduce redundancy and simplify CI.
+We have standardized on Python's built-in `unittest` library for all unit, integration, and UI automation testing, following the official [unittest documentation](https://docs.python.org/3/library/unittest.html). .NET/xUnit projects were retired to reduce redundancy and simplify CI.
 
 ## What’s in use
 
-- Test runner: pytest
-- Config: pytest.ini at repo root
-- Entry tasks: VS Code task “test-fast” (runs unit or smoke markers)
+- Test runner: `unittest` (Python standard library)
+- Test discovery: `unittest.main()` or `python -m unittest discover`
+- Entry tasks: VS Code task "test-fast" (runs unit test suite)
 
 ## Quick start
 
 ```powershell
-# (Optional) Ensure Python deps are installed
-python -m pip install -r requirements-test.txt
+# Run all tests with standard unittest discovery (from project root)
+python -m unittest discover -s tools/python -p "test_*.py"
 
-# Run fast suite (unit + smoke markers)
-python -m pytest -m "unit or smoke" --tb=short --maxfail=5
+# Run with our consolidated unittest runner (enhanced output)
+python tools/python/test_config.py --verbose
 
-# Run everything
-python -m pytest
-```
+# Run a specific unittest module (example)
+python -m unittest tools.python.unittests.test_startup_validation
 
-## Markers
-
-- unit – fast logic tests
-- smoke – minimal UI or integration checks
-- integration – slower end-to-end tests (opt in)
-
-Examples:
-
-```powershell
-# Run tests in a specific class
-dotnet test --filter "ClassName=WileyWidget.Tests.WidgetTests"
+# Run with coverage using the consolidated runner
+python tools/python/test_config.py --coverage
 ```
 
 ## Test Organization
 
+### Pure Python Tests (`tools/python/tests/`)
+- Unit tests for ViewModels and services
+- Use `unittest.TestCase` base class
+- Mock-based testing with `unittest.mock`
 
-## UI automation options
+### CLR Integration Tests (`tools/python/clr_tests/`)
+- `unittest`-based integration tests for .NET assemblies
+- Tests EF Core, WPF ViewModels via pythonnet
+- Requires pythonnet and built .NET assemblies
 
-If/when we need Windows UI automation for the WPF app from Python:
-- pywinauto – simple Windows UI automation, good for WPF
-- WinAppDriver + Appium (Python client) – more structured, CI-friendly
-
-Keep UI tests small and tagged as smoke to avoid slowing the pipeline.
-
-## CI integration
-
-- The approved CI workflow runs pytest via VS Code tasks and Trunk integration.
-- See docs/cicd-quick-reference.md for the pipeline sequence and how to monitor.
-
-## Removed legacy
-
-- .NET test projects (WileyWidget.Tests, WileyWidget.UiTests)
-- xUnit, coverlet, and FlaUI dependencies
-
-If you need to reference an old .NET test for logic, see the archived files under WileyWidget.Tests/ and WileyWidget.UiTests/ folders; their csproj files are disabled and excluded from the solution.
-
-### Unit Test Structure
-
-```
-WileyWidget.Tests/
-├── WidgetTests.cs          # Widget entity tests
-├── DatabaseIntegrationTests.cs  # Database operations
-├── SettingsServiceTests.cs     # Configuration services
-├── MainWindowTests.cs         # Main window logic
-└── WileyWidget.Tests.csproj
-```
-
-### UI Test Structure
-
-```
-WileyWidget.UiTests/
-├── MainWindowUITests.cs     # Main window UI interactions
-├── AboutWindowUITests.cs    # About dialog tests
-└── WileyWidget.UiTests.csproj
-```
+### Stress Tests (`tests/`)
+- Memory leak detection, resource exhaustion simulation
+- Threading stress tests with psutil monitoring
 
 ## Writing Tests
 
 ### Unit Test Example
 
-```csharp
-using Xunit;
-using WileyWidget.Models;
+```python
+import unittest
+from unittest.mock import Mock, patch
+from wiley_widget.viewmodels.main_viewmodel import MainViewModel
 
-namespace WileyWidget.Tests
-{
-    public class WidgetTests
-    {
-        [Fact]
-        public void Widget_Creation_SetsProperties()
-        {
-            // Arrange
-            var widget = new Widget
-            {
-                Name = "Test Widget",
-                Description = "A test widget"
-            };
+class TestMainViewModel(unittest.TestCase):
+    """Test cases for MainViewModel."""
 
-            // Act & Assert
-            Assert.Equal("Test Widget", widget.Name);
-            Assert.Equal("A test widget", widget.Description);
-        }
+    def setUp(self):
+        """Set up test fixtures before each test method."""
+        self.viewmodel = MainViewModel()
 
-        [Theory]
-        [InlineData("Valid Name", true)]
-        [InlineData("", false)]
-        [InlineData(null, false)]
-        public void Widget_Name_Validation(string name, bool expected)
-        {
-            // Arrange
-            var widget = new Widget { Name = name };
+    def tearDown(self):
+        """Clean up test fixtures after each test method."""
+        pass
 
-            // Act
-            var isValid = !string.IsNullOrEmpty(widget.Name);
+    def test_initialization(self):
+        """Test that ViewModel initializes correctly."""
+        self.assertEqual(self.viewmodel.title, "Wiley Widget")
+        self.assertFalse(self.viewmodel.is_loading)
 
-            // Assert
-            Assert.Equal(expected, isValid);
-        }
-    }
-}
+    def test_load_data_success(self):
+        """Test successful data loading."""
+        # Arrange
+        mock_data = [{"id": 1, "name": "Test Item"}]
+
+        # Act
+        with patch('wiley_widget.services.data_service.DataService.get_data',
+                  return_value=mock_data):
+            result = self.viewmodel.load_data()
+
+        # Assert
+        self.assertTrue(result)
+        self.assertEqual(len(self.viewmodel.items), 1)
+        self.assertEqual(self.viewmodel.items[0]["name"], "Test Item")
+
+    def test_load_data_failure(self):
+        """Test data loading failure."""
+        # Arrange
+        with patch('wiley_widget.services.data_service.DataService.get_data',
+                  side_effect=Exception("Database error")):
+
+            # Act & Assert
+            with self.assertRaises(Exception) as context:
+                self.viewmodel.load_data()
+
+            self.assertIn("Database error", str(context.exception))
 ```
 
-### UI Test Example (FlaUI)
+### CLR Integration Test Example
 
-```csharp
-using Xunit;
-using FlaUI.Core;
-using FlaUI.Core.AutomationElements;
-using FlaUI.UIA3;
+```python
+import unittest
+from unittest.mock import Mock
 
-namespace WileyWidget.UiTests
-{
-    public class MainWindowUITests : IDisposable
-    {
-        private readonly Application _app;
-        private readonly Window _mainWindow;
+try:
+    import clr
+    from System import String
+    from wiley_widget.clr.models.widget import Widget
+    CLR_AVAILABLE = True
+except ImportError:
+    CLR_AVAILABLE = False
 
-        public MainWindowUITests()
-        {
-            // Start the application
-            _app = Application.Launch("WileyWidget.exe");
+@unittest.skipUnless(CLR_AVAILABLE, "pythonnet not available")
+class TestWidgetModel(unittest.TestCase):
+    """Test cases for Widget CLR model."""
 
-            // Get the main window
-            var automation = new UIA3Automation();
-            _mainWindow = _app.GetMainWindow(automation);
-        }
+    def setUp(self):
+        """Set up test fixtures."""
+        self.widget = Widget()
 
-        [Fact]
-        public void MainWindow_Loads_Correctly()
-        {
-            // Assert
-            Assert.NotNull(_mainWindow);
-            Assert.True(_mainWindow.IsAvailable);
-            Assert.Contains("Wiley Widget", _mainWindow.Title);
-        }
+    def test_widget_creation(self):
+        """Test Widget creation and property setting."""
+        # Arrange
+        self.widget.Name = "Test Widget"
+        self.widget.Description = "A test widget"
 
-        [Fact]
-        public void MainWindow_HasExpectedControls()
-        {
-            // Arrange
-            var automation = new UIA3Automation();
+        # Act & Assert
+        self.assertEqual(self.widget.Name, "Test Widget")
+        self.assertEqual(self.widget.Description, "A test widget")
 
-            // Act
-            var buttons = _mainWindow.FindAllDescendants(cf => cf.ByControlType(automation.ControlType.Button));
-            var textBoxes = _mainWindow.FindAllDescendants(cf => cf.ByControlType(automation.ControlType.Edit));
+    def test_widget_name_validation_valid(self):
+        """Test Widget name validation with valid name."""
+        # Arrange
+        self.widget.Name = "Valid Name"
 
-            // Assert
-            Assert.NotEmpty(buttons);
-            Assert.NotEmpty(textBoxes);
-        }
+        # Act
+        is_valid = self.widget.IsValidName()
 
-        public void Dispose()
-        {
-            _app?.Close();
-            _app?.Dispose();
-        }
-    }
-}
+        # Assert
+        self.assertTrue(is_valid)
+
+    def test_widget_name_validation_empty(self):
+        """Test Widget name validation with empty string."""
+        # Arrange
+        self.widget.Name = ""
+
+        # Act
+        is_valid = self.widget.IsValidName()
+
+        # Assert
+        self.assertFalse(is_valid)
+
+    def test_widget_name_validation_none(self):
+        """Test Widget name validation with None."""
+        # Arrange
+        self.widget.Name = None
+
+        # Act
+        is_valid = self.widget.IsValidName()
+
+        # Assert
+        self.assertFalse(is_valid)
 ```
+
+## Test Fixtures and Setup
+
+### setUp and tearDown Methods
+
+```python
+class TestDatabaseOperations(unittest.TestCase):
+
+    def setUp(self):
+        """Set up test database before each test."""
+        self.db = create_test_database()
+        self.connection = self.db.connect()
+
+    def tearDown(self):
+        """Clean up test database after each test."""
+        if self.connection:
+            self.connection.close()
+        if self.db:
+            self.db.cleanup()
+
+    def test_insert_record(self):
+        """Test inserting a record."""
+        record = {"name": "Test", "value": 42}
+        result = self.connection.insert(record)
+        self.assertIsNotNone(result.id)
+
+    def test_query_records(self):
+        """Test querying records."""
+        records = self.connection.query_all()
+        self.assertIsInstance(records, list)
+```
+
+### Class-level setUp and tearDown
+
+```python
+class TestFileOperations(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up shared fixtures for all tests in the class."""
+        cls.test_dir = tempfile.mkdtemp()
+        cls.test_file = os.path.join(cls.test_dir, "test.txt")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up shared fixtures after all tests in the class."""
+        shutil.rmtree(cls.test_dir)
+
+    def test_write_file(self):
+        """Test writing to file."""
+        with open(self.test_file, 'w') as f:
+            f.write("test content")
+
+        self.assertTrue(os.path.exists(self.test_file))
+
+    def test_read_file(self):
+        """Test reading from file."""
+        with open(self.test_file, 'w') as f:
+            f.write("test content")
+
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+
+        self.assertEqual(content, "test content")
+```
+
+## Assertions
+
+### Common Assertions
+
+```python
+class TestAssertions(unittest.TestCase):
+
+    def test_equality(self):
+        """Test equality assertions."""
+        self.assertEqual(2 + 2, 4)
+        self.assertNotEqual(2 + 2, 5)
+
+    def test_boolean(self):
+        """Test boolean assertions."""
+        self.assertTrue(True)
+        self.assertFalse(False)
+
+    def test_none(self):
+        """Test None assertions."""
+        self.assertIsNone(None)
+        self.assertIsNotNone("not none")
+
+    def test_instance(self):
+        """Test instance type assertions."""
+        self.assertIsInstance("string", str)
+        self.assertNotIsInstance(123, str)
+
+    def test_membership(self):
+        """Test membership assertions."""
+        self.assertIn("a", "banana")
+        self.assertNotIn("x", "banana")
+
+    def test_sequences(self):
+        """Test sequence assertions."""
+        self.assertEqual([1, 2, 3], [1, 2, 3])
+        self.assertCountEqual([1, 2, 2, 3], [3, 2, 2, 1])  # ignores order
+
+    def test_exceptions(self):
+        """Test exception assertions."""
+        with self.assertRaises(ValueError):
+            raise ValueError("test error")
+
+        with self.assertRaisesRegex(ValueError, "test"):
+            raise ValueError("test error message")
+```
+
+## Mocking and Patching
+
+### Using unittest.mock
+
+```python
+import unittest
+from unittest.mock import Mock, patch, MagicMock
+
+class TestWithMocking(unittest.TestCase):
+
+    def test_mock_method(self):
+        """Test using Mock objects."""
+        mock_service = Mock()
+        mock_service.get_data.return_value = {"result": "mocked"}
+
+        result = mock_service.get_data()
+        self.assertEqual(result["result"], "mocked")
+        mock_service.get_data.assert_called_once()
+
+    def test_patch_decorator(self):
+        """Test using patch decorator."""
+        with patch('module.function') as mock_func:
+            mock_func.return_value = "patched"
+            result = call_function()
+            self.assertEqual(result, "patched")
+
+    @patch('requests.get')
+    def test_patch_method(self, mock_get):
+        """Test using patch as method decorator."""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"data": "test"}
+
+        # Call function that uses requests.get
+        result = fetch_data()
+        self.assertEqual(result["data"], "test")
+```
+
+## UI Automation
+
+For Windows UI automation of the WPF app:
+- **unittest** with **pywinauto** – simple Windows UI automation
+- **unittest** with **WinAppDriver + Appium** – more structured, CI-friendly
+
+Keep UI tests minimal and focused on critical user interactions.
 
 ## Best Practices
 
 ### Test Naming Conventions
-
 - Use descriptive names that explain what the test verifies
-- Follow the pattern: `MethodName_Condition_ExpectedResult`
-- Example: `CalculateTotal_ValidItems_ReturnsCorrectSum`
+- Follow the pattern: `test_method_name_condition_expected_result`
+- Example: `test_calculate_total_valid_items_returns_correct_sum`
 
 ### Test Organization
-
 - Group related tests in the same class
-- Use `[Trait]` attributes for categorization
+- Use `setUp` and `tearDown` for common fixtures
 - Keep test methods focused on a single behavior
 
-### Database Testing
+### Defensive Imports
+```python
+try:
+    import clr
+    CLR_AVAILABLE = True
+except ImportError:
+    CLR_AVAILABLE = False
 
+@unittest.skipUnless(CLR_AVAILABLE, "pythonnet required")
+class TestClrIntegration(unittest.TestCase):
+    # CLR tests here
+    pass
+```
+
+### Database Testing
 - Use in-memory database for isolated testing
 - Reset database state between tests
 - Avoid dependencies on external databases
 
-### UI Testing
+### Coverage Goals
+- Target 70%+ code coverage
+- Use `coverage.py` for reporting
+- Exclude generated code and test files
 
-- Use appropriate waits for UI elements to load
-- Clean up application instances after tests
-- Test both positive and negative scenarios
-- Consider using Page Object pattern for complex UIs
+## Custom Test Configuration
+
+We provide `test_config.py` with enhanced unittest features:
+
+- **VerboseTestRunner**: Enhanced output with progress indicators
+- **Custom test suites**: Organized test loading with error handling
+- **Coverage integration**: Built-in coverage.py support
+- **Module filtering**: Run specific test modules
+- **Fail-fast option**: Stop on first failure
+
+```powershell
+# Enhanced test runner
+python test_config.py --verbose
+
+# Coverage reporting
+python test_config.py --coverage
+
+# Run specific modules
+python test_config.py --modules tools.python.tests.test_startup_validation
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
 #### Tests Not Discovered
+- Ensure test files follow `test_*.py` naming pattern
+- Check that test classes inherit from `unittest.TestCase`
+- Verify test methods start with `test_`
 
-- Ensure `xunit.runner.visualstudio` package is installed
-- Check that test methods are public and have `[Fact]` or `[Theory]` attributes
-- Verify target framework compatibility
+#### CLR Tests Failing
+- Ensure pythonnet is installed: `pip install pythonnet`
+- Verify .NET assemblies are built and accessible
+- Check CLR import paths
 
-#### FlaUI Tests Failing
-
-- Ensure application can be launched from test directory
-- Check that UI elements have proper automation IDs
-- Verify Windows UI Automation is enabled
-
-#### Code Coverage Not Working
-
-- Install `coverlet.collector` package
-- Use `--collect:"XPlat Code Coverage"` parameter
-- Check that test assemblies are being instrumented
+#### Coverage Not Working
+- Install coverage: `pip install coverage`
+- Use `coverage run -m unittest discover`
+- Check coverage configuration
 
 ### Debug Tips
-
-- Use `Debugger.Launch()` in test methods for debugging
-- Add logging to understand test execution flow
-- Use conditional breakpoints for specific test scenarios
+- Use `python -m unittest -v` for verbose output
+- Add print statements or logging in tests
+- Use `pdb` for interactive debugging
 
 ## Integration with CI/CD
-
-The test environment is designed to work seamlessly with CI/CD pipelines:
 
 ```yaml
 # Example GitHub Actions workflow
 - name: Run Tests
-  run: dotnet test WileyWidget.sln --collect:"XPlat Code Coverage" --results-directory ./test-results
+  run: |
+    python -m unittest discover -v
+    coverage run -m unittest discover
+    coverage report -m
 
 - name: Upload Coverage
   uses: codecov/codecov-action@v3
   with:
-    file: ./test-results/*/coverage.cobertura.xml
+    file: ./coverage.xml
 ```
 
 ## Maintenance
@@ -261,31 +417,33 @@ The test environment is designed to work seamlessly with CI/CD pipelines:
 ### Updating Packages
 
 ```powershell
-# Update xUnit packages
-dotnet add package xunit --version 2.9.2
-dotnet add package xunit.runner.visualstudio --version 2.8.2
+# Update Python test packages (minimal dependencies)
+python -m pip install --upgrade coverage
 
-# Update FlaUI packages
-dotnet add package FlaUI.Core --version 5.0.0
-dotnet add package FlaUI.UIA3 --version 5.0.0
+# For CLR integration
+python -m pip install --upgrade pythonnet
+
+# For UI automation
+python -m pip install --upgrade pywinauto
 ```
 
-### Adding New Test Projects
+### Adding New Test Modules
 
-1. Create new test project using template
-2. Add necessary package references
-3. Configure project settings (RID, warnings, etc.)
-4. Add project reference to main application
-5. Update solution file
+1. Create test file following `test_*.py` naming
+2. Inherit from `unittest.TestCase`
+3. Include defensive imports for optional dependencies
+4. Add `setUp`/`tearDown` methods as needed
+5. Update CI configuration
 
 ## Resources
 
-- [xUnit Documentation](https://xunit.net/)
-- [FlaUI Documentation](https://github.com/FlaUI/FlaUI)
-- [Microsoft Testing Documentation](https://docs.microsoft.com/en-us/dotnet/core/testing/)
-- [Code Coverage with Coverlet](https://github.com/coverlet-coverage/coverlet)
+- [unittest Documentation](https://docs.python.org/3/library/unittest.html)
+- [unittest.mock Documentation](https://docs.python.org/3/library/unittest.mock.html)
+- [pythonnet Documentation](https://pythonnet.github.io/)
+- [pywinauto Documentation](https://pywinauto.readthedocs.io/)
+- [Coverage.py Documentation](https://coverage.readthedocs.io/)
 
 ---
 
-**Last Updated:** August 28, 2025
-**Test Environment Status:** ✅ Configured and Ready
+**Last Updated:** October 2025
+**Test Environment Status:** ✅ unittest standard library configured

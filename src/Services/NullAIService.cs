@@ -20,4 +20,7 @@ public class NullAIService : IAIService
 
     public Task<string> GenerateMockDataSuggestionsAsync(string dataType, string requirements, CancellationToken cancellationToken = default)
         => Task.FromResult("[Dev Stub] Mock data generation is disabled in development.");
+
+    public Task<AIResponseResult> GetInsightsWithStatusAsync(string context, string question, CancellationToken cancellationToken = default)
+        => Task.FromResult(new AIResponseResult("[Dev Stub] AI insights are disabled in development. Configure XAI_API_KEY to enable.", 200));
 }

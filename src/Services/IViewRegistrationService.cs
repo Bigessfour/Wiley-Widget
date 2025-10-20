@@ -16,6 +16,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Registers all views with their appropriate regions
         /// </summary>
+        [Obsolete("RegisterAllViews is deprecated. Register views in Prism modules instead.")]
         void RegisterAllViews();
 
         /// <summary>
@@ -60,6 +61,7 @@ namespace WileyWidget.Services
             _registeredViews = new Dictionary<string, List<Type>>();
         }
 
+        [Obsolete("RegisterAllViews is deprecated. Register views in Prism modules instead.")]
         public void RegisterAllViews()
         {
             Log.Information("ViewRegistrationService: RegisterAllViews() is deprecated");

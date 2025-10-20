@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Windows;
-using Microsoft.EntityFrameworkCore;
+// using System.Windows; // avoid UI references in host-level code
+// using Microsoft.EntityFrameworkCore; // EF registrations happen in AddEnterpriseDatabaseServices
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,8 +21,9 @@ using WileyWidget.Services;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Hosting;
 using WileyWidget.Services.Threading;
-using WileyWidget.ViewModels;
-using WileyWidget.Views;
+// View and ViewModel registrations should be handled by Prism modules or App.RegisterTypes
+// using WileyWidget.ViewModels;
+// using WileyWidget.Views;
 using FluentValidation;
 using WileyWidget.Models.Validators;
 
@@ -255,11 +256,52 @@ public static class WpfHostingExtensions
         services.AddScoped<IGrokSupercomputer, GrokSupercomputer>();
         services.AddScoped<IChargeCalculatorService, ServiceChargeCalculatorService>();
 
-        // AI Service with lazy initialization
+        // AI Service registration: use a factory delegate so DI controls initialization and lifetime.
+        // This replaces the previous LazyAIService wrapper and centralizes creation logic here.
         services.AddSingleton<IAIService>(sp =>
         {
-            // Return a lazy wrapper that defers actual initialization
-            return new LazyAIService(sp);
+            var logger = sp.GetRequiredService<ILogger<XAIService>>();
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var configuration = sp.GetRequiredService<IConfiguration>();
+            var contextService = sp.GetRequiredService<IWileyWidgetContextService>();
+
+            var apiKey = Environment.GetEnvironmentVariable("XAI_API_KEY") ?? configuration["XAI:ApiKey"];
+
+            var requireAi = string.Equals(Environment.GetEnvironmentVariable("REQUIRE_AI_SERVICE"), "true", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(configuration["XAI:RequireService"], "true", StringComparison.OrdinalIgnoreCase);
+
+            logger.LogInformation("🤖 XAI CONFIGURATION: API_KEY_SET={ApiKeySet}, REQUIRE_AI={RequireAi}, API_KEY_LENGTH={Length}, SOURCE={Source}",
+                !string.IsNullOrEmpty(apiKey) && apiKey != "${XAI_API_KEY}",
+                requireAi,
+                string.IsNullOrEmpty(apiKey) ? 0 : apiKey.Length,
+                GetApiKeySource(apiKey));
+
+            if (string.IsNullOrEmpty(apiKey) || apiKey == "${XAI_API_KEY}")
+            {
+                if (requireAi)
+                {
+                    logger.LogError("AI service required but XAI_API_KEY not set. Falling back to stub; functionality limited.");
+                }
+                else
+                {
+                    logger.LogWarning("XAI_API_KEY not set. Using NullAIService stub. Configure XAI:ApiKey in appsettings.json or set XAI_API_KEY environment variable.");
+                }
+
+                return new NullAIService();
+            }
+
+            try
+            {
+                logger.LogInformation("Initializing XAIService with provided API key (length {Len}).", apiKey.Length);
+                var aiLoggingService = sp.GetRequiredService<IAILoggingService>();
+                var memoryCache = sp.GetRequiredService<IMemoryCache>();
+                return new XAIService(httpClientFactory, configuration, logger, contextService, aiLoggingService, memoryCache);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to initialize XAIService. Falling back to NullAIService");
+                return new NullAIService();
+            }
         });
 
         services.AddSingleton<WileyWidget.Services.HealthCheckService>();
@@ -293,27 +335,9 @@ public static class WpfHostingExtensions
         services.TryAddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
         services.AddSingleton<IReportExportService, ReportExportService>();
-    services.AddTransient<MainViewModel>();
-        
-        // CRITICAL: MainWindow must be Singleton to prevent duplicate window instances
-        // MainWindow lifecycle now handled directly in App.xaml.cs OnStartup
-        services.AddSingleton<MainWindow>();
-        
-        services.AddSingleton<SplashScreenWindow>(sp => SplashScreenFactory.Create(sp));
-        services.AddTransient<AboutWindow>();
-
-        services.AddTransient<AboutViewModel>();
-        services.AddTransient<ReportsViewModel>();
-        services.AddTransient<DashboardViewModel>();
-        services.AddTransient<AnalyticsViewModel>();
-        services.AddTransient<EnterpriseViewModel>();
-        services.AddTransient<BudgetViewModel>();
-        services.AddTransient<AIAssistViewModel>();
-        services.AddTransient<SettingsViewModel>();
-        services.AddTransient<ToolsViewModel>();
-        services.AddTransient<ProgressViewModel>();
-        services.AddTransient<MunicipalAccountViewModel>();
-        services.AddTransient<UtilityCustomerViewModel>();
+        // NOTE: UI Views and ViewModels should be registered inside Prism modules or App.RegisterTypes.
+        // Keeping those registrations here creates a split responsibility between the Host and Prism and
+        // can lead to lifecycle and navigation inconsistencies. Register views/viewmodels in Prism instead.
 
         // Validators
         services.AddTransient<IValidator<WileyWidget.Models.BudgetData>, BudgetDataValidator>();
@@ -347,119 +371,56 @@ public static class WpfHostingExtensions
     return "SecretVault";
     }
 
+    // Legacy helpers removed: LazyAIService and SplashScreenFactory were refactored out.
+    // AI initialization is now handled by a factory delegate registered above.
+
     /// <summary>
-    /// Lazy wrapper for AI service to defer expensive initialization until first use
+    /// Helper to construct the IAIService instance from DI services and configuration.
+    /// Centralizing the logic makes it easier to test and avoids scattering environment checks.
     /// </summary>
-    private class LazyAIService : IAIService
+    private static IAIService CreateIAIService(IServiceProvider sp)
     {
-        private readonly IServiceProvider _serviceProvider;
-        private IAIService? _instance;
-        private readonly object _lock = new();
+        var logger = sp.GetRequiredService<ILogger<XAIService>>();
+        var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+        var configuration = sp.GetRequiredService<IConfiguration>();
+        var contextService = sp.GetRequiredService<IWileyWidgetContextService>();
 
-        public LazyAIService(IServiceProvider serviceProvider)
+        var apiKey = Environment.GetEnvironmentVariable("XAI_API_KEY") ?? configuration["XAI:ApiKey"];
+
+        var requireAi = string.Equals(Environment.GetEnvironmentVariable("REQUIRE_AI_SERVICE"), "true", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(configuration["XAI:RequireService"], "true", StringComparison.OrdinalIgnoreCase);
+
+        logger.LogInformation("🤖 XAI CONFIGURATION: API_KEY_SET={ApiKeySet}, REQUIRE_AI={RequireAi}, API_KEY_LENGTH={Length}, SOURCE={Source}",
+            !string.IsNullOrEmpty(apiKey) && apiKey != "${XAI_API_KEY}",
+            requireAi,
+            string.IsNullOrEmpty(apiKey) ? 0 : apiKey.Length,
+            GetApiKeySource(apiKey));
+
+        if (string.IsNullOrEmpty(apiKey) || apiKey == "${XAI_API_KEY}")
         {
-            _serviceProvider = serviceProvider;
-        }
-
-        private IAIService GetInstance()
-        {
-            if (_instance == null)
+            if (requireAi)
             {
-                lock (_lock)
-                {
-                    if (_instance == null)
-                    {
-                        var logger = _serviceProvider.GetService<ILogger<XAIService>>() ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<XAIService>.Instance;
-                        var httpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
-                        var configuration = _serviceProvider.GetRequiredService<IConfiguration>();
-                        var contextService = _serviceProvider.GetRequiredService<IWileyWidgetContextService>();
-
-                        var apiKey = Environment.GetEnvironmentVariable("XAI_API_KEY") ??
-                                     configuration["XAI:ApiKey"];
-
-                        var requireAi = string.Equals(Environment.GetEnvironmentVariable("REQUIRE_AI_SERVICE"), "true", StringComparison.OrdinalIgnoreCase) ||
-                                        string.Equals(configuration["XAI:RequireService"], "true", StringComparison.OrdinalIgnoreCase);
-
-                        logger.LogInformation("🤖 XAI CONFIGURATION: API_KEY_SET={ApiKeySet}, REQUIRE_AI={RequireAi}, API_KEY_LENGTH={Length}, SOURCE={Source}",
-                            !string.IsNullOrEmpty(apiKey) && apiKey != "${XAI_API_KEY}",
-                            requireAi,
-                            string.IsNullOrEmpty(apiKey) ? 0 : apiKey.Length,
-                            GetApiKeySource(apiKey));
-
-                        if (string.IsNullOrEmpty(apiKey) || apiKey == "${XAI_API_KEY}")
-                        {
-                            if (requireAi)
-                            {
-                                logger.LogError("AI service required but XAI_API_KEY not set. Falling back to stub; functionality limited.");
-                            }
-                            else
-                            {
-                                logger.LogWarning("XAI_API_KEY not set. Using NullAIService stub. Configure XAI:ApiKey in appsettings.json or set XAI_API_KEY environment variable.");
-                            }
-
-                            _instance = new NullAIService();
-                        }
-                        else
-                        {
-                            try
-                            {
-                                logger.LogInformation("Initializing XAIService with provided API key (length {Len}).", apiKey.Length);
-                                var aiLoggingService = _serviceProvider.GetRequiredService<IAILoggingService>();
-                                var memoryCache = _serviceProvider.GetRequiredService<IMemoryCache>();
-                                _instance = new XAIService(httpClientFactory, configuration, logger, contextService, aiLoggingService, memoryCache);
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.LogError(ex, "Failed to initialize XAIService. Falling back to NullAIService");
-                                _instance = new NullAIService();
-                            }
-                        }
-                    }
-                }
-            }
-            return _instance;
-        }
-
-        public Task<string> GetInsightsAsync(string context, string question, CancellationToken cancellationToken = default)
-            => GetInstance().GetInsightsAsync(context, question, cancellationToken);
-
-        public Task<string> AnalyzeDataAsync(string data, string analysisType, CancellationToken cancellationToken = default)
-            => GetInstance().AnalyzeDataAsync(data, analysisType, cancellationToken);
-
-        public Task<string> ReviewApplicationAreaAsync(string areaName, string currentState, CancellationToken cancellationToken = default)
-            => GetInstance().ReviewApplicationAreaAsync(areaName, currentState, cancellationToken);
-
-        public Task<string> GenerateMockDataSuggestionsAsync(string dataType, string requirements, CancellationToken cancellationToken = default)
-            => GetInstance().GenerateMockDataSuggestionsAsync(dataType, requirements, cancellationToken);
-    }
-
-    private static class SplashScreenFactory
-    {
-        public static SplashScreenWindow Create(IServiceProvider serviceProvider)
-        {
-            // Splash screen functionality removed - Prism handles window initialization
-            SplashScreenWindow? splash = null;
-
-            void CreateSplash()
-            {
-                var created = ActivatorUtilities.CreateInstance<SplashScreenWindow>(serviceProvider);
-                splash = created;
-            }
-
-            if (Application.Current?.Dispatcher?.CheckAccess() == true)
-            {
-                CreateSplash();
-            }
-            else if (Application.Current?.Dispatcher != null)
-            {
-                Application.Current.Dispatcher.Invoke(CreateSplash);
+                logger.LogError("AI service required but XAI_API_KEY not set. Falling back to stub; functionality limited.");
             }
             else
             {
-                CreateSplash();
+                logger.LogWarning("XAI_API_KEY not set. Using NullAIService stub. Configure XAI:ApiKey in appsettings.json or set XAI_API_KEY environment variable.");
             }
 
-            return splash ?? throw new InvalidOperationException("Failed to create SplashScreenWindow on the UI dispatcher");
+            return new NullAIService();
+        }
+
+        try
+        {
+            logger.LogInformation("Initializing XAIService with provided API key (length {Len}).", apiKey.Length);
+            var aiLoggingService = sp.GetRequiredService<IAILoggingService>();
+            var memoryCache = sp.GetRequiredService<IMemoryCache>();
+            return new XAIService(httpClientFactory, configuration, logger, contextService, aiLoggingService, memoryCache);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to initialize XAIService. Falling back to NullAIService");
+            return new NullAIService();
         }
     }
 }

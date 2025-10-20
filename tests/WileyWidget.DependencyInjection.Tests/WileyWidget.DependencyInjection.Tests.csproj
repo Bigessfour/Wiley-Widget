@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <IsPackable>false</IsPackable>
-    <NoBuild>true</NoBuild>
-    <Description>Retired test project. Prism is the only supported dependency injection surface.</Description>
-  </PropertyGroup>
-</Project>

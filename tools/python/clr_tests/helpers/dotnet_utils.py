@@ -14,20 +14,54 @@ except (ImportError, ModuleNotFoundError):
 
 
 def load_assembly(assemblies_dir, name):
-    """Load an assembly by name from the test assemblies folder."""
+    """Load an assembly by name from the test assemblies folder.
+
+    This prefers loading the explicit DLL from the provided assemblies
+    directory to avoid runtime probing differences across platforms. If
+    the file cannot be found, attempts a name-based load and raises a
+    helpful RuntimeError if both approaches fail.
+    """
     if not HAS_SYSTEM:
-        raise RuntimeError("CLR not available")
-    return Assembly.LoadFrom(str(assemblies_dir / f"{name}.dll"))
+        raise RuntimeError("CLR not available - install pythonnet and ensure a compatible .NET runtime is present")
+
+    path = assemblies_dir / f"{name}.dll"
+    if path.exists():
+        try:
+            return Assembly.LoadFrom(str(path))
+        except Exception as exc:  # pragma: no cover - environment dependent
+            raise RuntimeError(f"Failed to load assembly from {path}: {exc}")
+
+    # Fallback to name-based load; may succeed if the runtime can resolve
+    # the assembly via probing or GAC. Provide a helpful message on failure.
+    try:
+        return Assembly.Load(name)
+    except Exception as exc:  # pragma: no cover - environment dependent
+        raise RuntimeError(
+            f"Could not locate assembly '{name}' in {assemblies_dir} and name-based load failed: {exc}. "
+            "Run `dotnet build` to produce the required DLLs or place them into the assemblies folder."
+        )
 
 
 def get_type(assemblies_dir, assembly_name: str, type_name: str):
-    """Return a System.Type from the given assembly."""
+    """Return a System.Type from the given assembly.
+
+    Raises RuntimeError with actionable guidance when CLR or the assembly
+    is missing to make CI/dev diagnostics easier.
+    """
     if not HAS_SYSTEM:
-        raise RuntimeError("CLR not available")
+        raise RuntimeError("CLR not available - install pythonnet and ensure a compatible .NET runtime is present")
+
     assembly = load_assembly(assemblies_dir, assembly_name)
-    target = assembly.GetType(type_name)
+    try:
+        target = assembly.GetType(type_name)
+    except Exception as exc:  # pragma: no cover - environment dependent
+        raise RuntimeError(f"Error while retrieving type '{type_name}' from assembly '{assembly_name}': {exc}")
+
     if target is None:
-        raise ValueError(f"Type '{type_name}' not found in {assembly_name}.")
+        raise RuntimeError(
+            f"Type '{type_name}' not found in assembly '{assembly_name}'. "
+            "Verify the assembly was built from the expected project and the namespace/type name is correct."
+        )
     return target
 
 

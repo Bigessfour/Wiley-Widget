@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Include only the service sources required for tests -->
+    <Compile Include="..\..\..\src\Services\IAIService.cs" />
+    <Compile Include="..\..\..\src\Services\IAILoggingService.cs" />
+    <Compile Include="..\..\..\src\Services\IWileyWidgetContextService.cs" />
+    <Compile Include="..\..\..\src\Services\XAIService.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Polly" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+</Project>

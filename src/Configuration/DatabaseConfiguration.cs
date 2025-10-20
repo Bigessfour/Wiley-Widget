@@ -1019,6 +1019,9 @@ internal sealed class DevNullAIService : WileyWidget.Services.IAIService
 
     public Task<string> GenerateMockDataSuggestionsAsync(string dataType, string requirements, CancellationToken cancellationToken = default) =>
         Task.FromResult("[Dev Stub] AI mock data generation disabled.");
+
+    public Task<AIResponseResult> GetInsightsWithStatusAsync(string context, string question, CancellationToken cancellationToken = default)
+        => Task.FromResult(new AIResponseResult("[Dev Stub] AI insights disabled. Set XAI_API_KEY to enable.", 200));
 }
 
 /// <summary>
