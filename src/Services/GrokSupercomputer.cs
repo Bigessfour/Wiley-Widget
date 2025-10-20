@@ -6,6 +6,8 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Serilog;
 using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
@@ -23,6 +25,14 @@ public class GrokSupercomputer : IGrokSupercomputer
     private readonly IAuditRepository _auditRepository;
     private readonly IAILoggingService _aiLoggingService;
     private readonly IAIService _aiService;
+    private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache;
+    private readonly Microsoft.Extensions.Options.IOptions<WileyWidget.Configuration.AppOptions> _appOptions;
+
+    // Analysis thresholds and defaults
+    private decimal VarianceHighThresholdPercent => _appOptions.Value.BudgetVarianceHighThresholdPercent;
+    private decimal VarianceLowThresholdPercent => _appOptions.Value.BudgetVarianceLowThresholdPercent;
+    private int HighConfidence => _appOptions.Value.AIHighConfidence;
+    private int LowConfidence => _appOptions.Value.AILowConfidence;
 
     /// <summary>
     /// Initializes a new instance of the GrokSupercomputer class
@@ -39,7 +49,9 @@ public class GrokSupercomputer : IGrokSupercomputer
         IBudgetRepository budgetRepository,
         IAuditRepository auditRepository,
         IAILoggingService aiLoggingService,
-        IAIService aiService)
+        IAIService aiService,
+        Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
+        Microsoft.Extensions.Options.IOptions<WileyWidget.Configuration.AppOptions> appOptions)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
@@ -47,6 +59,22 @@ public class GrokSupercomputer : IGrokSupercomputer
         _auditRepository = auditRepository ?? throw new ArgumentNullException(nameof(auditRepository));
         _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _appOptions = appOptions ?? throw new ArgumentNullException(nameof(appOptions));
+    }
+
+    private async Task<T> SafeCall<T>(string operation, Func<Task<T>> action, T fallback)
+    {
+        try
+        {
+            return await action();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "{Operation} failed. Returning fallback.", operation);
+            try { _aiLoggingService.LogError(operation, ex); } catch { /* best-effort */ }
+            return fallback;
+        }
     }
 
     /// <summary>
@@ -84,26 +112,81 @@ public class GrokSupercomputer : IGrokSupercomputer
             var effectiveStartDate = startDate ?? DateTime.Now.AddMonths(-12);
             var effectiveEndDate = endDate ?? DateTime.Now;
 
-            // Fetch budget summary
-            reportData.BudgetSummary = await _budgetRepository.GetBudgetSummaryAsync(effectiveStartDate, effectiveEndDate);
+            // Normalize invalid ranges
+            if (effectiveStartDate > effectiveEndDate)
+            {
+                _logger.LogWarning("Start date {StartDate} is after end date {EndDate}. Swapping.", effectiveStartDate, effectiveEndDate);
+                (effectiveStartDate, effectiveEndDate) = (effectiveEndDate, effectiveStartDate);
+            }
 
-            // Fetch variance analysis
-            reportData.VarianceAnalysis = await _budgetRepository.GetVarianceAnalysisAsync(effectiveStartDate, effectiveEndDate);
+            // Cache key includes enterpriseId/start/end/filter minimal
+            var cacheKey = $"Grok.FetchEnterpriseData:{enterpriseId?.ToString() ?? "all"}:{effectiveStartDate:yyyyMMdd}:{effectiveEndDate:yyyyMMdd}:{filter?.Trim().ToLowerInvariant()}";
+            if (_appOptions.Value.EnableDataCaching && _cache.TryGetValue(cacheKey, out object? cachedObj) && cachedObj is ReportData cached)
+            {
+                _logger.LogInformation("Cache hit for FetchEnterpriseData: {Key}", cacheKey);
+                return cached;
+            }
 
-            // Fetch department breakdown
-            var departments = await _budgetRepository.GetDepartmentBreakdownAsync(effectiveStartDate, effectiveEndDate);
-            reportData.Departments = new ObservableCollection<DepartmentSummary>(departments);
+            // Parallel fetch with resilience
+            var budgetSummaryTask = SafeCall(
+                nameof(IBudgetRepository.GetBudgetSummaryAsync),
+                () => _budgetRepository.GetBudgetSummaryAsync(effectiveStartDate, effectiveEndDate),
+                new BudgetVarianceAnalysis());
 
-            // Fetch fund allocations
-            var funds = await _budgetRepository.GetFundAllocationsAsync(effectiveStartDate, effectiveEndDate);
-            reportData.Funds = new ObservableCollection<FundSummary>(funds);
+            var varianceAnalysisTask = SafeCall(
+                nameof(IBudgetRepository.GetVarianceAnalysisAsync),
+                () => _budgetRepository.GetVarianceAnalysisAsync(effectiveStartDate, effectiveEndDate),
+                new BudgetVarianceAnalysis());
 
-            // Fetch audit entries
-            var auditEntries = await _auditRepository.GetAuditTrailAsync(effectiveStartDate, effectiveEndDate);
-            reportData.AuditEntries = new ObservableCollection<AuditEntry>(auditEntries);
+            var departmentsTask = SafeCall(
+                nameof(IBudgetRepository.GetDepartmentBreakdownAsync),
+                () => _budgetRepository.GetDepartmentBreakdownAsync(effectiveStartDate, effectiveEndDate),
+                new List<DepartmentSummary>());
 
-            // Fetch year-end summary
-            reportData.YearEndSummary = await _budgetRepository.GetYearEndSummaryAsync(effectiveEndDate.Year);
+            var fundsTask = SafeCall(
+                nameof(IBudgetRepository.GetFundAllocationsAsync),
+                () => _budgetRepository.GetFundAllocationsAsync(effectiveStartDate, effectiveEndDate),
+                new List<FundSummary>());
+
+            Task<IEnumerable<AuditEntry>> auditTask = enterpriseId.HasValue
+                ? SafeCall(
+                    nameof(IAuditRepository.GetAuditTrailForEntityAsync),
+                    () => _auditRepository.GetAuditTrailForEntityAsync("Enterprise", enterpriseId.Value, effectiveStartDate, effectiveEndDate),
+                    Enumerable.Empty<AuditEntry>())
+                : SafeCall(
+                    nameof(IAuditRepository.GetAuditTrailAsync),
+                    () => _auditRepository.GetAuditTrailAsync(effectiveStartDate, effectiveEndDate),
+                    Enumerable.Empty<AuditEntry>());
+
+            var yearEndTask = SafeCall(
+                nameof(IBudgetRepository.GetYearEndSummaryAsync),
+                () => _budgetRepository.GetYearEndSummaryAsync(effectiveEndDate.Year),
+                new BudgetVarianceAnalysis());
+
+            Task<ObservableCollection<Enterprise>> enterprisesTask = enterpriseId.HasValue
+                ? SafeCall(
+                    nameof(IEnterpriseRepository.GetByIdAsync),
+                    async () =>
+                    {
+                        var entity = await _enterpriseRepository.GetByIdAsync(enterpriseId.Value);
+                        return new ObservableCollection<Enterprise>(entity != null ? new[] { entity } : Array.Empty<Enterprise>());
+                    },
+                    new ObservableCollection<Enterprise>())
+                : SafeCall(
+                    nameof(IEnterpriseRepository.GetAllAsync),
+                    async () => new ObservableCollection<Enterprise>((await _enterpriseRepository.GetAllAsync()) ?? Array.Empty<Enterprise>()),
+                    new ObservableCollection<Enterprise>());
+
+            await Task.WhenAll(budgetSummaryTask, varianceAnalysisTask, departmentsTask, fundsTask, auditTask, yearEndTask, enterprisesTask);
+
+            // Assign results
+            reportData.BudgetSummary = await budgetSummaryTask;
+            reportData.VarianceAnalysis = await varianceAnalysisTask;
+            reportData.Departments = new ObservableCollection<DepartmentSummary>(await departmentsTask);
+            reportData.Funds = new ObservableCollection<FundSummary>(await fundsTask);
+            reportData.AuditEntries = new ObservableCollection<AuditEntry>(await auditTask);
+            reportData.YearEndSummary = await yearEndTask;
+            reportData.Enterprises = await enterprisesTask;
 
             // Apply enterprise filter if specified
             if (enterpriseId.HasValue)
@@ -116,7 +199,48 @@ public class GrokSupercomputer : IGrokSupercomputer
             if (!string.IsNullOrEmpty(filter))
             {
                 _logger.LogInformation("Applying additional filter: {Filter}", filter);
-                // Implement filtering logic based on filter string
+                var f = filter.Trim();
+                var comp = StringComparison.OrdinalIgnoreCase;
+
+                if (reportData.Departments != null)
+                {
+                    reportData.Departments = new ObservableCollection<DepartmentSummary>(
+                        reportData.Departments.Where(d =>
+                            (!string.IsNullOrEmpty(d.DepartmentName) && d.DepartmentName.Contains(f, comp)) ||
+                            (d.Department?.Name?.Contains(f, comp) == true))
+                    );
+                }
+
+                if (reportData.Funds != null)
+                {
+                    reportData.Funds = new ObservableCollection<FundSummary>(
+                        reportData.Funds.Where(fs =>
+                            (!string.IsNullOrEmpty(fs.FundName) && fs.FundName.Contains(f, comp)) ||
+                            (fs.Fund?.Name?.Contains(f, comp) == true))
+                    );
+                }
+
+                if (reportData.AuditEntries != null)
+                {
+                    reportData.AuditEntries = new ObservableCollection<AuditEntry>(
+                        reportData.AuditEntries.Where(ae =>
+                            (!string.IsNullOrEmpty(ae.User) && ae.User.Contains(f, comp)) ||
+                            (!string.IsNullOrEmpty(ae.Action) && ae.Action.Contains(f, comp)) ||
+                            (!string.IsNullOrEmpty(ae.EntityType) && ae.EntityType.Contains(f, comp)) ||
+                            (!string.IsNullOrEmpty(ae.Changes) && ae.Changes.Contains(f, comp))
+                        )
+                    );
+                }
+
+                if (reportData.Enterprises != null)
+                {
+                    reportData.Enterprises = new ObservableCollection<Enterprise>(
+                        reportData.Enterprises.Where(e =>
+                            (!string.IsNullOrEmpty(e.Name) && e.Name.Contains(f, comp)) ||
+                            (!string.IsNullOrEmpty(e.Description) && e.Description.Contains(f, comp))
+                        )
+                    );
+                }
             }
 
             var operationTime = (long)(DateTime.UtcNow - operationStart).TotalMilliseconds;
@@ -126,12 +250,26 @@ public class GrokSupercomputer : IGrokSupercomputer
             {
                 ["DepartmentCount"] = reportData.Departments?.Count ?? 0,
                 ["FundCount"] = reportData.Funds?.Count ?? 0,
-                ["AuditCount"] = reportData.AuditEntries?.Count() ?? 0,
+                ["AuditCount"] = (reportData.AuditEntries as System.Collections.ICollection)?.Count ?? reportData.AuditEntries?.Count() ?? 0,
                 ["Success"] = true
             });
 
             _logger.LogInformation("Successfully fetched enterprise data with {DepartmentCount} departments, {FundCount} funds, {AuditCount} audit entries in {Duration}ms",
-                reportData.Departments?.Count ?? 0, reportData.Funds?.Count ?? 0, reportData.AuditEntries?.Count() ?? 0, operationTime);
+                reportData.Departments?.Count ?? 0, reportData.Funds?.Count ?? 0,
+                (reportData.AuditEntries as System.Collections.ICollection)?.Count ?? reportData.AuditEntries?.Count() ?? 0,
+                operationTime);
+
+            // store in cache with short TTL
+            if (_appOptions.Value.EnableDataCaching)
+            {
+                var ttlSeconds = Math.Max(5, _appOptions.Value.EnterpriseDataCacheSeconds);
+                var entryOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(ttlSeconds)
+                };
+                _cache.Set(cacheKey, reportData, entryOptions);
+                _logger.LogDebug("Cached FetchEnterpriseData result for {Seconds}s: {Key}", ttlSeconds, cacheKey);
+            }
 
             return reportData;
         }
@@ -207,7 +345,7 @@ public class GrokSupercomputer : IGrokSupercomputer
             // Calculate audit metrics
             if (data.AuditEntries != null)
             {
-                var auditCount = data.AuditEntries.Count();
+                var auditCount = (data.AuditEntries as System.Collections.ICollection)?.Count ?? data.AuditEntries.Count();
                 analytics.SummaryStats["Audit Entries"] = auditCount;
             }
 
@@ -255,24 +393,25 @@ public class GrokSupercomputer : IGrokSupercomputer
                 });
 
                 // Calculate projections (simple trend analysis)
-                var remainingMonths = 12 - DateTime.Now.Month + 1;
-                var monthlyBurnRate = budget.TotalExpenditures / (12 - remainingMonths + 1);
+                var remainingMonths = Math.Max(0, 12 - DateTime.Now.Month + 1);
+                var monthsElapsed = Math.Max(1, 12 - remainingMonths + 1);
+                var monthlyBurnRate = monthsElapsed > 0 ? budget.TotalExpenditures / monthsElapsed : 0;
                 var projectedEndOfYear = budget.TotalExpenditures + (monthlyBurnRate * remainingMonths);
 
                 insights.Projections.Add(new WileyWidget.Models.BudgetProjection
                 {
                     Period = "End of Year",
                     ProjectedAmount = projectedEndOfYear,
-                    ConfidenceLevel = variancePercent < 10 ? 85 : 65
+                    ConfidenceLevel = variancePercent < VarianceHighThresholdPercent ? HighConfidence : LowConfidence
                 });
 
                 // Generate recommendations based on variance
-                if (variancePercent > 10)
+                if (variancePercent > VarianceHighThresholdPercent)
                 {
                     insights.Recommendations.Add("Budget variance exceeds 10%. Review expense controls.");
                     insights.Recommendations.Add("Consider cost reduction measures to align with budget.");
                 }
-                else if (variancePercent < -5)
+                else if (variancePercent < VarianceLowThresholdPercent)
                 {
                     insights.Recommendations.Add("Budget performance is better than expected. Consider reallocating surplus funds.");
                 }

@@ -17,6 +17,7 @@ namespace WileyWidget
     /// </summary>
     public partial class SettingsView : UserControl
     {
+        private bool _loadedOnce;
         public SettingsView()
         {
             InitializeComponent();
@@ -32,9 +33,19 @@ namespace WileyWidget
 
         private async void SettingsView_Loaded(object sender, RoutedEventArgs e)
         {
-            if (DataContext is SettingsViewModel viewModel)
+            if (_loadedOnce) return;
+            _loadedOnce = true;
+
+            try
             {
-                await viewModel.LoadSettingsAsync();
+                if (DataContext is SettingsViewModel viewModel)
+                {
+                    await viewModel.LoadSettingsAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "SettingsView: Failed to load settings on first load");
             }
         }
 

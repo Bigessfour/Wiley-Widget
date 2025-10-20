@@ -11,6 +11,7 @@ namespace WileyWidget.Views;
 /// </summary>
 public partial class MunicipalAccountView : UserControl
 {
+    private bool _loadedOnce;
     /// <summary>
     /// Initializes a new instance of the MunicipalAccountView
     /// </summary>
@@ -27,6 +28,8 @@ public partial class MunicipalAccountView : UserControl
     {
         try
         {
+                if (_loadedOnce) return;
+                _loadedOnce = true;
                 if (DataContext is MunicipalAccountViewModel viewModel)
                 {
                     await viewModel.InitializeAsync();

@@ -32,6 +32,14 @@
       <HintPath>..\..\lib\Syncfusion\Syncfusion.SfBusyIndicator.WPF.dll</HintPath>
       <Private>true</Private>
     </Reference>
+    <Reference Include="Syncfusion.SfChat.WPF">
+      <HintPath>..\..\lib\Syncfusion\Syncfusion.SfChat.WPF.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Syncfusion.Tools.WPF">
+      <HintPath>..\..\lib\Syncfusion\Syncfusion.Tools.WPF.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
     <Reference Include="Syncfusion.SfChart.WPF">
       <HintPath>..\..\lib\Syncfusion\Syncfusion.SfChart.WPF.dll</HintPath>
       <Private>true</Private>

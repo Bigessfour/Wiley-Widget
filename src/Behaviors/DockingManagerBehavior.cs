@@ -12,6 +12,8 @@ namespace WileyWidget.Behaviors
     /// </summary>
     public class DockingManagerBehavior : Behavior<DockingManager>
     {
+        // Holds the last observed active window while suppression is enabled
+        private DependencyObject? _pendingActiveWindow;
         private readonly System.Windows.Threading.DispatcherTimer _saveStateTimer;
         private const int MaxFloatingWindows = 3; // enforce a soft cap to reduce clutter
 
@@ -112,7 +114,26 @@ namespace WileyWidget.Behaviors
         {
             Log.Debug("DockingManagerBehavior: ActiveWindowChanged event");
 
-            if (AssociatedObject?.DataContext is ViewModels.MainViewModel viewModel)
+            // If suppression flag is set on the DockingManager, don't process each event immediately.
+            // Instead, remember the last active window and emit a single log when suppression is removed.
+            if (AssociatedObject == null)
+            {
+                return;
+            }
+
+            var isSuppressed = WileyWidget.Behaviors.DockingManagerSuppress.GetSuppressActiveWindowEvents(AssociatedObject);
+            if (isSuppressed)
+            {
+                // record pending active window; don't update viewmodel or log repeatedly
+                _pendingActiveWindow = AssociatedObject.ActiveWindow;
+                // store a friendly name for diagnostics
+                WileyWidget.Behaviors.DockingManagerSuppress.SetLastActiveWindowName(AssociatedObject, _pendingActiveWindow?.GetType().Name ?? string.Empty);
+                Log.Debug("DockingManagerBehavior: ActiveWindowChanged suppressed; queued: {WindowName}", _pendingActiveWindow?.GetType().Name ?? "(null)");
+                return;
+            }
+
+            // Normal processing when not suppressed
+            if (AssociatedObject.DataContext is ViewModels.MainViewModel viewModel)
             {
                 viewModel.ActiveWindow = AssociatedObject.ActiveWindow;
 
@@ -122,6 +143,9 @@ namespace WileyWidget.Behaviors
                         AssociatedObject.ActiveWindow.Name ?? AssociatedObject.ActiveWindow.GetType().Name);
                 }
             }
+
+            // If there was a pending active window from prior suppression, clear it (we already applied current)
+            _pendingActiveWindow = null;
         }
 
         /// <summary>

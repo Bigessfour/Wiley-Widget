@@ -53,9 +53,29 @@ public partial class ReportsView : UserControl
     //    RefreshReportViewer();
     //}
 
+    private void ReportViewer_Loaded(object sender, RoutedEventArgs e)
+    {
+        // Currently, the Bold Reports WPF Report Viewer control isn't available.
+        // Show the fallback message to guide setup until the correct package is integrated.
+        ShowFallback();
+    }
+
+    private void ShowFallback()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            // Resolve by name to avoid compile-time dependency on generated fields
+            if (FindName("FallbackText") is FrameworkElement fallback)
+            {
+                fallback.Visibility = Visibility.Visible;
+            }
+        });
+    }
+
     private void OnDataLoaded(object? sender, ReportsViewModel.ReportDataEventArgs e)
     {
-        //Dispatcher.Invoke(RefreshReportViewer);
+        // No-op for now: report viewer not wired. Keep fallback visible.
+        Dispatcher.Invoke(ShowFallback);
     }
 
     private void OnExportCompleted(object? sender, ReportsViewModel.ReportExportCompletedEventArgs e)
@@ -70,29 +90,12 @@ public partial class ReportsView : UserControl
         });
     }
 
-    //private void RefreshReportViewer()
-    //{
-    //    if (DataContext is not ReportsViewModel viewModel)
-    //    {
-    //        return;
-    //    }
-
-    //    if (ReportViewer is null)
-    //    {
-    //        return;
-    //    }
-
-    //    ReportViewer.Reset();
-    //    ReportViewer.ProcessingMode = ProcessingMode.Local;
-    //    ReportViewer.ReportPath = EnsureReportDefinition();
-    //    ReportViewer.DataSources.Clear();
-    //    ReportViewer.DataSources.Add(new ReportDataSource
-    //    {
-    //        Name = "ReportItems",
-    //        Value = viewModel.ReportItems
-    //    });
-    //    ReportViewer.RefreshReport();
-    //}
+    private void RefreshReportViewer()
+    {
+        // Placeholder: the Bold Reports viewer isn't integrated yet.
+        // Keep the fallback visible so users know to install/configure Bold Reports.
+        ShowFallback();
+    }
 
     private string EnsureReportDefinition()
     {

@@ -22,7 +22,7 @@ using WileyWidget.ViewModels.Messages;
 
 namespace WileyWidget.ViewModels
 {
-    public class DashboardViewModel : BindableBase, IDataErrorInfo
+    public class DashboardViewModel : BindableBase, IDataErrorInfo, IDisposable
     {
     private readonly ILogger<DashboardViewModel> _logger;
     private readonly IEnterpriseRepository _enterpriseRepository;
@@ -467,6 +467,13 @@ namespace WileyWidget.ViewModels
 
     private void SetupAutoRefreshTimer()
     {
+        // Prevent multiple timer instances
+        if (_refreshTimer != null)
+        {
+            _logger.LogWarning("DashboardView: Auto-refresh timer already exists, skipping setup");
+            return;
+        }
+
         _refreshTimer = new DispatcherTimer();
         _refreshTimer.Tick += async (s, e) =>
         {
@@ -1670,6 +1677,25 @@ namespace WileyWidget.ViewModels
         {
             // Always allow navigation to dashboard
             return true;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Stop and dispose the auto-refresh timer
+                if (_refreshTimer != null)
+                {
+                    _refreshTimer.Stop();
+                    _refreshTimer = null;
+                }
+            }
         }
     }
 

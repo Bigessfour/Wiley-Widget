@@ -8,6 +8,8 @@ namespace WileyWidget.Views;
 /// </summary>
 public partial class SettingsPanelView : UserControl
 {
+    private bool _loadedOnce;
+
     public SettingsPanelView()
     {
         InitializeComponent();
@@ -20,9 +22,19 @@ public partial class SettingsPanelView : UserControl
 
     private async void SettingsPanelView_Loaded(object sender, System.Windows.RoutedEventArgs e)
     {
-        if (DataContext is SettingsViewModel viewModel)
+        if (_loadedOnce) return;
+        _loadedOnce = true;
+
+        try
         {
-            await viewModel.LoadSettingsAsync();
+            if (DataContext is SettingsViewModel viewModel)
+            {
+                await viewModel.LoadSettingsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "SettingsPanelView: Failed to load settings on first load");
         }
     }
 }

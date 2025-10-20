@@ -17,7 +17,7 @@ namespace WileyWidget.Views;
 public partial class DashboardPanelView : UserControl
 {
     private readonly DashboardViewModel _viewModel;
-    private DispatcherTimer _refreshTimer;
+    // private DispatcherTimer _refreshTimer; // Removed - auto-refresh handled by ViewModel
 
     public DashboardPanelView()
     {
@@ -40,8 +40,8 @@ public partial class DashboardPanelView : UserControl
             _viewModel = resolvedViewModel;
             DataContext = _viewModel;
 
-            // Set up auto-refresh timer
-            SetupAutoRefreshTimer();
+            // Auto-refresh is handled by ViewModel - no need for separate timer in panel view
+            // SetupAutoRefreshTimer();
         }
         else
         {
@@ -55,33 +55,19 @@ public partial class DashboardPanelView : UserControl
         Unloaded += DashboardPanelView_Unloaded;
     }
 
-    private async void DashboardPanelView_Loaded(object sender, System.Windows.RoutedEventArgs e)
+    private void DashboardPanelView_Loaded(object sender, System.Windows.RoutedEventArgs e)
     {
-        if (_viewModel != null)
-            await _viewModel.LoadDashboardDataAsync();
+        // Data loading is handled by ViewModel constructor - no need to load again
+        // if (_viewModel != null)
+        //     await _viewModel.LoadDashboardDataAsync();
+        
+        Log.Debug("DashboardPanelView loaded successfully - using shared ViewModel data");
     }
 
     private void DashboardPanelView_Unloaded(object sender, System.Windows.RoutedEventArgs e)
     {
-        // Clean up timer
-        if (_refreshTimer != null)
-        {
-            _refreshTimer.Stop();
-            _refreshTimer = null;
-        }
-    }
-
-    private void SetupAutoRefreshTimer()
-    {
-        _refreshTimer = new DispatcherTimer();
-        _refreshTimer.Tick += async (s, e) =>
-        {
-            if (_viewModel.AutoRefreshEnabled)
-            {
-                await _viewModel.RefreshDashboardDataAsync();
-            }
-        };
-        _refreshTimer.Interval = TimeSpan.FromMinutes(_viewModel.RefreshIntervalMinutes);
-        _refreshTimer.Start();
+        // Auto-refresh cleanup handled by ViewModel's IDisposable implementation
+        // No local timer to clean up
+        Log.Debug("DashboardPanelView unloaded");
     }
 }

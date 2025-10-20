@@ -67,7 +67,7 @@
                                         Foreground="White"
                                         Margin="0,0,5,0" />
                     <syncfusion:ButtonAdv Label="Clear"
-                                        Command="{Binding ClearResponsesCommand}"
+                                        Command="{Binding ClearChatCommand}"
                                         ToolTip="Clear conversation history"
                                         Background="#757575"
                                         Foreground="White" />
@@ -87,7 +87,7 @@
                 <ScrollViewer x:Name="ChatScrollViewer"
                              VerticalScrollBarVisibility="Auto"
                              HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding Responses, FallbackValue=Empty}">
+                    <ItemsControl ItemsSource="{Binding Messages, FallbackValue=Empty}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Background="{Binding Author.Name, Converter={StaticResource MessageBackgroundConverter}}"
@@ -120,7 +120,7 @@
 
                 <!-- Empty state message (visible when Responses.Count = 0) -->
                 <TextBlock Text="Start a conversation by asking about service charges, budgets, or financial scenarios."
-                         Visibility="{Binding Responses.Count, Converter={StaticResource ZeroToVisibleConverter}}"
+                         Visibility="{Binding Messages.Count, Converter={StaticResource ZeroToVisibleConverter}}"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
                          FontSize="16"
@@ -177,7 +177,7 @@
                                         Margin="0,0,5,0" />
                     <syncfusion:ButtonAdv Label="🎯 Advisory"
                                         Command="{Binding SetConversationModeCommand}"
-                                        CommandParameter="Advisory"
+                                        CommandParameter="Proactive"
                                         ToolTip="Switch to Proactive Advisor mode" />
                 </StackPanel>
 

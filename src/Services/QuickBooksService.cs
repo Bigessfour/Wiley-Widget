@@ -15,6 +15,7 @@ using Intuit.Ipp.QueryFilter;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace WileyWidget.Services;
 
@@ -40,6 +41,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private volatile bool _initialized;
     private readonly SemaphoreSlim _initSemaphore = new(1, 1);
 
+    // Cloudflare tunnel management
+    private readonly SemaphoreSlim _cloudflaredSemaphore = new(1, 1);
+    private Process? _cloudflaredProcess;
+    private string? _cloudflaredPublicUrl;
+
     // Intuit sandbox base URL documented at https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes
     private static readonly IReadOnlyList<string> DefaultScopes = new[] { "com.intuit.quickbooks.accounting" };
 
@@ -60,6 +66,16 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     public void Dispose()
     {
         _initSemaphore.Dispose();
+        _cloudflaredSemaphore.Dispose();
+        try
+        {
+            if (_cloudflaredProcess is { HasExited: false })
+            {
+                _cloudflaredProcess.Kill(entireProcessTree: true);
+                _cloudflaredProcess.Dispose();
+            }
+        }
+        catch { /* best effort */ }
     }
 
     private static async System.Threading.Tasks.Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService, string secretName, ILogger logger)
@@ -424,6 +440,36 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             listener.Prefixes.Add(prefix);
         }
 
+        // Ensure URL ACL exists for our chosen prefix, then ensure Cloudflare tunnel is up for OAuth redirect
+        try
+        {
+            var acl = await CheckUrlAclAsync(listenerPrefix).ConfigureAwait(false);
+            if (!acl.IsReady)
+            {
+                var ensured = await TryEnsureUrlAclAsync(listenerPrefix).ConfigureAwait(false);
+                _logger.LogInformation("URL ACL ensure attempted for {Prefix} (success={Success}).", listenerPrefix, ensured);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "URL ACL ensure step encountered an issue; proceeding to start listener.");
+        }
+
+        // Try to ensure a Cloudflare tunnel is available to reach our localhost callback (optional for local dev)
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var tunnelReady = await EnsureCloudflaredTunnelAsync(cts.Token).ConfigureAwait(false);
+            if (tunnelReady)
+            {
+                _logger.LogInformation("Cloudflare tunnel ready{Url}.", string.IsNullOrWhiteSpace(_cloudflaredPublicUrl) ? string.Empty : $" at {_cloudflaredPublicUrl}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Cloudflare tunnel step is optional and failed; continuing with local OAuth callback.");
+        }
+
         try
         {
             listener.Start();
@@ -641,6 +687,165 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to launch browser for QuickBooks OAuth flow. Navigate manually to {AuthUrl}.", authUrl);
+        }
+    }
+
+    /// <summary>
+    /// Ensures a Cloudflare tunnel is running that forwards the local redirect URI port, starting one if needed.
+    /// Uses 'cloudflared tunnel --url http://localhost:PORT' and waits for readiness indicated by a public URL in stdout.
+    /// This is optional for local development but helps when a public callback URL is required.
+    /// </summary>
+    private async Task<bool> EnsureCloudflaredTunnelAsync(CancellationToken cancellationToken)
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+
+        // If already running, assume good
+        if (_cloudflaredProcess is { HasExited: false }) return true;
+
+        await _cloudflaredSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cloudflaredProcess is { HasExited: false }) return true;
+
+            // Determine base URL (scheme://host:port) from redirect URI
+            string targetUrl;
+            try
+            {
+                var uri = new Uri(_redirectUri);
+                var port = uri.IsDefaultPort ? (uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) ? 443 : 80) : uri.Port;
+                targetUrl = $"{uri.Scheme}://{uri.Host}:{port}";
+            }
+            catch
+            {
+                // Fallback to default dev port
+                targetUrl = "http://localhost:8080";
+            }
+
+            var exe = Environment.GetEnvironmentVariable("CLOUDFLARED_EXE", EnvironmentVariableTarget.User)
+                      ?? Environment.GetEnvironmentVariable("CLOUDFLARED_EXE", EnvironmentVariableTarget.Process)
+                      ?? "cloudflared"; // rely on PATH
+
+            var extraArgs = Environment.GetEnvironmentVariable("CLOUDFLARED_ARGS", EnvironmentVariableTarget.User)
+                           ?? Environment.GetEnvironmentVariable("CLOUDFLARED_ARGS", EnvironmentVariableTarget.Process)
+                           ?? string.Empty;
+
+            var args = $"tunnel --no-autoupdate --loglevel info --url {targetUrl} {extraArgs}".Trim();
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = exe,
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            Process? process = null;
+            try
+            {
+                process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+                var readyTcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var urlRegex = new Regex(@"https?://[\w\-\.]+\.trycloudflare\.com", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+                process.OutputDataReceived += (s, e) =>
+                {
+                    if (e.Data is null) return;
+                    var m = urlRegex.Match(e.Data);
+                    if (m.Success && !readyTcs.Task.IsCompleted)
+                    {
+                        readyTcs.TrySetResult(m.Value);
+                    }
+                };
+                process.ErrorDataReceived += (s, e) =>
+                {
+                    if (e.Data is null) return;
+                    // Surface obvious failures quickly
+                    if (e.Data.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 && !readyTcs.Task.IsCompleted)
+                    {
+                        readyTcs.TrySetException(new InvalidOperationException($"cloudflared error: {e.Data}"));
+                    }
+                };
+
+                if (!process.Start())
+                {
+                    _logger.LogWarning("Failed to start cloudflared process (FileName={Exe}).", exe);
+                    process.Dispose();
+                    return false;
+                }
+
+                _cloudflaredProcess = process;
+                process = null; // Ownership transferred, prevent double dispose
+                _cloudflaredProcess.BeginOutputReadLine();
+                _cloudflaredProcess.BeginErrorReadLine();
+
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                linkedCts.CancelAfter(TimeSpan.FromSeconds(25));
+
+                try
+                {
+                    var url = await readyTcs.Task.WaitAsync(linkedCts.Token).ConfigureAwait(false);
+                    _cloudflaredPublicUrl = url;
+                    _logger.LogInformation("cloudflared tunnel established: {Url} -> {Target}", url, targetUrl);
+                    return true;
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning("Timed out waiting for cloudflared tunnel readiness.");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "cloudflared start failed. Is it installed and on PATH?");
+                return false;
+            }
+            finally
+            {
+                process?.Dispose();
+            }
+        }
+        finally
+        {
+            _cloudflaredSemaphore.Release();
+        }
+    }
+
+    private async Task<bool> TryEnsureUrlAclAsync(string? redirectUri = null)
+    {
+        var prefix = (redirectUri ?? _redirectUri);
+        if (!prefix.EndsWith("/", StringComparison.Ordinal))
+            prefix += "/";
+        if (!prefix.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+            return false; // only supported for HTTP
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "netsh",
+                Arguments = $"http add urlacl url={prefix} user=%USERNAME%",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var p = Process.Start(psi);
+            if (p == null) return false;
+            var output = await p.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            var error = await p.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await p.WaitForExitAsync().ConfigureAwait(false);
+            var success = p.ExitCode == 0 || (output?.IndexOf("exists", StringComparison.OrdinalIgnoreCase) >= 0);
+            if (!success)
+            {
+                _logger.LogDebug("netsh add urlacl failed (code {Code}). Error: {Error}", p.ExitCode, string.IsNullOrWhiteSpace(error) ? output : error);
+            }
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Unable to run netsh add urlacl; may require elevation.");
+            return false;
         }
     }
 }

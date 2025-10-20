@@ -74,10 +74,10 @@ public partial class AIAssistView : UserControl
     /// </summary>
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Auto-scroll to bottom when Responses collection changes
-        if (e.PropertyName == nameof(ViewModels.AIAssistViewModel.Responses))
+        // Auto-scroll to bottom when Messages collection changes or count updates
+        if (e.PropertyName == nameof(ViewModels.AIAssistViewModel.Messages) ||
+            e.PropertyName == nameof(ViewModels.AIAssistViewModel.ChatMessages))
         {
-            // Scroll to bottom after a brief delay to allow rendering
             Dispatcher.InvokeAsync(() =>
             {
                 var scrollViewer = FindName("ChatScrollViewer") as System.Windows.Controls.ScrollViewer;

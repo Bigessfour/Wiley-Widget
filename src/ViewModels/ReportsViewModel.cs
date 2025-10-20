@@ -37,6 +37,7 @@ namespace WileyWidget.ViewModels
     private readonly IAuditRepository _auditRepository;
     private readonly Microsoft.Extensions.Logging.ILogger<ReportsViewModel> _logger;
     private readonly IDispatcherHelper _dispatcherHelper;
+    private readonly IReportExportService _reportExportService;
     private ReportData? _currentReportData;
     private bool _isBusy;
 
@@ -211,13 +212,14 @@ namespace WileyWidget.ViewModels
     /// <param name="settingsService">The settings service for persisting user preferences</param>
     /// <param name="budgetRepository">The budget repository for data access</param>
     /// <param name="auditRepository">The audit repository for audit trail data</param>
-    public ReportsViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<ReportsViewModel> logger, ISettingsService settingsService, IBudgetRepository budgetRepository, IAuditRepository auditRepository)
+    public ReportsViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<ReportsViewModel> logger, ISettingsService settingsService, IBudgetRepository budgetRepository, IAuditRepository auditRepository, IReportExportService reportExportService)
     {
         _dispatcherHelper = dispatcherHelper;
         _logger = logger;
         _settingsService = settingsService;
         _budgetRepository = budgetRepository;
         _auditRepository = auditRepository;
+        _reportExportService = reportExportService;
 
         // Load saved settings
         LoadSavedSettings();
@@ -600,7 +602,7 @@ namespace WileyWidget.ViewModels
             return;
         }
 
-        var directory = Path.Combine(Path.GetTempPath(), "WileyWidget", "Reports", "Exports");
+    var directory = Path.Combine(Path.GetTempPath(), "WileyWidget", "Reports", "Exports");
         Directory.CreateDirectory(directory);
 
         var safeTitle = string.IsNullOrWhiteSpace(SelectedReportType)
@@ -610,9 +612,38 @@ namespace WileyWidget.ViewModels
         var fileName = $"{safeTitle}_{DateTime.Now:yyyyMMddHHmmss}.{format.ToLowerInvariant()}";
         var filePath = Path.Combine(directory, fileName);
 
-        // Generate actual report content based on format
-        var content = GenerateReportContent(CurrentReportData, format);
-        await File.WriteAllTextAsync(filePath, content);
+        try
+        {
+            // Prefer Syncfusion export when possible
+            if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                // If the CurrentReportData contains a ComplianceReport shape in future, route to specialized exporter
+                // For now, export the textual content to PDF
+                await _reportExportService.ExportToPdfAsync(CurrentReportData, filePath);
+            }
+            else if (string.Equals(format, "excel", StringComparison.OrdinalIgnoreCase) || string.Equals(format, "xlsx", StringComparison.OrdinalIgnoreCase))
+            {
+                await _reportExportService.ExportToExcelAsync(CurrentReportData, filePath);
+            }
+            else if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+            {
+                var enumerable = ReportItems.Any() ? ReportItems : new ObservableCollection<object> { CurrentReportData };
+                await _reportExportService.ExportToCsvAsync(enumerable, filePath);
+            }
+            else
+            {
+                // Fallback: generate plain text
+                var content = GenerateReportContent(CurrentReportData, format);
+                await File.WriteAllTextAsync(filePath, content);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export report to {Format}", format);
+            // Fallback to text dump on error
+            var content = GenerateReportContent(CurrentReportData, format);
+            await File.WriteAllTextAsync(filePath, content);
+        }
 
         OnExportCompleted(filePath, format);
     }

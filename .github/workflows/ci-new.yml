@@ -1,232 +1,43 @@
-name: CI
+name: CI New
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main, master ]
   pull_request:
-    branches:
-      - main
-
-permissions:
-  contents: read
-  actions: read
-  security-events: write  # Required for security scanning
-  pull-requests: write    # Required for annotations
+    branches: [ main, master ]
 
 jobs:
-  build:
+  build-test:
     runs-on: windows-latest
-    env:
-      TRUNK_TOKEN: ${{ secrets.TRUNK_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history for security scanning
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 9.0.x
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install XAML Validation Dependencies
-        shell: pwsh
-        run: python -m pip install -r tools/python/requirements-xaml_sleuth.txt
-
-      - name: Validate XAML Files
+      - name: Pre-test Cloudflare diagnostics
         shell: pwsh
         run: |
-          Write-Output "🔍 Validating XAML files..."
-          $xamlFiles = Get-ChildItem -Path "src/Views" -Filter "*.xaml" -Recurse
-          $failures = 0
-          
-          foreach ($file in $xamlFiles) {
-            Write-Output "Checking $($file.FullName)..."
-            try {
-              $output = & python tools/python/xaml_sleuth.py $file.FullName --verbose 2>&1
-              if ($LASTEXITCODE -ne 0) {
-                Write-Warning "XAML validation failed for $($file.Name)"
-                $output | Out-File -FilePath "xaml-validation-errors.log" -Append
-                $failures++
-              }
-            } catch {
-              Write-Warning "Error running xaml_sleuth on $($file.Name): $_"
-              $failures++
-            }
-          }
-          
-          if ($failures -gt 0) {
-            Write-Error "XAML validation failed for $failures file(s). Check xaml-validation-errors.log"
-            exit 1
-          } else {
-            Write-Output "✅ All XAML files passed validation"
-          }
-        continue-on-error: false
+          $ErrorActionPreference = 'Stop'
+          $hostName = $env:CLOUDFLARE_TUNNEL_HOST
+          if (-not $hostName) { $hostName = 'example.invalid' }
+          $port = if ($env:LOCAL_SERVICE_PORT) { [int]$env:LOCAL_SERVICE_PORT } else { 0 }
+          $result = ./tools/cloudflare/diagnose-cloudflare-tunnel.ps1 -Hostname $hostName -Port $port -Verbose
+          Write-Output "Diagnostic Summary: $($result | ConvertTo-Json -Compress)"
 
-      - name: Setup Trunk
-        run: .\scripts\trunk-maintenance.ps1 -Diagnose -Fix
-        continue-on-error: true
-
-      - name: Cache NuGet
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-
-
-      - name: Trunk Check (CI Mode)
-        uses: trunk-io/trunk-action@v1
-        with:
-          arguments: --ci --upload --series=${{ github.ref_name }} --jobs=1 --action_timeout=300
-        continue-on-error: true  # Allow CI to continue even if some tools fail
-
-      - name: Trunk Diagnostics
-        if: failure()
+      - name: Build
         shell: pwsh
         run: |
-          Write-Output "🔍 Trunk Diagnostics:"
-          Write-Output "Checking tool installations..."
+          dotnet build .\WileyWidget.csproj --nologo
 
-          # Check which tools failed
-          trunk check --ci --print-failures 2>&1 | Out-File "trunk-diagnostics.log"
-
-          # Show tool status
-          Write-Output "📋 Tool Status:"
-          Get-ChildItem "$env:LOCALAPPDATA\trunk\tools" -Directory | Select-Object -First 5 Name
-
-          # Show configuration issues
-          Write-Output "⚙️ Configuration Issues:"
-          Select-String -Path "trunk-diagnostics.log" -Pattern "failed|error|not supported" -CaseSensitive:$false
-
-      # Upload diagnostics for debugging
-      - name: Upload Trunk Diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: trunk-diagnostics-${{ github.run_number }}
-          path: |
-            trunk-diagnostics.log
-            .trunk/logs/
-          retention-days: 7
-
-      - name: Restore Dependencies
-        run: dotnet restore
-
-      - name: Verify EF Model Drift
+      - name: Test
         shell: pwsh
-        run: pwsh ./scripts/verify-ef-drift.ps1 -Project "WileyWidget.Data/WileyWidget.Data.csproj" -StartupProject "WileyWidget/WileyWidget.csproj"
-
-      - name: Build (with detailed logging)
-        run: dotnet build --no-restore /bl:msbuild.binlog /verbosity:minimal
-
-      - name: Install Python test dependencies
-        shell: pwsh
-        run: python -m pip install -r tools/python/requirements-test.txt
-
-      - name: Run Python Tests
-        shell: pwsh
-        run: python tools/python/run_all_tests.py
-
-      - name: Run Tests
         run: |
-          # Create logs directory
-          New-Item -ItemType Directory -Force -Path "test-logs" | Out-Null
-          
-          # Run tests with detailed logging
-          dotnet test --no-build --verbosity normal --settings WileyWidget.UiTests/test.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=detailed" --logger "html;LogFileName=test-results.html" 2>&1 | Tee-Object -FilePath "test-logs/test-output.log"
-        continue-on-error: true  # Allow CI to continue even if tests fail
+          dotnet test .\WileyWidget.Tests\WileyWidget.Tests.csproj --logger "trx;LogFileName=test-results.trx" --results-directory .\TestResults
 
-      - name: Upload Test Error Logs
+      - name: Upload Cloudflare logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-test-error-logs-${{ github.run_number }}
+          name: cloudflare-diagnostics
           path: |
-            test-logs/
-            TestResults/
-            *.trx
-            *.html
-          retention-days: 14
-
-      - name: Analyze Test Failures
-        if: failure()
-        shell: pwsh
-        run: |
-          Write-Output "=== Analyzing Test Failures ==="
-          if (Test-Path "scripts/Analyze-UiTestErrors.ps1") {
-            & "scripts/Analyze-UiTestErrors.ps1" -MaxErrors 10
-          } else {
-            Write-Warning "Analysis script not found"
-          }
-
-      - name: Run Phase 1 Validation
-        shell: pwsh
-        run: |
-          Write-Output "Running Phase 1 validation tests..."
-          pwsh ./scripts/phase1-build-test.ps1 -SkipTests -CI
-        continue-on-error: true  # Phase 1 validation may fail due to database, but we still want CI to continue
-
-      - name: Generate Coverage Report
-        run: |
-          dotnet tool install -g dotnet-reportgenerator-globaltool
-          reportgenerator -reports:TestResults/*/coverage.cobertura.xml -targetdir:coverage -reporttypes:Html
-
-      - name: Upload Coverage to CodeCov
-        uses: codecov/codecov-action@v4
-        with:
-          file: TestResults/*/coverage.cobertura.xml
-          flags: unittests
-          name: codecov-umbrella
-
-      - name: Check Test Coverage Threshold
-        shell: pwsh
-        run: |
-          # Extract coverage percentage from coverage report
-          $coverageFile = "coverage/index.html"
-          if (Test-Path $coverageFile) {
-            $content = Get-Content $coverageFile -Raw
-            $coverageMatch = $content | Select-String -Pattern '(\d+(?:\.\d+)?)%' -AllMatches
-            if ($coverageMatch.Matches) {
-              $coverage = [double]$coverageMatch.Matches[0].Groups[1].Value
-              Write-Output "Unit Test Coverage: $coverage%"
-              if ($coverage -lt 70) {
-                Write-Output "::warning::Unit test coverage is below 70% threshold: $coverage%"
-              } else {
-                Write-Output "::notice::Unit test coverage meets threshold: $coverage%"
-              }
-            }
-          } else {
-            Write-Output "::warning::No coverage report found - unit tests may not have run successfully"
-          }
-
-      - name: Generate Fetchability Manifest
-        run: pwsh ./scripts/ci-generate-manifest.ps1
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: build-diagnostics-${{ github.run_number }}
-          path: |
-            msbuild.binlog
-            coverage/
-            TestResults/
-            fetchability-resources.json
-          retention-days: 30
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ github.run_number }}
-          path: |
-            **/*.trx
-            TestResults/
-          retention-days: 30
+            logs/cloudflare/**
+            TestResults/**

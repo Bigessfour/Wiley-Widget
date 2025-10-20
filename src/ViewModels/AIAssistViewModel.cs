@@ -12,13 +12,16 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 using Syncfusion.UI.Xaml.Chat;
+// Resolve ChatMessage naming conflict explicitly
+using ChatMessageModel = WileyWidget.Models.ChatMessage;
+using System.Threading;
 
 namespace WileyWidget.ViewModels;
 
 /// <summary>
 /// ViewModel for AI Assistant functionality
 /// </summary>
-public partial class AIAssistViewModel : ObservableObject
+public partial class AIAssistViewModel : ObservableObject, IDisposable
 {
     private readonly IAIService _aiService;
     private readonly IChargeCalculatorService _chargeCalculator;
@@ -28,30 +31,22 @@ public partial class AIAssistViewModel : ObservableObject
     private readonly IDispatcherHelper _dispatcherHelper;
     private readonly Microsoft.Extensions.Logging.ILogger<AIAssistViewModel> _logger;
 
+    // Cancellation support
+    private CancellationTokenSource? _currentOperationCts;
+
+    // Correlation ID for tracking requests
+    private string? _currentCorrelationId;
+
     /// <summary>
     /// Expose GrokSupercomputer for real-time data refresh in View
     /// </summary>
     public IGrokSupercomputer GrokSupercomputer => _grokSupercomputer;
 
-    public ObservableCollection<ChatMessage> ChatMessages { get; } = new();
+    public ObservableCollection<ChatMessageModel> ChatMessages { get; } = new();
 
-    /// <summary>
-    /// Responses collection for chat UI binding (chat history)
-    /// Notifies on collection changes for auto-scroll
-    /// </summary>
-    private ObservableCollection<object> _responses = new();
-    public ObservableCollection<object> Responses
-    {
-        get => _responses;
-        private set
-        {
-            if (SetProperty(ref _responses, value))
-            {
-                // Subscribe to collection changes for notifications
-                _responses.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Responses));
-        }
-    }
-}
+    // Alias properties for SfAIAssistView exist later in file (CurrentUser, Messages)
+
+    // Legacy Responses collection removed in favor of ChatMessages/Messages used by SfAIAssistView
 
 /// <summary>
 /// Represents conversation mode information for UI display
@@ -75,7 +70,13 @@ public class ConversationModeInfo
     public string MessageText
     {
         get => messageText;
-        set => SetProperty(ref messageText, value);
+        set
+        {
+            if (SetProperty(ref messageText, value))
+            {
+                ValidateInput();
+            }
+        }
     }
 
     private string response = string.Empty;
@@ -198,6 +199,27 @@ public class ConversationModeInfo
     private string statusMessage = string.Empty;
 
     /// <summary>
+    /// Empty state message when no messages exist
+    /// </summary>
+    public string EmptyStateMessage => "Start a conversation with the AI assistant. Ask questions about municipal utility management, service charges, or financial planning.";
+
+    /// <summary>
+    /// Error state message for display
+    /// </summary>
+    [ObservableProperty]
+    private string errorStateMessage = string.Empty;
+
+    /// <summary>
+    /// Whether to show empty state
+    /// </summary>
+    public bool ShowEmptyState => !IsLoading && !IsProcessing && ChatMessages.Count == 0 && string.IsNullOrEmpty(ErrorStateMessage);
+
+    /// <summary>
+    /// Whether to show error state
+    /// </summary>
+    public bool ShowErrorState => !string.IsNullOrEmpty(ErrorStateMessage);
+
+    /// <summary>
     /// Current user for chat interface
     /// </summary>
     public Author CurrentUser { get; } = new Author { Name = "You" };
@@ -205,7 +227,7 @@ public class ConversationModeInfo
     /// <summary>
     /// Messages collection for SfAIAssistView binding (alias for ChatMessages)
     /// </summary>
-    public ObservableCollection<ChatMessage> Messages => ChatMessages;
+    public ObservableCollection<ChatMessageModel> Messages => ChatMessages;
 
     /// <summary>
     /// Conversation history for combo box
@@ -242,9 +264,23 @@ public class ConversationModeInfo
     [ObservableProperty]
     private string whatIfVariable = string.Empty;
 
+    // Input Validation Properties
+    private string inputValidationError = string.Empty;
+    public string InputValidationError
+    {
+        get => inputValidationError;
+        set => SetProperty(ref inputValidationError, value);
+    }
+
+    private bool isInputValid = false;
+    public bool IsInputValid
+    {
+        get => isInputValid;
+        set => SetProperty(ref isInputValid, value);
+    }
+
     // Prism DelegateCommand properties (replacing CommunityToolkit RelayCommand source-generated commands)
     public Prism.Commands.DelegateCommand SendCommand { get; private set; }
-    public Prism.Commands.DelegateCommand ClearResponsesCommand { get; private set; }
     public Prism.Commands.DelegateCommand SendMessageCommand { get; private set; }
     public Prism.Commands.DelegateCommand GenerateCommand { get; private set; }
     public Prism.Commands.DelegateCommand ClearChatCommand { get; private set; }
@@ -255,6 +291,8 @@ public class ConversationModeInfo
     public Prism.Commands.DelegateCommand GetProactiveAdviceCommand { get; private set; }
     public Prism.Commands.DelegateCommand RefreshLiveDataCommand { get; private set; }
     public Prism.Commands.DelegateCommand<string> SetConversationModeCommand { get; private set; }
+    public Prism.Commands.DelegateCommand<string> ApplySuggestionCommand { get; private set; }
+    public Prism.Commands.DelegateCommand CancelCommand { get; private set; }
 
     /// <summary>
     /// Constructor with AI service dependency
@@ -269,13 +307,11 @@ public class ConversationModeInfo
         _dispatcherHelper = dispatcherHelper ?? throw new ArgumentNullException(nameof(dispatcherHelper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    // Initialize Responses collection with notification
-    Responses = new ObservableCollection<object>();
-    Responses.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Responses));
+    // ChatMessages is the single source of truth for messages displayed in SfAIAssistView
 
     // Initialize Prism DelegateCommands for UI bindings (replaces CommunityToolkit RelayCommand)
     SendCommand = new Prism.Commands.DelegateCommand(async () => await Send(), () => CanSend());
-    ClearResponsesCommand = new Prism.Commands.DelegateCommand(ClearResponses);
+    // Removed ClearResponsesCommand; use ClearChat instead
     SendMessageCommand = new Prism.Commands.DelegateCommand(async () => await SendMessage(), () => CanSendMessage());
     GenerateCommand = new Prism.Commands.DelegateCommand(async () => await Generate(), () => CanGenerate());
     ClearChatCommand = new Prism.Commands.DelegateCommand(ClearChat);
@@ -286,13 +322,133 @@ public class ConversationModeInfo
     GetProactiveAdviceCommand = new Prism.Commands.DelegateCommand(async () => await GetProactiveAdvice());
     RefreshLiveDataCommand = new Prism.Commands.DelegateCommand(async () => await RefreshLiveData());
     SetConversationModeCommand = new Prism.Commands.DelegateCommand<string>(SetConversationMode);
+    ApplySuggestionCommand = new Prism.Commands.DelegateCommand<string>(ApplySuggestion);
+    CancelCommand = new Prism.Commands.DelegateCommand(CancelCurrentOperation, () => _currentOperationCts != null);
 
         // Set default mode to General Assistant
         SetConversationMode("General");
+
+        // Initialize input validation
+        ValidateInput();
     }
 
     /// <summary>
-    /// Send command - Processes query with IChargeCalculatorService and populates Responses collection
+    /// Cancel any currently running operation
+    /// </summary>
+    public void CancelCurrentOperation()
+    {
+        if (_currentOperationCts == null)
+        {
+            Log.Debug("CancelCurrentOperation called but no active operation to cancel");
+            return;
+        }
+
+        Log.Information("User cancelled current operation. CorrelationId: {CorrelationId}", _currentCorrelationId ?? "none");
+
+        // We already know it's non-null due to the guard above.
+        _currentOperationCts.Cancel();
+        _currentOperationCts.Dispose();
+        _currentOperationCts = null;
+
+        // Reset UI state on UI thread
+        _dispatcherHelper.Invoke(() =>
+        {
+            IsTyping = false;
+            IsProcessing = false;
+            StatusMessage = "Operation cancelled";
+        });
+    }
+
+    /// <summary>
+    /// Validates the current input and updates validation state
+    /// </summary>
+    private void ValidateInput()
+    {
+        const int MaxMessageLength = 2000;
+
+        if (string.IsNullOrWhiteSpace(MessageText))
+        {
+            InputValidationError = "Please enter a message to send.";
+            IsInputValid = false;
+            return;
+        }
+
+        if (MessageText.Length > MaxMessageLength)
+        {
+            InputValidationError = $"Message is too long. Maximum length is {MaxMessageLength} characters.";
+            IsInputValid = false;
+            return;
+        }
+
+        // Check for potentially harmful content (basic validation)
+        if (ContainsPotentiallyHarmfulContent(MessageText))
+        {
+            InputValidationError = "Message contains potentially inappropriate content. Please rephrase.";
+            IsInputValid = false;
+            return;
+        }
+
+        InputValidationError = string.Empty;
+        IsInputValid = true;
+    }
+
+    /// <summary>
+    /// Basic check for potentially harmful content
+    /// </summary>
+    private bool ContainsPotentiallyHarmfulContent(string input)
+    {
+        // This is a basic implementation - in production, use more sophisticated content filtering
+        var harmfulPatterns = new[]
+        {
+            @"\b(hack|exploit|attack|malware|virus)\b",
+            @"<script[^>]*>.*?</script>",
+            @"javascript:",
+            @"on\w+\s*=",
+            @"eval\s*\(",
+            @"document\.cookie",
+            @"localStorage",
+            @"sessionStorage"
+        };
+
+        foreach (var pattern in harmfulPatterns)
+        {
+            if (Regex.IsMatch(input, pattern, RegexOptions.IgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Suggestions displayed as quick chips below the chat
+    /// </summary>
+    public ObservableCollection<string> Suggestions { get; } = new()
+    {
+        "How can I optimize service charges?",
+        "Analyze my current financial position",
+        "Plan for upcoming expenses",
+        "Get proactive insights"
+    };
+
+    private void ApplySuggestion(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            Log.Warning("ApplySuggestion called with null or empty text");
+            return;
+        }
+
+        Log.Information("User applied AI suggestion. SuggestionLength: {Length}", text.Length);
+        MessageText = text;
+
+        // Trigger the same path as manual entry
+        _ = SendMessage();
+    }
+
+    /// <summary>
+    /// Send command - Processes query with IChargeCalculatorService and appends results to chat
     /// </summary>
     private async Task Send()
     {
@@ -303,11 +459,17 @@ public class ConversationModeInfo
         }
 
         var userQuery = QueryText.Trim();
+        var correlationId = Guid.NewGuid().ToString();
+        _currentCorrelationId = correlationId;
+
         QueryText = string.Empty;
         ErrorMessage = string.Empty;
 
-        // Add user message to Responses
-        Responses.Add(new ChatMessage
+        Log.Information("Charge calculation request started. CorrelationId: {CorrelationId}, QueryLength: {Length}",
+            correlationId, userQuery.Length);
+
+        // Add user message to chat
+        ChatMessages.Add(new ChatMessageModel
         {
             Author = CurrentUser,
             Text = userQuery,
@@ -329,23 +491,25 @@ public class ConversationModeInfo
             // Format response message
             var responseText = FormatServiceChargeResponse(recommendation);
 
-            // Add AI response to Responses
-            Responses.Add(new ChatMessage
+            // Add AI response to chat
+            ChatMessages.Add(new ChatMessageModel
             {
                 Author = new Author { Name = "AI Assistant" },
                 Text = responseText,
                 DateTime = DateTime.Now
             });
 
-            Log.Information("Service charge calculation completed for enterprise {EnterpriseId}", enterpriseId ?? 1);
+            Log.Information("Charge calculation completed successfully. CorrelationId: {CorrelationId}, EnterpriseId: {EnterpriseId}",
+                correlationId, enterpriseId ?? 1);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error processing query: {Query}", userQuery);
+            Log.Error(ex, "Charge calculation failed. CorrelationId: {CorrelationId}, Query: {Query}, Error: {ErrorMessage}",
+                correlationId, userQuery, ex.Message);
             ErrorMessage = $"Error: {ex.Message}";
 
             // Add error message to chat
-            Responses.Add(new ChatMessage
+            ChatMessages.Add(new ChatMessageModel
             {
                 Author = new Author { Name = "AI Assistant" },
                 Text = $"I encountered an error processing your request: {ex.Message}\n\nPlease try again or rephrase your query.",
@@ -356,20 +520,13 @@ public class ConversationModeInfo
         {
             IsTyping = false;
             IsProcessing = false;
+            _currentCorrelationId = null;
         }
     }
 
     private bool CanSend() => !string.IsNullOrWhiteSpace(QueryText) && !IsProcessing;
 
-    /// <summary>
-    /// Clear responses command
-    /// </summary>
-    private void ClearResponses()
-    {
-        Responses.Clear();
-        ErrorMessage = string.Empty;
-        Log.Information("Chat responses cleared");
-    }
+    // ClearResponses removed; prefer ClearChat which targets ChatMessages
 
     /// <summary>
     /// Extract enterprise ID from query string
@@ -435,55 +592,118 @@ public class ConversationModeInfo
         }
 
         var userMessage = MessageText.Trim();
+        var correlationId = Guid.NewGuid().ToString();
+        _currentCorrelationId = correlationId;
+
         MessageText = string.Empty;
 
+        // Cancel any existing operation
+        CancelCurrentOperation();
+
+        // Create new cancellation token
+        _currentOperationCts = new CancellationTokenSource();
+        var cancellationToken = _currentOperationCts.Token;
+
+    Log.Information("AI request started. CorrelationId: {CorrelationId}, MessageLength: {Length}",
+            correlationId, userMessage.Length);
+
+#if DEBUG
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+#endif
+
         // Add user message
-        ChatMessages.Add(new ChatMessage
+        _dispatcherHelper.Invoke(() =>
         {
-            Text = userMessage,
-            IsUser = true,
-            Timestamp = DateTime.Now
+            ChatMessages.Add(new ChatMessageModel
+            {
+                Text = userMessage,
+                IsUser = true,
+                Timestamp = DateTime.Now
+            });
         });
 
         // Show typing indicator and processing
-        IsTyping = true;
-        IsProcessing = true;
+        _dispatcherHelper.Invoke(() =>
+        {
+            IsTyping = true;
+            IsProcessing = true;
+            StatusMessage = "Processing your request...";
+        });
 
         try
         {
-            // Get AI response
+            // Get AI response with cancellation support
             var aiResponse = await _aiService.GetInsightsAsync(
                 "Wiley Widget Municipal Utility Management Application",
-                userMessage
+                userMessage,
+                cancellationToken
             );
 
-            // Add AI response
-            ChatMessages.Add(new ChatMessage
+            // Check if operation was cancelled
+            cancellationToken.ThrowIfCancellationRequested();
+
+            Log.Information("AI request completed successfully. CorrelationId: {CorrelationId}, ResponseLength: {Length}",
+                correlationId, aiResponse?.Length ?? 0);
+
+            // Add AI response on UI thread
+            _dispatcherHelper.Invoke(() =>
             {
-                Text = aiResponse,
-                IsUser = false,
-                Timestamp = DateTime.Now
+                ChatMessages.Add(new ChatMessageModel
+                {
+                    Text = aiResponse,
+                    IsUser = false,
+                    Timestamp = DateTime.Now
+                });
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // Operation was cancelled - this is expected
+            Log.Warning("AI request cancelled by user. CorrelationId: {CorrelationId}", correlationId);
+
+            _dispatcherHelper.Invoke(() =>
+            {
+                StatusMessage = "Request cancelled";
             });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error generating AI response");
+            Log.Error(ex, "AI request failed. CorrelationId: {CorrelationId}, Error: {ErrorMessage}",
+                correlationId, ex.Message);
 
-            ChatMessages.Add(new ChatMessage
+            _dispatcherHelper.Invoke(() =>
             {
-                Text = "Sorry, I encountered an error processing your request. Please try again.",
-                IsUser = false,
-                Timestamp = DateTime.Now
+                ChatMessages.Add(new ChatMessageModel
+                {
+                    Text = "Sorry, I encountered an error processing your request. Please try again.",
+                    IsUser = false,
+                    Timestamp = DateTime.Now
+                });
+                ErrorStateMessage = $"AI Service Error: {ex.Message}";
             });
         }
         finally
         {
-            IsTyping = false;
-            IsProcessing = false;
+            _dispatcherHelper.Invoke(() =>
+            {
+                IsTyping = false;
+                IsProcessing = false;
+                StatusMessage = string.Empty;
+            });
+
+            // Clean up
+            _currentCorrelationId = null;
+            _currentOperationCts?.Dispose();
+            _currentOperationCts = null;
+
+#if DEBUG
+            sw.Stop();
+            Log.Debug("AI request completed. Elapsed: {ElapsedMs} ms, CorrelationId: {CorrelationId}", sw.ElapsedMilliseconds, correlationId);
+#endif
         }
     }
 
-    private bool CanSendMessage() => !string.IsNullOrWhiteSpace(MessageText);
+    private bool CanSendMessage() => IsInputValid && !IsProcessing;
 
     /// <summary>
     /// Generate response command using AI service
@@ -592,6 +812,11 @@ public class ConversationModeInfo
         if (SelectedMode?.Name != "Service Charge Calculator")
             return;
 
+        var correlationId = Guid.NewGuid().ToString();
+        _currentCorrelationId = correlationId;
+
+        Log.Information("Service charge calculation started. CorrelationId: {CorrelationId}", correlationId);
+
         IsTyping = true;
 
         try
@@ -600,7 +825,9 @@ public class ConversationModeInfo
             var enterprise = await GetCurrentEnterpriseAsync();
             if (enterprise == null)
             {
-                ChatMessages.Add(new ChatMessage
+                Log.Warning("Service charge calculation failed: No enterprise data available. CorrelationId: {CorrelationId}", correlationId);
+
+                ChatMessages.Add(new ChatMessageModel
                 {
                     Text = "Unable to calculate service charges: No enterprise data available.",
                     IsUser = false,
@@ -620,18 +847,22 @@ public class ConversationModeInfo
                           $"**Monthly Revenue at Recommended:** ${result.MonthlyRevenueAtRecommended:F2}\n" +
                           $"**Monthly Surplus:** ${result.MonthlySurplus:F2}";
 
-            ChatMessages.Add(new ChatMessage
+            ChatMessages.Add(new ChatMessageModel
             {
                 Text = response,
                 IsUser = false,
                 Timestamp = DateTime.Now
             });
+
+            Log.Information("Service charge calculation completed successfully. CorrelationId: {CorrelationId}, EnterpriseId: {EnterpriseId}, RecommendedRate: {Rate}",
+                correlationId, enterprise.Id, result.RecommendedRate);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error calculating service charge");
+            Log.Error(ex, "Service charge calculation failed. CorrelationId: {CorrelationId}, Error: {ErrorMessage}",
+                correlationId, ex.Message);
 
-            ChatMessages.Add(new ChatMessage
+            ChatMessages.Add(new ChatMessageModel
             {
                 Text = "Sorry, I encountered an error calculating the service charge. Please try again.",
                 IsUser = false,
@@ -641,6 +872,7 @@ public class ConversationModeInfo
         finally
         {
             IsTyping = false;
+            _currentCorrelationId = null;
         }
     }
 
@@ -654,7 +886,7 @@ public class ConversationModeInfo
 
         if (string.IsNullOrWhiteSpace(MessageText))
         {
-            ChatMessages.Add(new ChatMessage
+            ChatMessages.Add(new ChatMessageModel
             {
                 Text = "Please describe your what-if scenario (e.g., '15% pay raise, benefits improvement, 10% reserve, equipment purchase').",
                 IsUser = false,
@@ -667,7 +899,7 @@ public class ConversationModeInfo
         MessageText = string.Empty;
 
         // Add user scenario
-        ChatMessages.Add(new ChatMessage
+        ChatMessages.Add(new ChatMessageModel
         {
             Text = scenario,
             IsUser = true,
@@ -681,7 +913,7 @@ public class ConversationModeInfo
             var enterprise = await GetCurrentEnterpriseAsync();
             if (enterprise == null)
             {
-                ChatMessages.Add(new ChatMessage
+                ChatMessages.Add(new ChatMessageModel
                 {
                     Text = "Unable to generate scenario: No enterprise data available.",
                     IsUser = false,
@@ -704,7 +936,7 @@ public class ConversationModeInfo
                           $"**Risk Assessment:** {result.RiskAssessment.RiskLevel}\n" +
                           $"**Concerns:** {string.Join(", ", result.RiskAssessment.Concerns)}";
 
-            ChatMessages.Add(new ChatMessage
+            ChatMessages.Add(new ChatMessageModel
             {
                 Text = response,
                 IsUser = false,
@@ -715,7 +947,7 @@ public class ConversationModeInfo
         {
             Log.Error(ex, "Error generating what-if scenario");
 
-            ChatMessages.Add(new ChatMessage
+            ChatMessages.Add(new ChatMessageModel
             {
                 Text = "Sorry, I encountered an error generating the scenario analysis. Please try again.",
                 IsUser = false,
@@ -758,7 +990,7 @@ public class ConversationModeInfo
                           $"**Suggested Actions:**\n{string.Join("\n", insights.SuggestedActions)}\n\n" +
                           $"*Generated on {insights.GeneratedDate:g}*";
 
-            ChatMessages.Add(new ChatMessage
+            ChatMessages.Add(new ChatMessageModel
             {
                 Text = response,
                 IsUser = false,
@@ -769,7 +1001,7 @@ public class ConversationModeInfo
         {
             Log.Error(ex, "Error generating proactive advice");
 
-            ChatMessages.Add(new ChatMessage
+            ChatMessages.Add(new ChatMessageModel
             {
                 Text = "Sorry, I encountered an error generating proactive advice. Please try again.",
                 IsUser = false,
@@ -794,15 +1026,15 @@ public class ConversationModeInfo
             // Fetch latest enterprise data
             var reportData = await GrokSupercomputer.FetchEnterpriseDataAsync();
 
-            // Add system message to chat using the correct ChatMessage from WileyWidget.Models
-            var systemMessage = new
+            // Add system message to chat using the ChatMessage model
+            var systemMessage = new ChatMessageModel
             {
-                Author = new { Name = "System" },
+                Author = new Author { Name = "System" },
                 Text = $"✓ Live data refreshed: {reportData?.EnterpriseCount ?? 0} enterprises loaded. Context updated with latest municipal data.",
                 DateTime = DateTime.Now
             };
 
-            Responses.Add(systemMessage);
+            ChatMessages.Add(systemMessage);
 
             Log.Information("Live data refresh completed: {Count} enterprises", reportData?.EnterpriseCount ?? 0);
         }
@@ -810,14 +1042,14 @@ public class ConversationModeInfo
         {
             Log.Error(ex, "Error refreshing live data");
 
-            var errorMessage = new
+            var errorMessage = new ChatMessageModel
             {
-                Author = new { Name = "System" },
+                Author = new Author { Name = "System" },
                 Text = "❌ Error refreshing live data. Please check your connection and try again.",
                 DateTime = DateTime.Now
             };
 
-            Responses.Add(errorMessage);
+            ChatMessages.Add(errorMessage);
         }
     }
 
@@ -989,5 +1221,41 @@ public class ConversationModeInfo
         public string Insights { get; set; } = string.Empty;
         public DateTime GeneratedDate { get; set; }
         public List<string> SuggestedActions { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Dispose resources
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Dispose pattern implementation
+    /// </summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Ensure any active operation is cancelled and the CTS is disposed deterministically
+            if (_currentOperationCts != null)
+            {
+                try
+                {
+                    _currentOperationCts.Cancel();
+                }
+                catch
+                {
+                    // Ignore cancellation exceptions during dispose
+                }
+                finally
+                {
+                    _currentOperationCts.Dispose();
+                    _currentOperationCts = null;
+                }
+            }
+        }
     }
 }

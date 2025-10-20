@@ -308,6 +308,10 @@ namespace WileyWidget.Views
 
                     Log.Debug("DockingManager event handlers attached");
 
+                    // Suppress ActiveWindowChanged processing while we perform bulk layout operations
+                    WileyWidget.Behaviors.DockingManagerSuppress.SetSuppressActiveWindowEvents(dockingManager, true);
+                    Log.Debug("Suppressed ActiveWindowChanged events on DockingManager for bulk load");
+
                     // Load from IsolatedStorage with validation
                     using (IsolatedStorageFile isoStorage = IsolatedStorageFile.GetUserStoreForAssembly())
                     {
@@ -351,6 +355,23 @@ foreach (var combo in invalidCombinations)
                         }
                     }
                     Log.Information("Docking state loaded and validated successfully");
+
+                    // Clear suppression and emit one consolidated ActiveWindowChanged handling/log
+                    WileyWidget.Behaviors.DockingManagerSuppress.SetSuppressActiveWindowEvents(dockingManager, false);
+                    var lastName = WileyWidget.Behaviors.DockingManagerSuppress.GetLastActiveWindowName(dockingManager);
+                    Log.Debug("Cleared suppression; last queued active window: {LastQueued}", string.IsNullOrEmpty(lastName) ? "(unknown)" : lastName);
+                    // Manually trigger a final update to viewmodel and log the active window once
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (_viewModel != null)
+                        {
+                            _viewModel.ActiveWindow = dockingManager.ActiveWindow;
+                        }
+                        if (dockingManager.ActiveWindow != null)
+                        {
+                            Log.Information("Active window after load: {WindowName}", dockingManager.ActiveWindow.Name ?? dockingManager.ActiveWindow.GetType().Name);
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Normal);
                 }
                 catch (Exception ex)
                 {

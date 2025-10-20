@@ -29,6 +29,7 @@
     <PackageReference Include="Serilog.Sinks.Async" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Polly" />
+    <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
 </Project>

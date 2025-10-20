@@ -19,6 +19,7 @@ namespace WileyWidget.Views;
 /// </summary>
 public partial class EnterprisePanelView : UserControl
 {
+    private bool _loadedOnce;
     public EnterprisePanelView()
     {
         InitializeComponent();
@@ -29,6 +30,8 @@ public partial class EnterprisePanelView : UserControl
         // Load enterprises when control loads
         Loaded += async (s, e) =>
         {
+            if (_loadedOnce) return;
+            _loadedOnce = true;
             if (DataContext is EnterpriseViewModel vm)
             {
                 await vm.LoadEnterprisesAsync();

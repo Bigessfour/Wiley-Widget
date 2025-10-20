@@ -108,8 +108,9 @@ namespace WileyWidget.Startup.Modules
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            // Register DashboardViewModel - this is the authoritative registration
-            containerRegistry.Register<DashboardViewModel>();
+            // Register DashboardViewModel as a singleton so all views share one instance
+            // This prevents duplicate data loads and ensures consistent state across regions
+            containerRegistry.RegisterSingleton<DashboardViewModel>();
 
             // Register DashboardView for navigation
             containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>();

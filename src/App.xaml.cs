@@ -16,6 +16,7 @@ using Unity;
 using Unity.Resolution;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Licensing;
+using Bold.Licensing;
 using WileyWidget.Views;
 using WileyWidget.Startup.Modules;
 using WileyWidget.Services;
@@ -68,6 +69,7 @@ namespace WileyWidget
         public static object? StartupProgress { get; private set; }
         public static DateTimeOffset? LastHealthReportUpdate { get; private set; }
     private bool _syncfusionLicenseRegistered;
+    private bool _boldReportsLicenseRegistered;
 
         public static void UpdateLatestHealthReport(object report)
         {
@@ -152,6 +154,7 @@ namespace WileyWidget
             Trace.WriteLine("[App] ConfigureLogging completed");
 
             EnsureSyncfusionLicenseRegistered();
+            EnsureBoldReportsLicenseRegistered();
 
             base.OnStartup(e);
 
@@ -193,6 +196,7 @@ namespace WileyWidget
         protected override Window CreateShell()
         {
             EnsureSyncfusionLicenseRegistered();
+            EnsureBoldReportsLicenseRegistered();
 
             try
             {
@@ -299,6 +303,95 @@ namespace WileyWidget
                 string message = forceRefresh
                     ? "Failed to re-register Syncfusion license during shutdown"
                     : "Failed to register Syncfusion license during startup - continuing without license registration (this may show license dialogs on first use)";
+                Log.Warning(ex, message);
+            }
+        }
+
+        private void EnsureBoldReportsLicenseRegistered(bool forceRefresh = false)
+        {
+            if (!forceRefresh && _boldReportsLicenseRegistered)
+            {
+                return;
+            }
+
+            try
+            {
+                IConfiguration configuration = _cachedConfiguration ??= BuildConfiguration();
+                string? licenseKey = null;
+                string licenseSource = "unknown";
+
+                // Priority order: Machine env var > User env var > Configuration
+                // Machine scope is most secure for production deployments
+
+                // Check machine environment variable first (highest security)
+                licenseKey = Environment.GetEnvironmentVariable("BOLDREPORTS_LICENSE_KEY", EnvironmentVariableTarget.Machine);
+                if (!string.IsNullOrWhiteSpace(licenseKey) && !licenseKey.Contains("YOUR_BOLDREPORTS_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+                {
+                    licenseSource = "machine environment variable";
+                }
+                else
+                {
+                    // Check user/process environment variable
+                    licenseKey = Environment.GetEnvironmentVariable("BOLDREPORTS_LICENSE_KEY", EnvironmentVariableTarget.User)
+                             ?? Environment.GetEnvironmentVariable("BOLDREPORTS_LICENSE_KEY", EnvironmentVariableTarget.Process);
+
+                    if (!string.IsNullOrWhiteSpace(licenseKey) && !licenseKey.Contains("YOUR_BOLDREPORTS_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+                    {
+                        licenseSource = "user environment variable";
+                    }
+                    else
+                    {
+                        // Check configuration as fallback
+                        licenseKey = configuration["BoldReports:LicenseKey"]
+                                 ?? configuration["BoldReports:License"];
+
+                        if (!string.IsNullOrWhiteSpace(licenseKey) && !licenseKey.Contains("YOUR_BOLDREPORTS_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+                        {
+                            licenseSource = "configuration";
+                        }
+                        else
+                        {
+                            // Check for license key in local secure storage (Azure Key Vault local cache or similar)
+                            // This could be implemented as needed based on the specific key vault solution being used
+                            Log.Debug("Checking for Bold Reports license in local key vault...");
+                            // TODO: Implement specific key vault access if needed
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(licenseKey)
+                    || licenseKey.Contains("YOUR_BOLDREPORTS_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (forceRefresh)
+                    {
+                        Log.Debug("Bold Reports license key not configured; skipping re-registration");
+                    }
+                    else
+                    {
+                        Log.Warning("Bold Reports license key not configured. Set BoldReports:LicenseKey in appsettings.json, BOLDREPORTS_LICENSE_KEY environment variable (user or machine scope), or ensure it's available in your local key vault to suppress runtime license dialogs.");
+                    }
+                    return;
+                }
+
+                string masked = licenseKey.Length > 8 ? string.Concat(licenseKey.AsSpan(0, 8), "...") : "(masked)";
+                Log.Information("Registering Bold Reports license (length: {Length}, source: {Source})", licenseKey.Length, licenseSource);
+                Bold.Licensing.BoldLicenseProvider.RegisterLicense(licenseKey);
+                _boldReportsLicenseRegistered = true;
+
+                if (forceRefresh)
+                {
+                    Log.Debug("Bold Reports license re-registered from {Source} (masked: {Mask})", licenseSource, masked);
+                }
+                else
+                {
+                    Log.Information("Bold Reports license registered from {Source} (masked: {Mask})", licenseSource, masked);
+                }
+            }
+            catch (Exception ex)
+            {
+                string message = forceRefresh
+                    ? "Failed to re-register Bold Reports license during shutdown"
+                    : "Failed to register Bold Reports license during startup - continuing without license registration (this may show license dialogs on first use)";
                 Log.Warning(ex, message);
             }
         }

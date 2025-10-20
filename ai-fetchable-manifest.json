@@ -3,35 +3,35 @@
     "remote_url": "https://github.com/Bigessfour/Wiley-Widget",
     "owner_repo": "Bigessfour/Wiley-Widget",
     "branch": "main",
-    "commit_hash": "e4113a15b9d002d738e7be29e245cb99b29f0070",
+    "commit_hash": "f5c643caee3ad8bbe47879e2b4521822e5dd1a1d",
     "is_dirty": false,
-    "generated_at": "2025-10-18T20:26:23.178683"
+    "generated_at": "2025-10-19T15:57:14.901704"
   },
   "summary": {
-    "total_files": 718,
-    "total_size": 18466324,
+    "total_files": 740,
+    "total_size": 18611597,
     "categories": {
-      "unknown": 60,
-      "test": 163,
+      "unknown": 61,
+      "test": 164,
       "configuration": 20,
-      "documentation": 71,
-      "source_code": 316,
-      "automation": 88
+      "documentation": 76,
+      "source_code": 322,
+      "automation": 97
     },
     "languages": {
-      "YAML": 10,
-      "Markdown": 92,
+      "YAML": 11,
+      "Markdown": 99,
       "Unknown": 70,
       "TOML": 3,
-      "JSON": 30,
+      "JSON": 31,
       "Configuration": 2,
-      "C#": 312,
-      "C# Project": 11,
+      "C#": 316,
+      "C# Project": 12,
       "Visual Studio Solution": 1,
       "XML": 1,
       "Text": 16,
       "INI": 1,
-      "PowerShell": 76,
+      "PowerShell": 84,
       "Python": 50,
       "Batch": 2,
       "JavaScript": 3,
@@ -41,6 +41,508 @@
       "HTML": 2
     }
   },
+  "search_index": [
+    "63f4a300",
+    "aad",
+    "aboutviewmodel",
+    "aboutwindow",
+    "account",
+    "accounttypevalidator",
+    "actions",
+    "activateonmouseoverbehavior",
+    "activityitem",
+    "add",
+    "addadvancedsettingstoappsettings",
+    "addappsettingsentity",
+    "addbackendenhancements",
+    "adddataseeding",
+    "addenterpriseseeddata",
+    "addmunicipalaccounts",
+    "addrowversiontoentities",
+    "adduseseedingforfy2026budget",
+    "addutilitycustomer",
+    "admin",
+    "after",
+    "ai",
+    "aiassistlifecycletests",
+    "aiassistmodule",
+    "aiassistpanelview",
+    "aiassistview",
+    "aiassistviewmodel",
+    "aiinsight",
+    "ailoggingservice",
+    "airesponseviewmodel",
+    "alertitem",
+    "all",
+    "analysis",
+    "analyticsdata",
+    "analyticsview",
+    "analyticsviewmodel",
+    "analyticsviewmodeltests",
+    "analyze",
+    "and",
+    "app",
+    "appdbcontext",
+    "appdbcontextfactory",
+    "appdbcontextfactoryadapter",
+    "appdbcontextmodelsnapshot",
+    "application",
+    "applicationmetricsservice",
+    "applications",
+    "apply",
+    "applybackendenhancements",
+    "appoptions",
+    "appoptionsconfiguration",
+    "appsettings",
+    "architecture",
+    "archive",
+    "assemblyinfo",
+    "assessment",
+    "asyncviewmodelbase",
+    "attributes",
+    "audit",
+    "auditentry",
+    "auditrepository",
+    "auditservice",
+    "authentication",
+    "authenticationservice",
+    "automation",
+    "availability",
+    "azure",
+    "azureadconfig",
+    "background",
+    "balancecolorconverter",
+    "base",
+    "bat",
+    "batch",
+    "behavior",
+    "behaviors",
+    "best",
+    "bestpractice",
+    "big",
+    "bindingerrortracelistener",
+    "blocking",
+    "booleantovisibilityconverter",
+    "budget",
+    "budgetaccount",
+    "budgetanalysismodels",
+    "budgetanalysisview",
+    "budgetanalysisviewmodel",
+    "budgetdata",
+    "budgetdetailitem",
+    "budgetentry",
+    "budgetimportoptions",
+    "budgetinsights",
+    "budgetinteraction",
+    "budgetmodule",
+    "budgetoverrunstyleselector",
+    "budgetpanelview",
+    "budgetperiod",
+    "budgetprogressconverter",
+    "budgetrepository",
+    "budgettrenditem",
+    "budgetview",
+    "budgetviewlifecycletests",
+    "budgetviewmodel",
+    "budgetviewmodeltests",
+    "bug",
+    "build",
+    "cache",
+    "calibration",
+    "categorize",
+    "changelog",
+    "chartseries",
+    "chatconverters",
+    "chatmessage",
+    "check",
+    "checklist",
+    "checkov",
+    "checks",
+    "cicd",
+    "class1",
+    "cleanup",
+    "client",
+    "clipboard",
+    "cloudflare",
+    "cloudflared",
+    "clr",
+    "code",
+    "column",
+    "command",
+    "compare",
+    "complete",
+    "completion",
+    "compliance",
+    "compliancereport",
+    "compose",
+    "compositecommandservice",
+    "comprehensive",
+    "concurrencyconflictexception",
+    "config",
+    "configs",
+    "configuration",
+    "configure",
+    "confirmationdialogview",
+    "confirmationdialogviewmodel",
+    "conftest",
+    "connection",
+    "connections",
+    "constructorresolutiontests",
+    "containing",
+    "context",
+    "contributing",
+    "control",
+    "controls",
+    "conversation",
+    "conversationmode",
+    "converters",
+    "copilot",
+    "core",
+    "coremodule",
+    "coverage",
+    "cpython",
+    "create",
+    "csharp",
+    "csproj",
+    "currencybalancebudgetconvertertests",
+    "currencyformatconverter",
+    "custom",
+    "dashboard",
+    "dashboardmodule",
+    "dashboardpanelview",
+    "dashboardview",
+    "dashboardviewmodel",
+    "data",
+    "dataanonymizerservice",
+    "database",
+    "databaseconfiguration",
+    "databaseconnectiontest",
+    "databaseresiliencepolicy",
+    "databaseseeder",
+    "databasesetup",
+    "databasetest",
+    "datatemplates",
+    "datatransferobjects",
+    "dbconntest",
+    "debug",
+    "debugging",
+    "debugpy",
+    "default",
+    "delays",
+    "department",
+    "departmentrepository",
+    "dependencies",
+    "dependencyinjection",
+    "designer",
+    "dev",
+    "development",
+    "diag",
+    "diagnostics",
+    "diagrams",
+    "dialogviewmodelbase",
+    "directory",
+    "dispatcherguard",
+    "dispatcherhelper",
+    "dlls",
+    "docker",
+    "dockerfile",
+    "dockingmanagerbehavior",
+    "dockingmanagerregionadapter",
+    "documentation",
+    "dotenv",
+    "dotnet",
+    "drift",
+    "dtos",
+    "duplicatexamlkeys",
+    "e2e",
+    "editorconfig",
+    "email",
+    "encryptedlocalsecretvaultservice",
+    "enhanced",
+    "enhancements",
+    "enterprise",
+    "enterprisedialogview",
+    "enterprisedialogviewmodel",
+    "enterpriselifecycletests",
+    "enterprisemodule",
+    "enterprisepanelview",
+    "enterpriserepository",
+    "enterprisesummary",
+    "enterprisetypeitem",
+    "enterpriseview",
+    "enterpriseviewmodel",
+    "entities",
+    "env",
+    "environment",
+    "errordialogview",
+    "errordialogviewmodel",
+    "errorreportingservice",
+    "errors",
+    "evaluate",
+    "event",
+    "example",
+    "examples",
+    "excel",
+    "excelimportview",
+    "excelimportviewmodel",
+    "excelreaderservice",
+    "excluding",
+    "execution",
+    "exhaustion",
+    "extensions",
+    "external",
+    "failures",
+    "fast",
+    "feature",
+    "fetchability",
+    "fetchabilitymanifest",
+    "fetchable",
+    "file",
+    "files",
+    "find",
+    "firewall",
+    "fiscal",
+    "fiscalyearsettings",
+    "fix",
+    "fixbudgetentryselfreference",
+    "fixes",
+    "fixtures",
+    "focus",
+    "focusonloadbehavior",
+    "followups",
+    "for",
+    "from",
+    "fund",
+    "fundtype",
+    "gaps",
+    "gasb",
+    "generate",
+    "generic",
+    "git",
+    "github",
+    "gitignore",
+    "gitleaks",
+    "global",
+    "globalusings",
+    "greaterthanconverter",
+    "griddisplayattribute",
+    "groksupercomputer",
+    "groksupercomputerreportingtests",
+    "guide",
+    "guidelines",
+    "guides",
+    "handoff",
+    "harden",
+    "health",
+    "healthcheckhostedservice",
+    "healthcheckmodels",
+    "healthcheckservice",
+    "helper",
+    "helpers",
+    "hierarchical",
+    "hosted",
+    "hosting",
+    "html",
+    "iailoggingservice",
+    "iaiservice",
+    "iappdbcontext",
+    "iauditable",
+    "iauditrepository",
+    "ibudgetimporter",
+    "ibudgetrepository",
+    "ichargecalculatorservice",
+    "idataanonymizerservice",
+    "idepartmentrepository",
+    "idispatcherhelper",
+    "ienterpriserepository",
+    "iexcelreaderservice",
+    "ignore",
+    "igroksupercomputer",
+    "imemoryprofiler",
+    "implementation",
+    "improvement",
+    "imunicipalaccountrepository",
+    "inavigationservice",
+    "incremental",
+    "index",
+    "ini",
+    "init",
+    "initialcreate",
+    "initialization",
+    "inspect",
+    "install",
+    "installation,",
+    "instructions",
+    "integration",
+    "integrations",
+    "interactionrequestservice",
+    "interfaces",
+    "inversebooleantovisibilityconverter",
+    "invoice",
+    "invoke",
+    "iprismerrorhandler",
+    "iquickbooksservice",
+    "ireportexportservice",
+    "isecretvaultservice",
+    "isettingsservice",
+    "isoftdeletable",
+    "issue",
+    "isyncfusionlicenseservice",
+    "ithememanager",
+    "iunitofwork",
+    "iutilitycustomerrepository",
+    "iviewregistrationservice",
+    "iwhatifscenarioengine",
+    "iwileywidgetcontextservice",
+    "javascript",
+    "journey",
+    "key",
+    "keyvault",
+    "kill",
+    "last",
+    "launch",
+    "launchsettings",
+    "layered",
+    "leaks",
+    "license",
+    "licenses",
+    "lifecycletestbase",
+    "lifecycletests",
+    "llm",
+    "load",
+    "localizationservice",
+    "localsecretvaultservice",
+    "lock",
+    "logging",
+    "loggingcontext",
+    "login",
+    "logs",
+    "machine",
+    "main",
+    "maintenance",
+    "mainviewmodel",
+    "mainwindow",
+    "manage",
+    "management",
+    "manifest",
+    "markdown",
+    "markdownlint",
+    "maturity",
+    "mcp",
+    "memory",
+    "messageconverters",
+    "messageconvertertests",
+    "messages",
+    "methods",
+    "microsoft",
+    "migrate",
+    "migration",
+    "migrations",
+    "missing",
+    "mock",
+    "modulehealthservice",
+    "modules",
+    "monitor",
+    "monitoring",
+    "mousefocusbehavior",
+    "municipal",
+    "municipalaccount",
+    "municipalaccountmodule",
+    "municipalaccountpanelview",
+    "municipalaccountrepository",
+    "municipalaccountview",
+    "municipalaccountviewmodel",
+    "navigation",
+    "navigationitem",
+    "navigationrequesteventargs",
+    "navigationservice",
+    "navigationsnapshot",
+    "net8",
+    "network",
+    "new",
+    "node",
+    "north",
+    "notes",
+    "notificationdialogview",
+    "notificationdialogviewmodel",
+    "notifications",
+    "nuget",
+    "nullaiservice",
+    "nullgroksupercomputer",
+    "nulltoboolconverter",
+    "nulltovisibilityconverter",
+    "oauth",
+    "obsolete",
+    "operations",
+    "optimization",
+    "optimize",
+    "optimized",
+    "optionsvalidators",
+    "organization",
+    "organize",
+    "our",
+    "out",
+    "output",
+    "overallbudget",
+    "overview,",
+    "package",
+    "packages",
+    "panelmodule",
+    "partnership",
+    "patterns",
+    "pendingchangesfix",
+    "performance",
+    "phase1",
+    "phase2",
+    "plan",
+    "plugins",
+    "png",
+    "policy",
+    "polishhost",
+    "powershell",
+    "practices",
+    "pre",
+    "prism",
+    "prismerrorhandler",
+    "prismhttpclientfactory",
+    "privacy",
+    "procedure",
+    "production",
+    "profile",
+    "program",
+    "progress",
+    "progressview",
+    "progressviewmodel",
+    "project",
+    "proper",
+    "props",
+    "pull",
+    "push",
+    "pyc",
+    "pycache",
+    "pyproject",
+    "pyrightconfig",
+    "pytest",
+    "python",
+    "qbo",
+    "quick",
+    "quickbooks",
+    "quickbooksmodule",
+    "quickbooksservice",
+    "quickbooksstructuretest",
+    "rdl",
+    "readme",
+    "real",
+    "refactoring",
+    "reference",
+    "refinements",
+    "regionbehaviors",
+    "regionmanagerbehavior",
+    "regions",
+    "regionviewregistry",
+    "registration",
+    "release"
+  ],
   "files": [
     {
       "metadata": {
@@ -343,15 +845,15 @@
       "metadata": {
         "path": ".gitignore",
         "exists": true,
-        "size": 2524,
-        "last_modified": "2025-10-18T20:24:35.242890",
+        "size": 2608,
+        "last_modified": "2025-10-19T09:34:01.963156",
         "extension": "",
         "language": "Unknown",
         "mime_type": "text/plain",
         "line_count": 73,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "e33a3d8a67b49ac344b135ba194fd249aa5405bbe261f612e9c14e3d43437041"
+        "sha256": "d594d7b14ca5be79155f54f2a473b46914fef6691a9b255e7e102ecf658aee0f"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/.gitignore",
@@ -506,7 +1008,7 @@
         "path": ".trunk/logs",
         "exists": true,
         "size": 4096,
-        "last_modified": "2025-10-18T20:20:45.465571",
+        "last_modified": "2025-10-19T15:55:09.515347",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -560,7 +1062,7 @@
         "path": ".trunk/out",
         "exists": true,
         "size": 3145728,
-        "last_modified": "2025-10-18T20:24:43.215428",
+        "last_modified": "2025-10-19T15:55:38.049324",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -614,7 +1116,7 @@
         "path": ".trunk/tools",
         "exists": true,
         "size": 4096,
-        "last_modified": "2025-10-18T20:24:44.659549",
+        "last_modified": "2025-10-19T15:57:02.686548",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -721,15 +1223,15 @@
       "metadata": {
         "path": ".vscode/settings.json",
         "exists": true,
-        "size": 10461,
-        "last_modified": "2025-10-18T09:13:06.144872",
+        "size": 10429,
+        "last_modified": "2025-10-19T09:29:26.496785",
         "extension": ".json",
         "language": "JSON",
         "mime_type": "application/json",
-        "line_count": 33,
+        "line_count": 36,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "9db5da63f9e70d98f3c5033485374c9f92041afb588196e99c9e4ca361d35c93"
+        "sha256": "986a46b4f7c266faa40f7be3914872064651053c13de4fe6d38e03739867bce8"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/.vscode/settings.json",
@@ -748,15 +1250,15 @@
       "metadata": {
         "path": ".vscode/tasks.json",
         "exists": true,
-        "size": 12983,
-        "last_modified": "2025-10-15T13:52:43.837755",
+        "size": 11816,
+        "last_modified": "2025-10-19T11:01:08.990936",
         "extension": ".json",
         "language": "JSON",
         "mime_type": "application/json",
-        "line_count": 41,
+        "line_count": 52,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "106896bb98c9380a43f39136ec7e434e9574dcee9b1208752ed3a8c64292d8bb"
+        "sha256": "d36816f601fdae60ffef0c4b12b5b1dea267214f33caf075feceaea0e95ba39d"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/.vscode/tasks.json",
@@ -829,15 +1331,15 @@
       "metadata": {
         "path": "CHANGELOG.md",
         "exists": true,
-        "size": 321,
-        "last_modified": "2025-10-11T00:27:18.178748",
+        "size": 888,
+        "last_modified": "2025-10-19T09:48:33.901548",
         "extension": ".md",
         "language": "Markdown",
         "mime_type": null,
-        "line_count": 11,
+        "line_count": 22,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "46b5bedc67d5b87a5ed7f8ef5d15db5b9b21552d87952c1baa0aa596f1031fae"
+        "sha256": "0a8afd4f7df8f47f8b8ca09b0bfe0cd4945cfba0b39dd257116bf304a774d2ed"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/CHANGELOG.md",
@@ -937,15 +1439,15 @@
       "metadata": {
         "path": "Directory.Packages.props",
         "exists": true,
-        "size": 7865,
-        "last_modified": "2025-10-18T15:46:20.484623",
+        "size": 7897,
+        "last_modified": "2025-10-19T15:52:22.509736",
         "extension": ".props",
         "language": "Unknown",
         "mime_type": "application/xml",
         "line_count": 17,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "740e851554aaf0b00304bf24310b63a0ef0b1f551605c3eb019af2218112df14"
+        "sha256": "4c4ea59174c72673989b5e856085c05e7d4c9d903ab0ee50f5be699150b0ffd7"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/Directory.Packages.props",
@@ -1207,15 +1709,15 @@
       "metadata": {
         "path": "README.md",
         "exists": true,
-        "size": 57817,
-        "last_modified": "2025-10-18T13:23:41.342041",
+        "size": 58881,
+        "last_modified": "2025-10-19T11:12:43.618442",
         "extension": ".md",
         "language": "Markdown",
         "mime_type": null,
         "line_count": 17,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "871602bc32ec267e7f875110e2c1c64847747da0a7bc967fd8f92cdf8cf17195"
+        "sha256": "a78d03b8582229bb5d396f43e27badc1dfc9d0681983a6ecc65423c69b4e41bf"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/README.md",
@@ -1334,6 +1836,33 @@
         "category": "test",
         "importance": "medium",
         "description": "C# Project file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "THE_BIG_TODO.md",
+        "exists": true,
+        "size": 5573,
+        "last_modified": "2025-10-19T15:46:25.094990",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 12,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "96a649c0378598c124648ef11abc9df93d95145f67ab97fd0c4519520622ae6d"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/THE_BIG_TODO.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/THE_BIG_TODO.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/THE_BIG_TODO.md"
+      },
+      "context": {
+        "category": "unknown",
+        "importance": "normal",
+        "description": "Markdown file containing project code/data",
         "dependencies": [],
         "related_files": []
       }
@@ -3905,17 +4434,125 @@
     },
     {
       "metadata": {
+        "path": "WileyWidget.Webhooks/Program.cs",
+        "exists": true,
+        "size": 3542,
+        "last_modified": "2025-10-19T11:15:51.481587",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 23,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "6ecfdfcefebaabcaf9dc7b98fc566e37dcca56c7e035dfb0d18f6650fbc32f6e"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Webhooks/Program.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.Webhooks/Program.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.Webhooks/Program.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.Webhooks/Properties/launchSettings.json",
+        "exists": true,
+        "size": 327,
+        "last_modified": "2025-10-19T10:02:52.935542",
+        "extension": ".json",
+        "language": "JSON",
+        "mime_type": "application/json",
+        "line_count": 13,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "734a8029a5acad84ad6f46afbb858434c6ad39d6f50e36bebb2f307db7b317b2"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Webhooks/Properties/launchSettings.json",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.Webhooks/Properties/launchSettings.json",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.Webhooks/Properties/launchSettings.json"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "JSON file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.Webhooks/README.md",
+        "exists": true,
+        "size": 1587,
+        "last_modified": "2025-10-19T11:15:50.688490",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 24,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "27157bb67c9bd1cc22a84e12e7aeca084445a192c89465a8ed258937896e58e7"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Webhooks/README.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.Webhooks/README.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.Webhooks/README.md"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "Markdown file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.Webhooks/WileyWidget.Webhooks.csproj",
+        "exists": true,
+        "size": 216,
+        "last_modified": "2025-10-19T10:02:52.875568",
+        "extension": ".csproj",
+        "language": "C# Project",
+        "mime_type": "application/xml",
+        "line_count": 7,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "ebccc479c554580c1cebb45e7f1219ba3f5784df31522d9ff00e738d42239302"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Webhooks/WileyWidget.Webhooks.csproj",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.Webhooks/WileyWidget.Webhooks.csproj",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.Webhooks/WileyWidget.Webhooks.csproj"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# Project file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
         "path": "WileyWidget.csproj",
         "exists": true,
-        "size": 9305,
-        "last_modified": "2025-10-18T16:13:24.312014",
+        "size": 9455,
+        "last_modified": "2025-10-19T10:08:49.639683",
         "extension": ".csproj",
         "language": "C# Project",
         "mime_type": "application/xml",
         "line_count": 21,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "7979094244e5233aa8cbf0e10771b9d498d3a73bc8a724d1e0fab171d1f8979d"
+        "sha256": "cc4d90bf87215b6e5bcaa1de43452aed860adc95667465a7f90594c35bd72619"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.csproj",
@@ -3961,15 +4598,15 @@
       "metadata": {
         "path": "ai-fetchable-manifest.json",
         "exists": true,
-        "size": 748649,
-        "last_modified": "2025-10-18T07:54:01.875050",
+        "size": 770563,
+        "last_modified": "2025-10-18T20:26:24.528455",
         "extension": ".json",
         "language": "JSON",
         "mime_type": "application/json",
         "line_count": 46,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "34ac4e394d9770112151045424e51c4e0f0c710771de0c7e27b067b3f6ff348a"
+        "sha256": "aba094478a160be5ef1f8e694e256d5ee1a0ba87963f046dceddcad4a08d1b95"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/ai-fetchable-manifest.json",
@@ -4515,6 +5152,33 @@
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/.copilot-instructions.md",
         "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/.copilot-instructions.md",
         "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/.copilot-instructions.md"
+      },
+      "context": {
+        "category": "documentation",
+        "importance": "medium",
+        "description": "Markdown file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "docs/AI_FETCHABLE_MANIFEST.md",
+        "exists": true,
+        "size": 2269,
+        "last_modified": "2025-10-18T20:35:09.154664",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 19,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "eaac703d0bb96a7069ab0778f2f19b7774616e525c2938016e8305db3f28a378"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/AI_FETCHABLE_MANIFEST.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/AI_FETCHABLE_MANIFEST.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/AI_FETCHABLE_MANIFEST.md"
       },
       "context": {
         "category": "documentation",
@@ -5768,6 +6432,33 @@
     },
     {
       "metadata": {
+        "path": "docs/analysis/_trash_MCP_APPLICATION_GUIDE.md",
+        "exists": true,
+        "size": 6089,
+        "last_modified": "2025-10-19T11:39:07.149682",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 16,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "b117838852cdce4122067a89b7d825650f8c3f71d36cf6bf79c5462447e5f114"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/analysis/_trash_MCP_APPLICATION_GUIDE.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/analysis/_trash_MCP_APPLICATION_GUIDE.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/analysis/_trash_MCP_APPLICATION_GUIDE.md"
+      },
+      "context": {
+        "category": "documentation",
+        "importance": "medium",
+        "description": "Markdown file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
         "path": "docs/analysis/fetchability-resources.json",
         "exists": true,
         "size": 195804,
@@ -6283,20 +6974,47 @@
       "metadata": {
         "path": "docs/guides/quickbooks-registration-guide.md",
         "exists": true,
-        "size": 5710,
-        "last_modified": "2025-10-13T16:01:07.660987",
+        "size": 6355,
+        "last_modified": "2025-10-19T11:22:56.563734",
         "extension": ".md",
         "language": "Markdown",
         "mime_type": null,
-        "line_count": 30,
+        "line_count": 31,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "6f76dd36ec639cf019b0879af997208b93a009389721c2f70a281e7e51f05cd4"
+        "sha256": "616140c9e9f1499ecb9d1defd8c0a6544340fec7a88e316fbc848fb05068f7ed"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/guides/quickbooks-registration-guide.md",
         "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/guides/quickbooks-registration-guide.md",
         "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/guides/quickbooks-registration-guide.md"
+      },
+      "context": {
+        "category": "documentation",
+        "importance": "medium",
+        "description": "Markdown file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "docs/integrations/quickbooks-oauth-setup.md",
+        "exists": true,
+        "size": 3891,
+        "last_modified": "2025-10-19T09:59:15.546671",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 23,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "19bd498e4f162565734561d821d0edb2708282e067ee47841e00332454cf4647"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/integrations/quickbooks-oauth-setup.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/integrations/quickbooks-oauth-setup.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/integrations/quickbooks-oauth-setup.md"
       },
       "context": {
         "category": "documentation",
@@ -6324,6 +7042,60 @@
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/prism-todo.md",
         "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/prism-todo.md",
         "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/prism-todo.md"
+      },
+      "context": {
+        "category": "documentation",
+        "importance": "medium",
+        "description": "Markdown file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "docs/progress/2025-10-19-oauth-followups.md",
+        "exists": true,
+        "size": 705,
+        "last_modified": "2025-10-19T09:33:20.676875",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 18,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "8908c4da5d503ae227859d25c33245b987ece5ac14209be0ed123a592c67b10c"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/progress/2025-10-19-oauth-followups.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/progress/2025-10-19-oauth-followups.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/progress/2025-10-19-oauth-followups.md"
+      },
+      "context": {
+        "category": "documentation",
+        "importance": "medium",
+        "description": "Markdown file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "docs/progress/2025-10-19-threading-cleanup.md",
+        "exists": true,
+        "size": 1633,
+        "last_modified": "2025-10-19T09:33:20.562228",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 16,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "421082f65a216434912c56518dbbd2c193c3741064bcaea1336d4d43bfc8eb23"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/progress/2025-10-19-threading-cleanup.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/progress/2025-10-19-threading-cleanup.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/progress/2025-10-19-threading-cleanup.md"
       },
       "context": {
         "category": "documentation",
@@ -6842,6 +7614,33 @@
         "category": "test",
         "importance": "medium",
         "description": "Text file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "scripts/ADMIN-FIX-TUNNEL.ps1",
+        "exists": true,
+        "size": 842,
+        "last_modified": "2025-10-19T15:01:40.347546",
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 23,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "fc7a0ede3b058246e67a88fc677697998de5babc6ada6ec6e4a5fcf88abaa899"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/ADMIN-FIX-TUNNEL.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/ADMIN-FIX-TUNNEL.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/ADMIN-FIX-TUNNEL.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
         "dependencies": [],
         "related_files": []
       }
@@ -7390,15 +8189,15 @@
       "metadata": {
         "path": "scripts/check-mcp-status.ps1",
         "exists": true,
-        "size": 2826,
-        "last_modified": "2025-10-11T00:27:20.554065",
+        "size": 2569,
+        "last_modified": "2025-10-19T11:51:26.892095",
         "extension": ".ps1",
         "language": "PowerShell",
         "mime_type": null,
         "line_count": 27,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "858af844afcd4c882eeffc4b2c68355b677e2f7c1fe66873b2eb0fa69ae5124b"
+        "sha256": "14f863dade97769a5b5d57e2d06cf0afbddd7057840e6f7f3b2906b29a2827b5"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/check-mcp-status.ps1",
@@ -7566,6 +8365,87 @@
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/cleanup-unused-syncfusion-dlls.ps1",
         "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/cleanup-unused-syncfusion-dlls.ps1",
         "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/cleanup-unused-syncfusion-dlls.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "scripts/cloudflare-reset-login.ps1",
+        "exists": true,
+        "size": 5712,
+        "last_modified": "2025-10-19T15:15:17.186876",
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 32,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "a3876944d76b1f2c80f0c9a8f1cb0c785313db39926c01f02323f269e1516b8e"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/cloudflare-reset-login.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/cloudflare-reset-login.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/cloudflare-reset-login.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "scripts/cloudflared-config.yml",
+        "exists": true,
+        "size": 294,
+        "last_modified": "2025-10-19T11:02:43.572456",
+        "extension": ".yml",
+        "language": "YAML",
+        "mime_type": null,
+        "line_count": 9,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "b5e65af13216bc8c843345f25a9b750c0808d81b8549ce6efae22075b48ab6f4"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/cloudflared-config.yml",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/cloudflared-config.yml",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/cloudflared-config.yml"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "YAML file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "scripts/cloudflared-service-setup.ps1",
+        "exists": true,
+        "size": 4315,
+        "last_modified": "2025-10-19T15:10:37.793305",
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 31,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "86173a63b4be3ebf61fb54a8ad66bc7110b2c97ab3b4ceeb79b01276a1136319"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/cloudflared-service-setup.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/cloudflared-service-setup.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/cloudflared-service-setup.ps1"
       },
       "context": {
         "category": "automation",
@@ -7982,6 +8862,33 @@
     },
     {
       "metadata": {
+        "path": "scripts/fix-cloudflared-service.ps1",
+        "exists": true,
+        "size": 4884,
+        "last_modified": "2025-10-19T15:03:36.769013",
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 38,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "daeebccc3adb22cb9ffce4349d6ae0f4cc2803d32defc7e2a2e33b10d580b953"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/fix-cloudflared-service.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/fix-cloudflared-service.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/fix-cloudflared-service.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
         "path": "scripts/fix-integration-tests.ps1",
         "exists": true,
         "size": 4036,
@@ -8038,15 +8945,15 @@
       "metadata": {
         "path": "scripts/generate_repo_urls.py",
         "exists": true,
-        "size": 12607,
-        "last_modified": "2025-10-16T07:30:32.282020",
+        "size": 18316,
+        "last_modified": "2025-10-18T20:35:25.197712",
         "extension": ".py",
         "language": "Python",
         "mime_type": "text/x-python",
         "line_count": 36,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "a50ecdaa90b8763114dadcc329e23bf49e72f057a724d87968d5757693391133"
+        "sha256": "82847d57b9630a2cc6981141bf589aaa05942160b92e06216a891966adf69d9e"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/generate_repo_urls.py",
@@ -8057,6 +8964,33 @@
         "category": "automation",
         "importance": "medium",
         "description": "Python file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "scripts/harden-cloudflared.ps1",
+        "exists": true,
+        "size": 2515,
+        "last_modified": "2025-10-19T14:11:45.819478",
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 28,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "7f1eddea2f7cd75c8e951bfa1c68e5f3a33af61c632382d03d3f71812b712d79"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/harden-cloudflared.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/harden-cloudflared.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/harden-cloudflared.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
         "dependencies": [],
         "related_files": []
       }
@@ -8819,6 +9753,33 @@
     },
     {
       "metadata": {
+        "path": "scripts/quick-fix-tunnel.ps1",
+        "exists": true,
+        "size": 1214,
+        "last_modified": "2025-10-19T15:03:37.290470",
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 30,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "f48368d0dd14e3435eb24358827e9185bae8f86cf7687ea9c2139e85f28830f6"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/quick-fix-tunnel.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/quick-fix-tunnel.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/quick-fix-tunnel.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
         "path": "scripts/quick_ui_inspect.py",
         "exists": true,
         "size": 5263,
@@ -8997,6 +9958,33 @@
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/repo-to-llm.ps1",
         "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/repo-to-llm.ps1",
         "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/repo-to-llm.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "scripts/reset-cloudflared-service.ps1",
+        "exists": true,
+        "size": 2851,
+        "last_modified": "2025-10-19T15:03:37.573941",
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 32,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "1605350bfb02c067b6cbc70e3f7c6458f580b32bd23c1d73eb4eca41773de800"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/reset-cloudflared-service.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/reset-cloudflared-service.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/reset-cloudflared-service.ps1"
       },
       "context": {
         "category": "automation",
@@ -9226,15 +10214,15 @@
       "metadata": {
         "path": "scripts/setup-mcp-environment.ps1",
         "exists": true,
-        "size": 3284,
-        "last_modified": "2025-10-11T00:27:21.032289",
+        "size": 3189,
+        "last_modified": "2025-10-19T15:10:51.673560",
         "extension": ".ps1",
         "language": "PowerShell",
         "mime_type": null,
-        "line_count": 23,
+        "line_count": 22,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "f3581217ac1fe3e79011b6e58910f40d00a5977d2b1dfb038d9104672823d5bb"
+        "sha256": "3862ee3429e916e7e0067cdf347599e8a09962b96afa4962636fb109ad234154"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/setup-mcp-environment.ps1",
@@ -9764,6 +10752,33 @@
     },
     {
       "metadata": {
+        "path": "scripts/validate-qbo-tunnel.ps1",
+        "exists": true,
+        "size": 8120,
+        "last_modified": "2025-10-19T15:03:35.624816",
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 35,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "37a6f636ffafc84a319dd7de07090029d021926064e64774182f27efdb2cb6d8"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/validate-qbo-tunnel.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/validate-qbo-tunnel.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/validate-qbo-tunnel.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
         "path": "scripts/validate_viewmodels.py",
         "exists": true,
         "size": 13902,
@@ -10036,15 +11051,15 @@
       "metadata": {
         "path": "src/App.xaml.cs",
         "exists": true,
-        "size": 74024,
-        "last_modified": "2025-10-18T19:15:41.281361",
+        "size": 74586,
+        "last_modified": "2025-10-19T09:07:16.623407",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 37,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "9458c2244f0b98e2af6738297efb5d22b8f547d20e881b685ea8d722d734d152"
+        "sha256": "1ccf28d06758675f6343145e1ea6d9d20aea7c72e87adc0eae67a121f2978c61"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/App.xaml.cs",
@@ -10088,17 +11103,68 @@
     },
     {
       "metadata": {
-        "path": "src/Behaviors/DockingManagerBehavior.cs",
+        "path": "src/Behaviors/ActivateOnMouseOverBehavior.cs",
         "exists": true,
-        "size": 3637,
-        "last_modified": "2025-10-18T16:01:49.351389",
+        "size": 4196,
+        "last_modified": "2025-10-18T20:44:06.574393",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 33,
+        "line_count": 29,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "6de2cb0ef4b408b0298c7ba79a7f3d04d9750edc0db8494c1a2d73549d0e74a6"
+        "sha256": "dfb10eb288282679c42f5808d59a267a89c995c883e53943884a01c6e65800df"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Behaviors/ActivateOnMouseOverBehavior.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/Behaviors/ActivateOnMouseOverBehavior.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/Behaviors/ActivateOnMouseOverBehavior.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [
+          "src/Views/AboutWindow.xaml",
+          "src/Views/AIAssistView.xaml",
+          "src/Views/AnalyticsView.xaml",
+          "src/Views/BudgetView.xaml",
+          "src/Views/ConfirmationDialogView.xaml",
+          "src/Views/DashboardPanelView.xaml",
+          "src/Views/DashboardView.xaml",
+          "src/Views/EnterprisePanelView.xaml",
+          "src/Views/EnterpriseView.xaml",
+          "src/Views/ErrorDialogView.xaml",
+          "src/Views/ExcelImportView.xaml",
+          "src/Views/MainWindow.xaml",
+          "src/Views/MunicipalAccountPanelView.xaml",
+          "src/Views/MunicipalAccountView.xaml",
+          "src/Views/NotificationDialogView.xaml",
+          "src/Views/ProgressView.xaml",
+          "src/Views/ReportsView.xaml",
+          "src/Views/SettingsPanelView.xaml",
+          "src/Views/SettingsView.xaml",
+          "src/Views/SplashScreenWindow.xaml",
+          "src/Views/ToolsPanelView.xaml",
+          "src/Views/UtilityCustomerView.xaml",
+          "src/Views/WarningDialogView.xaml"
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "path": "src/Behaviors/DockingManagerBehavior.cs",
+        "exists": true,
+        "size": 5766,
+        "last_modified": "2025-10-18T20:44:49.483637",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 32,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "2480900fa981d4307e5dd8faf01430e2fd8c81286e0bac89c6c3da75853c509a"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Behaviors/DockingManagerBehavior.cs",
@@ -10110,7 +11176,31 @@
         "importance": "high",
         "description": "C# file containing project code/data",
         "dependencies": [],
-        "related_files": []
+        "related_files": [
+          "src/Views/AboutWindow.xaml",
+          "src/Views/AIAssistView.xaml",
+          "src/Views/AnalyticsView.xaml",
+          "src/Views/BudgetView.xaml",
+          "src/Views/ConfirmationDialogView.xaml",
+          "src/Views/DashboardPanelView.xaml",
+          "src/Views/DashboardView.xaml",
+          "src/Views/EnterprisePanelView.xaml",
+          "src/Views/EnterpriseView.xaml",
+          "src/Views/ErrorDialogView.xaml",
+          "src/Views/ExcelImportView.xaml",
+          "src/Views/MainWindow.xaml",
+          "src/Views/MunicipalAccountPanelView.xaml",
+          "src/Views/MunicipalAccountView.xaml",
+          "src/Views/NotificationDialogView.xaml",
+          "src/Views/ProgressView.xaml",
+          "src/Views/ReportsView.xaml",
+          "src/Views/SettingsPanelView.xaml",
+          "src/Views/SettingsView.xaml",
+          "src/Views/SplashScreenWindow.xaml",
+          "src/Views/ToolsPanelView.xaml",
+          "src/Views/UtilityCustomerView.xaml",
+          "src/Views/WarningDialogView.xaml"
+        ]
       }
     },
     {
@@ -10137,22 +11227,46 @@
         "importance": "high",
         "description": "C# file containing project code/data",
         "dependencies": [],
-        "related_files": []
+        "related_files": [
+          "src/Views/AboutWindow.xaml",
+          "src/Views/AIAssistView.xaml",
+          "src/Views/AnalyticsView.xaml",
+          "src/Views/BudgetView.xaml",
+          "src/Views/ConfirmationDialogView.xaml",
+          "src/Views/DashboardPanelView.xaml",
+          "src/Views/DashboardView.xaml",
+          "src/Views/EnterprisePanelView.xaml",
+          "src/Views/EnterpriseView.xaml",
+          "src/Views/ErrorDialogView.xaml",
+          "src/Views/ExcelImportView.xaml",
+          "src/Views/MainWindow.xaml",
+          "src/Views/MunicipalAccountPanelView.xaml",
+          "src/Views/MunicipalAccountView.xaml",
+          "src/Views/NotificationDialogView.xaml",
+          "src/Views/ProgressView.xaml",
+          "src/Views/ReportsView.xaml",
+          "src/Views/SettingsPanelView.xaml",
+          "src/Views/SettingsView.xaml",
+          "src/Views/SplashScreenWindow.xaml",
+          "src/Views/ToolsPanelView.xaml",
+          "src/Views/UtilityCustomerView.xaml",
+          "src/Views/WarningDialogView.xaml"
+        ]
       }
     },
     {
       "metadata": {
         "path": "src/Behaviors/MouseFocusBehavior.cs",
         "exists": true,
-        "size": 3235,
-        "last_modified": "2025-10-18T20:11:52.993224",
+        "size": 3307,
+        "last_modified": "2025-10-18T20:43:12.982418",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 22,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "2d28d0bbf0b2085d5c7e4ea23bf629c47649dd3edf1d367e5b1fb3341d9d2cb0"
+        "sha256": "0acdb662e27fc7037703fc6320742feace701f5a2f45e0a1c532c1cc003d5633"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Behaviors/MouseFocusBehavior.cs",
@@ -10164,7 +11278,31 @@
         "importance": "high",
         "description": "C# file containing project code/data",
         "dependencies": [],
-        "related_files": []
+        "related_files": [
+          "src/Views/AboutWindow.xaml",
+          "src/Views/AIAssistView.xaml",
+          "src/Views/AnalyticsView.xaml",
+          "src/Views/BudgetView.xaml",
+          "src/Views/ConfirmationDialogView.xaml",
+          "src/Views/DashboardPanelView.xaml",
+          "src/Views/DashboardView.xaml",
+          "src/Views/EnterprisePanelView.xaml",
+          "src/Views/EnterpriseView.xaml",
+          "src/Views/ErrorDialogView.xaml",
+          "src/Views/ExcelImportView.xaml",
+          "src/Views/MainWindow.xaml",
+          "src/Views/MunicipalAccountPanelView.xaml",
+          "src/Views/MunicipalAccountView.xaml",
+          "src/Views/NotificationDialogView.xaml",
+          "src/Views/ProgressView.xaml",
+          "src/Views/ReportsView.xaml",
+          "src/Views/SettingsPanelView.xaml",
+          "src/Views/SettingsView.xaml",
+          "src/Views/SplashScreenWindow.xaml",
+          "src/Views/ToolsPanelView.xaml",
+          "src/Views/UtilityCustomerView.xaml",
+          "src/Views/WarningDialogView.xaml"
+        ]
       }
     },
     {
@@ -10191,7 +11329,31 @@
         "importance": "high",
         "description": "C# file containing project code/data",
         "dependencies": [],
-        "related_files": []
+        "related_files": [
+          "src/Views/AboutWindow.xaml",
+          "src/Views/AIAssistView.xaml",
+          "src/Views/AnalyticsView.xaml",
+          "src/Views/BudgetView.xaml",
+          "src/Views/ConfirmationDialogView.xaml",
+          "src/Views/DashboardPanelView.xaml",
+          "src/Views/DashboardView.xaml",
+          "src/Views/EnterprisePanelView.xaml",
+          "src/Views/EnterpriseView.xaml",
+          "src/Views/ErrorDialogView.xaml",
+          "src/Views/ExcelImportView.xaml",
+          "src/Views/MainWindow.xaml",
+          "src/Views/MunicipalAccountPanelView.xaml",
+          "src/Views/MunicipalAccountView.xaml",
+          "src/Views/NotificationDialogView.xaml",
+          "src/Views/ProgressView.xaml",
+          "src/Views/ReportsView.xaml",
+          "src/Views/SettingsPanelView.xaml",
+          "src/Views/SettingsView.xaml",
+          "src/Views/SplashScreenWindow.xaml",
+          "src/Views/ToolsPanelView.xaml",
+          "src/Views/UtilityCustomerView.xaml",
+          "src/Views/WarningDialogView.xaml"
+        ]
       }
     },
     {
@@ -10306,15 +11468,15 @@
       "metadata": {
         "path": "src/Configuration/DatabaseConfiguration.cs",
         "exists": true,
-        "size": 63161,
-        "last_modified": "2025-10-18T18:19:16.213036",
+        "size": 63009,
+        "last_modified": "2025-10-19T08:14:17.217113",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 32,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "3b5c5619b2c021876cdd824f390eb8e79f6e325c4d5db404dfd59241953f8adc"
+        "sha256": "a2ab946a2792ed092914eb6a7d0f9ff5ee60c1b2eeec2ba0efbac8d75e238f6f"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Configuration/DatabaseConfiguration.cs",
@@ -10738,15 +11900,15 @@
       "metadata": {
         "path": "src/Converters/NullToVisibilityConverter.cs",
         "exists": true,
-        "size": 1400,
-        "last_modified": "2025-10-15T16:20:08.545347",
+        "size": 1511,
+        "last_modified": "2025-10-18T20:56:55.216770",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 25,
+        "line_count": 23,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "99c67cca3a457fd2048562bc1882aa45fc0c21ecedb0a94c11f1bc4dd68aa2f9"
+        "sha256": "ea0b53aab0f2618ba61203dd409c793f619fc8f0af6a9af43db9184f0e55f95c"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Converters/NullToVisibilityConverter.cs",
@@ -11710,15 +12872,15 @@
       "metadata": {
         "path": "src/Services/Excel/ExcelReaderService.cs",
         "exists": true,
-        "size": 9275,
-        "last_modified": "2025-10-15T19:15:42.530133",
+        "size": 9414,
+        "last_modified": "2025-10-19T08:36:03.319766",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 34,
+        "line_count": 33,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "e0b6210344ad21df52b33269613083e964e91df6bc4715861818fb92a60fdeff"
+        "sha256": "9801f0154e165a79083f215ac1f83ea02776488b64087085c7c32a2dc9611bc8"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Services/Excel/ExcelReaderService.cs",
@@ -12115,15 +13277,15 @@
       "metadata": {
         "path": "src/Services/IQuickBooksService.cs",
         "exists": true,
-        "size": 645,
-        "last_modified": "2025-10-11T00:27:22.032615",
+        "size": 1360,
+        "last_modified": "2025-10-19T08:35:58.689976",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 19,
+        "line_count": 26,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "a4c6be6eada104462ca96430007a0eef6029257266d1a08da4ce4697dcaba0f6"
+        "sha256": "ad8d7e337cbf8b40469ce0cf62b720a9728d710f829c947ad381be4ac0ce5664"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Services/IQuickBooksService.cs",
@@ -12628,15 +13790,15 @@
       "metadata": {
         "path": "src/Services/QuickBooksService.cs",
         "exists": true,
-        "size": 17028,
-        "last_modified": "2025-10-15T18:54:11.281628",
+        "size": 28483,
+        "last_modified": "2025-10-19T15:52:22.560027",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 31,
+        "line_count": 33,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "ed1f6671be4faff91e7495fec671730405d0486e9ad607f9a6269a7e7e29bbcd"
+        "sha256": "341a52933873d0900e31bd96bd917f9d9a126ecf7ce0de30368fee4450da2a44"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Services/QuickBooksService.cs",
@@ -12655,15 +13817,15 @@
       "metadata": {
         "path": "src/Services/ReportExportService.cs",
         "exists": true,
-        "size": 8177,
-        "last_modified": "2025-10-15T17:58:38.691030",
+        "size": 8329,
+        "last_modified": "2025-10-19T08:36:02.824497",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 36,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "a0cb205dc30d726358298b8011f5006cc093860c51af0f17d1c3b31e9192a864"
+        "sha256": "482bded661def9283f2d0b7565526045e6c605b672917ca50c658d836ba0ec8b"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Services/ReportExportService.cs",
@@ -12912,6 +14074,33 @@
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Services/ThemeUtility.cs",
         "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/Services/ThemeUtility.cs",
         "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/Services/ThemeUtility.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "src/Services/Threading/DispatcherGuard.cs",
+        "exists": true,
+        "size": 661,
+        "last_modified": "2025-10-19T08:08:06.091670",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 21,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "36f66c60be27bc06e4d4005239b69e54d63e03ddefee66a3dc769730911ec7e5"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Services/Threading/DispatcherGuard.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/Services/Threading/DispatcherGuard.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/Services/Threading/DispatcherGuard.cs"
       },
       "context": {
         "category": "source_code",
@@ -13303,15 +14492,15 @@
       "metadata": {
         "path": "src/Startup/Modules/QuickBooksModule.cs",
         "exists": true,
-        "size": 4313,
-        "last_modified": "2025-10-18T18:19:16.226854",
+        "size": 8957,
+        "last_modified": "2025-10-19T14:43:05.751700",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 27,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "0a14a381b423294f6f6c50190506aa3f3cbaf885d178eff420641d522ccebe16"
+        "sha256": "6971090b388b303dde56150dfcb9b9aee69b1c7b5e361104333f4f6b6f49a357"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Startup/Modules/QuickBooksModule.cs",
@@ -13465,15 +14654,15 @@
       "metadata": {
         "path": "src/ViewModels/AIAssistViewModel.cs",
         "exists": true,
-        "size": 36735,
-        "last_modified": "2025-10-17T17:45:08.534919",
+        "size": 36355,
+        "last_modified": "2025-10-19T08:19:19.298201",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 29,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "e56b2b652c3450e38df20410d1c0df97b805258dac384e69330329a3c475ecc7"
+        "sha256": "8d97f5a58f19ebd3ae8d1c9e28fb39b03c2f0d629046f49a3747240580fba800"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/AIAssistViewModel.cs",
@@ -13600,15 +14789,15 @@
       "metadata": {
         "path": "src/ViewModels/BudgetAnalysisViewModel.cs",
         "exists": true,
-        "size": 17629,
-        "last_modified": "2025-10-17T16:40:48.839401",
+        "size": 17613,
+        "last_modified": "2025-10-19T08:14:14.910539",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 39,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "781b3bda459817bd4f93204f26fe58363ba9ff189c44ce8b817b6053c7234bc9"
+        "sha256": "1edcba4df3c1ca7d18c590e9d8bbbcaf3d2b4dc36ef492b336b3a6ce8ee43dcc"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/BudgetAnalysisViewModel.cs",
@@ -13627,15 +14816,15 @@
       "metadata": {
         "path": "src/ViewModels/BudgetViewModel.Hierarchical.cs",
         "exists": true,
-        "size": 28562,
-        "last_modified": "2025-10-18T18:19:16.229415",
+        "size": 28719,
+        "last_modified": "2025-10-19T08:36:02.154035",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 36,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "ec201f2723e0711e76343ac41f5845cad37edd8357d6c70d7ff62aced81eab56"
+        "sha256": "551242e942be07db1fca33b9b891c095dae34d6b3a8572f7df0267e54a73b7a7"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/BudgetViewModel.Hierarchical.cs",
@@ -13654,15 +14843,15 @@
       "metadata": {
         "path": "src/ViewModels/BudgetViewModel.cs",
         "exists": true,
-        "size": 36742,
-        "last_modified": "2025-10-18T18:51:55.274244",
+        "size": 36629,
+        "last_modified": "2025-10-19T08:35:54.324914",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 29,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "005fb745c86653a3e5197b227bb56002ec0389e317407ba01f27c8c10c957990"
+        "sha256": "d14a30d2c3b3c6fe7ea478c43a52d6c4664ea32343ffbcdc69d0943855a201b5"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/BudgetViewModel.cs",
@@ -13708,15 +14897,15 @@
       "metadata": {
         "path": "src/ViewModels/DashboardViewModel.cs",
         "exists": true,
-        "size": 67587,
-        "last_modified": "2025-10-18T19:30:12.218265",
+        "size": 67555,
+        "last_modified": "2025-10-19T08:14:11.853801",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 31,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "32ff88317261e40b039298d4c444c85559d994864fd8693adf41b55a41745804"
+        "sha256": "67b63d6d0b036a67ff4f2fbacf652ac977d27846e04734c222adeb0120d278b9"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/DashboardViewModel.cs",
@@ -13789,15 +14978,15 @@
       "metadata": {
         "path": "src/ViewModels/EnterpriseViewModel.cs",
         "exists": true,
-        "size": 80911,
-        "last_modified": "2025-10-17T16:40:48.868154",
+        "size": 82016,
+        "last_modified": "2025-10-19T09:26:21.027612",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 35,
+        "line_count": 32,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "67a34b8f740422d66fd35a482f49e487392e1c3f20fd54771251c21f2790670f"
+        "sha256": "51d5e1f65067a8a7bfc90aa435954549173a5d1e95ba572cc2ff4cd3a00e067d"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/EnterpriseViewModel.cs",
@@ -13870,15 +15059,15 @@
       "metadata": {
         "path": "src/ViewModels/MainViewModel.cs",
         "exists": true,
-        "size": 105662,
-        "last_modified": "2025-10-18T18:19:16.231412",
+        "size": 106050,
+        "last_modified": "2025-10-19T08:14:18.019853",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 32,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "c351dfb062c6ee966f68a8730c16ffa5d89309c8adca084245b6a6c3dab2064a"
+        "sha256": "444a8e5eb5c4a3cddb850d942ea14a95b2fa6ea406c0bdb226151bc2351f5e14"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/MainViewModel.cs",
@@ -13924,15 +15113,15 @@
       "metadata": {
         "path": "src/ViewModels/MunicipalAccountViewModel.cs",
         "exists": true,
-        "size": 28534,
-        "last_modified": "2025-10-17T18:00:40.660913",
+        "size": 28436,
+        "last_modified": "2025-10-19T08:19:07.298050",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 28,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "f6a93e5c3cbe5a013fdd3f78df25b9859c9359886344f34a43a5057ddb672afd"
+        "sha256": "160befebf61551180cf0f97a54c396317ab11d48546d2b2bb732abd7df195f45"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/MunicipalAccountViewModel.cs",
@@ -14059,15 +15248,15 @@
       "metadata": {
         "path": "src/ViewModels/SettingsViewModel.cs",
         "exists": true,
-        "size": 58325,
-        "last_modified": "2025-10-18T18:50:59.537983",
+        "size": 61525,
+        "last_modified": "2025-10-19T08:36:00.260264",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 28,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "ddf7c912d0bc81d40153af5515c7b2a9f5a466de3595f5ba623c1901c2b5b38e"
+        "sha256": "7b616b2d5cb81dceb905fa8bd31b0ae1eaa69797ae1b63e9cf422edcaf8ac5ba"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/ViewModels/SettingsViewModel.cs",
@@ -14294,8 +15483,14 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF"
+        ],
+        "related_files": [
+          "src/Views/AIAssistPanelView.xaml.cs"
+        ]
       }
     },
     {
@@ -14375,8 +15570,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/AIAssistView.xaml.cs",
+          "src/ViewModels/AIAssistViewModel.cs"
+        ]
       }
     },
     {
@@ -14456,8 +15659,15 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/AboutWindow.xaml.cs"
+        ]
       }
     },
     {
@@ -14491,15 +15701,15 @@
       "metadata": {
         "path": "src/Views/AnalyticsView.xaml",
         "exists": true,
-        "size": 17125,
-        "last_modified": "2025-10-18T20:11:52.913127",
+        "size": 17265,
+        "last_modified": "2025-10-18T21:26:24.470239",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 18,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "0fbd45c8a2588fb1b34cb19184e21189c0991f2c807d35a09ecccebde5620413"
+        "sha256": "a788e4018cc0ab9504afeb990edbf2f4e7cb85203487308ecb0cfc401e7d4c24"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/AnalyticsView.xaml",
@@ -14510,8 +15720,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/AnalyticsView.xaml.cs",
+          "src/ViewModels/AnalyticsViewModel.cs"
+        ]
       }
     },
     {
@@ -14564,8 +15782,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/BudgetAnalysisView.xaml.cs",
+          "src/ViewModels/BudgetAnalysisViewModel.cs"
+        ]
       }
     },
     {
@@ -14618,8 +15844,14 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF"
+        ],
+        "related_files": [
+          "src/Views/BudgetPanelView.xaml.cs"
+        ]
       }
     },
     {
@@ -14672,8 +15904,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/BudgetView.xaml.cs",
+          "src/ViewModels/BudgetViewModel.cs"
+        ]
       }
     },
     {
@@ -14726,8 +15966,14 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/ConfirmationDialogView.xaml.cs",
+          "src/ViewModels/ConfirmationDialogViewModel.cs"
+        ]
       }
     },
     {
@@ -14807,8 +16053,15 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/DashboardPanelView.xaml.cs"
+        ]
       }
     },
     {
@@ -14842,15 +16095,15 @@
       "metadata": {
         "path": "src/Views/DashboardView.xaml",
         "exists": true,
-        "size": 55524,
-        "last_modified": "2025-10-18T20:11:57.276240",
+        "size": 55785,
+        "last_modified": "2025-10-18T21:05:26.291034",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 13,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "b377b538914ed2ebee707e31d4d3e75162dfc325639ce89ef0558e61fdd07f26"
+        "sha256": "f4ce8fa6b18efcd1ecd19dad4ac2b2caa83a6defab60a6609895f9392e3187a8"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/DashboardView.xaml",
@@ -14861,8 +16114,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/DashboardView.xaml.cs",
+          "src/ViewModels/DashboardViewModel.cs"
+        ]
       }
     },
     {
@@ -14915,8 +16176,14 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Syncfusion.WPF",
+          "WPF"
+        ],
+        "related_files": [
+          "src/Views/EnterpriseDialogView.xaml.cs",
+          "src/ViewModels/EnterpriseDialogViewModel.cs"
+        ]
       }
     },
     {
@@ -14969,8 +16236,15 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/EnterprisePanelView.xaml.cs"
+        ]
       }
     },
     {
@@ -15004,15 +16278,15 @@
       "metadata": {
         "path": "src/Views/EnterpriseView.xaml",
         "exists": true,
-        "size": 36927,
-        "last_modified": "2025-10-18T20:07:53.316392",
+        "size": 37188,
+        "last_modified": "2025-10-18T21:19:07.457256",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
-        "line_count": 16,
+        "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "aa71f52fd77e64784091d65ab26c7c21d72e8a0d9eeb540b84a9ce978abcb7b0"
+        "sha256": "fb62a3a4b99aa078e38b1d88ac04c639b6b7b512f5fdb6013978542d6bfdb6c0"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/EnterpriseView.xaml",
@@ -15023,23 +16297,31 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/EnterpriseView.xaml.cs",
+          "src/ViewModels/EnterpriseViewModel.cs"
+        ]
       }
     },
     {
       "metadata": {
         "path": "src/Views/EnterpriseView.xaml.cs",
         "exists": true,
-        "size": 6598,
-        "last_modified": "2025-10-17T16:34:25.812368",
+        "size": 9109,
+        "last_modified": "2025-10-19T09:07:16.385877",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 34,
+        "line_count": 31,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "727e2e8874dd73484747670e249b9fd0922606c442525eea2bdccfeea6cfb2e7"
+        "sha256": "67ff068ed9701ff90b8d7cd74857e47744066ced7a7047e67c6d571e4c0ad06f"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/EnterpriseView.xaml.cs",
@@ -15077,8 +16359,14 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/ErrorDialogView.xaml.cs",
+          "src/ViewModels/ErrorDialogViewModel.cs"
+        ]
       }
     },
     {
@@ -15131,8 +16419,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/ExcelImportView.xaml.cs",
+          "src/ViewModels/ExcelImportViewModel.cs"
+        ]
       }
     },
     {
@@ -15166,15 +16462,15 @@
       "metadata": {
         "path": "src/Views/MainWindow.xaml",
         "exists": true,
-        "size": 20400,
-        "last_modified": "2025-10-18T20:11:52.733832",
+        "size": 24365,
+        "last_modified": "2025-10-18T21:03:28.011332",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
-        "line_count": 17,
+        "line_count": 15,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "5e07a77ba243ab54e43601ffe586e094869815857d353d22093868d026e6200e"
+        "sha256": "3387994370c09272ffd1348c8e117709c20517091a66b67c7ca07a5ca3f8ab14"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/MainWindow.xaml",
@@ -15185,8 +16481,15 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/MainWindow.xaml.cs"
+        ]
       }
     },
     {
@@ -15239,8 +16542,15 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/MunicipalAccountPanelView.xaml.cs"
+        ]
       }
     },
     {
@@ -15274,15 +16584,15 @@
       "metadata": {
         "path": "src/Views/MunicipalAccountView.xaml",
         "exists": true,
-        "size": 47829,
-        "last_modified": "2025-10-18T20:11:52.829621",
+        "size": 48092,
+        "last_modified": "2025-10-18T21:19:07.632830",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
-        "line_count": 13,
+        "line_count": 12,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "957d3759498152f6bc4daa49f9a02b2947752e06091a07c38545ef6e88f87fb1"
+        "sha256": "3f79dc96e95a5ec2b10d41947ac07a95d0575778e8fc16a0ca8acad46b4cfa35"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/MunicipalAccountView.xaml",
@@ -15293,8 +16603,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/MunicipalAccountView.xaml.cs",
+          "src/ViewModels/MunicipalAccountViewModel.cs"
+        ]
       }
     },
     {
@@ -15347,8 +16665,14 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/NotificationDialogView.xaml.cs",
+          "src/ViewModels/NotificationDialogViewModel.cs"
+        ]
       }
     },
     {
@@ -15401,8 +16725,15 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/ProgressView.xaml.cs",
+          "src/ViewModels/ProgressViewModel.cs"
+        ]
       }
     },
     {
@@ -15436,15 +16767,15 @@
       "metadata": {
         "path": "src/Views/ReportsView.xaml",
         "exists": true,
-        "size": 6630,
-        "last_modified": "2025-10-18T20:13:35.235998",
+        "size": 6945,
+        "last_modified": "2025-10-18T21:26:36.278774",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 17,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "d1f7d277904dc4a2ae75789b52dfd9b15f3bf28ae8451c2925677c7363397504"
+        "sha256": "dde8533598b1d9299e267ad2266de2ec5c4a99f67c91b23cf562f6eec3f3e76a"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/ReportsView.xaml",
@@ -15455,8 +16786,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/ReportsView.xaml.cs",
+          "src/ViewModels/ReportsViewModel.cs"
+        ]
       }
     },
     {
@@ -15509,8 +16848,13 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "WPF"
+        ],
+        "related_files": [
+          "src/Views/SettingsDialogView.xaml.cs",
+          "src/ViewModels/SettingsDialogViewModel.cs"
+        ]
       }
     },
     {
@@ -15544,15 +16888,15 @@
       "metadata": {
         "path": "src/Views/SettingsPanelView.xaml",
         "exists": true,
-        "size": 11723,
-        "last_modified": "2025-10-18T20:16:39.665600",
+        "size": 26943,
+        "last_modified": "2025-10-19T09:59:13.869691",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
-        "line_count": 18,
+        "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "b51598f01689e3f5667c10bcdd4a895ba36fa9f8abd16e14b83cd2d0ef5dcb41"
+        "sha256": "7bd4b400f6e6ca5a6cd7f955b8297b50a50eee3c5c857a2ac1af7cafd8dafb8b"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/SettingsPanelView.xaml",
@@ -15563,8 +16907,15 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/SettingsPanelView.xaml.cs"
+        ]
       }
     },
     {
@@ -15598,15 +16949,15 @@
       "metadata": {
         "path": "src/Views/SettingsView.xaml",
         "exists": true,
-        "size": 34515,
-        "last_modified": "2025-10-18T20:07:48.824865",
+        "size": 36366,
+        "last_modified": "2025-10-19T09:59:16.361156",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 16,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "1e112d50f68b800b59c1ff315d95597fc5dd4f28c64c44252a87cc01da34679e"
+        "sha256": "0d3a7934ce913b741d46070b390bc82c559d063068124da44e0369b86cab2cbf"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Views/SettingsView.xaml",
@@ -15617,8 +16968,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/SettingsView.xaml.cs",
+          "src/ViewModels/SettingsViewModel.cs"
+        ]
       }
     },
     {
@@ -15671,8 +17030,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/SplashScreenWindow.xaml.cs",
+          "src/ViewModels/SplashScreenWindowViewModel.cs"
+        ]
       }
     },
     {
@@ -15725,8 +17092,15 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/ToolsPanelView.xaml.cs"
+        ]
       }
     },
     {
@@ -15779,8 +17153,14 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF"
+        ],
+        "related_files": [
+          "src/Views/UtilityCustomerPanelView.xaml.cs"
+        ]
       }
     },
     {
@@ -15833,8 +17213,16 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "Prism",
+          "Syncfusion.WPF",
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/UtilityCustomerView.xaml.cs",
+          "src/ViewModels/UtilityCustomerViewModel.cs"
+        ]
       }
     },
     {
@@ -15887,8 +17275,14 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [],
-        "related_files": []
+        "dependencies": [
+          "WPF",
+          "Behaviors"
+        ],
+        "related_files": [
+          "src/Views/WarningDialogView.xaml.cs",
+          "src/ViewModels/WarningDialogViewModel.cs"
+        ]
       }
     },
     {
@@ -16422,6 +17816,33 @@
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/tests/WileyWidget.LifecycleTests/LifecycleTestBase.cs",
         "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/tests/WileyWidget.LifecycleTests/LifecycleTestBase.cs",
         "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/tests/WileyWidget.LifecycleTests/LifecycleTestBase.cs"
+      },
+      "context": {
+        "category": "test",
+        "importance": "medium",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": []
+      }
+    },
+    {
+      "metadata": {
+        "path": "tests/WileyWidget.LifecycleTests/ReportExportServiceIntegrationTests.cs",
+        "exists": true,
+        "size": 6398,
+        "last_modified": "2025-10-19T09:07:16.841022",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 37,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "33e187faa172faacdeff9ed7a31b08ab2269f1715da4ec8cd00e7bd8ff3dc9bd"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/tests/WileyWidget.LifecycleTests/ReportExportServiceIntegrationTests.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/tests/WileyWidget.LifecycleTests/ReportExportServiceIntegrationTests.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/tests/WileyWidget.LifecycleTests/ReportExportServiceIntegrationTests.cs"
       },
       "context": {
         "category": "test",

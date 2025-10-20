@@ -242,6 +242,32 @@ public class AppOptions
     [Range(5, 1440, ErrorMessage = "Cache expiration must be between 5 and 1440 minutes")]
     public int CacheExpirationMinutes { get; set; } = 30;
 
+    // Reporting and analytics thresholds
+    [Category("Reporting")]
+    [Display(Name = "Budget Variance High Threshold (%)")]
+    [Range(-1000, 1000, ErrorMessage = "Variance threshold must be within -1000% to 1000%")]
+    public decimal BudgetVarianceHighThresholdPercent { get; set; } = 10.0m;
+
+    [Category("Reporting")]
+    [Display(Name = "Budget Variance Low Threshold (%)")]
+    [Range(-1000, 1000, ErrorMessage = "Variance threshold must be within -1000% to 1000%")]
+    public decimal BudgetVarianceLowThresholdPercent { get; set; } = -5.0m;
+
+    [Category("Reporting")]
+    [Display(Name = "AI High Confidence Score")]
+    [Range(0, 100, ErrorMessage = "Confidence must be between 0 and 100")]
+    public int AIHighConfidence { get; set; } = 85;
+
+    [Category("Reporting")]
+    [Display(Name = "AI Low Confidence Score")]
+    [Range(0, 100, ErrorMessage = "Confidence must be between 0 and 100")]
+    public int AILowConfidence { get; set; } = 65;
+
+    [Category("Caching")]
+    [Display(Name = "Enterprise Data Cache (seconds)")]
+    [Range(5, 600, ErrorMessage = "Cache seconds must be between 5 and 600")]
+    public int EnterpriseDataCacheSeconds { get; set; } = 60;
+
     [Category("Advanced")]
     [Display(Name = "Log Level")]
     public string LogLevel { get; set; } = "Information";

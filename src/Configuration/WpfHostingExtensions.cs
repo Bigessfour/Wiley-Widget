@@ -23,6 +23,8 @@ using WileyWidget.Services.Hosting;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
+using FluentValidation;
+using WileyWidget.Models.Validators;
 
 namespace WileyWidget.Configuration;
 
@@ -290,6 +292,7 @@ public static class WpfHostingExtensions
     {
         services.TryAddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
+        services.AddSingleton<IReportExportService, ReportExportService>();
     services.AddTransient<MainViewModel>();
         
         // CRITICAL: MainWindow must be Singleton to prevent duplicate window instances
@@ -311,6 +314,10 @@ public static class WpfHostingExtensions
         services.AddTransient<ProgressViewModel>();
         services.AddTransient<MunicipalAccountViewModel>();
         services.AddTransient<UtilityCustomerViewModel>();
+
+        // Validators
+        services.AddTransient<IValidator<WileyWidget.Models.BudgetData>, BudgetDataValidator>();
+        services.AddTransient<IValidator<WileyWidget.Models.Enterprise>, EnterpriseValidator>();
     }
 
     private static void ConfigureHostedServices(IServiceCollection services)

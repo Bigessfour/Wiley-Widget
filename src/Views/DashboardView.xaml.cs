@@ -20,7 +20,7 @@ namespace WileyWidget
     /// </summary>
     public partial class DashboardView : UserControl
     {
-        private DispatcherTimer _refreshTimer;
+        // private DispatcherTimer _refreshTimer; // Removed - timer is now managed by ViewModel
 
         public DashboardView()
         {
@@ -32,16 +32,16 @@ namespace WileyWidget
             // Note: ViewModel is now auto-wired by Prism ViewModelLocator
             // Theme is applied declaratively in XAML to prevent loading crashes
 
-            // Set up auto-refresh timer if ViewModel is available
-            if (DataContext is DashboardViewModel viewModel)
-            {
-                Log.Debug("DashboardView: DataContext set to DashboardViewModel in constructor");
-                SetupAutoRefreshTimer(viewModel);
-            }
-            else
-            {
-                Log.Warning("DashboardView: DataContext is not DashboardViewModel in constructor");
-            }
+            // Removed: Auto-refresh timer setup - now handled by ViewModel only
+            // if (DataContext is DashboardViewModel viewModel)
+            // {
+            //     Log.Debug("DashboardView: DataContext set to DashboardViewModel in constructor");
+            //     SetupAutoRefreshTimer(viewModel);
+            // }
+            // else
+            // {
+            //     Log.Warning("DashboardView: DataContext is not DashboardViewModel in constructor");
+            // }
 
             // Load dashboard data when control loads
             Loaded += DashboardView_Loaded;
@@ -72,7 +72,8 @@ namespace WileyWidget
             if (e.NewValue is DashboardViewModel viewModel)
             {
                 Log.Information("DashboardView: DataContext successfully set to DashboardViewModel");
-                SetupAutoRefreshTimer(viewModel);
+                // Removed: Auto-refresh timer setup - now handled by ViewModel only
+                // SetupAutoRefreshTimer(viewModel);
             }
         }
 
@@ -129,36 +130,6 @@ namespace WileyWidget
                     WalkVisualTree(child, depth + 1, sb);
                 }
             }
-        }
-
-        private void SetupAutoRefreshTimer(DashboardViewModel viewModel)
-        {
-            _refreshTimer = new DispatcherTimer();
-            _refreshTimer.Tick += async (s, e) =>
-            {
-                using var loggingContext = LoggingContext.BeginOperation("AutoRefresh_Tick");
-                var callingThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-                var uiThreadId = Dispatcher.CurrentDispatcher.Thread.ManagedThreadId;
-                
-                Log.Verbose("DashboardView AutoRefresh timer tick - ThreadId: {CallingThread} -> UI ThreadId: {UIThread} - {LogContext}", 
-                    callingThreadId, uiThreadId, loggingContext);
-                
-                if (viewModel.AutoRefreshEnabled)
-                {
-                    Log.Debug("DashboardView: Executing auto-refresh - {LogContext}", loggingContext);
-                    await viewModel.RefreshDashboardDataAsync();
-                    Log.Debug("DashboardView: Auto-refresh completed - {LogContext}", loggingContext);
-                }
-                else
-                {
-                    Log.Verbose("DashboardView: Auto-refresh skipped (disabled) - {LogContext}", loggingContext);
-                }
-            };
-            _refreshTimer.Interval = TimeSpan.FromMinutes(viewModel.RefreshIntervalMinutes);
-            _refreshTimer.Start();
-            
-            Log.Information("DashboardView: Auto-refresh timer started with {IntervalMinutes} minute interval", 
-                viewModel.RefreshIntervalMinutes);
         }
 
         // Methods for UI test compatibility

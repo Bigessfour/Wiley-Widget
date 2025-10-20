@@ -172,6 +172,22 @@
 			}
 		},
 		{
+			"label": "kill-dotnet",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"Get-Process -Name 'dotnet','WileyWidget','testhost','vstest.console' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host '✅ Killed orphaned .NET processes'"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
 			"label": "watch-py",
 			"type": "shell",
 			"command": "python",
@@ -599,6 +615,19 @@
 				"$msCompile"
 			],
 			"group": "build"
+		},
+		{
+			"label": "pytest-single-quickbooksstructure",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"-m",
+				"pytest",
+				"tools/python/clr_tests/test_quickbooksstructuretest.py",
+				"-q",
+				"--maxfail=1",
+				"--tb=short"
+			]
 		}
 	],
 	"inputs": [

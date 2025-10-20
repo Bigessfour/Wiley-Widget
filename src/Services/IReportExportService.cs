@@ -36,6 +36,20 @@ public interface IReportExportService
     Task ExportToCsvAsync(IEnumerable<object> data, string filePath);
 
     /// <summary>
+    /// Exports a ComplianceReport to a well-formatted PDF using Syncfusion.Pdf
+    /// </summary>
+    /// <param name="report">The compliance report to export</param>
+    /// <param name="filePath">The PDF file path to write</param>
+    Task ExportComplianceReportToPdfAsync(WileyWidget.Models.ComplianceReport report, string filePath);
+
+    /// <summary>
+    /// Exports a ComplianceReport to a well-structured Excel workbook using Syncfusion.XlsIO
+    /// </summary>
+    /// <param name="report">The compliance report to export</param>
+    /// <param name="filePath">The Excel file path to write</param>
+    Task ExportComplianceReportToExcelAsync(WileyWidget.Models.ComplianceReport report, string filePath);
+
+    /// <summary>
     /// Gets supported export formats
     /// </summary>
     /// <returns>Collection of supported formats</returns>

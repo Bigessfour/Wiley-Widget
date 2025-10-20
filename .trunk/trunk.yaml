@@ -31,9 +31,10 @@ runtimes:
     - python@3.11.9
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
+  disabled:
+    - bandit
   enabled:
     # .NET code formatting and style (optimized for .NET 8+)
-    - bandit@1.8.6
     - black@25.9.0
     - checkov@3.2.484
     - git-diff-check

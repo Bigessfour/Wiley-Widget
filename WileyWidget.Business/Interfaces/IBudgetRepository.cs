@@ -63,4 +63,10 @@ public interface IBudgetRepository
     /// Gets year-end summary data for reporting
     /// </summary>
     Task<BudgetVarianceAnalysis> GetYearEndSummaryAsync(int year);
+
+    // Enterprise-scoped reporting (if data model supports enterprise association)
+    Task<BudgetVarianceAnalysis> GetBudgetSummaryByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate);
+    Task<BudgetVarianceAnalysis> GetVarianceAnalysisByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate);
+    Task<List<DepartmentSummary>> GetDepartmentBreakdownByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate);
+    Task<List<FundSummary>> GetFundAllocationsByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate);
 }

@@ -21,9 +21,9 @@ namespace WileyWidget.Startup.Modules
 
             var regionManager = containerProvider.Resolve<IRegionManager>();
 
-            // Register AIAssistView with AIAssistRegion
-            regionManager.RegisterViewWithRegion("AIAssistRegion", typeof(AIAssistView));
-            Log.Information("Successfully registered AIAssistView with AIAssistRegion");
+            // Register AIAssistPanelView with AIAssistRegion (SfAIAssistView-based UI)
+            regionManager.RegisterViewWithRegion("AIAssistRegion", typeof(AIAssistPanelView));
+            Log.Information("Successfully registered AIAssistPanelView with AIAssistRegion");
 
             Log.Information("AIAssistModule initialization completed");
         }
@@ -36,8 +36,8 @@ namespace WileyWidget.Startup.Modules
             // Register AIResponseViewModel
             containerRegistry.Register<AIResponseViewModel>();
 
-            // Register views for navigation
-            containerRegistry.RegisterForNavigation<AIAssistView, AIAssistViewModel>();
+            // Register views for navigation (panel view driven by AIAssistViewModel)
+            containerRegistry.RegisterForNavigation<AIAssistPanelView, AIAssistViewModel>();
 
             Log.Debug("AI assist types registered");
         }
