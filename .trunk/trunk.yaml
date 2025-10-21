@@ -16,12 +16,14 @@ runtimes:
     - node@22.16.0
     - python@3.11.9
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
+repo:
+  trunk_branch: main
 lint:
   disabled:
     - bandit
+    - checkov  # Disabled due to argument compatibility issues
   enabled:
     # .NET code formatting and style (optimized for .NET 8+)
-    - checkov@3.2.484
     - black@25.9.0
     - git-diff-check
     - hadolint@2.14.0
@@ -134,28 +136,6 @@ lint:
         - data/
         - tools/
         - licenses/
-    # Limit checkov to essential infrastructure files only
-    - linters: [checkov]
-      paths:
-        - '**/*.py'  # Skip Python files (handled by ruff)
-        - '**/*.cs'  # Skip C# files
-        - '**/*.ps1' # Skip PowerShell files
-        - docs/
-        - logs/
-        - TestResults/
-        - scripts/
-        - .github/
-        - '*.md'
-        - '*.json'
-        - '*.txt'
-        - '*.yml'
-        - '*.yaml'
-    - linters: [checkov]
-      paths:
-        - .vscode/**
-        - "**/*.vscode/**"
-        - "**/launchSettings.json"
-        - "**/Properties/launchSettings.json"
 actions:
   enabled:
     - trunk-check-pre-push

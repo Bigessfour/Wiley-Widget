@@ -28,12 +28,14 @@ namespace WileyWidget.ViewModels
         private readonly ISecretVaultService _secretVaultService;
         private readonly IQuickBooksService _quickBooksService;
         private readonly ISyncfusionLicenseService _syncfusionLicenseService;
-        private readonly IAIService _aiService;
+    private readonly IAIService _aiService;
+    private readonly IAuditService _auditService;
         // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles all theming globally
         private readonly ISettingsService _settingsService;
         private readonly IInteractionRequestService _interactionRequestService;
 
         private readonly Dictionary<string, List<string>> _errors = new();
+    public Prism.Commands.DelegateCommand OpenXaiConsoleCommand { get; private set; }
 
         public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
 
@@ -387,6 +389,14 @@ namespace WileyWidget.ViewModels
         [property: Browsable(false)]
         private Brush xaiStatusColor = Brushes.Orange;
 
+    [ObservableProperty]
+    [property: Browsable(false)]
+    private bool isXaiKeyValidated;
+
+    [ObservableProperty]
+    [property: Browsable(false)]
+    private string xaiValidationMessage = string.Empty;
+
         // Fiscal Year Settings
         [ObservableProperty]
         [property: Category("Fiscal Year")]
@@ -567,6 +577,7 @@ namespace WileyWidget.ViewModels
             IQuickBooksService quickBooksService,
             ISyncfusionLicenseService syncfusionLicenseService,
             IAIService aiService,
+            IAuditService auditService,
             ISettingsService settingsService,
             IInteractionRequestService interactionRequestService)
         {
@@ -580,6 +591,7 @@ namespace WileyWidget.ViewModels
             _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
             _syncfusionLicenseService = syncfusionLicenseService ?? throw new ArgumentNullException(nameof(syncfusionLicenseService));
             _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
+            _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
             // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles theming globally
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _interactionRequestService = interactionRequestService ?? throw new ArgumentNullException(nameof(interactionRequestService));
@@ -594,7 +606,9 @@ namespace WileyWidget.ViewModels
             PropertyChanged += OnPropertyChanged;
 
             // Initialize Prism DelegateCommands
-            SaveSettingsCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteSaveSettingsAsync(), () => !IsBusy);
+            SaveSettingsCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteSaveSettingsAsync(), () => !IsBusy && !HasErrors)
+                .ObservesProperty(() => IsBusy)
+                .ObservesProperty(() => HasErrors);
             ResetSettingsCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteResetSettingsAsync(), () => !IsBusy);
             TestConnectionCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteTestConnectionAsync(), () => !IsBusy);
             TestQuickBooksConnectionCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteTestQuickBooksConnectionAsync(), () => !IsBusy);
@@ -602,7 +616,118 @@ namespace WileyWidget.ViewModels
             CheckQuickBooksUrlAclCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteCheckQuickBooksUrlAclAsync(), () => !IsBusy);
             ValidateLicenseCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteValidateLicenseAsync(), () => !IsBusy);
             TestXaiConnectionCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteTestXaiConnectionAsync(), () => !IsBusy);
+            ValidateXaiKeyCommand = new Prism.Commands.DelegateCommand<string>(async (key) => await ExecuteValidateXaiKeyAsync(key), (key) => !IsBusy);
+            ValidateAndSaveXaiKeyCommand = new Prism.Commands.DelegateCommand<string>(async (key) => await ExecuteValidateAndSaveXaiKeyAsync(key), (key) => !IsBusy);
+            OpenActivateXaiDialogCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteOpenActivateXaiDialogAsync(), () => !IsBusy);
+            OpenXaiConsoleCommand = new Prism.Commands.DelegateCommand(() => OpenXaiConsolePublic());
             SaveFiscalYearSettingsCommand = new Prism.Commands.DelegateCommand(async () => await SaveFiscalYearSettingsAsync(), () => !IsBusy);
+        }
+
+        // Validation rules (simple length checks). Update as APIs require.
+        private const int XaiApiKeyExpectedMinLength = 20;
+        private const int XaiApiKeyExpectedMaxLength = 128;
+
+        private const int QuickBooksClientIdMinLength = 10;
+        private const int QuickBooksClientSecretMinLength = 20;
+
+        private static readonly System.Text.RegularExpressions.Regex QuickBooksGuidRegex =
+            new(@"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        // Syncfusion license keys are often long base64-like strings; allow base64 character set and common separators
+        private static readonly System.Text.RegularExpressions.Regex SyncfusionBase64LikeRegex =
+            new(@"^[A-Za-z0-9+/=\-_]{20,}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        partial void OnQuickBooksClientIdChanged(string value)
+        {
+            ClearErrors(nameof(QuickBooksClientId));
+            if (string.IsNullOrWhiteSpace(value) || value.Length < QuickBooksClientIdMinLength)
+            {
+                AddError(nameof(QuickBooksClientId), $"QuickBooks Client ID must be at least {QuickBooksClientIdMinLength} characters.");
+                    try
+                    {
+                        var envPath = System.IO.Path.Combine(AppContext.BaseDirectory, ".env");
+                        var tmpPath = envPath + ".tmp";
+                        var line = $"XAI_API_KEY={XaiApiKey}\n";
+                        System.IO.File.WriteAllText(tmpPath, line);
+                        if (System.IO.File.Exists(envPath))
+                            System.IO.File.Replace(tmpPath, envPath, null);
+                        else
+                            System.IO.File.Move(tmpPath, envPath);
+
+                        // Apply best-effort file ACL restriction on Windows
+                        try
+                        {
+                            var applied = FileSecurityHelper.RestrictFileToCurrentUser(envPath);
+                            if (!applied)
+                                _logger.LogWarning("File ACL restriction not applied to .env (platform or permission issue)");
+                            else
+                                _logger.LogInformation("Successfully restricted .env file access to current user only");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to apply file ACLs to .env (non-fatal)");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to write .env entry for XAI_API_KEY (non-fatal)");
+                    }
+                AddError(nameof(QuickBooksClientSecret), $"QuickBooks Client Secret must be at least {QuickBooksClientSecretMinLength} characters.");
+            }
+        }
+
+        partial void OnXaiApiKeyChanged(string value)
+        {
+            ClearErrors(nameof(XaiApiKey));
+            if (!string.IsNullOrEmpty(value))
+            {
+                if (value.Length < XaiApiKeyExpectedMinLength || value.Length > XaiApiKeyExpectedMaxLength)
+                {
+                    AddError(nameof(XaiApiKey), $"XAI API key length must be between {XaiApiKeyExpectedMinLength} and {XaiApiKeyExpectedMaxLength} characters.");
+                    return;
+                }
+                
+                // Allow optional 'sk-' prefix used by some providers (e.g., OpenAI-like patterns)
+                if (value.StartsWith("sk-", StringComparison.OrdinalIgnoreCase))
+                {
+                    // ensure the rest is at least the minimum length
+                    var rest = value.Substring(3);
+                    if (rest.Length < (XaiApiKeyExpectedMinLength - 3))
+                        AddError(nameof(XaiApiKey), "XAI API key appears too short after 'sk-' prefix.");
+                }
+            }
+        }
+
+        // Provider guidance texts (can be localized later)
+        public string GetXaiActivationGuidance()
+        {
+            return "Steps to activate xAI API key:\n" +
+                   "1. Open the xAI Console (opens in your browser).\n" +
+                   "2. Create a new API key under 'API Keys'.\n" +
+                   "3. If prompted, ensure billing/credits are enabled for your account.\n" +
+                   "4. Copy the key and paste it into the app. Click 'Validate' to check it.\n" +
+                   "Troubleshooting:\n" +
+                   "• 403 / AuthFailure: The key exists but lacks permission or wasn't activated. Open console and check key status.\n" +
+                   "• 402 / Payment Required: Enable billing or add credits.\n" +
+                   "• 429 / RateLimited: Too many requests; try again later.";
+        }
+
+        partial void OnSyncfusionLicenseKeyChanged(string value)
+        {
+            ClearErrors(nameof(SyncfusionLicenseKey));
+            if (!string.IsNullOrEmpty(value))
+            {
+                if (value.Length < 20)
+                {
+                    AddError(nameof(SyncfusionLicenseKey), "Syncfusion license key appears to be too short.");
+                    return;
+                }
+
+                if (!SyncfusionBase64LikeRegex.IsMatch(value))
+                {
+                    AddError(nameof(SyncfusionLicenseKey), "Syncfusion license key format looks invalid. It should be a long Base64-like token.");
+                }
+            }
         }
 
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -898,6 +1023,9 @@ namespace WileyWidget.ViewModels
     public Prism.Commands.DelegateCommand ConnectQuickBooksCommand { get; private set; }
     public Prism.Commands.DelegateCommand ValidateLicenseCommand { get; private set; }
     public Prism.Commands.DelegateCommand TestXaiConnectionCommand { get; private set; }
+    public Prism.Commands.DelegateCommand<string> ValidateXaiKeyCommand { get; private set; }
+    public Prism.Commands.DelegateCommand<string> ValidateAndSaveXaiKeyCommand { get; private set; }
+    public Prism.Commands.DelegateCommand OpenActivateXaiDialogCommand { get; private set; }
     public Prism.Commands.DelegateCommand SaveFiscalYearSettingsCommand { get; private set; }
     public Prism.Commands.DelegateCommand CheckQuickBooksUrlAclCommand { get; private set; }
     private async Task ExecuteSaveSettingsAsync()
@@ -933,6 +1061,24 @@ namespace WileyWidget.ViewModels
             {
                 IsBusy = false;
                 BusyMessage = string.Empty;
+            }
+        }
+
+        private async Task ExecuteOpenActivateXaiDialogAsync()
+        {
+            try
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    var dialog = new WileyWidget.Views.ActivateXaiDialog();
+                    dialog.Owner = Application.Current.MainWindow;
+                    dialog.ShowDialog();
+                });
+                _logger.LogInformation("Opened ActivateXaiDialog");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to open ActivateXaiDialog");
             }
         }
 
@@ -984,18 +1130,99 @@ namespace WileyWidget.ViewModels
                 await _secretVaultService.SetSecretAsync("QuickBooks-RedirectUri", QuickBooksRedirectUri);
 
             await _secretVaultService.SetSecretAsync("QuickBooks-Environment", SelectedQuickBooksEnvironment);
+
+            // Clear sensitive data from memory after persisting
+            QuickBooksClientSecret = string.Empty;
         }
 
         private async Task SaveSyncfusionSettingsAsync()
         {
             if (!string.IsNullOrEmpty(SyncfusionLicenseKey))
                 await _secretVaultService.SetSecretAsync("Syncfusion-LicenseKey", SyncfusionLicenseKey);
+
+            // Clear license key from memory
+            SyncfusionLicenseKey = string.Empty;
         }
 
         private async Task SaveXaiSettingsAsync()
         {
+            // Validate XAI API key before persisting
             if (!string.IsNullOrEmpty(XaiApiKey))
-                await _secretVaultService.SetSecretAsync("XAI-ApiKey", XaiApiKey);
+            {
+                // Validate the provided key first
+                var validationResult = await _aiService.ValidateApiKeyAsync(XaiApiKey);
+                if (validationResult.HttpStatusCode != 200)
+                {
+                    AddError(nameof(XaiApiKey), "XAI API key validation failed. Please activate or verify the key in your xAI Console.");
+                    return; // abort saving XAI settings
+                }
+
+                // Rotate the secret atomically in the vault (write new, verify, delete old)
+                try
+                {
+                    await _secretVaultService.RotateSecretAsync("XAI-ApiKey", XaiApiKey);
+
+                    // Update runtime service to use new key
+                    try
+                    {
+                        await _aiService.UpdateApiKeyAsync(XaiApiKey);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Attempt rollback: restore previous secret from vault (if possible)
+                        _logger.LogError(ex, "Failed to update runtime AI service with new API key after rotation. Attempting rollback.");
+                        // Try to read last-known key from vault (best-effort)
+                        var previous = await _secretVaultService.GetSecretAsync("XAI-ApiKey");
+                        if (!string.IsNullOrEmpty(previous))
+                        {
+                            try { await _aiService.UpdateApiKeyAsync(previous); }
+                            catch (Exception rex) { _logger.LogError(rex, "Rollback of AI runtime key failed"); }
+                        }
+                        throw; // rethrow to surface failure
+                    }
+
+                    // Persist key to a local .env file for downstream tools (atomic write, restricted ACL)
+                    try
+                    {
+                        var envPath = System.IO.Path.Combine(AppContext.BaseDirectory, ".env");
+                        var tmpPath = envPath + ".tmp";
+                        var line = $"XAI_API_KEY={XaiApiKey}\n";
+                        System.IO.File.WriteAllText(tmpPath, line);
+                        if (System.IO.File.Exists(envPath))
+                            System.IO.File.Replace(tmpPath, envPath, null);
+                        else
+                            System.IO.File.Move(tmpPath, envPath);
+
+                        // Apply best-effort file ACL restriction on Windows
+                        try
+                        {
+                            var applied = FileSecurityHelper.RestrictFileToCurrentUser(envPath);
+                            if (!applied)
+                                _logger.LogWarning("File ACL restriction not applied to .env (platform or permission issue)");
+                            else
+                                _logger.LogInformation("Successfully restricted .env file access to current user only");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to apply file ACLs to .env (non-fatal)");
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to write .env entry for XAI_API_KEY (non-fatal)");
+                    }
+
+                    // Clear XAI API key from memory
+                    XaiApiKey = string.Empty;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to rotate XAI API key in vault");
+                    AddError(nameof(XaiApiKey), "Failed to persist the new API key. Check logs for details.");
+                    return;
+                }
+            }
 
             await _secretVaultService.SetSecretAsync("XAI-BaseUrl", XaiBaseUrl);
             await _secretVaultService.SetSecretAsync("XAI-Model", XaiModel);
@@ -1188,26 +1415,183 @@ namespace WileyWidget.ViewModels
             }
         }
 
-        private async Task<bool> TestXaiConnectionInternalAsync()
+        private async Task ExecuteValidateXaiKeyAsync(string? apiKey)
         {
             try
             {
-                // Test XAI connection by making a simple request
-                // This is a basic connectivity test - in a real implementation,
-                // you might want to make an actual API call to validate the key
-                if (string.IsNullOrEmpty(XaiApiKey))
+                XaiConnectionStatus = "Validating key...";
+                XaiStatusColor = Brushes.Orange;
+
+                if (string.IsNullOrWhiteSpace(apiKey))
                 {
+                    AddError(nameof(XaiApiKey), "API key cannot be empty for validation.");
+                    XaiConnectionStatus = "Validation Failed";
+                    XaiStatusColor = Brushes.Red;
+                    return;
+                }
+
+                var result = await _aiService.ValidateApiKeyAsync(apiKey);
+                if (result.HttpStatusCode == 200)
+                {
+                    // Key validated successfully
+                    ClearErrors(nameof(XaiApiKey));
+                    XaiConnectionStatus = "Key Validated";
+                    XaiStatusColor = Brushes.Green;
+                    // Audit successful validation (no secret content)
+                    try
+                    {
+                        var fingerprint = ComputeKeyFingerprint(apiKey);
+                        await _auditService.AuditAsync("XAI.KeyValidated", new { Provider = "xAI", Fingerprint = fingerprint, User = Environment.UserName, Machine = Environment.MachineName });
+                    }
+                    catch { }
+                }
+                else
+                {
+                    // Map known error codes to user-friendly messages
+                    var message = result.Content ?? "Validation failed";
+                    if (result.ErrorCode == "AuthFailure" || result.HttpStatusCode == 401 || result.HttpStatusCode == 403)
+                        message = "API key invalid or not activated. Open the xAI Console to verify permissions and activation.";
+                    else if (result.ErrorCode == "RateLimited" || result.HttpStatusCode == 429)
+                        message = "API key is rate limited. Try again later.";
+                    else if (result.HttpStatusCode == 402)
+                        message = "API key requires billing/credits. Please enable billing in the provider console.";
+
+                    AddError(nameof(XaiApiKey), message);
+                    XaiConnectionStatus = "Validation Failed";
+                    XaiStatusColor = Brushes.Red;
+                        // Audit failed validation
+                        try
+                        {
+                            var fingerprint = ComputeKeyFingerprint(apiKey);
+                            await _auditService.AuditAsync("XAI.KeyValidationFailed", new { Provider = "xAI", Fingerprint = fingerprint, Reason = message, User = Environment.UserName, Machine = Environment.MachineName });
+                        }
+                        catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "XAI key validation failed");
+                AddError(nameof(XaiApiKey), "Unexpected error during validation. Check network connectivity and try again.");
+                XaiConnectionStatus = "Validation Error";
+                XaiStatusColor = Brushes.Red;
+            }
+        }
+
+        private async Task ExecuteValidateAndSaveXaiKeyAsync(string? apiKey)
+        {
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                AddError(nameof(XaiApiKey), "API key cannot be empty.");
+                return;
+            }
+
+            IsBusy = true;
+            BusyMessage = "Validating and saving API key...";
+
+            try
+            {
+                // Validate the key
+                var validationResult = await _aiService.ValidateApiKeyAsync(apiKey);
+                if (validationResult.HttpStatusCode != 200)
+                {
+                    IsXaiKeyValidated = false;
+                    XaiValidationMessage = validationResult.Content ?? "Validation failed";
+                    AddError(nameof(XaiApiKey), XaiValidationMessage);
+                    _logger.LogInformation("XAI key validation failed (code={Code})", validationResult.ErrorCode ?? validationResult.HttpStatusCode.ToString());
+                    return;
+                }
+
+                // Rotate secret in vault
+                await _secretVaultService.RotateSecretAsync("XAI-ApiKey", apiKey);
+
+                // Update runtime service
+                await _aiService.UpdateApiKeyAsync(apiKey);
+
+                // Atomically write .env (best-effort)
+                try
+                {
+                    var envPath = System.IO.Path.Combine(AppContext.BaseDirectory, ".env");
+                    var tmpPath = envPath + ".tmp";
+                    var line = $"XAI_API_KEY={apiKey}\n";
+                    System.IO.File.WriteAllText(tmpPath, line);
+                    if (System.IO.File.Exists(envPath))
+                        System.IO.File.Replace(tmpPath, envPath, null);
+                    else
+                        System.IO.File.Move(tmpPath, envPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to persist .env entry for XAI key (non-fatal)");
+                }
+
+                // Success: flag validated and clear UI secret
+                IsXaiKeyValidated = true;
+                XaiValidationMessage = "Key validated and saved";
+                _logger.LogInformation("XAI API key validated and rotated successfully (no secret logged)");
+
+                // Audit event (no secret content)
+                try
+                {
+                    var fingerprint = ComputeKeyFingerprint(apiKey);
+                    await _auditService.AuditAsync("XAI.KeyRotated", new { Provider = "xAI", Fingerprint = fingerprint, User = Environment.UserName, Machine = Environment.MachineName });
+                }
+                catch { }
+
+                // Clear in-memory key
+                XaiApiKey = string.Empty;
+                ClearErrors(nameof(XaiApiKey));
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, "Failed to validate and save XAI API key");
+                AddError(nameof(XaiApiKey), "Failed to save API key. Check logs for details.");
+            }
+            finally
+            {
+                IsBusy = false;
+                BusyMessage = string.Empty;
+            }
+        }
+
+    // Public wrappers for UI code-behind to call validation/save asynchronously
+    public Task ValidateXaiKeyAsyncPublic(string? apiKey) => ExecuteValidateXaiKeyAsync(apiKey);
+    public Task ValidateAndSaveXaiKeyAsyncPublic(string? apiKey) => ExecuteValidateAndSaveXaiKeyAsync(apiKey);
+
+        private async Task<bool> TestXaiConnectionInternalAsync(string? apiKey = null)
+        {
+            try
+            {
+                // Test XAI connection by making a lightweight API call using IAIService
+                // If an explicit apiKey was provided (user is validating a new key), validate it using the new validation API
+                if (!string.IsNullOrWhiteSpace(apiKey))
+                {
+                    var result = await _aiService.ValidateApiKeyAsync(apiKey);
+                    if (result.HttpStatusCode == 200)
+                        return true;
+
+                    _logger.LogWarning("XAI validation returned status {Status} - {ErrorCode}", result.HttpStatusCode, result.ErrorCode);
                     return false;
                 }
 
-                // For now, just validate that the API key looks reasonable
-                // In production, you would make an actual API call
-                var isValidFormat = XaiApiKey.Length >= 20; // Basic length check
+                // Otherwise validate using the currently configured key (existing behavior)
+                var currentKey = XaiApiKey;
+                if (string.IsNullOrWhiteSpace(currentKey))
+                    return false;
 
-                // Simulate async operation
-                await Task.Delay(500);
+                try
+                {
+                    var result = await _aiService.GetInsightsWithStatusAsync("validation", "Ping: Are you there?", CancellationToken.None);
+                    if (result.HttpStatusCode == 200)
+                        return true;
 
-                return isValidFormat;
+                    _logger.LogWarning("XAI validation returned status {Status} - {ErrorCode}", result.HttpStatusCode, result.ErrorCode);
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "XAI validation call failed");
+                    return false;
+                }
             }
             catch (Exception ex)
             {
@@ -1215,6 +1599,42 @@ namespace WileyWidget.ViewModels
                 return false;
             }
         }
+
+        private void OpenXaiConsole()
+        {
+            try
+            {
+                var url = "https://console.x.ai/team/default/api-keys";
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to open xAI console URL");
+            }
+        }
+
+        private static string ComputeKeyFingerprint(string? key)
+        {
+            if (string.IsNullOrEmpty(key)) return string.Empty;
+            try
+            {
+                using var sha = System.Security.Cryptography.SHA256.Create();
+                var bytes = System.Text.Encoding.UTF8.GetBytes(key);
+                var hash = sha.ComputeHash(bytes);
+                return BitConverter.ToString(hash).Replace("-", string.Empty).Substring(0, 8).ToLowerInvariant();
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        // Public wrapper for UI to open the xAI console
+        public void OpenXaiConsolePublic() => OpenXaiConsole();
 
         /// <summary>
         /// Apply theme to all open windows in the application

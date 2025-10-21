@@ -130,6 +130,34 @@
     <value>Success</value>
     <comment>Success status message</comment>
   </data>
+  <data name="ActivateDialogTitle" xml:space="preserve">
+    <value>Activate xAI API Key</value>
+    <comment>Title for the XAI activation dialog</comment>
+  </data>
+  <data name="ActivateDialogHeading" xml:space="preserve">
+    <value>Activate your xAI API key</value>
+    <comment>Heading text for the XAI activation dialog</comment>
+  </data>
+  <data name="ApiKeyLabel" xml:space="preserve">
+    <value>API Key (paste here)</value>
+    <comment>Label for API key input</comment>
+  </data>
+  <data name="OpenConsole" xml:space="preserve">
+    <value>Open Console</value>
+    <comment>Open provider console button text</comment>
+  </data>
+  <data name="Validate" xml:space="preserve">
+    <value>Validate</value>
+    <comment>Validate button text</comment>
+  </data>
+  <data name="GuidanceNote" xml:space="preserve">
+    <value>If you're unsure, click 'Open Console' to view API key creation instructions in your browser.</value>
+    <comment>Guidance note displayed in dialog</comment>
+  </data>
+  <data name="KeyStorageNotice" xml:space="preserve">
+    <value>Keys are stored securely on this machine and never sent to logs.</value>
+    <comment>Security notice displayed in dialog</comment>
+  </data>
 
   <!-- Error Messages -->
   <data name="GenericError" xml:space="preserve">

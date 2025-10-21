@@ -585,6 +585,77 @@ public class XAIService : IAIService, IDisposable
     }
 
     /// <summary>
+    /// Validate an API key by issuing a lightweight API call using the supplied key (does not mutate the service's configured key).
+    /// Returns an AIResponseResult that includes HTTP status and any provider error body for UI handling.
+    /// </summary>
+    public async Task<AIResponseResult> ValidateApiKeyAsync(string apiKey, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+            return new AIResponseResult("API key is empty", 400, "InvalidKey", null);
+
+        try
+        {
+            // Prepare a minimal validation request. Use explicit Authorization header for this request only.
+            var request = new
+            {
+                messages = new[]
+                {
+                    new { role = "system", content = "Validation ping" },
+                    new { role = "user", content = "Ping" }
+                },
+                model = _configuration["XAI:Model"] ?? "grok-4-0709",
+                stream = false,
+                temperature = 0.0
+            };
+
+            using var message = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
+            {
+                Content = JsonContent.Create(request, options: new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+            };
+
+            // Add the provided key on this request without altering the client default headers
+            message.Headers.Remove("Authorization");
+            message.Headers.Add("Authorization", $"Bearer {apiKey}");
+
+            var response = await _retryPolicy.ExecuteAsync(() => _httpClient.SendAsync(message, cancellationToken));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var status = (int)response.StatusCode;
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                var errorCode = response.StatusCode == System.Net.HttpStatusCode.Forbidden ? "AuthFailure" :
+                                response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ? "RateLimited" : "ServerError";
+                return new AIResponseResult(body ?? "Validation failed", status, errorCode, body);
+            }
+
+            // Success
+            var xaiResponse = await response.Content.ReadFromJsonAsync<XAIResponse>(cancellationToken: cancellationToken);
+            if (xaiResponse?.error != null)
+            {
+                return new AIResponseResult(xaiResponse.error.message ?? "API error", 500, xaiResponse.error.type, xaiResponse.error.message);
+            }
+
+            var content = xaiResponse?.choices?.Length > 0 ? xaiResponse.choices[0].message?.content : null;
+            return new AIResponseResult(content ?? "OK", 200, null, null);
+        }
+        catch (HttpRequestException ex)
+        {
+            Log.Warning(ex, "Network error while validating API key");
+            return new AIResponseResult(ex.Message, 0, "NetworkError", ex.Message);
+        }
+        catch (TaskCanceledException ex)
+        {
+            Log.Warning(ex, "Timeout while validating API key");
+            return new AIResponseResult("Timeout", 0, "Timeout", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Unexpected error while validating API key");
+            return new AIResponseResult(ex.Message, 0, "Unexpected", ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Review application areas and provide recommendations
     /// </summary>
     public async Task<string> ReviewApplicationAreaAsync(string areaName, string currentState, CancellationToken cancellationToken = default)
@@ -651,5 +722,31 @@ public class XAIService : IAIService, IDisposable
             }
             _disposed = true;
         }
+    }
+
+    /// <summary>
+    /// Update the runtime API key used by the HttpClient for subsequent requests.
+    /// This is used after rotating/persisting a new key so the live service reflects the change.
+    /// </summary>
+    public Task UpdateApiKeyAsync(string newApiKey)
+    {
+        if (string.IsNullOrWhiteSpace(newApiKey))
+            throw new ArgumentException("newApiKey cannot be null or empty", nameof(newApiKey));
+
+        // Update the default Authorization header for the client
+        try
+        {
+            if (_httpClient.DefaultRequestHeaders.Contains("Authorization"))
+                _httpClient.DefaultRequestHeaders.Remove("Authorization");
+
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {newApiKey}");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to update XAIService API key in HttpClient headers");
+            throw;
+        }
+
+        return Task.CompletedTask;
     }
 }

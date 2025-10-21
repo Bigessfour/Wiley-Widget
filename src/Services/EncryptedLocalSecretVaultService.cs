@@ -62,6 +62,32 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 File.WriteAllText(_entropyFile, Convert.ToBase64String(entropy));
                 File.SetAttributes(_entropyFile, FileAttributes.Hidden);
 
+                // Restrict entropy file to current user
+                try
+                {
+                    var fi = new FileInfo(_entropyFile);
+                    var sec = fi.GetAccessControl();
+                    var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                    var user = identity?.User;
+                    if (user != null)
+                    {
+                        var rules = sec.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
+                        foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
+                        {
+                            sec.RemoveAccessRule(r);
+                        }
+                        sec.SetOwner(user);
+                        sec.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
+                            System.Security.AccessControl.FileSystemRights.FullControl,
+                            System.Security.AccessControl.AccessControlType.Allow));
+                        fi.SetAccessControl(sec);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to restrict entropy file ACL");
+                }
+
                 _logger.LogInformation("Generated new encryption entropy for secret vault");
                 return entropy;
             }
@@ -115,6 +141,52 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
+    /// <summary>
+    /// Synchronous variant used by configuration code paths where async is not possible.
+    /// Uses blocking file I/O and semaphore waits to maintain thread-safety.
+    /// </summary>
+    public string? GetSecret(string secretName)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
+        if (string.IsNullOrEmpty(secretName)) throw new ArgumentNullException(nameof(secretName));
+
+        _semaphore.Wait();
+        try
+        {
+            var filePath = GetSecretFilePath(secretName);
+            if (!File.Exists(filePath))
+            {
+                return null;
+            }
+
+            var encryptedBase64 = File.ReadAllText(filePath);
+            var encryptedBytes = Convert.FromBase64String(encryptedBase64);
+
+            var decryptedBytes = ProtectedData.Unprotect(
+                encryptedBytes,
+                _entropy,
+                DataProtectionScope.CurrentUser);
+
+            var secret = Encoding.UTF8.GetString(decryptedBytes);
+            _logger.LogDebug("Retrieved secret '{SecretName}' from encrypted vault (sync)", secretName);
+            return secret;
+        }
+        catch (CryptographicException ex)
+        {
+            _logger.LogError(ex, "Failed to decrypt secret '{SecretName}' - may be corrupted or from different user/machine", secretName);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve secret '{SecretName}' (sync)", secretName);
+            return null;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
     public async Task SetSecretAsync(string secretName, string value)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
@@ -125,17 +197,57 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         try
         {
             var plainBytes = Encoding.UTF8.GetBytes(value);
-            var encryptedBytes = ProtectedData.Protect(
-                plainBytes,
-                _entropy,
-                DataProtectionScope.CurrentUser);
+            try
+            {
+                var encryptedBytes = ProtectedData.Protect(
+                    plainBytes,
+                    _entropy,
+                    DataProtectionScope.CurrentUser);
 
-            var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
-            var filePath = GetSecretFilePath(secretName);
+                var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
+                var filePath = GetSecretFilePath(secretName);
 
-            await File.WriteAllTextAsync(filePath, encryptedBase64);
+                // write atomically
+                var tmp = filePath + ".tmp";
+                await File.WriteAllTextAsync(tmp, encryptedBase64);
 
-            _logger.LogInformation("Secret '{SecretName}' stored in encrypted vault", secretName);
+                try
+                {
+                    var fileInfo = new FileInfo(tmp);
+                    var security = fileInfo.GetAccessControl();
+                    var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                    var user = identity?.User;
+                    if (user != null)
+                    {
+                        var rules = security.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
+                        foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
+                        {
+                            security.RemoveAccessRule(r);
+                        }
+                        security.SetOwner(user);
+                        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
+                            System.Security.AccessControl.FileSystemRights.FullControl,
+                            System.Security.AccessControl.AccessControlType.Allow));
+                        fileInfo.SetAccessControl(security);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to set file ACL on secret tmp file");
+                }
+
+                File.Replace(tmp, filePath, null);
+
+                _logger.LogInformation("Secret '{SecretName}' stored in encrypted vault", secretName);
+            }
+            finally
+            {
+                // Clear plaintext bytes from memory
+                if (plainBytes != null)
+                {
+                    Array.Clear(plainBytes, 0, plainBytes.Length);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -313,6 +425,97 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 .ToList();
 
             return keys;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task DeleteSecretAsync(string secretName)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
+        if (string.IsNullOrEmpty(secretName)) throw new ArgumentNullException(nameof(secretName));
+
+        await _semaphore.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var filePath = GetSecretFilePath(secretName);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+                _logger.LogInformation("Deleted secret '{SecretName}' from encrypted vault", secretName);
+            }
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task RotateSecretAsync(string secretName, string newValue)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
+        if (string.IsNullOrEmpty(secretName)) throw new ArgumentNullException(nameof(secretName));
+
+        await _semaphore.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var plainBytes = Encoding.UTF8.GetBytes(newValue);
+            try
+            {
+                var encryptedBytes = ProtectedData.Protect(
+                    plainBytes,
+                    _entropy,
+                    DataProtectionScope.CurrentUser);
+
+                var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
+                var filePath = GetSecretFilePath(secretName);
+                var tmp = filePath + ".tmp";
+
+                await File.WriteAllTextAsync(tmp, encryptedBase64).ConfigureAwait(false);
+                // try set ACL
+                try
+                {
+                    var fileInfo = new FileInfo(tmp);
+                    var security = fileInfo.GetAccessControl();
+                    var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                    var user = identity?.User;
+                    if (user != null)
+                    {
+                        var rules = security.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
+                        foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
+                        {
+                            security.RemoveAccessRule(r);
+                        }
+                        security.SetOwner(user);
+                        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
+                            System.Security.AccessControl.FileSystemRights.FullControl,
+                            System.Security.AccessControl.AccessControlType.Allow));
+                        fileInfo.SetAccessControl(security);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to set file ACL on secret tmp file during rotation");
+                }
+
+                File.Replace(tmp, filePath, null);
+
+                // verify by reading back
+                var decrypted = await GetSecretAsync(secretName).ConfigureAwait(false);
+                if (decrypted != newValue)
+                {
+                    throw new InvalidOperationException("Verification failed after rotating secret");
+                }
+
+                _logger.LogInformation("Rotated secret '{SecretName}'", secretName);
+            }
+            finally
+            {
+                if (plainBytes != null)
+                    Array.Clear(plainBytes, 0, plainBytes.Length);
+            }
         }
         finally
         {

@@ -888,7 +888,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// <summary>
     /// Disconnects from QuickBooks by clearing tokens and connection state.
     /// </summary>
-    public async System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -915,6 +915,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             _logger.LogError(ex, "Failed to disconnect from QuickBooks");
             throw;
         }
+
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     /// <summary>

@@ -33,6 +33,18 @@ public interface IAIService
     /// This allows the UI to distinguish network/auth/rate-limit errors from valid responses.
     /// </summary>
     Task<AIResponseResult> GetInsightsWithStatusAsync(string context, string question, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Validate an API key by performing a lightweight request against the provider using the supplied key.
+    /// This allows the UI to check arbitrary keys entered by the user without changing runtime configuration.
+    /// </summary>
+    Task<AIResponseResult> ValidateApiKeyAsync(string apiKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update the runtime API key used by the service (updates internal HttpClient headers).
+    /// Useful after rotating/persisting a new key so the running service uses it immediately.
+    /// </summary>
+    Task UpdateApiKeyAsync(string newApiKey);
 }
 
 /// <summary>

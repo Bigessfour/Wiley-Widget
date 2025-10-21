@@ -10,6 +10,7 @@ namespace WileyWidget.Services;
 public interface ISecretVaultService
 {
     Task<string?> GetSecretAsync(string secretName);
+    string? GetSecret(string secretName);
     Task SetSecretAsync(string secretName, string value);
     Task<bool> TestConnectionAsync();
 
@@ -37,4 +38,14 @@ public interface ISecretVaultService
     /// Lists all secret keys for inventory purposes.
     /// </summary>
     Task<IEnumerable<string>> ListSecretKeysAsync();
+    
+    /// <summary>
+    /// Deletes a secret from the vault. Use when rotating or removing secrets.
+    /// </summary>
+    Task DeleteSecretAsync(string secretName);
+    
+    /// <summary>
+    /// Atomically rotate an existing secret value. Writes the new value, verifies it, then removes the old value.
+    /// </summary>
+    Task RotateSecretAsync(string secretName, string newValue);
 }

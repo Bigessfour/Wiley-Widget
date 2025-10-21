@@ -18,10 +18,10 @@ try {
     $reader = $command.ExecuteReader()
     if ($reader.Read()) {
         [PSCustomObject]@{
-            Name           = $reader['name']
-            State          = $reader['state_desc']
-            RecoveryModel  = $reader['recovery_model_desc']
-            Resource       = 'Database'
+            Name          = $reader['name']
+            State         = $reader['state_desc']
+            RecoveryModel = $reader['recovery_model_desc']
+            Resource      = 'Database'
         } | Write-Output
     }
     $reader.Close()
@@ -31,8 +31,8 @@ try {
     $reader = $command.ExecuteReader()
     if ($reader.Read()) {
         [PSCustomObject]@{
-            Resource  = 'Tables'
-            Count     = $reader['TableCount']
+            Resource = 'Tables'
+            Count    = $reader['TableCount']
         } | Write-Output
     }
     $reader.Close()
@@ -42,8 +42,8 @@ try {
     $reader = $command.ExecuteReader()
     if ($reader.Read()) {
         [PSCustomObject]@{
-            Resource  = 'ManualStatistics'
-            Count     = $reader['StatsCount']
+            Resource = 'ManualStatistics'
+            Count    = $reader['StatsCount']
         } | Write-Output
     }
     $reader.Close()
@@ -53,8 +53,8 @@ try {
     $reader = $command.ExecuteReader()
     if ($reader.Read()) {
         [PSCustomObject]@{
-            Resource  = 'Indexes'
-            Count     = $reader['IndexCount']
+            Resource = 'Indexes'
+            Count    = $reader['IndexCount']
         } | Write-Output
     }
     $reader.Close()

@@ -160,6 +160,10 @@ namespace WileyWidget
             ConfigureLogging();
             Trace.WriteLine("[App] ConfigureLogging completed");
 
+            // Configure diagnostics settings from appsettings.json
+            IConfiguration configuration = BuildConfiguration();
+            ConfigureDiagnosticsSettings(configuration);
+
             // Preflight database schema before Prism/EF usage to avoid early materialization failures
             try
             {
@@ -189,16 +193,8 @@ namespace WileyWidget
                 ?? "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=true";
 
             const string preflightSql = @"
-IF OBJECT_ID('dbo.AppSettings','U') IS NULL
-BEGIN
-    CREATE TABLE dbo.AppSettings (
-        Id INT NOT NULL CONSTRAINT PK_AppSettings PRIMARY KEY,
-        Theme NVARCHAR(100) NULL,
-        WindowWidth FLOAT NULL,
-        WindowHeight FLOAT NULL,
-        WindowMaximized BIT NULL
-    );
-END
+-- AppSettings table should already exist via EF migrations
+-- Just ensure required columns exist
 
 IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
     ALTER TABLE dbo.AppSettings ADD QboClientId NVARCHAR(MAX) NULL;
@@ -210,8 +206,21 @@ IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber') IS NOT NULL
    AND COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
     ALTER TABLE dbo.MunicipalAccounts ADD [AccountNumber_Value] AS ([AccountNumber]);
 
-IF NOT EXISTS (SELECT 1 FROM dbo.AppSettings WHERE Id = 1)
-    INSERT INTO dbo.AppSettings (Id) VALUES (1);
+-- Ensure at least one AppSettings record exists
+IF NOT EXISTS (SELECT 1 FROM dbo.AppSettings)
+BEGIN
+    INSERT INTO dbo.AppSettings (
+        Theme,
+        UseDynamicColumns,
+        QuickBooksEnvironment,
+        QboTokenExpiry
+    ) VALUES (
+        N'Default',           -- Theme (required, no default)
+        0,                    -- UseDynamicColumns (required, no default)
+        N'',                  -- QuickBooksEnvironment (required, no default)
+        '0001-01-01T00:00:00' -- QboTokenExpiry (required, no default)
+    );
+END
 ";
 
             int attempt = 0;
@@ -1666,6 +1675,57 @@ IF NOT EXISTS (SELECT 1 FROM dbo.AppSettings WHERE Id = 1)
 
             return app.Container
                 ?? throw new InvalidOperationException("Prism container is not available during application lifetime.");
+        }
+
+        private void ConfigureDiagnosticsSettings(IConfiguration configuration)
+        {
+            try
+            {
+                var diagSection = configuration.GetSection("System.Diagnostics");
+                if (diagSection.Exists())
+                {
+                    var sources = diagSection.GetSection("Sources");
+                    if (sources.Exists())
+                    {
+                        foreach (var source in sources.GetChildren())
+                        {
+                            var sourceName = source["Name"];
+                            var switchValue = source["SwitchValue"];
+                            if (!string.IsNullOrEmpty(sourceName) && !string.IsNullOrEmpty(switchValue))
+                            {
+                                var traceSource = new System.Diagnostics.TraceSource(sourceName);
+                                if (Enum.TryParse<System.Diagnostics.SourceLevels>(switchValue, out var level))
+                                {
+                                    traceSource.Switch.Level = level;
+                                }
+                                var listeners = source.GetSection("Listeners");
+                                if (listeners.Exists())
+                                {
+                                    foreach (var listener in listeners.GetChildren())
+                                    {
+                                        var listenerName = listener["Name"];
+                                        if (!string.IsNullOrEmpty(listenerName))
+                                        {
+                                            traceSource.Listeners.Add(new System.Diagnostics.DefaultTraceListener());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    var trace = diagSection.GetSection("Trace");
+                    if (trace.Exists())
+                    {
+                        System.Diagnostics.Trace.AutoFlush = trace.GetValue<bool>("AutoFlush");
+                    }
+                }
+                Log.Information("Diagnostics settings configured from appsettings.json");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to configure diagnostics settings from appsettings.json");
+            }
         }
     }
 }

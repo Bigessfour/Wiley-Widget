@@ -37,7 +37,7 @@ function Initialize-MCPEnvironment {
 
         # Background loading of Key Vault secrets
         $keyVaultJob = Start-Job -ScriptBlock {
-            param($using:using:vaultName)
+            param($using:using:using:using:using:using:using:vaultName)
             try {
                 # Load secrets asynchronously
                 $secrets = @{}

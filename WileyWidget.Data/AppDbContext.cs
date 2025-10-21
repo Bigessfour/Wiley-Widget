@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
 
-public class AppDbContext : DbContext
+namespace WileyWidget.Data
 {
+    public class AppDbContext : DbContext
+    {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
         // Initialize DbSets to satisfy nullable reference types
@@ -241,5 +243,6 @@ public class AppDbContext : DbContext
         return BudgetEntries
             .Where(be => be.SourceFilePath == sourceFilePath && (rowNumber == null || be.SourceRowNumber == rowNumber))
             .AsNoTracking();
+    }
     }
 }

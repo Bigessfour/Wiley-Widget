@@ -52,17 +52,17 @@ public class AppOptionsConfigurator : IConfigureOptions<AppOptions>
             try
             {
                 // QuickBooks settings
-                options.QuickBooksClientId = _secretVaultService.GetSecretAsync("QuickBooks-ClientId").GetAwaiter().GetResult() ?? options.QuickBooksClientId;
-                options.QuickBooksClientSecret = _secretVaultService.GetSecretAsync("QuickBooks-ClientSecret").GetAwaiter().GetResult() ?? options.QuickBooksClientSecret;
-                options.QuickBooksRedirectUri = _secretVaultService.GetSecretAsync("QuickBooks-RedirectUri").GetAwaiter().GetResult() ?? options.QuickBooksRedirectUri;
-                options.QuickBooksEnvironment = _secretVaultService.GetSecretAsync("QuickBooks-Environment").GetAwaiter().GetResult() ?? options.QuickBooksEnvironment;
+                options.QuickBooksClientId = _secretVaultService.GetSecret("QuickBooks-ClientId") ?? options.QuickBooksClientId;
+                options.QuickBooksClientSecret = _secretVaultService.GetSecret("QuickBooks-ClientSecret") ?? options.QuickBooksClientSecret;
+                options.QuickBooksRedirectUri = _secretVaultService.GetSecret("QuickBooks-RedirectUri") ?? options.QuickBooksRedirectUri;
+                options.QuickBooksEnvironment = _secretVaultService.GetSecret("QuickBooks-Environment") ?? options.QuickBooksEnvironment;
 
                 // Syncfusion settings
-                options.SyncfusionLicenseKey = _secretVaultService.GetSecretAsync("Syncfusion-LicenseKey").GetAwaiter().GetResult() ?? options.SyncfusionLicenseKey;
+                options.SyncfusionLicenseKey = _secretVaultService.GetSecret("Syncfusion-LicenseKey") ?? options.SyncfusionLicenseKey;
 
                 // XAI settings
-                options.XaiApiKey = _secretVaultService.GetSecretAsync("XAI-ApiKey").GetAwaiter().GetResult() ?? options.XaiApiKey;
-                options.XaiBaseUrl = _secretVaultService.GetSecretAsync("XAI-BaseUrl").GetAwaiter().GetResult() ?? options.XaiBaseUrl;
+                options.XaiApiKey = _secretVaultService.GetSecret("XAI-ApiKey") ?? options.XaiApiKey;
+                options.XaiBaseUrl = _secretVaultService.GetSecret("XAI-BaseUrl") ?? options.XaiBaseUrl;
 
                 _logger.LogInformation("AppOptions secrets loaded successfully");
             }

@@ -23,4 +23,13 @@ public class NullAIService : IAIService
 
     public Task<AIResponseResult> GetInsightsWithStatusAsync(string context, string question, CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("[Dev Stub] AI insights are disabled in development. Configure XAI_API_KEY to enable.", 200));
+
+    public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey, CancellationToken cancellationToken = default)
+        => Task.FromResult(new AIResponseResult("Dev stub: validation not available in development.", 403, "AuthFailure", null));
+
+    public Task UpdateApiKeyAsync(string newApiKey)
+    {
+        // No-op in dev stub
+        return Task.CompletedTask;
+    }
 }

@@ -53,6 +53,30 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         }
     }
 
+    public string? GetSecret(string secretName)
+    {
+        if (string.IsNullOrWhiteSpace(secretName))
+        {
+            throw new ArgumentException("Secret name is required", nameof(secretName));
+        }
+
+        _fileLock.Wait();
+        try
+        {
+            var secrets = LoadSecrets();
+            return secrets.TryGetValue(secretName, out var value) ? value : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read secret {SecretName} from local vault", secretName);
+            return null;
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
     public async Task SetSecretAsync(string secretName, string value)
     {
         if (string.IsNullOrWhiteSpace(secretName))
@@ -110,14 +134,58 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
                ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
+    private Dictionary<string, string> LoadSecrets()
+    {
+        if (!File.Exists(_secretsPath))
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        using var stream = new FileStream(_secretsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(stream)
+               ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    }
+
     private async Task SaveSecretsAsync(Dictionary<string, string> secrets)
     {
-        await using var stream = new FileStream(_secretsPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        var options = new JsonSerializerOptions
+        // Write atomically: write to temp file then replace
+        var tmp = _secretsPath + ".tmp";
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        await using (var stream = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            WriteIndented = true
-        };
-        await JsonSerializer.SerializeAsync(stream, secrets, options).ConfigureAwait(false);
+            await JsonSerializer.SerializeAsync(stream, secrets, options).ConfigureAwait(false);
+        }
+
+        // Ensure file permissions are restricted to current user
+        try
+        {
+            var fileInfo = new FileInfo(tmp);
+            var security = fileInfo.GetAccessControl();
+            // Remove existing rules and add current user full control
+            var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var user = identity?.User;
+            if (user != null)
+            {
+                // Clear existing and add allow for current user only
+                var rules = security.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
+                foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
+                {
+                    security.RemoveAccessRule(r);
+                }
+                security.SetOwner(user);
+                security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
+                    System.Security.AccessControl.FileSystemRights.FullControl,
+                    System.Security.AccessControl.AccessControlType.Allow));
+                fileInfo.SetAccessControl(security);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to set file ACL on secrets tmp file");
+        }
+
+        // Replace existing file atomically
+        File.Replace(tmp, _secretsPath, null);
     }
 
     public void Dispose()
@@ -297,6 +365,56 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         {
             _logger.LogError(ex, "Failed to list secret keys");
             return Array.Empty<string>();
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
+    public async Task DeleteSecretAsync(string secretName)
+    {
+        if (string.IsNullOrWhiteSpace(secretName)) throw new ArgumentException("Secret name is required", nameof(secretName));
+
+        await _fileLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var secrets = await LoadSecretsAsync().ConfigureAwait(false);
+            if (secrets.Remove(secretName))
+            {
+                await SaveSecretsAsync(secrets).ConfigureAwait(false);
+                _logger.LogInformation("Deleted secret {SecretName} from local vault", secretName);
+            }
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
+    public async Task RotateSecretAsync(string secretName, string newValue)
+    {
+        if (string.IsNullOrWhiteSpace(secretName)) throw new ArgumentException("Secret name is required", nameof(secretName));
+
+        await _fileLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var secrets = await LoadSecretsAsync().ConfigureAwait(false);
+            var oldValue = secrets.TryGetValue(secretName, out var existed) ? existed : null;
+
+            // write new value
+            secrets[secretName] = newValue;
+            await SaveSecretsAsync(secrets).ConfigureAwait(false);
+
+            // verify by reloading
+            var reloaded = await LoadSecretsAsync().ConfigureAwait(false);
+            if (!reloaded.TryGetValue(secretName, out var verified) || verified != newValue)
+            {
+                throw new InvalidOperationException("Failed to verify new secret after rotation");
+            }
+
+            // no further action needed (old value replaced)
+            _logger.LogInformation("Rotated secret {SecretName}", secretName);
         }
         finally
         {
