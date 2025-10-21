@@ -1,24 +1,24 @@
-# WileyWidget Testing Guide (unittest standard)
+# WileyWidget Testing Guide (pytest standard)
 
-We have standardized on Python's built-in `unittest` library for all unit, integration, and UI automation testing, following the official [unittest documentation](https://docs.python.org/3/library/unittest.html). .NET/xUnit projects were retired to reduce redundancy and simplify CI.
+We have standardized on `pytest` for all unit, integration, and UI automation testing, following the official [pytest documentation](https://docs.pytest.org/). .NET/xUnit projects were retired to reduce redundancy and simplify CI.
 
-## What’s in use
+## What's in use
 
-- Test runner: `unittest` (Python standard library)
-- Test discovery: `unittest.main()` or `python -m unittest discover`
-- Entry tasks: VS Code task "test-fast" (runs unit test suite)
+- Test runner: `pytest` (Python testing framework)
+- Test discovery: `pytest` automatic discovery or `python -m pytest`
+- Entry tasks: VS Code task "test-fast" (runs test suite)
 
 ## Quick start
 
 ```powershell
-# Run all tests with standard unittest discovery (from project root)
-python -m unittest discover -s tools/python -p "test_*.py"
+# Run all tests with pytest discovery (from project root)
+python -m pytest tools/python -v
 
-# Run with our consolidated unittest runner (enhanced output)
+# Run with our consolidated pytest runner (enhanced output)
 python tools/python/test_config.py --verbose
 
-# Run a specific unittest module (example)
-python -m unittest tools.python.unittests.test_startup_validation
+# Run a specific pytest module (example)
+python -m pytest tools/python/tests/test_startup_validation.py
 
 # Run with coverage using the consolidated runner
 python tools/python/test_config.py --coverage
@@ -28,11 +28,11 @@ python tools/python/test_config.py --coverage
 
 ### Pure Python Tests (`tools/python/tests/`)
 - Unit tests for ViewModels and services
-- Use `unittest.TestCase` base class
-- Mock-based testing with `unittest.mock`
+- Use pytest test functions and classes
+- Mock-based testing with `pytest-mock` or `unittest.mock`
 
 ### CLR Integration Tests (`tools/python/clr_tests/`)
-- `unittest`-based integration tests for .NET assemblies
+- pytest-based integration tests for .NET assemblies
 - Tests EF Core, WPF ViewModels via pythonnet
 - Requires pythonnet and built .NET assemblies
 
@@ -45,58 +45,53 @@ python tools/python/test_config.py --coverage
 ### Unit Test Example
 
 ```python
-import unittest
+import pytest
 from unittest.mock import Mock, patch
 from wiley_widget.viewmodels.main_viewmodel import MainViewModel
 
-class TestMainViewModel(unittest.TestCase):
+class TestMainViewModel:
     """Test cases for MainViewModel."""
-
-    def setUp(self):
-        """Set up test fixtures before each test method."""
-        self.viewmodel = MainViewModel()
-
-    def tearDown(self):
-        """Clean up test fixtures after each test method."""
-        pass
 
     def test_initialization(self):
         """Test that ViewModel initializes correctly."""
-        self.assertEqual(self.viewmodel.title, "Wiley Widget")
-        self.assertFalse(self.viewmodel.is_loading)
+        viewmodel = MainViewModel()
+        assert viewmodel.title == "Wiley Widget"
+        assert not viewmodel.is_loading
 
     def test_load_data_success(self):
         """Test successful data loading."""
         # Arrange
+        viewmodel = MainViewModel()
         mock_data = [{"id": 1, "name": "Test Item"}]
 
         # Act
         with patch('wiley_widget.services.data_service.DataService.get_data',
                   return_value=mock_data):
-            result = self.viewmodel.load_data()
+            result = viewmodel.load_data()
 
         # Assert
-        self.assertTrue(result)
-        self.assertEqual(len(self.viewmodel.items), 1)
-        self.assertEqual(self.viewmodel.items[0]["name"], "Test Item")
+        assert result is True
+        assert len(viewmodel.items) == 1
+        assert viewmodel.items[0]["name"] == "Test Item"
 
     def test_load_data_failure(self):
         """Test data loading failure."""
         # Arrange
+        viewmodel = MainViewModel()
         with patch('wiley_widget.services.data_service.DataService.get_data',
                   side_effect=Exception("Database error")):
 
             # Act & Assert
-            with self.assertRaises(Exception) as context:
-                self.viewmodel.load_data()
+            with pytest.raises(Exception) as exc_info:
+                viewmodel.load_data()
 
-            self.assertIn("Database error", str(context.exception))
+            assert "Database error" in str(exc_info.value)
 ```
 
 ### CLR Integration Test Example
 
 ```python
-import unittest
+import pytest
 from unittest.mock import Mock
 
 try:
@@ -107,211 +102,209 @@ try:
 except ImportError:
     CLR_AVAILABLE = False
 
-@unittest.skipUnless(CLR_AVAILABLE, "pythonnet not available")
-class TestWidgetModel(unittest.TestCase):
+@pytest.mark.skipif(not CLR_AVAILABLE, reason="pythonnet not available")
+class TestWidgetModel:
     """Test cases for Widget CLR model."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.widget = Widget()
 
     def test_widget_creation(self):
         """Test Widget creation and property setting."""
         # Arrange
-        self.widget.Name = "Test Widget"
-        self.widget.Description = "A test widget"
+        widget = Widget()
+        widget.Name = "Test Widget"
+        widget.Description = "A test widget"
 
         # Act & Assert
-        self.assertEqual(self.widget.Name, "Test Widget")
-        self.assertEqual(self.widget.Description, "A test widget")
+        assert widget.Name == "Test Widget"
+        assert widget.Description == "A test widget"
 
     def test_widget_name_validation_valid(self):
         """Test Widget name validation with valid name."""
         # Arrange
-        self.widget.Name = "Valid Name"
+        widget = Widget()
+        widget.Name = "Valid Name"
 
         # Act
-        is_valid = self.widget.IsValidName()
+        is_valid = widget.IsValidName()
 
         # Assert
-        self.assertTrue(is_valid)
+        assert is_valid is True
 
     def test_widget_name_validation_empty(self):
         """Test Widget name validation with empty string."""
         # Arrange
-        self.widget.Name = ""
+        widget = Widget()
+        widget.Name = ""
 
         # Act
-        is_valid = self.widget.IsValidName()
+        is_valid = widget.IsValidName()
 
         # Assert
-        self.assertFalse(is_valid)
+        assert is_valid is False
 
     def test_widget_name_validation_none(self):
         """Test Widget name validation with None."""
         # Arrange
-        self.widget.Name = None
+        widget = Widget()
+        widget.Name = None
 
         # Act
-        is_valid = self.widget.IsValidName()
+        is_valid = widget.IsValidName()
 
         # Assert
-        self.assertFalse(is_valid)
+        assert is_valid is False
 ```
 
 ## Test Fixtures and Setup
 
-### setUp and tearDown Methods
+### pytest Fixtures
 
 ```python
-class TestDatabaseOperations(unittest.TestCase):
+import pytest
+import tempfile
+import os
+import shutil
 
-    def setUp(self):
-        """Set up test database before each test."""
-        self.db = create_test_database()
-        self.connection = self.db.connect()
+@pytest.fixture
+def test_database():
+    """Fixture for test database setup."""
+    db = create_test_database()
+    connection = db.connect()
+    yield connection
+    # Cleanup
+    if connection:
+        connection.close()
+    if db:
+        db.cleanup()
 
-    def tearDown(self):
-        """Clean up test database after each test."""
-        if self.connection:
-            self.connection.close()
-        if self.db:
-            self.db.cleanup()
+@pytest.fixture(scope="class")
+def test_directory():
+    """Class-scoped fixture for test directory."""
+    test_dir = tempfile.mkdtemp()
+    yield test_dir
+    # Cleanup
+    shutil.rmtree(test_dir)
 
-    def test_insert_record(self):
+class TestDatabaseOperations:
+
+    def test_insert_record(self, test_database):
         """Test inserting a record."""
         record = {"name": "Test", "value": 42}
-        result = self.connection.insert(record)
-        self.assertIsNotNone(result.id)
+        result = test_database.insert(record)
+        assert result.id is not None
 
-    def test_query_records(self):
+    def test_query_records(self, test_database):
         """Test querying records."""
-        records = self.connection.query_all()
-        self.assertIsInstance(records, list)
-```
+        records = test_database.query_all()
+        assert isinstance(records, list)
 
-### Class-level setUp and tearDown
+class TestFileOperations:
 
-```python
-class TestFileOperations(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        """Set up shared fixtures for all tests in the class."""
-        cls.test_dir = tempfile.mkdtemp()
-        cls.test_file = os.path.join(cls.test_dir, "test.txt")
-
-    @classmethod
-    def tearDownClass(cls):
-        """Clean up shared fixtures after all tests in the class."""
-        shutil.rmtree(cls.test_dir)
-
-    def test_write_file(self):
+    def test_write_file(self, test_directory):
         """Test writing to file."""
-        with open(self.test_file, 'w') as f:
+        test_file = os.path.join(test_directory, "test.txt")
+        with open(test_file, 'w') as f:
             f.write("test content")
 
-        self.assertTrue(os.path.exists(self.test_file))
+        assert os.path.exists(test_file)
 
-    def test_read_file(self):
+    def test_read_file(self, test_directory):
         """Test reading from file."""
-        with open(self.test_file, 'w') as f:
+        test_file = os.path.join(test_directory, "test.txt")
+        with open(test_file, 'w') as f:
             f.write("test content")
 
-        with open(self.test_file, 'r') as f:
+        with open(test_file, 'r') as f:
             content = f.read()
 
-        self.assertEqual(content, "test content")
-```
+        assert content == "test content"
 
 ## Assertions
 
 ### Common Assertions
 
 ```python
-class TestAssertions(unittest.TestCase):
+class TestAssertions:
 
     def test_equality(self):
         """Test equality assertions."""
-        self.assertEqual(2 + 2, 4)
-        self.assertNotEqual(2 + 2, 5)
+        assert 2 + 2 == 4
+        assert 2 + 2 != 5
 
     def test_boolean(self):
         """Test boolean assertions."""
-        self.assertTrue(True)
-        self.assertFalse(False)
+        assert True
+        assert not False
 
     def test_none(self):
         """Test None assertions."""
-        self.assertIsNone(None)
-        self.assertIsNotNone("not none")
+        assert None is None
+        assert "not none" is not None
 
     def test_instance(self):
         """Test instance type assertions."""
-        self.assertIsInstance("string", str)
-        self.assertNotIsInstance(123, str)
+        assert isinstance("string", str)
+        assert not isinstance(123, str)
 
     def test_membership(self):
         """Test membership assertions."""
-        self.assertIn("a", "banana")
-        self.assertNotIn("x", "banana")
+        assert "a" in "banana"
+        assert "x" not in "banana"
 
     def test_sequences(self):
         """Test sequence assertions."""
-        self.assertEqual([1, 2, 3], [1, 2, 3])
-        self.assertCountEqual([1, 2, 2, 3], [3, 2, 2, 1])  # ignores order
+        assert [1, 2, 3] == [1, 2, 3]
 
     def test_exceptions(self):
         """Test exception assertions."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             raise ValueError("test error")
 
-        with self.assertRaisesRegex(ValueError, "test"):
+        with pytest.raises(ValueError, match="test"):
             raise ValueError("test error message")
 ```
 
 ## Mocking and Patching
 
-### Using unittest.mock
+### Using pytest-mock
 
 ```python
-import unittest
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 
-class TestWithMocking(unittest.TestCase):
+class TestWithMocking:
 
-    def test_mock_method(self):
+    def test_mock_method(self, mocker):
         """Test using Mock objects."""
-        mock_service = Mock()
+        mock_service = mocker.Mock()
         mock_service.get_data.return_value = {"result": "mocked"}
 
         result = mock_service.get_data()
-        self.assertEqual(result["result"], "mocked")
+        assert result["result"] == "mocked"
         mock_service.get_data.assert_called_once()
 
-    def test_patch_decorator(self):
+    def test_patch_decorator(self, mocker):
         """Test using patch decorator."""
-        with patch('module.function') as mock_func:
+        with mocker.patch('module.function') as mock_func:
             mock_func.return_value = "patched"
             result = call_function()
-            self.assertEqual(result, "patched")
+            assert result == "patched"
 
-    @patch('requests.get')
-    def test_patch_method(self, mock_get):
+    def test_patch_method(self, mocker):
         """Test using patch as method decorator."""
+        mock_get = mocker.patch('requests.get')
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {"data": "test"}
 
         # Call function that uses requests.get
         result = fetch_data()
-        self.assertEqual(result["data"], "test")
+        assert result["data"] == "test"
 ```
 
 ## UI Automation
 
 For Windows UI automation of the WPF app:
-- **unittest** with **pywinauto** – simple Windows UI automation
-- **unittest** with **WinAppDriver + Appium** – more structured, CI-friendly
+- **pytest** with **pywinauto** – simple Windows UI automation
+- **pytest** with **WinAppDriver + Appium** – more structured, CI-friendly
 
 Keep UI tests minimal and focused on critical user interactions.
 
@@ -324,7 +317,7 @@ Keep UI tests minimal and focused on critical user interactions.
 
 ### Test Organization
 - Group related tests in the same class
-- Use `setUp` and `tearDown` for common fixtures
+- Use pytest fixtures for common setup
 - Keep test methods focused on a single behavior
 
 ### Defensive Imports
@@ -335,8 +328,8 @@ try:
 except ImportError:
     CLR_AVAILABLE = False
 
-@unittest.skipUnless(CLR_AVAILABLE, "pythonnet required")
-class TestClrIntegration(unittest.TestCase):
+@pytest.mark.skipif(not CLR_AVAILABLE, reason="pythonnet required")
+class TestClrIntegration:
     # CLR tests here
     pass
 ```
@@ -353,9 +346,9 @@ class TestClrIntegration(unittest.TestCase):
 
 ## Custom Test Configuration
 
-We provide `test_config.py` with enhanced unittest features:
+We provide `test_config.py` with enhanced pytest features:
 
-- **VerboseTestRunner**: Enhanced output with progress indicators
+- **Verbose output**: Enhanced output with progress indicators
 - **Custom test suites**: Organized test loading with error handling
 - **Coverage integration**: Built-in coverage.py support
 - **Module filtering**: Run specific test modules
@@ -378,8 +371,8 @@ python test_config.py --modules tools.python.tests.test_startup_validation
 
 #### Tests Not Discovered
 - Ensure test files follow `test_*.py` naming pattern
-- Check that test classes inherit from `unittest.TestCase`
-- Verify test methods start with `test_`
+- Check that test functions start with `test_`
+- Verify pytest is properly configured
 
 #### CLR Tests Failing
 - Ensure pythonnet is installed: `pip install pythonnet`
@@ -388,13 +381,13 @@ python test_config.py --modules tools.python.tests.test_startup_validation
 
 #### Coverage Not Working
 - Install coverage: `pip install coverage`
-- Use `coverage run -m unittest discover`
+- Use `coverage run -m pytest`
 - Check coverage configuration
 
 ### Debug Tips
-- Use `python -m unittest -v` for verbose output
+- Use `python -m pytest -v` for verbose output
 - Add print statements or logging in tests
-- Use `pdb` for interactive debugging
+- Use `pytest --pdb` for interactive debugging
 
 ## Integration with CI/CD
 
@@ -402,8 +395,8 @@ python test_config.py --modules tools.python.tests.test_startup_validation
 # Example GitHub Actions workflow
 - name: Run Tests
   run: |
-    python -m unittest discover -v
-    coverage run -m unittest discover
+    python -m pytest -v
+    coverage run -m pytest
     coverage report -m
 
 - name: Upload Coverage
@@ -418,7 +411,7 @@ python test_config.py --modules tools.python.tests.test_startup_validation
 
 ```powershell
 # Update Python test packages (minimal dependencies)
-python -m pip install --upgrade coverage
+python -m pip install --upgrade pytest coverage pytest-mock
 
 # For CLR integration
 python -m pip install --upgrade pythonnet
@@ -430,15 +423,15 @@ python -m pip install --upgrade pywinauto
 ### Adding New Test Modules
 
 1. Create test file following `test_*.py` naming
-2. Inherit from `unittest.TestCase`
+2. Use pytest test functions or classes
 3. Include defensive imports for optional dependencies
-4. Add `setUp`/`tearDown` methods as needed
+4. Use pytest fixtures for setup/teardown
 5. Update CI configuration
 
 ## Resources
 
-- [unittest Documentation](https://docs.python.org/3/library/unittest.html)
-- [unittest.mock Documentation](https://docs.python.org/3/library/unittest.mock.html)
+- [pytest Documentation](https://docs.pytest.org/)
+- [pytest-mock Documentation](https://pytest-mock.readthedocs.io/)
 - [pythonnet Documentation](https://pythonnet.github.io/)
 - [pywinauto Documentation](https://pywinauto.readthedocs.io/)
 - [Coverage.py Documentation](https://coverage.readthedocs.io/)
@@ -446,4 +439,4 @@ python -m pip install --upgrade pywinauto
 ---
 
 **Last Updated:** October 2025
-**Test Environment Status:** ✅ unittest standard library configured
+**Test Environment Status:** ✅ pytest framework configured

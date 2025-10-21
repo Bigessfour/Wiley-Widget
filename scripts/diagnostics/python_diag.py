@@ -2,8 +2,8 @@
 """
 Diagnostic script for Python execution issues
 """
-import sys
 import os
+import sys
 
 print("Python Diagnostic:")
 print(f"Python version: {sys.version}")

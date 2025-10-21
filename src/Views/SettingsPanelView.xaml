@@ -76,14 +76,14 @@
                                 <StackPanel Grid.Row="1" Grid.Column="1">
                                     <syncfusion:IntegerTextBox Value="{Binding WindowWidth, Mode=TwoWay}" Margin="0,0,0,0"
                                                                ToolTipService.ToolTip="Default window width (800-3840)"/>
-                                    <TextBlock Text="{Binding WindowWidthValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                    <TextBlock Text="{Binding WindowWidthValidation}" Style="{DynamicResource ValidationTextStyle}"/>
                                 </StackPanel>
 
                                 <Label Grid.Row="2" Grid.Column="0" Content="Window Height:" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Row="2" Grid.Column="1">
                                     <syncfusion:IntegerTextBox Value="{Binding WindowHeight, Mode=TwoWay}"
                                                                ToolTipService.ToolTip="Default window height (600-2160)"/>
-                                    <TextBlock Text="{Binding WindowHeightValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                    <TextBlock Text="{Binding WindowHeightValidation}" Style="{DynamicResource ValidationTextStyle}"/>
                                 </StackPanel>
 
                                 <CheckBox Grid.Row="3" Grid.ColumnSpan="2"
@@ -239,7 +239,7 @@
                                 <Label Grid.Row="3" Grid.Column="0" Content="Timeout (sec):"/>
                                 <StackPanel Grid.Row="3" Grid.Column="1">
                                     <syncfusion:IntegerTextBox Value="{Binding XaiTimeoutSeconds, Mode=TwoWay}"/>
-                                    <TextBlock Text="{Binding XaiTimeoutValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                    <TextBlock Text="{Binding XaiTimeoutValidation}" Style="{DynamicResource ValidationTextStyle}"/>
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
@@ -269,19 +269,19 @@
                                 <Label Grid.Row="2" Grid.Column="0" Content="Context Window:"/>
                                 <StackPanel Grid.Row="2" Grid.Column="1">
                                     <syncfusion:IntegerTextBox Value="{Binding ContextWindowSize, Mode=TwoWay}"/>
-                                    <TextBlock Text="{Binding ContextWindowValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                    <TextBlock Text="{Binding ContextWindowValidation}" Style="{DynamicResource ValidationTextStyle}"/>
                                 </StackPanel>
 
                                 <Label Grid.Row="3" Grid.Column="0" Content="Temperature:"/>
                                 <StackPanel Grid.Row="3" Grid.Column="1">
                                     <syncfusion:DoubleTextBox Value="{Binding Temperature, Mode=TwoWay}" NumberDecimalDigits="2"/>
-                                    <TextBlock Text="{Binding TemperatureValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                    <TextBlock Text="{Binding TemperatureValidation}" Style="{DynamicResource ValidationTextStyle}"/>
                                 </StackPanel>
 
                                 <Label Grid.Row="4" Grid.Column="0" Content="Max Tokens:"/>
                                 <StackPanel Grid.Row="4" Grid.Column="1">
                                     <syncfusion:IntegerTextBox Value="{Binding MaxTokens, Mode=TwoWay}"/>
-                                    <TextBlock Text="{Binding MaxTokensValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                    <TextBlock Text="{Binding MaxTokensValidation}" Style="{DynamicResource ValidationTextStyle}"/>
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
@@ -374,7 +374,7 @@
                                 <Label Grid.Row="1" Grid.Column="0" Content="Start Day:"/>
                                 <StackPanel Grid.Row="1" Grid.Column="1">
                                     <syncfusion:IntegerTextBox Value="{Binding FiscalYearStartDay, Mode=TwoWay}"/>
-                                    <TextBlock Text="{Binding FiscalYearDayValidation}" Style="{StaticResource ValidationTextStyle}"/>
+                                    <TextBlock Text="{Binding FiscalYearDayValidation}" Style="{DynamicResource ValidationTextStyle}"/>
                                 </StackPanel>
                                 <Label Grid.Row="2" Grid.Column="0" Content="Current Fiscal Year:"/>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CurrentFiscalYearDisplay}"/>

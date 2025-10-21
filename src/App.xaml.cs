@@ -23,6 +23,7 @@ using WileyWidget.Services;
 using Serilog;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Windows.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Serilog.Extensions.Logging;
@@ -41,13 +42,16 @@ using Azure.Identity;
 using System.Text.RegularExpressions;
 using Prism.Events;
 using WileyWidget.ViewModels.Messages;
+using Microsoft.Data.SqlClient;
+using System.Data;
+using System.Threading.Tasks;
 // using Microsoft.ApplicationInsights;
 // using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
 
 namespace WileyWidget
 {
-    public class App : PrismApplication
+    public partial class App : PrismApplication
     {
         // Static mapping of expected regions for each module for maintainability and reuse
         private static readonly Dictionary<string, string[]> moduleRegionMap = new Dictionary<string, string[]>
@@ -123,84 +127,19 @@ namespace WileyWidget
             // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
             try
             {
-                // Load application ResourceDictionaries safely to avoid XAML parse errors
-                try
-                {
-                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                    var candidatePaths = new[]
-                    {
-                        System.IO.Path.Combine(baseDir, "Themes", "Generic.xaml"),
-                        System.IO.Path.Combine(baseDir, "Themes", "WileyTheme.xaml")
-                    };
-
-                    foreach (var p in candidatePaths)
-                    {
-                        try
-                        {
-                            if (!System.IO.File.Exists(p))
-                            {
-                                LogDebugEvent("Theme", $"Resource dictionary not found: {p}");
-                                continue;
-                            }
-
-                            var xaml = System.IO.File.ReadAllText(p);
-                            using var sr = new System.IO.StringReader(xaml);
-                            using var xr = System.Xml.XmlReader.Create(sr);
-                            var rdObj = System.Windows.Markup.XamlReader.Load(xr);
-                            if (rdObj is ResourceDictionary rd && rd.Count > 0)
-                            {
-                                // Validate brushes/colors quickly to avoid late XAML parse exceptions
-                                foreach (var key in rd.Keys.OfType<object>().ToList())
-                                {
-                                    try
-                                    {
-                                        var val = rd[key];
-                                        if (val is System.Windows.Media.SolidColorBrush scb)
-                                        {
-                                            // access Color to force a parse
-                                            var c = scb.Color;
-                                        }
-                                    }
-                                    catch (Exception innerEx)
-                                    {
-                                        Log.Warning(innerEx, "Invalid resource '{Key}' in {Path} - replacing with Transparent.", key, p);
-                                        rd[key] = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Transparent);
-                                    }
-                                }
-
-                                Application.Current.Resources.MergedDictionaries.Add(rd);
-                                LogDebugEvent("Theme", $"Merged resource dictionary: {p}");
-                            }
-                            else
-                            {
-                                LogDebugEvent("Theme", $"Parsed empty or non-dictionary resource: {p}");
-                            }
-                        }
-                        catch (System.Xaml.XamlParseException xex)
-                        {
-                            Log.Warning(xex, "Failed to parse resource dictionary {Path} - skipping.", p);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex, "Unexpected error loading resource dictionary {Path} - skipping.", p);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Failed to safely load resource dictionaries; continuing without them.");
-                }
-
-                // CRITICAL: Set ApplyStylesOnApplication FIRST per Syncfusion documentation
-                // This ensures all theme resources are merged into Application.Current.Resources
-                SfSkinManager.ApplyStylesOnApplication = true;
-                
-                // Default to FluentDark for the entire application
+                // CRITICAL: Set theme FIRST before loading resources that use DynamicResource
+                // Use the official API to inherit theme to all controls/windows
+                SfSkinManager.ApplyThemeAsDefaultStyle = true;
 #pragma warning disable CA2000 // Theme objects are managed by SfSkinManager
-                SfSkinManager.ApplicationTheme = new Theme("FluentDark");
+                SfSkinManager.ApplicationTheme = new Theme("FluentLight");
 #pragma warning restore CA2000
-                
-                Log.Information("SfSkinManager initialized with FluentDark theme globally");
+
+                Log.Information("SfSkinManager initialized with FluentLight theme globally");
+
+                // IMPORTANT: Do NOT load XAML resource dictionaries from the filesystem.
+                // They are compiled as WPF resources and referenced via pack URIs/relative XAML includes.
+                // Rely on the merged dictionaries declared in XAML (e.g., MainWindow.xaml) to avoid
+                // System.IO.FileNotFoundException at runtime when files are not copied to the output.
             }
             catch (Exception ex)
             {
@@ -221,12 +160,95 @@ namespace WileyWidget
             ConfigureLogging();
             Trace.WriteLine("[App] ConfigureLogging completed");
 
+            // Preflight database schema before Prism/EF usage to avoid early materialization failures
+            try
+            {
+                DatabasePreflightWithRetry(maxAttempts: 3, delayMs: 300);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Database preflight failed; continuing startup (EF will still attempt retries)");
+            }
+
             EnsureSyncfusionLicenseRegistered();
             EnsureBoldReportsLicenseRegistered();
 
             base.OnStartup(e);
 
             Log.Information("Application startup completed");
+        }
+
+        /// <summary>
+        /// Performs an early SQL preflight to ensure critical tables/columns exist before EF is used.
+        /// Uses idempotent DDL wrapped in simple retries to handle transient startup races.
+        /// </summary>
+        private void DatabasePreflightWithRetry(int maxAttempts = 3, int delayMs = 300)
+        {
+            IConfiguration configuration = _cachedConfiguration ??= BuildConfiguration();
+            string connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=true";
+
+            const string preflightSql = @"
+IF OBJECT_ID('dbo.AppSettings','U') IS NULL
+BEGIN
+    CREATE TABLE dbo.AppSettings (
+        Id INT NOT NULL CONSTRAINT PK_AppSettings PRIMARY KEY,
+        Theme NVARCHAR(100) NULL,
+        WindowWidth FLOAT NULL,
+        WindowHeight FLOAT NULL,
+        WindowMaximized BIT NULL
+    );
+END
+
+IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
+    ALTER TABLE dbo.AppSettings ADD QboClientId NVARCHAR(MAX) NULL;
+
+IF COL_LENGTH('dbo.AppSettings','QboClientSecret') IS NULL
+    ALTER TABLE dbo.AppSettings ADD QboClientSecret NVARCHAR(MAX) NULL;
+
+IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber') IS NOT NULL
+   AND COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
+    ALTER TABLE dbo.MunicipalAccounts ADD [AccountNumber_Value] AS ([AccountNumber]);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.AppSettings WHERE Id = 1)
+    INSERT INTO dbo.AppSettings (Id) VALUES (1);
+";
+
+            int attempt = 0;
+            for (;;)
+            {
+                attempt++;
+                try
+                {
+                    using var conn = new SqlConnection(connectionString);
+                    conn.Open();
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = preflightSql;
+                    cmd.CommandType = CommandType.Text;
+                    cmd.CommandTimeout = 15;
+                    int _ = cmd.ExecuteNonQuery();
+                    Log.Information("Database preflight OK (attempt {Attempt})", attempt);
+                    break;
+                }
+                catch (SqlException sqlEx)
+                {
+                    // Permission issue: log clearly and stop retrying since retries won’t help
+                    if (sqlEx.Number == 262 || sqlEx.Message.Contains("permission", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Log.Warning(sqlEx, "Database preflight skipped due to insufficient permissions");
+                        break;
+                    }
+
+                    if (attempt >= maxAttempts)
+                    {
+                        Log.Warning(sqlEx, "Database preflight failed after {Attempts} attempts", attempt);
+                        throw;
+                    }
+
+                    Log.Debug(sqlEx, "Database preflight transient failure (attempt {Attempt}); retrying in {Delay}ms", attempt, delayMs);
+                    Task.Delay(delayMs).GetAwaiter().GetResult();
+                }
+            }
         }
 
         /// <summary>
@@ -301,7 +323,7 @@ namespace WileyWidget
 
                 // Priority order: Machine env var > User env var > Configuration
                 // Machine scope is most secure for production deployments
-                
+
                 // Check machine environment variable first (highest security)
                 licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.Machine);
                 if (!string.IsNullOrWhiteSpace(licenseKey) && !licenseKey.Contains("YOUR_SYNCFUSION_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
@@ -467,10 +489,10 @@ namespace WileyWidget
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
             Log.Information("=== Starting DI Container Registration ===");
-            
+
             // Build configuration first
             IConfiguration configuration = BuildConfiguration();
-            
+
             // Register configuration as singleton
             containerRegistry.RegisterInstance<IConfiguration>(configuration);
             Log.Information("✓ Registered IConfiguration as singleton instance");
@@ -523,7 +545,7 @@ namespace WileyWidget
             {
                 Log.Warning(ex, "Failed to initialize production secrets");
             }
-            
+
             // Register Microsoft.Extensions.Caching.Memory infrastructure
             MemoryCacheOptions memoryCacheOptions = new MemoryCacheOptions();
             string? configuredSizeLimit = configuration["Caching:MemoryCache:SizeLimit"];
@@ -537,7 +559,7 @@ namespace WileyWidget
 #pragma warning restore CA2000
             containerRegistry.RegisterInstance<IMemoryCache>(memoryCache);
             Log.Information("✓ Registered IMemoryCache using Prism-managed MemoryCache instance");
-            
+
             // Register configuration options infrastructure (bridging Microsoft.Extensions.Options into Unity)
             RegisterAppOptions(containerRegistry, configuration, unityContainer);
 
@@ -553,36 +575,36 @@ namespace WileyWidget
             // Ensure Prism-resolved ViewModels can obtain the UnitOfWork infrastructure
             containerRegistry.Register<IUnitOfWork, UnitOfWork>();
             Log.Information("✓ Registered IUnitOfWork infrastructure for Prism ViewModels");
-            
+
             // Register IServiceScopeFactory for Unity-based scoped services (required by WhatIfScenarioEngine)
             containerRegistry.RegisterSingleton<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory, UnityServiceScopeFactory>();
             Log.Information("✓ Registered IServiceScopeFactory using Unity child container adapter");
-            
+
             // Register business services
             containerRegistry.RegisterSingleton<IWhatIfScenarioEngine, WhatIfScenarioEngine>();
             containerRegistry.RegisterSingleton<FiscalYearSettings>();
             containerRegistry.RegisterSingleton<IChargeCalculatorService, ServiceChargeCalculatorService>();
             Log.Information("✓ Registered business services (WhatIfScenarioEngine, FiscalYearSettings, ChargeCalculator)");
-            
+
             // Register AI Integration Services (Phase 1 - Production Ready)
             RegisterAIIntegrationServices(containerRegistry);
-            
+
             // Register QuickBooks service
             containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
             Log.Information("✓ Registered IQuickBooksService as singleton");
-            
+
             // Register Excel services
             containerRegistry.RegisterSingleton<IExcelReaderService, ExcelReaderService>();
             Log.Information("✓ Registered IExcelReaderService as singleton");
-            
+
             // Register report export service
             containerRegistry.RegisterSingleton<IReportExportService, ReportExportService>();
             Log.Information("✓ Registered IReportExportService as singleton");
-            
+
             // Register Module Health Service
             containerRegistry.RegisterSingleton<IModuleHealthService, ModuleHealthService>();
             Log.Information("✓ Registered IModuleHealthService as singleton");
-            
+
             // Register Prism DialogService
             containerRegistry.RegisterSingleton<Prism.Dialogs.IDialogService, Prism.Dialogs.DialogService>();
             Log.Information("✓ Registered Prism IDialogService as singleton");
@@ -610,11 +632,11 @@ namespace WileyWidget
             // Register Scoped Region Service
             containerRegistry.RegisterSingleton<IScopedRegionService, ScopedRegionService>();
             Log.Information("✓ Registered IScopedRegionService for isolated navigation contexts");
-            
+
             // Register Prism Error Handler for centralized error handling
             containerRegistry.RegisterSingleton<IPrismErrorHandler, PrismErrorHandler>();
             Log.Information("✓ Registered IPrismErrorHandler for centralized error handling and logging");
-            
+
             // Register ViewModels (module-specific ViewModels are now registered in their respective modules)
             containerRegistry.RegisterSingleton<MainViewModel>(provider => new MainViewModel(
                 provider.Resolve<IRegionManager>(),
@@ -627,12 +649,15 @@ namespace WileyWidget
                 provider.Resolve<IBudgetRepository>(),
                 provider.Resolve<IAIService>()));
 
+            // Register MainWindow for shell resolution
+            containerRegistry.Register<MainWindow>();
+
             // Register additional ViewModels for Prism ViewModelLocator (infrastructure-only)
             containerRegistry.Register<AboutViewModel>();
             containerRegistry.Register<ExcelImportViewModel>();
             containerRegistry.Register<ProgressViewModel>();
             containerRegistry.Register<EnterpriseViewModel>();
-            
+
             // Register Region Adapters
             containerRegistry.RegisterSingleton<WileyWidget.Regions.DockingManagerRegionAdapter>();
 
@@ -819,7 +844,7 @@ namespace WileyWidget
         private void RegisterHttpClientServices(IContainerRegistry containerRegistry, IConfiguration configuration)
         {
             Log.Information("=== Registering HttpClient Infrastructure for AI Services ===");
-            
+
             try
             {
                 var xaiBaseUrl = configuration["XAI:BaseUrl"];
@@ -935,12 +960,51 @@ namespace WileyWidget
                 Log.Information("✓ Registered database services (AppDbContext, IDbContextFactory via Unity)");
                 Log.Information("  - Provider: SQL Server with connection pooling");
                 Log.Information("  - Features: Unity-only registration, repositories, audit logging");
+
+                // Ensure minimal additive schema hotfixes are applied very early in startup
+                // This mirrors DatabaseConfiguration.ApplySchemaHotfixesAsync but works with Unity DI only.
+                try
+                {
+                    ApplyAdditiveSchemaHotfixesUnity(containerRegistry.GetContainer());
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Schema hotfixes (Unity) failed to apply; continuing without hotfixes");
+                }
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to register database services");
                 throw new InvalidOperationException("Failed to configure database services. Check connection string and database availability.", ex);
             }
+        }
+
+        /// <summary>
+        /// Unity-only additive schema hotfix runner to unblock environments with slight drift.
+        /// Safe to run multiple times. Adds missing columns used by runtime queries.
+        /// </summary>
+        private static void ApplyAdditiveSchemaHotfixesUnity(IUnityContainer container)
+        {
+            // Resolve the Unity-registered factory and execute small idempotent ALTERs
+            var factory = container.Resolve<IDbContextFactory<AppDbContext>>();
+            using var context = factory.CreateDbContext();
+
+            // QBO client columns on AppSettings
+            const string addQboClientId = @"IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
+                                    ALTER TABLE dbo.AppSettings ADD QboClientId NVARCHAR(MAX) NULL;";
+            const string addQboClientSecret = @"IF COL_LENGTH('dbo.AppSettings','QboClientSecret') IS NULL
+                                       ALTER TABLE dbo.AppSettings ADD QboClientSecret NVARCHAR(MAX) NULL;";
+
+            // Computed mirror for AccountNumber to support queries that project AccountNumber_Value
+            const string addAccountNumberValue = @"IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
+                                          ALTER TABLE dbo.MunicipalAccounts ADD [AccountNumber_Value] AS ([AccountNumber]);";
+
+            // Execute synchronously; statements are idempotent via COL_LENGTH guards
+            context.Database.ExecuteSqlRaw(addQboClientId);
+            context.Database.ExecuteSqlRaw(addQboClientSecret);
+            context.Database.ExecuteSqlRaw(addAccountNumberValue);
+
+            Log.Information("Schema hotfixes (Unity) applied if needed: QboClientId, QboClientSecret, AccountNumber_Value");
         }
 
         /// <summary>
@@ -952,7 +1016,7 @@ namespace WileyWidget
         private void RegisterAIIntegrationServices(IContainerRegistry containerRegistry)
         {
             Log.Information("=== Registering AI Integration Services (Phase 1 - Production) ===");
-            
+
             try
             {
                 // 0. Register Application Insights Telemetry (Singleton)
@@ -965,7 +1029,7 @@ namespace WileyWidget
                 {
                     var telemetryConfiguration = new Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration();
                     telemetryConfiguration.ConnectionString = config["ApplicationInsights:ConnectionString"] ?? $"InstrumentationKey={instrumentationKey}";
-                    
+
                     var telemetryClient = new Microsoft.ApplicationInsights.TelemetryClient(telemetryConfiguration);
                     containerRegistry.RegisterInstance(telemetryClient);
                     Log.Information("✓ Registered Application Insights TelemetryClient (Singleton)");
@@ -978,7 +1042,7 @@ namespace WileyWidget
                     Log.Warning("Application Insights not configured - set ApplicationInsights:InstrumentationKey in appsettings.json for production telemetry");
                 }
                 */
-                
+
                 // 0. Register IDataAnonymizerService -> DataAnonymizerService (Singleton)
                 // Provides privacy-compliant data anonymization for AI operations
                 containerRegistry.RegisterSingleton<IDataAnonymizerService, DataAnonymizerService>();
@@ -986,14 +1050,14 @@ namespace WileyWidget
                 Log.Information("  - Provides GDPR-compliant data anonymization");
                 Log.Information("  - Features: Enterprise anonymization, budget data masking, deterministic hashing");
                 Log.Information("  - Dependencies: ILogger<DataAnonymizerService>");
-                
+
                 // 1. Register IWileyWidgetContextService -> WileyWidgetContextService (Singleton)
                 // Provides dynamic context building for AI operations including system state, enterprises, budgets, and operations
                 containerRegistry.RegisterSingleton<IWileyWidgetContextService, WileyWidgetContextService>();
                 Log.Information("✓ Registered IWileyWidgetContextService -> WileyWidgetContextService (Singleton)");
                 Log.Information("  - Provides dynamic context for AI operations with anonymization support");
                 Log.Information("  - Dependencies: ILogger<WileyWidgetContextService>, IEnterpriseRepository, IBudgetRepository, IAuditRepository, IDataAnonymizerService");
-                
+
                 // 1.5. Register IAILoggingService -> AILoggingService (Singleton)
                 // AI usage tracking and logging service for monitoring XAI operations
                 containerRegistry.RegisterSingleton<IAILoggingService, AILoggingService>();
@@ -1002,7 +1066,7 @@ namespace WileyWidget
                 Log.Information("  - Features: Query/response logging, error tracking, usage metrics, statistics");
                 Log.Information("  - Logging: Dedicated Serilog file sink at logs/ai-usage.log");
                 Log.Information("  - Dependencies: ILogger<AILoggingService>");
-                
+
                 // 2. Register IAIService -> XAIService (Singleton) - Enhanced with context service and logging
                 // xAI service implementation for AI-powered insights and analysis with Grok integration
                 containerRegistry.RegisterSingleton<IAIService, XAIService>();
@@ -1011,7 +1075,7 @@ namespace WileyWidget
                 Log.Information("  - Features: Insights, data analysis, area review, mock data generation");
                 Log.Information("  - Dependencies: IHttpClientFactory, IConfiguration, ILogger<XAIService>, IWileyWidgetContextService, IAILoggingService, IMemoryCache");
                 Log.Information("  - Configuration: XAI:ApiKey, XAI:BaseUrl, XAI:Model, XAI:TimeoutSeconds");
-                
+
                 // 3. Register IGrokSupercomputer -> GrokSupercomputer (Singleton)
                 // AI-powered municipal utility analytics and compliance reporting engine
                 containerRegistry.RegisterSingleton<IGrokSupercomputer, GrokSupercomputer>();
@@ -1019,10 +1083,10 @@ namespace WileyWidget
                 Log.Information("  - AI-powered municipal utility analytics engine");
                 Log.Information("  - Capabilities: Enterprise data fetching, report calculations, budget analysis, compliance reporting, AI data analysis");
                 Log.Information("  - Dependencies: ILogger<GrokSupercomputer>, IEnterpriseRepository, IBudgetRepository, IAuditRepository, IAILoggingService, IAIService");
-                
+
                 // 4. Validate AI service configuration
                 ValidateAIServiceConfiguration();
-                
+
                 Log.Information("=== AI Integration Services Registration Complete ===");
                 Log.Information("All AI services registered successfully with singleton lifetime scope");
                 Log.Information("Services ready for production use with comprehensive dependency injection");
@@ -1043,12 +1107,12 @@ namespace WileyWidget
         private void ValidateAIServiceConfiguration()
         {
             Log.Information("Validating AI service configuration...");
-            
+
             try
             {
                 var config = Container.Resolve<IConfiguration>();
                 var validationErrors = new List<string>();
-                
+
                 // Validate XAI configuration
                 var apiKey = config["XAI:ApiKey"];
                 if (string.IsNullOrWhiteSpace(apiKey))
@@ -1059,10 +1123,10 @@ namespace WileyWidget
                         Log.Information("XAI:ApiKey pulled from environment variable XAI_API_KEY");
                     }
                 }
-                Log.Information("XAI:ApiKey resolved to: {ApiKeyMasked} (length: {Length})", 
-                    string.IsNullOrEmpty(apiKey) ? "null/empty" : $"{apiKey.Substring(0, Math.Min(10, apiKey.Length))}...", 
+                Log.Information("XAI:ApiKey resolved to: {ApiKeyMasked} (length: {Length})",
+                    string.IsNullOrEmpty(apiKey) ? "null/empty" : $"{apiKey.Substring(0, Math.Min(10, apiKey.Length))}...",
                     apiKey?.Length ?? 0);
-                
+
                 if (string.IsNullOrWhiteSpace(apiKey))
                 {
                     validationErrors.Add("XAI:ApiKey is missing or empty");
@@ -1071,7 +1135,7 @@ namespace WileyWidget
                 {
                     validationErrors.Add("XAI:ApiKey appears invalid (too short, expected 20+ characters)");
                 }
-                
+
                 var baseUrl = config["XAI:BaseUrl"];
                 if (string.IsNullOrWhiteSpace(baseUrl))
                 {
@@ -1081,19 +1145,19 @@ namespace WileyWidget
                 {
                     validationErrors.Add($"XAI:BaseUrl is invalid: {baseUrl}");
                 }
-                
+
                 var model = config["XAI:Model"];
                 if (string.IsNullOrWhiteSpace(model))
                 {
                     Log.Warning("XAI:Model not configured, using default: grok-4-0709");
                 }
-                
+
                 var timeout = config["XAI:TimeoutSeconds"];
                 if (!string.IsNullOrWhiteSpace(timeout) && !double.TryParse(timeout, out var timeoutValue))
                 {
                     validationErrors.Add($"XAI:TimeoutSeconds is invalid: {timeout}");
                 }
-                
+
                 if (validationErrors.Any())
                 {
                     Log.Error("AI Service configuration validation failed:");
@@ -1103,7 +1167,7 @@ namespace WileyWidget
                     }
                     throw new InvalidOperationException($"AI Service configuration is invalid: {string.Join(", ", validationErrors)}");
                 }
-                
+
                 Log.Information("✓ AI service configuration validated successfully");
                 Log.Information($"  - API Key: Configured ({apiKey?.Substring(0, Math.Min(8, apiKey.Length))}...)");
                 Log.Information($"  - Base URL: {baseUrl ?? "Default (https://api.x.ai/v1/)"}");
@@ -1467,19 +1531,33 @@ namespace WileyWidget
                 .Enrich.WithProcessId()
                 .Enrich.WithThreadId()
                 .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-                .WriteTo.File("logs/wiley-widget-.log", 
+                .WriteTo.File("logs/wiley-widget-.log",
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 7,
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
 
+            // Add WPF binding error tracing to Serilog
+            var bindingTraceListener = new WileyWidget.Diagnostics.BindingErrorTraceListener();
+            Trace.Listeners.Add(bindingTraceListener);
+            PresentationTraceSources.DataBindingSource.Listeners.Add(bindingTraceListener);
+            PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Warning;
+
             Log.Information("=== WileyWidget Prism application startup ===");
+            Log.Information("✓ WPF binding error tracing enabled");
         }
 
         private IConfiguration BuildConfiguration()
         {
-            // Load .env file if it exists
-            DotNetEnv.Env.Load();
+            // Load .env file from project directory
+            var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            var assemblyDir = System.IO.Path.GetDirectoryName(assemblyLocation);
+            var projectDir = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(assemblyDir)); // bin\Debug\net9.0-windows -> project root
+            var envPath = System.IO.Path.Combine(projectDir, ".env");
+            if (System.IO.File.Exists(envPath))
+            {
+                DotNetEnv.Env.Load(envPath);
+            }
 
             var builder = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)

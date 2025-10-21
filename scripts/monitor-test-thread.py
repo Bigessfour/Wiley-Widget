@@ -8,22 +8,21 @@ and parses coverage.cobertura.xml for test coverage.
 
 import argparse
 import logging
-import psutil
 import subprocess
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import psutil
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/test-thread.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("logs/test-thread.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
 
 class TestThreadMonitor:
     def __init__(self, timeout=90, verbose=False):
@@ -33,7 +32,11 @@ class TestThreadMonitor:
     def run_test_with_monitoring(self):
         """Run dotnet test while monitoring resources"""
         try:
-            project_path = Path(__file__).parent.parent / "WileyWidget.UiTests" / "WileyWidget.UiTests.csproj"
+            project_path = (
+                Path(__file__).parent.parent
+                / "WileyWidget.UiTests"
+                / "WileyWidget.UiTests.csproj"
+            )
 
             if not project_path.exists():
                 logger.error(f"Test project not found at {project_path}")
@@ -44,11 +47,17 @@ class TestThreadMonitor:
 
             # Start dotnet test process
             cmd = [
-                "dotnet", "test", str(project_path),
-                "--filter", "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
-                "--verbosity", "normal",
-                "--collect", "XPlat Code Coverage",
-                "--results-directory", "TestResults/Monitoring"
+                "dotnet",
+                "test",
+                str(project_path),
+                "--filter",
+                "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
+                "--verbosity",
+                "normal",
+                "--collect",
+                "XPlat Code Coverage",
+                "--results-directory",
+                "TestResults/Monitoring",
             ]
 
             if self.verbose:
@@ -59,7 +68,7 @@ class TestThreadMonitor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                cwd=Path(__file__).parent.parent
+                cwd=Path(__file__).parent.parent,
             )
 
             # Monitor system resources while test runs
@@ -102,7 +111,9 @@ class TestThreadMonitor:
                 elapsed = time.time() - start_time
 
                 if elapsed > self.timeout:
-                    logger.warning(f"Test timeout reached ({self.timeout}s). Terminating.")
+                    logger.warning(
+                        f"Test timeout reached ({self.timeout}s). Terminating."
+                    )
                     test_process.terminate()
                     try:
                         test_process.wait(timeout=5)
@@ -126,7 +137,9 @@ class TestThreadMonitor:
                             read_diff = current_reads - disk_reads
                             write_diff = current_writes - disk_writes
                             if read_diff > 0 or write_diff > 0:
-                                logger.info(f"[{elapsed:.2f}s] Disk I/O - Reads: {read_diff}, Writes: {write_diff}")
+                                logger.info(
+                                    f"[{elapsed:.2f}s] Disk I/O - Reads: {read_diff}, Writes: {write_diff}"
+                                )
 
                         disk_reads = current_reads
                         disk_writes = current_writes
@@ -137,7 +150,9 @@ class TestThreadMonitor:
 
                     # Log significant resource usage
                     if self.verbose or cpu_percent > 10 or memory_mb > 100:
-                        logger.info(f"[{elapsed:.2f}s] CPU: {cpu_percent:.1f}%, Memory: {memory_mb:.1f}MB")
+                        logger.info(
+                            f"[{elapsed:.2f}s] CPU: {cpu_percent:.1f}%, Memory: {memory_mb:.1f}MB"
+                        )
 
                 except psutil.NoSuchProcess:
                     break
@@ -171,29 +186,36 @@ class TestThreadMonitor:
             for package in root.findall(".//package"):
                 for cls in package.findall(".//class"):
                     for line in cls.findall(".//line"):
-                        if line.get('type') == 'stmt':
+                        if line.get("type") == "stmt":
                             total_lines += 1
-                            if int(line.get('hits', 0)) > 0:
+                            if int(line.get("hits", 0)) > 0:
                                 covered_lines += 1
 
             if total_lines > 0:
                 coverage_percent = (covered_lines / total_lines) * 100
-                logger.info(f"Code coverage: {coverage_percent:.1f}% ({covered_lines}/{total_lines} lines)")
+                logger.info(
+                    f"Code coverage: {coverage_percent:.1f}% ({covered_lines}/{total_lines} lines)"
+                )
             else:
                 logger.warning("No coverage data found")
 
         except Exception as e:
             logger.error(f"Failed to parse coverage results: {e}")
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Monitor Test Threading for WileyWidget')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose logging')
-    parser.add_argument('--timeout', '-t', type=int, default=90, help='Timeout in seconds')
+    parser = argparse.ArgumentParser(
+        description="Monitor Test Threading for WileyWidget"
+    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
+    parser.add_argument(
+        "--timeout", "-t", type=int, default=90, help="Timeout in seconds"
+    )
 
     args = parser.parse_args()
 
     # Ensure logs directory exists
-    Path('logs').mkdir(exist_ok=True)
+    Path("logs").mkdir(exist_ok=True)
 
     monitor = TestThreadMonitor(timeout=args.timeout, verbose=args.verbose)
 
@@ -203,6 +225,7 @@ def main():
         logger.info("Test monitoring completed successfully")
     else:
         logger.error("Test monitoring failed")
+
 
 if __name__ == "__main__":
     main()

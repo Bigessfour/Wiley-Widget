@@ -59,15 +59,16 @@ try {
     if ($Rebuild) {
         Write-Information "Rebuilding Docker image..."
         $buildCommand = $buildArgs + @('build', '--no-cache')
-        
+
         if ($Mode -eq 'Dev') {
             $buildCommand += 'regionviewregistry-tests-dev'
-        } else {
+        }
+        else {
             $buildCommand += 'regionviewregistry-tests'
         }
-        
+
         & docker @buildCommand
-        
+
         if ($LASTEXITCODE -ne 0) {
             throw "Docker build failed with exit code $LASTEXITCODE"
         }
@@ -75,28 +76,28 @@ try {
 
     # Run tests based on mode
     Write-Information "Running RegionViewRegistry tests in $Mode mode..."
-    
+
     switch ($Mode) {
         'Standard' {
             $runCommand = $buildArgs + @('run', '--rm', 'regionviewregistry-tests')
             & docker @runCommand
         }
-        
+
         'Coverage' {
             $runCommand = $buildArgs + @('run', '--rm', 'regionviewregistry-tests')
             & docker @runCommand
-            
+
             # Check for coverage results
             $coverageFiles = Get-ChildItem -Path $testResultsDir -Filter "coverage.cobertura.xml" -Recurse
             if ($coverageFiles) {
                 Write-Information "`nCoverage report generated: $($coverageFiles[0].FullName)"
             }
         }
-        
+
         'Watch' {
             Write-Information "Starting watch mode... (Press Ctrl+C to stop)"
             $runCommand = $buildArgs + @('run', '--rm', 'regionviewregistry-tests-dev')
-            
+
             # Run in loop for watch mode
             while ($true) {
                 & docker @runCommand
@@ -105,7 +106,7 @@ try {
                 Start-Sleep -Seconds 3
             }
         }
-        
+
         'Dev' {
             Write-Information "Starting dev mode with live mounting..."
             $runCommand = $buildArgs + @('run', '--rm', '-it', 'regionviewregistry-tests-dev')
@@ -124,14 +125,15 @@ try {
 
     # Display test results summary
     Write-Information "`n=== Test Results Summary ==="
-    
+
     $testResultFiles = Get-ChildItem -Path $testResultsDir -Filter "*.trx" -Recurse
     if ($testResultFiles) {
         Write-Information "Test result files: $($testResultFiles.Count)"
         foreach ($file in $testResultFiles) {
             Write-Information "  - $($file.Name)"
         }
-    } else {
+    }
+    else {
         Write-Information "No .trx files found. Check console output above."
     }
 
@@ -148,13 +150,15 @@ try {
 
     if ($exitCode -eq 0) {
         Write-Information "`n✓ All RegionViewRegistry tests passed!" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Warning "`n✗ Some tests failed. Exit code: $exitCode"
     }
 
     exit $exitCode
 
-} catch {
+}
+catch {
     Write-Error "Test execution failed: $_"
     exit 1
 }

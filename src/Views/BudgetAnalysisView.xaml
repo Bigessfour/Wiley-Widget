@@ -67,7 +67,7 @@
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Municipal Budget Analysis" Style="{StaticResource HeaderTextBlockStyle}"/>
+            <TextBlock Text="Municipal Budget Analysis" Style="{DynamicResource HeaderTextBlockStyle}"/>
             <TextBlock Text="Comprehensive analysis of budget data with fund summaries, department performance, and variance reports"
                       Foreground="{DynamicResource SecondaryTextBrush}"
                       FontSize="12"/>
@@ -103,7 +103,7 @@
                         Content="Generate Analysis"
                         Command="{Binding GenerateAnalysisCommand}"
                         IsEnabled="{Binding CanGenerateAnalysis}"
-                        Style="{StaticResource ActionButtonStyle}"/>
+                        Style="{DynamicResource ActionButtonStyle}"/>
             </Grid>
         </GroupBox>
 
@@ -124,23 +124,23 @@
 
                             <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5" CornerRadius="5">
                                 <StackPanel Margin="15">
-                                    <TextBlock Text="Total Budget" Style="{StaticResource SubHeaderTextBlockStyle}"/>
+                                    <TextBlock Text="Total Budget" Style="{DynamicResource SubHeaderTextBlockStyle}"/>
                                     <TextBlock Text="{Binding Analysis.Overview.TotalBudget, StringFormat=C0}"
-                                              Style="{StaticResource ValueTextBlockStyle}" FontSize="18"/>
+                                              Style="{DynamicResource ValueTextBlockStyle}" FontSize="18"/>
                                 </StackPanel>
                             </Border>
 
                             <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5" CornerRadius="5">
                                 <StackPanel Margin="15">
-                                    <TextBlock Text="Total Balance" Style="{StaticResource SubHeaderTextBlockStyle}"/>
+                                    <TextBlock Text="Total Balance" Style="{DynamicResource SubHeaderTextBlockStyle}"/>
                                     <TextBlock Text="{Binding Analysis.Overview.TotalBalance, StringFormat=C0}"
-                                              Style="{StaticResource ValueTextBlockStyle}" FontSize="18"/>
+                                              Style="{DynamicResource ValueTextBlockStyle}" FontSize="18"/>
                                 </StackPanel>
                             </Border>
 
                             <Border Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5" CornerRadius="5">
                                 <StackPanel Margin="15">
-                                    <TextBlock Text="Variance" Style="{StaticResource SubHeaderTextBlockStyle}"/>
+                                    <TextBlock Text="Variance" Style="{DynamicResource SubHeaderTextBlockStyle}"/>
                                     <TextBlock Text="{Binding Analysis.Overview.Variance, StringFormat=C0}"
                                               FontSize="18">
                                         <TextBlock.Style>
@@ -164,9 +164,9 @@
 
                             <Border Grid.Column="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5" CornerRadius="5">
                                 <StackPanel Margin="15">
-                                    <TextBlock Text="Accounts" Style="{StaticResource SubHeaderTextBlockStyle}"/>
+                                    <TextBlock Text="Accounts" Style="{DynamicResource SubHeaderTextBlockStyle}"/>
                                     <TextBlock Text="{Binding Analysis.Overview.TotalAccounts}"
-                                              Style="{StaticResource ValueTextBlockStyle}" FontSize="18"/>
+                                              Style="{DynamicResource ValueTextBlockStyle}" FontSize="18"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -182,9 +182,9 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="100"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="{Binding Key}" Style="{StaticResource MetricTextBlockStyle}"/>
+                                                <TextBlock Grid.Column="0" Text="{Binding Key}" Style="{DynamicResource MetricTextBlockStyle}"/>
                                                 <TextBlock Grid.Column="1" Text="{Binding Value, StringFormat=P2}"
-                                                          Style="{StaticResource ValueTextBlockStyle}" HorizontalAlignment="Right"/>
+                                                          Style="{DynamicResource ValueTextBlockStyle}" HorizontalAlignment="Right"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -217,7 +217,7 @@
                                   VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
                         <Button Content="Export to Excel"
                                 Command="{Binding ExportFundDataCommand}"
-                                Style="{StaticResource ActionButtonStyle}"
+                                Style="{DynamicResource ActionButtonStyle}"
                                 Margin="20,0,0,0"/>
                     </StackPanel>
 
@@ -262,7 +262,7 @@
                                   VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
                         <Button Content="Export to Excel"
                                 Command="{Binding ExportDepartmentDataCommand}"
-                                Style="{StaticResource ActionButtonStyle}"
+                                Style="{DynamicResource ActionButtonStyle}"
                                 Margin="20,0,0,0"/>
                     </StackPanel>
 
@@ -299,15 +299,15 @@
 
                     <!-- Variance Summary -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
-                        <TextBlock Text="Threshold:" Style="{StaticResource SubHeaderTextBlockStyle}" Margin="0,0,10,0"/>
+                        <TextBlock Text="Threshold:" Style="{DynamicResource SubHeaderTextBlockStyle}" Margin="0,0,10,0"/>
                         <TextBox Text="{Binding VarianceThreshold, StringFormat=P2, UpdateSourceTrigger=PropertyChanged}"
                                 Width="80" Margin="0,0,20,0"/>
-                        <TextBlock Text="Over Threshold:" Style="{StaticResource MetricTextBlockStyle}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Over Threshold:" Style="{DynamicResource MetricTextBlockStyle}" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding Analysis.Variance.AccountsOverThreshold}"
-                                  Style="{StaticResource ValueTextBlockStyle}" VerticalAlignment="Center" Margin="5,0,20,0"/>
-                        <TextBlock Text="Avg Variance:" Style="{StaticResource MetricTextBlockStyle}" VerticalAlignment="Center"/>
+                                  Style="{DynamicResource ValueTextBlockStyle}" VerticalAlignment="Center" Margin="5,0,20,0"/>
+                        <TextBlock Text="Avg Variance:" Style="{DynamicResource MetricTextBlockStyle}" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding Analysis.Variance.AverageVariancePercent, StringFormat=P2}"
-                                  Style="{StaticResource ValueTextBlockStyle}" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                  Style="{DynamicResource ValueTextBlockStyle}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                     </StackPanel>
 
                     <!-- Sorting and Filtering Controls -->

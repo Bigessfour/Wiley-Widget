@@ -41,7 +41,7 @@
         <!-- Enterprise Name -->
         <TextBlock Grid.Row="0" Text="Enterprise Name:" Margin="0,0,0,5"/>
         <TextBox Grid.Row="1" 
-                 Style="{StaticResource ValidationTextBox}" Margin="0,0,0,15">
+                 Style="{DynamicResource ValidationTextBox}" Margin="0,0,0,15">
             <TextBox.Text>
                 <Binding Path="Enterprise.Name" UpdateSourceTrigger="PropertyChanged">
                     <Binding.ValidationRules>

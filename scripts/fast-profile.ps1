@@ -1,4 +1,4 @@
-﻿# Wiley Widget PowerShell Profile - OPTIMIZED VERSION
+# Wiley Widget PowerShell Profile - OPTIMIZED VERSION
 # ========================================================
 # Performance improvements:
 # - Lazy loading for Azure/MCP modules
@@ -37,7 +37,7 @@ function Initialize-MCPEnvironment {
 
         # Background loading of Key Vault secrets
         $keyVaultJob = Start-Job -ScriptBlock {
-            param($using:vaultName)
+            param($using:using:vaultName)
             try {
                 # Load secrets asynchronously
                 $secrets = @{}

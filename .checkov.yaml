@@ -8,7 +8,6 @@ framework:
   - bicep
   - dockerfile
   - kubernetes
-  - json
   - yaml
 
 # Skip these checks to reduce noise and focus on critical security issues
@@ -48,6 +47,11 @@ exclude-paths:
   - logs/
   - docs/
   - __pycache__/
+  - "**/Properties/launchSettings.json" # Development configuration files
+
+# Skip paths for specific tools
+skip-path:
+  - "**/Properties/launchSettings.json"
   - .pytest_cache/
   - "**/*.log"
   - "**/*.cache"

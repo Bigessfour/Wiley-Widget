@@ -140,8 +140,8 @@ namespace WileyWidget.Data.Migrations
                     b.Property<decimal>("EncumbranceAmount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateOnly>("EndPeriod")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("EndPeriod")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("FiscalYear")
                         .HasColumnType("int");
@@ -168,8 +168,8 @@ namespace WileyWidget.Data.Migrations
                     b.Property<int?>("SourceRowNumber")
                         .HasColumnType("int");
 
-                    b.Property<DateOnly>("StartPeriod")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("StartPeriod")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -211,12 +211,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Road Maintenance",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateOnly(1, 1, 1),
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 0,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateOnly(1, 1, 1),
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
                         new
@@ -230,13 +230,13 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Paving",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateOnly(1, 1, 1),
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 0,
                             IsGASBCompliant = true,
                             ParentId = 1,
-                            StartPeriod = new DateOnly(1, 1, 1),
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         });
                 });

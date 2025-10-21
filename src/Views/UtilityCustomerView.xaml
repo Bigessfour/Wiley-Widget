@@ -238,7 +238,7 @@
                                                           MappingName="DueDate"
                                                           Pattern="ShortDate"
                                                           Width="120"
-                                                          CellStyle="{StaticResource OverdueCellStyle}"
+                                                          CellStyle="{DynamicResource OverdueCellStyle}"
                                                           ToolTipService.ToolTip="Payment due date (red if overdue)" />
                             <syncfusion:GridCurrencyColumn HeaderText="Amount"
                                                          MappingName="WaterCharges"
@@ -287,7 +287,7 @@
                                                          MappingName="AmountDue"
                                                          NumberDecimalDigits="2"
                                                          Width="110"
-                                                         CellStyle="{StaticResource OverdueCellStyle}"
+                                                         CellStyle="{DynamicResource OverdueCellStyle}"
                                                          ShowToolTip="True">
                                 <syncfusion:GridNumericColumn.ToolTipTemplate>
                                     <DataTemplate>

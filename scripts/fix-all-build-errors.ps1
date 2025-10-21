@@ -33,13 +33,13 @@ Write-Information "  ✅ Found $($buildErrors.Count) errors and $($buildWarnings
 
 # Categorize errors
 $errorCategories = @{
-    "ModelProperties" = @()
-    "VisualStyles" = @()
+    "ModelProperties"     = @()
+    "VisualStyles"        = @()
     "NavigationEventArgs" = @()
-    "ServiceMethods" = @()
-    "Constructors" = @()
-    "MissingTypes" = @()
-    "Nullability" = @()
+    "ServiceMethods"      = @()
+    "Constructors"        = @()
+    "MissingTypes"        = @()
+    "Nullability"         = @()
 }
 
 foreach ($line in $buildResult) {

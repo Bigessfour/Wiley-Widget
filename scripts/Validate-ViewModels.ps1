@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$ProjectRoot = (Split-Path $PSScriptRoot -Parent),
     [switch]$Detailed,
     [switch]$FixIssues
@@ -18,10 +18,10 @@ function Convert-FieldNameToProperty {
     $trimmed = $FieldName.Trim('_')
     if ($trimmed.Contains('_')) {
         $segments = $trimmed.Split('_') | Where-Object { $_ }
-        return ($segments | ForEach-Object { $_.Substring(0,1).ToUpper() + $_.Substring(1) }) -join ''
+        return ($segments | ForEach-Object { $_.Substring(0, 1).ToUpper() + $_.Substring(1) }) -join ''
     }
 
-    return $trimmed.Substring(0,1).ToUpper() + $trimmed.Substring(1)
+    return $trimmed.Substring(0, 1).ToUpper() + $trimmed.Substring(1)
 }
 
 function Get-DataContextBinding {
@@ -73,14 +73,15 @@ function Get-XamlBindingInfo {
 
         if ($path.EndsWith('Command')) {
             $commandSet.Add($path) | Out-Null
-        } else {
+        }
+        else {
             $propertySet.Add($path) | Out-Null
         }
     }
 
     return [PSCustomObject]@{
         Properties = $propertySet
-        Commands = $commandSet
+        Commands   = $commandSet
     }
 }
 
@@ -101,10 +102,10 @@ function Get-ViewInfo {
         $dataContext = Get-DataContextBinding -XamlContent $content
 
         $views += [PSCustomObject]@{
-            Name = $name
-            XamlPath = $file.FullName
-            DataContext = $dataContext
-            Bindings = $parsed.Properties
+            Name            = $name
+            XamlPath        = $file.FullName
+            DataContext     = $dataContext
+            Bindings        = $parsed.Properties
             CommandBindings = $parsed.Commands
         }
     }
@@ -123,8 +124,8 @@ function Get-ViewModelInfo {
     foreach ($file in $vmFiles) {
         $content = Get-Content -Path $file.FullName -Raw
 
-    $properties = Get-StringSet
-    $commands = Get-StringSet
+        $properties = Get-StringSet
+        $commands = Get-StringSet
 
         $observableMatches = [regex]::Matches($content, '\[ObservableProperty[\s\S]*?\]\s+private\s+[^\s]+\s+([_\w]+)')
         foreach ($match in $observableMatches) {
@@ -141,7 +142,7 @@ function Get-ViewModelInfo {
         $relayMatches = [regex]::Matches($content, '\[RelayCommand[\s\S]*?\]\s*(?:private|public)?\s*(?:async\s+)?[\w<>]+\s+(\w+)\s*\(')
         foreach ($match in $relayMatches) {
             $methodName = $match.Groups[1].Value
-            $commandBase = $methodName -replace 'Async$',''
+            $commandBase = $methodName -replace 'Async$', ''
             $commands.Add("$commandBase`Command") | Out-Null
         }
 
@@ -151,10 +152,10 @@ function Get-ViewModelInfo {
         }
 
         $viewModels += [PSCustomObject]@{
-            Name = $file.BaseName
-            FilePath = $file.FullName
+            Name       = $file.BaseName
+            FilePath   = $file.FullName
             Properties = $properties
-            Commands = $commands
+            Commands   = $commands
         }
     }
 
@@ -200,7 +201,7 @@ function Get-ViewModelForView {
 function Get-ExpectedViewName {
     param([string]$ViewModelName)
 
-    $base = $ViewModelName -replace 'ViewModel$',''
+    $base = $ViewModelName -replace 'ViewModel$', ''
     return @(
         "$base`View",
         "$base`Window",
@@ -217,12 +218,12 @@ foreach ($view in $views) {
     $vm = Get-ViewModelForView -View $view -ViewModels $viewModels
     if (-not $vm) {
         $results += [PSCustomObject]@{
-            Type = 'MissingViewModel'
-            Severity = 'Error'
-            View = $view.Name
+            Type      = 'MissingViewModel'
+            Severity  = 'Error'
+            View      = $view.Name
             ViewModel = "$($view.Name)ViewModel"
-            Message = "No matching ViewModel found for view '$($view.Name)'"
-            File = $view.XamlPath
+            Message   = "No matching ViewModel found for view '$($view.Name)'"
+            File      = $view.XamlPath
         }
         continue
     }
@@ -230,12 +231,12 @@ foreach ($view in $views) {
     foreach ($binding in $view.Bindings) {
         if (-not $vm.Properties.Contains($binding)) {
             $results += [PSCustomObject]@{
-                Type = 'MissingProperty'
-                Severity = 'Error'
-                View = $view.Name
+                Type      = 'MissingProperty'
+                Severity  = 'Error'
+                View      = $view.Name
                 ViewModel = $vm.Name
-                Message = "Binding '$binding' not found in ViewModel '$($vm.Name)'"
-                File = $view.XamlPath
+                Message   = "Binding '$binding' not found in ViewModel '$($vm.Name)'"
+                File      = $view.XamlPath
             }
         }
     }
@@ -243,12 +244,12 @@ foreach ($view in $views) {
     foreach ($command in $view.CommandBindings) {
         if (-not $vm.Commands.Contains($command)) {
             $results += [PSCustomObject]@{
-                Type = 'MissingCommand'
-                Severity = 'Error'
-                View = $view.Name
+                Type      = 'MissingCommand'
+                Severity  = 'Error'
+                View      = $view.Name
                 ViewModel = $vm.Name
-                Message = "Command '$command' not found in ViewModel '$($vm.Name)'"
-                File = $view.XamlPath
+                Message   = "Command '$command' not found in ViewModel '$($vm.Name)'"
+                File      = $view.XamlPath
             }
         }
     }
@@ -266,12 +267,12 @@ foreach ($vm in $viewModels) {
 
     if (-not $found) {
         $results += [PSCustomObject]@{
-            Type = 'MissingView'
-            Severity = 'Warning'
-            View = ($expectedViews -join ', ')
+            Type      = 'MissingView'
+            Severity  = 'Warning'
+            View      = ($expectedViews -join ', ')
             ViewModel = $vm.Name
-            Message = "No view found for ViewModel '$($vm.Name)'"
-            File = $vm.FilePath
+            Message   = "No view found for ViewModel '$($vm.Name)'"
+            File      = $vm.FilePath
         }
     }
 }
@@ -316,7 +317,7 @@ if ($Detailed) {
 
     Write-Output "-- Orphaned ViewModels --"
     foreach ($vm in $viewModels) {
-    $expectedViews = Get-ExpectedViewName -ViewModelName $vm.Name
+        $expectedViews = Get-ExpectedViewName -ViewModelName $vm.Name
         $found = $false
         foreach ($expected in $expectedViews) {
             if ($views.Name -contains $expected) { $found = $true; break }
@@ -330,4 +331,3 @@ if ($Detailed) {
 if ($FixIssues) {
     Write-Output "Auto-fix mode not implemented."
 }
-

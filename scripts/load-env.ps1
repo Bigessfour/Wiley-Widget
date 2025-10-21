@@ -117,34 +117,41 @@ try {
                             [Environment]::SetEnvironmentVariable($key, $secret.SecretValueText, "Process")
                             $loadedCount++
                             Write-Host "  ✅ $key (from Key Vault)" -ForegroundColor Green
-                        } else {
+                        }
+                        else {
                             $errorCount++
                             Write-Host "  ❌ $key`: Empty secret from Key Vault" -ForegroundColor Red
                         }
-                    } else {
+                    }
+                    else {
                         $errorCount++
                         Write-Host "  ❌ $key`: Invalid Key Vault reference format" -ForegroundColor Red
                     }
-                } catch {
+                }
+                catch {
                     $errorCount++
                     Write-Host "  ❌ $key`: Key Vault resolution failed: $($_.Exception.Message)" -ForegroundColor Red
                 }
-            } else {
+            }
+            else {
                 # Regular environment variable
                 try {
                     [Environment]::SetEnvironmentVariable($key, $value, "Process")
                     $loadedCount++
                     Write-Host "  ✅ $key" -ForegroundColor Green
-                } catch {
+                }
+                catch {
                     $errorCount++
                     Write-Host "  ❌ $key`: $($_.Exception.Message)" -ForegroundColor Red
                 }
             }
-        } else {
+        }
+        else {
             Write-Host "  ⚠️  Skipping invalid line $lineNumber`: $line" -ForegroundColor Yellow
         }
     }
-} catch {
+}
+catch {
     Write-Host "❌ Error reading .env file: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }

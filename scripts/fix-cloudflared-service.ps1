@@ -49,15 +49,17 @@ if ($existingService) {
     if (-not $WhatIf) {
         Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 2
-        
+
         Write-Output "  → Uninstalling service..."
         & $CloudflaredExe service uninstall
         Start-Sleep -Seconds 2
-    } else {
+    }
+    else {
         Write-Output "  [WHATIF] Would stop and uninstall service"
     }
     Write-Output "  ✓ Service removed"
-} else {
+}
+else {
     Write-Output "  ℹ No existing service found"
 }
 
@@ -70,7 +72,8 @@ if (-not $WhatIf) {
     & $CloudflaredExe service install --config $ConfigPath
     Start-Sleep -Seconds 2
     Write-Output "  ✓ Service installed"
-} else {
+}
+else {
     Write-Output "  [WHATIF] Would run: $installCommand"
 }
 
@@ -84,10 +87,11 @@ if (-not $WhatIf) {
         Write-Output "  Start Mode: $($service.StartMode)"
         Write-Output "  State: $($service.State)"
         Write-Output "  Path: $($service.PathName)"
-        
+
         if ($service.PathName -like "*--config*") {
             Write-Output "  ✓ Config path parameter found"
-        } else {
+        }
+        else {
             Write-Warning "  ⚠ Config path parameter NOT found in service command"
         }
     }
@@ -99,17 +103,18 @@ if (-not $WhatIf) {
     Start-Service -Name $ServiceName
     Write-Output "  → Waiting for tunnel to connect..."
     Start-Sleep -Seconds 8
-    
+
     # Check tunnel status
     $tunnelInfo = & $CloudflaredExe tunnel info ddd24f98-673d-43cb-b8a8-21a2329fffec 2>&1
-    
+
     if ($tunnelInfo -like "*active connection*") {
         Write-Output "  ✓ Tunnel has active connections!"
-    } else {
+    }
+    else {
         Write-Warning "  ⚠ No active connections yet. Service output:"
         Write-Output $tunnelInfo
     }
-    
+
     # Test public endpoint
     Write-Output "`n  → Testing public endpoint..."
     $ProgressPreference = 'SilentlyContinue'
@@ -118,10 +123,12 @@ if (-not $WhatIf) {
         Write-Output "  ✓ PUBLIC HEALTH CHECK PASSED!"
         Write-Output "    Status: $($response.StatusCode)"
         Write-Output "    Response: $($response.Content)"
-    } catch {
+    }
+    catch {
         Write-Warning "  ✗ Public health check failed: $($_.Exception.Message)"
     }
-} else {
+}
+else {
     Write-Output "  [WHATIF] Would start service and verify connections"
 }
 

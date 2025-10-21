@@ -4,14 +4,11 @@ Python Watch Mode Script for Wiley Widget
 Watches Python files for changes and auto-restarts the specified command.
 """
 
-import sys
-import os
-import subprocess
-import signal
-import time
-from pathlib import Path
 import argparse
 import logging
+import os
+import subprocess
+import sys
 
 try:
     from watchgod import watch
@@ -24,10 +21,8 @@ except ImportError:
 from watchgod.watcher import DefaultWatcher
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(levelname)s] %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+
 
 class PythonWatcher:
     def __init__(self, command, watch_paths=None, ignore_patterns=None):
@@ -60,16 +55,25 @@ class PythonWatcher:
         logging.info(f"Starting: {' '.join(self.command)}")
         try:
             # On Windows, use shell for builtin commands
-            use_shell = os.name == 'nt' and self.command[0] in ['echo', 'dir', 'type', 'copy', 'move', 'del', 'mkdir', 'rmdir']
+            use_shell = os.name == "nt" and self.command[0] in [
+                "echo",
+                "dir",
+                "type",
+                "copy",
+                "move",
+                "del",
+                "mkdir",
+                "rmdir",
+            ]
             if use_shell:
                 self.process = subprocess.Popen(
-                    ' '.join(self.command),
+                    " ".join(self.command),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
                     universal_newlines=True,
-                    shell=True
+                    shell=True,
                 )
             else:
                 self.process = subprocess.Popen(
@@ -78,7 +82,7 @@ class PythonWatcher:
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
-                    universal_newlines=True
+                    universal_newlines=True,
                 )
             logging.info(f"Process started with PID: {self.process.pid}")
         except Exception as e:
@@ -92,7 +96,7 @@ class PythonWatcher:
             return
 
         try:
-            for line in iter(self.process.stdout.readline, ''):
+            for line in iter(self.process.stdout.readline, ""):
                 stripped_line = line.strip()
                 if stripped_line:
                     logging.info(stripped_line)
@@ -115,6 +119,7 @@ class PythonWatcher:
 
         # Start output monitoring in background
         import threading
+
         output_thread = threading.Thread(target=self.monitor_output, daemon=True)
         output_thread.start()
 
@@ -124,19 +129,21 @@ class PythonWatcher:
                 return self.should_ignore(path)
 
             for changes in watch(*self.watch_paths, watcher_cls=DefaultWatcher):
-                    logging.info(f"\nDetected changes: {len(changes)} files")
-                    for change_type, path in changes:
-                        logging.info(f"  {change_type.name}: {path}")
+                logging.info(f"\nDetected changes: {len(changes)} files")
+                for change_type, path in changes:
+                    logging.info(f"  {change_type.name}: {path}")
 
-                    self.should_restart = True
-                    if self.start_process():
-                        self.should_restart = False
-                        # Restart output monitoring
-                        output_thread = threading.Thread(target=self.monitor_output, daemon=True)
-                        output_thread.start()
-                    else:
-                        logging.error("Failed to restart process")
-                        print("Failed to restart process")
+                self.should_restart = True
+                if self.start_process():
+                    self.should_restart = False
+                    # Restart output monitoring
+                    output_thread = threading.Thread(
+                        target=self.monitor_output, daemon=True
+                    )
+                    output_thread.start()
+                else:
+                    logging.error("Failed to restart process")
+                    print("Failed to restart process")
         except KeyboardInterrupt:
             logging.info("Stopping watch mode...")
         finally:
@@ -150,14 +157,24 @@ class PythonWatcher:
             logging.info("Watch mode stopped")
             print("Watch mode stopped")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Python Watch Mode for Wiley Widget")
     parser.add_argument("command", nargs="+", help="Command to run and watch")
-    parser.add_argument("--watch", "-w", nargs="+", default=["."],
-                       help="Paths to watch (default: current directory)")
-    parser.add_argument("--ignore", "-i", nargs="+",
-                       default=["__pycache__", "*.pyc", ".git", "*.log", "logs/"],
-                       help="Patterns to ignore")
+    parser.add_argument(
+        "--watch",
+        "-w",
+        nargs="+",
+        default=["."],
+        help="Paths to watch (default: current directory)",
+    )
+    parser.add_argument(
+        "--ignore",
+        "-i",
+        nargs="+",
+        default=["__pycache__", "*.pyc", ".git", "*.log", "logs/"],
+        help="Patterns to ignore",
+    )
 
     args = parser.parse_args()
 
@@ -166,6 +183,7 @@ def main():
 
     watcher = PythonWatcher(args.command, watch_paths, args.ignore)
     watcher.run()
+
 
 if __name__ == "__main__":
     main()

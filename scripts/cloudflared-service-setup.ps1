@@ -9,7 +9,7 @@ param(
 
 function Assert-Admin {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $p  = New-Object Security.Principal.WindowsPrincipal($id)
+    $p = New-Object Security.Principal.WindowsPrincipal($id)
     if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         throw 'This script must be run in an elevated PowerShell (Run as Administrator).'
     }
@@ -53,7 +53,8 @@ function Install-CloudflaredService {
             Stop-Service -Name $ServiceName -ErrorAction SilentlyContinue | Out-Null
             sc.exe delete $ServiceName | Out-Null
             Start-Sleep -Seconds 1
-        } else {
+        }
+        else {
             Write-Output "Service $ServiceName already exists. Updating binpath..."
             sc.exe config $ServiceName binPath= $binaryPathName | Out-Null
             sc.exe config $ServiceName start= delayed-auto | Out-Null
@@ -84,10 +85,11 @@ function Start-CloudflaredService {
 function Test-Tunnel {
     param([string]$CloudflaredPath, [string]$TunnelId)
     Write-Output "Checking tunnel status for $TunnelId"
-    $p = Start-Process -FilePath $CloudflaredPath -ArgumentList @('tunnel','info',$TunnelId) -NoNewWindow -PassThru -Wait -RedirectStandardOutput (New-TemporaryFile).FullName -RedirectStandardError (New-TemporaryFile).FullName
+    $p = Start-Process -FilePath $CloudflaredPath -ArgumentList @('tunnel', 'info', $TunnelId) -NoNewWindow -PassThru -Wait -RedirectStandardOutput (New-TemporaryFile).FullName -RedirectStandardError (New-TemporaryFile).FullName
     if ($p.ExitCode -ne 0) {
         Write-Warning "cloudflared tunnel info exited with code $($p.ExitCode)."
-    } else {
+    }
+    else {
         Write-Output "cloudflared tunnel info executed successfully."
     }
 }

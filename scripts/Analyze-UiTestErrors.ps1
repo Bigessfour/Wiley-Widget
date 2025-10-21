@@ -39,7 +39,8 @@ if (Test-Path $outputLog) {
     # Show recent failures
     Write-Host "`nRecent test failures:" -ForegroundColor Red
     Get-Content $outputLog | Select-String -Pattern "Failed.*:" -Context 2 | Select-Object -Last 5
-} else {
+}
+else {
     Write-Warning "test-output.log not found"
 }
 
@@ -50,13 +51,16 @@ if (Test-Path $errorLog) {
     Get-Content $errorLog -Tail $MaxErrors | ForEach-Object {
         if ($_ -match "ERROR") {
             Write-Host $_ -ForegroundColor Red
-        } elseif ($_ -match "DIAGNOSTIC") {
+        }
+        elseif ($_ -match "DIAGNOSTIC") {
             Write-Host $_ -ForegroundColor Blue
-        } else {
+        }
+        else {
             Write-Host $_
         }
     }
-} else {
+}
+else {
     Write-Warning "ui-test-errors.log not found"
 }
 
@@ -68,10 +72,12 @@ if (Test-Path $TestResultsPath) {
             Write-Host "  $($_.FullName)" -ForegroundColor Green
         }
         Write-Host "`nTo view detailed results, open the .trx files in Visual Studio Test Explorer" -ForegroundColor Gray
-    } else {
+    }
+    else {
         Write-Warning "No .trx test result files found"
     }
-} else {
+}
+else {
     Write-Warning "No TestResults directory found"
 }
 

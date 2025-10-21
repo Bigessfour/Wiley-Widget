@@ -32,7 +32,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     // Values loaded lazily from secret vault or environment
     private string? _clientId;
     private string? _clientSecret;
-    private string _redirectUri = "http://localhost:8080/callback";
+    private string _redirectUri = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl";
     private string? _realmId;
     private string _environment = "sandbox";
     private string? _intuitPreLoginUrl; // optional convenience URL to pre-authenticate account
@@ -694,6 +694,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// Ensures a Cloudflare tunnel is running that forwards the local redirect URI port, starting one if needed.
     /// Uses 'cloudflared tunnel --url http://localhost:PORT' and waits for readiness indicated by a public URL in stdout.
     /// This is optional for local development but helps when a public callback URL is required.
+    /// For webhooks, we need to tunnel to the webhooks server port, not the main app port.
     /// </summary>
     private async Task<bool> EnsureCloudflaredTunnelAsync(CancellationToken cancellationToken)
     {
@@ -707,19 +708,13 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         {
             if (_cloudflaredProcess is { HasExited: false }) return true;
 
-            // Determine base URL (scheme://host:port) from redirect URI
-            string targetUrl;
-            try
-            {
-                var uri = new Uri(_redirectUri);
-                var port = uri.IsDefaultPort ? (uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) ? 443 : 80) : uri.Port;
-                targetUrl = $"{uri.Scheme}://{uri.Host}:{port}";
-            }
-            catch
-            {
-                // Fallback to default dev port
-                targetUrl = "http://localhost:8080";
-            }
+            // For webhooks, we need to tunnel to the webhooks server, not the main app
+            // Use environment variable or default to webhooks HTTPS port
+            var webhooksPort = Environment.GetEnvironmentVariable("WEBHOOKS_PORT", EnvironmentVariableTarget.User)
+                              ?? Environment.GetEnvironmentVariable("WEBHOOKS_PORT", EnvironmentVariableTarget.Process)
+                              ?? "7207"; // Default to webhooks HTTPS port
+
+            var targetUrl = $"https://localhost:{webhooksPort}";
 
             var exe = Environment.GetEnvironmentVariable("CLOUDFLARED_EXE", EnvironmentVariableTarget.User)
                       ?? Environment.GetEnvironmentVariable("CLOUDFLARED_EXE", EnvironmentVariableTarget.Process)
@@ -786,7 +781,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 {
                     var url = await readyTcs.Task.WaitAsync(linkedCts.Token).ConfigureAwait(false);
                     _cloudflaredPublicUrl = url;
-                    _logger.LogInformation("cloudflared tunnel established: {Url} -> {Target}", url, targetUrl);
+                    _logger.LogInformation("cloudflared tunnel established for webhooks: {Url} -> {Target}", url, targetUrl);
                     return true;
                 }
                 catch (OperationCanceledException)
@@ -846,6 +841,213 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         {
             _logger.LogDebug(ex, "Unable to run netsh add urlacl; may require elevation.");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Connects to QuickBooks by ensuring valid tokens and testing the connection.
+    /// </summary>
+    public async System.Threading.Tasks.Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Ensure we have valid tokens
+            await RefreshTokenIfNeededAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Test the connection
+            var testResult = await TestConnectionAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (testResult)
+            {
+                _logger.LogInformation("Successfully connected to QuickBooks");
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning("Connection test failed");
+                return false;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("QuickBooks connection was cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect to QuickBooks");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Disconnects from QuickBooks by clearing tokens and connection state.
+    /// </summary>
+    public async System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var s = EnsureSettingsLoaded();
+            s.QboAccessToken = null;
+            s.QboRefreshToken = null;
+            s.QboTokenExpiry = default(DateTime);
+            _settings.Save();
+
+            // Clear cached realm ID
+            _realmId = null;
+
+            _logger.LogInformation("Successfully disconnected from QuickBooks");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("QuickBooks disconnection was cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to disconnect from QuickBooks");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Gets the current connection status of the QuickBooks service.
+    /// </summary>
+    public async System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var s = EnsureSettingsLoaded();
+            var hasTokens = !string.IsNullOrEmpty(s.QboAccessToken) && !string.IsNullOrEmpty(s.QboRefreshToken);
+            var isExpired = s.QboTokenExpiry != default(DateTime) && s.QboTokenExpiry <= DateTime.UtcNow;
+
+            if (!hasTokens)
+            {
+                return new ConnectionStatus
+                {
+                    IsConnected = false,
+                    StatusMessage = "Not connected - no tokens available"
+                };
+            }
+
+            if (isExpired)
+            {
+                return new ConnectionStatus
+                {
+                    IsConnected = false,
+                    StatusMessage = "Not connected - tokens expired"
+                };
+            }
+
+            // Try to test the connection
+            var testResult = await TestConnectionAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (testResult)
+            {
+                return new ConnectionStatus
+                {
+                    IsConnected = true,
+                    CompanyName = _realmId,
+                    StatusMessage = "Connected and ready"
+                };
+            }
+            else
+            {
+                return new ConnectionStatus
+                {
+                    IsConnected = false,
+                    StatusMessage = "Connection test failed"
+                };
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Connection status check was cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get connection status");
+            return new ConnectionStatus
+            {
+                IsConnected = false,
+                StatusMessage = $"Error: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Synchronizes data from QuickBooks.
+    /// </summary>
+    public async System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default)
+    {
+        var startTime = DateTime.UtcNow;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var p = GetDataService();
+            var totalRecords = 0;
+
+            // Sync customers
+            cancellationToken.ThrowIfCancellationRequested();
+            var customers = p.Ds.FindAll(new Customer(), 1, 100).ToList();
+            totalRecords += customers.Count;
+            _logger.LogInformation("Synced {Count} customers", customers.Count);
+
+            // Sync invoices
+            cancellationToken.ThrowIfCancellationRequested();
+            var invoices = p.Ds.FindAll(new Invoice(), 1, 100).ToList();
+            totalRecords += invoices.Count;
+            _logger.LogInformation("Synced {Count} invoices", invoices.Count);
+
+            // Sync accounts
+            cancellationToken.ThrowIfCancellationRequested();
+            var accounts = p.Ds.FindAll(new Account(), 1, 100).ToList();
+            totalRecords += accounts.Count;
+            _logger.LogInformation("Synced {Count} accounts", accounts.Count);
+
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Data sync completed successfully. Total records: {TotalRecords}, Duration: {Duration}", totalRecords, duration);
+
+            return new SyncResult
+            {
+                Success = true,
+                RecordsSynced = totalRecords,
+                Duration = duration
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Data sync was cancelled after {Duration}", duration);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogError(ex, "Data sync failed after {Duration}", duration);
+            return new SyncResult
+            {
+                Success = false,
+                RecordsSynced = 0,
+                ErrorMessage = ex.Message,
+                Duration = duration
+            };
         }
     }
 }

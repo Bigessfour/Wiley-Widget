@@ -245,8 +245,8 @@ public static class WpfHostingExtensions
         // ViewManager removed - MainWindow handles all child view navigation via DockingManager
         // MainWindow lifecycle now handled directly in App.xaml.cs OnStartup
         
-    services.AddSingleton<ThemeManager>();
-    services.AddSingleton<IThemeManager>(sp => sp.GetRequiredService<ThemeManager>());
+    services.AddSingleton<ThemeService>();
+    services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
         services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
         services.AddMemoryCache();
         services.AddSingleton<IDispatcherHelper, DispatcherHelper>();

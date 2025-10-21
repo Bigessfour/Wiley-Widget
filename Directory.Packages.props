@@ -42,25 +42,25 @@
     <PackageVersion Include="Serilog.Sinks.Email" Version="4.1.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="4.1.0" />
     <!-- Syncfusion WPF -->
-    <PackageVersion Include="Syncfusion.Licensing" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfBusyIndicator.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfChart.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfChat.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfGauge.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfInput.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfRichTextBoxAdv.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfSpreadsheet.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfTreeView.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.SfGridCommon.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.Shared.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.Tools.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.XlsIO.WPF" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.Pdf.WPF" Version="31.2.2" />
+  <PackageVersion Include="Syncfusion.Licensing" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfBusyIndicator.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfChart.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfChat.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfGauge.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfInput.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfRichTextBoxAdv.WPF" Version="31.1.23" />
+    <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfSpreadsheet.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfTreeView.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.SfGridCommon.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.Shared.WPF" Version="31.1.23" />
+    <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.Tools.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.XlsIO.WPF" Version="31.1.23" />
+  <PackageVersion Include="Syncfusion.Pdf.WPF" Version="31.1.23" />
     <!-- QuickBooks -->
     <PackageVersion Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.1" />

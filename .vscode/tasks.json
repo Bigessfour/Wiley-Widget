@@ -19,6 +19,78 @@
       }
     },
     {
+      "label": "ef-generate-idempotent-script",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef",
+        "migrations",
+        "script",
+        "--idempotent",
+        "--output",
+        "${workspaceFolder}/drift-report.sql",
+        "--project",
+        "${workspaceFolder}/WileyWidget.Data/WileyWidget.Data.csproj",
+        "--startup-project",
+        "${workspaceFolder}/WileyWidget.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "ef-apply-migrations",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef",
+        "database",
+        "update",
+        "--project",
+        "${workspaceFolder}/WileyWidget.Data/WileyWidget.Data.csproj",
+        "--startup-project",
+        "${workspaceFolder}/WileyWidget.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "ef-add-migration",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef",
+        "migrations",
+        "add",
+        "${input:migrationName}",
+        "--project",
+        "${workspaceFolder}/WileyWidget.Data/WileyWidget.Data.csproj",
+        "--startup-project",
+        "${workspaceFolder}/WileyWidget.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "ef-verify-drift",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/ef-verify-drift.ps1"
+      ],
+      "options": {
+        "env": { "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe" }
+      },
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
       "label": "build-incremental",
       "type": "shell",
       "command": "pwsh",
@@ -216,7 +288,7 @@
       "label": "test-fast",
       "type": "shell",
       "command": "python",
-      "args": ["-m", "unittest", "discover", "-v", "--buffer"],
+      "args": ["-m", "pytest", ".", "-v", "--tb=short"],
       "group": "test",
       "presentation": {
         "echo": true,
@@ -258,7 +330,7 @@
       "label": "test-all-python",
       "type": "shell",
       "command": "python",
-      "args": ["-m", "unittest", "discover", "-v", "--buffer"],
+      "args": ["-m", "pytest", ".", "-v", "--tb=short"],
       "group": "test",
       "presentation": {
         "echo": true,
@@ -272,14 +344,7 @@
       "label": "test-python-coverage",
       "type": "shell",
       "command": "coverage",
-      "args": [
-        "run",
-        "--source=${workspaceFolder}",
-        "-m",
-        "unittest",
-        "discover",
-        "-v"
-      ],
+      "args": ["run", "--source=${workspaceFolder}", "-m", "pytest", ".", "-v"],
       "group": "test",
       "presentation": {
         "echo": true,
@@ -289,7 +354,7 @@
       },
       "problemMatcher": []
     },
-    
+
     {
       "label": "test-stafact",
       "dependsOn": ["cleanup-dotnet"],
@@ -342,7 +407,7 @@
       },
       "problemMatcher": "$msCompile"
     },
-    
+
     {
       "label": "test-ui",
       "type": "shell",
@@ -501,7 +566,7 @@
     },
     {
       "label": "build-once",
-      "type": "shell",
+      "type": "process",
       "command": "dotnet",
       "args": [
         "build",
@@ -515,7 +580,7 @@
     },
     {
       "label": "build-once-now",
-      "type": "shell",
+      "type": "process",
       "command": "dotnet",
       "args": [
         "build",
@@ -524,6 +589,7 @@
         "/consoleloggerparameters:NoSummary",
         "/flp:LogFile=build-errors.log;errorsonly"
       ],
+      "problemMatcher": ["$msCompile"],
       "group": "build"
     },
     {
@@ -552,6 +618,21 @@
         "--maxfail=1",
         "--tb=short"
       ]
+    },
+    {
+      "label": "full-workspace-reload",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "if (Get-Command code-insiders -ErrorAction SilentlyContinue) { code-insiders -r \"${workspaceFolder}\" } elseif (Get-Command code -ErrorAction SilentlyContinue) { code -r \"${workspaceFolder}\" } else { Write-Host 'Use: Ctrl+Shift+P -> Reload Window' }"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
     }
   ],
   "inputs": [

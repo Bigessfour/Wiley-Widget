@@ -63,6 +63,12 @@ namespace WileyWidget.Data.Migrations
                     b.Property<string>("QboAccessToken")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("QboClientId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("QboClientSecret")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("QboRefreshToken")
                         .HasColumnType("nvarchar(max)");
 
@@ -195,8 +201,8 @@ namespace WileyWidget.Data.Migrations
                     b.Property<decimal>("EncumbranceAmount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateOnly>("EndPeriod")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("EndPeriod")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("FiscalYear")
                         .HasColumnType("int");
@@ -223,8 +229,8 @@ namespace WileyWidget.Data.Migrations
                     b.Property<int?>("SourceRowNumber")
                         .HasColumnType("int");
 
-                    b.Property<DateOnly>("StartPeriod")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("StartPeriod")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -560,6 +566,13 @@ namespace WileyWidget.Data.Migrations
                     b.Property<DateTime?>("PaymentDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Pending");
+
                     b.Property<int>("VendorId")
                         .HasColumnType("int");
 
@@ -581,6 +594,11 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountNumber_Value")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("nvarchar(max)")
+                        .HasComputedColumnSql("[AccountNumber]");
 
                     b.Property<decimal>("Balance")
                         .HasColumnType("decimal(18,2)");
@@ -850,7 +868,11 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Vendor");
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Vendor", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.BudgetEntry", b =>

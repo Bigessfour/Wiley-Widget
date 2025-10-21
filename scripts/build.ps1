@@ -32,7 +32,8 @@ if (Test-Path $loadEnvScript) {
     catch {
         Write-Warning "Failed to load environment variables: $_"
     }
-} else {
+}
+else {
     Write-Warning "load-env.ps1 script not found at $loadEnvScript"
 }
 

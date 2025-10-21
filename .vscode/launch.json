@@ -11,6 +11,24 @@
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "stopAtEntry": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -26,6 +44,24 @@
       "console": "internalConsole",
       "justMyCode": false,
       "stopAtEntry": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
@@ -43,6 +79,24 @@
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "stopAtEntry": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Production",
         "AZURE_SQL_SERVER": "${env:AZURE_SQL_SERVER}",
@@ -59,7 +113,7 @@
       "processId": "${command:pickProcess}"
     },
     {
-      "name": "Debug Syncfusion WPF Form",
+      "name": "Launch WileyWidget (XAML Debug)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
@@ -68,9 +122,32 @@
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "stopAtEntry": false,
+      "justMyCode": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}"
+        "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
+        "DEBUG_XAML": "true",
+        "ENABLE_XAML_DIAGNOSTICS": "true",
+        "WPF_TRACE_SETTINGS": "DataBinding:Warning,ResourceDictionary:Warning,DependencyProperty:Warning",
+        "COREHOST_TRACE": "1"
       },
       "envFile": "${workspaceFolder}/.env"
     },
@@ -179,7 +256,25 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
-      "stopAtEntry": false
+      "stopAtEntry": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      }
     },
     {
       "name": "Debug C# UI Tests",
@@ -190,7 +285,25 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
-      "stopAtEntry": false
+      "stopAtEntry": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      }
     },
     {
       "name": "Debug C# Tests with Coverage",
@@ -205,6 +318,24 @@
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "stopAtEntry": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      },
       "env": {
         "COVERAGE_FILE": "${workspaceFolder}/TestResults/Coverage/coverage.cobertura.xml"
       }
@@ -343,6 +474,40 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       }
+    },
+    {
+      "name": "Launch Wiley-Widget with Copilot Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/Debug/net9.0-windows/WileyWidget.exe",
+      "preLaunchTask": "build",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
+        "DEBUG_XAML": "true",
+        "ENABLE_XAML_DIAGNOSTICS": "true"
+      },
+      "envFile": "${workspaceFolder}/.env"
     }
   ]
 }

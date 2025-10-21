@@ -215,7 +215,9 @@ def _gather_view_models(project_root: Path) -> list[ViewModelInfo]:
     return view_models
 
 
-def _find_view_model_for_view(view: ViewInfo, view_models: list[ViewModelInfo]) -> ViewModelInfo | None:
+def _find_view_model_for_view(
+    view: ViewInfo, view_models: list[ViewModelInfo]
+) -> ViewModelInfo | None:
     candidates: list[str] = []
 
     if view.data_context and view.data_context.endswith("ViewModel"):
@@ -253,7 +255,9 @@ def _expected_views_for_view_model(view_model: ViewModelInfo) -> list[str]:
     return candidates
 
 
-def _validate(views: list[ViewInfo], view_models: list[ViewModelInfo]) -> list[ValidationIssue]:
+def _validate(
+    views: list[ViewInfo], view_models: list[ViewModelInfo]
+) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     vm_lookup = {vm.name: vm for vm in view_models}
 
@@ -316,7 +320,13 @@ def _validate(views: list[ViewInfo], view_models: list[ViewModelInfo]) -> list[V
     return issues
 
 
-def _print_report(views: list[ViewInfo], view_models: list[ViewModelInfo], issues: list[ValidationIssue], *, detailed: bool) -> None:
+def _print_report(
+    views: list[ViewInfo],
+    view_models: list[ViewModelInfo],
+    issues: list[ValidationIssue],
+    *,
+    detailed: bool,
+) -> None:
     print("=== VIEW-VIEWMODEL VALIDATION REPORT ===")
     print(f"Views analyzed   : {len(views)}")
     print(f"ViewModels found : {len(view_models)}")
@@ -385,13 +395,19 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _emit_json_report(views: list[ViewInfo], view_models: list[ViewModelInfo], issues: list[ValidationIssue]) -> None:
+def _emit_json_report(
+    views: list[ViewInfo],
+    view_models: list[ViewModelInfo],
+    issues: list[ValidationIssue],
+) -> None:
     payload = {
         "views": len(views),
         "viewModels": len(view_models),
         "issues": [issue.to_dict() for issue in issues],
         "errors": [issue.to_dict() for issue in issues if issue.severity == "Error"],
-        "warnings": [issue.to_dict() for issue in issues if issue.severity == "Warning"],
+        "warnings": [
+            issue.to_dict() for issue in issues if issue.severity == "Warning"
+        ],
     }
     json.dump(payload, sys.stdout, indent=2)
     sys.stdout.write("\n")

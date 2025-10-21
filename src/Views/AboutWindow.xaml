@@ -32,7 +32,7 @@
 
                 <!-- Application Description -->
                 <GroupBox Header="About Wiley Widget" Margin="0,0,0,15">
-                    <TextBlock Style="{StaticResource NormalTextStyle}" TextWrapping="Wrap">
+                    <TextBlock Style="{DynamicResource NormalTextStyle}" TextWrapping="Wrap">
                         Wiley Widget is a comprehensive AI-enhanced utility rate study program designed specifically for municipal enterprises. Our intelligent platform combines advanced analytics, predictive modeling, and automated reporting to help utility managers optimize service charges, forecast budgets, and make data-driven decisions.
                     </TextBlock>
                 </GroupBox>
@@ -40,23 +40,23 @@
                 <!-- Key Features -->
                 <GroupBox Header="Key Features" Margin="0,0,0,15">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SubHeaderTextStyle}">🤖 AI-Powered Analytics</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">🤖 AI-Powered Analytics</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
                             Intelligent rate optimization, predictive forecasting, and automated recommendations powered by advanced machine learning algorithms.
                         </TextBlock>
 
-                        <TextBlock Style="{StaticResource SubHeaderTextStyle}">📊 Comprehensive Reporting</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">📊 Comprehensive Reporting</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
                             Generate detailed financial reports, budget projections, and break-even analysis with professional formatting and export capabilities.
                         </TextBlock>
 
-                        <TextBlock Style="{StaticResource SubHeaderTextStyle}">🔗 QuickBooks Integration</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">🔗 QuickBooks Integration</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
                             Seamless integration with QuickBooks for automated data synchronization and financial workflow management.
                         </TextBlock>
 
-                        <TextBlock Style="{StaticResource SubHeaderTextStyle}">☁️ Cloud-Ready Architecture</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">☁️ Cloud-Ready Architecture</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
                             Built on Azure cloud services with enterprise-grade security, scalability, and reliability.
                         </TextBlock>
                     </StackPanel>
@@ -71,21 +71,21 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
-                            <TextBlock Style="{StaticResource SubHeaderTextStyle}">Minimum Requirements</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• Windows 10/11</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• .NET 8.0 Runtime</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• 4GB RAM</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• 500MB Storage</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• Internet Connection</TextBlock>
+                            <TextBlock Style="{DynamicResource SubHeaderTextStyle}">Minimum Requirements</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• Windows 10/11</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• .NET 8.0 Runtime</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• 4GB RAM</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• 500MB Storage</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• Internet Connection</TextBlock>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1">
-                            <TextBlock Style="{StaticResource SubHeaderTextStyle}">Recommended</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• Windows 11</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• .NET 8.0+ Runtime</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• 8GB RAM</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• 1GB Storage</TextBlock>
-                            <TextBlock Style="{StaticResource NormalTextStyle}">• High-speed Internet</TextBlock>
+                            <TextBlock Style="{DynamicResource SubHeaderTextStyle}">Recommended</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• Windows 11</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• .NET 8.0+ Runtime</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• 8GB RAM</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• 1GB Storage</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• High-speed Internet</TextBlock>
                         </StackPanel>
                     </Grid>
                 </GroupBox>
@@ -93,31 +93,31 @@
                 <!-- Technical Information -->
                 <GroupBox Header="Technical Information" Margin="0,0,0,15">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SubHeaderTextStyle}">Architecture</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• WPF Desktop Application</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• MVVM Architecture Pattern</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• Entity Framework Core</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• Syncfusion UI Controls</TextBlock>
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">Architecture</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• WPF Desktop Application</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• MVVM Architecture Pattern</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Entity Framework Core</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Syncfusion UI Controls</TextBlock>
 
-                        <TextBlock Style="{StaticResource SubHeaderTextStyle}" Margin="0,10,0,0">Database</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• SQL Server/Azure SQL</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• Code-First Migrations</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• Repository Pattern</TextBlock>
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}" Margin="0,10,0,0">Database</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• SQL Server/Azure SQL</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Code-First Migrations</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Repository Pattern</TextBlock>
                     </StackPanel>
                 </GroupBox>
 
                 <!-- Support Information -->
                 <GroupBox Header="Support &amp; Resources" Margin="0,0,0,15">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SubHeaderTextStyle}">Documentation</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• User Guide: docs/README.md</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• API Documentation: docs/api/</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• Troubleshooting: docs/troubleshooting.md</TextBlock>
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">Documentation</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• User Guide: docs/README.md</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• API Documentation: docs/api/</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Troubleshooting: docs/troubleshooting.md</TextBlock>
 
-                        <TextBlock Style="{StaticResource SubHeaderTextStyle}" Margin="0,10,0,0">Contact</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• Email: support@wileywidget.com</TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• Website: <Hyperlink Command="{Binding OpenUrlCommand}" CommandParameter="https://wileywidget.com">https://wileywidget.com</Hyperlink></TextBlock>
-                        <TextBlock Style="{StaticResource NormalTextStyle}">• GitHub: <Hyperlink Command="{Binding OpenUrlCommand}" CommandParameter="https://github.com/wileywidget">github.com/wileywidget</Hyperlink></TextBlock>
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}" Margin="0,10,0,0">Contact</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Email: support@wileywidget.com</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Website: <Hyperlink Command="{Binding OpenUrlCommand}" CommandParameter="https://wileywidget.com">https://wileywidget.com</Hyperlink></TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• GitHub: <Hyperlink Command="{Binding OpenUrlCommand}" CommandParameter="https://github.com/wileywidget">github.com/wileywidget</Hyperlink></TextBlock>
                     </StackPanel>
                 </GroupBox>
 

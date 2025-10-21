@@ -1,4 +1,4 @@
-﻿# Azure Key Vault Secret Rotation Script for WileyWidget
+# Azure Key Vault Secret Rotation Script for WileyWidget
 # This script helps manage secret rotation for production environments
 
 param(

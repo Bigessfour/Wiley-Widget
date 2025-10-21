@@ -36,20 +36,20 @@
     <SolidColorBrush x:Key="GridSearchHighlightBrush" Color="#55FACC15" />
 
         <Style x:Key="BudgetFilterRowCellStyle" TargetType="syncfusion:GridFilterRowCell">
-            <Setter Property="Background" Value="{StaticResource GridFilterRowBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource GridFilterRowForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource GridFilterRowBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource GridFilterRowForegroundBrush}" />
         </Style>
 
         <Style x:Key="BudgetGroupDropAreaStyle" TargetType="syncfusion:GroupDropArea">
-            <Setter Property="Background" Value="{StaticResource GridGroupDropAreaBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource GridGroupDropAreaForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource GridGroupDropAreaBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource GridGroupDropAreaForegroundBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Padding" Value="12,6" />
         </Style>
 
         <Style x:Key="BudgetSummaryCellStyle" TargetType="syncfusion:GridTableSummaryCell">
-            <Setter Property="Background" Value="{StaticResource GridSummaryBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource GridSummaryForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource GridSummaryBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource GridSummaryForegroundBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
@@ -68,8 +68,8 @@
                                  ViewboxHeight="80"
                                  Header="Loading Budget Data..."
                                  Background="#BF0B1120"
-                                 Foreground="{StaticResource EmphasisBrush}">
-        <Grid Background="{StaticResource PanelBackgroundBrush}">
+                                 Foreground="{DynamicResource EmphasisBrush}">
+        <Grid Background="{DynamicResource PanelBackgroundBrush}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -86,50 +86,50 @@
 
             <!-- Summary Cards -->
             <WrapPanel Grid.Row="0" Margin="0,0,0,8">
-                <Border BorderBrush="{StaticResource EmphasisBrush}"
+                <Border BorderBrush="{DynamicResource EmphasisBrush}"
                         BorderThickness="1"
                         CornerRadius="10"
                         Margin="4"
                         Padding="14"
-                        Background="{StaticResource PanelBorderBrush}">
+                        Background="{DynamicResource PanelBorderBrush}">
                     <StackPanel>
                         <TextBlock Text="Total Revenue"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource SectionHeaderBrush}" />
+                                   Foreground="{DynamicResource SectionHeaderBrush}" />
                         <TextBlock Text="{Binding TotalRevenue, StringFormat=C2}"
                                    FontSize="20"
                                    FontWeight="Bold"
-                                   Foreground="{StaticResource PositiveBrush}" />
+                                   Foreground="{DynamicResource PositiveBrush}" />
                     </StackPanel>
                 </Border>
 
-                <Border BorderBrush="{StaticResource NegativeBrush}"
+                <Border BorderBrush="{DynamicResource NegativeBrush}"
                         BorderThickness="1"
                         CornerRadius="10"
                         Margin="4"
                         Padding="14"
-                        Background="{StaticResource PanelBorderBrush}">
+                        Background="{DynamicResource PanelBorderBrush}">
                     <StackPanel>
                         <TextBlock Text="Total Expenses"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource SectionHeaderBrush}" />
+                                   Foreground="{DynamicResource SectionHeaderBrush}" />
                         <TextBlock Text="{Binding TotalExpenses, StringFormat=C2}"
                                    FontSize="20"
                                    FontWeight="Bold"
-                                   Foreground="{StaticResource NegativeBrush}" />
+                                   Foreground="{DynamicResource NegativeBrush}" />
                     </StackPanel>
                 </Border>
 
-                <Border BorderBrush="{StaticResource EmphasisBrush}"
+                <Border BorderBrush="{DynamicResource EmphasisBrush}"
                         BorderThickness="1"
                         CornerRadius="10"
                         Margin="4"
                         Padding="14"
-                        Background="{StaticResource PanelBorderBrush}">
+                        Background="{DynamicResource PanelBorderBrush}">
                     <StackPanel>
                         <TextBlock Text="Net Income"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource SectionHeaderBrush}" />
+                                   Foreground="{DynamicResource SectionHeaderBrush}" />
                         <TextBlock Text="{Binding NetIncome, StringFormat=C2}"
                                    FontSize="20"
                                    FontWeight="Bold"
@@ -137,16 +137,16 @@
                     </StackPanel>
                 </Border>
 
-                <Border BorderBrush="{StaticResource EmphasisBrush}"
+                <Border BorderBrush="{DynamicResource EmphasisBrush}"
                         BorderThickness="1"
                         CornerRadius="10"
                         Margin="4"
                         Padding="14"
-                        Background="{StaticResource PanelBorderBrush}">
+                        Background="{DynamicResource PanelBorderBrush}">
                     <StackPanel>
                         <TextBlock Text="Budget Variance"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource SectionHeaderBrush}" />
+                                   Foreground="{DynamicResource SectionHeaderBrush}" />
                         <TextBlock Text="{Binding BudgetVariance, StringFormat=C2}"
                                    FontSize="20"
                                    FontWeight="Bold"
@@ -174,8 +174,8 @@
                                ShowRowHeader="True"
                                EnableDataVirtualization="True"
                                UsePLINQ="True"
-                               Background="{StaticResource PanelBackgroundBrush}"
-                               BorderBrush="{StaticResource PanelBorderBrush}">
+                               Background="{DynamicResource PanelBackgroundBrush}"
+                               BorderBrush="{DynamicResource PanelBorderBrush}">
 
             <syncfusion:SfDataGrid.GroupColumnDescriptions>
                 <syncfusion:GroupColumnDescription ColumnName="Category" />
@@ -223,8 +223,8 @@
             <!-- Rate Trend Chart -->
             <syncfusion:SfChart Grid.Column="0" Margin="0,0,4,0"
                                 Header="Rate Trend Analysis"
-                                Background="{StaticResource PanelBackgroundBrush}"
-                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                Background="{DynamicResource PanelBackgroundBrush}"
+                                BorderBrush="{DynamicResource PanelBorderBrush}"
                                 BorderThickness="1">
                 <syncfusion:SfChart.Legend>
                     <syncfusion:ChartLegend Visibility="Visible" DockPosition="Bottom" />
@@ -263,8 +263,8 @@
             <!-- Budget Performance Chart -->
             <syncfusion:SfChart Grid.Column="1" Margin="4,0,0,0"
                                 Header="Budget Performance"
-                                Background="{StaticResource PanelBackgroundBrush}"
-                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                Background="{DynamicResource PanelBackgroundBrush}"
+                                BorderBrush="{DynamicResource PanelBorderBrush}"
                                 BorderThickness="1">
                 <syncfusion:SfChart.Legend>
                     <syncfusion:ChartLegend Visibility="Visible" DockPosition="Bottom" />

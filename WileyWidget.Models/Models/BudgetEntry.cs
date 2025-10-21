@@ -36,8 +36,8 @@ public class BudgetEntry : IAuditable
     // Multi-year support
     [Required]
     public int FiscalYear { get; set; } // e.g., 2026
-    public DateOnly StartPeriod { get; set; }
-    public DateOnly EndPeriod { get; set; }
+    public DateTime StartPeriod { get; set; }
+    public DateTime EndPeriod { get; set; }
 
     // GASB compliance
     public FundType FundType { get; set; } // Enum

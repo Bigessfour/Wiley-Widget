@@ -6,13 +6,13 @@ Monitors CPU/memory during dotnet test runs and parses coverage.cobertura.xml
 """
 
 import subprocess
-import sys
-import os
 import time
-import psutil
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
 import debugpy
+import psutil
+
 
 def setup_debugpy():
     """Setup debugpy for remote debugging"""
@@ -20,6 +20,7 @@ def setup_debugpy():
     print("Debugpy listening on localhost:5678")
     print("Attach debugger to continue...")
     debugpy.wait_for_client()
+
 
 def monitor_resources(process, duration=60):
     """Monitor CPU and memory usage"""
@@ -42,14 +43,15 @@ def monitor_resources(process, duration=60):
                 break
 
         return {
-            'cpu_avg': sum(cpu_percent) / len(cpu_percent) if cpu_percent else 0,
-            'cpu_max': max(cpu_percent) if cpu_percent else 0,
-            'memory_avg': sum(memory_mb) / len(memory_mb) if memory_mb else 0,
-            'memory_max': max(memory_mb) if memory_mb else 0
+            "cpu_avg": sum(cpu_percent) / len(cpu_percent) if cpu_percent else 0,
+            "cpu_max": max(cpu_percent) if cpu_percent else 0,
+            "memory_avg": sum(memory_mb) / len(memory_mb) if memory_mb else 0,
+            "memory_max": max(memory_mb) if memory_mb else 0,
         }
     except Exception as e:
         print(f"Error monitoring resources: {e}")
         return {}
+
 
 def parse_coverage_xml(xml_file):
     """Parse coverage XML file"""
@@ -64,35 +66,39 @@ def parse_coverage_xml(xml_file):
         total_lines = 0
         covered_lines = 0
 
-        for package in root.findall('.//package'):
-            for cls in package.findall('.//class'):
-                for line in cls.findall('.//line'):
+        for package in root.findall(".//package"):
+            for cls in package.findall(".//class"):
+                for line in cls.findall(".//line"):
                     total_lines += 1
-                    if line.get('hits', '0') != '0':
+                    if line.get("hits", "0") != "0":
                         covered_lines += 1
 
         coverage_percent = (covered_lines / total_lines * 100) if total_lines > 0 else 0
 
         return {
-            'total_lines': total_lines,
-            'covered_lines': covered_lines,
-            'coverage_percent': coverage_percent
+            "total_lines": total_lines,
+            "covered_lines": covered_lines,
+            "coverage_percent": coverage_percent,
         }
     except Exception as e:
         print(f"Error parsing coverage XML: {e}")
         return {}
+
 
 def run_dotnet_test():
     """Run dotnet test and monitor resources"""
     workspace_folder = Path(__file__).parent.parent
 
     cmd = [
-        "dotnet", "test",
+        "dotnet",
+        "test",
         str(workspace_folder / "WileyWidget.UiTests" / "WileyWidget.UiTests.csproj"),
-        "--filter", "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
-        "--collect:\"XPlat Code Coverage\"",
+        "--filter",
+        "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
+        '--collect:"XPlat Code Coverage"',
         "--results-directory:TestResults",
-        "--logger", "console;verbosity=normal"
+        "--logger",
+        "console;verbosity=normal",
     ]
 
     print(f"Running: {' '.join(cmd)}")
@@ -127,11 +133,17 @@ def run_dotnet_test():
     except Exception as e:
         print(f"Error running test: {e}")
 
+
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Monitor Test Resources Script")
-    parser.add_argument("--report", action="store_true", help="Generate detailed report")
-    parser.add_argument("--timeout", type=int, default=60, help="Monitoring timeout in seconds")
+    parser.add_argument(
+        "--report", action="store_true", help="Generate detailed report"
+    )
+    parser.add_argument(
+        "--timeout", type=int, default=60, help="Monitoring timeout in seconds"
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debugpy debugging")
 
     args = parser.parse_args()
@@ -142,6 +154,7 @@ def main():
     print("Monitoring test resources...")
     run_dotnet_test()
     print("Monitoring completed")
+
 
 if __name__ == "__main__":
     main()

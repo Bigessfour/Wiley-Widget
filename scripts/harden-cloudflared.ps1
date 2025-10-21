@@ -7,7 +7,7 @@ param(
 
 function Assert-Admin {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $p  = New-Object Security.Principal.WindowsPrincipal($id)
+    $p = New-Object Security.Principal.WindowsPrincipal($id)
     if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         throw 'This script must be run in an elevated PowerShell (Run as Administrator).'
     }

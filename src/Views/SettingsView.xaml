@@ -92,7 +92,7 @@
                                 <syncfusion:IntegerTextBox Value="{Binding WindowWidth, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
                                                          MinValue="800"
                                                          MaxValue="3840"
-                                                         Style="{StaticResource ValidationIntegerTextBox}"
+                                                         Style="{DynamicResource ValidationIntegerTextBox}"
                                                          ToolTip="Set the default window width in pixels (800-3840)" />
                                 <TextBlock Text="{Binding WindowWidthValidation}"
                                          Foreground="Red"
@@ -103,7 +103,7 @@
                                 <syncfusion:IntegerTextBox Value="{Binding WindowHeight, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
                                                          MinValue="600"
                                                          MaxValue="2160"
-                                                         Style="{StaticResource ValidationIntegerTextBox}"
+                                                         Style="{DynamicResource ValidationIntegerTextBox}"
                                                          ToolTip="Set the default window height in pixels (600-2160)" />
                                 <TextBlock Text="{Binding WindowHeightValidation}"
                                          Foreground="Red"
@@ -176,7 +176,7 @@
                                 <Label Content="Client ID:*" />
                                 <syncfusion:SfMaskedEdit Mask="[A-Za-z0-9]*"
                                                        Value="{Binding QuickBooksClientId, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
-                                                       Style="{StaticResource ValidationSfMaskedEdit}"
+                                                       Style="{DynamicResource ValidationSfMaskedEdit}"
                                                        PromptChar=" "
                                                        ToolTip="Sandbox setup: Intuit Developer Portal → My Apps → (Your App) → Keys &amp; OAuth → Client ID.\nWe are integrating against Sandbox for now. Do not use production keys yet.\nQuick reference: docs/integrations/quickbooks-oauth-setup.md" />
                                 <TextBlock Text="{Binding QuickBooksClientIdValidation}"
@@ -187,7 +187,7 @@
                                 <Label Content="Client Secret:*" />
                                 <syncfusion:SfMaskedEdit Mask="[A-Za-z0-9]*"
                                                        Value="{Binding QuickBooksClientSecret, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
-                                                       Style="{StaticResource ValidationSfMaskedEdit}"
+                                                       Style="{DynamicResource ValidationSfMaskedEdit}"
                                                        PromptChar=" "
                                                        ToolTip="Sandbox setup: Intuit Developer Portal → My Apps → (Your App) → Keys &amp; OAuth → Client Secret.\nStored via Secret Vault; keep this confidential.\nQuick reference: docs/integrations/quickbooks-oauth-setup.md" />
                                 <TextBlock Text="{Binding QuickBooksClientSecretValidation}"
@@ -197,7 +197,7 @@
 
                                 <Label Content="Redirect URI:*" />
                                 <TextBox Text="{Binding QuickBooksRedirectUri, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
-                                       Style="{StaticResource ValidationTextBox}"
+                                       Style="{DynamicResource ValidationTextBox}"
                                        ToolTip="Use EXACTLY: http://localhost:8080/callback (must match Intuit → Keys &amp; OAuth → Redirect URIs).\nIf listener binding fails, run netsh URL ACL as admin. See quick reference doc." />
                                 <TextBlock Text="{Binding QuickBooksRedirectUriValidation}"
                                          Foreground="Red"

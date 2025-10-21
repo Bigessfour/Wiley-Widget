@@ -147,6 +147,11 @@ public class MunicipalAccount : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Computed account number value for queries
+    /// </summary>
+    public string? AccountNumber_Value { get; set; }
+
+    /// <summary>
     /// Fund class for GASB compliance
     /// </summary>
     public FundClass? FundClass { get; set; }

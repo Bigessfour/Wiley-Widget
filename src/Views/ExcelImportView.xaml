@@ -61,7 +61,7 @@
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Municipal Budget Import" Style="{StaticResource HeaderTextBlockStyle}"/>
+            <TextBlock Text="Municipal Budget Import" Style="{DynamicResource HeaderTextBlockStyle}"/>
             <TextBlock Text="Import budget data from Excel files (Town of Wiley and Wiley Sanitation District formats supported)"
                       Foreground="{DynamicResource SecondaryTextBrush}"
                       FontSize="12"/>
@@ -85,7 +85,7 @@
                 <Button Grid.Column="1"
                         Content="Browse..."
                         Command="{Binding BrowseFileCommand}"
-                        Style="{StaticResource ActionButtonStyle}"
+                        Style="{DynamicResource ActionButtonStyle}"
                         Width="80"/>
             </Grid>
         </GroupBox>
@@ -128,7 +128,7 @@
 
                 <!-- Preview Header -->
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                    <TextBlock Text="Data Preview:" Style="{StaticResource SubHeaderTextBlockStyle}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Data Preview:" Style="{DynamicResource SubHeaderTextBlockStyle}" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding PreviewRowCount, StringFormat=' ({0} rows found)'}"
                               Foreground="{DynamicResource SecondaryTextBrush}"
                               VerticalAlignment="Center"
@@ -176,7 +176,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Path=.}"
-                                          Style="{StaticResource StatusTextBlockStyle}"
+                                          Style="{DynamicResource StatusTextBlockStyle}"
                                           Foreground="{Binding Path=., Converter={StaticResource StatusToColorConverter}}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -214,19 +214,19 @@
             <Button Content="Preview"
                     Command="{Binding PreviewCommand}"
                     IsEnabled="{Binding CanPreview}"
-                    Style="{StaticResource ActionButtonStyle}"/>
+                    Style="{DynamicResource ActionButtonStyle}"/>
 
             <Button Content="Import"
                     Command="{Binding ImportCommand}"
                     IsEnabled="{Binding CanImport}"
-                    Style="{StaticResource ActionButtonStyle}"
+                    Style="{DynamicResource ActionButtonStyle}"
                     Background="{DynamicResource AccentBrush}"
                     Foreground="White"/>
 
             <Button Content="Cancel"
                     Command="{Binding CancelCommand}"
                     IsEnabled="{Binding IsImporting}"
-                    Style="{StaticResource ActionButtonStyle}"/>
+                    Style="{DynamicResource ActionButtonStyle}"/>
         </StackPanel>
     </Grid>
 </UserControl>

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Intuit.Ipp.Data;
 
@@ -19,6 +20,14 @@ namespace WileyWidget.Services
         Task<List<Account>> GetChartOfAccountsAsync();
         Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate);
         Task<List<Budget>> GetBudgetsAsync();
+
+        // Connection management methods with cancellation support
+        System.Threading.Tasks.Task<bool> ConnectAsync(CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default);
+
+        // Data synchronization with cancellation support
+        System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -31,5 +40,27 @@ namespace WileyWidget.Services
         public string? Owner { get; set; }
         public string Guidance { get; set; } = string.Empty;
         public string? RawNetshOutput { get; set; }
+    }
+
+    /// <summary>
+    /// Connection status for QuickBooks service
+    /// </summary>
+    public sealed class ConnectionStatus
+    {
+        public bool IsConnected { get; set; }
+        public string? CompanyName { get; set; }
+        public string? LastSyncTime { get; set; }
+        public string? StatusMessage { get; set; }
+    }
+
+    /// <summary>
+    /// Result of data synchronization operation
+    /// </summary>
+    public sealed class SyncResult
+    {
+        public bool Success { get; set; }
+        public int RecordsSynced { get; set; }
+        public string? ErrorMessage { get; set; }
+        public TimeSpan Duration { get; set; }
     }
 }

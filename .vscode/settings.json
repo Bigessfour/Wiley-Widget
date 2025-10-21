@@ -9,7 +9,7 @@
       "editor.lineHighlightBackground": "#1e1e2e",
       "editor.selectionBackground": "#264f78",
       "editor.inactiveSelectionBackground": "#3a3d4100",
-  "editorSuggestWidget.foreground": "#CCCCCC"
+      "editorSuggestWidget.foreground": "#CCCCCC"
     }
   },
   "editor.tokenColorCustomizations": {
@@ -46,8 +46,9 @@
   "workbench.editor.highlightModifiedTabs": true,
   "workbench.editor.tabCloseButton": "left",
   "workbench.tree.indent": 20,
+  "editor.fontSize": 16,
+  "window.zoomLevel": 0.5,
   "cSpell.words": [
-    "biges",
     "BSTR",
     "CONNECTIONSTRING",
     "CONNECTIONSTRINGS",
@@ -77,10 +78,10 @@
     "Xfinity"
   ],
   // PowerShell Extension v2025.4.0 configuration (per https://learn.microsoft.com/en-us/powershell/scripting/dev-cross-plat/vscode/using-vscode)
-  "powershell.powerShellDefaultVersion": "PowerShell 7.5.3",
+  "powershell.powerShellDefaultVersion": "PowerShell (x64)",
   "powershell.powerShellExePath": "C:/Program Files/PowerShell/7/pwsh.exe",
   "powershell.powerShellAdditionalExePaths": {
-    "PowerShell 7.5.3": "C:/Program Files/PowerShell/7/pwsh.exe"
+    "PowerShell 7.5.4 (MSI)": "C:/Program Files/PowerShell/7/pwsh.exe"
   },
   "powershell.enableProfileLoading": true,
   "powershell.enableReferencesCodeLens": true,
@@ -90,7 +91,7 @@
   "powershell.codeFormatting.preset": "OTBS",
   "powershell.codeFormatting.autoCorrectAliases": false, // Disabled for performance
   "powershell.codeFormatting.useCorrectCasing": false, // Disabled for performance
-  "powershell.integratedConsole.showOnStartup": true,
+  "powershell.integratedConsole.showOnStartup": false,
   "powershell.integratedConsole.focusConsoleOnExecute": false,
   // GitHub Copilot Configuration
   "github.copilot.enable": {
@@ -103,13 +104,18 @@
     "markdown": true,
     "scminput": false
   },
-  "github.copilot.advanced": {
-    "debug.overrideModel": "grok-code-fast-1",
-    "length": 1500,
-    "temperature": 0.15
-  },
-  "copilot.model": "grok-code-fast-1",
-  "kilocode.model": "grok-code-fast-1",
+  // Removed deprecated/third-party model override to avoid marketplace lookups
+  // that we don't use (cline/grok/kilocode)
+  // "github.copilot.advanced": {
+  //   "debug.overrideModel": "grok-code-fast-1",
+  //   "length": 1500,
+  //   "temperature": 0.15
+  // },
+  "github.copilot.chat.agent.enabled": true,
+  "chat.tools.autoApprove": "always",
+  // Removed unused model settings
+  // "copilot.model": "grok-code-fast-1",
+  // "kilocode.model": "grok-code-fast-1",
   // File Associations for PowerShell
   "files.associations": {
     "*.ps1": "powershell",
@@ -122,8 +128,13 @@
     "editor.formatOnSave": true,
     "editor.formatOnType": true
   },
-  "[csharp]": { "editor.suggest.showSnippets": true },
-  "[xaml]": { "editor.formatOnSave": true },
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
   // MCP (Model Context Protocol) Configuration
   "mcp": {
     "servers": {
@@ -137,9 +148,15 @@
 
   // Enhanced context for C# development
   "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
-  // Prefer C# Dev Kit; disable OmniSharp to avoid duplicate IntelliSense
+  // C# Dev Kit Configuration
+  "dotnet.server.useOmnisharp": false,
+  "dotnet.enableXamlTools": true,
+  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+  // Disable OmniSharp entirely since we're using C# Dev Kit
   "omnisharp.enableEditorConfigSupport": false,
   "omnisharp.enableRoslynAnalyzers": false,
+  "omnisharp.enableLspDriver": false,
 
   // SQL Server Extension Settings (ms-mssql.mssql) - Migrated to local development
   // Removed: Azure SQL connections deprecated with Azure Account retirement Jan 2025
@@ -148,7 +165,8 @@
       "id": "8b8f4b8e-9c92-4e9a-9e3f-5c2a6f0f7f31",
       "server": "(localdb)\\mssqllocaldb",
       "database": "WileyWidgetDb",
-      "authenticationType": "Integrated"
+      "authenticationType": "Integrated",
+      "groupId": "wiley-widget-group"
     }
   ],
   "mssql.saveAsCsv.includeHeaders": true,
@@ -176,6 +194,19 @@
   "terminal.integrated.shellIntegration.showCommandGuide": true,
   "terminal.integrated.stickyScroll.enabled": true,
   "terminal.integrated.scrollback": 5000,
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.inheritEnv": true,
+  "github.copilot.chat.experimental.terminalOutputCapture": true,
+  "chat.tools.terminal.autoReplyToPrompts": true,
+  "chat.tools.terminal.terminalProfile.windows": {
+    "path": "C:/Program Files/PowerShell/7/pwsh.exe",
+    "args": ["-NoLogo", "-NoProfile"],
+    "env": {
+      "COPILOT": "1"
+    }
+  },
+  "problems.decorations.enabled": true,
+  "chat.agentMode": "auto",
 
   // XAML formatting
   "xml.format.splitAttributes": "splitNewLine",
@@ -185,7 +216,7 @@
 
   // Auto-approval settings for all requests
   "extensions.autoCheckUpdates": true,
-  "extensions.autoUpdate": "onlyEnabledExtensions",
+  "extensions.autoUpdate": true,
   "git.autofetch": true,
   "git.confirmSync": false,
   "git.enableSmartCommit": true,
@@ -193,6 +224,21 @@
   // "mcp.servers.github.autoApprove": true, // Removed: MCP github server commented out
   "terminal.integrated.confirmOnExit": "never",
   "terminal.integrated.confirmOnKill": "never",
+  "terminal.integrated.commandTimeout": 30000,
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "path": "C:/Program Files/PowerShell/7/pwsh.exe",
+      "args": ["-NoLogo"]
+    },
+    "PowerShell (NoProfile)": {
+      "path": "C:/Program Files/PowerShell/7/pwsh.exe",
+      "args": ["-NoLogo", "-NoProfile"]
+    }
+  },
+  "terminal.integrated.fontFamily": "Cascadia Code",
+  "terminal.integrated.fontSize": 14,
+  "terminal.integrated.cursorStyle": "line",
 
   // File Watcher Exclusions - Critical for preventing OOM crashes
   // Exclude build artifacts, dependencies, and large directories from file watching
@@ -239,6 +285,7 @@
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": false,
   "python.linting.flake8Enabled": false,
+  "python.linting.ruffEnabled": true,
   "python.formatting.provider": "black",
   "python.formatting.blackArgs": ["--line-length", "120"],
   "python.analysis.logLevel": "Error",
@@ -278,13 +325,8 @@
   "coverage-gutters.partialHighlightBackground": "#FF000055",
 
   // Python Testing Configuration
-  "python.testing.unittestEnabled": true,
-  "python.testing.unittestArgs": [
-    "-v",
-    "-s",
-    "-p",
-    "test_*.py"
-  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.unittestArgs": ["-v", "-s", "-p", "test_*.py"],
 
   // C# Testing Configuration
   "dotnet-test-explorer.testProjectPath": "**/*Test*.csproj",
@@ -304,7 +346,23 @@
   "testExplorer.sort": "byLocation",
   "testExplorer.useNativeTesting": true,
 
-  // unittest Runner Configurationsults": "openOnTestStart",
-  "python.testing.cwd": "${workspaceFolder}","
-  "testing.automaticallyOpenTestResults": "openOnTestStart",
-  "workbench.editor.tabActionLocation": "left"}
+  // unittest Runner Configuration
+  "python.testing.cwd": "${workspaceFolder}",
+  "testing.openTestResultsOnStart": "openOnTestStart",
+  "workbench.editor.tabActionLocation": "left",
+  "python.testing.pytestArgs": ["scripts"],
+
+  // Trunk Configuration
+  "trunk.enabled": false,
+  "trunk.checkOnSave": true,
+  "trunk.checkOnOpen": true,
+  "trunk.showStatusBarItem": true,
+  "trunk.showSidebar": true,
+  "trunk.formatOnSave": false,
+  "trunk.lintOnSave": true,
+
+  // Reduce console noise from Insiders CDN 404s and extension chatter
+  "workbench.logging.level": "Error",
+  // Help Python extension discover local venv folder
+  "python.venvPath": "${workspaceFolder}"
+}

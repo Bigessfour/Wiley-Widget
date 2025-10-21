@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Categorizes build errors from build-errors.log into actionable groups
@@ -26,16 +26,16 @@ if (-not (Test-Path $LogFile)) {
 
 # Initialize error categories
 $categories = @{
-    "MissingTypes" = @()
-    "PropertyMismatch" = @()
-    "MethodNotFound" = @()
-    "TypeConversion" = @()
+    "MissingTypes"        = @()
+    "PropertyMismatch"    = @()
+    "MethodNotFound"      = @()
+    "TypeConversion"      = @()
     "NullabilityWarnings" = @()
-    "AsyncIssues" = @()
-    "VisualStylesIssues" = @()
-    "NavigationIssues" = @()
-    "ConstructorIssues" = @()
-    "Other" = @()
+    "AsyncIssues"         = @()
+    "VisualStylesIssues"  = @()
+    "NavigationIssues"    = @()
+    "ConstructorIssues"   = @()
+    "Other"               = @()
 }
 
 $errorCounts = @{}
@@ -55,7 +55,8 @@ foreach ($line in $lines) {
                 $errorCounts[$code] = 0
             }
             $errorCounts[$code]++
-        } else {
+        }
+        else {
             if (-not $warningCounts.ContainsKey($code)) {
                 $warningCounts[$code] = 0
             }
@@ -154,16 +155,16 @@ $report += "│ Category                         │ Count │ Priority         
 $report += "├──────────────────────────────────┼───────┼──────────────────────┤"
 
 $categoryPriority = @{
-    "MissingTypes" = "HIGH"
-    "MethodNotFound" = "HIGH"
-    "PropertyMismatch" = "HIGH"
-    "ConstructorIssues" = "MEDIUM"
-    "TypeConversion" = "MEDIUM"
-    "VisualStylesIssues" = "MEDIUM"
-    "NavigationIssues" = "MEDIUM"
-    "AsyncIssues" = "LOW"
+    "MissingTypes"        = "HIGH"
+    "MethodNotFound"      = "HIGH"
+    "PropertyMismatch"    = "HIGH"
+    "ConstructorIssues"   = "MEDIUM"
+    "TypeConversion"      = "MEDIUM"
+    "VisualStylesIssues"  = "MEDIUM"
+    "NavigationIssues"    = "MEDIUM"
+    "AsyncIssues"         = "LOW"
     "NullabilityWarnings" = "LOW"
-    "Other" = "REVIEW"
+    "Other"               = "REVIEW"
 }
 
 foreach ($cat in $categories.Keys | Sort-Object { $categoryPriority[$_] }) {
@@ -252,9 +253,9 @@ if ($ShowReport) {
 
 # Return categorized data for other scripts
 return @{
-    TotalErrors = $totalErrors
+    TotalErrors   = $totalErrors
     TotalWarnings = $totalWarnings
-    Categories = $categories
-    ErrorCounts = $errorCounts
+    Categories    = $categories
+    ErrorCounts   = $errorCounts
     WarningCounts = $warningCounts
 }

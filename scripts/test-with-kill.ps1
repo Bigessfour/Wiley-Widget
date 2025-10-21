@@ -1,8 +1,8 @@
-﻿# UI Test Runner with Process Cleanup
+# UI Test Runner with Process Cleanup
 # Runs UI tests with automatic cleanup of lingering processes
 
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$Project,
     [string]$Verbosity = "normal",
     [int]$TimeoutMinutes = 5,
@@ -105,28 +105,30 @@ try {
                 $colNum = $matches[3]
                 $message = $matches[4]
                 $fileErrors += [PSCustomObject]@{
-                    File = $file
-                    Line = [int]$lineNum
-                    Column = [int]$colNum
-                    Message = $message
+                    File     = $file
+                    Line     = [int]$lineNum
+                    Column   = [int]$colNum
+                    Message  = $message
                     FullLine = $line
                 }
-            } elseif ($line -match "(.+?\.cs|\.vb|\.fs|\.xaml|\.cshtml|\.vbhtml|\.razor)[^(]*:\s*(.+)$") {
+            }
+            elseif ($line -match "(.+?\.cs|\.vb|\.fs|\.xaml|\.cshtml|\.vbhtml|\.razor)[^(]*:\s*(.+)$") {
                 $file = $matches[1]
                 $message = $matches[2]
                 $fileErrors += [PSCustomObject]@{
-                    File = $file
-                    Line = 0
-                    Column = 0
-                    Message = $message
+                    File     = $file
+                    Line     = 0
+                    Column   = 0
+                    Message  = $message
                     FullLine = $line
                 }
-            } else {
+            }
+            else {
                 $fileErrors += [PSCustomObject]@{
-                    File = "Unknown"
-                    Line = 0
-                    Column = 0
-                    Message = $line
+                    File     = "Unknown"
+                    Line     = 0
+                    Column   = 0
+                    Message  = $line
                     FullLine = $line
                 }
             }
@@ -141,7 +143,8 @@ try {
         }
 
         Write-Output "📄 Errors sorted and saved to test-error.txt"
-    } else {
+    }
+    else {
         # Clear the error file if no errors
         "" | Out-File -FilePath $errorFile
     }

@@ -390,17 +390,17 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 1, AccountNumber = "101", Description = "Property Taxes - General Fund",
                     BudgetedAmount = 8221.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 4, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 2, AccountNumber = "102", Description = "Other Revenues - General Fund",
                     BudgetedAmount = 915.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 4, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 3, AccountNumber = "103", Description = "Unappropriated Fund Balance Beginning - General Fund",
                     BudgetedAmount = 14106.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 4, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -410,27 +410,27 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 4, AccountNumber = "201", Description = "Bank Service Charge",
                     BudgetedAmount = 50.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 4, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 5, AccountNumber = "202", Description = "Management Fee",
                     BudgetedAmount = 5400.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 4, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 6, AccountNumber = "203", Description = "Miscellaneous Expenses",
                     BudgetedAmount = 500.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 4, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 7, AccountNumber = "204", Description = "Office Supplies",
                     BudgetedAmount = 300.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 4, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 8, AccountNumber = "205", Description = "Treasurer Fees",
                     BudgetedAmount = 250.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 4, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -440,12 +440,12 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 9, AccountNumber = "301", Description = "Other Revenues - Enterprise Fund",
                     BudgetedAmount = 5879527.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 10, AccountNumber = "302", Description = "Unappropriated Fund Balance Beginning - Enterprise Fund",
                     BudgetedAmount = 172542.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -455,42 +455,42 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 11, AccountNumber = "401", Description = "Permits and Assessments",
                     BudgetedAmount = 976.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 12, AccountNumber = "402", Description = "Bank Service and Interest",
                     BudgetedAmount = 35.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 13, AccountNumber = "403", Description = "Outside Service Lab Fees",
                     BudgetedAmount = 700.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 14, AccountNumber = "404", Description = "Budget Audit Legal",
                     BudgetedAmount = 18000.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 15, AccountNumber = "405", Description = "Supplies and Expenses",
                     BudgetedAmount = 2000.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 16, AccountNumber = "406", Description = "Insurance",
                     BudgetedAmount = 7500.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 17, AccountNumber = "407", Description = "Sewer Cleaning",
                     BudgetedAmount = 7600.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 18, AccountNumber = "408", Description = "Capital Outlay",
                     BudgetedAmount = 5725427.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 4, FundId = 2, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -502,17 +502,17 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 19, AccountNumber = "501", Description = "Property Taxes - General Fund",
                     BudgetedAmount = 85692.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 1, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 20, AccountNumber = "502", Description = "Other Revenues - General Fund",
                     BudgetedAmount = 192683.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 1, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 21, AccountNumber = "503", Description = "Unappropriated Fund Balance Beginning - General Fund",
                     BudgetedAmount = 442211.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 1, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -522,17 +522,17 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 22, AccountNumber = "601", Description = "Administration",
                     BudgetedAmount = 142618.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 1, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 23, AccountNumber = "602", Description = "Public Works",
                     BudgetedAmount = 194500.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 2, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 24, AccountNumber = "603", Description = "Culture and Recreation",
                     BudgetedAmount = 7050.00m, FiscalYear = 2026, FundType = FundType.GeneralFund,
                     DepartmentId = 3, FundId = 1, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -542,12 +542,12 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 25, AccountNumber = "701", Description = "Other Revenues - Utility Fund",
                     BudgetedAmount = 285755.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 5, FundId = 3, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 26, AccountNumber = "702", Description = "Unappropriated Fund Balance Beginning - Utility Fund",
                     BudgetedAmount = 71549.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 5, FundId = 3, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -557,7 +557,7 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 27, AccountNumber = "801", Description = "Utility Fund Expenditures",
                     BudgetedAmount = 238978.00m, FiscalYear = 2026, FundType = FundType.EnterpriseFund,
                     DepartmentId = 5, FundId = 3, ActivityCode = "BUS",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -567,12 +567,12 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 28, AccountNumber = "901", Description = "Other Revenues - Community Center Fund",
                     BudgetedAmount = 14740.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 6, FundId = 4, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 29, AccountNumber = "902", Description = "Unappropriated Fund Balance Beginning - Community Center Fund",
                     BudgetedAmount = 26777.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 6, FundId = 4, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -582,7 +582,7 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 30, AccountNumber = "1001", Description = "Community Center Fund Expenditures",
                     BudgetedAmount = 12740.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 6, FundId = 4, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -592,12 +592,12 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 31, AccountNumber = "1101", Description = "Other Revenues - Conservation Trust Fund",
                     BudgetedAmount = 5215.00m, FiscalYear = 2026, FundType = FundType.PermanentFund,
                     DepartmentId = 7, FundId = 5, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 32, AccountNumber = "1102", Description = "Unappropriated Fund Balance Beginning - Conservation Trust Fund",
                     BudgetedAmount = 40557.00m, FiscalYear = 2026, FundType = FundType.PermanentFund,
                     DepartmentId = 7, FundId = 5, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -607,7 +607,7 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 33, AccountNumber = "1201", Description = "Conservation Trust Fund Expenditures",
                     BudgetedAmount = 8500.00m, FiscalYear = 2026, FundType = FundType.PermanentFund,
                     DepartmentId = 7, FundId = 5, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -617,12 +617,12 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 34, AccountNumber = "1301", Description = "Other Revenues - Recreation Fund",
                     BudgetedAmount = 20325.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 8, FundId = 6, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 35, AccountNumber = "1302", Description = "Unappropriated Fund Balance Beginning - Recreation Fund",
                     BudgetedAmount = 15311.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 8, FundId = 6, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -632,32 +632,32 @@ public static class DatabaseConfiguration
                 new BudgetEntry { Id = 36, AccountNumber = "1401", Description = "Baseball/Softball",
                     BudgetedAmount = 6500.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 8, FundId = 6, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 37, AccountNumber = "1402", Description = "Football",
                     BudgetedAmount = 5000.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 8, FundId = 6, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 38, AccountNumber = "1403", Description = "Soccer",
                     BudgetedAmount = 4000.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 8, FundId = 6, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 39, AccountNumber = "1404", Description = "Basketball",
                     BudgetedAmount = 4000.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 8, FundId = 6, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 40, AccountNumber = "1405", Description = "Volleyball",
                     BudgetedAmount = 1275.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 8, FundId = 6, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                 new BudgetEntry { Id = 41, AccountNumber = "1406", Description = "Wrestling",
                     BudgetedAmount = 1000.00m, FiscalYear = 2026, FundType = FundType.SpecialRevenue,
                     DepartmentId = 8, FundId = 6, ActivityCode = "GOV",
-                    StartPeriod = new DateOnly(2026, 1, 1), EndPeriod = new DateOnly(2026, 12, 31),
+                    StartPeriod = new DateTime(2026, 1, 1), EndPeriod = new DateTime(2026, 12, 31),
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
             });
 
@@ -874,6 +874,9 @@ public static class DatabaseConfiguration
                 // Apply migrations
                 await context.Database.MigrateAsync();
 
+                // Temporary additive schema hotfixes to unblock runtime until full migrations are reconciled
+                await ApplySchemaHotfixesAsync(context, logger);
+
                 // Run seeding if needed
                 await RunSeedingIfNeededAsync(context, logger, metricsService);
             });
@@ -896,6 +899,38 @@ public static class DatabaseConfiguration
         finally
         {
             stopwatch.Stop();
+        }
+    }
+
+    /// <summary>
+    /// Applies small, additive SQL changes that are safe to run repeatedly.
+    /// This unblocks startup when specific columns are missing in environments where
+    /// migrations history has drifted. Once migrations are fully aligned, this can be removed.
+    /// </summary>
+    private static async Task ApplySchemaHotfixesAsync(AppDbContext context, ILogger logger)
+    {
+        try
+        {
+            // Add QBO client columns to AppSettings if missing
+            var addQboClientId = @"IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
+                                    ALTER TABLE dbo.AppSettings ADD QboClientId NVARCHAR(MAX) NULL;";
+            var addQboClientSecret = @"IF COL_LENGTH('dbo.AppSettings','QboClientSecret') IS NULL
+                                       ALTER TABLE dbo.AppSettings ADD QboClientSecret NVARCHAR(MAX) NULL;";
+
+            // Add computed mirror for value object AccountNumber if missing (used by queries)
+            var addAccountNumberValue = @"IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
+                                          ALTER TABLE dbo.MunicipalAccounts ADD [AccountNumber_Value] AS ([AccountNumber]);";
+
+            await context.Database.ExecuteSqlRawAsync(addQboClientId);
+            await context.Database.ExecuteSqlRawAsync(addQboClientSecret);
+            await context.Database.ExecuteSqlRawAsync(addAccountNumberValue);
+
+            logger.LogInformation("Schema hotfixes applied (if needed): QboClientId, QboClientSecret, AccountNumber_Value");
+        }
+        catch (Exception ex)
+        {
+            // Do not fail startup if hotfixes cannot be applied; just log a warning.
+            logger.LogWarning(ex, "Schema hotfix execution failed; proceeding without hotfixes");
         }
     }
 

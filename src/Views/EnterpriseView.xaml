@@ -312,7 +312,7 @@
                         <syncfusion:GridTextColumn HeaderText="Status" 
                                                  MappingName="Status" 
                                                  MinimumWidth="110"
-                                                 CellTemplate="{StaticResource StatusCellTemplate}"
+                                                 CellTemplate="{DynamicResource StatusCellTemplate}"
                                                  ToolTipService.ToolTip="Operational status (Active, Inactive, Pending)"/>
                         
                         <syncfusion:GridNumericColumn HeaderText="Customer Count"
@@ -371,7 +371,7 @@
                         <syncfusion:GridTemplateColumn HeaderText="Balance" 
                                                      MappingName="MonthlyBalance" 
                                                      MinimumWidth="140"
-                                                     CellTemplate="{StaticResource BalanceCellTemplate}"
+                                                     CellTemplate="{DynamicResource BalanceCellTemplate}"
                                                      ShowToolTip="True">
                             <syncfusion:GridTemplateColumn.ToolTipTemplate>
                                 <DataTemplate>

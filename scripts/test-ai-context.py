@@ -31,18 +31,17 @@ LOG_FILE = LOG_DIR / "ai-test.log"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE),
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler(sys.stdout)],
 )
 
 logger = logging.getLogger(__name__)
+
 
 class TestQuery(TypedDict):
     query: str
     expected_keywords: list[str]
     category: str
+
 
 class AIContextTester:
     """Tests AI context building and XAI integration for WileyWidget."""
@@ -50,7 +49,9 @@ class AIContextTester:
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
         self.base_dir = Path(__file__).parent.parent
-        self.wiley_widget_exe = self.base_dir / "bin" / "Debug" / "net8.0-windows" / "WileyWidget.exe"
+        self.wiley_widget_exe = (
+            self.base_dir / "bin" / "Debug" / "net8.0-windows" / "WileyWidget.exe"
+        )
         self.test_results = []
 
         logger.info("=" * 80)
@@ -70,7 +71,9 @@ class AIContextTester:
 
         logger.info(f"✓ WileyWidget.exe found: {self.wiley_widget_exe}")
         logger.info(f"  File size: {self.wiley_widget_exe.stat().st_size:,} bytes")
-        logger.info(f"  Modified: {datetime.fromtimestamp(self.wiley_widget_exe.stat().st_mtime)}")
+        logger.info(
+            f"  Modified: {datetime.fromtimestamp(self.wiley_widget_exe.stat().st_mtime)}"
+        )
 
         return True
 
@@ -80,31 +83,38 @@ class AIContextTester:
             {
                 "query": "What is the total budget for all enterprises?",
                 "expected_keywords": ["budget", "enterprise", "total", "financial"],
-                "category": "Budget Analysis"
+                "category": "Budget Analysis",
             },
             {
                 "query": "Calculate recommended service charge for Enterprise 1",
-                "expected_keywords": ["service charge", "enterprise", "calculate", "recommend"],
-                "category": "Service Charge Calculation"
+                "expected_keywords": [
+                    "service charge",
+                    "enterprise",
+                    "calculate",
+                    "recommend",
+                ],
+                "category": "Service Charge Calculation",
             },
             {
                 "query": "Show me compliance status for municipal utilities",
                 "expected_keywords": ["compliance", "municipal", "utility", "status"],
-                "category": "Compliance Reporting"
+                "category": "Compliance Reporting",
             },
             {
                 "query": "Analyze financial performance trends",
                 "expected_keywords": ["financial", "performance", "trend", "analysis"],
-                "category": "Performance Analysis"
+                "category": "Performance Analysis",
             },
             {
                 "query": "What are the top budget variances?",
                 "expected_keywords": ["budget", "variance", "top", "deviation"],
-                "category": "Variance Analysis"
-            }
+                "category": "Variance Analysis",
+            },
         ]
 
-    def test_context_awareness(self, query: str, expected_keywords: list[str], category: str) -> dict:
+    def test_context_awareness(
+        self, query: str, expected_keywords: list[str], category: str
+    ) -> dict:
         """Test a single query for context awareness."""
         logger.info(f"\n--- Testing Query: {category} ---")
         logger.info(f"Query: {query}")
@@ -118,7 +128,7 @@ class AIContextTester:
             "keywords_found": [],
             "keywords_missing": [],
             "response_time_ms": 0,
-            "error": None
+            "error": None,
         }
 
         try:
@@ -138,14 +148,24 @@ class AIContextTester:
 
                 if "XAI" in config:
                     logger.info("✓ XAI configuration found in appsettings.json")
-                    logger.info(f"  - Model: {config['XAI'].get('Model', 'Not specified')}")
-                    logger.info(f"  - Base URL: {config['XAI'].get('BaseUrl', 'Not specified')}")
-                    logger.info(f"  - Timeout: {config['XAI'].get('TimeoutSeconds', 'Not specified')}s")
+                    logger.info(
+                        f"  - Model: {config['XAI'].get('Model', 'Not specified')}"
+                    )
+                    logger.info(
+                        f"  - Base URL: {config['XAI'].get('BaseUrl', 'Not specified')}"
+                    )
+                    logger.info(
+                        f"  - Timeout: {config['XAI'].get('TimeoutSeconds', 'Not specified')}s"
+                    )
 
                     # Simulate successful response
                     test_result["success"] = True
-                    test_result["keywords_found"] = expected_keywords[:2]  # Simulate finding some keywords
-                    test_result["keywords_missing"] = expected_keywords[2:]  # Simulate missing some
+                    test_result["keywords_found"] = expected_keywords[
+                        :2
+                    ]  # Simulate finding some keywords
+                    test_result["keywords_missing"] = expected_keywords[
+                        2:
+                    ]  # Simulate missing some
 
                 else:
                     logger.warning("⚠ XAI configuration not found in appsettings.json")
@@ -158,7 +178,9 @@ class AIContextTester:
             test_result["response_time_ms"] = int((end_time - start_time) * 1000)
 
             logger.info(f"Response Time: {test_result['response_time_ms']}ms")
-            logger.info(f"Keywords Found: {len(test_result['keywords_found'])}/{len(expected_keywords)}")
+            logger.info(
+                f"Keywords Found: {len(test_result['keywords_found'])}/{len(expected_keywords)}"
+            )
 
             if test_result["success"]:
                 logger.info("✓ Test PASSED")
@@ -189,7 +211,7 @@ class AIContextTester:
             self.test_context_awareness(
                 query_data["query"],
                 query_data["expected_keywords"],
-                query_data["category"]
+                query_data["category"],
             )
 
             # Small delay between tests
@@ -211,7 +233,9 @@ class AIContextTester:
         logger.info(f"Failed: {failed_tests} ({failed_tests/total_tests*100:.1f}%)")
 
         if self.test_results:
-            avg_response_time = sum(r["response_time_ms"] for r in self.test_results) / len(self.test_results)
+            avg_response_time = sum(
+                r["response_time_ms"] for r in self.test_results
+            ) / len(self.test_results)
             logger.info(f"Average Response Time: {avg_response_time:.0f}ms")
 
         logger.info("\n--- Detailed Results ---")
@@ -222,16 +246,24 @@ class AIContextTester:
                 logger.info(f"   Error: {result['error']}")
 
         # Save detailed report to JSON
-        report_file = LOG_DIR / f"ai-test-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
-        with open(report_file, 'w') as f:
-            json.dump({
-                "timestamp": datetime.now().isoformat(),
-                "total_tests": total_tests,
-                "passed": passed_tests,
-                "failed": failed_tests,
-                "average_response_time_ms": avg_response_time if self.test_results else 0,
-                "results": self.test_results
-            }, f, indent=2)
+        report_file = (
+            LOG_DIR / f"ai-test-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+        )
+        with open(report_file, "w") as f:
+            json.dump(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "total_tests": total_tests,
+                    "passed": passed_tests,
+                    "failed": failed_tests,
+                    "average_response_time_ms": (
+                        avg_response_time if self.test_results else 0
+                    ),
+                    "results": self.test_results,
+                },
+                f,
+                indent=2,
+            )
 
         logger.info(f"\n✓ Detailed report saved to: {report_file}")
 
@@ -242,7 +274,9 @@ class AIContextTester:
         logger.info("\n--- Verifying Context Service Integration ---")
 
         # Check for context service files
-        context_service_file = self.base_dir / "src" / "Services" / "WileyWidgetContextService.cs"
+        context_service_file = (
+            self.base_dir / "src" / "Services" / "WileyWidgetContextService.cs"
+        )
 
         if not context_service_file.exists():
             logger.error("✗ WileyWidgetContextService.cs not found")
@@ -251,7 +285,9 @@ class AIContextTester:
         logger.info("✓ WileyWidgetContextService.cs found")
 
         # Check for data anonymizer service
-        anonymizer_service_file = self.base_dir / "src" / "Services" / "DataAnonymizerService.cs"
+        anonymizer_service_file = (
+            self.base_dir / "src" / "Services" / "DataAnonymizerService.cs"
+        )
 
         if not anonymizer_service_file.exists():
             logger.warning("⚠ DataAnonymizerService.cs not found")
@@ -259,7 +295,9 @@ class AIContextTester:
             logger.info("✓ DataAnonymizerService.cs found")
 
         # Check for AI logging service
-        ai_logging_service_file = self.base_dir / "src" / "Services" / "AILoggingService.cs"
+        ai_logging_service_file = (
+            self.base_dir / "src" / "Services" / "AILoggingService.cs"
+        )
 
         if not ai_logging_service_file.exists():
             logger.warning("⚠ AILoggingService.cs not found")
@@ -299,20 +337,20 @@ class AIContextTester:
             logger.error(f"Test execution failed: {e}", exc_info=True)
             return False
 
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Test AI context building and XAI integration for WileyWidget"
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
     )
     parser.add_argument(
-        "--test-queries", "-q",
+        "--test-queries",
+        "-q",
         type=int,
-        help="Number of test queries to run (default: all)"
+        help="Number of test queries to run (default: all)",
     )
 
     args = parser.parse_args()
@@ -324,6 +362,7 @@ def main():
     success = tester.run(args.test_queries)
 
     sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
     main()

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using WileyWidget.Data;
 using WileyWidget.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace WileyWidget.Configuration;
 
@@ -31,40 +32,44 @@ public class AppOptionsConfigurator : IConfigureOptions<AppOptions>
             _logger.LogInformation("Configuring AppOptions from database and secrets");
 
             // Load from database settings
-            var dbSettings = _dbContext.AppSettings.Find(1);
-            if (dbSettings != null)
+            // IMPORTANT: use projection to select only needed columns so queries succeed even if
+            // additive columns (e.g., QboClientId/QboClientSecret) are not yet present.
+            var s = _dbContext.AppSettings
+                .Where(s => s.Id == 1)
+                .Select(s => new { s.Theme, s.WindowWidth, s.WindowHeight, s.WindowMaximized })
+                .AsNoTracking()
+                .FirstOrDefault();
+
+            if (s != null)
             {
-                options.Theme = dbSettings.Theme ?? options.Theme;
-                options.WindowWidth = (int)(dbSettings.WindowWidth ?? options.WindowWidth);
-                options.WindowHeight = (int)(dbSettings.WindowHeight ?? options.WindowHeight);
-                options.MaximizeOnStartup = dbSettings.WindowMaximized ?? options.MaximizeOnStartup;
+                options.Theme = s.Theme ?? options.Theme;
+                options.WindowWidth = (int)(s.WindowWidth ?? options.WindowWidth);
+                options.WindowHeight = (int)(s.WindowHeight ?? options.WindowHeight);
+                options.MaximizeOnStartup = s.WindowMaximized ?? options.MaximizeOnStartup;
             }
 
-            // Load secrets asynchronously (fire and forget for now)
-            Task.Run(async () =>
+            // Load secrets deterministically (synchronously) to avoid timing races and unobserved exceptions
+            try
             {
-                try
-                {
-                    // QuickBooks settings
-                    options.QuickBooksClientId = await _secretVaultService.GetSecretAsync("QuickBooks-ClientId") ?? options.QuickBooksClientId;
-                    options.QuickBooksClientSecret = await _secretVaultService.GetSecretAsync("QuickBooks-ClientSecret") ?? options.QuickBooksClientSecret;
-                    options.QuickBooksRedirectUri = await _secretVaultService.GetSecretAsync("QuickBooks-RedirectUri") ?? options.QuickBooksRedirectUri;
-                    options.QuickBooksEnvironment = await _secretVaultService.GetSecretAsync("QuickBooks-Environment") ?? options.QuickBooksEnvironment;
+                // QuickBooks settings
+                options.QuickBooksClientId = _secretVaultService.GetSecretAsync("QuickBooks-ClientId").GetAwaiter().GetResult() ?? options.QuickBooksClientId;
+                options.QuickBooksClientSecret = _secretVaultService.GetSecretAsync("QuickBooks-ClientSecret").GetAwaiter().GetResult() ?? options.QuickBooksClientSecret;
+                options.QuickBooksRedirectUri = _secretVaultService.GetSecretAsync("QuickBooks-RedirectUri").GetAwaiter().GetResult() ?? options.QuickBooksRedirectUri;
+                options.QuickBooksEnvironment = _secretVaultService.GetSecretAsync("QuickBooks-Environment").GetAwaiter().GetResult() ?? options.QuickBooksEnvironment;
 
-                    // Syncfusion settings
-                    options.SyncfusionLicenseKey = await _secretVaultService.GetSecretAsync("Syncfusion-LicenseKey") ?? options.SyncfusionLicenseKey;
+                // Syncfusion settings
+                options.SyncfusionLicenseKey = _secretVaultService.GetSecretAsync("Syncfusion-LicenseKey").GetAwaiter().GetResult() ?? options.SyncfusionLicenseKey;
 
-                    // XAI settings
-                    options.XaiApiKey = await _secretVaultService.GetSecretAsync("XAI-ApiKey") ?? options.XaiApiKey;
-                    options.XaiBaseUrl = await _secretVaultService.GetSecretAsync("XAI-BaseUrl") ?? options.XaiBaseUrl;
+                // XAI settings
+                options.XaiApiKey = _secretVaultService.GetSecretAsync("XAI-ApiKey").GetAwaiter().GetResult() ?? options.XaiApiKey;
+                options.XaiBaseUrl = _secretVaultService.GetSecretAsync("XAI-BaseUrl").GetAwaiter().GetResult() ?? options.XaiBaseUrl;
 
-                    _logger.LogInformation("AppOptions secrets loaded successfully");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to load secrets for AppOptions");
-                }
-            });
+                _logger.LogInformation("AppOptions secrets loaded successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load secrets for AppOptions");
+            }
 
             _logger.LogInformation("AppOptions configured successfully");
         }

@@ -6,23 +6,20 @@ This script simulates TestDiSetup.GetServiceProvider() by running dotnet test
 with diagnostic args, logging service resolutions to logs/di-thread.log
 """
 
+import argparse
+import logging
 import subprocess
 import time
-import logging
-import argparse
-import os
 from pathlib import Path
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/di-thread.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("logs/di-thread.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
 
 class DIThreadTester:
     def __init__(self, verbose=False):
@@ -31,7 +28,11 @@ class DIThreadTester:
     def run_di_test(self):
         """Run dotnet test with DI diagnostics"""
         try:
-            project_path = Path(__file__).parent.parent / "WileyWidget.UiTests" / "WileyWidget.UiTests.csproj"
+            project_path = (
+                Path(__file__).parent.parent
+                / "WileyWidget.UiTests"
+                / "WileyWidget.UiTests.csproj"
+            )
 
             if not project_path.exists():
                 logger.error(f"Test project not found at {project_path}")
@@ -42,12 +43,19 @@ class DIThreadTester:
 
             # Run dotnet test with specific filter and diagnostics
             cmd = [
-                "dotnet", "test", str(project_path),
-                "--filter", "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
-                "--verbosity", "normal",
-                "--logger", "console;verbosity=detailed",
-                "--collect", "XPlat Code Coverage",
-                "--results-directory", "TestResults/DI"
+                "dotnet",
+                "test",
+                str(project_path),
+                "--filter",
+                "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
+                "--verbosity",
+                "normal",
+                "--logger",
+                "console;verbosity=detailed",
+                "--collect",
+                "XPlat Code Coverage",
+                "--results-directory",
+                "TestResults/DI",
             ]
 
             if self.verbose:
@@ -59,7 +67,7 @@ class DIThreadTester:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                cwd=Path(__file__).parent.parent
+                cwd=Path(__file__).parent.parent,
             )
 
             # Monitor output in real-time
@@ -69,7 +77,7 @@ class DIThreadTester:
             if process.stdout:
                 while True:
                     output = process.stdout.readline()
-                    if output == '' and process.poll() is not None:
+                    if output == "" and process.poll() is not None:
                         break
                     if output:
                         line = output.strip()
@@ -82,7 +90,10 @@ class DIThreadTester:
                             service_resolutions.append((time.time() - start_time, line))
 
                         # Log timing information
-                        if "ms" in line and any(phase in line.lower() for phase in ["provider", "service", "viewmodel", "window"]):
+                        if "ms" in line and any(
+                            phase in line.lower()
+                            for phase in ["provider", "service", "viewmodel", "window"]
+                        ):
                             logger.info(f"Timing: {line}")
                             # Extract phase name and timing
                             parts = line.split()
@@ -127,14 +138,15 @@ class DIThreadTester:
             logger.error(f"Failed to run DI test: {e}")
             return False
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Test DI Threading for WileyWidget')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose logging')
+    parser = argparse.ArgumentParser(description="Test DI Threading for WileyWidget")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
 
     args = parser.parse_args()
 
     # Ensure logs directory exists
-    Path('logs').mkdir(exist_ok=True)
+    Path("logs").mkdir(exist_ok=True)
 
     tester = DIThreadTester(verbose=args.verbose)
 
@@ -144,6 +156,7 @@ def main():
         logger.info("DI threading test passed")
     else:
         logger.error("DI threading test failed")
+
 
 if __name__ == "__main__":
     main()

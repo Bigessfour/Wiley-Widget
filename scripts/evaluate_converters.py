@@ -26,18 +26,18 @@ Converters evaluated:
    - BooleanToFontWeightConverter
 """
 
+import re
 import sys
-from typing import Any
 from dataclasses import dataclass
 from enum import Enum
-import re
+from typing import Any
 
 
 def camel_to_snake(name: str) -> str:
     """Convert camelCase to snake_case"""
     # Insert underscore before uppercase letters and convert to lowercase
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 class TestResult(Enum):
@@ -49,6 +49,7 @@ class TestResult(Enum):
 @dataclass
 class TestCase:
     """Represents a single test case for converter evaluation"""
+
     name: str
     input_value: Any
     expected_output: Any
@@ -59,6 +60,7 @@ class TestCase:
 @dataclass
 class TestSuite:
     """Represents a collection of test cases for a converter"""
+
     converter_name: str
     test_cases: list[TestCase]
     converter_description: str = ""
@@ -192,6 +194,7 @@ class ConverterEvaluator:
     @staticmethod
     def evaluate_bool_to_visibility_converter(value: Any, parameter: str = "") -> str:
         """Python implementation of BoolToVisibilityConverter logic"""
+
         def evaluate_visibility(val: Any, param: str = "") -> bool:
             # Base evaluation
             if isinstance(val, bool):
@@ -266,7 +269,9 @@ class ConverterEvaluator:
         return True  # Default for non-boolean values
 
     @staticmethod
-    def evaluate_boolean_to_font_weight_converter(value: Any, parameter: str = "") -> str:
+    def evaluate_boolean_to_font_weight_converter(
+        value: Any, parameter: str = ""
+    ) -> str:
         """Python implementation of BooleanToFontWeightConverter logic"""
         is_bold = isinstance(value, bool) and value
 
@@ -296,184 +301,578 @@ class ConverterTestRunner:
                 converter_name="BalanceColorConverter",
                 converter_description="Converts numeric values to colors (Green/Red/Gray)",
                 test_cases=[
-                    TestCase("Positive decimal", 100.50, "Green", description="Positive balance should be green"),
-                    TestCase("Negative decimal", -50.25, "Red", description="Negative balance should be red"),
-                    TestCase("Zero decimal", 0.0, "Gray", description="Zero balance should be gray"),
-                    TestCase("Positive int", 100, "Green", description="Positive integer should be green"),
-                    TestCase("Negative int", -25, "Red", description="Negative integer should be red"),
-                    TestCase("Zero int", 0, "Gray", description="Zero integer should be gray"),
-                    TestCase("String input", "invalid", "Gray", description="Non-numeric input should default to gray"),
-                    TestCase("None input", None, "Gray", description="None input should default to gray"),
-                ]
+                    TestCase(
+                        "Positive decimal",
+                        100.50,
+                        "Green",
+                        description="Positive balance should be green",
+                    ),
+                    TestCase(
+                        "Negative decimal",
+                        -50.25,
+                        "Red",
+                        description="Negative balance should be red",
+                    ),
+                    TestCase(
+                        "Zero decimal",
+                        0.0,
+                        "Gray",
+                        description="Zero balance should be gray",
+                    ),
+                    TestCase(
+                        "Positive int",
+                        100,
+                        "Green",
+                        description="Positive integer should be green",
+                    ),
+                    TestCase(
+                        "Negative int",
+                        -25,
+                        "Red",
+                        description="Negative integer should be red",
+                    ),
+                    TestCase(
+                        "Zero int", 0, "Gray", description="Zero integer should be gray"
+                    ),
+                    TestCase(
+                        "String input",
+                        "invalid",
+                        "Gray",
+                        description="Non-numeric input should default to gray",
+                    ),
+                    TestCase(
+                        "None input",
+                        None,
+                        "Gray",
+                        description="None input should default to gray",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="BudgetProgressConverter",
                 converter_description="Scales budget amounts to 0-100 progress bar range",
                 test_cases=[
-                    TestCase("Small budget", 10000.0, 10.0, description="10k should scale to 10%"),
-                    TestCase("Medium budget", 50000.0, 50.0, description="50k should scale to 50%"),
-                    TestCase("Large budget", 100000.0, 100.0, description="100k should scale to 100%"),
-                    TestCase("Oversized budget", 150000.0, 100.0, description="150k should cap at 100%"),
+                    TestCase(
+                        "Small budget",
+                        10000.0,
+                        10.0,
+                        description="10k should scale to 10%",
+                    ),
+                    TestCase(
+                        "Medium budget",
+                        50000.0,
+                        50.0,
+                        description="50k should scale to 50%",
+                    ),
+                    TestCase(
+                        "Large budget",
+                        100000.0,
+                        100.0,
+                        description="100k should scale to 100%",
+                    ),
+                    TestCase(
+                        "Oversized budget",
+                        150000.0,
+                        100.0,
+                        description="150k should cap at 100%",
+                    ),
                     TestCase("Zero budget", 0.0, 0.0, description="Zero should be 0%"),
-                    TestCase("Negative budget", -10000.0, 0.0, description="Negative should floor at 0%"),
-                    TestCase("Integer input", 25000, 25.0, description="Integer 25k should scale to 25%"),
-                ]
+                    TestCase(
+                        "Negative budget",
+                        -10000.0,
+                        0.0,
+                        description="Negative should floor at 0%",
+                    ),
+                    TestCase(
+                        "Integer input",
+                        25000,
+                        25.0,
+                        description="Integer 25k should scale to 25%",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="CurrencyFormatConverter",
                 converter_description="Returns US culture info for currency formatting",
                 test_cases=[
-                    TestCase("Any input", "test", "en-US", description="Should always return en-US culture"),
-                    TestCase("Numeric input", 123.45, "en-US", description="Numeric input should return en-US"),
-                    TestCase("None input", None, "en-US", description="None input should return en-US"),
-                ]
+                    TestCase(
+                        "Any input",
+                        "test",
+                        "en-US",
+                        description="Should always return en-US culture",
+                    ),
+                    TestCase(
+                        "Numeric input",
+                        123.45,
+                        "en-US",
+                        description="Numeric input should return en-US",
+                    ),
+                    TestCase(
+                        "None input",
+                        None,
+                        "en-US",
+                        description="None input should return en-US",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="UserMessageBackgroundConverter",
                 converter_description="Converts boolean to message background colors",
                 test_cases=[
-                    TestCase("User message", True, "Blue (#1976D2)", description="User messages should be blue"),
-                    TestCase("AI message", False, "Gray (#E0E0E0)", description="AI messages should be gray"),
-                    TestCase("Non-boolean", "test", "Gray (#E0E0E0)", description="Non-boolean should default to gray"),
-                ]
+                    TestCase(
+                        "User message",
+                        True,
+                        "Blue (#1976D2)",
+                        description="User messages should be blue",
+                    ),
+                    TestCase(
+                        "AI message",
+                        False,
+                        "Gray (#E0E0E0)",
+                        description="AI messages should be gray",
+                    ),
+                    TestCase(
+                        "Non-boolean",
+                        "test",
+                        "Gray (#E0E0E0)",
+                        description="Non-boolean should default to gray",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="MessageAlignmentConverter",
                 converter_description="Converts boolean to message alignment",
                 test_cases=[
-                    TestCase("User alignment", True, "Right", description="User messages align right"),
-                    TestCase("AI alignment", False, "Left", description="AI messages align left"),
-                    TestCase("User background", True, "Blue (#1976D2)", "background", "User background parameter"),
-                    TestCase("AI background", False, "Gray (#CFD8DC)", "background", "AI background parameter"),
-                    TestCase("User avatar", True, "You", "avatar", "User avatar parameter"),
+                    TestCase(
+                        "User alignment",
+                        True,
+                        "Right",
+                        description="User messages align right",
+                    ),
+                    TestCase(
+                        "AI alignment",
+                        False,
+                        "Left",
+                        description="AI messages align left",
+                    ),
+                    TestCase(
+                        "User background",
+                        True,
+                        "Blue (#1976D2)",
+                        "background",
+                        "User background parameter",
+                    ),
+                    TestCase(
+                        "AI background",
+                        False,
+                        "Gray (#CFD8DC)",
+                        "background",
+                        "AI background parameter",
+                    ),
+                    TestCase(
+                        "User avatar", True, "You", "avatar", "User avatar parameter"
+                    ),
                     TestCase("AI avatar", False, "AI", "avatar", "AI avatar parameter"),
-                ]
+                ],
             ),
             TestSuite(
                 converter_name="MessageForegroundConverter",
                 converter_description="Converts boolean to message text colors",
                 test_cases=[
-                    TestCase("User text", True, "White", description="User text should be white"),
-                    TestCase("AI text", False, "Black", description="AI text should be black"),
-                    TestCase("Custom colors", True, "Blue", "Blue|Green", "Custom color parameter"),
-                    TestCase("Custom colors false", False, "Green", "Blue|Green", "Custom color parameter"),
-                ]
+                    TestCase(
+                        "User text",
+                        True,
+                        "White",
+                        description="User text should be white",
+                    ),
+                    TestCase(
+                        "AI text", False, "Black", description="AI text should be black"
+                    ),
+                    TestCase(
+                        "Custom colors",
+                        True,
+                        "Blue",
+                        "Blue|Green",
+                        "Custom color parameter",
+                    ),
+                    TestCase(
+                        "Custom colors false",
+                        False,
+                        "Green",
+                        "Blue|Green",
+                        "Custom color parameter",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="ProfitLossTextConverter",
                 converter_description="Converts numeric values to profit/loss text",
                 test_cases=[
-                    TestCase("Profit", 1000.0, "Monthly Profit", description="Positive values show profit"),
-                    TestCase("Loss", -500.0, "Monthly Loss", description="Negative values show loss"),
-                    TestCase("Zero", 0.0, "Monthly Profit", description="Zero is considered profit"),
-                    TestCase("Non-numeric", "test", "Monthly Position", description="Non-numeric defaults to position"),
-                ]
+                    TestCase(
+                        "Profit",
+                        1000.0,
+                        "Monthly Profit",
+                        description="Positive values show profit",
+                    ),
+                    TestCase(
+                        "Loss",
+                        -500.0,
+                        "Monthly Loss",
+                        description="Negative values show loss",
+                    ),
+                    TestCase(
+                        "Zero",
+                        0.0,
+                        "Monthly Profit",
+                        description="Zero is considered profit",
+                    ),
+                    TestCase(
+                        "Non-numeric",
+                        "test",
+                        "Monthly Position",
+                        description="Non-numeric defaults to position",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="ProfitBrushConverter",
                 converter_description="Converts numeric values to profit/loss background colors",
                 test_cases=[
-                    TestCase("Profit background", 1000.0, "Light Green (#E8F5E8)", description="Profit gets light green background"),
-                    TestCase("Loss background", -500.0, "Light Orange (#FFF3E0)", description="Loss gets light orange background"),
-                    TestCase("Zero background", 0.0, "Light Green (#E8F5E8)", description="Zero gets profit background"),
-                    TestCase("Non-numeric", "test", "Light Gray (#F5F5F5)", description="Non-numeric gets neutral background"),
-                ]
+                    TestCase(
+                        "Profit background",
+                        1000.0,
+                        "Light Green (#E8F5E8)",
+                        description="Profit gets light green background",
+                    ),
+                    TestCase(
+                        "Loss background",
+                        -500.0,
+                        "Light Orange (#FFF3E0)",
+                        description="Loss gets light orange background",
+                    ),
+                    TestCase(
+                        "Zero background",
+                        0.0,
+                        "Light Green (#E8F5E8)",
+                        description="Zero gets profit background",
+                    ),
+                    TestCase(
+                        "Non-numeric",
+                        "test",
+                        "Light Gray (#F5F5F5)",
+                        description="Non-numeric gets neutral background",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="ProfitBorderBrushConverter",
                 converter_description="Converts numeric values to profit/loss border colors",
                 test_cases=[
-                    TestCase("Profit border", 1000.0, "Dark Green (#388E3C)", description="Profit gets dark green border"),
-                    TestCase("Loss border", -500.0, "Orange (#F57C00)", description="Loss gets orange border"),
-                    TestCase("Zero border", 0.0, "Dark Green (#388E3C)", description="Zero gets profit border"),
-                    TestCase("Non-numeric", "test", "Gray (#BDBDBD)", description="Non-numeric gets gray border"),
-                ]
+                    TestCase(
+                        "Profit border",
+                        1000.0,
+                        "Dark Green (#388E3C)",
+                        description="Profit gets dark green border",
+                    ),
+                    TestCase(
+                        "Loss border",
+                        -500.0,
+                        "Orange (#F57C00)",
+                        description="Loss gets orange border",
+                    ),
+                    TestCase(
+                        "Zero border",
+                        0.0,
+                        "Dark Green (#388E3C)",
+                        description="Zero gets profit border",
+                    ),
+                    TestCase(
+                        "Non-numeric",
+                        "test",
+                        "Gray (#BDBDBD)",
+                        description="Non-numeric gets gray border",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="ProfitTextBrushConverter",
                 converter_description="Converts numeric values to profit/loss text colors",
                 test_cases=[
-                    TestCase("Profit text", 1000.0, "Dark Green (#388E3C)", description="Profit gets dark green text"),
-                    TestCase("Loss text", -500.0, "Orange (#F57C00)", description="Loss gets orange text"),
-                    TestCase("Zero text", 0.0, "Dark Green (#388E3C)", description="Zero gets profit text color"),
-                    TestCase("Non-numeric", "test", "Dark Gray (#212121)", description="Non-numeric gets dark gray text"),
-                ]
+                    TestCase(
+                        "Profit text",
+                        1000.0,
+                        "Dark Green (#388E3C)",
+                        description="Profit gets dark green text",
+                    ),
+                    TestCase(
+                        "Loss text",
+                        -500.0,
+                        "Orange (#F57C00)",
+                        description="Loss gets orange text",
+                    ),
+                    TestCase(
+                        "Zero text",
+                        0.0,
+                        "Dark Green (#388E3C)",
+                        description="Zero gets profit text color",
+                    ),
+                    TestCase(
+                        "Non-numeric",
+                        "test",
+                        "Dark Gray (#212121)",
+                        description="Non-numeric gets dark gray text",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="BoolToBackgroundConverter",
                 converter_description="Converts boolean to background colors",
                 test_cases=[
-                    TestCase("True state", True, "Light Red (#FFEBEE)", description="True gets error background"),
-                    TestCase("False state", False, "Light Green (#E8F5E8)", description="False gets success background"),
-                    TestCase("Custom colors", True, "Blue", "Blue|Green", "Custom background colors"),
-                    TestCase("Custom colors false", False, "Green", "Blue|Green", "Custom background colors"),
-                ]
+                    TestCase(
+                        "True state",
+                        True,
+                        "Light Red (#FFEBEE)",
+                        description="True gets error background",
+                    ),
+                    TestCase(
+                        "False state",
+                        False,
+                        "Light Green (#E8F5E8)",
+                        description="False gets success background",
+                    ),
+                    TestCase(
+                        "Custom colors",
+                        True,
+                        "Blue",
+                        "Blue|Green",
+                        "Custom background colors",
+                    ),
+                    TestCase(
+                        "Custom colors false",
+                        False,
+                        "Green",
+                        "Blue|Green",
+                        "Custom background colors",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="BoolToVisibilityConverter",
                 converter_description="Converts values to Visibility with various parameters",
                 test_cases=[
-                    TestCase("True visible", True, "Visible", description="True values are visible"),
-                    TestCase("False collapsed", False, "Collapsed", description="False values are collapsed"),
-                    TestCase("True inverted", True, "Collapsed", "invert", "True inverted becomes collapsed"),
-                    TestCase("False inverted", False, "Visible", "invert", "False inverted becomes visible"),
-                    TestCase("Empty string", "", "Collapsed", description="Empty string is collapsed"),
-                    TestCase("Non-empty string", "test", "Visible", description="Non-empty string is visible"),
-                    TestCase("Empty check", "", "Visible", "empty", "Empty parameter checks for empty strings"),
-                    TestCase("Not empty check", "test", "Visible", "notempty", "NotEmpty parameter checks for content"),
-                    TestCase("Count match", 5, "Visible", "5", "Count parameter checks for specific number"),
-                    TestCase("Count no match", 3, "Collapsed", "5", "Count parameter fails for different number"),
-                ]
+                    TestCase(
+                        "True visible",
+                        True,
+                        "Visible",
+                        description="True values are visible",
+                    ),
+                    TestCase(
+                        "False collapsed",
+                        False,
+                        "Collapsed",
+                        description="False values are collapsed",
+                    ),
+                    TestCase(
+                        "True inverted",
+                        True,
+                        "Collapsed",
+                        "invert",
+                        "True inverted becomes collapsed",
+                    ),
+                    TestCase(
+                        "False inverted",
+                        False,
+                        "Visible",
+                        "invert",
+                        "False inverted becomes visible",
+                    ),
+                    TestCase(
+                        "Empty string",
+                        "",
+                        "Collapsed",
+                        description="Empty string is collapsed",
+                    ),
+                    TestCase(
+                        "Non-empty string",
+                        "test",
+                        "Visible",
+                        description="Non-empty string is visible",
+                    ),
+                    TestCase(
+                        "Empty check",
+                        "",
+                        "Visible",
+                        "empty",
+                        "Empty parameter checks for empty strings",
+                    ),
+                    TestCase(
+                        "Not empty check",
+                        "test",
+                        "Visible",
+                        "notempty",
+                        "NotEmpty parameter checks for content",
+                    ),
+                    TestCase(
+                        "Count match",
+                        5,
+                        "Visible",
+                        "5",
+                        "Count parameter checks for specific number",
+                    ),
+                    TestCase(
+                        "Count no match",
+                        3,
+                        "Collapsed",
+                        "5",
+                        "Count parameter fails for different number",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="EmptyStringToVisibilityConverter",
                 converter_description="Shows controls when string is empty",
                 test_cases=[
-                    TestCase("Empty string", "", "Visible", description="Empty string makes control visible"),
-                    TestCase("Non-empty string", "test", "Collapsed", description="Non-empty string hides control"),
-                    TestCase("Whitespace only", "   ", "Collapsed", description="Whitespace is not considered empty"),
-                    TestCase("Non-string", 123, "Collapsed", description="Non-string input is collapsed"),
-                ]
+                    TestCase(
+                        "Empty string",
+                        "",
+                        "Visible",
+                        description="Empty string makes control visible",
+                    ),
+                    TestCase(
+                        "Non-empty string",
+                        "test",
+                        "Collapsed",
+                        description="Non-empty string hides control",
+                    ),
+                    TestCase(
+                        "Whitespace only",
+                        "   ",
+                        "Collapsed",
+                        description="Whitespace is not considered empty",
+                    ),
+                    TestCase(
+                        "Non-string",
+                        123,
+                        "Collapsed",
+                        description="Non-string input is collapsed",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="CountToVisibilityConverter",
                 converter_description="Shows controls when count matches parameter",
                 test_cases=[
-                    TestCase("Count matches", 5, "Visible", "5", "Count 5 matches parameter 5"),
-                    TestCase("Count no match", 3, "Collapsed", "5", "Count 3 doesn't match parameter 5"),
-                    TestCase("Invalid parameter", 5, "Collapsed", "abc", "Non-numeric parameter fails"),
-                    TestCase("Non-integer input", "test", "Collapsed", "5", "Non-integer input fails"),
-                ]
+                    TestCase(
+                        "Count matches",
+                        5,
+                        "Visible",
+                        "5",
+                        "Count 5 matches parameter 5",
+                    ),
+                    TestCase(
+                        "Count no match",
+                        3,
+                        "Collapsed",
+                        "5",
+                        "Count 3 doesn't match parameter 5",
+                    ),
+                    TestCase(
+                        "Invalid parameter",
+                        5,
+                        "Collapsed",
+                        "abc",
+                        "Non-numeric parameter fails",
+                    ),
+                    TestCase(
+                        "Non-integer input",
+                        "test",
+                        "Collapsed",
+                        "5",
+                        "Non-integer input fails",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="BoolToForegroundConverter",
                 converter_description="Converts boolean to foreground colors",
                 test_cases=[
-                    TestCase("Error state", True, "Red (#D32F2F)", description="True represents error state"),
-                    TestCase("Success state", False, "Green (#388E3C)", description="False represents success state"),
-                    TestCase("Custom colors", True, "Blue", "Blue|Green", "Custom foreground colors"),
-                    TestCase("Custom colors false", False, "Green", "Blue|Green", "Custom foreground colors"),
-                ]
+                    TestCase(
+                        "Error state",
+                        True,
+                        "Red (#D32F2F)",
+                        description="True represents error state",
+                    ),
+                    TestCase(
+                        "Success state",
+                        False,
+                        "Green (#388E3C)",
+                        description="False represents success state",
+                    ),
+                    TestCase(
+                        "Custom colors",
+                        True,
+                        "Blue",
+                        "Blue|Green",
+                        "Custom foreground colors",
+                    ),
+                    TestCase(
+                        "Custom colors false",
+                        False,
+                        "Green",
+                        "Blue|Green",
+                        "Custom foreground colors",
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="InverseBooleanConverter",
                 converter_description="Inverts boolean values",
                 test_cases=[
-                    TestCase("True inverted", True, False, description="True becomes False"),
-                    TestCase("False inverted", False, True, description="False becomes True"),
-                    TestCase("Non-boolean", "test", True, description="Non-boolean defaults to True"),
-                    TestCase("None input", None, True, description="None defaults to True"),
-                ]
+                    TestCase(
+                        "True inverted", True, False, description="True becomes False"
+                    ),
+                    TestCase(
+                        "False inverted", False, True, description="False becomes True"
+                    ),
+                    TestCase(
+                        "Non-boolean",
+                        "test",
+                        True,
+                        description="Non-boolean defaults to True",
+                    ),
+                    TestCase(
+                        "None input", None, True, description="None defaults to True"
+                    ),
+                ],
             ),
             TestSuite(
                 converter_name="BooleanToFontWeightConverter",
                 converter_description="Converts boolean to font weights",
                 test_cases=[
-                    TestCase("Bold weight", True, "Bold", description="True values are bold"),
-                    TestCase("Normal weight", False, "Normal", description="False values are normal"),
-                    TestCase("Custom weights", True, "ExtraBold", "ExtraBold|Light", "Custom font weights"),
-                    TestCase("Custom weights false", False, "Light", "ExtraBold|Light", "Custom font weights"),
-                ]
+                    TestCase(
+                        "Bold weight", True, "Bold", description="True values are bold"
+                    ),
+                    TestCase(
+                        "Normal weight",
+                        False,
+                        "Normal",
+                        description="False values are normal",
+                    ),
+                    TestCase(
+                        "Custom weights",
+                        True,
+                        "ExtraBold",
+                        "ExtraBold|Light",
+                        "Custom font weights",
+                    ),
+                    TestCase(
+                        "Custom weights false",
+                        False,
+                        "Light",
+                        "ExtraBold|Light",
+                        "Custom font weights",
+                    ),
+                ],
             ),
         ]
 
@@ -489,15 +888,27 @@ class ConverterTestRunner:
             for test_case in suite.test_cases:
                 try:
                     if test_case.parameters is not None:
-                        actual_output = converter_method(test_case.input_value, test_case.parameters)
+                        actual_output = converter_method(
+                            test_case.input_value, test_case.parameters
+                        )
                     else:
                         actual_output = converter_method(test_case.input_value)
 
                     # Compare results (with some tolerance for floating point)
-                    if isinstance(test_case.expected_output, float) and isinstance(actual_output, (int, float)):
-                        result = TestResult.PASS if abs(actual_output - test_case.expected_output) < 0.01 else TestResult.FAIL
+                    if isinstance(test_case.expected_output, float) and isinstance(
+                        actual_output, (int, float)
+                    ):
+                        result = (
+                            TestResult.PASS
+                            if abs(actual_output - test_case.expected_output) < 0.01
+                            else TestResult.FAIL
+                        )
                     else:
-                        result = TestResult.PASS if actual_output == test_case.expected_output else TestResult.FAIL
+                        result = (
+                            TestResult.PASS
+                            if actual_output == test_case.expected_output
+                            else TestResult.FAIL
+                        )
 
                     suite_results.append((test_case, result, actual_output))
 
@@ -529,7 +940,11 @@ class ConverterTestRunner:
 
             for test_case, result, actual_output in suite_results:
                 total_tests += 1
-                status_icon = "✅" if result == TestResult.PASS else "❌" if result == TestResult.FAIL else "💥"
+                status_icon = (
+                    "✅"
+                    if result == TestResult.PASS
+                    else "❌" if result == TestResult.FAIL else "💥"
+                )
 
                 if result == TestResult.PASS:
                     suite_passed += 1
@@ -552,7 +967,9 @@ class ConverterTestRunner:
             # Suite summary
             suite_total = len(suite_results)
             success_rate = (suite_passed / suite_total * 100) if suite_total > 0 else 0
-            print(f"  Success Rate: {success_rate:.1f}% ({suite_passed}/{suite_total} passed)")
+            print(
+                f"  Success Rate: {success_rate:.1f}% ({suite_passed}/{suite_total} passed)"
+            )
             if suite_failed > 0 or suite_errors > 0:
                 print(f"  ⚠️  Issues: {suite_failed} failed, {suite_errors} errors")
 
@@ -566,12 +983,16 @@ class ConverterTestRunner:
         print(f"Errors:          {total_errors}")
 
         if total_tests > 0:
-            success_rate = (total_passed / total_tests * 100)
-            print(f"  Success Rate: {success_rate:.1f}% ({total_passed}/{total_tests} passed)")
+            success_rate = total_passed / total_tests * 100
+            print(
+                f"  Success Rate: {success_rate:.1f}% ({total_passed}/{total_tests} passed)"
+            )
             if total_failed == 0 and total_errors == 0:
                 print("🎉 ALL CONVERTERS EVALUATED SUCCESSFULLY!")
             else:
-                print(f"⚠️  {total_failed + total_errors} ISSUES FOUND - REVIEW FAILED TESTS ABOVE")
+                print(
+                    f"⚠️  {total_failed + total_errors} ISSUES FOUND - REVIEW FAILED TESTS ABOVE"
+                )
 
 
 def main():
@@ -584,9 +1005,12 @@ def main():
     evaluator.print_results(results)
 
     # Return exit code based on results
-    total_issues = sum(1 for suite_results in results.values()
-                      for _, result, _ in suite_results
-                      if result != TestResult.PASS)
+    total_issues = sum(
+        1
+        for suite_results in results.values()
+        for _, result, _ in suite_results
+        if result != TestResult.PASS
+    )
 
     return 0 if total_issues == 0 else 1
 

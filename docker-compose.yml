@@ -27,7 +27,7 @@ services:
     mem_limit: 512m
     pids_limit: 128
     volumes:
-      - .:/workspace:rw  # Mount Wiley-Widget repo
+      - .:/workspace:rw # Mount Wiley-Widget repo
 networks:
   mcp_net:
     driver: bridge

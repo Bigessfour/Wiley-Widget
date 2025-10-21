@@ -18,6 +18,8 @@ using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services;
 using WileyWidget.Services.Logging;
+using Syncfusion.SfSkinManager;
+using PrismDelegateCommand = Prism.Commands.DelegateCommand;
 using WileyWidget.ViewModels.Messages;
 
 namespace WileyWidget.ViewModels
@@ -32,6 +34,7 @@ namespace WileyWidget.ViewModels
     private readonly FiscalYearSettings _fiscalYearSettings;
     private readonly IEventAggregator _eventAggregator;
     private readonly IRegionManager _regionManager;
+    // private readonly IThemeService _themeService;
 
     private DispatcherTimer _refreshTimer;
 
@@ -247,11 +250,38 @@ namespace WileyWidget.ViewModels
     }
 
     // Missing properties for view bindings
-    private string _currentTheme = "Light";
-    public string CurrentTheme
+    private string _currentTheme = "FluentLight";
+    public VisualStyles CurrentTheme
     {
-        get => _currentTheme;
-        set => SetProperty(ref _currentTheme, value);
+        get => MapThemeToVisualStyle(_currentTheme);
+        set
+        {
+            var themeString = MapVisualStyleToTheme(value);
+            if (SetProperty(ref _currentTheme, themeString))
+            {
+                // _themeService.ApplyTheme(themeString);
+            }
+        }
+    }
+
+    private VisualStyles MapThemeToVisualStyle(string themeName)
+    {
+        return themeName switch
+        {
+            "FluentLight" => VisualStyles.FluentLight,
+            "FluentDark" => VisualStyles.FluentDark,
+            _ => VisualStyles.FluentLight
+        };
+    }
+
+    private string MapVisualStyleToTheme(VisualStyles style)
+    {
+        return style switch
+        {
+            VisualStyles.FluentLight => "FluentLight",
+            VisualStyles.FluentDark => "FluentDark",
+            _ => "FluentLight"
+        };
     }
 
     private ObservableCollection<BudgetUtilizationData> _budgetUtilizationData = new();
@@ -423,6 +453,7 @@ namespace WileyWidget.ViewModels
         _fiscalYearSettings = fiscalYearSettings;
         _eventAggregator = eventAggregator;
         _regionManager = regionManager;
+        // _themeService = themeService;
 
         // Subscribe to collection change events for detailed logging
         Enterprises.CollectionChanged += Enterprises_CollectionChanged;

@@ -83,7 +83,7 @@ public class ExcelReaderService : IExcelReaderService
                         if (columnMap.ContainsKey("StartPeriod"))
                         {
                             var startPeriodStr = GetCellValue(worksheet, row, columnMap["StartPeriod"]);
-                            if (DateOnly.TryParse(startPeriodStr, out var startPeriod))
+                            if (DateTime.TryParse(startPeriodStr, out var startPeriod))
                             {
                                 budgetEntry.StartPeriod = startPeriod;
                             }
@@ -92,7 +92,7 @@ public class ExcelReaderService : IExcelReaderService
                         if (columnMap.ContainsKey("EndPeriod"))
                         {
                             var endPeriodStr = GetCellValue(worksheet, row, columnMap["EndPeriod"]);
-                            if (DateOnly.TryParse(endPeriodStr, out var endPeriod))
+                            if (DateTime.TryParse(endPeriodStr, out var endPeriod))
                             {
                                 budgetEntry.EndPeriod = endPeriod;
                             }

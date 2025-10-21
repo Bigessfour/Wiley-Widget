@@ -6,15 +6,15 @@ Comprehensive test runner for enterprise database connections and features.
 Executes all database tests with detailed reporting and environment validation.
 """
 
-import sys
-import os
 import argparse
-import subprocess
 import json
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, Tuple, List
+import os
+import subprocess
+import sys
 import time
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -32,7 +32,12 @@ class DatabaseTestRunner:
         start_time: Timestamp when testing started.
     """
 
-    def __init__(self, environment: str = "Development", verbose: bool = False, azure_test: bool = False) -> None:
+    def __init__(
+        self,
+        environment: str = "Development",
+        verbose: bool = False,
+        azure_test: bool = False,
+    ) -> None:
         """Initialize the database test runner.
 
         Args:
@@ -56,7 +61,9 @@ class DatabaseTestRunner:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{timestamp}] [{level}] {message}")
 
-    def run_command(self, cmd: List[str] | str, description: str, timeout: int = 300) -> Tuple[bool, str]:
+    def run_command(
+        self, cmd: List[str] | str, description: str, timeout: int = 300
+    ) -> Tuple[bool, str]:
         """Run a command and capture output.
 
         Args:
@@ -73,11 +80,7 @@ class DatabaseTestRunner:
 
         try:
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                cwd=project_root
+                cmd, capture_output=True, text=True, timeout=timeout, cwd=project_root
             )
 
             success = result.returncode == 0
@@ -107,7 +110,7 @@ class DatabaseTestRunner:
             "python_version": sys.version_info >= (3, 11),
             "pytest_available": self.check_command_available("pytest"),
             "dotnet_available": self.check_command_available("dotnet"),
-            "sql_server_available": self.check_sql_server_available()
+            "sql_server_available": self.check_sql_server_available(),
         }
 
         if self.azure_test:
@@ -132,13 +135,14 @@ class DatabaseTestRunner:
         """
         try:
             subprocess.run(
-                [command, "--version"],
-                capture_output=True,
-                check=True,
-                timeout=10
+                [command, "--version"], capture_output=True, check=True, timeout=10
             )
             return True
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        except (
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+        ):
             return False
 
     def check_sql_server_available(self) -> bool:
@@ -149,6 +153,7 @@ class DatabaseTestRunner:
         """
         try:
             import pyodbc
+
             conn_str = (
                 "DRIVER={ODBC Driver 17 for SQL Server};"
                 "SERVER=localhost\\SQLEXPRESS01;"
@@ -190,12 +195,15 @@ class DatabaseTestRunner:
         self.log("Running database unit tests...")
 
         cmd = [
-            sys.executable, "-m", "pytest",
+            sys.executable,
+            "-m",
+            "pytest",
             "tests/test_enterprise_database_connections.py",
             "-v",
-            "-m", "unit",
+            "-m",
+            "unit",
             "--tb=short",
-            "--maxfail=5"
+            "--maxfail=5",
         ]
 
         success, output = self.run_command(cmd, "Database unit tests")
@@ -216,12 +224,15 @@ class DatabaseTestRunner:
             markers.append("not azure")
 
         cmd = [
-            sys.executable, "-m", "pytest",
+            sys.executable,
+            "-m",
+            "pytest",
             "tests/test_enterprise_database_connections.py",
             "-v",
-            "-m", " and ".join(markers),
+            "-m",
+            " and ".join(markers),
             "--tb=short",
-            "--maxfail=3"
+            "--maxfail=3",
         ]
 
         success, output = self.run_command(cmd, "Database integration tests")
@@ -238,11 +249,14 @@ class DatabaseTestRunner:
         self.log("Running enterprise feature tests...")
 
         cmd = [
-            sys.executable, "-m", "pytest",
+            sys.executable,
+            "-m",
+            "pytest",
             "tests/test_enterprise_database_connections.py",
             "-v",
-            "-m", "enterprise",
-            "--tb=short"
+            "-m",
+            "enterprise",
+            "--tb=short",
         ]
 
         success, output = self.run_command(cmd, "Enterprise feature tests")
@@ -259,10 +273,12 @@ class DatabaseTestRunner:
         self.log("Running health check tests...")
 
         cmd = [
-            sys.executable, "-m", "pytest",
+            sys.executable,
+            "-m",
+            "pytest",
             "tests/test_health_checks.py",
             "-v",
-            "--tb=short"
+            "--tb=short",
         ]
 
         success, output = self.run_command(cmd, "Health check tests")
@@ -279,11 +295,14 @@ class DatabaseTestRunner:
         self.log("Running database smoke tests...")
 
         cmd = [
-            sys.executable, "-m", "pytest",
+            sys.executable,
+            "-m",
+            "pytest",
             "tests/test_enterprise_database_connections.py",
             "-v",
-            "-m", "smoke",
-            "--tb=short"
+            "-m",
+            "smoke",
+            "--tb=short",
         ]
 
         success, output = self.run_command(cmd, "Database smoke tests")
@@ -337,15 +356,28 @@ class DatabaseTestRunner:
                 "timestamp": datetime.now().isoformat(),
                 "environment": self.environment,
                 "duration_seconds": round(duration, 2),
-                "azure_tests_enabled": self.azure_test
+                "azure_tests_enabled": self.azure_test,
             },
             "results": self.test_results,
             "summary": {
                 "total_tests": len(self.test_results),
-                "passed_tests": len([r for r in self.test_results.values() if r["success"]]),
-                "failed_tests": len([r for r in self.test_results.values() if not r["success"]]),
-                "success_rate": round(len([r for r in self.test_results.values() if r["success"]]) / len(self.test_results) * 100, 1) if self.test_results else 0
-            }
+                "passed_tests": len(
+                    [r for r in self.test_results.values() if r["success"]]
+                ),
+                "failed_tests": len(
+                    [r for r in self.test_results.values() if not r["success"]]
+                ),
+                "success_rate": (
+                    round(
+                        len([r for r in self.test_results.values() if r["success"]])
+                        / len(self.test_results)
+                        * 100,
+                        1,
+                    )
+                    if self.test_results
+                    else 0
+                ),
+            },
         }
 
         return report
@@ -356,15 +388,17 @@ class DatabaseTestRunner:
         Args:
             report: The test report dictionary to print.
         """
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🏭 ENTERPRISE DATABASE TEST REPORT")
-        print("="*80)
+        print("=" * 80)
 
         run_info = report["test_run"]
         print(f"Environment: {run_info['environment']}")
         print(f"Timestamp: {run_info['timestamp']}")
         print(f"Duration: {run_info['duration_seconds']} seconds")
-        print(f"Azure Tests: {'Enabled' if run_info['azure_tests_enabled'] else 'Disabled'}")
+        print(
+            f"Azure Tests: {'Enabled' if run_info['azure_tests_enabled'] else 'Disabled'}"
+        )
 
         summary = report["summary"]
         print("\n📊 SUMMARY:")
@@ -383,9 +417,11 @@ class DatabaseTestRunner:
             for test_name, result in report["results"].items():
                 if not result["success"]:
                     print(f"  {test_name}:")
-                    print(f"    {result['output'][:200]}{'...' if len(result['output']) > 200 else ''}")
+                    print(
+                        f"    {result['output'][:200]}{'...' if len(result['output']) > 200 else ''}"
+                    )
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
 
     def run_all_tests(self) -> bool:
         """Run the complete test suite.
@@ -413,7 +449,7 @@ class DatabaseTestRunner:
             ("Integration Tests", self.run_integration_tests),
             ("Enterprise Features", self.run_enterprise_feature_tests),
             ("Health Checks", self.run_health_check_tests),
-            ("Migration Readiness", self.test_database_migration)
+            ("Migration Readiness", self.test_database_migration),
         ]
 
         all_passed = True
@@ -424,7 +460,10 @@ class DatabaseTestRunner:
                 if not phase_success:
                     all_passed = False
                     if phase_name in ["Environment Setup", ".NET Build"]:
-                        self.log(f"❌ Critical phase '{phase_name}' failed. Aborting.", "ERROR")
+                        self.log(
+                            f"❌ Critical phase '{phase_name}' failed. Aborting.",
+                            "ERROR",
+                        )
                         break
                 else:
                     self.log(f"✅ Phase '{phase_name}' completed successfully")
@@ -438,10 +477,14 @@ class DatabaseTestRunner:
         self.print_report(report)
 
         # Save report to file
-        report_file = project_root / "test-results" / f"database-test-report-{int(time.time())}.json"
+        report_file = (
+            project_root
+            / "test-results"
+            / f"database-test-report-{int(time.time())}.json"
+        )
         report_file.parent.mkdir(exist_ok=True)
 
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             json.dump(report, f, indent=2)
 
         self.log(f"📄 Detailed report saved to: {report_file}")
@@ -453,38 +496,31 @@ def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Enterprise Database Test Runner")
     parser.add_argument(
-        "--environment", "-e",
+        "--environment",
+        "-e",
         choices=["Development", "Production", "Test"],
         default="Development",
-        help="Target environment for testing"
+        help="Target environment for testing",
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
     )
     parser.add_argument(
         "--azure-test",
         action="store_true",
-        help="Enable Azure SQL Database tests (requires Azure resources)"
+        help="Enable Azure SQL Database tests (requires Azure resources)",
     )
     parser.add_argument(
-        "--unit-only",
-        action="store_true",
-        help="Run only unit tests (fast)"
+        "--unit-only", action="store_true", help="Run only unit tests (fast)"
     )
     parser.add_argument(
-        "--smoke-only",
-        action="store_true",
-        help="Run only smoke tests (critical path)"
+        "--smoke-only", action="store_true", help="Run only smoke tests (critical path)"
     )
 
     args = parser.parse_args()
 
     runner = DatabaseTestRunner(
-        environment=args.environment,
-        verbose=args.verbose,
-        azure_test=args.azure_test
+        environment=args.environment, verbose=args.verbose, azure_test=args.azure_test
     )
 
     # Run specific test types if requested

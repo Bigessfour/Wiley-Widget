@@ -703,7 +703,7 @@
                 
                 <!-- Status Indicator -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Ellipse Style="{StaticResource StatusIndicatorStyle}"
+                    <Ellipse Style="{DynamicResource StatusIndicatorStyle}"
                             Fill="{Binding HasError, Converter={StaticResource BoolToVis}}" />
                     <TextBlock Text="Status:" 
                               FontWeight="SemiBold" 

@@ -22,16 +22,15 @@
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         Visibility="Hidden"
-        syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
-        prism:ViewModelLocator.AutoWireViewModel="True"
-        DataContext="{Binding}">
+        syncfusionskin:SfSkinManager.VisualStyle="FluentLight"
+        prism:ViewModelLocator.AutoWireViewModel="True">
 
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <!-- Theme resources -->
-                <ResourceDictionary Source="../Themes/Generic.xaml"/>
-                <ResourceDictionary Source="../Themes/WileyTheme.xaml"/>
+                <!-- <ResourceDictionary Source="../Themes/Generic.xaml"/> -->
+                <!-- <ResourceDictionary Source="../Themes/WileyTheme.xaml"/> -->
                 <!-- Data templates for ViewModels -->
                 <ResourceDictionary Source="../Resources/DataTemplates.xaml"/>
             </ResourceDictionary.MergedDictionaries>
@@ -222,12 +221,8 @@
             </syncfusion:RibbonTab>
         </syncfusion:Ribbon>
 
-        <!-- DockingManager with Acrylic background wrapper (documented SfAcrylicPanel) -->
-        <darkTheme:SfAcrylicPanel Grid.Row="1"
-                                  TintBrush="#202020"
-                                  TintOpacity="0.25"
-                                  BlurRadius="30"
-                                  NoiseOpacity="0.03">
+    <!-- DockingManager main host (acrylic wrapper removed to prevent XAML load issues) -->
+    <Grid Grid.Row="1">
             <syncfusion:DockingManager x:Name="MainDockingManager"
                                  AutomationProperties.Name="Main Docking Manager"
                                  AutomationProperties.HelpText="Main content area with dockable panels"
@@ -348,6 +343,17 @@
                             </i:Interaction.Behaviors>
                         </ContentControl>
 
+                        <ContentControl x:Name="QuickBooksRegion"
+                          prism:RegionManager.RegionName="QuickBooksRegion"
+                          syncfusion:DockingManager.State="Document"
+                          syncfusion:DockingManager.Header="QuickBooks"
+                          syncfusion:DockingManager.CanClose="False"
+                                                    MinWidth="400" MinHeight="300">
+                            <i:Interaction.Behaviors>
+                                <behaviors:ActivateOnMouseOverBehavior />
+                            </i:Interaction.Behaviors>
+                        </ContentControl>
+
             <!-- Panel Regions (Fixed Docking Positions) -->
             <ContentControl x:Name="LeftPanelRegion"
                           prism:RegionManager.RegionName="LeftPanelRegion"
@@ -373,7 +379,7 @@
                           syncfusion:DockingManager.Header="System Alerts"
                           syncfusion:DockingManager.CanClose="False"/>
             </syncfusion:DockingManager>
-        </darkTheme:SfAcrylicPanel>
+        </Grid>
 
         <!-- Status Bar in Row 2 -->
         <StatusBar Grid.Row="2"

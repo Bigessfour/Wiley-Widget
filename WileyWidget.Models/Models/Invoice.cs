@@ -56,6 +56,13 @@ public class Invoice
     public DateTime? DueDate { get; set; }
 
     /// <summary>
+    /// Invoice status
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string Status { get; set; } = "Pending";
+
+    /// <summary>
     /// Whether the invoice is paid
     /// </summary>
     public bool IsPaid { get; set; } = false;

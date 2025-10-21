@@ -59,7 +59,7 @@
         <!-- Enhanced Style for validated TextBox with HighVisibility Focus -->
         <Style TargetType="syncfusion:SfTextBoxExt">
             <Setter Property="Validation.ErrorTemplate" Value="{StaticResource ErrorTemplate}" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource HighVisibilityFocusStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource HighVisibilityFocusStyle}" />
             <Style.Triggers>
                 <Trigger Property="Validation.HasError" Value="True">
                     <Setter Property="BorderBrush" Value="#F44336" />

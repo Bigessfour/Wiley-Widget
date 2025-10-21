@@ -29,6 +29,7 @@ Write-Output "`nTesting public endpoint..."
 try {
     $response = Invoke-WebRequest -Uri "https://app.townofwiley.gov/health" -UseBasicParsing -TimeoutSec 10
     Write-Output "✓ SUCCESS! Status: $($response.StatusCode), Response: $($response.Content)"
-} catch {
+}
+catch {
     Write-Warning "✗ Failed: $($_.Exception.Message)"
 }

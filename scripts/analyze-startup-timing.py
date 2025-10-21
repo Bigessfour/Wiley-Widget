@@ -6,6 +6,7 @@ Analyzes current startup sequence and provides optimization recommendations
 
 from pathlib import Path
 
+
 def analyze_startup_timing():
     """Analyze the current startup timing and identify issues"""
 
@@ -18,7 +19,7 @@ def analyze_startup_timing():
         print("❌ App.xaml.cs not found")
         return
 
-    with open(app_file, 'r') as f:
+    with open(app_file, "r") as f:
         content = f.read()
 
     print("\n📋 CURRENT STARTUP SEQUENCE ANALYSIS:")
@@ -64,7 +65,7 @@ def analyze_startup_timing():
     # Analyze fallback mechanisms
     print("\n🔄 FALLBACK MECHANISMS:")
     fallback_methods = []
-    if "_configuration[\"Syncfusion:LicenseKey\"]" in content:
+    if '_configuration["Syncfusion:LicenseKey"]' in content:
         fallback_methods.append("Configuration file")
     if "Environment.GetEnvironmentVariable" in content:
         fallback_methods.append("Environment variable")
@@ -75,6 +76,7 @@ def analyze_startup_timing():
         print(f"✅ Fallback methods available: {', '.join(fallback_methods)}")
     else:
         print("❌ No fallback methods detected")
+
 
 def recommend_optimizations():
     """Provide optimization recommendations based on Microsoft and Syncfusion best practices"""
@@ -107,13 +109,14 @@ def recommend_optimizations():
     print("   Recommended: Graceful offline mode with retry")
     print("   Impact: Better reliability")
 
+
 def generate_optimized_startup_code():
     """Generate optimized startup code following best practices"""
 
     print("\n📝 OPTIMIZED STARTUP CODE TEMPLATE:")
     print("-" * 40)
 
-    optimized_code = '''
+    optimized_code = """
 // OPTIMIZED STARTUP SEQUENCE - Following Microsoft WPF Best Practices
 
 public partial class App : Application
@@ -185,9 +188,10 @@ public partial class App : Application
         await InitializeOtherServicesAsync();
     }
 }
-'''
+"""
 
     print(optimized_code)
+
 
 def main():
     analyze_startup_timing()
@@ -201,6 +205,7 @@ def main():
     print("📈 Expected Improvement: 3-15 second faster startup")
     print("🛡️  Better Error Handling: Graceful fallbacks")
     print("🔄 Improved UX: Splash screen + background loading")
+
 
 if __name__ == "__main__":
     main()

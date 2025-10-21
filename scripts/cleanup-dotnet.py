@@ -4,26 +4,35 @@ Clean up orphaned .NET processes during development
 Run this before starting new development sessions to prevent conflicts
 """
 
-import os
-import sys
-import subprocess
 import argparse
+import os
 import shutil
+import subprocess
+import sys
+
 
 def get_dotnet_processes():
     """Get all .NET-related processes"""
     try:
-        result = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'],
-                              capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["tasklist", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
         processes = []
-        for line in result.stdout.strip().split('\n'):
+        for line in result.stdout.strip().split("\n"):
             if line.strip():
-                parts = line.split(',')
+                parts = line.split(",")
                 if len(parts) >= 2:
                     name = parts[0].strip('"')
                     pid = parts[1].strip('"')
-                    if 'dotnet' in name.lower() or 'testhost' in name.lower() or name == 'WileyWidget.exe':
+                    if (
+                        "dotnet" in name.lower()
+                        or "testhost" in name.lower()
+                        or name == "WileyWidget.exe"
+                    ):
                         processes.append((name, pid))
 
         return processes
@@ -31,6 +40,7 @@ def get_dotnet_processes():
     except Exception as e:
         print(f"❌ Error getting processes: {e}")
         return []
+
 
 def cleanup_processes(force=False, dry_run=False):
     """Clean up .NET processes"""
@@ -53,7 +63,7 @@ def cleanup_processes(force=False, dry_run=False):
     if not force:
         try:
             response = input("Kill these processes? (y/N): ").lower().strip()
-            if response not in ['y', 'yes']:
+            if response not in ["y", "yes"]:
                 print("Aborted")
                 return False
         except KeyboardInterrupt:
@@ -64,8 +74,9 @@ def cleanup_processes(force=False, dry_run=False):
     killed_count = 0
     for name, pid in processes:
         try:
-            subprocess.run(['taskkill', '/PID', pid, '/F'],
-                         capture_output=True, check=True)
+            subprocess.run(
+                ["taskkill", "/PID", pid, "/F"], capture_output=True, check=True
+            )
             print(f"✅ Killed {name} (PID: {pid})")
             killed_count += 1
         except subprocess.CalledProcessError as e:
@@ -75,7 +86,7 @@ def cleanup_processes(force=False, dry_run=False):
 
     # Clean up temporary files
     print("Cleaning up temporary files...")
-    for dir_name in ['bin', 'obj']:
+    for dir_name in ["bin", "obj"]:
         if os.path.exists(dir_name):
             try:
                 shutil.rmtree(dir_name)
@@ -86,17 +97,24 @@ def cleanup_processes(force=False, dry_run=False):
     print("✅ Temporary build files cleaned")
     return True
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Clean up .NET processes')
-    parser.add_argument('-f', '--force', action='store_true',
-                       help='Force kill without confirmation')
-    parser.add_argument('-d', '--dry-run', action='store_true',
-                       help='Show what would be killed without actually killing')
+    parser = argparse.ArgumentParser(description="Clean up .NET processes")
+    parser.add_argument(
+        "-f", "--force", action="store_true", help="Force kill without confirmation"
+    )
+    parser.add_argument(
+        "-d",
+        "--dry-run",
+        action="store_true",
+        help="Show what would be killed without actually killing",
+    )
 
     args = parser.parse_args()
 
     success = cleanup_processes(force=args.force, dry_run=args.dry_run)
     sys.exit(0 if success else 1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

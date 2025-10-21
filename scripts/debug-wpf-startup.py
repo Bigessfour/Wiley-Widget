@@ -9,14 +9,15 @@ Usage:
     python scripts/debug-wpf-startup.py [--verbose] [--timeout=60]
 """
 
+import os
 import subprocess
 import sys
-import os
-import time
-import signal
 import threading
-import debugpy
+import time
 from pathlib import Path
+
+import debugpy
+
 
 def setup_debugpy():
     """Setup debugpy for remote debugging"""
@@ -24,6 +25,7 @@ def setup_debugpy():
     print("Debugpy listening on localhost:5678")
     print("Attach debugger to continue...")
     debugpy.wait_for_client()
+
 
 def monitor_process(proc, timeout=60):
     """Monitor the process for hangs and log activity"""
@@ -55,10 +57,13 @@ def monitor_process(proc, timeout=60):
 
         return_code = proc.returncode
         elapsed = time.time() - start_time
-        print(f"Process completed with return code {return_code} in {elapsed:.1f} seconds")
+        print(
+            f"Process completed with return code {return_code} in {elapsed:.1f} seconds"
+        )
 
     finally:
         timer.cancel()
+
 
 def run_startup_test():
     """Run the startup test to capture full output"""
@@ -69,17 +74,23 @@ def run_startup_test():
 
     print(f"Running startup test and logging to {log_file}")
 
-    with open(log_file, 'w') as f:
+    with open(log_file, "w") as f:
         f.write(f"Startup Test Debug - {time.ctime()}\n")
         f.write("=" * 50 + "\n")
 
         # Run the test
         cmd = [
-            "dotnet", "test",
-            str(workspace_folder / "WileyWidget.UiTests" / "WileyWidget.UiTests.csproj"),
-            "--filter", "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
-            "--verbosity", "normal",
-            "--logger", "console;verbosity=detailed"
+            "dotnet",
+            "test",
+            str(
+                workspace_folder / "WileyWidget.UiTests" / "WileyWidget.UiTests.csproj"
+            ),
+            "--filter",
+            "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
+            "--verbosity",
+            "normal",
+            "--logger",
+            "console;verbosity=detailed",
         ]
 
         print(f"Running: {' '.join(cmd)}")
@@ -90,7 +101,7 @@ def run_startup_test():
                 cwd=workspace_folder,
                 capture_output=True,
                 text=True,
-                timeout=120  # 2 minutes for test
+                timeout=120,  # 2 minutes for test
             )
 
             f.write(f"Exit Code: {result.returncode}\n")
@@ -126,6 +137,7 @@ def run_startup_test():
 
     print(f"Log written to {log_file}")
 
+
 def run_exe_startup(args):
     """Run the exe startup monitoring"""
     # Get workspace folder
@@ -153,7 +165,7 @@ def run_exe_startup(args):
             stdout=subprocess.PIPE if args.verbose else subprocess.DEVNULL,
             stderr=subprocess.PIPE if args.verbose else subprocess.DEVNULL,
             env=env,
-            cwd=workspace_folder
+            cwd=workspace_folder,
         )
 
         print(f"Started process with PID {proc.pid}")
@@ -173,18 +185,21 @@ def run_exe_startup(args):
 
     except KeyboardInterrupt:
         print("Interrupted by user")
-        if 'proc' in locals() and proc.poll() is None:
+        if "proc" in locals() and proc.poll() is None:
             proc.terminate()
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Debug WPF Startup Script")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument("--timeout", type=int, default=60, help="Timeout in seconds")
     parser.add_argument("--debug", action="store_true", help="Enable debugpy debugging")
-    parser.add_argument("--test", action="store_true", help="Run the startup test instead of the exe")
+    parser.add_argument(
+        "--test", action="store_true", help="Run the startup test instead of the exe"
+    )
 
     args = parser.parse_args()
 
@@ -196,6 +211,8 @@ def main():
     else:
         run_exe_startup(args)
 
+
 if __name__ == "__main__":
     import argparse
+
     main()

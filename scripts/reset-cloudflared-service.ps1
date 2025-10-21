@@ -21,7 +21,8 @@ if ($service) {
     sc.exe delete Cloudflared
     Start-Sleep -Seconds 2
     Write-Output "  ✓ Service deleted"
-} else {
+}
+else {
     Write-Output "  No service found"
 }
 
@@ -31,7 +32,8 @@ $configPath = "C:\ProgramData\cloudflared\config.yml"
 if (Test-Path $configPath) {
     Write-Output "  ✓ Config file exists"
     Get-Content $configPath | Write-Output
-} else {
+}
+else {
     Write-Error "Config file not found: $configPath"
     exit 1
 }
@@ -48,7 +50,8 @@ $newService = Get-Service Cloudflared -ErrorAction SilentlyContinue
 if ($newService) {
     Write-Output "  ✓ Service created"
     Write-Output "  Start Type: $($newService.StartType)"
-} else {
+}
+else {
     Write-Error "Service installation failed"
     exit 1
 }
@@ -64,7 +67,7 @@ Start-Sleep -Seconds 10
 
 # Verify
 Write-Output "`nService Status:"
-Get-Service Cloudflared | Format-List Name,Status,StartType
+Get-Service Cloudflared | Format-List Name, Status, StartType
 
 Write-Output "`nTunnel Status:"
 & $cloudflared tunnel info ddd24f98-673d-43cb-b8a8-21a2329fffec
@@ -74,7 +77,8 @@ try {
     $response = Invoke-WebRequest -Uri "https://app.townofwiley.gov/health" -UseBasicParsing -TimeoutSec 10
     Write-Output "✓ SUCCESS! Status: $($response.StatusCode)"
     Write-Output "  Response: $($response.Content)"
-} catch {
+}
+catch {
     Write-Warning "✗ Failed: $($_.Exception.Message)"
     Write-Output "`nTroubleshooting:"
     Write-Output "  1. Check service: Get-Service Cloudflared"

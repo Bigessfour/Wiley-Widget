@@ -13,10 +13,12 @@ function printUsage(message) {
   if (message) {
     console.error(message);
   }
-  console.error("Usage: node scripts/mcp-client.js client <command> [options]\n" +
-    "Commands:\n" +
-    "  register-tool --url <url> --manifest <path>\n" +
-    "  call --url <url> --tool-id <id> [--params <json>]");
+  console.error(
+    "Usage: node scripts/mcp-client.js client <command> [options]\n" +
+      "Commands:\n" +
+      "  register-tool --url <url> --manifest <path>\n" +
+      "  call --url <url> --tool-id <id> [--params <json>]",
+  );
 }
 
 function parseArgs(args) {
@@ -77,7 +79,9 @@ async function registerTools(options) {
     throw new Error(`Server missing tools: ${missing.join(", ")}`);
   }
 
-  console.log(`MCP server ready at ${baseUrl}. Registered tools: ${serverNames.join(", ")}`);
+  console.log(
+    `MCP server ready at ${baseUrl}. Registered tools: ${serverNames.join(", ")}`,
+  );
 }
 
 async function callTool(options) {

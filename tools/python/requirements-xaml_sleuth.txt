@@ -1,3 +1,0 @@
-# Dependencies for the xaml_sleuth WPF inspection helper
-lxml>=5.2.1
-uiautomation>=2.0.0

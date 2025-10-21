@@ -7,10 +7,13 @@
     ====================================================================================
     Wiley Widget Theme - Syncfusion Official Theming Implementation
     ====================================================================================
-    
+
     CRITICAL: Uses Syncfusion SfSkinManager for ALL Syncfusion controls.
     Per official documentation: https://help.syncfusion.com/wpf/themes/skin-manager
-    
+
+    Global Application: Set SfSkinManager.VisualStyle="FluentLight" as default in App.xaml
+    Switching Logic: Use converter to map theme strings to VisualStyles (e.g., "Light" -> FluentLight)
+
     Version: Syncfusion WPF (Latest version as per project packages)
     See docs/SYNCFUSION_THEMING_OFFICIAL_GUIDE.md for full implementation details.
     ====================================================================================
@@ -22,7 +25,7 @@
     <!-- All brushes reference Syncfusion's built-in theme resource keys      -->
     <!-- Source: https://help.syncfusion.com/wpf/themes/skin-manager#theme-resources -->
     <!-- ====================================================================== -->
-    
+
     <!-- ====================================================================== -->
     <!-- PRIMARY BRAND COLORS (Dynamic)                                        -->
     <!-- ====================================================================== -->
@@ -31,7 +34,7 @@
     <SolidColorBrush x:Key="PrimaryLightBrush" Color="{DynamicResource PrimaryLight}" />
     <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{DynamicResource PrimaryDark}" />
     <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource PrimaryColor}" />
-    
+
     <!-- ====================================================================== -->
     <!-- BACKGROUND COLORS (Dynamic)                                           -->
     <!-- ====================================================================== -->
@@ -43,36 +46,39 @@
     <SolidColorBrush x:Key="ContentBackgroundAlt1Brush" Color="{DynamicResource ContentBackgroundAlt1}" />
     <SolidColorBrush x:Key="ContentBackgroundAlt2Brush" Color="{DynamicResource ContentBackgroundAlt2}" />
     <SolidColorBrush x:Key="ContentBackgroundAlt3Brush" Color="{DynamicResource ContentBackgroundAlt3}" />
-    
+    <SolidColorBrush x:Key="PrimaryBackgroundBrush" Color="{DynamicResource PrimaryBackground}" />
+    <SolidColorBrush x:Key="SecondaryBackgroundBrush" Color="{DynamicResource SecondaryBackground}" />
+
     <!-- Header and Title Backgrounds -->
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="{DynamicResource HeaderBackground}" />
     <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="{DynamicResource HeaderBackground}" />
-    
+
     <!-- Hover and Selection Backgrounds -->
     <SolidColorBrush x:Key="HoverBackgroundBrush" Color="{DynamicResource HoverBackground}" />
     <SolidColorBrush x:Key="SelectedBackgroundBrush" Color="{DynamicResource SelectedBackground}" />
     <SolidColorBrush x:Key="PressedBackgroundBrush" Color="{DynamicResource PressedBackground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- FOREGROUND/TEXT COLORS (Dynamic)                                      -->
     <!-- ====================================================================== -->
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="{DynamicResource ContentForeground}" />
     <SolidColorBrush x:Key="ForegroundBrush" Color="{DynamicResource ContentForeground}" />
     <SolidColorBrush x:Key="ContentForegroundBrush" Color="{DynamicResource ContentForeground}" />
-    
+
     <!-- Alternative Text Colors -->
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="{DynamicResource ContentForegroundAlt1}" />
     <SolidColorBrush x:Key="TertiaryTextBrush" Color="{DynamicResource ContentForegroundAlt2}" />
     <SolidColorBrush x:Key="QuaternaryTextBrush" Color="{DynamicResource ContentForegroundAlt3}" />
     <SolidColorBrush x:Key="SecondaryBrush" Color="{DynamicResource ContentForegroundAlt3}" />
-    
+
     <!-- State-based Text Colors -->
     <SolidColorBrush x:Key="DisabledTextBrush" Color="{DynamicResource DisabledForeground}" />
     <SolidColorBrush x:Key="DisabledForegroundBrush" Color="{DynamicResource DisabledForeground}" />
     <SolidColorBrush x:Key="HoverForegroundBrush" Color="{DynamicResource HoverForeground}" />
     <SolidColorBrush x:Key="SelectedForegroundBrush" Color="{DynamicResource SelectedForeground}" />
     <SolidColorBrush x:Key="PressedForegroundBrush" Color="{DynamicResource PressedForeground}" />
-    
+    <SolidColorBrush x:Key="MutedForegroundBrush" Color="{DynamicResource MutedForeground}" />
+
     <!-- ====================================================================== -->
     <!-- BORDER COLORS (Dynamic)                                               -->
     <!-- ====================================================================== -->
@@ -81,15 +87,16 @@
     <SolidColorBrush x:Key="CardBorderBrush" Color="{DynamicResource BorderAlt}" />
     <SolidColorBrush x:Key="SeparatorBrush" Color="{DynamicResource BorderAlt}" />
     <SolidColorBrush x:Key="DividerBrush" Color="{DynamicResource BorderAlt}" />
-    
+
     <!-- Focus and Hover Borders -->
     <SolidColorBrush x:Key="FocusBorderBrush" Color="{DynamicResource PrimaryColor}" />
     <SolidColorBrush x:Key="HoverBorderBrush" Color="{DynamicResource HoverBorder}" />
-    
+    <SolidColorBrush x:Key="InnerBorderBrush" Color="{DynamicResource InnerBorder}" />
+
     <!-- ====================================================================== -->
     <!-- CONTROL-SPECIFIC COLORS (Dynamic)                                     -->
     <!-- ====================================================================== -->
-    
+
     <!-- Button Colors -->
     <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="ButtonForegroundBrush" Color="{DynamicResource ContentForeground}" />
@@ -97,80 +104,128 @@
     <SolidColorBrush x:Key="ButtonPressedBackgroundBrush" Color="{DynamicResource PressedBackground}" />
     <SolidColorBrush x:Key="ButtonDisabledBackgroundBrush" Color="{DynamicResource DisabledBackground}" />
     <SolidColorBrush x:Key="ButtonDisabledForegroundBrush" Color="{DynamicResource DisabledForeground}" />
-    
+
     <!-- Input Control Colors -->
     <SolidColorBrush x:Key="InputBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="InputForegroundBrush" Color="{DynamicResource ContentForeground}" />
     <SolidColorBrush x:Key="InputBorderBrush" Color="{DynamicResource BorderAlt}" />
     <SolidColorBrush x:Key="InputFocusBorderBrush" Color="{DynamicResource PrimaryColor}" />
     <SolidColorBrush x:Key="InputDisabledBackgroundBrush" Color="{DynamicResource DisabledBackground}" />
-    
+
     <!-- Menu and Popup Colors -->
     <SolidColorBrush x:Key="MenuBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="MenuForegroundBrush" Color="{DynamicResource ContentForeground}" />
     <SolidColorBrush x:Key="MenuHoverBackgroundBrush" Color="{DynamicResource HoverBackground}" />
     <SolidColorBrush x:Key="PopupBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="PopupBorderBrush" Color="{DynamicResource BorderAlt}" />
-    
+
     <!-- Toolbar Colors -->
     <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="{DynamicResource HeaderBackground}" />
     <SolidColorBrush x:Key="ToolbarForegroundBrush" Color="{DynamicResource ContentForeground}" />
-    
+
     <!-- StatusBar Colors -->
     <SolidColorBrush x:Key="StatusBarBackgroundBrush" Color="{DynamicResource HeaderBackground}" />
     <SolidColorBrush x:Key="StatusBarForegroundBrush" Color="{DynamicResource ContentForeground}" />
-    
+
     <!-- Scrollbar Colors -->
     <SolidColorBrush x:Key="ScrollBarBackgroundBrush" Color="{DynamicResource ContentBackgroundAlt1}" />
     <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="{DynamicResource ContentForegroundAlt2}" />
     <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="{DynamicResource HoverBackground}" />
-    
+
+    <!-- ====================================================================== -->
+    <!-- ACCESSIBILITY: ARIA-LIKE TOOLTIPS                                     -->
+    <!-- ====================================================================== -->
+    <Style x:Key="WileyToolTipStyle" TargetType="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource ContentBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ContentForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HasDropShadow" Value="True" />
+        <Setter Property="Placement" Value="Mouse" />
+        <Setter Property="HorizontalOffset" Value="10" />
+        <Setter Property="VerticalOffset" Value="10" />
+    </Style>
+
+    <!-- ScrollViewer Style -->
+    <Style x:Key="WileyScrollViewerStyle" TargetType="ScrollViewer">
+        <Setter Property="Background" Value="{DynamicResource ContentBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <!-- ProgressBar Style -->
+    <Style x:Key="WileyProgressBarStyle" TargetType="ProgressBar">
+        <Setter Property="Background" Value="{DynamicResource ContentBackgroundAlt1Brush}" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
     <!-- ====================================================================== -->
     <!-- SEMANTIC/STATUS COLORS (Dynamic where possible)                       -->
     <!-- ====================================================================== -->
-    
+
     <!-- Success Colors -->
     <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource SuccessBackground}" />
     <SolidColorBrush x:Key="SuccessBackgroundBrush" Color="{DynamicResource SuccessBackground}" />
     <SolidColorBrush x:Key="SuccessForegroundBrush" Color="{DynamicResource SuccessForeground}" />
-    
+
     <!-- Warning Colors -->
     <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningBackground}" />
     <SolidColorBrush x:Key="WarningBackgroundBrush" Color="{DynamicResource WarningBackground}" />
     <SolidColorBrush x:Key="WarningForegroundBrush" Color="{DynamicResource WarningForeground}" />
-    
+
     <!-- Error Colors -->
     <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ErrorBackground}" />
     <SolidColorBrush x:Key="ErrorBackgroundBrush" Color="{DynamicResource ErrorBackground}" />
     <SolidColorBrush x:Key="ErrorForegroundBrush" Color="{DynamicResource ErrorForeground}" />
-    
+
     <!-- Info Colors -->
     <SolidColorBrush x:Key="InfoBrush" Color="{DynamicResource InfoBackground}" />
     <SolidColorBrush x:Key="InfoBackgroundBrush" Color="{DynamicResource InfoBackground}" />
     <SolidColorBrush x:Key="InfoForegroundBrush" Color="{DynamicResource InfoForeground}" />
-    
+    <SolidColorBrush x:Key="ValidationErrorForegroundBrush" Color="{DynamicResource ValidationErrorForeground}" />
+
+    <!-- Loading Colors (for SfBusyIndicator) -->
+    <SolidColorBrush x:Key="LoadingBackgroundBrush" Color="{DynamicResource ContentBackground}" />
+    <SolidColorBrush x:Key="LoadingForegroundBrush" Color="{DynamicResource PrimaryColor}" />
+
     <!-- ====================================================================== -->
-    <!-- OVERLAY AND MODAL COLORS (Dynamic)                                    -->
+    <!-- FLUENT PALETTE COLORS (Dynamic)                                       -->
     <!-- ====================================================================== -->
+    <SolidColorBrush x:Key="BlueBrush" Color="{DynamicResource FluentPalette.Blue}" />
+    <SolidColorBrush x:Key="GreenBrush" Color="{DynamicResource FluentPalette.Green}" />
+    <SolidColorBrush x:Key="RedBrush" Color="{DynamicResource FluentPalette.Red}" />
+    <SolidColorBrush x:Key="YellowBrush" Color="{DynamicResource FluentPalette.Yellow}" />
+    <SolidColorBrush x:Key="PurpleBrush" Color="{DynamicResource FluentPalette.Purple}" />
+    <SolidColorBrush x:Key="OrangeBrush" Color="{DynamicResource FluentPalette.Orange}" />
     <SolidColorBrush x:Key="OverlayBackgroundBrush" Color="{DynamicResource OverlayBackground}" Opacity="0.5" />
     <SolidColorBrush x:Key="ModalBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="DialogBackgroundBrush" Color="{DynamicResource ContentBackground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- CHART AND VISUALIZATION COLORS (Dynamic)                              -->
     <!-- ====================================================================== -->
     <SolidColorBrush x:Key="ChartBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="ChartGridLineBrush" Color="{DynamicResource BorderAlt}" />
     <SolidColorBrush x:Key="ChartAxisBrush" Color="{DynamicResource ContentForeground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- SPECIAL CASE: FALLBACK STATIC COLORS                                  -->
     <!-- Only used when Syncfusion theme is not initialized                    -->
+    <!-- Adjusted for WCAG 2.1 AA compliance: boosted muted colors for contrast -->
     <!-- ====================================================================== -->
     <Color x:Key="FallbackPrimaryColor">#0078D4</Color>
     <Color x:Key="FallbackContentBackground">#FFFFFF</Color>
-    <Color x:Key="FallbackContentForeground">#212121</Color>
+    <Color x:Key="FallbackContentForeground">#000000</Color>
     <Color x:Key="FallbackBorderAlt">#E0E0E0</Color>
+    <Color x:Key="FallbackPrimaryBackground">#F3F3F3</Color>
+    <Color x:Key="FallbackSecondaryBackground">#E8E8E8</Color>
+    <Color x:Key="FallbackMutedForeground">#757575</Color> <!-- Boosted from #666666 for 4.5:1 contrast -->
+    <Color x:Key="FallbackInnerBorder">#CCCCCC</Color>
+    <Color x:Key="FallbackValidationErrorForeground">#D32F2F</Color>
 
     <!-- Window Style -->
     <Style x:Key="WileyWindowStyle" TargetType="Window">
@@ -286,14 +341,14 @@
     <!--
     Per Syncfusion Official Documentation:
     "DO NOT create custom ControlTemplates or Styles for Syncfusion controls."
-    
-    All Syncfusion controls (ButtonAdv, SfDataGrid, SfBusyIndicator, etc.) 
+
+    All Syncfusion controls (ButtonAdv, SfDataGrid, SfBusyIndicator, etc.)
     are themed automatically via SfSkinManager.
-    
+
     Apply themes using:
     1. Application-wide: SfSkinManager.SetTheme(Application.Current, new Theme("FluentDark"));
     2. Control-level: syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
-    
+
     Reference: https://help.syncfusion.com/wpf/themes/skin-manager
     See: docs/SYNCFUSION_THEMING_OFFICIAL_GUIDE.md
     ====================================================================== -->
@@ -395,5 +450,102 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- ListBox Style -->
+    <Style x:Key="WileyListBoxStyle" TargetType="ListBox">
+        <Setter Property="Background" Value="{DynamicResource ContentBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource ContentForegroundBrush}" />
+        <Setter Property="Padding" Value="4" />
+    </Style>
+
+    <!-- ComboBox Style -->
+    <Style x:Key="WileyComboBoxStyle" TargetType="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource ContentBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource ContentForegroundBrush}" />
+        <Setter Property="Padding" Value="4" />
+    </Style>
+
+    <!-- ====================================================================== -->
+    <!-- SYNCFUSION CONTROL STYLES (BasedOn Official Styles)                   -->
+    <!-- ====================================================================== -->
+    <!--
+    Advanced Wiley Widget Syncfusion Theming
+    - BasedOn Syncfusion's built-in styles to avoid violations
+    - Uses dynamic theme resources for Light/Dark adaptation
+    - Integrates with DashboardViewModel.CurrentTheme via converter
+    - Covers SfChart, SfDataGrid, ProgressBarAdv, TreeViewAdv
+    Reference: https://help.syncfusion.com/wpf/themes/skin-manager#theme-resources
+    -->
+
+    <!-- SfChart Style -->
+    <Style x:Key="WileySfChartStyle" TargetType="syncfusion:SfChart" BasedOn="{syncfusionskin:SfSkinManager Key=SyncfusionSfChartStyle}">
+        <Setter Property="Palette" Value="FluentPalette" />
+        <Setter Property="AreaBackground" Value="{syncfusionskin:SfSkinManager Key=ChartBackgroundBrush}" />
+        <Setter Property="AreaBorderBrush" Value="{syncfusionskin:SfSkinManager Key=BorderAlt}" />
+        <Setter Property="LegendBackground" Value="{syncfusionskin:SfSkinManager Key=ContentBackground}" />
+        <Setter Property="LegendBorderBrush" Value="{syncfusionskin:SfSkinManager Key=BorderAlt}" />
+        <Setter Property="PrimaryAxis.GridLineStroke" Value="{syncfusionskin:SfSkinManager Key=ChartGridLineBrush}" />
+        <Setter Property="SecondaryAxis.GridLineStroke" Value="{syncfusionskin:SfSkinManager Key=ChartGridLineBrush}" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="AreaBackground" Value="{syncfusionskin:SfSkinManager Key=HoverBackground}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- SfDataGrid Style -->
+    <Style x:Key="WileySfDataGridStyle" TargetType="syncfusion:SfDataGrid" BasedOn="{syncfusionskin:SfSkinManager Key=SyncfusionSfDataGridStyle}">
+        <Setter Property="AlternatingRowBackground" Value="{syncfusionskin:SfSkinManager Key=ContentBackgroundAlt1}" />
+        <Setter Property="RowBackground" Value="{syncfusionskin:SfSkinManager Key=ContentBackground}" />
+        <Setter Property="HeaderBackground" Value="{syncfusionskin:SfSkinManager Key=HeaderBackground}" />
+        <Setter Property="HeaderForeground" Value="{syncfusionskin:SfSkinManager Key=ContentForeground}" />
+        <Setter Property="BorderBrush" Value="{syncfusionskin:SfSkinManager Key=BorderAlt}" />
+        <Setter Property="FrozenColumnBorderBrush" Value="{syncfusionskin:SfSkinManager Key=BorderAlt}" />
+        <Setter Property="SelectionBackground" Value="{syncfusionskin:SfSkinManager Key=SelectedBackground}" />
+        <Setter Property="SelectionForeground" Value="{syncfusionskin:SfSkinManager Key=SelectedForeground}" />
+        <Setter Property="HoverBackground" Value="{syncfusionskin:SfSkinManager Key=HoverBackground}" />
+        <Setter Property="HoverForeground" Value="{syncfusionskin:SfSkinManager Key=HoverForeground}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=CurrentItem.ErrorBackground}" Value="True">
+                <Setter Property="RowBackground" Value="{syncfusionskin:SfSkinManager Key=ErrorBackground}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ProgressBarAdv Style -->
+    <Style x:Key="WileyProgressBarAdvStyle" TargetType="syncfusion:ProgressBarAdv" BasedOn="{syncfusionskin:SfSkinManager Key=SyncfusionProgressBarAdvStyle}">
+        <Setter Property="Background" Value="{syncfusionskin:SfSkinManager Key=ContentBackgroundAlt1}" />
+        <Setter Property="Foreground" Value="{syncfusionskin:SfSkinManager Key=PrimaryColor}" />
+        <Setter Property="BorderBrush" Value="{syncfusionskin:SfSkinManager Key=BorderAlt}" />
+        <Setter Property="ProgressColor" Value="{syncfusionskin:SfSkinManager Key=PrimaryColor}" />
+    </Style>
+
+    <!-- TreeViewAdv Style -->
+    <Style x:Key="WileyTreeViewAdvStyle" TargetType="syncfusion:TreeViewAdv" BasedOn="{syncfusionskin:SfSkinManager Key=SyncfusionTreeViewAdvStyle}">
+        <Setter Property="Background" Value="{syncfusionskin:SfSkinManager Key=ContentBackground}" />
+        <Setter Property="Foreground" Value="{syncfusionskin:SfSkinManager Key=ContentForeground}" />
+        <Setter Property="BorderBrush" Value="{syncfusionskin:SfSkinManager Key=BorderAlt}" />
+        <Setter Property="SelectedItemBackground" Value="{syncfusionskin:SfSkinManager Key=SelectedBackground}" />
+        <Setter Property="SelectedItemForeground" Value="{syncfusionskin:SfSkinManager Key=SelectedForeground}" />
+        <Setter Property="HoverBackground" Value="{syncfusionskin:SfSkinManager Key=HoverBackground}" />
+        <Setter Property="HoverForeground" Value="{syncfusionskin:SfSkinManager Key=HoverForeground}" />
+    </Style>
+
+    <!-- ====================================================================== -->
+    <!-- HIGH CONTRAST THEME SUPPORT                                           -->
+    <!-- ====================================================================== -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary>
+            <!-- High Contrast Brushes (Office2019HighContrast) -->
+            <SolidColorBrush x:Key="HighContrastBackgroundBrush" Color="{DynamicResource ContentBackground}" />
+            <SolidColorBrush x:Key="HighContrastForegroundBrush" Color="{DynamicResource ContentForeground}" />
+            <SolidColorBrush x:Key="HighContrastBorderBrush" Color="{DynamicResource BorderAlt}" />
+            <SolidColorBrush x:Key="HighContrastPrimaryBrush" Color="{DynamicResource PrimaryColor}" />
+        </ResourceDictionary>
+    </ResourceDictionary.MergedDictionaries>
 
 </ResourceDictionary>

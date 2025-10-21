@@ -6,7 +6,7 @@ using WileyWidget.Models.Entities;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) 
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
         // Initialize DbSets to satisfy nullable reference types
         MunicipalAccounts = Set<MunicipalAccount>();
@@ -19,6 +19,8 @@ public class AppDbContext : DbContext
         FiscalYearSettings = Set<FiscalYearSettings>();
         UtilityCustomers = Set<UtilityCustomer>();
         BudgetPeriods = Set<BudgetPeriod>();
+        Invoices = Set<Invoice>();
+        Vendors = Set<Vendor>();
         AuditEntries = Set<AuditEntry>();
     }
 
@@ -38,6 +40,7 @@ public class AppDbContext : DbContext
     public DbSet<UtilityCustomer> UtilityCustomers { get; set; } // New
     public DbSet<BudgetPeriod> BudgetPeriods { get; set; } // New
     public DbSet<Invoice> Invoices { get; set; } // New
+    public DbSet<Vendor> Vendors { get; set; } // New
     public DbSet<AuditEntry> AuditEntries { get; set; } // New
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -88,6 +91,8 @@ public class AppDbContext : DbContext
             {
                 owned.Property(a => a.Value).HasColumnName("AccountNumber").HasMaxLength(20).IsRequired();
             });
+            entity.Property(e => e.AccountNumber_Value)
+                  .HasComputedColumnSql("[AccountNumber]");
             entity.HasOne(e => e.Department)
                   .WithMany()
                   .HasForeignKey(e => e.DepartmentId)
@@ -148,6 +153,17 @@ public class AppDbContext : DbContext
             entity.HasIndex(i => i.InvoiceDate);
             entity.Property(i => i.Amount).HasColumnType("decimal(18,2)");
             entity.Property(i => i.InvoiceNumber).HasMaxLength(50);
+            entity.Property(i => i.Status).HasMaxLength(50).HasDefaultValue("Pending");
+        });
+
+        // New: Vendor configuration
+        modelBuilder.Entity<Vendor>(entity =>
+        {
+            entity.ToTable("Vendor"); // Match existing database table name
+            entity.HasIndex(v => v.Name);
+            entity.HasIndex(v => v.IsActive);
+            entity.Property(v => v.Name).HasMaxLength(100).IsRequired();
+            entity.Property(v => v.ContactInfo).HasMaxLength(200);
         });
 
         // New: BudgetInteraction relationships

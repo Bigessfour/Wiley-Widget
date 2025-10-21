@@ -76,3 +76,8 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.pytest.ini_options]
+python_files = "test_*.py"
+addopts = "-v --ignore=tools/python/legacy_tests"
+testpaths = ["tools/python/clr_tests", "tools/python/unittests"]

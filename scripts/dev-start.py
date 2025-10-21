@@ -4,12 +4,11 @@ Wiley Widget Development Startup Script (Python)
 Handles cleanup and proper process management
 """
 
-import os
-import sys
-import time
-import subprocess
 import argparse
-from pathlib import Path
+import os
+import subprocess
+import sys
+
 
 def cleanup_dotnet_processes():
     """Clean up orphaned .NET processes"""
@@ -17,17 +16,21 @@ def cleanup_dotnet_processes():
 
     try:
         # Get all processes
-        result = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'],
-                              capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["tasklist", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
         processes = []
-        for line in result.stdout.strip().split('\n'):
+        for line in result.stdout.strip().split("\n"):
             if line.strip():
-                parts = line.split(',')
+                parts = line.split(",")
                 if len(parts) >= 2:
                     name = parts[0].strip('"')
                     pid = parts[1].strip('"')
-                    if 'dotnet' in name.lower() or name == 'WileyWidget.exe':
+                    if "dotnet" in name.lower() or name == "WileyWidget.exe":
                         processes.append((name, pid))
 
         if not processes:
@@ -42,8 +45,9 @@ def cleanup_dotnet_processes():
         killed_count = 0
         for name, pid in processes:
             try:
-                subprocess.run(['taskkill', '/PID', pid, '/F'],
-                             capture_output=True, check=True)
+                subprocess.run(
+                    ["taskkill", "/PID", pid, "/F"], capture_output=True, check=True
+                )
                 print(f"[OK] Killed {name} (PID: {pid})")
                 killed_count += 1
             except subprocess.CalledProcessError as e:
@@ -53,9 +57,10 @@ def cleanup_dotnet_processes():
 
         # Clean up temporary files
         print("Cleaning up temporary files...")
-        for dir_name in ['bin', 'obj']:
+        for dir_name in ["bin", "obj"]:
             if os.path.exists(dir_name):
                 import shutil
+
                 shutil.rmtree(dir_name, ignore_errors=True)
         print("[OK] Temporary build files cleaned")
 
@@ -65,34 +70,45 @@ def cleanup_dotnet_processes():
         print(f"[ERROR] Error during cleanup: {e}")
         return False
 
+
 def check_conflicts():
     """Check for conflicting WileyWidget processes"""
     print("Checking for conflicts...")
 
     try:
-        result = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq WileyWidget.exe', '/FO', 'CSV', '/NH'],
-                              capture_output=True, text=True)
+        result = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq WileyWidget.exe", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+        )
 
-        lines = result.stdout.strip().split('\n')
-        conflicts = [line for line in lines if line.strip() and 'WileyWidget.exe' in line]
+        lines = result.stdout.strip().split("\n")
+        conflicts = [
+            line for line in lines if line.strip() and "WileyWidget.exe" in line
+        ]
 
         if conflicts:
-            print(f"[WARN] Found {len(conflicts)} WileyWidget process(es) still running")
+            print(
+                f"[WARN] Found {len(conflicts)} WileyWidget process(es) still running"
+            )
             for conflict in conflicts:
-                parts = conflict.split(',')
+                parts = conflict.split(",")
                 if len(parts) >= 2:
                     pid = parts[1].strip('"')
                     print(f"  - PID: {pid}")
 
             response = input("Kill these processes? (y/N): ").lower().strip()
-            if response == 'y':
+            if response == "y":
                 for conflict in conflicts:
-                    parts = conflict.split(',')
+                    parts = conflict.split(",")
                     if len(parts) >= 2:
                         pid = parts[1].strip('"')
                         try:
-                            subprocess.run(['taskkill', '/PID', pid, '/F'],
-                                         capture_output=True, check=True)
+                            subprocess.run(
+                                ["taskkill", "/PID", pid, "/F"],
+                                capture_output=True,
+                                check=True,
+                            )
                             print(f"[OK] Killed process (PID: {pid})")
                         except subprocess.CalledProcessError as e:
                             print(f"[ERROR] Failed to kill process (PID: {pid}): {e}")
@@ -105,13 +121,18 @@ def check_conflicts():
         print(f"[ERROR] Error checking conflicts: {e}")
         return False
 
+
 def clean_build_artifacts():
     """Clean build artifacts"""
     print("Cleaning build artifacts...")
 
     try:
-        result = subprocess.run(['dotnet', 'clean', 'WileyWidget.csproj'],
-                              capture_output=True, text=True, cwd=os.getcwd())
+        result = subprocess.run(
+            ["dotnet", "clean", "WileyWidget.csproj"],
+            capture_output=True,
+            text=True,
+            cwd=os.getcwd(),
+        )
 
         if result.returncode == 0:
             print("[OK] Build artifacts cleaned")
@@ -124,12 +145,17 @@ def clean_build_artifacts():
         print(f"[ERROR] Error cleaning build: {e}")
         return False
 
+
 def lock_azure_performance():
     """Lock in Azure performance enhancements"""
     print("Locking Azure performance enhancements...")
     try:
-        result = subprocess.run(['pwsh', '-File', 'scripts/lock-azure-performance.ps1', '-SkipAuth'],
-                              capture_output=True, text=True, cwd=os.getcwd())
+        result = subprocess.run(
+            ["pwsh", "-File", "scripts/lock-azure-performance.ps1", "-SkipAuth"],
+            capture_output=True,
+            text=True,
+            cwd=os.getcwd(),
+        )
         if result.returncode == 0:
             print("[OK] Azure performance enhancements locked")
             return True
@@ -140,17 +166,18 @@ def lock_azure_performance():
         print(f"[ERROR] Error locking performance: {e}")
         return False
 
+
 def start_development(no_watch=False):
     """Start development environment"""
     print("Starting development...")
 
     if no_watch:
         print("Running without watch mode...")
-        cmd = ['dotnet', 'run', '--project', 'WileyWidget.csproj']
+        cmd = ["dotnet", "run", "--project", "WileyWidget.csproj"]
     else:
         print("Starting dotnet watch...")
         print("Press Ctrl+C to stop, then run cleanup script if needed")
-        cmd = ['dotnet', 'watch', 'run', '--project', 'WileyWidget.csproj']
+        cmd = ["dotnet", "watch", "run", "--project", "WileyWidget.csproj"]
 
     try:
         subprocess.run(cmd, cwd=os.getcwd())
@@ -162,14 +189,16 @@ def start_development(no_watch=False):
         print(f"[ERROR] Error starting development: {e}")
         return False
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Wiley Widget Development Startup')
-    parser.add_argument('--clean-only', action='store_true',
-                       help='Only clean up and exit')
-    parser.add_argument('--no-watch', action='store_true',
-                       help='Start without watch mode')
-    parser.add_argument('--verbose', action='store_true',
-                       help='Verbose output')
+    parser = argparse.ArgumentParser(description="Wiley Widget Development Startup")
+    parser.add_argument(
+        "--clean-only", action="store_true", help="Only clean up and exit"
+    )
+    parser.add_argument(
+        "--no-watch", action="store_true", help="Start without watch mode"
+    )
+    parser.add_argument("--verbose", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
 
@@ -209,5 +238,6 @@ def main():
     print("Development session ended")
     return 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

@@ -3,53 +3,58 @@
                     xmlns:vm="clr-namespace:WileyWidget.ViewModels"
                     xmlns:views="clr-namespace:WileyWidget"
                     xmlns:panels="clr-namespace:WileyWidget.Views">
-    
-    <!-- 
+
+    <!--
     DataTemplates for Prism Navigation
     These templates associate ViewModels with their corresponding Views
     for automatic view resolution by Prism's RegionManager.
     -->
-    
+
     <!-- DashboardViewModel → DashboardView -->
     <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
         <views:DashboardView />
     </DataTemplate>
-    
+
     <!-- MunicipalAccountViewModel → MunicipalAccountView -->
     <DataTemplate DataType="{x:Type vm:MunicipalAccountViewModel}">
         <panels:MunicipalAccountView />
     </DataTemplate>
-    
+
     <!-- BudgetViewModel → BudgetView -->
     <DataTemplate DataType="{x:Type vm:BudgetViewModel}">
         <views:BudgetView />
     </DataTemplate>
-    
+
     <!-- EnterpriseViewModel → EnterpriseView -->
     <DataTemplate DataType="{x:Type vm:EnterpriseViewModel}">
         <views:EnterpriseView />
     </DataTemplate>
-    
+
     <!-- SettingsViewModel → SettingsView -->
     <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
         <views:SettingsView />
     </DataTemplate>
-    
+
     <!-- AnalyticsViewModel → AnalyticsView -->
     <DataTemplate DataType="{x:Type vm:AnalyticsViewModel}">
         <views:AnalyticsView />
     </DataTemplate>
-    
+
     <!-- AIAssistViewModel → AIAssistView -->
     <DataTemplate DataType="{x:Type vm:AIAssistViewModel}">
         <views:AIAssistView />
     </DataTemplate>
-    
+
+    <!-- QuickBooksViewModel → QuickBooksView -->
+    <DataTemplate DataType="{x:Type vm:QuickBooksViewModel}">
+        <views:QuickBooksView />
+    </DataTemplate>
+
     <!-- ReportsViewModel → ReportsView -->
     <DataTemplate DataType="{x:Type vm:ReportsViewModel}">
         <views:ReportsView />
     </DataTemplate>
-    
+
     <!-- UtilityCustomerViewModel → UtilityCustomerView -->
     <DataTemplate DataType="{x:Type vm:UtilityCustomerViewModel}">
         <views:UtilityCustomerView />

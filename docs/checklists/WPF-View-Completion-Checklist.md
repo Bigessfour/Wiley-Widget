@@ -209,6 +209,84 @@ Sources (expanded with version-specific pinning):
   
   **Enforcement**: This item is **BLOCKING** for PR approval. Any hardcoded color/brush value = automatic PR rejection. Use `docs/FLUENTDARK_ENHANCED_EFFECTS_CONFIGURATION.md` as reference for proper dynamic brush usage patterns.  
   Evidence:
+- [ ] **StaticResource vs DynamicResource usage validated—all theme-dependent resources use DynamicResource for runtime theme switching**  
+  Sub-checks: **CRITICAL VALIDATION TASK** - Ensure proper resource reference type is used throughout XAML to support theme switching and avoid KeyNotFoundException. This is a **mandatory** requirement for theme consistency and runtime reliability.
+  
+  **Resource Reference Strategy**:
+  
+  **1. Use DynamicResource for (ALWAYS theme-dependent)**:
+  - ✅ **Theme brushes**: `Background="{DynamicResource ContentBackground}"`, `Foreground="{DynamicResource ContentForeground}"`
+  - ✅ **Theme colors**: `BorderBrush="{DynamicResource BorderAlt}"`, `Fill="{DynamicResource PrimaryBrush}"`
+  - ✅ **Style references that may change**: `Style="{DynamicResource CustomButtonStyle}"`
+  - ✅ **Syncfusion theme resources**: Any resource from `WileyTheme-Syncfusion.xaml` or Syncfusion theme packages
+  - ✅ **User preference-dependent resources**: Resources that change based on settings or runtime conditions
+  
+  **2. Use StaticResource for (ONLY static, never-changing)**:
+  - ✅ **Converters**: `Converter="{StaticResource BooleanToVisibilityConverter}"`
+  - ✅ **DataTemplates**: `ContentTemplate="{StaticResource MyDataTemplate}"` (unless template itself needs theme-aware content)
+  - ✅ **Geometry/Shapes**: Fixed path data, icon geometries
+  - ✅ **Fixed configuration values**: Constant numbers, strings that never change
+  - ⚠️ **CAUTION**: Even DataTemplates may need DynamicResource if they contain theme-dependent brushes internally
+  
+  **3. Common Pitfalls**:
+  - ❌ **Using StaticResource for theme brushes**: `Background="{StaticResource PrimaryBrush}"` → Will not update on theme change → **USE DynamicResource**
+  - ❌ **Using StaticResource for Syncfusion styles**: `Style="{StaticResource SyncfusionWPFDataGridStyle}"` → May not inherit theme → **USE DynamicResource**
+  - ❌ **Mixed usage in same control**: Inconsistent Static/Dynamic mix causes confusing behavior → **Be consistent**
+  - ❌ **StaticResource in custom styles**: If a Style is defined locally and uses theme brushes, those brushes MUST use DynamicResource
+  
+  **Validation Method**:
+  1. **Search XAML for StaticResource pattern**: 
+     ```powershell
+     # Find all StaticResource usages
+     Select-String -Path "*.xaml" -Pattern '{StaticResource \w+}' -AllMatches
+     
+     # Verify each match:
+     # - Converter? ✅ OK
+     # - Brush/Color ending in "Brush", "Color", "Background", "Foreground"? ❌ MUST be DynamicResource
+     # - Style reference? ❌ LIKELY needs DynamicResource
+     ```
+  
+  2. **Run Convert-XamlStaticToDynamic.ps1 analysis**:
+     ```powershell
+     .\scripts\Convert-XamlStaticToDynamic.ps1 -Path "src/Views/MyView.xaml" -WhatIf
+     # Review suggestions and apply fixes
+     ```
+  
+  3. **Test theme switching at runtime**:
+     - Set breakpoint in VM, change `SfSkinManager.ApplicationTheme = new Theme("MaterialLight")`
+     - Verify ALL UI elements update immediately
+     - Any element that doesn't update = StaticResource used incorrectly
+  
+  4. **Grep for high-risk patterns**:
+     ```powershell
+     # Find StaticResource usage with common brush names
+     Select-String -Path "src/Views/*.xaml" -Pattern 'StaticResource.*(Background|Foreground|Border|Primary|Secondary|Content|Hover|Pressed)' -Context 0,2
+     ```
+  
+  5. **Check custom resource dictionaries**:
+     - Open `Themes/WileyTheme-Syncfusion.xaml`
+     - Verify all Style setters use DynamicResource for theme-dependent values
+     - Example: `<Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />`
+  
+  **View-Specific Validation Checklist**:
+  - [ ] All `Background` properties use DynamicResource (except fixed colors like Transparent)
+  - [ ] All `Foreground` properties use DynamicResource
+  - [ ] All `BorderBrush` properties use DynamicResource
+  - [ ] All `Fill`/`Stroke` properties use DynamicResource (for shapes)
+  - [ ] All Style references for themed controls use DynamicResource
+  - [ ] All converters correctly use StaticResource
+  - [ ] All DataTemplates analyzed—internal theme references use DynamicResource
+  - [ ] Run `Convert-XamlStaticToDynamic.ps1` with `-WhatIf` flag—zero actionable warnings
+  
+  **Evidence Requirements**:
+  - [ ] PowerShell script output showing StaticResource audit results
+  - [ ] Screenshot of theme switch test (before/after comparison)
+  - [ ] List of all DynamicResource references with corresponding resource keys
+  - [ ] Confirmation that `Convert-XamlStaticToDynamic.ps1 -WhatIf` produces no critical warnings
+  - [ ] Documentation reference: `docs/THEME_CONFIGURATION.md` section on StaticResource vs DynamicResource
+  
+  **Enforcement**: Any StaticResource usage for theme-dependent brushes/styles = **PR warning** (may become blocking). Review with architect if uncertain. Reference: `scripts/Convert-XamlStaticToDynamic.ps1` for automated conversion tool.  
+  Evidence:
 - [ ] Clear visual hierarchy; empty states, loading states, and error states are designed  
   Sub-checks: MultiDataTrigger for IsBusy/HasError/IsEmpty. Custom templates.  
   Evidence:

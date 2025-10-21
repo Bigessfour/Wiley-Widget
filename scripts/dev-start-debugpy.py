@@ -23,11 +23,8 @@ LOG_FILE = LOG_DIR / f"debug-startup-debugpy-{datetime.now():%Y%m%d}.log"
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler(LOG_FILE, encoding="utf-8"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
@@ -44,6 +41,7 @@ def maybe_debug_breakpoint():
         debugpy.breakpoint()
     except Exception as exc:  # pragma: no cover - defensive logging only
         logger.debug("Skipping debug breakpoint: %s", exc)
+
 
 def setup_debugpy(port=5678, wait_for_client=True):
     """Setup debugpy for remote debugging with port conflict handling"""
@@ -77,7 +75,9 @@ def setup_debugpy(port=5678, wait_for_client=True):
         if wait_for_client:
             print("⏳ Waiting for debugger to attach...")
             logger.info("Waiting for debugger to attach on port %s", listening_port)
-            print(f"   In VS Code: Run 'Python: Attach' debug configuration (port {listening_port})")
+            print(
+                f"   In VS Code: Run 'Python: Attach' debug configuration (port {listening_port})"
+            )
             debugpy.wait_for_client()
             print("✅ Debugger attached!")
             logger.info("Debugger attached")
@@ -90,6 +90,7 @@ def setup_debugpy(port=5678, wait_for_client=True):
         print("   Continuing without debugpy...")
         logger.exception("Failed to setup debugpy")
 
+
 def cleanup_dotnet_processes():
     """Clean up orphaned .NET processes with debugging"""
     print("=== .NET Process Cleanup ===")
@@ -98,17 +99,21 @@ def cleanup_dotnet_processes():
 
     try:
         # Get all processes
-        result = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'],
-                              capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["tasklist", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
         processes = []
-        for line in result.stdout.strip().split('\n'):
+        for line in result.stdout.strip().split("\n"):
             if line.strip():
-                parts = line.split(',')
+                parts = line.split(",")
                 if len(parts) >= 2:
                     name = parts[0].strip('"')
                     pid = parts[1].strip('"')
-                    if 'dotnet' in name.lower() or name == 'WileyWidget.exe':
+                    if "dotnet" in name.lower() or name == "WileyWidget.exe":
                         processes.append((name, pid))
 
         if processes:
@@ -121,8 +126,9 @@ def cleanup_dotnet_processes():
 
             for name, pid in processes:
                 try:
-                    subprocess.run(['taskkill', '/F', '/PID', pid],
-                                 capture_output=True, check=True)
+                    subprocess.run(
+                        ["taskkill", "/F", "/PID", pid], capture_output=True, check=True
+                    )
                     print(f"  ✅ Killed {name} (PID: {pid})")
                     logger.info("Killed process %s (PID %s)", name, pid)
                 except subprocess.CalledProcessError:
@@ -138,13 +144,14 @@ def cleanup_dotnet_processes():
         print(f"  ❌ Failed to list processes: {e}")
         logger.exception("Failed to list processes")
 
+
 def cleanup_dotnet_artifacts():
     """Clean up .NET build artifacts with debugging"""
     print("\n=== .NET Artifact Cleanup ===")
     logger.info("Starting .NET artifact cleanup")
     maybe_debug_breakpoint()
 
-    cleanup_dirs = ['bin', 'obj', 'TestResults']
+    cleanup_dirs = ["bin", "obj", "TestResults"]
 
     for dir_name in cleanup_dirs:
         if os.path.exists(dir_name):
@@ -153,11 +160,12 @@ def cleanup_dotnet_artifacts():
                 # Debug breakpoint before deletion
                 maybe_debug_breakpoint()
 
-                if os.name == 'nt':  # Windows
-                    subprocess.run(['rmdir', '/S', '/Q', dir_name],
-                                 shell=True, check=True)
+                if os.name == "nt":  # Windows
+                    subprocess.run(
+                        ["rmdir", "/S", "/Q", dir_name], shell=True, check=True
+                    )
                 else:  # Unix-like
-                    subprocess.run(['rm', '-rf', dir_name], check=True)
+                    subprocess.run(["rm", "-rf", dir_name], check=True)
                 print(f"  ✅ Removed {dir_name}/")
                 logger.info("Removed %s/", dir_name)
             except subprocess.CalledProcessError as e:
@@ -166,6 +174,7 @@ def cleanup_dotnet_artifacts():
         else:
             print(f"  ℹ️  {dir_name}/ not found")
             logger.info("%s/ not found", dir_name)
+
 
 def build_application(incremental=True):
     """Build the WileyWidget application with debugging"""
@@ -178,19 +187,27 @@ def build_application(incremental=True):
             # Clean first (only for full rebuilds)
             print("  🧹 Cleaning project...")
             try:
-                result = subprocess.run(['dotnet', 'clean', 'WileyWidget.csproj'],
-                                      capture_output=True, text=True, check=True)
+                result = subprocess.run(
+                    ["dotnet", "clean", "WileyWidget.csproj"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
                 print("  ✅ Project cleaned")
             except subprocess.CalledProcessError:
                 logger.exception("Failed to clean WileyWidget.csproj")
                 raise
 
         # For incremental builds, ensure packages are restored if needed
-        if incremental and not os.path.exists('obj/project.assets.json'):
+        if incremental and not os.path.exists("obj/project.assets.json"):
             print("  📦 Restoring packages for incremental build...")
             try:
-                result = subprocess.run(['dotnet', 'restore', 'WileyWidget.csproj'],
-                                      capture_output=True, text=True, check=True)
+                result = subprocess.run(
+                    ["dotnet", "restore", "WileyWidget.csproj"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
                 print("  ✅ Packages restored")
             except subprocess.CalledProcessError:
                 logger.exception("Failed to restore packages for WileyWidget.csproj")
@@ -203,8 +220,12 @@ def build_application(incremental=True):
         build_type = "incrementally" if incremental else "from scratch"
         print(f"  🔨 Building project {build_type}...")
         try:
-            result = subprocess.run(['dotnet', 'build', 'WileyWidget.csproj', '--no-restore'],
-                                  capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                ["dotnet", "build", "WileyWidget.csproj", "--no-restore"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
             print("  ✅ Build successful")
             logger.info("Build successful")
 
@@ -227,13 +248,14 @@ def build_application(incremental=True):
 
     return True
 
+
 def terminate_process(process, timeout=10):
     """Terminate the spawned application, killing the tree on Windows if needed."""
     if process is None or process.poll() is not None:
         return
 
     try:
-        if os.name == 'nt':
+        if os.name == "nt":
             try:
                 process.send_signal(signal.CTRL_BREAK_EVENT)
                 process.wait(timeout=timeout)
@@ -243,7 +265,7 @@ def terminate_process(process, timeout=10):
 
             try:
                 subprocess.run(
-                    ['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
                     capture_output=True,
                     check=True,
                 )
@@ -272,7 +294,7 @@ def run_application(debug_mode=False, startup_timeout=30):
     maybe_debug_breakpoint()
 
     try:
-        cmd = ['dotnet', 'run', '--project', 'WileyWidget.csproj']
+        cmd = ["dotnet", "run", "--project", "WileyWidget.csproj"]
 
         if debug_mode:
             # Add debug configuration if needed
@@ -286,11 +308,15 @@ def run_application(debug_mode=False, startup_timeout=30):
         maybe_debug_breakpoint()
 
         # Run the application
-        spawn_kwargs = {'stdout': subprocess.PIPE, 'stderr': subprocess.PIPE, 'text': True}
-        if os.name == 'nt':
-            spawn_kwargs['creationflags'] = subprocess.CREATE_NEW_PROCESS_GROUP
+        spawn_kwargs = {
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.PIPE,
+            "text": True,
+        }
+        if os.name == "nt":
+            spawn_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
         else:
-            spawn_kwargs['preexec_fn'] = os.setsid  # type: ignore[attr-defined]
+            spawn_kwargs["preexec_fn"] = os.setsid  # type: ignore[attr-defined]
 
         try:
             process = subprocess.Popen(cmd, **spawn_kwargs)
@@ -324,6 +350,7 @@ def run_application(debug_mode=False, startup_timeout=30):
         print(f"  ❌ Failed to run application: {e}")
         logger.exception("Failed to run application")
         return None
+
 
 def monitor_startup_timing(skip_cleanup=False):
     """Monitor startup timing with debugging"""
@@ -368,23 +395,40 @@ def monitor_startup_timing(skip_cleanup=False):
         print(f"  {phase}: {duration:.2f}s")
     print(f"  Total: {total_time:.2f}s")
 
+
 def main():
     """Main startup function with debugpy integration"""
-    parser = argparse.ArgumentParser(description='Wiley Widget Startup with debugpy')
-    parser.add_argument('--debug-port', type=int, default=5678,
-                       help='Port for debugpy (default: 5678)')
-    parser.add_argument('--no-wait', action='store_true',
-                       help='Don\'t wait for debugger to attach')
-    parser.add_argument('--timing', action='store_true',
-                       help='Run with timing analysis')
-    parser.add_argument('--skip-cleanup', action='store_true',
-                       help='Skip cleanup steps for faster development iterations')
-    parser.add_argument('--skip-debugpy', action='store_true',
-                       help='Skip debugpy setup and run normally')
-    parser.add_argument('--debug-breaks', action='store_true',
-                       help='Pause at scripted debug breakpoints')
-    parser.add_argument('--startup-timeout', type=int, default=30,
-                       help='Seconds to wait for app output before assuming it is running')
+    parser = argparse.ArgumentParser(description="Wiley Widget Startup with debugpy")
+    parser.add_argument(
+        "--debug-port", type=int, default=5678, help="Port for debugpy (default: 5678)"
+    )
+    parser.add_argument(
+        "--no-wait", action="store_true", help="Don't wait for debugger to attach"
+    )
+    parser.add_argument(
+        "--timing", action="store_true", help="Run with timing analysis"
+    )
+    parser.add_argument(
+        "--skip-cleanup",
+        action="store_true",
+        help="Skip cleanup steps for faster development iterations",
+    )
+    parser.add_argument(
+        "--skip-debugpy",
+        action="store_true",
+        help="Skip debugpy setup and run normally",
+    )
+    parser.add_argument(
+        "--debug-breaks",
+        action="store_true",
+        help="Pause at scripted debug breakpoints",
+    )
+    parser.add_argument(
+        "--startup-timeout",
+        type=int,
+        default=30,
+        help="Seconds to wait for app output before assuming it is running",
+    )
 
     args = parser.parse_args()
 
@@ -422,6 +466,7 @@ def main():
             except KeyboardInterrupt:
                 print("\n⏹️  Stopping application...")
                 terminate_process(process)
+
 
 if __name__ == "__main__":
     main()

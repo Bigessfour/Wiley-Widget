@@ -6,25 +6,23 @@ This script launches WileyWidget.exe via subprocess, monitors CPU/memory usage
 with psutil, and logs dispatcher activity. Includes a 90-second timeout to detect hangs.
 """
 
-import subprocess
-import psutil
-import time
-import logging
 import argparse
+import logging
 import os
-import signal
+import subprocess
+import time
 from pathlib import Path
+
+import psutil
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/wpf-thread.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("logs/wpf-thread.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
 
 class WPFThreadMonitor:
     def __init__(self, timeout=90, verbose=False):
@@ -36,7 +34,13 @@ class WPFThreadMonitor:
     def launch_application(self):
         """Launch WileyWidget.exe and monitor it"""
         try:
-            exe_path = Path(__file__).parent.parent / "bin" / "Debug" / "net8.0-windows" / "WileyWidget.exe"
+            exe_path = (
+                Path(__file__).parent.parent
+                / "bin"
+                / "Debug"
+                / "net8.0-windows"
+                / "WileyWidget.exe"
+            )
 
             if not exe_path.exists():
                 logger.error(f"WileyWidget.exe not found at {exe_path}")
@@ -50,7 +54,7 @@ class WPFThreadMonitor:
                 [str(exe_path)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
 
             logger.info(f"Process started with PID: {self.process.pid}")
@@ -75,7 +79,9 @@ class WPFThreadMonitor:
                 elapsed = time.time() - self.start_time
 
                 if elapsed > self.timeout:
-                    logger.warning(f"Timeout reached ({self.timeout}s). Terminating process.")
+                    logger.warning(
+                        f"Timeout reached ({self.timeout}s). Terminating process."
+                    )
                     self.process.terminate()
                     try:
                         self.process.wait(timeout=5)
@@ -90,11 +96,19 @@ class WPFThreadMonitor:
 
                     # Detect potential hangs (low CPU activity for extended periods)
                     if elapsed > 10 and cpu_percent < 1.0 and not hang_detected:
-                        logger.warning(f"Potential hang detected at {elapsed:.2f}s - CPU: {cpu_percent:.1f}%")
+                        logger.warning(
+                            f"Potential hang detected at {elapsed:.2f}s - CPU: {cpu_percent:.1f}%"
+                        )
                         hang_detected = True
 
-                    if self.verbose or cpu_percent > 5 or abs(memory_mb - last_memory) > 10:
-                        logger.info(f"[{elapsed:.2f}s] CPU: {cpu_percent:.1f}%, Memory: {memory_mb:.1f}MB")
+                    if (
+                        self.verbose
+                        or cpu_percent > 5
+                        or abs(memory_mb - last_memory) > 10
+                    ):
+                        logger.info(
+                            f"[{elapsed:.2f}s] CPU: {cpu_percent:.1f}%, Memory: {memory_mb:.1f}MB"
+                        )
                     last_cpu = cpu_percent
                     last_memory = memory_mb
 
@@ -120,15 +134,18 @@ class WPFThreadMonitor:
         except Exception as e:
             logger.error(f"Error monitoring process: {e}")
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Debug WPF Threading for WileyWidget')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose logging')
-    parser.add_argument('--timeout', '-t', type=int, default=90, help='Timeout in seconds')
+    parser = argparse.ArgumentParser(description="Debug WPF Threading for WileyWidget")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
+    parser.add_argument(
+        "--timeout", "-t", type=int, default=90, help="Timeout in seconds"
+    )
 
     args = parser.parse_args()
 
     # Ensure logs directory exists
-    Path('logs').mkdir(exist_ok=True)
+    Path("logs").mkdir(exist_ok=True)
 
     logger.info("=== WPF Threading Debug Script Started ===")
     logger.info(f"Timeout: {args.timeout}s, Verbose: {args.verbose}")
@@ -141,6 +158,7 @@ def main():
         logger.error("Failed to launch application")
 
     logger.info("=== WPF Threading Debug Script Completed ===")
+
 
 if __name__ == "__main__":
     main()

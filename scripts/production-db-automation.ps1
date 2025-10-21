@@ -125,7 +125,7 @@ try {
     }
     elseif ($Install) {
         Test-ScriptPrerequisite
-    Install-ScheduledTask -TaskUser $User
+        Install-ScheduledTask -TaskUser $User
         Write-SetupLog "Installation completed successfully"
         Write-SetupLog "Maintenance schedule: Daily at $MaintenanceTime"
         Write-SetupLog "Monitoring interval: Every $MonitorInterval minutes"

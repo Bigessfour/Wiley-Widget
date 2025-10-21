@@ -54,6 +54,7 @@ namespace WileyWidget.Views
             if (_viewModel != null)
             {
                 _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+                DataContext = _viewModel; // Set DataContext for bindings
             }
             
             Log.Debug("MainWindow: Constructor completed, event handlers attached");

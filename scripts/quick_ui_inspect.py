@@ -20,13 +20,14 @@ def inspect_syncfusion_controls():
 
     try:
         # Launch WileyWidget with UI inspection mode
-        cmd = ['dotnet', 'run', '--project', 'WileyWidget.csproj', '--', '--ui-inspect']
+        cmd = ["dotnet", "run", "--project", "WileyWidget.csproj", "--", "--ui-inspect"]
 
         # Debug breakpoint before execution
         debugpy.breakpoint()
 
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
         print(f"✅ UI Inspection started (PID: {process.pid})")
         print("   Inspecting Syncfusion controls: SfDataGrid, RibbonControlAdv, etc.")
@@ -50,6 +51,7 @@ def inspect_syncfusion_controls():
         debugpy.breakpoint()
         return None
 
+
 def check_wpf_rendering():
     """Check WPF rendering pipeline for Syncfusion controls"""
     print("\n🎨 Checking WPF Rendering Pipeline...")
@@ -59,7 +61,14 @@ def check_wpf_rendering():
 
     try:
         # Run WPF diagnostics
-        cmd = ['dotnet', 'run', '--project', 'WileyWidget.csproj', '--', '--diagnostics']
+        cmd = [
+            "dotnet",
+            "run",
+            "--project",
+            "WileyWidget.csproj",
+            "--",
+            "--diagnostics",
+        ]
 
         # Debug breakpoint before execution
         debugpy.breakpoint()
@@ -84,6 +93,7 @@ def check_wpf_rendering():
         print(f"❌ WPF diagnostics failed: {e}")
         debugpy.breakpoint()
 
+
 def inspect_data_binding():
     """Inspect data binding for Syncfusion controls"""
     print("\n🔗 Inspecting Data Binding...")
@@ -93,7 +103,14 @@ def inspect_data_binding():
 
     try:
         # Test data binding with debug output
-        cmd = ['dotnet', 'run', '--project', 'WileyWidget.csproj', '--', '--binding-test']
+        cmd = [
+            "dotnet",
+            "run",
+            "--project",
+            "WileyWidget.csproj",
+            "--",
+            "--binding-test",
+        ]
 
         # Debug breakpoint before execution
         debugpy.breakpoint()
@@ -113,13 +130,18 @@ def inspect_data_binding():
         print(f"❌ Data binding inspection failed: {e}")
         debugpy.breakpoint()
 
+
 def main():
     """Main UI inspection function"""
-    parser = argparse.ArgumentParser(description='WileyWidget UI Inspection with debugpy')
-    parser.add_argument('--verbose', '-v', action='store_true',
-                       help='Enable verbose output')
-    parser.add_argument('--no-wait', action='store_true',
-                       help='Don\'t wait for debugger attachment')
+    parser = argparse.ArgumentParser(
+        description="WileyWidget UI Inspection with debugpy"
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
+    parser.add_argument(
+        "--no-wait", action="store_true", help="Don't wait for debugger attachment"
+    )
 
     args = parser.parse_args()
 
@@ -150,5 +172,6 @@ def main():
     print("- On data binding issues")
     print("- On general inspection failures")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

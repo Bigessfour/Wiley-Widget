@@ -50,7 +50,7 @@
         <SolidColorBrush x:Key="TreeGridHeaderBrush" Color="#FF222832" />
 
         <Style x:Key="BudgetTreeGridHeaderStyle" TargetType="syncfusion:TreeGridHeaderCell">
-            <Setter Property="Background" Value="{StaticResource TreeGridHeaderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource TreeGridHeaderBrush}" />
             <Setter Property="Foreground" Value="#FFB0BCD6" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -75,7 +75,7 @@
 
         <!-- Top Toolbar with Import/Export/Add functionality -->
         <ToolBar Grid.Row="0" 
-                 Style="{StaticResource BudgetToolBarStyle}"
+                 Style="{DynamicResource BudgetToolBarStyle}"
                  AutomationProperties.Name="Budget Management Toolbar">
             
                 <syncfusion:ButtonAdv Label="Import Excel" 
@@ -195,14 +195,14 @@
                                                MappingName="AccountNumber" 
                                                Width="200"
                                                AllowEditing="False"
-                                               HeaderStyle="{StaticResource BudgetTreeGridHeaderStyle}" />
+                                               HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
                 
                 <!-- Description -->
                 <syncfusion:TreeGridTextColumn HeaderText="Description" 
                                                MappingName="Description" 
                                                Width="300"
                                                AllowEditing="True"
-                                               HeaderStyle="{StaticResource BudgetTreeGridHeaderStyle}"
+                                               HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}"
                                                ToolTipService.ToolTip="Double-click to edit (GASB rules applied)" />
                 
                 <!-- Fund Type with Dropdown Editor -->
@@ -213,7 +213,7 @@
                                                    DisplayMemberPath="Name"
                                                    SelectedValuePath="Code"
                                                    ToolTipService.ToolTip="Select fund category (General, Special Revenue, Capital, etc.)"
-                                                   HeaderStyle="{StaticResource BudgetTreeGridHeaderStyle}" />
+                                                   HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
                 
                 <!-- Budget Amount (Currency formatting) -->
                 <syncfusion:TreeGridCurrencyColumn HeaderText="Budgeted Amount" 
@@ -224,7 +224,7 @@
                                                    AllowEditing="True"
                                                    TextAlignment="Right"
                                                    ToolTipService.ToolTip="Approved budget amount (must be positive)"
-                                                   HeaderStyle="{StaticResource BudgetTreeGridHeaderStyle}" />
+                                                   HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
                 
                 <!-- Actuals (Currency formatting) -->
                 <syncfusion:TreeGridCurrencyColumn HeaderText="Actual Expenses" 
@@ -235,7 +235,7 @@
                                                    AllowEditing="True"
                                                    TextAlignment="Right"
                                                    ToolTipService.ToolTip="Year-to-date actual spending"
-                                                   HeaderStyle="{StaticResource BudgetTreeGridHeaderStyle}" />
+                                                   HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
                 
                 <!-- Variance (Calculated, conditional styling) -->
                 <syncfusion:TreeGridCurrencyColumn HeaderText="Variance" 
@@ -246,8 +246,8 @@
                                                    AllowEditing="False"
                                                    TextAlignment="Right"
                                                    ToolTipService.ToolTip="Budget vs Actual (negative = over budget)"
-                                                   CellStyle="{StaticResource OverBudgetCellStyle}"
-                                                   HeaderStyle="{StaticResource BudgetTreeGridHeaderStyle}" />
+                                                   CellStyle="{DynamicResource OverBudgetCellStyle}"
+                                                   HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
                 
                 <!-- Percentage Used -->
                 <syncfusion:TreeGridPercentColumn HeaderText="% Used" 
@@ -257,7 +257,7 @@
                                                   AllowEditing="False"
                                                   TextAlignment="Right"
                                                   ShowToolTip="True"
-                                                  HeaderStyle="{StaticResource BudgetTreeGridHeaderStyle}">
+                                                  HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}">
                     <syncfusion:TreeGridPercentColumn.ToolTipTemplate>
                         <DataTemplate>
                             <TextBlock Text="Percentage of budget consumed" />
@@ -350,7 +350,7 @@
                         <chart:PieSeries.AdornmentsInfo>
                             <chart:ChartAdornmentInfo 
                                 ShowLabel="True" 
-                                LabelTemplate="{StaticResource PieChartLabelTemplate}"
+                                LabelTemplate="{DynamicResource PieChartLabelTemplate}"
                                 LabelPosition="Auto" />
                         </chart:PieSeries.AdornmentsInfo>
                         

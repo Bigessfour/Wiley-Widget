@@ -1,4 +1,4 @@
-﻿# Requires: PowerShell 7+
+# Requires: PowerShell 7+
 param(
     [switch]$SkipSystemCertRemoval,
     [string]$CloudflaredPath,
@@ -21,7 +21,8 @@ function Stop-Cloudflared {
             Write-Note "Stopping 'cloudflared' service..."
             Stop-Service -Name 'cloudflared' -Force -ErrorAction SilentlyContinue
         }
-    } catch {
+    }
+    catch {
         Write-Warning "Couldn't stop 'cloudflared' service: $($_.Exception.Message)"
     }
 
@@ -32,7 +33,8 @@ function Stop-Cloudflared {
             Write-Note "Killing running cloudflared processes..."
             $procs | Stop-Process -Force -ErrorAction SilentlyContinue
         }
-    } catch {
+    }
+    catch {
         Write-Warning "Couldn't kill cloudflared processes: $($_.Exception.Message)"
     }
 }
@@ -43,7 +45,8 @@ function Remove-CertFile {
     if (Test-Path $userCert) {
         Write-Note "Removing user cert: $userCert"
         Remove-Item $userCert -Force -ErrorAction SilentlyContinue
-    } else {
+    }
+    else {
         Write-Note "No user cert found at: $userCert"
     }
 
@@ -54,10 +57,12 @@ function Remove-CertFile {
             try {
                 Write-Note "Attempting to remove system cert: $systemCert (admin may be required)"
                 Remove-Item $systemCert -Force -ErrorAction Stop
-            } catch {
+            }
+            catch {
                 Write-Warning "Couldn't remove system cert (try running as Administrator): $($_.Exception.Message)"
             }
-        } else {
+        }
+        else {
             Write-Note "No system cert found at: $systemCert"
         }
     }
@@ -67,10 +72,12 @@ function Remove-CertFile {
             if (Test-Path $CertPath) {
                 Write-Note "Removing provided cert path: $CertPath"
                 Remove-Item $CertPath -Force -ErrorAction Stop
-            } else {
+            }
+            else {
                 Write-Note "Provided cert path not found: $CertPath"
             }
-        } catch {
+        }
+        catch {
             Write-Warning "Couldn't remove provided cert path: $($_.Exception.Message)"
         }
     }
@@ -120,7 +127,7 @@ try {
     Stop-Cloudflared
     Remove-CertFile
 
-    $loginArgs = @('tunnel','login')
+    $loginArgs = @('tunnel', 'login')
 
     Write-Note "Launching: $cfPath $($loginArgs -join ' ')"
     Write-Note "If a device code is shown, open https://dash.cloudflare.com/warp and enter the code."
@@ -131,7 +138,8 @@ try {
     Write-Note " - Create tunnel: `"$cfPath`" tunnel create wileywidget"
     Write-Note " - Route DNS:    `"$cfPath`" tunnel route dns wileywidget app.townofwiley.gov"
     Write-Note " - Run tunnel:   `"$cfPath`" tunnel run wileywidget"
-} catch {
+}
+catch {
     Write-Error $_
     exit 1
 }

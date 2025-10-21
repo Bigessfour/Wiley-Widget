@@ -462,12 +462,12 @@ namespace WileyWidget.Data.Migrations
                 nullable: false,
                 defaultValue: 0m);
 
-            migrationBuilder.AddColumn<DateOnly>(
+            migrationBuilder.AddColumn<DateTime>(
                 name: "EndPeriod",
                 table: "BudgetEntries",
-                type: "date",
+                type: "datetime2",
                 nullable: false,
-                defaultValue: new DateOnly(1, 1, 1));
+                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
             migrationBuilder.AddColumn<int>(
                 name: "FundId",
@@ -501,12 +501,12 @@ namespace WileyWidget.Data.Migrations
                 type: "int",
                 nullable: true);
 
-            migrationBuilder.AddColumn<DateOnly>(
+            migrationBuilder.AddColumn<DateTime>(
                 name: "StartPeriod",
                 table: "BudgetEntries",
-                type: "date",
+                type: "datetime2",
                 nullable: false,
-                defaultValue: new DateOnly(1, 1, 1));
+                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
             migrationBuilder.AddColumn<DateTime>(
                 name: "UpdatedAt",
@@ -583,7 +583,7 @@ namespace WileyWidget.Data.Migrations
             migrationBuilder.InsertData(
                 table: "BudgetEntries",
                 columns: new[] { "Id", "AccountNumber", "ActivityCode", "ActualAmount", "BudgetedAmount", "CreatedAt", "DepartmentId", "Description", "EncumbranceAmount", "EndPeriod", "FiscalYear", "FundId", "FundType", "IsGASBCompliant", "MunicipalAccountId", "ParentId", "SourceFilePath", "SourceRowNumber", "StartPeriod", "UpdatedAt", "Variance" },
-                values: new object[] { 1, "405", "GOV", 0m, 50000m, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(1044), 1, "Road Maintenance", 0m, new DateOnly(1, 1, 1), 2026, 1, 0, true, null, null, null, null, new DateOnly(1, 1, 1), null, 0m });
+                values: new object[] { 1, "405", "GOV", 0m, 50000m, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(1044), 1, "Road Maintenance", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 0, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), null, 0m });
 
             migrationBuilder.InsertData(
                 table: "Departments",
@@ -593,7 +593,7 @@ namespace WileyWidget.Data.Migrations
             migrationBuilder.InsertData(
                 table: "BudgetEntries",
                 columns: new[] { "Id", "AccountNumber", "ActivityCode", "ActualAmount", "BudgetedAmount", "CreatedAt", "DepartmentId", "Description", "EncumbranceAmount", "EndPeriod", "FiscalYear", "FundId", "FundType", "IsGASBCompliant", "MunicipalAccountId", "ParentId", "SourceFilePath", "SourceRowNumber", "StartPeriod", "UpdatedAt", "Variance" },
-                values: new object[] { 2, "405.1", "GOV", 0m, 20000m, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(2333), 1, "Paving", 0m, new DateOnly(1, 1, 1), 2026, 1, 0, true, null, 1, null, null, new DateOnly(1, 1, 1), null, 0m });
+                values: new object[] { 2, "405.1", "GOV", 0m, 20000m, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(2333), 1, "Paving", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 0, true, null, 1, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), null, 0m });
 
             migrationBuilder.InsertData(
                 table: "Transactions",

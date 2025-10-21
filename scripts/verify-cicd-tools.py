@@ -4,18 +4,24 @@ Wiley Widget CI/CD Tools Verification (Python)
 Cross-platform tool verification with enhanced performance
 """
 
-import sys
-import subprocess
 import argparse
 import logging
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple
 
+
 class CICDToolsVerifier:
     """CI/CD Tools Verification Engine"""
 
-    def __init__(self, detailed: bool = False, fix_issues: bool = False, log_file: str = "cicd-verification.log"):
+    def __init__(
+        self,
+        detailed: bool = False,
+        fix_issues: bool = False,
+        log_file: str = "cicd-verification.log",
+    ):
         self.detailed = detailed
         self.fix_issues = fix_issues
         self.log_file = Path(log_file)
@@ -34,12 +40,12 @@ class CICDToolsVerifier:
         # Configure logging
         logging.basicConfig(
             level=logging.INFO,
-            format='[%(asctime)s] [%(levelname)s] %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
+            format="[%(asctime)s] [%(levelname)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
             handlers=[
                 logging.FileHandler(self.log_file),
-                logging.StreamHandler(sys.stdout)
-            ]
+                logging.StreamHandler(sys.stdout),
+            ],
         )
         self.logger = logging.getLogger(__name__)
 
@@ -56,11 +62,7 @@ class CICDToolsVerifier:
         """Run a command and return exit code, stdout, stderr"""
         try:
             result = subprocess.run(
-                command,
-                shell=shell,
-                capture_output=True,
-                text=True,
-                timeout=30
+                command, shell=shell, capture_output=True, text=True, timeout=30
             )
             return result.returncode, result.stdout, result.stderr
         except subprocess.TimeoutExpired:
@@ -68,24 +70,25 @@ class CICDToolsVerifier:
         except Exception as e:
             return -1, "", str(e)
 
-    def test_tool(self, name: str, command: str, expected_output: str = "", required: bool = True) -> bool:
+    def test_tool(
+        self, name: str, command: str, expected_output: str = "", required: bool = True
+    ) -> bool:
         """Test a tool and record results"""
         print(f"  🔍 Checking {name}...", end="", flush=True)
 
         exit_code, stdout, stderr = self.run_command(command)
 
-        success = (exit_code == 0 and
-                  (not expected_output or expected_output in stdout))
+        success = exit_code == 0 and (not expected_output or expected_output in stdout)
 
         if success:
             print(" ✅")
             self.results[name] = {
                 "status": "OK",
                 "output": stdout.strip(),
-                "exit_code": exit_code
+                "exit_code": exit_code,
             }
             if self.detailed and stdout.strip():
-                display_output = stdout.replace('\n', ' | ').strip()
+                display_output = stdout.replace("\n", " | ").strip()
                 if len(display_output) > 100:
                     display_output = display_output[:100] + "..."
                 print(f"     Output: {display_output}")
@@ -95,12 +98,12 @@ class CICDToolsVerifier:
             self.results[name] = {
                 "status": "FAIL",
                 "output": combined_output,
-                "exit_code": exit_code
+                "exit_code": exit_code,
             }
             if required:
                 self.issues.append(f"{name} failed (Exit: {exit_code})")
             if self.detailed and combined_output:
-                display_error = combined_output.replace('\n', ' | ').strip()
+                display_error = combined_output.replace("\n", " | ").strip()
                 if len(display_error) > 100:
                     display_error = display_error[:100] + "..."
                 print(f"     Error: {display_error}")
@@ -118,7 +121,7 @@ class CICDToolsVerifier:
             self.results["Trunk Config"] = {
                 "status": "MISSING",
                 "output": "File not found",
-                "exit_code": -1
+                "exit_code": -1,
             }
             self.issues.append("Trunk configuration file missing")
             return False
@@ -133,7 +136,7 @@ class CICDToolsVerifier:
                 self.results["Trunk Config"] = {
                     "status": "OK",
                     "output": f"Valid config with ~{linter_count} linters",
-                    "exit_code": 0
+                    "exit_code": 0,
                 }
                 if self.detailed:
                     print("     Contains linter configuration")
@@ -146,7 +149,7 @@ class CICDToolsVerifier:
             self.results["Trunk Config"] = {
                 "status": "ERROR",
                 "output": str(e),
-                "exit_code": -1
+                "exit_code": -1,
             }
             self.issues.append(f"Trunk config error: {e}")
             return False
@@ -162,7 +165,7 @@ class CICDToolsVerifier:
             self.results["GitHub Actions"] = {
                 "status": "MISSING",
                 "output": "Directory not found",
-                "exit_code": -1
+                "exit_code": -1,
             }
             self.issues.append("GitHub Actions workflows directory missing")
             return False
@@ -176,7 +179,7 @@ class CICDToolsVerifier:
                 self.results["GitHub Actions"] = {
                     "status": "OK",
                     "output": f"Found {workflow_count} workflow(s)",
-                    "exit_code": 0
+                    "exit_code": 0,
                 }
                 if self.detailed:
                     workflow_names = [f.name for f in workflow_files[:3]]
@@ -192,7 +195,7 @@ class CICDToolsVerifier:
             self.results["GitHub Actions"] = {
                 "status": "ERROR",
                 "output": str(e),
-                "exit_code": -1
+                "exit_code": -1,
             }
             self.issues.append(f"GitHub Actions error: {e}")
             return False
@@ -217,7 +220,9 @@ class CICDToolsVerifier:
         # Check Trunk and Linters
         print("\n🔍 Trunk & Linters:")
         self.test_tool("Trunk CLI", "trunk --version", "1.25.0")
-        self.test_tool("Trunk Check", "trunk check --help", "trunk check", required=False)
+        self.test_tool(
+            "Trunk Check", "trunk check --help", "trunk check", required=False
+        )
 
         # Check Azure Tools
         print("\n☁️  Azure Tools:")
@@ -265,16 +270,20 @@ class CICDToolsVerifier:
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="WileyWidget CI/CD Tools Verification")
-    parser.add_argument("--detailed", "-d", action="store_true", help="Show detailed output")
-    parser.add_argument("--fix-issues", "-f", action="store_true", help="Attempt to fix issues")
-    parser.add_argument("--log-file", "-l", default="cicd-verification.log", help="Log file path")
+    parser.add_argument(
+        "--detailed", "-d", action="store_true", help="Show detailed output"
+    )
+    parser.add_argument(
+        "--fix-issues", "-f", action="store_true", help="Attempt to fix issues"
+    )
+    parser.add_argument(
+        "--log-file", "-l", default="cicd-verification.log", help="Log file path"
+    )
 
     args = parser.parse_args()
 
     verifier = CICDToolsVerifier(
-        detailed=args.detailed,
-        fix_issues=args.fix_issues,
-        log_file=args.log_file
+        detailed=args.detailed, fix_issues=args.fix_issues, log_file=args.log_file
     )
 
     success = verifier.run_verification()

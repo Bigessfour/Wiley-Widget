@@ -73,7 +73,7 @@ namespace WileyWidget.ViewModels
             // Initialize data commands  
             ImportExcelCommand = new DelegateCommand(async () => await ImportExcelAsync());
             ExportDataCommand = new DelegateCommand(async () => await ExportDataAsync());
-            SyncQuickBooksCommand = new DelegateCommand(async () => await SyncQuickBooksAsync());
+            SyncQuickBooksCommand = new DelegateCommand(async () => await NavigateToQuickBooksAsync());
 
             // Initialize view commands
             ShowDashboardCommand = new DelegateCommand(async () => await ShowDashboardAsync());
@@ -528,6 +528,26 @@ namespace WileyWidget.ViewModels
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Navigation to Analytics failed");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private async Task NavigateToQuickBooksAsync()
+        {
+            Logger.LogInformation("MainViewModel: NavigateToQuickBooks command invoked");
+            try
+            {
+                IsBusy = true;
+                await Task.Delay(50);
+                await NavigateToRegionSafelyAsync("QuickBooksRegion", "QuickBooksView", "QuickBooks");
+                Logger.LogInformation("Navigated to QuickBooks");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Navigation to QuickBooks failed");
             }
             finally
             {

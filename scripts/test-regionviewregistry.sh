@@ -17,43 +17,43 @@ echo ""
 mkdir -p "$TEST_RESULTS"
 
 case $MODE in
-    standard)
-        echo "Running tests in standard mode..."
-        docker-compose -f docker-compose.regionviewregistry-tests.yml run --rm regionviewregistry-tests
-        ;;
-    
-    coverage)
-        echo "Running tests with coverage..."
-        docker-compose -f docker-compose.regionviewregistry-tests.yml run --rm regionviewregistry-tests
-        
-        # Check for coverage files
-        if [ -f "$TEST_RESULTS"/**/coverage.cobertura.xml ]; then
-            echo "Coverage report generated successfully"
-        fi
-        ;;
-    
-    dev)
-        echo "Starting development mode with live mounting..."
-        docker-compose -f docker-compose.regionviewregistry-tests.yml run --rm -it regionviewregistry-tests-dev
-        ;;
-    
-    rebuild)
-        echo "Rebuilding Docker image..."
-        docker-compose -f docker-compose.regionviewregistry-tests.yml build --no-cache regionviewregistry-tests
-        docker-compose -f docker-compose.regionviewregistry-tests.yml run --rm regionviewregistry-tests
-        ;;
-    
-    clean)
-        echo "Cleaning test artifacts..."
-        rm -rf "$TEST_RESULTS"/*
-        docker-compose -f docker-compose.regionviewregistry-tests.yml down --rmi all --volumes
-        echo "Cleanup complete"
-        ;;
-    
-    *)
-        echo "Usage: $0 {standard|coverage|dev|rebuild|clean}"
-        exit 1
-        ;;
+standard)
+	echo "Running tests in standard mode..."
+	docker-compose -f docker-compose.regionviewregistry-tests.yml run --rm regionviewregistry-tests
+	;;
+
+coverage)
+	echo "Running tests with coverage..."
+	docker-compose -f docker-compose.regionviewregistry-tests.yml run --rm regionviewregistry-tests
+
+	# Check for coverage files
+	if [ -f "$TEST_RESULTS"/**/coverage.cobertura.xml ]; then
+		echo "Coverage report generated successfully"
+	fi
+	;;
+
+dev)
+	echo "Starting development mode with live mounting..."
+	docker-compose -f docker-compose.regionviewregistry-tests.yml run --rm -it regionviewregistry-tests-dev
+	;;
+
+rebuild)
+	echo "Rebuilding Docker image..."
+	docker-compose -f docker-compose.regionviewregistry-tests.yml build --no-cache regionviewregistry-tests
+	docker-compose -f docker-compose.regionviewregistry-tests.yml run --rm regionviewregistry-tests
+	;;
+
+clean)
+	echo "Cleaning test artifacts..."
+	rm -rf "$TEST_RESULTS"/*
+	docker-compose -f docker-compose.regionviewregistry-tests.yml down --rmi all --volumes
+	echo "Cleanup complete"
+	;;
+
+*)
+	echo "Usage: $0 {standard|coverage|dev|rebuild|clean}"
+	exit 1
+	;;
 esac
 
 EXIT_CODE=$?
@@ -62,9 +62,9 @@ EXIT_CODE=$?
 echo ""
 echo "=== Test Execution Summary ==="
 if [ $EXIT_CODE -eq 0 ]; then
-    echo "✓ Tests completed successfully"
+	echo "✓ Tests completed successfully"
 else
-    echo "✗ Tests failed with exit code: $EXIT_CODE"
+	echo "✗ Tests failed with exit code: $EXIT_CODE"
 fi
 
 exit $EXIT_CODE

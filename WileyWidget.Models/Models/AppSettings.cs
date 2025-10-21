@@ -43,6 +43,8 @@ public class AppSettings
     public string? QboAccessToken { get; set; }
     public string? QboRefreshToken { get; set; }
     public DateTime QboTokenExpiry { get; set; } // UTC absolute expiry of access token
+    public string? QboClientId { get; set; }
+    public string? QboClientSecret { get; set; }
 
     // Report settings
     public string? LastSelectedReportType { get; set; }

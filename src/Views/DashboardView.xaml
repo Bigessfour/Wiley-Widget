@@ -32,12 +32,11 @@
 
     <!-- Theme applied globally via SfSkinManager.ApplicationTheme in App.xaml.cs -->
     <!-- Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application -->
-    <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03">
     <Grid behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="DashboardFocusAnchor"
         behaviors:MouseFocusBehavior.EnableOnClick="True"
         behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <!-- Invisible focus anchor to guarantee a focusable target (must be visible to receive focus) -->
-        <Border x:Name="DashboardFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
+    <Border x:Name="DashboardFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
         <DockPanel>
         <!-- Ribbon Toolbar -->
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="DashboardRibbon">
@@ -297,7 +296,7 @@
 
                                     <!-- Enable Trackball for Interactive Tooltips -->
                                     <chart:SfChart.Behaviors>
-                                        <chart:ChartTrackBallBehavior ShowLine="True" LineStyle="{StaticResource TrackBallLineStyle}">
+                                        <chart:ChartTrackBallBehavior ShowLine="True" LineStyle="{DynamicResource TrackBallLineStyle}">
                                             <chart:ChartTrackBallBehavior.ChartTrackBallStyle>
                                                 <Style TargetType="chart:ChartTrackBallControl">
                                                     <Setter Property="Background" Value="#2196F3"/>
@@ -773,5 +772,4 @@
         </StatusBar>
     </DockPanel>
     </Grid>
-    </darkTheme:SfAcrylicPanel>
 </UserControl>
