@@ -1,16 +1,29 @@
 {
+  "dotnet-test-explorer.testFramework": "xunit",
+  "test-explorer.codeLensEnabled": true,
+  "test-explorer.showInlineError": true,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["scripts"],
+  "workbench.panel.defaultLocation": "right",
+  "testExplorer.activityBarIcon": "test-explorer-icon",
+  "files.trimTrailingWhitespace": true,
+
+  // Editor whitespace/indentation handling (explicit workspace rules)
+  "editor.detectIndentation": false,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "editor.renderWhitespace": "all",
+  "files.trimTrailingWhitespace": true,
+
   // Database Development Theme Configuration
   "workbench.colorTheme": "Default Dark Modern",
-  "workbench.colorCustomizations": {
-    "[Default Dark Modern]": {
-      // Dark theme optimized for database development
-      "editor.background": "#0f0f23",
-      "editor.foreground": "#cccccc",
-      "editor.lineHighlightBackground": "#1e1e2e",
-      "editor.selectionBackground": "#264f78",
-      "editor.inactiveSelectionBackground": "#3a3d4100",
-      "editorSuggestWidget.foreground": "#CCCCCC"
-    }
+  "[Default Dark Modern]": {
+    // Dark theme optimized for database development
+    "editor.background": "#0f0f23",
+    "editor.lineHighlightBackground": "#1e1e2e",
+    "editor.selectionBackground": "#264f78",
+    "editor.inactiveSelectionBackground": "#3a3d4100",
+    "editorSuggestWidget.foreground": "#CCCCCC"
   },
   "editor.tokenColorCustomizations": {
     "[Default Dark Modern]": {
@@ -211,6 +224,14 @@
   // XAML formatting
   "xml.format.splitAttributes": "splitNewLine",
 
+  // Auto-format and code actions on save
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  },
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+
   // Workspace-specific Copilot guidance
   "github.copilot.chat.welcomeMessage": "Welcome to WileyWidget! This is a hobby WPF project focused on learning. I'll suggest practical patterns suitable for experimentation rather than production-level complexity.",
 
@@ -238,6 +259,28 @@
   },
   "terminal.integrated.fontFamily": "Cascadia Code",
   "terminal.integrated.fontSize": 14,
+
+  // Ensure indentation preferences are applied per-language where useful
+  "[json]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "[xml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "[csharp]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  },
+  "[powershell]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  },
   "terminal.integrated.cursorStyle": "line",
 
   // File Watcher Exclusions - Critical for preventing OOM crashes
@@ -325,7 +368,6 @@
   "coverage-gutters.partialHighlightBackground": "#FF000055",
 
   // Python Testing Configuration
-  "python.testing.unittestEnabled": false,
   "python.testing.unittestArgs": ["-v", "-s", "-p", "test_*.py"],
 
   // C# Testing Configuration
@@ -350,7 +392,6 @@
   "python.testing.cwd": "${workspaceFolder}",
   "testing.openTestResultsOnStart": "openOnTestStart",
   "workbench.editor.tabActionLocation": "left",
-  "python.testing.pytestArgs": ["scripts"],
 
   // Trunk Configuration
   "trunk.enabled": false,

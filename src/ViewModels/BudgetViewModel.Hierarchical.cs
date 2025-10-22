@@ -41,14 +41,14 @@ public partial class BudgetViewModel
                 {
                     // Implement Excel import logic using Syncfusion.XlsIO
                     var importedAccounts = await ImportBudgetFromExcelAsync(openFileDialog.FileName);
-                    
+
                     // Parse hierarchical account numbers and build parent-child relationships
                     var hierarchicalAccounts = BuildHierarchicalStructure(importedAccounts);
-                    
+
                     // TODO: Save imported accounts to database
-                    
+
                     ProgressText = $"Successfully imported {importedAccounts.Count} accounts with {hierarchicalAccounts.Count} hierarchical relationships";
-                    
+
                     MessageBox.Show(
                         $"Budget import completed successfully!\n\n" +
                         $"Imported: {importedAccounts.Count} accounts\n" +
@@ -81,7 +81,7 @@ public partial class BudgetViewModel
             ErrorMessage = $"Failed to import budget: {ex.Message}";
             HasError = true;
             Log.Error(ex, "Failed to import budget from Excel");
-            
+
             MessageBox.Show(
                 $"Error importing budget:\n{ex.Message}",
                 "Import Error",
@@ -102,11 +102,11 @@ public partial class BudgetViewModel
     private List<MunicipalAccount> BuildHierarchicalStructure(List<MunicipalAccount> accounts)
     {
         var accountDict = accounts.ToDictionary(a => a.AccountNumber?.Value ?? "", a => a);
-        
+
         foreach (var account in accounts)
         {
             if (account.AccountNumber == null) continue;
-            
+
             // Find parent by removing the last segment after the last dot
             var parts = account.AccountNumber.Value.Split('.');
             if (parts.Length > 1)
@@ -124,7 +124,7 @@ public partial class BudgetViewModel
                 account.ParentAccountId = null;
             }
         }
-        
+
         return accounts;
     }
 
@@ -170,7 +170,7 @@ public partial class BudgetViewModel
             ErrorMessage = $"Failed to export budget: {ex.Message}";
             HasError = true;
             Log.Error(ex, "Failed to export budget to Excel");
-            
+
             MessageBox.Show(
                 $"Error exporting budget:\n{ex.Message}",
                 "Export Error",
@@ -468,13 +468,16 @@ public partial class BudgetViewModel
                     if (string.IsNullOrWhiteSpace(accountNumber))
                         break; // End of data
 
+                    var parsedFund = ParseFund(GetCellValue(worksheet, row, columnMap["Fund"])) ?? WileyWidget.Models.MunicipalFundType.General;
+                    var parsedFundClass = ParseFundClass(GetCellValue(worksheet, row, columnMap["FundClass"]));
+
                     var account = new MunicipalAccount
                     {
                         AccountNumber = new WileyWidget.Models.AccountNumber(accountNumber),
                         Name = GetCellValue(worksheet, row, columnMap["Name"]) ?? $"Account {accountNumber}",
                         Type = ParseAccountType(GetCellValue(worksheet, row, columnMap["Type"])),
-                        Fund = ParseFund(GetCellValue(worksheet, row, columnMap["Fund"])) ?? WileyWidget.Models.MunicipalFundType.General,
-                        FundClass = ParseFundClass(GetCellValue(worksheet, row, columnMap["FundClass"]))
+                        Fund = parsedFund,
+                        FundDescription = parsedFundClass?.ToString() ?? parsedFund.ToString()
                     };
 
                     // Parse budget amounts if available
@@ -728,4 +731,3 @@ public partial class BudgetViewModel
         };
     }
 }
-

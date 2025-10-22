@@ -22,7 +22,7 @@ public class AccountNumber
     [Required]
     [MaxLength(20)]
     [RegularExpression(@"^\d+([.-]\d+)*$", ErrorMessage = "Account number must be numeric with optional separators (dots or hyphens)")]
-    public string Value { get; private set; }
+    public string Value { get; set; }
 
     /// <summary>
     /// The hierarchical level of this account number
@@ -59,8 +59,8 @@ public class AccountNumber
         Value = value;
     }
 
-    // Required for EF Core
-    private AccountNumber()
+    // Required for EF Core and test object initialization
+    public AccountNumber()
     {
         Value = string.Empty;
     }
@@ -116,16 +116,11 @@ public class MunicipalAccount : INotifyPropertyChanged
     [Key]
     public int Id { get; set; }
 
-    /// <summary>
-    /// Alias for Id for compatibility
+    /// Department this account belongs to
     /// </summary>
-    public int MunicipalAccountId => Id;
-
-    /// <summary>
-    /// Row version for optimistic concurrency control
-    /// </summary>
-    [Timestamp]
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+    [Required]
+    public int DepartmentId { get; set; }
+    public Department? Department { get; set; }
 
     private AccountNumber? _accountNumber;
 
@@ -145,23 +140,6 @@ public class MunicipalAccount : INotifyPropertyChanged
             }
         }
     }
-
-    /// <summary>
-    /// Computed account number value for queries
-    /// </summary>
-    public string? AccountNumber_Value { get; set; }
-
-    /// <summary>
-    /// Fund class for GASB compliance
-    /// </summary>
-    public FundClass? FundClass { get; set; }
-
-    /// <summary>
-    /// Department this account belongs to
-    /// </summary>
-    [Required]
-    public int DepartmentId { get; set; }
-    public Department? Department { get; set; }
 
     /// <summary>
     /// Parent account for hierarchical relationships (null for root accounts)
@@ -236,10 +214,15 @@ public class MunicipalAccount : INotifyPropertyChanged
             if (_type != value)
             {
                 _type = value;
-                OnPropertyChanged(nameof(Type), nameof(TypeDescription));
+                // Do not overwrite persisted TypeDescription during EF materialization.
+                OnPropertyChanged(nameof(Type));
             }
         }
     }
+
+    // Human-readable type and fund descriptions (persisted strings).
+    public string TypeDescription { get; set; } = "Asset";
+    public string FundDescription { get; set; } = "General Fund";
 
     private MunicipalFundType _fund;
 
@@ -251,16 +234,28 @@ public class MunicipalAccount : INotifyPropertyChanged
             if (_fund != value)
             {
                 _fund = value;
-                // Set FundClass based on Fund type
-                // FundClass = value switch
-                // {
-                //     MunicipalFundType.General or MunicipalFundType.SpecialRevenue or MunicipalFundType.CapitalProjects or MunicipalFundType.DebtService => FundClass.Governmental,
-                //     MunicipalFundType.Enterprise or MunicipalFundType.InternalService => FundClass.Proprietary,
-                //     MunicipalFundType.Trust or MunicipalFundType.Agency => FundClass.Fiduciary,
-                //     _ => FundClass.Governmental // Default for additional funds
-                // };
+                // Do not overwrite persisted FundDescription here; notify fund-related properties
                 OnPropertyChanged(nameof(Fund), nameof(FundDescription));
             }
+        }
+    }
+
+    /// <summary>
+    /// Derived fund class for broader categorization (Governmental, Proprietary, Fiduciary)
+    /// This is computed from the specific MunicipalFundType and is not persisted separately.
+    /// </summary>
+    [NotMapped]
+    public FundClass? FundClass
+    {
+        get
+        {
+            return _fund switch
+            {
+                MunicipalFundType.General or MunicipalFundType.SpecialRevenue or MunicipalFundType.CapitalProjects or MunicipalFundType.DebtService => global::WileyWidget.Models.FundClass.Governmental,
+                MunicipalFundType.Enterprise or MunicipalFundType.InternalService => global::WileyWidget.Models.FundClass.Proprietary,
+                MunicipalFundType.Trust or MunicipalFundType.Agency => global::WileyWidget.Models.FundClass.Fiduciary,
+                _ => null
+            };
         }
     }
 
@@ -363,68 +358,19 @@ public class MunicipalAccount : INotifyPropertyChanged
     [NotMapped]
     public string DisplayName => $"{AccountNumber?.ToString() ?? ""} - {Name}";
 
-    /// <summary>
-    /// Human-readable account type description
-    /// </summary>
-    [NotMapped]
-    public string TypeDescription => Type switch
-    {
-        AccountType.Cash => "Cash",
-        AccountType.Investments => "Investments",
-        AccountType.Receivables => "Receivables",
-        AccountType.Inventory => "Inventory",
-        AccountType.FixedAssets => "Fixed Assets",
-        AccountType.Asset => "Asset",
-        AccountType.Payables => "Liability",
-        AccountType.Debt => "Debt",
-        AccountType.AccruedLiabilities => "Accrued Liabilities",
-        AccountType.RetainedEarnings => "Equity",
-        AccountType.FundBalance => "Fund Balance",
-        AccountType.Taxes => "Taxes",
-        AccountType.Fees => "Fees",
-        AccountType.Grants => "Grants",
-        AccountType.Interest => "Interest",
-        AccountType.Sales => "Sales",
-        AccountType.Revenue => "Revenue",
-        AccountType.Salaries => "Salaries",
-        AccountType.Supplies => "Supplies",
-        AccountType.Services => "Services",
-        AccountType.Utilities => "Utilities",
-        AccountType.Maintenance => "Maintenance",
-        AccountType.Insurance => "Insurance",
-        AccountType.Depreciation => "Depreciation",
-        AccountType.Expense => "Expense",
-        AccountType.PermitsAndAssessments => "Permits and Assessments",
-        AccountType.ProfessionalServices => "Professional Services",
-        AccountType.ContractLabor => "Contract Labor",
-        AccountType.DuesAndSubscriptions => "Dues and Subscriptions",
-        AccountType.CapitalOutlay => "Capital Outlay",
-        AccountType.Transfers => "Transfers",
-        _ => "Unknown"
-    };
+    // (TypeDescription and FundDescription are defined earlier in the class)
 
     /// <summary>
-    /// Human-readable fund type description
+    /// Backing string for EF queries - mirrors the owned AccountNumber.Value
+    /// This property is mapped in AppDbContext to the database column and kept in sync by EF when using the owned type.
     /// </summary>
-    [NotMapped]
-    public string FundDescription => Fund switch
-    {
-        MunicipalFundType.General => "General Fund",
-        MunicipalFundType.SpecialRevenue => "Special Revenue Fund",
-        MunicipalFundType.CapitalProjects => "Capital Projects Fund",
-        MunicipalFundType.DebtService => "Debt Service Fund",
-        MunicipalFundType.Enterprise => "Enterprise Fund",
-        MunicipalFundType.InternalService => "Internal Service Fund",
-        MunicipalFundType.Trust => "Trust Fund",
-        MunicipalFundType.Agency => "Agency Fund",
-        MunicipalFundType.ConservationTrust => "Conservation Trust Fund",
-        MunicipalFundType.Recreation => "Recreation Fund",
-        MunicipalFundType.Utility => "Utility Fund",
-        MunicipalFundType.Water => "Water Fund",
-        MunicipalFundType.Sewer => "Sewer Fund",
-        MunicipalFundType.Trash => "Trash Fund",
-        _ => "Unknown"
-    };
+    public string? AccountNumber_Value { get; set; }
+
+    /// <summary>
+    /// Concurrency token used by EF for optimistic concurrency control
+    /// </summary>
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }
 
 /// <summary>

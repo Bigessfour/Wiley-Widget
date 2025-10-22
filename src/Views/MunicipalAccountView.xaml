@@ -19,37 +19,43 @@
              mc:Ignorable="d">
 
     <UserControl.Resources>
+        <!-- Localized Strings -->
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Resources/Strings.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <views:BalanceColorConverter x:Key="BalanceColorConverter" />
         <views:UniqueDepartmentsConverter x:Key="UniqueDepartmentsConverter" />
         <converters:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
-        
+
         <!-- Balance Color Converter -->
         <Style x:Key="PositiveBalanceStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#FF4ADE80" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
-        
+
         <Style x:Key="NegativeBalanceStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#FFF87171" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
-        
+
         <Style x:Key="NeutralBalanceStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#FFB9C8EC" />
             <Setter Property="FontWeight" Value="Normal" />
         </Style>
-        
+
         <!-- Currency Cell Template -->
         <DataTemplate x:Key="CurrencyTemplate">
             <Border Background="#1A3B82F6" Padding="6,3" CornerRadius="3" Margin="2">
-                <TextBlock Text="{Binding Value, StringFormat=C2}" 
+                <TextBlock Text="{Binding Value, StringFormat=C2}"
                           FontWeight="SemiBold"
                           Foreground="#FFE0E6F0"
                           ToolTip="{Binding Value, StringFormat='Balance: {0:C2}'}"/>
             </Border>
         </DataTemplate>
-        
+
         <!-- Status Indicator Style -->
         <Style x:Key="StatusIndicatorStyle" TargetType="Ellipse">
             <Setter Property="Width" Value="10" />
@@ -60,75 +66,122 @@
 
     </UserControl.Resources>
     <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03">
-    <Grid Background="#FF0F1724" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="MunicipalFocusAnchor">
+    <Grid Background="#FF0F1724"
+          behaviors:FocusOnLoadBehavior.IsEnabled="True"
+          behaviors:FocusOnLoadBehavior.TargetName="MunicipalFocusAnchor"
+          AutomationProperties.Name="{DynamicResource MunicipalAccounts_AccessibleName}"
+          AutomationProperties.HelpText="{DynamicResource MunicipalAccounts_AccessibleHelp}">
+        <syncfusionskin:SfSkinManager.Theme>
+            <syncfusionskin:Theme ThemeName="FluentDark" />
+        </syncfusionskin:SfSkinManager.Theme>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Border x:Name="MunicipalFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
-        
+
         <!-- Top Navigation and Command Bar -->
-        <Grid Grid.Row="0" Background="#FF1A2C41">
+        <Grid Grid.Row="0" Background="#FF1A2C41"
+              AutomationProperties.Name="{DynamicResource Ribbon_AccessibleName}">
             <syncfusion:Ribbon x:Name="AccountManagementRibbon">
-                <syncfusion:RibbonTab Caption="Account Management" IsChecked="True">
-                    
+                <syncfusion:RibbonTab Caption="{DynamicResource Ribbon_Tab_Accounts}" IsChecked="True">
+
                     <!-- Data Operations Bar -->
                     <syncfusion:RibbonBar Header="Data Operations">
-                        <syncfusion:RibbonButton Label="Load Accounts"
+                        <syncfusion:RibbonButton Label="{DynamicResource Btn_LoadAccounts}"
                                                   SizeForm="Large"
                                                   Command="{Binding LoadAccountsCommand}"
-                                                  ToolTip="Load all municipal accounts from database" />
-                        
-                        <syncfusion:RibbonButton Label="Sync QuickBooks"
+                                                  ToolTip="{DynamicResource Tip_LoadAccounts}"
+                                                  AutomationProperties.Name="{DynamicResource Btn_LoadAccounts}"
+                                                  AutomationProperties.AutomationId="Btn_LoadAccounts" />
+
+                        <syncfusion:RibbonButton Label="{DynamicResource Btn_SyncQuickBooks}"
                                                   SizeForm="Large"
                                                   Command="{Binding SyncFromQuickBooksCommand}"
-                                                  ToolTip="Synchronize accounts from QuickBooks Online" />
-                        
-                        <syncfusion:RibbonButton Label="Budget Analysis"
+                                                  ToolTip="{DynamicResource Tip_SyncQuickBooks}"
+                                                  AutomationProperties.Name="{DynamicResource Btn_SyncQuickBooks}"
+                                                  AutomationProperties.AutomationId="Btn_SyncQuickBooks" />
+
+                        <syncfusion:RibbonButton Label="{DynamicResource Btn_BudgetAnalysis}"
                                                   SizeForm="Small"
                                                   Command="{Binding LoadBudgetAnalysisCommand}"
-                                                  ToolTip="Load budget analysis data" />
-                        
-                        <syncfusion:RibbonButton Label="Refresh"
+                                                  ToolTip="{DynamicResource Tip_BudgetAnalysis}"
+                                                  AutomationProperties.Name="{DynamicResource Btn_BudgetAnalysis}"
+                                                  AutomationProperties.AutomationId="Btn_BudgetAnalysis" />
+
+                        <syncfusion:RibbonButton Label="{DynamicResource Btn_Refresh}"
                                                   SizeForm="Small"
                                                   Command="{Binding LoadAccountsCommand}"
-                                                  ToolTip="Refresh account data" />
+                                                  ToolTip="{DynamicResource Tip_Refresh}"
+                                                  AutomationProperties.Name="{DynamicResource Btn_Refresh}"
+                                                  AutomationProperties.AutomationId="Btn_Refresh" />
+
+                        <!-- Test-only controls (visible when WILEY_WIDGET_TESTMODE=1) -->
+                        <syncfusion:RibbonButton Label="Seed Test Data"
+                                                  SizeForm="Small"
+                                                  ToolTip="(Test) Seed deterministic test data"
+                                                  AutomationProperties.AutomationId="Btn_SeedTestData"
+                                                  x:Name="Btn_SeedTestData"
+                                                  Visibility="Collapsed"
+                                                  Click="SeedTestData_Click" />
+
+                        <syncfusion:RibbonButton Label="Clear Test Data"
+                                                  SizeForm="Small"
+                                                  ToolTip="(Test) Clear seeded test data"
+                                                  AutomationProperties.AutomationId="Btn_ClearTestData"
+                                                  x:Name="Btn_ClearTestData"
+                                                  Visibility="Collapsed"
+                                                  Click="ClearTestData_Click" />
+
+                        <syncfusion:RibbonButton Label="Export (Stub)"
+                                                  SizeForm="Small"
+                                                  ToolTip="(Test) Export stub that does not show OS dialogs"
+                                                  AutomationProperties.AutomationId="Btn_ExportStub"
+                                                  x:Name="Btn_ExportStub"
+                                                  Visibility="Collapsed"
+                                                  Click="ExportStub_Click" />
                     </syncfusion:RibbonBar>
-                    
+
                     <!-- Filter Bar -->
-                    <syncfusion:RibbonBar Header="Filters" Width="320">
+                    <syncfusion:RibbonBar Header="{DynamicResource Filters_Header}" Width="320">
                         <StackPanel Orientation="Vertical" Margin="8">
                             <!-- Search Box -->
-                            <TextBlock Text="Search Accounts" Margin="0,0,0,4" 
+                            <TextBlock Text="{DynamicResource Search_Label}" Margin="0,0,0,4"
                                       Foreground="#FFE0E6F0" FontWeight="SemiBold" />
-                            <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    Margin="0,0,0,8"
-                                    Padding="4"
-                                    ToolTip="Search by account name, number, fund, type, notes, or department" />
-                            
+                <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    Margin="0,0,0,8"
+                    Padding="4"
+                    ToolTip="{DynamicResource Search_Tip}"
+                    AutomationProperties.Name="{DynamicResource Search_Label}"
+                    AutomationProperties.AutomationId="SearchTextBox" />
+
                             <!-- Basic Filters -->
-                            <TextBlock Text="Fund Type" Margin="0,0,0,4" 
+                            <TextBlock Text="{DynamicResource FundType_Label}" Margin="0,0,0,4"
                                       Foreground="#FFE0E6F0" FontWeight="SemiBold" />
                             <ComboBox ItemsSource="{Binding FundTypeValues}"
                                       SelectedItem="{Binding SelectedFundFilter, Mode=TwoWay}"
                                       Margin="0,0,0,8"
-                                      ToolTip="Filter accounts by fund type" />
-                            
-                            <TextBlock Text="Account Type" Margin="0,0,0,4" 
+                                      ToolTip="{DynamicResource FundType_Tip}"
+                                      AutomationProperties.Name="{DynamicResource FundType_Label}"
+                                      AutomationProperties.AutomationId="FundTypeCombo" />
+
+                            <TextBlock Text="{DynamicResource AccountType_Label}" Margin="0,0,0,4"
                                       Foreground="#FFE0E6F0" FontWeight="SemiBold" />
                             <ComboBox ItemsSource="{Binding AccountTypeValues}"
                                       SelectedItem="{Binding SelectedTypeFilter, Mode=TwoWay}"
                                       Margin="0,0,0,8"
-                                      ToolTip="Filter accounts by account type" />
-                            
+                                      ToolTip="{DynamicResource AccountType_Tip}"
+                                      AutomationProperties.Name="{DynamicResource AccountType_Label}"
+                                      AutomationProperties.AutomationId="AccountTypeCombo" />
+
                             <!-- Advanced Filters Expander -->
-                            <Expander Header="Advanced Filters" 
+                            <Expander Header="{DynamicResource AdvancedFilters_Header}"
                                      IsExpanded="{Binding IsAdvancedFiltersExpanded, Mode=TwoWay}"
                                      Margin="0,8,0,8">
                                 <StackPanel Orientation="Vertical" Margin="8">
                                     <!-- Balance Range -->
-                                    <TextBlock Text="Balance Range" Margin="0,0,0,4" 
+                                    <TextBlock Text="{DynamicResource BalanceRange_Label}" Margin="0,0,0,4"
                                               Foreground="#FFE0E6F0" FontWeight="SemiBold" />
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
@@ -136,87 +189,101 @@
                                             <ColumnDefinition Width="20" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" 
-                                                Text="{Binding MinBalanceFilter, Mode=TwoWay, StringFormat=C2}"
-                                                Padding="4"
-                                                ToolTip="Minimum balance" />
-                                        <TextBlock Grid.Column="1" Text=" - " 
-                                                  Foreground="#FFE0E6F0" 
-                                                  VerticalAlignment="Center" 
+                    <TextBox Grid.Column="0"
+                        Text="{Binding MinBalanceFilter, Mode=TwoWay, StringFormat=C2, ValidatesOnNotifyDataErrors=True, NotifyOnValidationError=True}"
+                        Padding="4"
+                        ToolTip="{DynamicResource MinBalance_Tip}"
+                        AutomationProperties.Name="{DynamicResource MinBalance_Label}"
+                        AutomationProperties.AutomationId="MinBalanceTextBox" />
+                                        <TextBlock Grid.Column="1" Text=" - "
+                                                  Foreground="#FFE0E6F0"
+                                                  VerticalAlignment="Center"
                                                   HorizontalAlignment="Center" />
-                                        <TextBox Grid.Column="2" 
-                                                Text="{Binding MaxBalanceFilter, Mode=TwoWay, StringFormat=C2}"
-                                                Padding="4"
-                                                ToolTip="Maximum balance" />
+                    <TextBox Grid.Column="2"
+                        Text="{Binding MaxBalanceFilter, Mode=TwoWay, StringFormat=C2, ValidatesOnNotifyDataErrors=True, NotifyOnValidationError=True}"
+                        Padding="4"
+                        ToolTip="{DynamicResource MaxBalance_Tip}"
+                        AutomationProperties.Name="{DynamicResource MaxBalance_Label}"
+                        AutomationProperties.AutomationId="MaxBalanceTextBox" />
                                     </Grid>
-                                    
+
                                     <!-- Department Filter -->
-                                    <TextBlock Text="Department" Margin="0,0,0,4" 
+                                    <TextBlock Text="{DynamicResource Department_Label}" Margin="0,0,0,4"
                                               Foreground="#FFE0E6F0" FontWeight="SemiBold" />
                                     <ComboBox ItemsSource="{Binding MunicipalAccounts, Converter={StaticResource UniqueDepartmentsConverter}}"
                                               SelectedItem="{Binding SelectedDepartmentFilter, Mode=TwoWay}"
                                               DisplayMemberPath="Name"
                                               Margin="0,0,0,8"
-                                              ToolTip="Filter by department" />
+                                              ToolTip="{DynamicResource Department_Tip}"
+                                              AutomationProperties.Name="{DynamicResource Department_Label}"
+                                              AutomationProperties.AutomationId="DepartmentCombo" />
                                 </StackPanel>
                             </Expander>
-                            
+
                             <!-- Filter Action Buttons -->
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <syncfusion:ButtonAdv Label="Apply Filters"
+                                <syncfusion:ButtonAdv Label="{DynamicResource Btn_ApplyFilters}"
                                                      Command="{Binding ApplyFiltersCommand}"
                                                      SizeMode="Normal"
-                                                     ToolTip="Apply selected filters to account list"
+                                                     ToolTip="{DynamicResource Tip_ApplyFilters}"
+                                                     AutomationProperties.Name="{DynamicResource Btn_ApplyFilters}"
+                                                     AutomationProperties.AutomationId="Btn_ApplyFilters"
                                                      Margin="0,0,4,0" />
-                                <syncfusion:ButtonAdv Label="Clear"
+                                <syncfusion:ButtonAdv Label="{DynamicResource Btn_ClearFilters}"
                                                      Command="{Binding ClearFiltersCommand}"
                                                      SizeMode="Normal"
-                                                     ToolTip="Clear all filters and show all accounts" />
+                                                     ToolTip="{DynamicResource Tip_ClearFilters}"
+                                                     AutomationProperties.Name="{DynamicResource Btn_ClearFilters}"
+                                                     AutomationProperties.AutomationId="Btn_ClearFilters" />
                             </StackPanel>
                         </StackPanel>
                     </syncfusion:RibbonBar>
-                    
+
                     <!-- Navigation Bar -->
-                    <syncfusion:RibbonBar Header="Navigation">
-                        <syncfusion:RibbonButton Label="Back"
+                    <syncfusion:RibbonBar Header="{DynamicResource Navigation_Header}">
+                        <syncfusion:RibbonButton Label="{DynamicResource Btn_Back}"
                                                   SizeForm="Large"
                                                   Command="{Binding NavigateBackCommand}"
-                                                  ToolTip="Return to main dashboard" />
-                        
-                        <syncfusion:RibbonButton Label="Budget Analysis"
+                                                  ToolTip="{DynamicResource Tip_Back}"
+                                                  AutomationProperties.Name="{DynamicResource Btn_Back}" />
+
+                        <syncfusion:RibbonButton Label="{DynamicResource Btn_BudgetAnalysis}"
                                                   SizeForm="Large"
                                                   Command="{Binding NavigateToBudgetCommand}"
-                                                  ToolTip="Navigate to Budget Analysis view" />
-                        
-                        <syncfusion:RibbonButton Label="Export"
+                                                  ToolTip="{DynamicResource Tip_BudgetAnalysis}"
+                                                  AutomationProperties.Name="{DynamicResource Btn_BudgetAnalysis}" />
+
+                        <syncfusion:RibbonButton Label="{DynamicResource Btn_Export}"
                                                   SizeForm="Small"
-                                                  ToolTip="Export account data to Excel" />
-                        
-                        <syncfusion:RibbonButton Label="Print"
+                                                  ToolTip="{DynamicResource Tip_Export}"
+                                                  AutomationProperties.Name="{DynamicResource Btn_Export}" />
+
+                        <syncfusion:RibbonButton Label="{DynamicResource Btn_Print}"
                                                   SizeForm="Small"
-                                                  ToolTip="Print account report" />
+                                                  ToolTip="{DynamicResource Tip_Print}"
+                                                  AutomationProperties.Name="{DynamicResource Btn_Print}" />
                     </syncfusion:RibbonBar>
-                    
+
                     <!-- View Options Bar -->
                     <syncfusion:RibbonBar Header="View">
                         <syncfusion:RibbonButton Label="Expand All"
                                                   SizeForm="Small"
                                                   ToolTip="Expand all hierarchical accounts" />
-                        
+
                         <syncfusion:RibbonButton Label="Collapse All"
                                                   SizeForm="Small"
                                                   ToolTip="Collapse all hierarchical accounts" />
-                        
+
                         <syncfusion:RibbonButton Label="Clear Error"
                                                   SizeForm="Small"
                                                   Command="{Binding ClearErrorCommand}"
                                                   ToolTip="Clear error messages" />
                     </syncfusion:RibbonBar>
-                    
+
                 </syncfusion:RibbonTab>
             </syncfusion:Ribbon>
         </Grid>
-        
+
         <!-- Main Content Area -->
         <Grid Grid.Row="1" Margin="12">
             <Grid.ColumnDefinitions>
@@ -224,7 +291,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" MinWidth="400" />
             </Grid.ColumnDefinitions>
-            
+
             <!-- Left Panel: Hierarchical Account Grid -->
             <Border Grid.Column="0" Background="#FF1A2C41" CornerRadius="8" Padding="0">
                 <Grid>
@@ -232,17 +299,17 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    
+
                     <!-- Grid Header -->
                     <Border Grid.Row="0" Background="#FF0F1724" Padding="12,8" CornerRadius="8,8,0,0">
-                        <TextBlock Text="Municipal Accounts" 
-                                  FontSize="16" 
-                                  FontWeight="Bold" 
+                        <TextBlock Text="{DynamicResource MunicipalAccounts_Header}"
+                                  FontSize="16"
+                                  FontWeight="Bold"
                                   Foreground="#FFE0E6F0" />
                     </Border>
-                    
+
                     <!-- Hierarchical Data Grid -->
-                    <syncfusion:SfDataGrid Grid.Row="1" 
+                    <syncfusion:SfDataGrid Grid.Row="1"
                                           x:Name="AccountsGrid"
                                           ItemsSource="{Binding MunicipalAccounts, FallbackValue=Empty}"
                                           SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
@@ -261,14 +328,17 @@
                                           EditTrigger="OnTap"
                                           LiveDataUpdateMode="AllowDataShaping"
                                           EnableDataVirtualization="True"
-                                          VirtualizingStackPanel.IsVirtualizing="True">
-                        
+                                          VirtualizingStackPanel.IsVirtualizing="True"
+                                          AutomationProperties.AutomationId="AccountsGrid"
+                                          AutomationProperties.Name="{DynamicResource AccountsGrid_AccessibleName}"
+                                          AutomationProperties.HelpText="{DynamicResource AccountsGrid_AccessibleHelp}">
+
                         <!-- Column Definitions -->
                         <syncfusion:SfDataGrid.Columns>
-                            
+
                             <!-- Account Number Column -->
-                            <syncfusion:GridTextColumn HeaderText="Account #" 
-                                                      MappingName="AccountNumber.Value" 
+                            <syncfusion:GridTextColumn HeaderText="{DynamicResource Col_AccountNumber}"
+                                                      MappingName="AccountNumber.Value"
                                                       Width="140"
                                                       AllowEditing="False"
                                                       AllowSorting="True"
@@ -280,37 +350,37 @@
                                     </Style>
                                 </syncfusion:GridTextColumn.CellStyle>
                             </syncfusion:GridTextColumn>
-                            
+
                             <!-- Account Name Column -->
-                            <syncfusion:GridTextColumn HeaderText="Account Name" 
-                                                      MappingName="Name" 
+                            <syncfusion:GridTextColumn HeaderText="{DynamicResource Col_AccountName}"
+                                                      MappingName="Name"
                                                       Width="260"
                                                       AllowEditing="True"
-                                                      ToolTipService.ToolTip="Account name or description" />
-                            
+                                                      ToolTipService.ToolTip="{DynamicResource Tip_AccountName}" />
+
                             <!-- Fund Type Column -->
-                            <syncfusion:GridTextColumn HeaderText="Fund" 
-                                                      MappingName="FundDescription" 
+                            <syncfusion:GridTextColumn HeaderText="{DynamicResource Col_Fund}"
+                                                      MappingName="FundDescription"
                                                       Width="140"
                                                       AllowEditing="False"
-                                                      ToolTipService.ToolTip="Fund classification (General, Special Revenue, etc.)" />
-                            
+                                                      ToolTipService.ToolTip="{DynamicResource Tip_Fund}" />
+
                             <!-- Account Type Column -->
-                            <syncfusion:GridTextColumn HeaderText="Type" 
-                                                      MappingName="TypeDescription" 
+                            <syncfusion:GridTextColumn HeaderText="{DynamicResource Col_Type}"
+                                                      MappingName="TypeDescription"
                                                       Width="140"
                                                       AllowEditing="False"
-                                                      ToolTipService.ToolTip="Account type (Asset, Liability, Revenue, Expense)" />
-                            
+                                                      ToolTipService.ToolTip="{DynamicResource Tip_Type}" />
+
                             <!-- Balance Column with Custom Formatting -->
-                            <syncfusion:GridCurrencyColumn HeaderText="Balance" 
-                                                          MappingName="Balance" 
+                            <syncfusion:GridCurrencyColumn HeaderText="{DynamicResource Col_Balance}"
+                                                          MappingName="Balance"
                                                           Width="160"
                                                           CurrencySymbol="$"
                                                           CurrencyDecimalDigits="2"
                                                           AllowEditing="False"
                                                           TextAlignment="Right"
-                                                          ToolTipService.ToolTip="Current account balance">
+                                                          ToolTipService.ToolTip="{DynamicResource Tip_Balance}">
                                 <syncfusion:GridCurrencyColumn.CellStyle>
                                     <Style TargetType="syncfusion:GridCell">
                                         <Setter Property="FontWeight" Value="Bold" />
@@ -323,74 +393,74 @@
                                     </Style>
                                 </syncfusion:GridCurrencyColumn.CellStyle>
                             </syncfusion:GridCurrencyColumn>
-                            
+
                             <!-- Department Column -->
-                            <syncfusion:GridTextColumn HeaderText="Department" 
-                                                      MappingName="Department.Name" 
+                            <syncfusion:GridTextColumn HeaderText="{DynamicResource Col_Department}"
+                                                      MappingName="Department.Name"
                                                       Width="180"
                                                       AllowEditing="False"
                                                       ShowToolTip="True">
                                 <syncfusion:GridTextColumn.ToolTipTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="Department assigned to this account" />
+                                        <TextBlock Text="{DynamicResource Tip_Department}" />
                                     </DataTemplate>
                                 </syncfusion:GridTextColumn.ToolTipTemplate>
                             </syncfusion:GridTextColumn>
-                            
+
                             <!-- Notes Column -->
-                            <syncfusion:GridTextColumn HeaderText="Notes" 
-                                                      MappingName="Notes" 
+                            <syncfusion:GridTextColumn HeaderText="{DynamicResource Col_Notes}"
+                                                      MappingName="Notes"
                                                       Width="300"
                                                       MinimumWidth="200"
                                                       AllowEditing="True"
                                                       ShowToolTip="True">
                                 <syncfusion:GridTextColumn.ToolTipTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="Additional notes or comments" />
+                                        <TextBlock Text="{DynamicResource Tip_Notes}" />
                                     </DataTemplate>
                                 </syncfusion:GridTextColumn.ToolTipTemplate>
                             </syncfusion:GridTextColumn>
-                            
+
                         </syncfusion:SfDataGrid.Columns>
-                        
+
                         <!-- Grouping Configuration -->
                         <syncfusion:SfDataGrid.GroupColumnDescriptions>
                             <syncfusion:GroupColumnDescription ColumnName="FundDescription" />
                             <syncfusion:GroupColumnDescription ColumnName="TypeDescription" />
                         </syncfusion:SfDataGrid.GroupColumnDescriptions>
-                        
+
                         <!-- Summary Rows -->
                         <syncfusion:SfDataGrid.TableSummaryRows>
-                            <syncfusion:GridTableSummaryRow ShowSummaryInRow="True" 
+                            <syncfusion:GridTableSummaryRow ShowSummaryInRow="True"
                                                            Position="Bottom"
-                                                           Title="Total Accounts: {Count} | Total Balance: {Balance}"
+                                                           Title="{DynamicResource Summary_Title}"
                                                            TitleColumnCount="4">
                                 <syncfusion:GridTableSummaryRow.SummaryColumns>
-                                    <syncfusion:GridSummaryColumn Name="Count" 
-                                                                 Format="'{Count}'" 
-                                                                 MappingName="Id" 
+                                    <syncfusion:GridSummaryColumn Name="Count"
+                                                                 Format="'{Count}'"
+                                                                 MappingName="Id"
                                                                  SummaryType="CountAggregate" />
-                                    <syncfusion:GridSummaryColumn Name="Balance" 
-                                                                 Format="'{Sum:C2}'" 
-                                                                 MappingName="Balance" 
+                                    <syncfusion:GridSummaryColumn Name="Balance"
+                                                                 Format="'{Sum:C2}'"
+                                                                 MappingName="Balance"
                                                                  SummaryType="DoubleAggregate" />
                                 </syncfusion:GridTableSummaryRow.SummaryColumns>
                             </syncfusion:GridTableSummaryRow>
                         </syncfusion:SfDataGrid.TableSummaryRows>
-                        
+
                         <!-- Group Summary Rows -->
                         <syncfusion:SfDataGrid.GroupSummaryRows>
-                            <syncfusion:GridSummaryRow ShowSummaryInRow="True" 
+                            <syncfusion:GridSummaryRow ShowSummaryInRow="True"
                                                       Title="Fund Total: {Balance}">
                                 <syncfusion:GridSummaryRow.SummaryColumns>
-                                    <syncfusion:GridSummaryColumn Name="Balance" 
-                                                                 Format="'{Sum:C2}'" 
-                                                                 MappingName="Balance" 
+                                    <syncfusion:GridSummaryColumn Name="Balance"
+                                                                 Format="'{Sum:C2}'"
+                                                                 MappingName="Balance"
                                                                  SummaryType="DoubleAggregate" />
                                 </syncfusion:GridSummaryRow.SummaryColumns>
                             </syncfusion:GridSummaryRow>
                         </syncfusion:SfDataGrid.GroupSummaryRows>
-                        
+
                         <!-- Context Menu -->
                         <syncfusion:SfDataGrid.RecordContextMenu>
                             <ContextMenu>
@@ -404,26 +474,26 @@
                                 <MenuItem Header="Print Account Report" />
                             </ContextMenu>
                         </syncfusion:SfDataGrid.RecordContextMenu>
-                        
+
                     </syncfusion:SfDataGrid>
-                    
+
                     <!-- Empty State Message -->
                     <StackPanel Grid.Row="1"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Visibility="{Binding MunicipalAccounts.Count, Converter={StaticResource ZeroToVisibleConverter}}">
-                        <TextBlock Text="📊" 
-                                  FontSize="48" 
+                        <TextBlock Text="📊"
+                                  FontSize="48"
                                   HorizontalAlignment="Center"
                                   Margin="0,0,0,16" />
-                        <TextBlock Text="No accounts found" 
-                                  FontSize="18" 
+                        <TextBlock Text="No accounts found"
+                                  FontSize="18"
                                   FontWeight="SemiBold"
                                   Foreground="#FFB9C8EC"
                                   HorizontalAlignment="Center"
                                   Margin="0,0,0,8" />
-                        <TextBlock Text="Click 'Load Accounts' or 'Sync QuickBooks' to get started" 
-                                  FontSize="14" 
+                        <TextBlock Text="Click 'Load Accounts' or 'Sync QuickBooks' to get started"
+                                  FontSize="14"
                                   Foreground="#FF7F8FA6"
                                   HorizontalAlignment="Center"
                                   TextWrapping="Wrap"
@@ -432,25 +502,25 @@
                     </StackPanel>
                 </Grid>
             </Border>
-            
+
             <!-- GridSplitter -->
-            <GridSplitter Grid.Column="1" 
-                         Width="8" 
-                         HorizontalAlignment="Center" 
+            <GridSplitter Grid.Column="1"
+                         Width="8"
+                         HorizontalAlignment="Center"
                          VerticalAlignment="Stretch"
                          Background="Transparent"
                          ShowsPreview="True" />
-            
+
             <!-- Right Panel: Account Details and Transactions -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                
+
                 <!-- Account Details Expander -->
-                <Expander Grid.Row="0" 
-                         Header="Account Details" 
+                <Expander Grid.Row="0"
+                         Header="Account Details"
                          IsExpanded="True"
                          Margin="0,0,0,12">
                     <Expander.Content>
@@ -469,106 +539,112 @@
                                     <ColumnDefinition Width="120" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                
+
                                 <!-- Account Number -->
-                                <TextBlock Grid.Row="0" Grid.Column="0" 
-                                          Text="Account #:" 
-                                          FontWeight="SemiBold" 
-                                          Foreground="#FFB9C8EC" 
+                                <TextBlock Grid.Row="0" Grid.Column="0"
+                                          Text="Account #:"
+                                          FontWeight="SemiBold"
+                                          Foreground="#FFB9C8EC"
                                           Margin="0,0,0,8" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" 
-                                          Text="{Binding AccountNumber.Value}" 
-                                          Foreground="#FFE0E6F0" 
+                                <TextBlock Grid.Row="0" Grid.Column="1"
+                                          x:Name="AccountNumberValue"
+                                          AutomationProperties.AutomationId="AccountNumberValue"
+                                          Text="{Binding AccountNumber.Value}"
+                                          Foreground="#FFE0E6F0"
                                           FontFamily="Consolas"
                                           FontWeight="Bold"
                                           Margin="0,0,0,8" />
-                                
+
                                 <!-- Account Name -->
-                                <TextBlock Grid.Row="1" Grid.Column="0" 
-                                          Text="Name:" 
-                                          FontWeight="SemiBold" 
-                                          Foreground="#FFB9C8EC" 
+                                <TextBlock Grid.Row="1" Grid.Column="0"
+                                          Text="Name:"
+                                          FontWeight="SemiBold"
+                                          Foreground="#FFB9C8EC"
                                           Margin="0,0,0,8" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" 
-                                          Text="{Binding Name}" 
-                                          Foreground="#FFE0E6F0" 
+                                <TextBlock Grid.Row="1" Grid.Column="1"
+                                          x:Name="AccountNameValue"
+                                          AutomationProperties.AutomationId="AccountNameValue"
+                                          Text="{Binding Name}"
+                                          Foreground="#FFE0E6F0"
                                           TextWrapping="Wrap"
                                           Margin="0,0,0,8" />
-                                
+
                                 <!-- Fund Type -->
-                                <TextBlock Grid.Row="2" Grid.Column="0" 
-                                          Text="Fund:" 
-                                          FontWeight="SemiBold" 
-                                          Foreground="#FFB9C8EC" 
+                                <TextBlock Grid.Row="2" Grid.Column="0"
+                                          Text="Fund:"
+                                          FontWeight="SemiBold"
+                                          Foreground="#FFB9C8EC"
                                           Margin="0,0,0,8" />
-                                <TextBlock Grid.Row="2" Grid.Column="1" 
-                                          Text="{Binding FundDescription}" 
-                                          Foreground="#FFE0E6F0" 
+                                <TextBlock Grid.Row="2" Grid.Column="1"
+                                          Text="{Binding FundDescription}"
+                                          Foreground="#FFE0E6F0"
                                           Margin="0,0,0,8" />
-                                
+
                                 <!-- Account Type -->
-                                <TextBlock Grid.Row="3" Grid.Column="0" 
-                                          Text="Type:" 
-                                          FontWeight="SemiBold" 
-                                          Foreground="#FFB9C8EC" 
+                                <TextBlock Grid.Row="3" Grid.Column="0"
+                                          Text="Type:"
+                                          FontWeight="SemiBold"
+                                          Foreground="#FFB9C8EC"
                                           Margin="0,0,0,8" />
-                                <TextBlock Grid.Row="3" Grid.Column="1" 
-                                          Text="{Binding TypeDescription}" 
-                                          Foreground="#FFE0E6F0" 
+                                <TextBlock Grid.Row="3" Grid.Column="1"
+                                          Text="{Binding TypeDescription}"
+                                          Foreground="#FFE0E6F0"
                                           Margin="0,0,0,8" />
-                                
+
                                 <!-- Balance -->
-                                <TextBlock Grid.Row="4" Grid.Column="0" 
-                                          Text="Balance:" 
-                                          FontWeight="SemiBold" 
-                                          Foreground="#FFB9C8EC" 
+                                <TextBlock Grid.Row="4" Grid.Column="0"
+                                          Text="Balance:"
+                                          FontWeight="SemiBold"
+                                          Foreground="#FFB9C8EC"
                                           Margin="0,0,0,8" />
-                                <TextBlock Grid.Row="4" Grid.Column="1" 
-                                          Text="{Binding Balance, StringFormat=C2}" 
-                                          Foreground="#FF4ADE80" 
+                                <TextBlock Grid.Row="4" Grid.Column="1"
+                                          x:Name="BalanceValue"
+                                          AutomationProperties.AutomationId="BalanceValue"
+                                          Text="{Binding Balance, StringFormat=C2}"
+                                          Foreground="#FF4ADE80"
                                           FontWeight="Bold"
                                           FontSize="16"
                                           Margin="0,0,0,8" />
-                                
+
                                 <!-- Department -->
-                                <TextBlock Grid.Row="5" Grid.Column="0" 
-                                          Text="Department:" 
-                                          FontWeight="SemiBold" 
-                                          Foreground="#FFB9C8EC" 
+                                <TextBlock Grid.Row="5" Grid.Column="0"
+                                          Text="Department:"
+                                          FontWeight="SemiBold"
+                                          Foreground="#FFB9C8EC"
                                           Margin="0,0,0,8" />
-                                <TextBlock Grid.Row="5" Grid.Column="1" 
-                                          Text="{Binding Department.Name}" 
-                                          Foreground="#FFE0E6F0" 
+                                <TextBlock Grid.Row="5" Grid.Column="1"
+                                          Text="{Binding Department.Name}"
+                                          Foreground="#FFE0E6F0"
                                           Margin="0,0,0,8" />
-                                
+
                                 <!-- Budget Period -->
-                                <TextBlock Grid.Row="6" Grid.Column="0" 
-                                          Text="Budget Period:" 
-                                          FontWeight="SemiBold" 
-                                          Foreground="#FFB9C8EC" 
+                                <TextBlock Grid.Row="6" Grid.Column="0"
+                                          Text="Budget Period:"
+                                          FontWeight="SemiBold"
+                                          Foreground="#FFB9C8EC"
                                           Margin="0,0,0,8" />
-                                <TextBlock Grid.Row="6" Grid.Column="1" 
-                                          Text="{Binding BudgetPeriod.Name}" 
-                                          Foreground="#FFE0E6F0" 
+                                <TextBlock Grid.Row="6" Grid.Column="1"
+                                          Text="{Binding BudgetPeriod.Name}"
+                                          Foreground="#FFE0E6F0"
                                           Margin="0,0,0,8" />
-                                
+
                                 <!-- Notes -->
-                                <TextBlock Grid.Row="7" Grid.Column="0" 
-                                          Text="Notes:" 
-                                          FontWeight="SemiBold" 
-                                          Foreground="#FFB9C8EC" 
+                                <TextBlock Grid.Row="7" Grid.Column="0"
+                                          Text="Notes:"
+                                          FontWeight="SemiBold"
+                                          Foreground="#FFB9C8EC"
                                           Margin="0,0,0,0"
                                           VerticalAlignment="Top" />
-                                <TextBlock Grid.Row="7" Grid.Column="1" 
-                                          Text="{Binding Notes}" 
-                                          Foreground="#FFE0E6F0" 
+                                <TextBlock Grid.Row="7" Grid.Column="1"
+                                          Text="{Binding Notes}"
+                                          Foreground="#FFE0E6F0"
                                           TextWrapping="Wrap"
                                           MaxHeight="100"
                                           Margin="0,0,0,0" />
                             </Grid>
                         </Expander.Content>
                     </Expander>
-                
+
                 <!-- Transactions Grid -->
                 <Border Grid.Row="1" Background="#FF1A2C41" CornerRadius="8" Padding="0">
                     <Grid>
@@ -576,15 +652,15 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        
+
                         <!-- Transactions Header -->
                         <Border Grid.Row="0" Background="#FF0F1724" Padding="12,8" CornerRadius="8,8,0,0">
-                            <TextBlock Text="Recent Transactions" 
-                                      FontSize="14" 
-                                      FontWeight="Bold" 
+                            <TextBlock Text="Recent Transactions"
+                                      FontSize="14"
+                                      FontWeight="Bold"
                                       Foreground="#FFE0E6F0" />
                         </Border>
-                        
+
                         <!-- Transactions Data Grid -->
                         <syncfusion:SfDataGrid Grid.Row="1"
                                               ItemsSource="{Binding SelectedAccount.Transactions}"
@@ -596,12 +672,12 @@
                                               HeaderRowHeight="32"
                                               GridLinesVisibility="Horizontal"
                                               SelectionMode="Single">
-                            
+
                             <syncfusion:SfDataGrid.Columns>
-                                
+
                                 <!-- Transaction Date -->
-                                <syncfusion:GridDateTimeColumn HeaderText="Date" 
-                                                              MappingName="TransactionDate" 
+                                <syncfusion:GridDateTimeColumn HeaderText="Date"
+                                                              MappingName="TransactionDate"
                                                               Width="120"
                                                               Pattern="ShortDate"
                                                               ShowToolTip="True">
@@ -611,10 +687,10 @@
                                         </DataTemplate>
                                     </syncfusion:GridDateTimeColumn.ToolTipTemplate>
                                 </syncfusion:GridDateTimeColumn>
-                                
+
                                 <!-- Description -->
-                                <syncfusion:GridTextColumn HeaderText="Description" 
-                                                          MappingName="Description" 
+                                <syncfusion:GridTextColumn HeaderText="Description"
+                                                          MappingName="Description"
                                                           Width="250"
                                                           ShowToolTip="True">
                                     <syncfusion:GridTextColumn.ToolTipTemplate>
@@ -623,10 +699,10 @@
                                         </DataTemplate>
                                     </syncfusion:GridTextColumn.ToolTipTemplate>
                                 </syncfusion:GridTextColumn>
-                                
+
                                 <!-- Debit Amount -->
-                                <syncfusion:GridCurrencyColumn HeaderText="Debit" 
-                                                              MappingName="DebitAmount" 
+                                <syncfusion:GridCurrencyColumn HeaderText="Debit"
+                                                              MappingName="DebitAmount"
                                                               Width="100"
                                                               CurrencySymbol="$"
                                                               CurrencyDecimalDigits="2"
@@ -643,10 +719,10 @@
                                         </Style>
                                     </syncfusion:GridCurrencyColumn.CellStyle>
                                 </syncfusion:GridCurrencyColumn>
-                                
+
                                 <!-- Credit Amount -->
-                                <syncfusion:GridCurrencyColumn HeaderText="Credit" 
-                                                              MappingName="CreditAmount" 
+                                <syncfusion:GridCurrencyColumn HeaderText="Credit"
+                                                              MappingName="CreditAmount"
                                                               Width="100"
                                                               CurrencySymbol="$"
                                                               CurrencyDecimalDigits="2"
@@ -663,35 +739,35 @@
                                         </Style>
                                     </syncfusion:GridCurrencyColumn.CellStyle>
                                 </syncfusion:GridCurrencyColumn>
-                                
+
                             </syncfusion:SfDataGrid.Columns>
-                            
+
                             <!-- Transaction Summary -->
                             <syncfusion:SfDataGrid.TableSummaryRows>
-                                <syncfusion:GridTableSummaryRow ShowSummaryInRow="True" 
+                                <syncfusion:GridTableSummaryRow ShowSummaryInRow="True"
                                                                Position="Bottom"
                                                                Title="Total: Debit {Debit} | Credit {Credit}"
                                                                TitleColumnCount="2">
                                     <syncfusion:GridTableSummaryRow.SummaryColumns>
-                                        <syncfusion:GridSummaryColumn Name="Debit" 
-                                                                     Format="'{Sum:C2}'" 
-                                                                     MappingName="DebitAmount" 
+                                        <syncfusion:GridSummaryColumn Name="Debit"
+                                                                     Format="'{Sum:C2}'"
+                                                                     MappingName="DebitAmount"
                                                                      SummaryType="DoubleAggregate" />
-                                        <syncfusion:GridSummaryColumn Name="Credit" 
-                                                                     Format="'{Sum:C2}'" 
-                                                                     MappingName="CreditAmount" 
+                                        <syncfusion:GridSummaryColumn Name="Credit"
+                                                                     Format="'{Sum:C2}'"
+                                                                     MappingName="CreditAmount"
                                                                      SummaryType="DoubleAggregate" />
                                     </syncfusion:GridTableSummaryRow.SummaryColumns>
                                 </syncfusion:GridTableSummaryRow>
                             </syncfusion:SfDataGrid.TableSummaryRows>
-                            
+
                         </syncfusion:SfDataGrid>
                     </Grid>
                 </Border>
-                
+
             </Grid>
         </Grid>
-        
+
         <!-- Status Bar -->
         <Border Grid.Row="2" Background="#FF0F1724" Padding="12,8" BorderBrush="#FF2D4A6E" BorderThickness="0,1,0,0">
             <Grid>
@@ -700,40 +776,49 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                
+
                 <!-- Status Indicator -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <Ellipse Style="{DynamicResource StatusIndicatorStyle}"
-                            Fill="{Binding HasError, Converter={StaticResource BoolToVis}}" />
-                    <TextBlock Text="Status:" 
-                              FontWeight="SemiBold" 
-                              Foreground="#FFB9C8EC" 
+                Fill="{Binding HasError, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Text="Status:"
+                              FontWeight="SemiBold"
+                              Foreground="#FFB9C8EC"
                               Margin="0,0,8,0" />
-                    <TextBlock Text="{Binding StatusMessage}" 
-                              Foreground="#FFE0E6F0" />
+            <TextBlock x:Name="StatusMessage"
+                  AutomationProperties.AutomationId="StatusMessage"
+                  Text="{Binding StatusMessage}"
+                  Foreground="#FFE0E6F0" />
                 </StackPanel>
-                
+
                 <!-- Error Message -->
-                <TextBlock Grid.Column="1" 
-                          Text="{Binding ErrorMessage}" 
+                <TextBlock Grid.Column="1"
+                          Text="{Binding ErrorMessage}"
                           Foreground="#FFF87171"
                           FontWeight="SemiBold"
                           Margin="24,0,0,0"
                           Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}" />
-                
+
                 <!-- Account Count -->
-                <TextBlock Grid.Column="2" 
+                <TextBlock Grid.Column="2"
                           Foreground="#FFB9C8EC">
                     <Run Text="Total Accounts: " />
-                    <Run Text="{Binding MunicipalAccounts.Count, Mode=OneWay}" 
-                         FontWeight="Bold" 
-                         Foreground="#FFE0E6F0" />
+                    <Run Text="{Binding MunicipalAccounts.Count, Mode=OneWay}"
+                         FontWeight="Bold"
+                         Foreground="#FFE0E6F0"
+                         AutomationProperties.AutomationId="TotalAccounts" />
                 </TextBlock>
             </Grid>
         </Border>
-        
+
+        <!-- Hidden test-accessible theme name (populated in code-behind) -->
+        <TextBlock x:Name="ThemeName"
+                   AutomationProperties.AutomationId="ThemeName"
+                   Visibility="Collapsed"
+                   Text="" />
+
         <!-- Busy Indicator Overlay -->
-        <Border Grid.Row="0" Grid.RowSpan="3" 
+        <Border Grid.Row="0" Grid.RowSpan="3"
                 Background="#DD000000"
                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -754,7 +839,7 @@
                           HorizontalAlignment="Center" />
             </StackPanel>
         </Border>
-        
+
     </Grid>
     </darkTheme:SfAcrylicPanel>
 </UserControl>

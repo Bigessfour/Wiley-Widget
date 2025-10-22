@@ -57,7 +57,8 @@
                             <TextBlock Text="Account Type" Margin="0,0,0,4" />
                             <ComboBox ItemsSource="{Binding Source={StaticResource AccountTypeValues}}"
                                       SelectedItem="{Binding SelectedTypeFilter, Mode=TwoWay}"
-                                      Width="160" />
+                                      Width="160"
+                                      AutomationProperties.AutomationId="AccountTypeComboBox" />
                             <syncfusion:RibbonButton Label="Apply Type Filter"
                                                       Margin="0,6,0,0"
                                                       Command="{Binding FilterByTypeCommand}" />

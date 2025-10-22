@@ -19,6 +19,17 @@
       }
     },
     {
+      "label": "build-clean",
+      "dependsOn": ["kill-dotnet", "build"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
       "label": "ef-generate-idempotent-script",
       "type": "process",
       "command": "dotnet",
@@ -36,7 +47,10 @@
       ],
       "problemMatcher": [],
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
       "label": "ef-apply-migrations",
@@ -53,7 +67,10 @@
       ],
       "problemMatcher": [],
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
       "label": "ef-add-migration",
@@ -71,7 +88,10 @@
       ],
       "problemMatcher": [],
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
       "label": "ef-verify-drift",
@@ -84,11 +104,16 @@
         "${workspaceFolder}/scripts/ef-verify-drift.ps1"
       ],
       "options": {
-        "env": { "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe" }
+        "env": {
+          "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
+        }
       },
       "problemMatcher": [],
       "group": "build",
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
       "label": "build-incremental",
@@ -213,12 +238,7 @@
       "label": "watch",
       "command": "dotnet",
       "type": "process",
-      "args": [
-        "watch",
-        "run",
-        "--project",
-        "${workspaceFolder}/WileyWidget.csproj"
-      ],
+      "args": ["watch", "run", "--project", "${workspaceFolder}/WileyWidget.csproj"],
       "problemMatcher": "$msCompile",
       "isBackground": true,
       "group": "build"
@@ -241,8 +261,11 @@
       "type": "shell",
       "command": "pwsh",
       "args": [
-        "-Command",
-        "Get-Process -Name 'dotnet','WileyWidget','testhost','vstest.console' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host '✅ Killed orphaned .NET processes'"
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/kill-dotnet.ps1",
+        "-Force"
       ],
       "group": "build",
       "presentation": {
@@ -354,7 +377,6 @@
       },
       "problemMatcher": []
     },
-
     {
       "label": "test-stafact",
       "dependsOn": ["cleanup-dotnet"],
@@ -407,7 +429,6 @@
       },
       "problemMatcher": "$msCompile"
     },
-
     {
       "label": "test-ui",
       "type": "shell",
@@ -536,13 +557,7 @@
       "label": "view-coverage",
       "type": "shell",
       "command": "python",
-      "args": [
-        "-m",
-        "http.server",
-        "8000",
-        "--directory",
-        "${workspaceFolder}/coverage"
-      ],
+      "args": ["-m", "http.server", "8000", "--directory", "${workspaceFolder}/coverage"],
       "group": "test",
       "presentation": {
         "echo": true,
@@ -633,6 +648,20 @@
         "panel": "shared"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "test-prism",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "dotnet test \"${workspaceFolder}/tests/PrismUnityIntegrationTests/PrismUnityIntegrationTests.csproj\" -v minimal"
+      ],
+      "isBackground": false,
+      "problemMatcher": ["$msCompile"],
+      "group": "test"
     }
   ],
   "inputs": [

@@ -17,17 +17,38 @@ namespace WileyWidget.Data
     {
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
 
+        // Primary constructor for DI with IDbContextFactory
         public MunicipalAccountRepository(IDbContextFactory<AppDbContext> contextFactory)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         }
 
+        // Convenience constructor for unit tests that supply an AppDbContext directly
+        public MunicipalAccountRepository(AppDbContext context)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            // Create a lightweight factory that returns the provided context instance
+            _contextFactory = new TestDbContextFactory(context);
+        }
+
+        // Simple IDbContextFactory wrapper for tests
+        private class TestDbContextFactory : IDbContextFactory<AppDbContext>
+        {
+            private readonly AppDbContext _context;
+            public TestDbContextFactory(AppDbContext context) => _context = context;
+            public AppDbContext CreateDbContext() => _context;
+            public System.Threading.Tasks.Task<AppDbContext> CreateDbContextAsync(System.Threading.CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.FromResult(_context);
+        }
+
         public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-            return await context.MunicipalAccounts
+            var list = await context.MunicipalAccounts
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
+            Console.WriteLine($"DEBUG: MunicipalAccountRepository.GetAllAsync loaded {list.Count} accounts. Distinct TypeDescriptions: {string.Join(",", list.Select(a => a.TypeDescription).Distinct())}");
+            return list;
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetActiveAsync()
@@ -111,13 +132,13 @@ namespace WileyWidget.Data
         public async Task<IEnumerable<MunicipalAccount>> GetAccountHierarchyAsync(int rootAccountId)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-            
+
             // This is a simplified implementation - in a real scenario you'd need
             // a recursive CTE or stored procedure to get the full hierarchy
             var rootAccount = await context.MunicipalAccounts.FindAsync(rootAccountId);
             if (rootAccount == null)
                 return new List<MunicipalAccount>();
-                
+
             return await context.MunicipalAccounts
                 .Where(ma => ma.AccountNumber!.Value.StartsWith(rootAccount.AccountNumber!.Value) && ma.IsActive)
                 .OrderBy(ma => ma.AccountNumber!.Value)
@@ -137,10 +158,10 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             var query = context.MunicipalAccounts.Where(ma => ma.AccountNumber!.Value == accountNumber);
-            
+
             if (excludeId.HasValue)
                 query = query.Where(ma => ma.Id != excludeId.Value);
-                
+
             return await query.AnyAsync();
         }
 
@@ -236,19 +257,17 @@ namespace WileyWidget.Data
                 if (existingAccount == null)
                 {
                     // Create new account
-                    var newAccount = new MunicipalAccount
-                    {
-                        AccountNumber = new AccountNumber(qbAccount.AcctNum ?? $"QB-{qbAccount.Id}"),
-                        Name = qbAccount.Name,
-                        Type = MapQuickBooksAccountType(qbAccount.AccountType),
-                        Fund = DetermineFundFromAccount(qbAccount),
-                        FundClass = FundClass.Proprietary, // Default for QB imports
-                        Balance = qbAccount.CurrentBalance,
-                        QuickBooksId = qbAccount.Id,
-                        RowVersion = Array.Empty<byte>(),
-                        LastSyncDate = DateTime.UtcNow,
-                        IsActive = qbAccount.Active
-                    };
+                        var newAccount = new MunicipalAccount
+                        {
+                            AccountNumber = new AccountNumber(qbAccount.AcctNum ?? $"QB-{qbAccount.Id}"),
+                            Name = qbAccount.Name,
+                            Type = MapQuickBooksAccountType(qbAccount.AccountType),
+                            Fund = DetermineFundFromAccount(qbAccount),
+                            Balance = qbAccount.CurrentBalance,
+                            QuickBooksId = qbAccount.Id,
+                            LastSyncDate = DateTime.UtcNow,
+                            IsActive = qbAccount.Active
+                        };
                     await AddAsync(newAccount);
                 }
                 else
@@ -270,9 +289,9 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             var account = await context.MunicipalAccounts.FindAsync(accountId);
-            
+
             if (account == null) return 0m;
-            
+
             // For simplicity, return budget amount
             // In a real implementation, this would query historical transaction data
             return account.BudgetAmount;
@@ -283,15 +302,15 @@ namespace WileyWidget.Data
         /// </summary>
         public async Task<IEnumerable<MunicipalAccount>> GetBudgetAccountsAsync()
         {
-            
+
             using var context = await _contextFactory.CreateDbContextAsync();
-            
+
             // Get accounts that have budget entries for this fiscal year
             var accounts = await context.MunicipalAccounts
                 .Where(ma => ma.IsActive && ma.BudgetAmount != 0)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
-            
+
             return accounts;
         }
 

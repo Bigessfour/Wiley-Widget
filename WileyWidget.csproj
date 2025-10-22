@@ -12,10 +12,19 @@
     <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
   <StartupObject>WileyWidget.Program</StartupObject>
     
-    <!-- Disable WPF temporary project generation to prevent cache issues -->
-    <DisableWPFProjectTempOutput>true</DisableWPFProjectTempOutput>
-    <GenerateTemporaryTargetAssembly>false</GenerateTemporaryTargetAssembly>
-    <MarkupCompilePass2AlwaysRun>false</MarkupCompilePass2AlwaysRun>
+    <!-- Disable WPF temporary project generation to prevent cache issues
+      Note: For Hot Reload / Edit-and-Continue to work during development we
+      need the temporary target assembly and the second markup compile pass.
+      Enable those features for Debug builds and keep the optimizations for
+      non-Debug builds. -->
+    <DisableWPFProjectTempOutput Condition="'$(Configuration)' == 'Debug'">false</DisableWPFProjectTempOutput>
+    <DisableWPFProjectTempOutput Condition="'$(Configuration)' != 'Debug'">true</DisableWPFProjectTempOutput>
+
+    <GenerateTemporaryTargetAssembly Condition="'$(Configuration)' == 'Debug'">true</GenerateTemporaryTargetAssembly>
+    <GenerateTemporaryTargetAssembly Condition="'$(Configuration)' != 'Debug'">false</GenerateTemporaryTargetAssembly>
+
+    <MarkupCompilePass2AlwaysRun Condition="'$(Configuration)' == 'Debug'">true</MarkupCompilePass2AlwaysRun>
+    <MarkupCompilePass2AlwaysRun Condition="'$(Configuration)' != 'Debug'">false</MarkupCompilePass2AlwaysRun>
     
     <!-- Performance optimizations for startup -->
     <PublishReadyToRun>true</PublishReadyToRun>

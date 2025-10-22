@@ -7,7 +7,7 @@ root = true
 # All files
 [*]
 charset = utf-8
-end_of_line = crlf
+end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
@@ -204,8 +204,7 @@ dotnet_naming_symbols.interfaces.applicable_kinds = interface
 dotnet_naming_style.I_prefix_style.capitalization = pascal_case
 dotnet_naming_style.I_prefix_style.required_prefix = I
 
-# Types should be PascalCase
-dotnet_naming_rule.types_should_be_pascal_case.severity = suggestion
+# Types should be PascalCasedotnet_naming_rule.types_should_be_pascal_case.severity = suggestion
 dotnet_naming_rule.types_should_be_pascal_case.symbols = types
 dotnet_naming_rule.types_should_be_pascal_case.style = pascal_case_style
 dotnet_naming_symbols.types.applicable_kinds = class,struct,interface,enum
@@ -241,20 +240,16 @@ dotnet_naming_rule.interface_rule.style = i_prefix_style
 dotnet_naming_rule.interface_rule.symbols = interface
 dotnet_naming_rule.interface_rule.severity = suggestion
 
-dotnet_naming_rule.type_rule.style = pascal_case_style
-dotnet_naming_rule.type_rule.symbols = type
+dotnet_naming_rule.type_rule.style = pascal_case_styledotnet_naming_rule.type_rule.symbols = type
 dotnet_naming_rule.type_rule.severity = suggestion
 
-dotnet_naming_rule.method_rule.style = pascal_case_style
-dotnet_naming_rule.method_rule.symbols = method
+dotnet_naming_rule.method_rule.style = pascal_case_styledotnet_naming_rule.method_rule.symbols = method
 dotnet_naming_rule.method_rule.severity = suggestion
 
-dotnet_naming_rule.property_rule.style = pascal_case_style
-dotnet_naming_rule.property_rule.symbols = property
+dotnet_naming_rule.property_rule.style = pascal_case_styledotnet_naming_rule.property_rule.symbols = property
 dotnet_naming_rule.property_rule.severity = suggestion
 
-dotnet_naming_rule.field_rule.style = camel_case_style
-dotnet_naming_rule.field_rule.symbols = field
+dotnet_naming_rule.field_rule.style = camel_case_styledotnet_naming_rule.field_rule.symbols = field
 dotnet_naming_rule.field_rule.severity = suggestion
 
 dotnet_naming_symbols.interface.applicable_kinds = interface
@@ -268,14 +263,14 @@ dotnet_naming_symbols.field.applicable_kinds = field
 indent_style = space
 indent_size = 4
 charset = utf-8
-end_of_line = crlf
+end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
 # PowerShell scripts
 [*.ps1]
 charset = utf-8
-end_of_line = crlf
+end_of_line = lf
 insert_final_newline = true
 indent_style = space
 indent_size = 4
@@ -284,7 +279,7 @@ trim_trailing_whitespace = true
 # JSON files
 [*.json]
 charset = utf-8
-end_of_line = crlf
+end_of_line = lf
 insert_final_newline = true
 indent_style = space
 indent_size = 2
@@ -293,7 +288,7 @@ trim_trailing_whitespace = true
 # Markdown files
 [*.md]
 charset = utf-8
-end_of_line = crlf
+end_of_line = lf
 insert_final_newline = true
 indent_style = space
 indent_size = 2
@@ -302,7 +297,7 @@ trim_trailing_whitespace = true
 # XML documentation and project files
 [*.{xml,csproj,props,targets}]
 charset = utf-8
-end_of_line = crlf
+end_of_line = lf
 insert_final_newline = true
 indent_style = space
 indent_size = 2

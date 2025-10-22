@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using WileyWidget.Data;
 
 #nullable disable
 
@@ -352,6 +353,19 @@ namespace WileyWidget.Data.Migrations
                     b.HasIndex("Year", "Status");
 
                     b.ToTable("BudgetPeriods");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedDate = new DateTime(2025, 10, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndDate = new DateTime(2025, 12, 31, 23, 59, 59, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "2025 Adopted",
+                            StartDate = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 2,
+                            Year = 2025
+                        });
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Department", b =>
@@ -660,6 +674,333 @@ namespace WileyWidget.Data.Migrations
                     b.HasIndex("Fund", "Type");
 
                     b.ToTable("MunicipalAccounts");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "CASH IN BANK",
+                            RowVersion = new byte[0],
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "CASH-BASEBALL FIELD PROJECT",
+                            RowVersion = new byte[0],
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "INVESTMENTS",
+                            RowVersion = new byte[0],
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "INTERGOVERNMENTAL RECEIVABLE",
+                            RowVersion = new byte[0],
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "GRANT RECEIVABLE",
+                            RowVersion = new byte[0],
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "ACCOUNTS PAYABLE",
+                            RowVersion = new byte[0],
+                            Type = 6
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "BASEBALL FIELD PROJECT LOAN",
+                            RowVersion = new byte[0],
+                            Type = 7
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "WALKING TRAIL LOAN",
+                            RowVersion = new byte[0],
+                            Type = 7
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "DUE TO/FROM TOW GENERAL FUND",
+                            RowVersion = new byte[0],
+                            Type = 8
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "DUE TO/FROM TOW UTILITY FUND",
+                            RowVersion = new byte[0],
+                            Type = 8
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "FUND BALANCE",
+                            RowVersion = new byte[0],
+                            Type = 10
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "Opening Bal Equity",
+                            RowVersion = new byte[0],
+                            Type = 9
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "Retained Earnings",
+                            RowVersion = new byte[0],
+                            Type = 9
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "STATE APPORTIONMENT",
+                            RowVersion = new byte[0],
+                            Type = 16
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "WALKING TRAIL DONATION",
+                            RowVersion = new byte[0],
+                            Type = 13
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "BASEBALL FIELD DONATIONS",
+                            RowVersion = new byte[0],
+                            Type = 13
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "GRANT REVENUES",
+                            RowVersion = new byte[0],
+                            Type = 13
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "MISC REVENUE",
+                            RowVersion = new byte[0],
+                            Type = 16
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "WALKING TRAIL REVENUE",
+                            RowVersion = new byte[0],
+                            Type = 16
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "INTEREST ON INVESTMENTS",
+                            RowVersion = new byte[0],
+                            Type = 14
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "TRANSFER FROM REC FUND",
+                            RowVersion = new byte[0],
+                            Type = 30
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "BALLFIELD ACCRUED INTEREST",
+                            RowVersion = new byte[0],
+                            Type = 24
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "WALKING TRAIL ACCRUED INTEREST",
+                            RowVersion = new byte[0],
+                            Type = 24
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "CAPITAL IMP - BALL COMPLEX",
+                            RowVersion = new byte[0],
+                            Type = 29
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            IsActive = true,
+                            Name = "PARKS - DEVELOPMENT",
+                            RowVersion = new byte[0],
+                            Type = 29
+                        });
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Transaction", b =>
@@ -993,6 +1334,133 @@ namespace WileyWidget.Data.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("MunicipalAccountId");
+
+                            b1.HasData(
+                                new
+                                {
+                                    MunicipalAccountId = 1,
+                                    Value = "110"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 2,
+                                    Value = "110.1"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 3,
+                                    Value = "120"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 4,
+                                    Value = "130"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 5,
+                                    Value = "140"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 6,
+                                    Value = "210"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 7,
+                                    Value = "211"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 8,
+                                    Value = "212"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 9,
+                                    Value = "230"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 10,
+                                    Value = "240"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 11,
+                                    Value = "290"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 12,
+                                    Value = "3000"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 13,
+                                    Value = "33000"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 14,
+                                    Value = "310"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 15,
+                                    Value = "314"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 16,
+                                    Value = "315"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 17,
+                                    Value = "320"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 18,
+                                    Value = "323"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 19,
+                                    Value = "325"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 20,
+                                    Value = "360"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 21,
+                                    Value = "370"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 22,
+                                    Value = "2111"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 23,
+                                    Value = "2112"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 24,
+                                    Value = "410"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 25,
+                                    Value = "420"
+                                });
                         });
 
                     b.Navigation("AccountNumber")

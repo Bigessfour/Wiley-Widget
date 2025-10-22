@@ -1,26 +1,19 @@
 {
   "recommendations": [
-    "ms-mssql.mssql",
-    "ms-mssql.data-workspace-vscode",
-    "ms-mssql.sql-bindings-vscode",
-    "ms-mssql.sql-database-projects-vscode",
-    // PowerShell extension v2025.4.0 required for latest language features
-    "ms-vscode.PowerShell",
     "ms-dotnettools.csharp",
+    "hbenl.vscode-test-explorer",
+    "formulahendry.dotnet-test-explorer",
+    "ms-python.python",
+    "littlefoxteam.vscode-python-test-adapter",
+    "ms-mssql.mssql",
+    "ms-vscode.PowerShell",
     "ms-dotnettools.vscode-dotnet-runtime",
     "ms-python.black-formatter",
     "charliermarsh.ruff",
     "github.copilot",
-    "kilocode.kilocode",
-    "cline.cline",
-    "eriktodx.vscode-grok",
-    // Error Lens for inline error annotations
     "usernamehw.errorlens",
-    // Better Comments for highlighting error patterns
     "aaron-bond.better-comments",
-    // C# Dev Kit for enhanced .NET diagnostics
     "ms-dotnettools.csdevkit",
-    // Trunk for code quality and linting
     "trunk.io"
   ],
   "unwantedRecommendations": []

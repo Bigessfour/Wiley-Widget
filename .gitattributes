@@ -1,0 +1,15 @@
+# Enforce repository line endings and text handling
+# Default to LF for cross-platform consistency
+* text=auto eol=lf
+
+# Windows-specific files that prefer CRLF
+*.sln text eol=crlf
+*.ps1 text eol=crlf
+
+# Ensure binary files are not modified
+*.png binary
+*.jpg binary
+*.exe binary
+*.dll binary
+*.pdb binary
+logs/* -text

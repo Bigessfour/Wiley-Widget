@@ -213,6 +213,92 @@ namespace WileyWidget.Data
             .WithMany(ma => ma.Invoices)
             .HasForeignKey(i => i.MunicipalAccountId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Seed: BudgetPeriod required for MunicipalAccount FK
+        modelBuilder.Entity<BudgetPeriod>().HasData(
+            new BudgetPeriod
+            {
+                Id = 1,
+                Year = 2025,
+                Name = "2025 Adopted",
+                CreatedDate = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+                Status = BudgetStatus.Adopted,
+                StartDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+                IsActive = true
+            }
+        );
+
+        // Seed: Departments already have Id=1 (Public Works) from prior migration
+
+        // Seed: Conservation Trust Fund Chart of Accounts (MunicipalAccount)
+        modelBuilder.Entity<MunicipalAccount>().HasData(
+            // Assets / Cash & equivalents
+            new MunicipalAccount { Id = 1,  Name = "CASH IN BANK",                         Type = AccountType.Cash,               Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 2,  Name = "CASH-BASEBALL FIELD PROJECT",         Type = AccountType.Cash,               Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 3,  Name = "INVESTMENTS",                         Type = AccountType.Investments,        Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 4,  Name = "INTERGOVERNMENTAL RECEIVABLE",        Type = AccountType.Receivables,        Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 5,  Name = "GRANT RECEIVABLE",                    Type = AccountType.Receivables,        Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+
+            // Liabilities
+            new MunicipalAccount { Id = 6,  Name = "ACCOUNTS PAYABLE",                    Type = AccountType.Payables,           Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 7,  Name = "BASEBALL FIELD PROJECT LOAN",         Type = AccountType.Debt,               Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 8,  Name = "WALKING TRAIL LOAN",                  Type = AccountType.Debt,               Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 9,  Name = "DUE TO/FROM TOW GENERAL FUND",        Type = AccountType.AccruedLiabilities, Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 10, Name = "DUE TO/FROM TOW UTILITY FUND",        Type = AccountType.AccruedLiabilities, Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+
+            // Equity / Fund Balance
+            new MunicipalAccount { Id = 11, Name = "FUND BALANCE",                        Type = AccountType.FundBalance,        Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 12, Name = "Opening Bal Equity",                  Type = AccountType.RetainedEarnings,   Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 13, Name = "Retained Earnings",                   Type = AccountType.RetainedEarnings,   Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+
+            // Revenues (Income)
+            new MunicipalAccount { Id = 14, Name = "STATE APPORTIONMENT",                 Type = AccountType.Revenue,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 15, Name = "WALKING TRAIL DONATION",              Type = AccountType.Grants,             Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 16, Name = "BASEBALL FIELD DONATIONS",            Type = AccountType.Grants,             Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 17, Name = "GRANT REVENUES",                      Type = AccountType.Grants,             Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 18, Name = "MISC REVENUE",                        Type = AccountType.Revenue,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 19, Name = "WALKING TRAIL REVENUE",               Type = AccountType.Revenue,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 20, Name = "INTEREST ON INVESTMENTS",             Type = AccountType.Interest,           Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 21, Name = "TRANSFER FROM REC FUND",              Type = AccountType.Transfers,          Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+
+            // Expenses
+            new MunicipalAccount { Id = 22, Name = "BALLFIELD ACCRUED INTEREST",         Type = AccountType.Expense,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 23, Name = "WALKING TRAIL ACCRUED INTEREST",      Type = AccountType.Expense,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 24, Name = "CAPITAL IMP - BALL COMPLEX",          Type = AccountType.CapitalOutlay,      Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+            new MunicipalAccount { Id = 25, Name = "PARKS - DEVELOPMENT",                 Type = AccountType.CapitalOutlay,      Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true }
+        );
+
+        // Seed: Owned type values for AccountNumber on MunicipalAccounts
+        modelBuilder.Entity<MunicipalAccount>()
+            .OwnsOne(e => e.AccountNumber)
+            .HasData(
+                new { MunicipalAccountId = 1,  Value = "110"   },
+                new { MunicipalAccountId = 2,  Value = "110.1" },
+                new { MunicipalAccountId = 3,  Value = "120"   },
+                new { MunicipalAccountId = 4,  Value = "130"   },
+                new { MunicipalAccountId = 5,  Value = "140"   },
+                new { MunicipalAccountId = 6,  Value = "210"   },
+                new { MunicipalAccountId = 7,  Value = "211"   },
+                new { MunicipalAccountId = 8,  Value = "212"   },
+                new { MunicipalAccountId = 9,  Value = "230"   },
+                new { MunicipalAccountId = 10, Value = "240"   },
+                new { MunicipalAccountId = 11, Value = "290"   },
+                new { MunicipalAccountId = 12, Value = "3000"  },
+                new { MunicipalAccountId = 13, Value = "33000" },
+                new { MunicipalAccountId = 14, Value = "310"   },
+                new { MunicipalAccountId = 15, Value = "314"   },
+                new { MunicipalAccountId = 16, Value = "315"   },
+                new { MunicipalAccountId = 17, Value = "320"   },
+                new { MunicipalAccountId = 18, Value = "323"   },
+                new { MunicipalAccountId = 19, Value = "325"   },
+                new { MunicipalAccountId = 20, Value = "360"   },
+                new { MunicipalAccountId = 21, Value = "370"   },
+                new { MunicipalAccountId = 22, Value = "2111"  },
+                new { MunicipalAccountId = 23, Value = "2112"  },
+                new { MunicipalAccountId = 24, Value = "410"   },
+                new { MunicipalAccountId = 25, Value = "420"   }
+            );
     }
 
     // Hierarchy query for UI (e.g., BudgetView SfTreeGrid)

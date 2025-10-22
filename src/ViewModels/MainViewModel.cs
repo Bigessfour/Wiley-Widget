@@ -32,9 +32,9 @@ namespace WileyWidget.ViewModels
         private readonly IExcelReaderService _excelReaderService;
         private readonly IReportExportService _reportExportService;
         private readonly IBudgetRepository _budgetRepository;
-        private readonly IAIService _aiService;
+        private readonly IAIService? _aiService;
 
-        public MainViewModel(IRegionManager regionManager, IDialogService dialogService, IDispatcherHelper dispatcherHelper, ILogger<MainViewModel> logger, IEnterpriseRepository enterpriseRepository, IExcelReaderService excelReaderService, IReportExportService reportExportService, IBudgetRepository budgetRepository, IAIService aiService)
+        public MainViewModel(IRegionManager regionManager, IDialogService dialogService, IDispatcherHelper dispatcherHelper, ILogger<MainViewModel> logger, IEnterpriseRepository enterpriseRepository, IExcelReaderService excelReaderService, IReportExportService reportExportService, IBudgetRepository budgetRepository, IAIService? aiService = null)
             : base(dispatcherHelper, logger)
         {
             this.regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
@@ -43,7 +43,7 @@ namespace WileyWidget.ViewModels
             _excelReaderService = excelReaderService ?? throw new ArgumentNullException(nameof(excelReaderService));
             _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
-            _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
+            _aiService = aiService;
 
             // Subscribe to collection change events for detailed logging
             Enterprises.CollectionChanged += Enterprises_CollectionChanged;
@@ -70,7 +70,7 @@ namespace WileyWidget.ViewModels
             SwitchToFluentDarkCommand = new DelegateCommand(async () => { CurrentTheme = "FluentDark"; await Task.CompletedTask; });
             SwitchToFluentLightCommand = new DelegateCommand(async () => { CurrentTheme = "FluentLight"; await Task.CompletedTask; });
 
-            // Initialize data commands  
+            // Initialize data commands
             ImportExcelCommand = new DelegateCommand(async () => await ImportExcelAsync());
             ExportDataCommand = new DelegateCommand(async () => await ExportDataAsync());
             SyncQuickBooksCommand = new DelegateCommand(async () => await NavigateToQuickBooksAsync());
@@ -299,7 +299,7 @@ namespace WileyWidget.ViewModels
             {
                 if (SetProperty(ref selectedEnterprise, value))
                 {
-                    Logger.LogDebug("MainViewModel SelectedEnterprise changed to: {EnterpriseName} (ID: {EnterpriseId})", 
+                    Logger.LogDebug("MainViewModel SelectedEnterprise changed to: {EnterpriseName} (ID: {EnterpriseId})",
                         value?.Name ?? "null", value?.Id ?? 0);
                 }
             }
@@ -560,7 +560,7 @@ namespace WileyWidget.ViewModels
         /// </summary>
         private async Task NavigateToRegionSafelyAsync(string regionName, string viewName, string displayName)
         {
-            Logger.LogInformation("Attempting to navigate to {DisplayName} (Region: {RegionName}, View: {ViewName})", 
+            Logger.LogInformation("Attempting to navigate to {DisplayName} (Region: {RegionName}, View: {ViewName})",
                 displayName, regionName, viewName);
 
             try
@@ -576,7 +576,7 @@ namespace WileyWidget.ViewModels
                 // Log current region state before navigation
                 var region = regionManager.Regions[regionName];
                 Logger.LogDebug("Region '{RegionName}' found. Current views: {ViewCount}, Active view: {ActiveView}",
-                    regionName, 
+                    regionName,
                     region.Views?.Count() ?? 0,
                     region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
 
@@ -609,7 +609,7 @@ namespace WileyWidget.ViewModels
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Exception during navigation to {DisplayName} (Region: {RegionName})", 
+                Logger.LogError(ex, "Exception during navigation to {DisplayName} (Region: {RegionName})",
                     displayName, regionName);
             }
         }
@@ -619,7 +619,7 @@ namespace WileyWidget.ViewModels
         /// </summary>
         private void NavigateToRegionSafely(string regionName, string viewName, string displayName)
         {
-            Logger.LogInformation("Attempting to navigate to {DisplayName} (Region: {RegionName}, View: {ViewName})", 
+            Logger.LogInformation("Attempting to navigate to {DisplayName} (Region: {RegionName}, View: {ViewName})",
                 displayName, regionName, viewName);
 
             try
@@ -635,7 +635,7 @@ namespace WileyWidget.ViewModels
                 // Log current region state before navigation
                 var region = regionManager.Regions[regionName];
                 Logger.LogDebug("Region '{RegionName}' found. Current views: {ViewCount}, Active view: {ActiveView}",
-                    regionName, 
+                    regionName,
                     region.Views?.Count() ?? 0,
                     region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
 
@@ -659,7 +659,7 @@ namespace WileyWidget.ViewModels
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Exception during navigation to {DisplayName} (Region: {RegionName})", 
+                Logger.LogError(ex, "Exception during navigation to {DisplayName} (Region: {RegionName})",
                     displayName, regionName);
             }
         }
@@ -697,32 +697,32 @@ namespace WileyWidget.ViewModels
         {
             using var loggingContext = LoggingContext.BeginOperation("RefreshAll");
             var stopwatch = Stopwatch.StartNew();
-            
+
             Logger.LogInformation("MainViewModel: Refresh all command executed - {LogContext}", loggingContext);
             try
             {
                 IsBusy = true;
-                
+
                 // Refresh all data sources
                 Logger.LogInformation("Refreshing all data sources");
-                
+
                 // Clear and reload enterprises on UI thread without unnecessary Task.Run
                 await DispatcherHelper.InvokeAsync(() => Enterprises.Clear(), System.Windows.Threading.DispatcherPriority.Background);
-                
+
                 // Trigger navigation refresh on all regions
                 foreach (var region in regionManager.Regions)
                 {
                     Logger.LogDebug("Refreshing region: {RegionName}", region.Name);
                 }
-                
+
                 stopwatch.Stop();
-                Logger.LogInformation("All data sources refreshed successfully in {ElapsedMs}ms - {LogContext}", 
+                Logger.LogInformation("All data sources refreshed successfully in {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                Logger.LogError(ex, "Failed to refresh all data after {ElapsedMs}ms - {LogContext}", 
+                Logger.LogError(ex, "Failed to refresh all data after {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
             }
             finally
@@ -756,7 +756,7 @@ namespace WileyWidget.ViewModels
                     Name = $"Test Enterprise {DateTime.Now:HHmmss}",
                     Type = "Water"
                 };
-                
+
                 #if DEBUG
                 DispatcherHelper.EnsureOnUIThread("AddTestEnterpriseAsync");
                 #endif
@@ -765,7 +765,7 @@ namespace WileyWidget.ViewModels
                     Enterprises.Add(testEnterprise);
                     SelectedEnterprise = testEnterprise;
                 });
-                
+
                 Logger.LogInformation("Test enterprise added: {EnterpriseName}", testEnterprise.Name);
             }
             catch (Exception ex)
@@ -816,7 +816,7 @@ namespace WileyWidget.ViewModels
             var stopwatch = Stopwatch.StartNew();
 
             Logger.LogInformation("Sending AI query in {Mode} mode - {LogContext}", CurrentConversationMode, loggingContext);
-            
+
             try
             {
                 IsBusy = true;
@@ -846,7 +846,7 @@ namespace WileyWidget.ViewModels
                 // Add to insights collection for display in SfDataGrid
                 AIInsights.Insert(0, insight); // Add to top of list
 
-                Logger.LogInformation("AI query completed successfully in {ElapsedMs}ms - {LogContext}", 
+                Logger.LogInformation("AI query completed successfully in {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
 
                 // Clear query for next input
@@ -856,7 +856,7 @@ namespace WileyWidget.ViewModels
             {
                 Logger.LogError(ex, "Failed to process AI query - {LogContext}", loggingContext);
                 AIResponse = $"Error processing query: {ex.Message}";
-                MessageBox.Show($"Failed to process AI query: {ex.Message}", "AI Error", 
+                MessageBox.Show($"Failed to process AI query: {ex.Message}", "AI Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -888,7 +888,7 @@ namespace WileyWidget.ViewModels
                 var budgetList = budgets.ToList();
                 var budgetCount = budgetList.Count;
                 var totalBudgeted = budgetList.Sum(b => b.BudgetedAmount);
-                
+
                 return $"Budget Context: Total budgets for {currentYear}: {budgetCount}. " +
                        $"Total budgeted amount: ${totalBudgeted:N0}. " +
                        $"Sample accounts: {string.Join(", ", budgetList.Take(3).Select(b => $"{b.AccountNumber} - {b.Description}"))}. " +
@@ -908,7 +908,7 @@ namespace WileyWidget.ViewModels
                 // Get fresh enterprise data from repository
                 var allEnterprises = await _enterpriseRepository.GetAllAsync();
                 var enterpriseList = allEnterprises.ToList();
-                
+
                 if (!enterpriseList.Any())
                 {
                     return "Enterprise Context: No enterprises currently in the system. " +
@@ -921,7 +921,7 @@ namespace WileyWidget.ViewModels
                 var activeCount = enterpriseList.Count(e => e.Status == EnterpriseStatus.Active);
                 var totalCitizens = enterpriseList.Sum(e => e.CitizenCount);
                 var totalMonthlyExpenses = enterpriseList.Sum(e => e.MonthlyExpenses);
-                
+
                 // Group by type for analysis
                 var typeGroups = enterpriseList.GroupBy(e => e.Type)
                     .Select(g => new { Type = g.Key, Count = g.Count(), Budget = g.Sum(e => e.TotalBudget) })
@@ -951,12 +951,12 @@ namespace WileyWidget.ViewModels
                 contextBuilder.AppendLine($"- Average Rate: ${avgRate:N2}");
                 contextBuilder.AppendLine($"- Total Monthly Expenses: ${totalMonthlyExpenses:N0}");
                 contextBuilder.AppendLine($"- Enterprise Distribution: {typeDistribution}");
-                
+
                 if (topPerformers.Any())
                 {
                     contextBuilder.AppendLine($"- Top Performers (by per-citizen cost): {string.Join(", ", topPerformers)}");
                 }
-                
+
                 if (concernEntries.Any())
                 {
                     contextBuilder.AppendLine($"- High Burn Rate Concerns: {string.Join(", ", concernEntries)}");
@@ -980,7 +980,7 @@ namespace WileyWidget.ViewModels
                 // Get comprehensive data for analytics
                 var allEnterprises = await _enterpriseRepository.GetAllAsync();
                 var enterpriseList = allEnterprises.ToList();
-                
+
                 var currentYear = DateTime.UtcNow.Year;
                 var budgets = await _budgetRepository.GetByFiscalYearAsync(currentYear);
                 var budgetList = budgets.ToList();
@@ -1001,8 +1001,8 @@ namespace WileyWidget.ViewModels
                     var dateRange = $"{enterpriseList.Min(e => e.CreatedDate):d} to {enterpriseList.Max(e => e.ModifiedDate):d}";
                     var totalRevenuePotential = enterpriseList.Sum(e => e.CurrentRate * e.CitizenCount * 12); // Annual
                     var totalExpenses = enterpriseList.Sum(e => e.MonthlyExpenses * 12); // Annual
-                    var profitMargin = totalRevenuePotential > 0 
-                        ? ((totalRevenuePotential - totalExpenses) / totalRevenuePotential * 100) 
+                    var profitMargin = totalRevenuePotential > 0
+                        ? ((totalRevenuePotential - totalExpenses) / totalRevenuePotential * 100)
                         : 0;
 
                     contextBuilder.AppendLine($"Enterprise Analytics:");
@@ -1089,7 +1089,7 @@ namespace WileyWidget.ViewModels
                 // Gather system-wide statistics for general context
                 var allEnterprises = await _enterpriseRepository.GetAllAsync();
                 var enterpriseList = allEnterprises.ToList();
-                
+
                 var currentYear = DateTime.UtcNow.Year;
                 var budgets = await _budgetRepository.GetByFiscalYearAsync(currentYear);
                 var budgetList = budgets.ToList();
@@ -1105,14 +1105,14 @@ namespace WileyWidget.ViewModels
                 contextBuilder.AppendLine("- Municipal Accounts: Account management and billing");
                 contextBuilder.AppendLine("- Utility Customers: Customer relationship management");
                 contextBuilder.AppendLine();
-                
+
                 if (enterpriseList.Any())
                 {
                     contextBuilder.AppendLine($"Current System Data:");
                     contextBuilder.AppendLine($"- {enterpriseList.Count} enterprises managing ${enterpriseList.Sum(e => e.TotalBudget):N0} in budgets");
                     contextBuilder.AppendLine($"- Serving {enterpriseList.Sum(e => e.CitizenCount):N0} citizens");
                 }
-                
+
                 if (budgetList.Any())
                 {
                     contextBuilder.AppendLine($"- {budgetList.Count} budget accounts totaling ${budgetList.Sum(b => b.BudgetedAmount):N0} for FY {currentYear}");
@@ -1131,7 +1131,7 @@ namespace WileyWidget.ViewModels
 
                 contextBuilder.AppendLine();
                 contextBuilder.AppendLine("Capabilities: General assistance, system navigation, feature explanations, best practices, and integration with all modules.");
-                
+
                 return contextBuilder.ToString();
             }
             catch (Exception ex)
@@ -1160,38 +1160,38 @@ namespace WileyWidget.ViewModels
                 return "Low";
 
             var lowerResponse = response.ToLowerInvariant();
-            
+
             // High priority indicators
-            var highPriorityKeywords = new[] { 
-                "urgent", "critical", "immediate", "warning", "alert", "danger", 
+            var highPriorityKeywords = new[] {
+                "urgent", "critical", "immediate", "warning", "alert", "danger",
                 "must", "required", "mandatory", "compliance", "violation", "risk",
                 "emergency", "failure", "error", "security", "breach"
             };
-            
+
             var highPriorityCount = highPriorityKeywords.Count(keyword => lowerResponse.Contains(keyword));
             if (highPriorityCount >= 2) // Multiple high priority keywords
                 return "High";
-            
+
             // Medium priority indicators
-            var mediumPriorityKeywords = new[] { 
+            var mediumPriorityKeywords = new[] {
                 "recommend", "consider", "suggest", "should", "advise", "improve",
                 "optimize", "enhance", "review", "attention", "monitor", "track",
                 "important", "significant", "notable"
             };
-            
+
             var mediumPriorityCount = mediumPriorityKeywords.Count(keyword => lowerResponse.Contains(keyword));
             if (mediumPriorityCount >= 2 || highPriorityCount == 1)
                 return "Medium";
-            
+
             // Check for numerical thresholds that might indicate priority
-            if (lowerResponse.Contains("over budget") || lowerResponse.Contains("exceeded") || 
+            if (lowerResponse.Contains("over budget") || lowerResponse.Contains("exceeded") ||
                 lowerResponse.Contains("deficit") || lowerResponse.Contains("overspending"))
                 return "High";
-            
+
             if (lowerResponse.Contains("variance") || lowerResponse.Contains("difference") ||
                 lowerResponse.Contains("deviation"))
                 return "Medium";
-            
+
             return "Low";
         }
 
@@ -1204,9 +1204,9 @@ namespace WileyWidget.ViewModels
             }
 
             var count = AIInsights.Count;
-            
+
             MessageBoxResult result = MessageBoxResult.No;
-            await DispatcherHelper.InvokeAsync(() => 
+            await DispatcherHelper.InvokeAsync(() =>
             {
                 result = MessageBox.Show(
                     $"Are you sure you want to clear all {count} AI insights? This action cannot be undone.",
@@ -1221,10 +1221,10 @@ namespace WileyWidget.ViewModels
                 AIInsights.Clear();
                 AIResponse = string.Empty;
                 SelectedAIInsight = null;
-                
-                await DispatcherHelper.InvokeAsync(() => 
+
+                await DispatcherHelper.InvokeAsync(() =>
                 {
-                    MessageBox.Show($"Successfully cleared {count} AI insights.", "Insights Cleared", 
+                    MessageBox.Show($"Successfully cleared {count} AI insights.", "Insights Cleared",
                         MessageBoxButton.OK, MessageBoxImage.Information);
                 });
             }
@@ -1242,7 +1242,7 @@ namespace WileyWidget.ViewModels
             if (!AIInsights.Any())
             {
                 Logger.LogWarning("No AI insights to export");
-                MessageBox.Show("No AI insights available to export.", "Export Failed", 
+                MessageBox.Show("No AI insights available to export.", "Export Failed",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -1274,14 +1274,14 @@ namespace WileyWidget.ViewModels
                         await writer.WriteLineAsync();
                         await writer.WriteLineAsync($"Response:");
                         await writer.WriteLineAsync(insight.Response);
-                        
+
                         if (!string.IsNullOrWhiteSpace(insight.Notes))
                         {
                             await writer.WriteLineAsync();
                             await writer.WriteLineAsync($"Notes:");
                             await writer.WriteLineAsync(insight.Notes);
                         }
-                        
+
                         await writer.WriteLineAsync();
                         await writer.WriteLineAsync(new string('-', 80));
                         await writer.WriteLineAsync();
@@ -1289,13 +1289,13 @@ namespace WileyWidget.ViewModels
                 }
 
                 Logger.LogInformation("Successfully exported {Count} AI insights to {FilePath}", AIInsights.Count, filePath);
-                MessageBox.Show($"Successfully exported {AIInsights.Count} insights to:\n{filePath}", 
+                MessageBox.Show($"Successfully exported {AIInsights.Count} insights to:\n{filePath}",
                     "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Failed to export AI insights to {FilePath}", filePath);
-                MessageBox.Show($"Failed to export AI insights: {ex.Message}", "Export Failed", 
+                MessageBox.Show($"Failed to export AI insights: {ex.Message}", "Export Failed",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -1318,7 +1318,7 @@ namespace WileyWidget.ViewModels
 
             insight.IsActioned = true;
             Logger.LogInformation("Marked insight #{Id} as actioned", insight.Id);
-            
+
             // Refresh the UI
             RaisePropertyChanged(nameof(AIInsights));
         }
@@ -1352,12 +1352,12 @@ namespace WileyWidget.ViewModels
         {
             using var loggingContext = LoggingContext.BeginOperation("ImportExcel");
             var stopwatch = Stopwatch.StartNew();
-            
+
             Logger.LogInformation("MainViewModel: Import Excel command executed - {LogContext}", loggingContext);
             try
             {
                 IsBusy = true;
-                
+
                 // Show open file dialog for Excel files
                 var openFileDialog = new Microsoft.Win32.OpenFileDialog
                 {
@@ -1367,16 +1367,16 @@ namespace WileyWidget.ViewModels
                     CheckFileExists = true,
                     CheckPathExists = true
                 };
-                
+
                 if (openFileDialog.ShowDialog() == true)
                 {
                     var filePath = openFileDialog.FileName;
                     Logger.LogInformation("Selected Excel file for import: {FilePath} - {LogContext}", filePath, loggingContext);
-                    
+
                     // Validate Excel structure first
                     BusyMessage = "Validating Excel file structure...";
                     var isValid = await _excelReaderService.ValidateExcelStructureAsync(filePath);
-                    
+
                     if (!isValid)
                     {
                         Logger.LogWarning("Excel file structure validation failed for {FilePath} - {LogContext}", filePath, loggingContext);
@@ -1384,28 +1384,28 @@ namespace WileyWidget.ViewModels
                                       "Invalid File Structure", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
-                    
+
                     // Read budget data from Excel
                     BusyMessage = "Reading budget data from Excel...";
                     var budgetEntries = await _excelReaderService.ReadBudgetDataAsync(filePath);
                     var entriesList = budgetEntries.ToList();
-                    
+
                     Logger.LogInformation("Read {RecordCount} budget entries from Excel file - {LogContext}", entriesList.Count, loggingContext);
-                    
+
                     // Save to database
                     BusyMessage = "Saving budget data to database...";
                     foreach (var entry in entriesList)
                     {
                         await _budgetRepository.AddAsync(entry);
                     }
-                    
+
                     BusyMessage = $"Successfully imported {entriesList.Count} budget records from Excel";
-                    Logger.LogInformation("Excel import completed successfully - imported {RecordCount} budget records from {FilePath} in {ElapsedMs}ms - {LogContext}", 
+                    Logger.LogInformation("Excel import completed successfully - imported {RecordCount} budget records from {FilePath} in {ElapsedMs}ms - {LogContext}",
                         entriesList.Count, filePath, stopwatch.ElapsedMilliseconds, loggingContext);
-                    
+
                     MessageBox.Show($"Excel import completed successfully!\n\nImported {entriesList.Count} budget records from:\n{System.IO.Path.GetFileName(filePath)}",
                                   "Import Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-                    
+
                     // Refresh data after import
                     await RefreshAllAsync();
                 }
@@ -1414,14 +1414,14 @@ namespace WileyWidget.ViewModels
                     BusyMessage = "Excel import cancelled";
                     Logger.LogInformation("Excel import cancelled by user - {LogContext}", loggingContext);
                 }
-                
+
                 stopwatch.Stop();
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
                 BusyMessage = "Error importing Excel file";
-                Logger.LogError(ex, "Failed to import Excel file after {ElapsedMs}ms - {LogContext}", 
+                Logger.LogError(ex, "Failed to import Excel file after {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
                 MessageBox.Show($"Error importing Excel file: {ex.Message}", "Import Error",
                               MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1442,17 +1442,17 @@ namespace WileyWidget.ViewModels
         {
             using var loggingContext = LoggingContext.BeginOperation("ExportData");
             var stopwatch = Stopwatch.StartNew();
-            
+
             Logger.LogInformation("MainViewModel: Export data command executed - {LogContext}", loggingContext);
             try
             {
                 IsBusy = true;
-                
+
                 // Get supported formats
                 var supportedFormats = _reportExportService.GetSupportedFormats();
                 var filter = string.Join("|", supportedFormats.Select(f => $"{f} files (*.{f.ToLower(CultureInfo.InvariantCulture)})|*.{f.ToLower(CultureInfo.InvariantCulture)}"));
                 filter += "|All files (*.*)|*.*";
-                
+
                 // Show save file dialog
                 var saveFileDialog = new Microsoft.Win32.SaveFileDialog
                 {
@@ -1461,16 +1461,16 @@ namespace WileyWidget.ViewModels
                     DefaultExt = ".csv",
                     FileName = $"WileyWidget_Data_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
                 };
-                
+
                 if (saveFileDialog.ShowDialog() == true)
                 {
                     var filePath = saveFileDialog.FileName;
                     var extension = System.IO.Path.GetExtension(filePath).ToLower(CultureInfo.InvariantCulture);
-                    
+
                     Logger.LogInformation("Exporting data to {FilePath} with extension {Extension} - {LogContext}", filePath, extension, loggingContext);
-                    
+
                     BusyMessage = "Preparing data for export...";
-                    
+
                     // Prepare data for export
                     var exportData = Enterprises.Select(e => new
                     {
@@ -1484,9 +1484,9 @@ namespace WileyWidget.ViewModels
                         e.CreatedDate,
                         e.ModifiedDate
                     }).ToList();
-                    
+
                     BusyMessage = $"Exporting {exportData.Count} records...";
-                    
+
                     // Export based on file type
                     if (extension == ".csv")
                     {
@@ -1505,11 +1505,11 @@ namespace WileyWidget.ViewModels
                         // Default to CSV
                         await _reportExportService.ExportToCsvAsync(exportData, filePath);
                     }
-                    
+
                     BusyMessage = $"Data exported to {System.IO.Path.GetFileName(filePath)}";
-                    Logger.LogInformation("Data export completed successfully to {FilePath} in {ElapsedMs}ms - {LogContext}", 
+                    Logger.LogInformation("Data export completed successfully to {FilePath} in {ElapsedMs}ms - {LogContext}",
                         filePath, stopwatch.ElapsedMilliseconds, loggingContext);
-                    
+
                     MessageBox.Show($"Data export completed successfully!\n\nFile: {System.IO.Path.GetFileName(filePath)}\nRecords: {exportData.Count}",
                                   "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -1518,14 +1518,14 @@ namespace WileyWidget.ViewModels
                     BusyMessage = "Data export cancelled";
                     Logger.LogInformation("Data export cancelled by user - {LogContext}", loggingContext);
                 }
-                
+
                 stopwatch.Stop();
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
                 BusyMessage = "Error exporting data";
-                Logger.LogError(ex, "Failed to export data after {ElapsedMs}ms - {LogContext}", 
+                Logger.LogError(ex, "Failed to export data after {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
                 MessageBox.Show($"Error exporting data: {ex.Message}", "Export Error",
                               MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1546,23 +1546,23 @@ namespace WileyWidget.ViewModels
         {
             using var loggingContext = LoggingContext.BeginOperation("SyncQuickBooks");
             var stopwatch = Stopwatch.StartNew();
-            
+
             Logger.LogInformation("MainViewModel: Sync QuickBooks command executed - {LogContext}", loggingContext);
             try
             {
                 IsBusy = true;
-                
+
                 // Simulate QuickBooks synchronization process
                 BusyMessage = "Connecting to QuickBooks Online...";
                 Logger.LogInformation("Initiating QuickBooks synchronization...");
                 await Task.Delay(500); // Simulate connection
-                
+
                 BusyMessage = "Synchronizing enterprise data...";
                 await Task.Delay(800); // Simulate data sync
-                
+
                 BusyMessage = "Synchronizing financial transactions...";
                 await Task.Delay(600); // Simulate transaction sync
-                
+
                 // Simulate sync results
                 var syncResults = new
                 {
@@ -1572,11 +1572,11 @@ namespace WileyWidget.ViewModels
                     UpdatedRecords = 23,
                     Errors = 0
                 };
-                
+
                 BusyMessage = "QuickBooks sync completed successfully";
-                Logger.LogInformation("QuickBooks sync completed successfully - Synced {EnterpriseCount} enterprises, {TransactionCount} transactions in {ElapsedMs}ms - {LogContext}", 
+                Logger.LogInformation("QuickBooks sync completed successfully - Synced {EnterpriseCount} enterprises, {TransactionCount} transactions in {ElapsedMs}ms - {LogContext}",
                     syncResults.EnterprisesSynced, syncResults.TransactionsProcessed, stopwatch.ElapsedMilliseconds, loggingContext);
-                
+
                 MessageBox.Show($"QuickBooks synchronization completed successfully!\n\n" +
                               $"Enterprises: {syncResults.EnterprisesSynced}\n" +
                               $"Transactions: {syncResults.TransactionsProcessed}\n" +
@@ -1584,17 +1584,17 @@ namespace WileyWidget.ViewModels
                               $"Updated Records: {syncResults.UpdatedRecords}\n" +
                               $"Errors: {syncResults.Errors}",
                               "QuickBooks Sync Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-                
+
                 // Refresh data after sync
                 await RefreshAllAsync();
-                
+
                 stopwatch.Stop();
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
                 BusyMessage = "Error synchronizing with QuickBooks";
-                Logger.LogError(ex, "Failed to sync with QuickBooks after {ElapsedMs}ms - {LogContext}", 
+                Logger.LogError(ex, "Failed to sync with QuickBooks after {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
                 MessageBox.Show($"Error synchronizing with QuickBooks: {ex.Message}", "Sync Error",
                               MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1605,7 +1605,7 @@ namespace WileyWidget.ViewModels
             }
         }
 
-        // View Command Implementations  
+        // View Command Implementations
         private async Task ShowDashboardAsync()
         {
             await NavigateToRegionSafelyAsync("DashboardRegion", "DashboardView", "Dashboard");
@@ -1624,7 +1624,7 @@ namespace WileyWidget.ViewModels
             {
                 IsBusy = true;
                 BusyMessage = "Creating new budget...";
-                
+
                 // Create a new budget entry for the current fiscal year
                 var currentYear = DateTime.Now.Year;
                 var newBudget = new BudgetEntry
@@ -1637,13 +1637,13 @@ namespace WileyWidget.ViewModels
                     DepartmentId = 1, // Default department
                     CreatedAt = DateTime.UtcNow
                 };
-                
+
                 await _budgetRepository.AddAsync(newBudget);
-                
+
                 Logger.LogInformation("New budget created successfully for fiscal year {FiscalYear}", currentYear);
-                MessageBox.Show($"New budget created successfully for fiscal year {currentYear}!", 
+                MessageBox.Show($"New budget created successfully for fiscal year {currentYear}!",
                               "Budget Created", MessageBoxButton.OK, MessageBoxImage.Information);
-                
+
                 // Refresh data
                 await RefreshAllAsync();
             }
@@ -1665,7 +1665,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 IsBusy = true;
-                
+
                 // Show open file dialog for budget files
                 var openFileDialog = new Microsoft.Win32.OpenFileDialog
                 {
@@ -1675,31 +1675,31 @@ namespace WileyWidget.ViewModels
                     CheckFileExists = true,
                     CheckPathExists = true
                 };
-                
+
                 if (openFileDialog.ShowDialog() == true)
                 {
                     var filePath = openFileDialog.FileName;
                     Logger.LogInformation("Selected budget file for import: {FilePath}", filePath);
-                    
+
                     BusyMessage = "Importing budget data...";
-                    
+
                     // For now, simulate budget import - in real implementation, parse file and create BudgetEntry objects
                     var importedBudgets = new List<BudgetEntry>
                     {
                         new BudgetEntry { FiscalYear = DateTime.Now.Year, AccountNumber = "200.1", Description = "Imported Dept 1", BudgetedAmount = 10000, ActualAmount = 9500, DepartmentId = 1 },
                         new BudgetEntry { FiscalYear = DateTime.Now.Year, AccountNumber = "200.2", Description = "Imported Dept 2", BudgetedAmount = 15000, ActualAmount = 14000, DepartmentId = 1 }
                     };
-                    
+
                     foreach (var budget in importedBudgets)
                     {
                         budget.CreatedAt = DateTime.UtcNow;
                         await _budgetRepository.AddAsync(budget);
                     }
-                    
+
                     Logger.LogInformation("Budget import completed successfully - imported {Count} entries", importedBudgets.Count);
                     MessageBox.Show($"Budget import completed successfully!\n\nImported {importedBudgets.Count} budget entries from:\n{System.IO.Path.GetFileName(filePath)}",
                                   "Import Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-                    
+
                     // Refresh data
                     await RefreshAllAsync();
                 }
@@ -1726,12 +1726,12 @@ namespace WileyWidget.ViewModels
             try
             {
                 IsBusy = true;
-                
+
                 // Get current fiscal year budgets
                 var currentYear = DateTime.Now.Year;
                 var budgets = await _budgetRepository.GetByFiscalYearAsync(currentYear);
                 var budgetList = budgets.ToList();
-                
+
                 if (budgetList.Count == 0)
                 {
                     Logger.LogWarning("No budget data found for fiscal year {FiscalYear}", currentYear);
@@ -1739,7 +1739,7 @@ namespace WileyWidget.ViewModels
                                   MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
-                
+
                 // Show save file dialog
                 var saveFileDialog = new Microsoft.Win32.SaveFileDialog
                 {
@@ -1748,16 +1748,16 @@ namespace WileyWidget.ViewModels
                     DefaultExt = ".csv",
                     FileName = $"Budget_Data_{currentYear}_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
                 };
-                
+
                 if (saveFileDialog.ShowDialog() == true)
                 {
                     var filePath = saveFileDialog.FileName;
                     var extension = System.IO.Path.GetExtension(filePath).ToLower(CultureInfo.InvariantCulture);
-                    
+
                     Logger.LogInformation("Exporting {Count} budget entries to {FilePath}", budgetList.Count, filePath);
-                    
+
                     BusyMessage = $"Exporting {budgetList.Count} budget records...";
-                    
+
                     // Export based on file type
                     if (extension == ".csv")
                     {
@@ -1772,7 +1772,7 @@ namespace WileyWidget.ViewModels
                         // Default to CSV
                         await _reportExportService.ExportToCsvAsync(budgetList, filePath);
                     }
-                    
+
                     Logger.LogInformation("Budget export completed successfully to {FilePath}", filePath);
                     MessageBox.Show($"Budget export completed successfully!\n\nFile: {System.IO.Path.GetFileName(filePath)}\nRecords: {budgetList.Count}",
                                   "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -1855,7 +1855,7 @@ namespace WileyWidget.ViewModels
                     {
                         // Save to database
                         var savedEnterprise = await _enterpriseRepository.AddAsync(newEnterprise);
-                        
+
                         // Add to the observable collection
                         Enterprises.Add(savedEnterprise);
                         SelectedEnterprise = savedEnterprise;
@@ -1920,7 +1920,7 @@ namespace WileyWidget.ViewModels
                     {
                         // Update the original enterprise with validated data
                         UpdateEnterpriseFromCopy(SelectedEnterprise, enterpriseCopy);
-                        
+
                         // Save to database
                         await _enterpriseRepository.UpdateAsync(SelectedEnterprise);
 
@@ -1981,10 +1981,10 @@ namespace WileyWidget.ViewModels
                 if (result == MessageBoxResult.Yes)
                 {
                     IsBusy = true;
-                    
+
                     // Delete from database (soft delete)
                     var deleteResult = await _enterpriseRepository.DeleteAsync(SelectedEnterprise.Id);
-                    
+
                     if (deleteResult)
                     {
                         // Remove from collection
@@ -2129,9 +2129,9 @@ namespace WileyWidget.ViewModels
             try
             {
                 Logger.LogInformation("Loading enterprises from database");
-                
+
                 var enterprises = await _enterpriseRepository.GetAllAsync();
-                
+
                 // Update the collection on the UI thread
                 await DispatcherHelper.InvokeAsync(() =>
                 {
@@ -2141,7 +2141,7 @@ namespace WileyWidget.ViewModels
                         Enterprises.Add(enterprise);
                     }
                 });
-                
+
                 Logger.LogInformation("Loaded {Count} enterprises from database", enterprises.Count());
             }
             catch (Exception ex)
@@ -2162,7 +2162,7 @@ namespace WileyWidget.ViewModels
                 parameters.Add("Enterprise", enterprise);
 
                 var result = await dialogService.ShowDialogAsync("EnterpriseDialogView", parameters);
-                
+
                 if (result.Result == ButtonResult.OK)
                 {
                     // Update the enterprise with the result
@@ -2176,7 +2176,7 @@ namespace WileyWidget.ViewModels
                     }
                     return true;
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -2303,33 +2303,33 @@ namespace WileyWidget.ViewModels
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    Logger.LogDebug("MainViewModel Enterprises collection - Added {Count} items at index {Index}", 
+                    Logger.LogDebug("MainViewModel Enterprises collection - Added {Count} items at index {Index}",
                         e.NewItems?.Count ?? 0, e.NewStartingIndex);
                     if (e.NewItems != null)
                     {
                         foreach (Enterprise enterprise in e.NewItems)
                         {
-                            Logger.LogTrace("MainViewModel Added Enterprise: Id={Id}, Name={Name}, Type={Type}", 
+                            Logger.LogTrace("MainViewModel Added Enterprise: Id={Id}, Name={Name}, Type={Type}",
                                 enterprise.Id, enterprise.Name, enterprise.Type);
                         }
                     }
                     break;
 
                 case NotifyCollectionChangedAction.Remove:
-                    Logger.LogDebug("MainViewModel Enterprises collection - Removed {Count} items at index {Index}", 
+                    Logger.LogDebug("MainViewModel Enterprises collection - Removed {Count} items at index {Index}",
                         e.OldItems?.Count ?? 0, e.OldStartingIndex);
                     if (e.OldItems != null)
                     {
                         foreach (Enterprise enterprise in e.OldItems)
                         {
-                            Logger.LogTrace("MainViewModel Removed Enterprise: Id={Id}, Name={Name}", 
+                            Logger.LogTrace("MainViewModel Removed Enterprise: Id={Id}, Name={Name}",
                                 enterprise.Id, enterprise.Name);
                         }
                     }
                     break;
 
                 case NotifyCollectionChangedAction.Replace:
-                    Logger.LogDebug("MainViewModel Enterprises collection - Replaced {Count} items at index {Index}", 
+                    Logger.LogDebug("MainViewModel Enterprises collection - Replaced {Count} items at index {Index}",
                         e.NewItems?.Count ?? 0, e.NewStartingIndex);
                     break;
 
@@ -2338,7 +2338,7 @@ namespace WileyWidget.ViewModels
                     break;
 
                 case NotifyCollectionChangedAction.Move:
-                    Logger.LogDebug("MainViewModel Enterprises collection - Moved item from index {OldIndex} to {NewIndex}", 
+                    Logger.LogDebug("MainViewModel Enterprises collection - Moved item from index {OldIndex} to {NewIndex}",
                         e.OldStartingIndex, e.NewStartingIndex);
                     break;
             }
