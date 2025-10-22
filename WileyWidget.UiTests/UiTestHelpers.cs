@@ -357,14 +357,14 @@ namespace WileyWidget.UiTests
         }
 
         // Prefer Grid/Table pattern for SfDataGrid if available
-        public static AutomationPatternInfo? GetPreferredGridPattern(AutomationElement grid)
-        {
-            var gp = grid.Patterns.Grid;
-            if (gp.IsSupported) return gp.Pattern;
-            var tp = grid.Patterns.Table;
-            if (tp.IsSupported) return tp.Pattern;
-            return null;
-        }
+        // public static FlaUI.Core.AutomationPattern? GetPreferredGridPattern(AutomationElement grid)
+        // {
+        //     var gp = grid.Patterns.Grid;
+        //     if (gp.IsSupported) return gp.Pattern;
+        //     var tp = grid.Patterns.Table;
+        //     if (tp.IsSupported) return tp.Pattern;
+        //     return null;
+        // }
 
         // Poll for Prism region activation by name
         public static AutomationElement? WaitForRegionActivation(Window root, string regionName, TimeSpan timeout)

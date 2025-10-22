@@ -25,7 +25,7 @@ public sealed class SettingsService : ISettingsService
     /// <summary>
     /// Gets the singleton instance from DI container.
     /// </summary>
-    public static SettingsService Instance => App.GetContainerProvider().Resolve<SettingsService>() 
+    public static SettingsService Instance => App.GetContainerProvider().Resolve<SettingsService>()
         ?? throw new InvalidOperationException("SettingsService not registered in DI container");
 
     private readonly IConfiguration? _configuration;

@@ -30,7 +30,7 @@ public partial class NavigationItem : ObservableObject
             throw new ArgumentException("Name cannot be empty.", nameof(name));
         }
 
-    Route = route.Trim();
+        Route = route.Trim();
         Icon = string.IsNullOrWhiteSpace(icon) ? string.Empty : icon.Trim();
         ViewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 

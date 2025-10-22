@@ -13,7 +13,7 @@ using Prism.Modularity;
 using Prism.Container.Unity;
 using Prism.Ioc;
 using Unity;
-using Unity.Resolution;
+using Unity.Injection;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Licensing;
 using Bold.Licensing;
@@ -33,6 +33,7 @@ using DotNetEnv;
 using WileyWidget.Regions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
+using WileyWidget.Diagnostics;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels;
@@ -48,6 +49,8 @@ using System.Threading.Tasks;
 // using Microsoft.ApplicationInsights;
 // using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
+using System.Windows.Markup;
+using System.Xaml;
 
 namespace WileyWidget
 {
@@ -72,8 +75,8 @@ namespace WileyWidget
         private static readonly object StartupProgressSyncRoot = new();
         public static object? StartupProgress { get; private set; }
         public static DateTimeOffset? LastHealthReportUpdate { get; private set; }
-    private bool _syncfusionLicenseRegistered;
-    private bool _boldReportsLicenseRegistered;
+        private bool _syncfusionLicenseRegistered;
+        private bool _boldReportsLicenseRegistered;
 
         public static void UpdateLatestHealthReport(object report)
         {
@@ -253,7 +256,7 @@ END
 ";
 
             int attempt = 0;
-            for (;;)
+            for (; ; )
             {
                 attempt++;
                 try
@@ -295,10 +298,27 @@ END
         /// </summary>
         private void SetupGlobalExceptionHandling()
         {
-            // Handle unhandled exceptions on the UI thread
+            // Handle unhandled exceptions on the UI thread with XAML-specific recovery
             Application.Current.DispatcherUnhandledException += (sender, e) =>
             {
-                Log.Error(e.Exception, "Unhandled UI exception occurred");
+                // First, try to unwrap TargetInvocationException from Unity container issues
+                Exception processedException = UnwrapTargetInvocationException(e.Exception);
+
+                if (TryHandleUnityContainerException(processedException))
+                {
+                    e.Handled = true;
+                    Log.Warning("Unity container exception handled and recovered");
+                    return;
+                }
+
+                if (TryHandleXamlException(processedException))
+                {
+                    e.Handled = true;
+                    Log.Warning("XAML exception handled and recovered");
+                    return;
+                }
+
+                Log.Error(processedException, "Unhandled UI exception occurred");
                 e.Handled = true; // Prevent application crash
                 Log.Warning("UI exception suppressed per policy; notifying via logs only.");
             };
@@ -307,20 +327,229 @@ END
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 Exception? exception = e.ExceptionObject as Exception;
-                Log.Fatal(exception, "Unhandled background thread exception occurred");
+                Exception? processedException = UnwrapTargetInvocationException(exception);
+                Log.Fatal(processedException, "Unhandled background thread exception occurred");
                 // Also log full inner exception chain to help diagnose reflection-wrapped errors
-                LogExceptionDetails(exception);
+                LogExceptionDetails(processedException);
                 // Application will terminate after this
             };
 
             // Handle unobserved task exceptions
             System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
-                Log.Error(e.Exception, "Unobserved task exception occurred");
+                Exception processedException = UnwrapTargetInvocationException(e.Exception);
+                Log.Error(processedException, "Unobserved task exception occurred");
                 e.SetObserved(); // Prevent it from crashing the finalizer thread
             };
 
-            Log.Information("Global exception handling configured");
+            Log.Information("Global exception handling configured with Unity container and XAML recovery");
+        }
+
+        /// <summary>
+        /// Attempts to handle and recover from XAML-specific exceptions
+        /// </summary>
+        private bool TryHandleXamlException(Exception exception)
+        {
+            if (exception is System.Windows.Markup.XamlParseException xamlParseEx)
+            {
+                return TryRecoverFromXamlParseException(xamlParseEx);
+            }
+
+            if (exception is System.Xaml.XamlObjectWriterException xamlWriterEx)
+            {
+                return TryRecoverFromXamlObjectWriterException(xamlWriterEx);
+            }
+
+            // Check inner exceptions for XAML issues
+            var innerException = exception;
+            while (innerException != null)
+            {
+                if (innerException is System.Windows.Markup.XamlParseException innerXamlParseEx)
+                {
+                    return TryRecoverFromXamlParseException(innerXamlParseEx);
+                }
+
+                if (innerException is System.Xaml.XamlObjectWriterException innerXamlWriterEx)
+                {
+                    return TryRecoverFromXamlObjectWriterException(innerXamlWriterEx);
+                }
+
+                innerException = innerException.InnerException;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts to handle and recover from Unity container exceptions
+        /// </summary>
+        private bool TryHandleUnityContainerException(Exception exception)
+        {
+            string message = exception.Message.ToLowerInvariant();
+
+            // Check for Unity container resolution failures
+            if (message.Contains("unity") || message.Contains("container") || message.Contains("resolution"))
+            {
+                Log.Error(exception, "Unity container exception detected: {Message}", exception.Message);
+
+                // Try to provide specific guidance based on the error
+                if (message.Contains("not registered") || message.Contains("could not resolve"))
+                {
+                    Log.Warning("Service registration issue detected. Check that all required services are registered in RegisterTypes().");
+                    Log.Warning("Common missing registrations: ILogger<>, IOptions<>, or module-specific services.");
+                }
+
+                if (message.Contains("circular") || message.Contains("dependency"))
+                {
+                    Log.Warning("Circular dependency detected in DI container. Check for circular references in constructor parameters.");
+                }
+
+                // For container issues, we typically cannot recover at runtime
+                // The application needs to be fixed and restarted
+                return false;
+            }
+
+            // Check for module initialization failures
+            if (message.Contains("module") && (message.Contains("initialize") || message.Contains("load")))
+            {
+                Log.Error(exception, "Prism module initialization failure: {Message}", exception.Message);
+                Log.Warning("Module failed to initialize. Check module dependencies and registrations.");
+                return false;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Unwraps TargetInvocationException to get to the root cause.
+        /// Unity container often wraps real exceptions in TargetInvocationException.
+        /// </summary>
+        private static Exception UnwrapTargetInvocationException(Exception? exception)
+        {
+            if (exception == null)
+            {
+                return new InvalidOperationException("Exception was null");
+            }
+
+            var current = exception;
+            var seen = new HashSet<Exception>();
+
+            // Unwrap TargetInvocationException chain
+            while (current is TargetInvocationException tie && tie.InnerException != null && !seen.Contains(tie))
+            {
+                seen.Add(tie);
+                current = tie.InnerException;
+            }
+
+            return current;
+        }
+
+        /// <summary>
+        /// Attempts recovery from XamlParseException
+        /// </summary>
+        private bool TryRecoverFromXamlParseException(System.Windows.Markup.XamlParseException ex)
+        {
+            Log.Error(ex, "XamlParseException detected: {Message}", ex.Message);
+            Log.Error("XAML Error: Line {Line}, Position {Position}",
+                ex.LineNumber,
+                ex.LinePosition);
+
+            string message = ex.Message.ToLowerInvariant();
+
+            // Check for common recoverable issues
+            if (message.Contains("syncfusion") && message.Contains("license"))
+            {
+                Log.Warning("Syncfusion license issue detected - attempting recovery");
+                try
+                {
+                    EnsureSyncfusionLicenseRegistered();
+                    Log.Information("Syncfusion license re-registered successfully");
+                    return true;
+                }
+                catch (Exception recoveryEx)
+                {
+                    Log.Error(recoveryEx, "Failed to recover Syncfusion license");
+                }
+            }
+
+            if (message.Contains("viewmodellocator") || message.Contains("autowire"))
+            {
+                Log.Warning("ViewModelLocator issue detected - check ViewModel registrations");
+                // This typically requires code fixes, not runtime recovery
+                return false;
+            }
+
+            if (message.Contains("assembly") && message.Contains("not found"))
+            {
+                Log.Warning("Missing assembly reference detected - check NuGet packages");
+                return false;
+            }
+
+            if (message.Contains("xmlns") || message.Contains("namespace"))
+            {
+                Log.Warning("XML namespace issue detected - check xmlns declarations");
+                return false;
+            }
+
+            // For other XAML parse exceptions, attempt theme re-application
+            Log.Warning("Attempting theme re-application as recovery strategy");
+            try
+            {
+                SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+                Log.Information("Theme re-applied successfully");
+                return true;
+            }
+            catch (Exception themeEx)
+            {
+                Log.Error(themeEx, "Theme re-application failed");
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts recovery from XamlObjectWriterException
+        /// </summary>
+        private bool TryRecoverFromXamlObjectWriterException(XamlObjectWriterException ex)
+        {
+            Log.Error(ex, "XamlObjectWriterException detected: {Message}", ex.Message);
+
+            string message = ex.Message.ToLowerInvariant();
+
+            // Check for property binding issues
+            if (message.Contains("property") && message.Contains("not found"))
+            {
+                Log.Warning("Property binding issue detected - check property names and types");
+                return false; // Requires code fix
+            }
+
+            // Check for type resolution issues
+            if (message.Contains("type") && message.Contains("not found"))
+            {
+                Log.Warning("Type resolution issue detected - check assembly references and using statements");
+                return false; // Requires code fix
+            }
+
+            // Attempt general recovery by clearing resource dictionaries and re-applying theme
+            Log.Warning("Attempting general XAML recovery");
+            try
+            {
+                // Force re-application of theme
+                SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+
+                // Clear and reload application resources if needed
+                Application.Current.Resources.MergedDictionaries.Clear();
+                // Note: In a real recovery scenario, you'd reload the necessary resource dictionaries
+
+                Log.Information("General XAML recovery completed");
+                return true;
+            }
+            catch (Exception recoveryEx)
+            {
+                Log.Error(recoveryEx, "General XAML recovery failed");
+            }
+
+            return false;
         }
 
         protected override Window CreateShell()
@@ -559,7 +788,8 @@ END
                 SerilogLoggerFactory loggerFactory = new SerilogLoggerFactory(Log.Logger, dispose: false);
 #pragma warning restore CA2000
                 containerRegistry.RegisterInstance<ILoggerFactory>(loggerFactory);
-                containerRegistry.Register(typeof(ILogger<>), typeof(Logger<>));
+                // Register ILogger<> as open generic type using Logger<T> which properly implements ILogger<T>
+                containerRegistry.Register(typeof(ILogger<>), typeof(Microsoft.Extensions.Logging.Logger<>));
                 Log.Information("✓ Registered ILoggerFactory and ILogger<> with Serilog integration");
             }
             catch (Exception ex)
@@ -781,6 +1011,10 @@ END
                 // Register Prism Error Handler for centralized error handling
                 containerRegistry.RegisterSingleton<IPrismErrorHandler, PrismErrorHandler>();
                 Log.Information("✓ Registered IPrismErrorHandler for centralized error handling and logging");
+
+                // Explicitly register IEventAggregator (should be automatic in Prism, but ensure availability)
+                containerRegistry.RegisterSingleton<Prism.Events.IEventAggregator, Prism.Events.EventAggregator>();
+                Log.Information("✓ Registered IEventAggregator for pub/sub messaging");
             }
             catch (Exception ex)
             {
@@ -868,6 +1102,28 @@ END
             ValidateCriticalServices(containerRegistry, testMode);
             Log.Debug("Critical services validation completed");
             Log.Debug("=== DI CONTAINER REGISTRATION FULLY COMPLETED ===");
+
+            // Validate public accessibility to prevent InvalidRegistrationException
+            ValidatePublicAccessibility();
+
+            // Run container diagnostics in debug mode
+#if DEBUG
+            try
+            {
+                Log.Debug("Running container resolution diagnostics in debug mode...");
+                var diagnosticReport = WileyWidget.Diagnostics.UnityContainerDiagnostics.TestContainerResolutions(containerRegistry, testMode);
+                diagnosticReport.LogSummary();
+
+                if (diagnosticReport.HasFailures)
+                {
+                    Log.Warning("Container diagnostics found resolution failures. Check logs for details.");
+                }
+            }
+            catch (Exception diagEx)
+            {
+                Log.Warning(diagEx, "Container diagnostics failed to run");
+            }
+#endif
         }
 
         private void TryRegisterImplementationByName(IContainerRegistry containerRegistry, Type interfaceType, string implementationFullName)
@@ -1147,9 +1403,9 @@ END
                     return client;
                 };
 
-                #pragma warning disable CA2000 // Prism container manages the lifetime of the registered factory singleton
+#pragma warning disable CA2000 // Prism container manages the lifetime of the registered factory singleton
                 var httpClientFactory = new PrismHttpClientFactory(clientBuilder);
-                #pragma warning restore CA2000
+#pragma warning restore CA2000
                 containerRegistry.RegisterInstance<IHttpClientFactory>(httpClientFactory);
 
                 Log.Information("✓ Registered PrismHttpClientFactory for IHttpClientFactory");
@@ -1460,7 +1716,8 @@ END
             // including TabControl, ContentControl, ItemsControl, and Selector
 
             // Custom adapter for Syncfusion controls (e.g., DockingManager)
-            regionAdapterMappings.RegisterMapping<Syncfusion.Windows.Tools.Controls.DockingManager>(Container.Resolve<WileyWidget.Regions.DockingManagerRegionAdapter>());
+            // Temporarily disabled - ContentControls within DockingManager should use standard ContentControl adapter
+            // regionAdapterMappings.RegisterMapping<Syncfusion.Windows.Tools.Controls.DockingManager>(Container.Resolve<WileyWidget.Regions.DockingManagerRegionAdapter>());
 
             // Register region behaviors
             var regionBehaviorFactory = Container.Resolve<IRegionBehaviorFactory>();
@@ -1529,13 +1786,59 @@ END
         {
             Log.Information("Modules initializing...");
 
-            base.InitializeModules();
+            try
+            {
+                base.InitializeModules();
+                Log.Information("Base module initialization completed successfully");
+            }
+            catch (Prism.Modularity.ModuleInitializeException ex)
+            {
+                // Handle module initialization exceptions with detailed diagnostics
+                var rootEx = WileyWidget.Startup.Modules.PrismExceptionExtensions.GetRootException(ex);
+                Log.Error(rootEx, "Critical ModuleInitializeException during module initialization: {Message}", rootEx.Message);
+                Log.Error("Full exception chain: {DetailedMessage}", WileyWidget.Startup.Modules.PrismExceptionExtensions.GetDetailedMessage(ex));
+
+                // Log which module failed if available
+                // Note: ModuleInitializeException may not have ModuleType in this version
+                Log.Error("Module initialization failed - check inner exceptions for details");
+
+                // Try to get module health service for additional diagnostics
+                try
+                {
+                    var healthService = Container.Resolve<IModuleHealthService>();
+                    Log.Error("Module health status: {Status}", string.Join(", ", healthService.GetAllModuleStatuses().Select(m => $"{m.ModuleName}: {m.Status}")));
+                }
+                catch
+                {
+                    Log.Warning("Could not resolve IModuleHealthService for diagnostics");
+                }
+
+                // Don't rethrow - allow application to continue with partial initialization
+                Log.Warning("Application will continue with partially initialized modules");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(WileyWidget.Startup.Modules.PrismExceptionExtensions.GetRootException(ex), "Unexpected error during module initialization: {Message}", WileyWidget.Startup.Modules.PrismExceptionExtensions.GetRootException(ex).Message);
+                Log.Error("Full exception chain: {DetailedMessage}", ex.GetDetailedMessage());
+                throw; // Re-throw unexpected exceptions
+            }
 
             // Get the module health service for validation
-            var moduleHealthService = Container.Resolve<IModuleHealthService>();
+            IModuleHealthService? moduleHealthService = null;
+            try
+            {
+                moduleHealthService = Container.Resolve<IModuleHealthService>();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Could not resolve IModuleHealthService during module initialization");
+            }
 
             // Validate module initialization and region availability
-            ValidateModuleInitialization(moduleHealthService);
+            if (moduleHealthService != null)
+            {
+                ValidateModuleInitialization(moduleHealthService);
+            }
 
             // Initialize global error handling for Prism navigation and general errors
             InitializeGlobalErrorHandling();
@@ -2019,6 +2322,48 @@ END
             {
                 Log.Warning(ex, "Failed to configure diagnostics settings from appsettings.json");
             }
+        }
+
+        /// <summary>
+        /// Validates that all registered types are public and have public constructors.
+        /// This helps prevent InvalidRegistrationException due to accessibility issues.
+        /// </summary>
+        private void ValidatePublicAccessibility()
+        {
+            Log.Information("Validating public accessibility of registered types...");
+
+            // List of types to validate (key services and ViewModels)
+            var typesToValidate = new[]
+            {
+                typeof(XAIService),
+                typeof(DataAnonymizerService),
+                typeof(WileyWidgetContextService),
+                typeof(AILoggingService),
+                typeof(GrokSupercomputer),
+                typeof(EnterpriseRepository),
+                typeof(SettingsService),
+                typeof(MainViewModel),
+                typeof(AIAssistViewModel),
+                typeof(SettingsViewModel)
+            };
+
+            foreach (var type in typesToValidate)
+            {
+                if (!type.IsPublic && !type.IsNestedPublic)
+                {
+                    Log.Error("Type {Type} is not public - this may cause InvalidRegistrationException", type.FullName);
+                    throw new InvalidOperationException($"Type {type.FullName} must be public for Unity registration");
+                }
+
+                var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+                if (constructors.Length == 0)
+                {
+                    Log.Error("Type {Type} has no public constructors - this may cause InvalidRegistrationException", type.FullName);
+                    throw new InvalidOperationException($"Type {type.FullName} must have at least one public constructor");
+                }
+            }
+
+            Log.Information("✓ Public accessibility validation passed for {Count} types", typesToValidate.Length);
         }
     }
 

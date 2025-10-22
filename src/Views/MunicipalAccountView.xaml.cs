@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using WileyWidget.ViewModels;
 using Syncfusion.SfSkinManager;
+using Syncfusion.UI.Xaml.Grid;
 using Serilog;
 
 namespace WileyWidget.Views
@@ -157,6 +158,20 @@ namespace WileyWidget.Views
                 }
             }
             catch { }
+        }
+
+        private void AccountsGrid_FilterChanged(object sender, GridFilterEventArgs e)
+        {
+            // Invoke ViewModel's ApplyFilter() if custom logic is needed
+            // Otherwise, keep empty as MVVM prefers ViewModel-driven filtering
+            if (DataContext is MunicipalAccountViewModel viewModel)
+            {
+                // Check if custom logic is needed (e.g., if ViewModel has active filters)
+                if (!string.IsNullOrEmpty(viewModel.TypeFilter) || !string.IsNullOrEmpty(viewModel.SearchText))
+                {
+                    viewModel.ApplyFilter();
+                }
+            }
         }
     }
 }

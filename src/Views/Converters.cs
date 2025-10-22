@@ -172,10 +172,10 @@ public class BalanceColorConverter : IValueConverter
         // Handle special parameters
         if (param == "PositiveVisibility")
             return balance > 0 ? Visibility.Visible : Visibility.Collapsed;
-        
+
         if (param == "NegativeVisibility")
             return balance < 0 ? Visibility.Visible : Visibility.Collapsed;
-        
+
         if (param == "Negative")
             return balance < 0 ? "Negative" : "Positive";
 
@@ -194,7 +194,7 @@ public class BalanceColorConverter : IValueConverter
             return new SolidColorBrush(Color.FromRgb(74, 222, 128)); // Green
         if (balance < 0)
             return new SolidColorBrush(Color.FromRgb(248, 113, 113)); // Red
-        
+
         return new SolidColorBrush(Color.FromRgb(185, 200, 236)); // Neutral gray-blue
     }
 

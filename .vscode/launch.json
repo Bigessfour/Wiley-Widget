@@ -6,7 +6,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build-clean",
-      "program": "${workspaceFolder}/bin/Debug/net9.0-windows/WileyWidget.exe",
+      "program": "${workspaceFolder}/bin/Debug/net8.0-windows/WileyWidget.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
@@ -38,7 +38,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/Debug/net9.0-windows/WileyWidget.exe",
+      "program": "${workspaceFolder}/bin/Debug/net8.0-windows/WileyWidget.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
@@ -74,7 +74,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/Debug/net9.0-windows/WileyWidget.exe",
+      "program": "${workspaceFolder}/bin/Debug/net8.0-windows/WileyWidget.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
@@ -117,7 +117,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/Debug/net9.0-windows/WileyWidget.exe",
+      "program": "${workspaceFolder}/bin/Debug/net8.0-windows/WileyWidget.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
@@ -146,8 +146,95 @@
         "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
         "DEBUG_XAML": "true",
         "ENABLE_XAML_DIAGNOSTICS": "true",
+        "WPF_TRACE_SETTINGS": "DataBinding:Warning,ResourceDictionary:Warning,DependencyProperty:Warning,Animation:Warning",
+        "COREHOST_TRACE": "1",
+        "DEBUG_WPF_STARTUP": "true",
+        "WILEY_WIDGET_XAML_DEBUG": "true"
+      },
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Launch WileyWidget (Enhanced XAML Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/Debug/net8.0-windows/WileyWidget.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "justMyCode": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": true,
+        "searchNuGetOrgSymbolServer": true,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
+        "DEBUG_XAML": "true",
+        "ENABLE_XAML_DIAGNOSTICS": "true",
+        "WPF_TRACE_SETTINGS": "DataBinding:All,ResourceDictionary:All,DependencyProperty:All,Animation:All,RoutingStrategy:All",
+        "COREHOST_TRACE": "1",
+        "DEBUG_WPF_STARTUP": "true",
+        "WILEY_WIDGET_XAML_DEBUG": "true",
+        "XAML_DIAGNOSTICS_ENABLED": "true",
+        "ENABLE_XAML_DEBUGGING": "true",
+        "WPF_DIAGNOSTICS": "true"
+      },
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Launch WileyWidget (Release - XAML Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "publish",
+      "program": "${workspaceFolder}/publish/WileyWidget.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/publish",
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "justMyCode": false,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": true,
+        "searchNuGetOrgSymbolServer": true,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsFormsIntegration",
+            "System.Xaml",
+            "mscorlib",
+            "netstandard"
+          ]
+        }
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
+        "DEBUG_XAML": "true",
+        "ENABLE_XAML_DIAGNOSTICS": "true",
         "WPF_TRACE_SETTINGS": "DataBinding:Warning,ResourceDictionary:Warning,DependencyProperty:Warning",
-        "COREHOST_TRACE": "1"
+        "COREHOST_TRACE": "1",
+        "DEBUG_WPF_STARTUP": "true",
+        "WILEY_WIDGET_XAML_DEBUG": "true"
       },
       "envFile": "${workspaceFolder}/.env"
     },

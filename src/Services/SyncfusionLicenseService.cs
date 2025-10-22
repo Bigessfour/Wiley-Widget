@@ -29,14 +29,14 @@ namespace WileyWidget.Services
                 if (string.IsNullOrEmpty(licenseKey))
                 {
                     _logger.LogWarning("License key is null or empty");
-                    
+
                     // Show error dialog using MessageBox to avoid owner issues
                     MessageBox.Show(
                         "License key is required but not provided. The application may show evaluation dialogs.",
                         "Syncfusion License Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
-                    
+
                     return false;
                 }
 
@@ -57,7 +57,7 @@ namespace WileyWidget.Services
                 else
                 {
                     _logger.LogWarning("Syncfusion license key is empty");
-                    
+
                     // Show error dialog using MessageBox to avoid owner issues
                     MessageBox.Show(
                         "License key validation failed. The application may show evaluation dialogs.",
@@ -72,14 +72,14 @@ namespace WileyWidget.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating Syncfusion license");
-                
+
                 // Show error dialog using MessageBox to avoid owner issues
                 MessageBox.Show(
                     $"Failed to validate license: {ex.Message}",
                     "Syncfusion License Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
-                
+
                 return false;
             }
         }

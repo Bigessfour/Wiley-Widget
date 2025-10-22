@@ -1,0 +1,52 @@
+{
+  "max_summary_length": 1500,
+  "max_file_size_for_summary": 200000,
+  "parallel_workers": 6,
+  "exclude_patterns": [
+    "\\.env",
+    "secret",
+    "password",
+    "token",
+    "key",
+    "config.*secret",
+    "private.*key",
+    "\\.pem$",
+    "\\.key$",
+    "credentials",
+    "auth",
+    "login",
+    "my\\.secrets"
+  ],
+  "custom_categories": [
+    {
+      "name": "ai_related",
+      "patterns": [
+        "**/navigation/**",
+        "**/*Navigation*",
+        "**/*Region*",
+        "**/*ViewModel*",
+        "**/Prism/**",
+        "**/Regions/**"
+      ]
+    }
+  ],
+  "analysis_options": {
+    "extract_structure": true,
+    "calculate_complexity": false,
+    "semantic_analysis": true,
+    "xaml_files": {
+      "semantic_analysis": true,
+      "extract_structure": true
+    },
+    "views": {
+      "extract_structure": true,
+      "prioritize_ai_related": true
+    },
+    "region_adapters": {
+      "semantic_analysis": true
+    },
+    "region_manager": {
+      "extract_structure": true
+    }
+  }
+}

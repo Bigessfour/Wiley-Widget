@@ -125,15 +125,15 @@ public partial class AIAssistViewModel : ObservableObject, IDisposable, INavigat
     // Legacy Responses collection removed in favor of ChatMessages/Messages used by SfAIAssistView
     // Evidence for Section 2 Data Binding: Collection views not needed - simple chat list without sort/filter/group per MS doc: "CollectionViewSource used when sorting/filtering/grouping required."
 
-/// <summary>
-/// Represents conversation mode information for UI display
-/// </summary>
-public class ConversationModeInfo
-{
-    public string Name { get; set; }
-    public string Description { get; set; }
-    public string Icon { get; set; }
-}
+    /// <summary>
+    /// Represents conversation mode information for UI display
+    /// </summary>
+    public class ConversationModeInfo
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Icon { get; set; }
+    }
     private string queryText = string.Empty;
 
     public string QueryText
@@ -433,23 +433,23 @@ public class ConversationModeInfo
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
 
-    // ChatMessages is the single source of truth for messages displayed in SfAIAssistView
+        // ChatMessages is the single source of truth for messages displayed in SfAIAssistView
 
-    // Initialize Prism DelegateCommands for UI bindings (replaces CommunityToolkit RelayCommand)
-    SendCommand = new Prism.Commands.DelegateCommand(async () => await Send(), () => CanSend());
-    // Removed ClearResponsesCommand; use ClearChat instead
-    SendMessageCommand = new Prism.Commands.DelegateCommand(async () => await SendMessage(), () => CanSendMessage());
-    GenerateCommand = new Prism.Commands.DelegateCommand(async () => await Generate(), () => CanGenerate());
-    ClearChatCommand = new Prism.Commands.DelegateCommand(ClearChat);
-    ExportChatCommand = new Prism.Commands.DelegateCommand(async () => await ExportChat());
-    ConfigureAICommand = new Prism.Commands.DelegateCommand(ConfigureAI);
-    CalculateServiceChargeCommand = new Prism.Commands.DelegateCommand(async () => await CalculateServiceCharge());
-    GenerateWhatIfScenarioCommand = new Prism.Commands.DelegateCommand(async () => await GenerateWhatIfScenario());
-    GetProactiveAdviceCommand = new Prism.Commands.DelegateCommand(async () => await GetProactiveAdvice());
-    RefreshLiveDataCommand = new Prism.Commands.DelegateCommand(async () => await RefreshLiveData());
-    SetConversationModeCommand = new Prism.Commands.DelegateCommand<string>(SetConversationMode);
-    ApplySuggestionCommand = new Prism.Commands.DelegateCommand<string>(ApplySuggestion);
-    CancelCommand = new Prism.Commands.DelegateCommand(CancelCurrentOperation, () => _currentOperationCts != null);
+        // Initialize Prism DelegateCommands for UI bindings (replaces CommunityToolkit RelayCommand)
+        SendCommand = new Prism.Commands.DelegateCommand(async () => await Send(), () => CanSend());
+        // Removed ClearResponsesCommand; use ClearChat instead
+        SendMessageCommand = new Prism.Commands.DelegateCommand(async () => await SendMessage(), () => CanSendMessage());
+        GenerateCommand = new Prism.Commands.DelegateCommand(async () => await Generate(), () => CanGenerate());
+        ClearChatCommand = new Prism.Commands.DelegateCommand(ClearChat);
+        ExportChatCommand = new Prism.Commands.DelegateCommand(async () => await ExportChat());
+        ConfigureAICommand = new Prism.Commands.DelegateCommand(ConfigureAI);
+        CalculateServiceChargeCommand = new Prism.Commands.DelegateCommand(async () => await CalculateServiceCharge());
+        GenerateWhatIfScenarioCommand = new Prism.Commands.DelegateCommand(async () => await GenerateWhatIfScenario());
+        GetProactiveAdviceCommand = new Prism.Commands.DelegateCommand(async () => await GetProactiveAdvice());
+        RefreshLiveDataCommand = new Prism.Commands.DelegateCommand(async () => await RefreshLiveData());
+        SetConversationModeCommand = new Prism.Commands.DelegateCommand<string>(SetConversationMode);
+        ApplySuggestionCommand = new Prism.Commands.DelegateCommand<string>(ApplySuggestion);
+        CancelCommand = new Prism.Commands.DelegateCommand(CancelCurrentOperation, () => _currentOperationCts != null);
 
         // Subscribe to EventAggregator events for cross-ViewModel communication
         _eventAggregator.GetEvent<EnterpriseChangedMessage>().Subscribe(OnEnterpriseChanged, ThreadOption.UIThread);
@@ -857,11 +857,11 @@ public class ConversationModeInfo
         _currentOperationCts = new CancellationTokenSource();
         var cancellationToken = _currentOperationCts.Token;
 
-    Log.Information("AI request started. CorrelationId: {CorrelationId}, MessageLength: {Length}",
-            correlationId, userMessage.Length);
+        Log.Information("AI request started. CorrelationId: {CorrelationId}, MessageLength: {Length}",
+                correlationId, userMessage.Length);
 
 #if DEBUG
-    var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
 #endif
 
         // Add user message
@@ -895,77 +895,77 @@ public class ConversationModeInfo
             StatusMessage = "Processing your request...";
         });
 
-            try
+        try
+        {
+            // Get AI response with cancellation support and typed result for status
+            if (_aiService is not null)
             {
-                // Get AI response with cancellation support and typed result for status
-                if (_aiService is not null)
+                var typed = await _aiService.GetInsightsWithStatusAsync(
+                    "Wiley Widget Municipal Utility Management Application",
+                    userMessage,
+                    cancellationToken
+                );
+
+                // Check if operation was cancelled
+                cancellationToken.ThrowIfCancellationRequested();
+
+                Log.Information("AI request completed. CorrelationId: {CorrelationId}, Status: {Status}, ResponseLength: {Length}",
+                    correlationId, typed.HttpStatusCode, typed.Content?.Length ?? 0);
+
+                if (typed.HttpStatusCode == 200)
                 {
-                    var typed = await _aiService.GetInsightsWithStatusAsync(
-                        "Wiley Widget Municipal Utility Management Application",
-                        userMessage,
-                        cancellationToken
-                    );
-
-                    // Check if operation was cancelled
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    Log.Information("AI request completed. CorrelationId: {CorrelationId}, Status: {Status}, ResponseLength: {Length}",
-                        correlationId, typed.HttpStatusCode, typed.Content?.Length ?? 0);
-
-                    if (typed.HttpStatusCode == 200)
+                    var aiResponse = typed.Content ?? string.Empty;
+                    // Add AI response on UI thread
+                    _dispatcherHelper.Invoke(() =>
                     {
-                        var aiResponse = typed.Content ?? string.Empty;
-                        // Add AI response on UI thread
-                        _dispatcherHelper.Invoke(() =>
+                        ChatMessages.Add(new ChatMessageModel
                         {
-                            ChatMessages.Add(new ChatMessageModel
-                            {
-                                Text = aiResponse,
-                                IsUser = false,
-                                Timestamp = DateTime.Now
-                            });
-
-                            AiMessages.Add(new TextMessage
-                            {
-                                Text = aiResponse,
-                                Author = new Author { Name = "AI Assistant" },
-                                DateTime = DateTime.Now
-                            });
+                            Text = aiResponse,
+                            IsUser = false,
+                            Timestamp = DateTime.Now
                         });
-                    }
-                    else
-                    {
-                        // Non-success: present friendly message and set error state for UI
-                        var userMsg = typed.Content ?? "AI service returned an error. Please try again.";
-                        Log.Warning("AI service returned status {Status} for CorrelationId {CorrelationId}", typed.HttpStatusCode, correlationId);
 
-                        _dispatcherHelper.Invoke(() =>
+                        AiMessages.Add(new TextMessage
                         {
-                            ChatMessages.Add(new ChatMessageModel
-                            {
-                                Text = userMsg,
-                                IsUser = false,
-                                Timestamp = DateTime.Now
-                            });
-
-                            AiMessages.Add(new TextMessage
-                            {
-                                Text = userMsg,
-                                Author = new Author { Name = "System" },
-                                DateTime = DateTime.Now
-                            });
-
-                            // Surface a more detailed error in the error area
-                            ErrorStateMessage = $"AI Service Error ({typed.HttpStatusCode}): {typed.ErrorCode ?? "Unknown"}";
-                            StatusMessage = userMsg;
+                            Text = aiResponse,
+                            Author = new Author { Name = "AI Assistant" },
+                            DateTime = DateTime.Now
                         });
-                    }
+                    });
                 }
                 else
                 {
-                    throw new InvalidOperationException("AI service not available");
+                    // Non-success: present friendly message and set error state for UI
+                    var userMsg = typed.Content ?? "AI service returned an error. Please try again.";
+                    Log.Warning("AI service returned status {Status} for CorrelationId {CorrelationId}", typed.HttpStatusCode, correlationId);
+
+                    _dispatcherHelper.Invoke(() =>
+                    {
+                        ChatMessages.Add(new ChatMessageModel
+                        {
+                            Text = userMsg,
+                            IsUser = false,
+                            Timestamp = DateTime.Now
+                        });
+
+                        AiMessages.Add(new TextMessage
+                        {
+                            Text = userMsg,
+                            Author = new Author { Name = "System" },
+                            DateTime = DateTime.Now
+                        });
+
+                        // Surface a more detailed error in the error area
+                        ErrorStateMessage = $"AI Service Error ({typed.HttpStatusCode}): {typed.ErrorCode ?? "Unknown"}";
+                        StatusMessage = userMsg;
+                    });
                 }
             }
+            else
+            {
+                throw new InvalidOperationException("AI service not available");
+            }
+        }
         catch (OperationCanceledException)
         {
             // Operation was cancelled - this is expected

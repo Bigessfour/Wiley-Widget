@@ -149,7 +149,7 @@ public static class WpfHostingExtensions
         if (emailSink != null)
         {
             Log.Error("[Bootstrap] ⚠️ EMAIL SINK DETECTED! This should not exist. Section path: {Path}", emailSink.Path);
-            Log.Error("[Bootstrap] Email sink config: {EmailConfig}", string.Join(", ", 
+            Log.Error("[Bootstrap] Email sink config: {EmailConfig}", string.Join(", ",
                 emailSink.GetSection("Args").GetChildren().Select(c => $"{c.Key}={c.Value}")));
         }
         else
@@ -187,7 +187,7 @@ public static class WpfHostingExtensions
         builder.Logging.ClearProviders();
         builder.Logging.AddSerilog(configuredLogger, dispose: true);
 
-        Log.Information("Serilog logging configured from configuration sources for {Environment} environment", 
+        Log.Information("Serilog logging configured from configuration sources for {Environment} environment",
             builder.Environment.EnvironmentName);
     }
 
@@ -209,10 +209,10 @@ public static class WpfHostingExtensions
     {
         // Log connection string for diagnostics
         var connectionString = configuration.GetConnectionString("DefaultConnection");
-        Log.Information("🔗 Connection string loaded from configuration: {HasConnection}, Length: {Length}", 
-            !string.IsNullOrEmpty(connectionString), 
+        Log.Information("🔗 Connection string loaded from configuration: {HasConnection}, Length: {Length}",
+            !string.IsNullOrEmpty(connectionString),
             connectionString?.Length ?? 0);
-        
+
         if (string.IsNullOrEmpty(connectionString))
         {
             Log.Warning("⚠️ DefaultConnection string is missing or empty! Database operations will fail.");
@@ -220,8 +220,8 @@ public static class WpfHostingExtensions
         else
         {
             // Log sanitized version (hide credentials)
-            var sanitized = connectionString.Contains("Password=") 
-                ? connectionString.Substring(0, Math.Min(50, connectionString.Length)) + "..." 
+            var sanitized = connectionString.Contains("Password=")
+                ? connectionString.Substring(0, Math.Min(50, connectionString.Length)) + "..."
                 : connectionString.Substring(0, Math.Min(100, connectionString.Length));
             Log.Debug("Connection string preview: {Preview}", sanitized);
         }
@@ -232,23 +232,23 @@ public static class WpfHostingExtensions
         services.AddEnterpriseDatabaseServices(configuration);
 
         // Critical services - load immediately
-    services.AddSingleton<AuthenticationService>();
+        services.AddSingleton<AuthenticationService>();
         services.AddSingleton<ISyncfusionLicenseService, SyncfusionLicenseService>();
-    services.AddSingleton<ApplicationMetricsService>();
-    services.AddSingleton<SettingsService>();
-    services.AddSingleton<ISettingsService>(sp => sp.GetRequiredService<SettingsService>());
-            // Audit service: structured, append-only, no secrets
-            services.AddSingleton<IAuditService, AuditService>();
+        services.AddSingleton<ApplicationMetricsService>();
+        services.AddSingleton<SettingsService>();
+        services.AddSingleton<ISettingsService>(sp => sp.GetRequiredService<SettingsService>());
+        // Audit service: structured, append-only, no secrets
+        services.AddSingleton<IAuditService, AuditService>();
         services.AddSingleton(ErrorReportingService.Instance);
         services.AddSingleton<LocalizationService>();
         services.AddSingleton<SyncfusionLicenseState>();
         services.AddSingleton<IStartupProgressReporter>(sp => (IStartupProgressReporter)WileyWidget.App.StartupProgress);
-        
+
         // ViewManager removed - MainWindow handles all child view navigation via DockingManager
         // MainWindow lifecycle now handled directly in App.xaml.cs OnStartup
-        
-    services.AddSingleton<ThemeService>();
-    services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
+
+        services.AddSingleton<ThemeService>();
+        services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
         services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
         services.AddMemoryCache();
         services.AddSingleton<IDispatcherHelper, DispatcherHelper>();
@@ -370,7 +370,7 @@ public static class WpfHostingExtensions
             return "Environment";
         }
 
-    return "SecretVault";
+        return "SecretVault";
     }
 
     // Legacy helpers removed: LazyAIService and SplashScreenFactory were refactored out.

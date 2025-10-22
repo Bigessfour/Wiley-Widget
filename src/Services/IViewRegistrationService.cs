@@ -66,7 +66,7 @@ namespace WileyWidget.Services
         {
             Log.Information("ViewRegistrationService: RegisterAllViews() is deprecated");
             Log.Information("View registration is now handled by Prism modules");
-            
+
             // This method is kept for backward compatibility but does nothing
             // All view registration should be done in Prism modules:
             // - DashboardModule registers DashboardView
@@ -148,8 +148,8 @@ namespace WileyWidget.Services
             var result = new RegionValidationResult();
             var requiredRegions = new[]
             {
-                "DashboardRegion", "EnterpriseRegion", "BudgetRegion", 
-                "MunicipalAccountRegion", "UtilityCustomerRegion", 
+                "DashboardRegion", "EnterpriseRegion", "BudgetRegion",
+                "MunicipalAccountRegion", "UtilityCustomerRegion",
                 "ReportsRegion", "AnalyticsRegion",
                 "LeftPanelRegion", "RightPanelRegion", "BottomPanelRegion"
             };
@@ -172,12 +172,12 @@ namespace WileyWidget.Services
             result.ValidRegionsCount = result.ValidRegions.Count;
             result.IsValid = result.MissingRegions.Count == 0;
 
-            Log.Information("Region validation complete: {ValidCount}/{TotalCount} regions valid", 
+            Log.Information("Region validation complete: {ValidCount}/{TotalCount} regions valid",
                 result.ValidRegionsCount, result.TotalRegions);
 
             if (!result.IsValid)
             {
-                Log.Warning("Missing regions: [{MissingRegions}]", 
+                Log.Warning("Missing regions: [{MissingRegions}]",
                     string.Join(", ", result.MissingRegions));
             }
 

@@ -14,9 +14,9 @@ namespace WileyWidget.Startup.Modules
     /// Implements the module pattern described in Prism's module initialization guidance.
     /// </summary>
     [Module(ModuleName = "CoreModule")]
-    public class CoreModule : IModule
+    public class CoreModule : ModuleInitializer
     {
-        public void RegisterTypes(IContainerRegistry containerRegistry)
+        public override void RegisterTypes(IContainerRegistry containerRegistry)
         {
             // Ensure SettingsView can be resolved for navigation scenarios
             containerRegistry.Register<SettingsViewModel>();
@@ -26,25 +26,16 @@ namespace WileyWidget.Startup.Modules
             Log.Debug("CoreModule types registered");
         }
 
-        public void OnInitialized(IContainerProvider containerProvider)
+        protected override void InitializeModule(IContainerProvider containerProvider)
         {
             var moduleHealthService = containerProvider.Resolve<IModuleHealthService>();
             moduleHealthService.RegisterModule("CoreModule");
 
-            try
-            {
-                var regionManager = containerProvider.Resolve<IRegionManager>();
-                regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
+            var regionManager = containerProvider.Resolve<IRegionManager>();
+            regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
 
-                moduleHealthService.MarkModuleInitialized("CoreModule", success: true);
-                Log.Information("CoreModule initialization completed");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "CoreModule failed to initialize");
-                moduleHealthService.MarkModuleInitialized("CoreModule", success: false, errorMessage: ex.Message);
-                throw;
-            }
+            moduleHealthService.MarkModuleInitialized("CoreModule", success: true);
+            Log.Information("CoreModule initialization completed");
         }
     }
 }

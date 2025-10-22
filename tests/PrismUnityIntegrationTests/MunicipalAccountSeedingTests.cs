@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using Prism.Events;
+using Prism.Navigation.Regions;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.ViewModels;
@@ -17,7 +19,9 @@ public class MunicipalAccountSeedingTests
     {
         // Reuse the same configuration as the app via design-time factory
         var factory = new AppDbContextFactory();
-        return factory.CreateDbContext(Array.Empty<string>());
+        var context = factory.CreateDbContext(Array.Empty<string>());
+        context.Database.Migrate();
+        return context;
     }
 
     [Fact(DisplayName = "Seeding inserts 25 Conservation Trust accounts")]

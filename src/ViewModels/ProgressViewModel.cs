@@ -71,7 +71,7 @@ public class ProgressViewModel : AsyncViewModelBase
     public ProgressViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<ProgressViewModel> logger)
         : base(dispatcherHelper, logger)
     {
-    CancelCommand = new Prism.Commands.DelegateCommand(Cancel, CanCancel);
+        CancelCommand = new Prism.Commands.DelegateCommand(Cancel, CanCancel);
         Title = "Operation in Progress";
         Message = "Please wait...";
         IsIndeterminate = true;

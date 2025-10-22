@@ -429,15 +429,15 @@ public partial class BudgetAnalysisViewModel : AsyncViewModelBase
             result.Overview.TotalAccounts = budgetData.Length;
 
             // Calculate key ratios
-            result.Overview.KeyRatios.Add(new KeyValuePair<string, decimal>("Budget Utilization", 
+            result.Overview.KeyRatios.Add(new KeyValuePair<string, decimal>("Budget Utilization",
                 result.Overview.TotalBudget > 0 ? (result.Overview.TotalBalance / result.Overview.TotalBudget) * 100 : 0));
-            result.Overview.KeyRatios.Add(new KeyValuePair<string, decimal>("Average per Account", 
+            result.Overview.KeyRatios.Add(new KeyValuePair<string, decimal>("Average per Account",
                 result.Overview.TotalAccounts > 0 ? result.Overview.TotalBudget / result.Overview.TotalAccounts : 0));
 
             // Populate variance analysis
-            var variances = budgetData.Select(b => 
+            var variances = budgetData.Select(b =>
                 b.BudgetedAmount > 0 ? ((b.ActualAmount - b.BudgetedAmount) / b.BudgetedAmount) * 100 : 0).ToList();
-            
+
             result.Variance.AccountsOverThreshold = variances.Count(v => Math.Abs(v) > 10); // Over 10% variance
             result.Variance.AverageVariancePercent = variances.Any() ? variances.Average() : 0;
 
@@ -478,10 +478,10 @@ public partial class BudgetAnalysisViewModel : AsyncViewModelBase
             if (saveFileDialog.ShowDialog() == true)
             {
                 var filePath = saveFileDialog.FileName;
-                
+
                 // Export data using report export service
                 await _reportExportService.ExportToExcelAsync(FundGridData, filePath);
-                
+
                 Logger.LogInformation("Fund data exported to {FilePath}", filePath);
             }
         }
@@ -513,10 +513,10 @@ public partial class BudgetAnalysisViewModel : AsyncViewModelBase
             if (saveFileDialog.ShowDialog() == true)
             {
                 var filePath = saveFileDialog.FileName;
-                
+
                 // Export data using report export service
                 await _reportExportService.ExportToExcelAsync(DepartmentGridData, filePath);
-                
+
                 Logger.LogInformation("Department data exported to {FilePath}", filePath);
             }
         }

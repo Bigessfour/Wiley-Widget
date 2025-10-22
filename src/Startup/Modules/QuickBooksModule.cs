@@ -23,7 +23,7 @@ namespace WileyWidget.Startup.Modules
             // TODO: QuickBooks initialization temporarily disabled until views are working
             // The QB OAuth2 library has Serilog version conflicts that need to be resolved
             // Enable this after views are rendering and we can access the authentication controls
-            
+
             /* COMMENTED OUT - QB INITIALIZATION DISABLED
             try
             {

@@ -12,11 +12,12 @@ namespace WileyWidget.Views
     /// </summary>
     public partial class EnterpriseDialogView : Window
     {
-    public EnterpriseDialogView()
-    {
-        InitializeComponent();
-        // DataContext will be set by Prism dialog service
-    }        public EnterpriseDialogView(Enterprise enterprise) : this()
+        public EnterpriseDialogView()
+        {
+            InitializeComponent();
+            // DataContext will be set by Prism dialog service
+        }
+        public EnterpriseDialogView(Enterprise enterprise) : this()
         {
             // For backward compatibility - parameters will be handled by ViewModel via IDialogParameters
         }

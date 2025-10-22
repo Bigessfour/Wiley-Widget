@@ -47,7 +47,7 @@ namespace WileyWidget.Tests.Unit
 
             await vm.InitializeAsync();
 
-            Assert.Equal(25, vm.Accounts.Count);
+            Assert.Equal(25, vm.MunicipalAccounts.Count);
         }
 
         [Fact]
@@ -62,9 +62,8 @@ namespace WileyWidget.Tests.Unit
             // Apply filter: TypeDescription == "Cash"
             vm.TypeFilter = "Cash";
 
-            var filtered = vm.AccountsView.Cast<MunicipalAccount>().ToList();
-            Assert.Equal(8, filtered.Count);  // Reduced from 25
-            Assert.All(filtered, account => Assert.Equal("Cash", account.TypeDescription));
+            Assert.Equal(8, ((System.Collections.IEnumerable)vm.Accounts).Cast<MunicipalAccount>().Count());  // Reduced from 25
+            Assert.All(((System.Collections.IEnumerable)vm.Accounts).Cast<MunicipalAccount>(), account => Assert.Equal("Cash", account.TypeDescription));
         }
     }
 }

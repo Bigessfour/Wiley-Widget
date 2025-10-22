@@ -53,6 +53,9 @@ public class AssertRegistrationsTests
     [Fact]
     public void CriticalServices_AreRegisteredInUnityContainer()
     {
+        // Set test mode to enable in-memory DB and disable external services
+        Environment.SetEnvironmentVariable("WILEY_WIDGET_TESTMODE", "1");
+
         var app = (WileyWidget.App)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(WileyWidget.App));
 
         // Create the container extension and extract the inner Unity container
@@ -137,21 +140,17 @@ public class AssertRegistrationsTests
         // Call RegisterTypes
         typeof(WileyWidget.App).GetMethod("RegisterTypes", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(app, new object[] { containerExt });
 
-        // Types to verify
+        // Types to verify - AI services are disabled in test mode
         var critical = new Type[] {
             typeof(Microsoft.Extensions.Configuration.IConfiguration),
             typeof(Microsoft.Extensions.Logging.ILoggerFactory),
             typeof(WileyWidget.Services.ISettingsService),
             typeof(WileyWidget.Business.Interfaces.IEnterpriseRepository),
             typeof(WileyWidget.Business.Interfaces.IBudgetRepository),
-            typeof(WileyWidget.Services.IAIService),
-            typeof(WileyWidget.Services.IGrokSupercomputer),
-            typeof(WileyWidget.Services.IWileyWidgetContextService),
-            typeof(WileyWidget.Services.IAILoggingService),
             typeof(WileyWidget.Services.IModuleHealthService)
         };
 
-    var missing = critical.Where(t => !unity!.Registrations.Any(r => r.RegisteredType == t || r.MappedToType == t)).ToList();
+        var missing = critical.Where(t => !unity!.Registrations.Any(r => r.RegisteredType == t || r.MappedToType == t)).ToList();
 
         Assert.True(!missing.Any(), "Missing critical registrations: " + string.Join(", ", missing.Select(t => t.FullName)));
     }

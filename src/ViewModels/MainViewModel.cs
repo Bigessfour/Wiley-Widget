@@ -251,7 +251,7 @@ namespace WileyWidget.ViewModels
             Logger.LogDebug("Docking visibility update requested: {RegionName} -> {IsVisible}", regionName, isVisible);
         }
 
-    private string currentTheme = "FluentDark";
+        private string currentTheme = "FluentDark";
         public string CurrentTheme
         {
             get => currentTheme;
@@ -275,8 +275,8 @@ namespace WileyWidget.ViewModels
         }
 
         // Theme switching commands
-    public DelegateCommand SwitchToFluentDarkCommand { get; }
-    public DelegateCommand SwitchToFluentLightCommand { get; }
+        public DelegateCommand SwitchToFluentDarkCommand { get; }
+        public DelegateCommand SwitchToFluentLightCommand { get; }
 
         private bool isInitialized;
         public bool IsInitialized
@@ -407,7 +407,7 @@ namespace WileyWidget.ViewModels
 
         // AI Commands
         public DelegateCommand SendAIQueryCommand { get; }
-    public DelegateCommand<ConversationMode?> ChangeConversationModeCommand { get; }
+        public DelegateCommand<ConversationMode?> ChangeConversationModeCommand { get; }
         public DelegateCommand ClearAIInsightsCommand { get; }
 
         // Legacy Commands
@@ -757,9 +757,9 @@ namespace WileyWidget.ViewModels
                     Type = "Water"
                 };
 
-                #if DEBUG
+#if DEBUG
                 DispatcherHelper.EnsureOnUIThread("AddTestEnterpriseAsync");
-                #endif
+#endif
                 await DispatcherHelper.InvokeAsync(() =>
                 {
                     Enterprises.Add(testEnterprise);
@@ -1020,7 +1020,8 @@ namespace WileyWidget.ViewModels
 
                     // Type distribution analysis
                     var typeAnalysis = enterpriseList.GroupBy(e => e.Type)
-                        .Select(g => new {
+                        .Select(g => new
+                        {
                             Type = g.Key,
                             Count = g.Count(),
                             AvgBudget = g.Average(e => e.TotalBudget),
@@ -1054,7 +1055,8 @@ namespace WileyWidget.ViewModels
 
                     // Department analysis
                     var deptAnalysis = budgetList.GroupBy(b => b.DepartmentId)
-                        .Select(g => new {
+                        .Select(g => new
+                        {
                             DeptId = g.Key,
                             Count = g.Count(),
                             TotalBudget = g.Sum(b => b.BudgetedAmount),

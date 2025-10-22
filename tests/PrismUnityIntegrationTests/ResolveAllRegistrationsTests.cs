@@ -5,12 +5,18 @@ using System.Collections.Generic;
 using Prism.Ioc;
 using Unity;
 using Xunit;
+using Microsoft.EntityFrameworkCore;
+using WileyWidget.Data;
 
 public class ResolveAllRegistrationsTests
 {
     [Fact]
     public void AllRegistrations_CanBeResolved()
     {
+        // Set test mode to enable in-memory DB
+        Environment.SetEnvironmentVariable("WILEY_WIDGET_TESTMODE", "1");
+        var testMode = true;
+
         var app = (WileyWidget.App)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(WileyWidget.App));
 
         var createMi = typeof(WileyWidget.App).GetMethod("CreateContainerExtension", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -92,6 +98,22 @@ public class ResolveAllRegistrationsTests
 
         // Call RegisterTypes to populate registrations
         typeof(WileyWidget.App).GetMethod("RegisterTypes", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(app, new object[] { containerExt });
+
+        // In test mode, initialize the in-memory database to ensure repositories can be resolved
+        if (testMode)
+        {
+            try
+            {
+                var factory = unity!.Resolve<IDbContextFactory<AppDbContext>>();
+                using var context = factory.CreateDbContext();
+                context.Database.EnsureCreated();
+                Log.Debug("In-memory database initialized for test mode");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to initialize in-memory database, repository resolution may fail");
+            }
+        }
 
         // Build a list of registrations to try to resolve.
         var registrations = unity!.Registrations.ToList();

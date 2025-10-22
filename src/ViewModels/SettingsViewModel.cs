@@ -28,14 +28,14 @@ namespace WileyWidget.ViewModels
         private readonly ISecretVaultService _secretVaultService;
         private readonly IQuickBooksService _quickBooksService;
         private readonly ISyncfusionLicenseService _syncfusionLicenseService;
-    private readonly IAIService _aiService;
-    private readonly IAuditService _auditService;
+        private readonly IAIService _aiService;
+        private readonly IAuditService _auditService;
         // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles all theming globally
         private readonly ISettingsService _settingsService;
         private readonly IInteractionRequestService _interactionRequestService;
 
         private readonly Dictionary<string, List<string>> _errors = new();
-    public Prism.Commands.DelegateCommand OpenXaiConsoleCommand { get; private set; }
+        public Prism.Commands.DelegateCommand OpenXaiConsoleCommand { get; private set; }
 
         public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
 
@@ -145,7 +145,7 @@ namespace WileyWidget.ViewModels
         partial void OnSelectedThemeChanged(string value)
         {
             IsDarkMode = value?.Contains("Dark", StringComparison.OrdinalIgnoreCase) == true;
-            
+
             // Apply theme globally using SfSkinManager.ApplicationTheme
             // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
             try
@@ -251,17 +251,17 @@ namespace WileyWidget.ViewModels
         [property: Browsable(false)]
         private Brush quickBooksStatusColor = Brushes.Red;
 
-    // QuickBooks URL ACL readiness
-    [ObservableProperty]
-    [property: Category("QuickBooks")]
-    [property: DisplayName("OAuth Callback URL Status")]
-    [property: Description("Checks if the local HTTP listener URL is permitted (URL ACL). Required for OAuth callback.")]
-    [property: ReadOnly(true)]
-    private string quickBooksUrlAclStatus = "Unknown";
+        // QuickBooks URL ACL readiness
+        [ObservableProperty]
+        [property: Category("QuickBooks")]
+        [property: DisplayName("OAuth Callback URL Status")]
+        [property: Description("Checks if the local HTTP listener URL is permitted (URL ACL). Required for OAuth callback.")]
+        [property: ReadOnly(true)]
+        private string quickBooksUrlAclStatus = "Unknown";
 
-    [ObservableProperty]
-    [property: Browsable(false)]
-    private Brush quickBooksUrlAclStatusColor = Brushes.Orange;
+        [ObservableProperty]
+        [property: Browsable(false)]
+        private Brush quickBooksUrlAclStatusColor = Brushes.Orange;
 
         // Syncfusion License
         [ObservableProperty]
@@ -389,13 +389,13 @@ namespace WileyWidget.ViewModels
         [property: Browsable(false)]
         private Brush xaiStatusColor = Brushes.Orange;
 
-    [ObservableProperty]
-    [property: Browsable(false)]
-    private bool isXaiKeyValidated;
+        [ObservableProperty]
+        [property: Browsable(false)]
+        private bool isXaiKeyValidated;
 
-    [ObservableProperty]
-    [property: Browsable(false)]
-    private string xaiValidationMessage = string.Empty;
+        [ObservableProperty]
+        [property: Browsable(false)]
+        private string xaiValidationMessage = string.Empty;
 
         // Fiscal Year Settings
         [ObservableProperty]
@@ -643,35 +643,35 @@ namespace WileyWidget.ViewModels
             if (string.IsNullOrWhiteSpace(value) || value.Length < QuickBooksClientIdMinLength)
             {
                 AddError(nameof(QuickBooksClientId), $"QuickBooks Client ID must be at least {QuickBooksClientIdMinLength} characters.");
+                try
+                {
+                    var envPath = System.IO.Path.Combine(AppContext.BaseDirectory, ".env");
+                    var tmpPath = envPath + ".tmp";
+                    var line = $"XAI_API_KEY={XaiApiKey}\n";
+                    System.IO.File.WriteAllText(tmpPath, line);
+                    if (System.IO.File.Exists(envPath))
+                        System.IO.File.Replace(tmpPath, envPath, null);
+                    else
+                        System.IO.File.Move(tmpPath, envPath);
+
+                    // Apply best-effort file ACL restriction on Windows
                     try
                     {
-                        var envPath = System.IO.Path.Combine(AppContext.BaseDirectory, ".env");
-                        var tmpPath = envPath + ".tmp";
-                        var line = $"XAI_API_KEY={XaiApiKey}\n";
-                        System.IO.File.WriteAllText(tmpPath, line);
-                        if (System.IO.File.Exists(envPath))
-                            System.IO.File.Replace(tmpPath, envPath, null);
+                        var applied = FileSecurityHelper.RestrictFileToCurrentUser(envPath);
+                        if (!applied)
+                            _logger.LogWarning("File ACL restriction not applied to .env (platform or permission issue)");
                         else
-                            System.IO.File.Move(tmpPath, envPath);
-
-                        // Apply best-effort file ACL restriction on Windows
-                        try
-                        {
-                            var applied = FileSecurityHelper.RestrictFileToCurrentUser(envPath);
-                            if (!applied)
-                                _logger.LogWarning("File ACL restriction not applied to .env (platform or permission issue)");
-                            else
-                                _logger.LogInformation("Successfully restricted .env file access to current user only");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to apply file ACLs to .env (non-fatal)");
-                        }
+                            _logger.LogInformation("Successfully restricted .env file access to current user only");
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to write .env entry for XAI_API_KEY (non-fatal)");
+                        _logger.LogWarning(ex, "Failed to apply file ACLs to .env (non-fatal)");
                     }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to write .env entry for XAI_API_KEY (non-fatal)");
+                }
                 AddError(nameof(QuickBooksClientSecret), $"QuickBooks Client Secret must be at least {QuickBooksClientSecretMinLength} characters.");
             }
         }
@@ -686,7 +686,7 @@ namespace WileyWidget.ViewModels
                     AddError(nameof(XaiApiKey), $"XAI API key length must be between {XaiApiKeyExpectedMinLength} and {XaiApiKeyExpectedMaxLength} characters.");
                     return;
                 }
-                
+
                 // Allow optional 'sk-' prefix used by some providers (e.g., OpenAI-like patterns)
                 if (value.StartsWith("sk-", StringComparison.OrdinalIgnoreCase))
                 {
@@ -1016,19 +1016,19 @@ namespace WileyWidget.ViewModels
             }
         }
 
-    public Prism.Commands.DelegateCommand SaveSettingsCommand { get; private set; }
-    public Prism.Commands.DelegateCommand ResetSettingsCommand { get; private set; }
-    public Prism.Commands.DelegateCommand TestConnectionCommand { get; private set; }
-    public Prism.Commands.DelegateCommand TestQuickBooksConnectionCommand { get; private set; }
-    public Prism.Commands.DelegateCommand ConnectQuickBooksCommand { get; private set; }
-    public Prism.Commands.DelegateCommand ValidateLicenseCommand { get; private set; }
-    public Prism.Commands.DelegateCommand TestXaiConnectionCommand { get; private set; }
-    public Prism.Commands.DelegateCommand<string> ValidateXaiKeyCommand { get; private set; }
-    public Prism.Commands.DelegateCommand<string> ValidateAndSaveXaiKeyCommand { get; private set; }
-    public Prism.Commands.DelegateCommand OpenActivateXaiDialogCommand { get; private set; }
-    public Prism.Commands.DelegateCommand SaveFiscalYearSettingsCommand { get; private set; }
-    public Prism.Commands.DelegateCommand CheckQuickBooksUrlAclCommand { get; private set; }
-    private async Task ExecuteSaveSettingsAsync()
+        public Prism.Commands.DelegateCommand SaveSettingsCommand { get; private set; }
+        public Prism.Commands.DelegateCommand ResetSettingsCommand { get; private set; }
+        public Prism.Commands.DelegateCommand TestConnectionCommand { get; private set; }
+        public Prism.Commands.DelegateCommand TestQuickBooksConnectionCommand { get; private set; }
+        public Prism.Commands.DelegateCommand ConnectQuickBooksCommand { get; private set; }
+        public Prism.Commands.DelegateCommand ValidateLicenseCommand { get; private set; }
+        public Prism.Commands.DelegateCommand TestXaiConnectionCommand { get; private set; }
+        public Prism.Commands.DelegateCommand<string> ValidateXaiKeyCommand { get; private set; }
+        public Prism.Commands.DelegateCommand<string> ValidateAndSaveXaiKeyCommand { get; private set; }
+        public Prism.Commands.DelegateCommand OpenActivateXaiDialogCommand { get; private set; }
+        public Prism.Commands.DelegateCommand SaveFiscalYearSettingsCommand { get; private set; }
+        public Prism.Commands.DelegateCommand CheckQuickBooksUrlAclCommand { get; private set; }
+        private async Task ExecuteSaveSettingsAsync()
         {
             try
             {
@@ -1089,25 +1089,25 @@ namespace WileyWidget.ViewModels
                 // Save general settings to database using async EF operations
                 var settings = await _dbContext.AppSettings.FindAsync(1);
 
-                    if (settings == null)
+                if (settings == null)
+                {
+                    settings = new Models.AppSettings
                     {
-                        settings = new Models.AppSettings
-                        {
-                            Id = 1,
-                            Theme = SelectedTheme,
-                            WindowWidth = WindowWidth,
-                            WindowHeight = WindowHeight,
-                            WindowMaximized = MaximizeOnStartup
-                        };
-                        _dbContext.AppSettings.Add(settings);
-                    }
-                    else
-                    {
-                        settings.Theme = SelectedTheme;
-                        settings.WindowWidth = WindowWidth;
-                        settings.WindowHeight = WindowHeight;
-                        settings.WindowMaximized = MaximizeOnStartup;
-                    }
+                        Id = 1,
+                        Theme = SelectedTheme,
+                        WindowWidth = WindowWidth,
+                        WindowHeight = WindowHeight,
+                        WindowMaximized = MaximizeOnStartup
+                    };
+                    _dbContext.AppSettings.Add(settings);
+                }
+                else
+                {
+                    settings.Theme = SelectedTheme;
+                    settings.WindowWidth = WindowWidth;
+                    settings.WindowHeight = WindowHeight;
+                    settings.WindowMaximized = MaximizeOnStartup;
+                }
 
                 await _unitOfWork.SaveChangesAsync();
             }
@@ -1243,29 +1243,29 @@ namespace WileyWidget.ViewModels
                 // Save advanced settings to database using async EF operations
                 var settings = await _dbContext.AppSettings.FindAsync(1);
 
-                    if (settings == null)
+                if (settings == null)
+                {
+                    settings = new Models.AppSettings
                     {
-                        settings = new Models.AppSettings
-                        {
-                            Id = 1,
-                            UseDynamicColumns = EnableDynamicColumns,
-                            EnableDataCaching = EnableDataCaching,
-                            CacheExpirationMinutes = CacheExpirationMinutes,
-                            SelectedLogLevel = SelectedLogLevel,
-                            EnableFileLogging = EnableFileLogging,
-                            LogFilePath = LogFilePath
-                        };
-                        _dbContext.AppSettings.Add(settings);
-                    }
-                    else
-                    {
-                        settings.UseDynamicColumns = EnableDynamicColumns;
-                        settings.EnableDataCaching = EnableDataCaching;
-                        settings.CacheExpirationMinutes = CacheExpirationMinutes;
-                        settings.SelectedLogLevel = SelectedLogLevel;
-                        settings.EnableFileLogging = EnableFileLogging;
-                        settings.LogFilePath = LogFilePath;
-                    }
+                        Id = 1,
+                        UseDynamicColumns = EnableDynamicColumns,
+                        EnableDataCaching = EnableDataCaching,
+                        CacheExpirationMinutes = CacheExpirationMinutes,
+                        SelectedLogLevel = SelectedLogLevel,
+                        EnableFileLogging = EnableFileLogging,
+                        LogFilePath = LogFilePath
+                    };
+                    _dbContext.AppSettings.Add(settings);
+                }
+                else
+                {
+                    settings.UseDynamicColumns = EnableDynamicColumns;
+                    settings.EnableDataCaching = EnableDataCaching;
+                    settings.CacheExpirationMinutes = CacheExpirationMinutes;
+                    settings.SelectedLogLevel = SelectedLogLevel;
+                    settings.EnableFileLogging = EnableFileLogging;
+                    settings.LogFilePath = LogFilePath;
+                }
 
                 await _unitOfWork.SaveChangesAsync();
             }
@@ -1459,13 +1459,13 @@ namespace WileyWidget.ViewModels
                     AddError(nameof(XaiApiKey), message);
                     XaiConnectionStatus = "Validation Failed";
                     XaiStatusColor = Brushes.Red;
-                        // Audit failed validation
-                        try
-                        {
-                            var fingerprint = ComputeKeyFingerprint(apiKey);
-                            await _auditService.AuditAsync("XAI.KeyValidationFailed", new { Provider = "xAI", Fingerprint = fingerprint, Reason = message, User = Environment.UserName, Machine = Environment.MachineName });
-                        }
-                        catch { }
+                    // Audit failed validation
+                    try
+                    {
+                        var fingerprint = ComputeKeyFingerprint(apiKey);
+                        await _auditService.AuditAsync("XAI.KeyValidationFailed", new { Provider = "xAI", Fingerprint = fingerprint, Reason = message, User = Environment.UserName, Machine = Environment.MachineName });
+                    }
+                    catch { }
                 }
             }
             catch (Exception ex)
@@ -1553,9 +1553,9 @@ namespace WileyWidget.ViewModels
             }
         }
 
-    // Public wrappers for UI code-behind to call validation/save asynchronously
-    public Task ValidateXaiKeyAsyncPublic(string? apiKey) => ExecuteValidateXaiKeyAsync(apiKey);
-    public Task ValidateAndSaveXaiKeyAsyncPublic(string? apiKey) => ExecuteValidateAndSaveXaiKeyAsync(apiKey);
+        // Public wrappers for UI code-behind to call validation/save asynchronously
+        public Task ValidateXaiKeyAsyncPublic(string? apiKey) => ExecuteValidateXaiKeyAsync(apiKey);
+        public Task ValidateAndSaveXaiKeyAsyncPublic(string? apiKey) => ExecuteValidateAndSaveXaiKeyAsync(apiKey);
 
         private async Task<bool> TestXaiConnectionInternalAsync(string? apiKey = null)
         {
@@ -1696,7 +1696,7 @@ namespace WileyWidget.ViewModels
                 }
 
                 await _unitOfWork.SaveChangesAsync();
-                
+
                 await LoadFiscalYearDisplayAsync();
 
                 SettingsStatus = "Fiscal year settings saved successfully";
@@ -1722,7 +1722,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 var fySettings = await _dbContext.FiscalYearSettings.FindAsync(1);
-                
+
                 if (fySettings != null)
                 {
                     FiscalYearStartMonth = fySettings.FiscalYearStartMonth;
@@ -1730,11 +1730,11 @@ namespace WileyWidget.ViewModels
 
                     var fyStart = fySettings.GetCurrentFiscalYearStart(DateTime.Now);
                     var fyEnd = fySettings.GetCurrentFiscalYearEnd(DateTime.Now);
-                    
+
                     var fyNumber = fyStart.Month >= 7 ? fyStart.Year + 1 : fyStart.Year;
                     CurrentFiscalYearDisplay = $"FY{fyStart.Year}-{fyEnd.Year}";
                     FiscalYearPeriodDisplay = $"{fyStart:MMMM d, yyyy} - {fyEnd:MMMM d, yyyy}";
-                    
+
                     var daysRemaining = (int)(fyEnd - DateTime.Now).TotalDays;
                     DaysRemainingInFiscalYear = Math.Max(0, daysRemaining);
 

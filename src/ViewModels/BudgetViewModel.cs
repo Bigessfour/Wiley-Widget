@@ -395,7 +395,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
     private void OnEnterpriseChanged(EnterpriseChangedMessage message)
     {
         // Automatically refresh budget data when enterprises change
-        Log.Information("Received EnterpriseChangedMessage: {EnterpriseName} ({ChangeType})", 
+        Log.Information("Received EnterpriseChangedMessage: {EnterpriseName} ({ChangeType})",
             message.EnterpriseName, message.ChangeType);
         _ = RefreshBudgetDataAsync();
     }
@@ -431,15 +431,15 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
 
     private void InitializeCommands()
     {
-    RefreshBudgetDataCommand = new DelegateCommand(async () => await RefreshBudgetDataAsync(), () => !IsBusy && !IsLoading);
+        RefreshBudgetDataCommand = new DelegateCommand(async () => await RefreshBudgetDataAsync(), () => !IsBusy && !IsLoading);
         BreakEvenAnalysisCommand = new DelegateCommand(BreakEvenAnalysis, CanRunAnalysis);
         TrendAnalysisCommand = new DelegateCommand(TrendAnalysis, CanRunAnalysis);
         ExportReportCommand = new DelegateCommand(ExportReport, CanRunAnalysis);
-    ToggleFiscalYearCommand = new DelegateCommand(async () => await ToggleFiscalYearAsync(), CanToggleFiscalYear);
-    SaveConfirmationCommand = new DelegateCommand(async () => await SaveConfirmationAsync(), CanSaveBudget);
+        ToggleFiscalYearCommand = new DelegateCommand(async () => await ToggleFiscalYearAsync(), CanToggleFiscalYear);
+        SaveConfirmationCommand = new DelegateCommand(async () => await SaveConfirmationAsync(), CanSaveBudget);
         NavigateToMunicipalAccountCommand = new DelegateCommand(NavigateToMunicipalAccount, () => !IsBusy);
-    ImportBudgetCommand = new DelegateCommand(async () => await ImportBudgetAsync(), () => !IsBusy && !IsLoading);
-    ExportBudgetCommand = new DelegateCommand(async () => await ExportBudgetAsync(), () => !IsBusy && BudgetAccounts.Any());
+        ImportBudgetCommand = new DelegateCommand(async () => await ImportBudgetAsync(), () => !IsBusy && !IsLoading);
+        ExportBudgetCommand = new DelegateCommand(async () => await ExportBudgetAsync(), () => !IsBusy && BudgetAccounts.Any());
         AddAccountCommand = new DelegateCommand(AddAccount, () => !IsBusy);
         DeleteAccountCommand = new DelegateCommand(DeleteAccount, () => !IsBusy);
 
@@ -587,8 +587,8 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
                     Id = account.Id,
                     AccountNumber = account.AccountNumber,
                     Description = account.Description,
-                    FundType = Enum.TryParse<WileyWidget.Models.Entities.FundType>(account.FundType, out var fundType) 
-                        ? fundType 
+                    FundType = Enum.TryParse<WileyWidget.Models.Entities.FundType>(account.FundType, out var fundType)
+                        ? fundType
                         : WileyWidget.Models.Entities.FundType.GeneralFund,
                     BudgetedAmount = account.BudgetAmount,
                     ActualAmount = account.ActualAmount,
@@ -711,7 +711,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
     /// <summary>
     /// Constructor with dependency injection (original signature for backward compatibility)
     /// </summary>
-    public BudgetViewModel(IEnterpriseRepository enterpriseRepository) 
+    public BudgetViewModel(IEnterpriseRepository enterpriseRepository)
         : this(enterpriseRepository, null!, null!)
     {
         // Fallback constructor - budget repository and event aggregator will be null

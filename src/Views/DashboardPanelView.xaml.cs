@@ -60,7 +60,7 @@ public partial class DashboardPanelView : UserControl
         // Data loading is handled by ViewModel constructor - no need to load again
         // if (_viewModel != null)
         //     await _viewModel.LoadDashboardDataAsync();
-        
+
         Log.Debug("DashboardPanelView loaded successfully - using shared ViewModel data");
     }
 

@@ -9,15 +9,20 @@ for Large Language Models (LLMs) and AI systems.
 The generated manifest includes:
 - File URLs (both blob and raw for GitHub)
 - File metadata (size, timestamps, extensions)
-- Language detection
-- Repository information
+- Language detection and content summaries
+- Repository information and statistics
+- Security filtering for sensitive files
+- Semantic search index with concepts
+- Parallel processing for performance
+- Configurable analysis options
 - Structured data for AI consumption
 
-Best practices incorporated:
-- Clear documentation and structure
-- Comprehensive metadata for context
-- Standardized URL formats
-- Extensible design for additional context
+Enhanced features for Grok-4 and other AI systems:
+- AI-friendly content summaries with code structure extraction
+- Security-aware filtering to exclude sensitive files
+- Semantic indexing for concept-based discovery
+- Parallel processing for large repositories
+- Configurable behavior via .ai-manifest-config.json
 """
 
 import datetime
@@ -28,6 +33,7 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Any, List, Optional, Set
+import concurrent.futures
 
 
 class RepoManifestGenerator:
@@ -82,10 +88,42 @@ class RepoManifestGenerator:
         ".gitattributes": "Git Attributes",
     }
 
+    def _load_config(self) -> dict[str, Any]:
+        """Load configuration from .ai-manifest-config.json if it exists."""
+        config_path = self.repo_path / ".ai-manifest-config.json"
+        default_config = {
+            "max_summary_length": 1000,
+            "max_file_size_for_summary": 100000,
+            "parallel_workers": 4,
+            "exclude_patterns": [
+                r'\.env', r'secret', r'password', r'token', r'key',
+                r'config.*secret', r'private.*key', r'\.pem$', r'\.key$',
+                r'credentials', r'auth', r'login'
+            ],
+            "custom_categories": {},
+            "analysis_options": {
+                "extract_structure": True,
+                "calculate_complexity": False,
+                "semantic_analysis": False
+            }
+        }
+
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    user_config = json.load(f)
+                # Merge user config with defaults
+                default_config.update(user_config)
+            except Exception as e:
+                print(f"Warning: Could not load config file {config_path}: {e}")
+
+        return default_config
+
     def __init__(
         self, repo_path: str = ".", include_categories: Optional[List[str]] = None
     ):
         self.repo_path = Path(repo_path).resolve()
+        self.config = self._load_config()
         self.repo_info = self._get_repo_info()
         self.tracked_files = self._get_tracked_files()
         # Normalize include categories to a lowercase set for fast checks
@@ -182,6 +220,102 @@ class RepoManifestGenerator:
                         metadata["sha256"] = hashlib.sha256(f.read()).hexdigest()
             except Exception:
                 metadata["is_binary"] = True
+
+        return metadata
+
+    def _get_file_summary(self, file_path: str, metadata: dict[str, Any]) -> str:
+        """Generate AI-friendly file summaries."""
+        max_size = self.config.get("max_file_size_for_summary", 100000)
+        if metadata["is_binary"] or metadata["size"] > max_size:
+            return "Binary or large file - content not summarized"
+
+        try:
+            with open(self.repo_path / file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read(5000)  # First 5KB
+
+            # Extract key information based on file type
+            if self.config.get("analysis_options", {}).get("extract_structure", True):
+                if file_path.endswith('.py'):
+                    summary = self._extract_python_structure(content)
+                elif file_path.endswith('.cs'):
+                    summary = self._extract_csharp_structure(content)
+                elif file_path.endswith('.md'):
+                    summary = self._extract_markdown_structure(content)
+                elif file_path.endswith('.json'):
+                    summary = self._extract_json_structure(content)
+                else:
+                    # Generic summary: first few lines + key patterns
+                    lines = content.split('\n')[:10]
+                    summary = '\n'.join(lines)
+            else:
+                lines = content.split('\n')[:10]
+                summary = '\n'.join(lines)
+
+            max_length = self.config.get("max_summary_length", 1000)
+            return summary[:max_length]
+        except Exception:
+            return "Unable to generate summary"
+
+    def _extract_python_structure(self, content: str) -> str:
+        """Extract Python code structure."""
+        lines = content.split('\n')
+        structure = []
+
+        for line in lines[:50]:  # First 50 lines
+            line = line.strip()
+            if line.startswith('class ') or line.startswith('def ') or line.startswith('import ') or line.startswith('from '):
+                structure.append(line)
+
+        return '\n'.join(structure) if structure else "Python file with no clear structure detected"
+
+    def _extract_csharp_structure(self, content: str) -> str:
+        """Extract C# code structure."""
+        lines = content.split('\n')
+        structure = []
+
+        for line in lines[:50]:  # First 50 lines
+            line = line.strip()
+            if (line.startswith('class ') or line.startswith('interface ') or
+                line.startswith('public ') or line.startswith('private ') or
+                line.startswith('protected ') or line.startswith('internal ') or
+                line.startswith('using ')):
+                structure.append(line)
+
+        return '\n'.join(structure) if structure else "C# file with no clear structure detected"
+
+    def _extract_markdown_structure(self, content: str) -> str:
+        """Extract Markdown structure."""
+        lines = content.split('\n')
+        structure = []
+
+        for line in lines[:30]:  # First 30 lines
+            if line.startswith('#'):
+                structure.append(line)
+
+        return '\n'.join(structure) if structure else "Markdown file with no headings detected"
+
+    def _extract_json_structure(self, content: str) -> str:
+        """Extract JSON structure."""
+        try:
+            data = json.loads(content)
+            if isinstance(data, dict):
+                keys = list(data.keys())[:10]
+                return f"JSON object with keys: {', '.join(keys)}"
+            elif isinstance(data, list):
+                return f"JSON array with {len(data)} items"
+            else:
+                return f"JSON {type(data).__name__}"
+        except:
+            return "Invalid JSON or unable to parse"
+
+    def _should_exclude_file(self, file_path: str) -> bool:
+        """Check if file should be excluded for security/privacy."""
+        exclude_patterns = self.config.get("exclude_patterns", [
+            r'\.env', r'secret', r'password', r'token', r'key',
+            r'config.*secret', r'private.*key', r'\.pem$', r'\.key$',
+            r'credentials', r'auth', r'login'
+        ])
+        return any(re.search(pattern, file_path, re.IGNORECASE) for pattern in exclude_patterns)
 
         return metadata
 
@@ -332,6 +466,9 @@ class RepoManifestGenerator:
             # Best-effort heuristics; ignore failures silently
             pass
 
+        # Add AI-friendly content summary
+        context["summary"] = self._get_file_summary(file_path, metadata)
+
         return context
 
     def _should_include(self, category: str) -> bool:
@@ -397,10 +534,9 @@ class RepoManifestGenerator:
         """Generate the complete repository manifest."""
         print(f"Generating manifest for {len(self.tracked_files)} tracked files...")
 
-        files_data = []
-        for file_path in self.tracked_files:
+        def process_file(file_path: str) -> dict[str, Any] | None:
             if not file_path.strip():
-                continue
+                return None
 
             metadata = self._get_file_metadata(file_path)
             urls = self._generate_file_urls(file_path)
@@ -408,11 +544,23 @@ class RepoManifestGenerator:
 
             # Apply category filter early if requested
             if not self._should_include(context["category"]):
-                continue
+                return None
 
-            file_entry = {"metadata": metadata, "urls": urls, "context": context}
+            # Apply security filter to exclude sensitive files
+            if self._should_exclude_file(file_path):
+                return None
 
-            files_data.append(file_entry)
+            return {"metadata": metadata, "urls": urls, "context": context}
+
+        # Use parallel processing for better performance
+        files_data = []
+        max_workers = self.config.get("parallel_workers", 4)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_file, fp) for fp in self.tracked_files]
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                if result:
+                    files_data.append(result)
 
         # Sort files by path for consistent output
         files_data.sort(key=lambda x: x["metadata"]["path"])
@@ -444,7 +592,51 @@ class RepoManifestGenerator:
         # Build search index
         manifest["search_index"] = self._collect_search_terms(files_data)
 
+        # Add semantic index for enhanced AI discovery
+        manifest["semantic_index"] = self._build_semantic_index(files_data)
+
         return manifest
+
+    def _build_semantic_index(self, files_data: list[dict[str, Any]]) -> dict[str, Any]:
+        """Build semantic search index with concepts and relationships."""
+        semantic_data = {
+            "concepts": set(),
+            "relationships": [],
+            "clusters": {},
+            "important_files": []
+        }
+
+        # Extract concepts from file names and content
+        for file_entry in files_data:
+            path = file_entry["metadata"]["path"]
+            context = file_entry["context"]
+
+            # Add important files
+            if context.get("importance") == "high":
+                semantic_data["important_files"].append({
+                    "path": path,
+                    "category": context.get("category"),
+                    "description": context.get("description")
+                })
+
+            # Extract concepts from path
+            path_parts = re.split(r'[\\/._-]', path.lower())
+            for part in path_parts:
+                if len(part) > 3 and part not in {'src', 'test', 'docs', 'scripts'}:
+                    semantic_data["concepts"].add(part)
+
+            # Extract from summary if available
+            summary = context.get("summary", "")
+            if summary and summary != "Unable to generate summary":
+                words = re.findall(r'\b\w{4,}\b', summary.lower())
+                for word in words:
+                    if word not in {'file', 'class', 'function', 'method', 'code', 'data'}:
+                        semantic_data["concepts"].add(word)
+
+        # Convert sets to sorted lists for JSON serialization
+        semantic_data["concepts"] = sorted(list(semantic_data["concepts"]))[:200]  # Limit size
+
+        return semantic_data
 
     def save_manifest(self, output_path: str | None = None) -> str:
         """Generate and save the manifest to a file."""
@@ -508,6 +700,10 @@ def main():
     print("- Comprehensive metadata for AI context")
     print("- File categorization and importance levels")
     print("- Language detection and statistics")
+    print("- AI-friendly content summaries")
+    print("- Security-filtered sensitive files")
+    print("- Semantic search index and concepts")
+    print("- Parallel processing for performance")
     print("- Structured data for LLM consumption")
 
 

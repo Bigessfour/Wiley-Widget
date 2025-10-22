@@ -42,7 +42,7 @@ namespace WileyWidget.Services
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
             _auditRepository = auditRepository ?? throw new ArgumentNullException(nameof(auditRepository));
             _anonymizerService = anonymizerService ?? throw new ArgumentNullException(nameof(anonymizerService));
-            
+
             _logger.LogInformation("WileyWidgetContextService initialized with data anonymization support");
         }
 
@@ -71,10 +71,10 @@ namespace WileyWidget.Services
             // Aggregate active enterprises (with anonymization for privacy)
             var enterprises = await _enterpriseRepository.GetAllAsync();
             var activeEnterprises = enterprises.Where(e => e.Status == EnterpriseStatus.Active).ToList();
-            
+
             _logger.LogInformation("Anonymizing {Count} active enterprises for AI context", activeEnterprises.Count);
             var anonymizedEnterprises = _anonymizerService.AnonymizeEnterprises(activeEnterprises).ToList();
-            
+
             sb.AppendLine("Active Enterprises (Anonymized for Privacy):");
             foreach (var ent in anonymizedEnterprises)
             {

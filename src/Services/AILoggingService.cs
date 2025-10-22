@@ -50,7 +50,7 @@ namespace WileyWidget.Services
                     retainedFileCountLimit: 30)
                 .CreateLogger();
 
-            _logger.LogInformation("AILoggingService initialized with dedicated Serilog file sink at {LogPath}", 
+            _logger.LogInformation("AILoggingService initialized with dedicated Serilog file sink at {LogPath}",
                 Path.Combine(logsDirectory, "ai-usage.log"));
         }
 
@@ -118,10 +118,10 @@ namespace WileyWidget.Services
 
                 _aiUsageLogger.Information(
                     "AI Response | Response Time: {ResponseTime}ms | Tokens: {Tokens} | Response Length: {ResponseLength} | Query: {Query} | Response: {Response}",
-                    responseTimeMs, tokensUsed, response?.Length ?? 0, 
+                    responseTimeMs, tokensUsed, response?.Length ?? 0,
                     TruncateForLog(query, 100), TruncateForLog(response, 300));
 
-                _logger.LogDebug("Logged AI response: ResponseTime={ResponseTime}ms, TokensUsed={Tokens}", 
+                _logger.LogDebug("Logged AI response: ResponseTime={ResponseTime}ms, TokensUsed={Tokens}",
                     responseTimeMs, tokensUsed);
             }
             catch (Exception ex)

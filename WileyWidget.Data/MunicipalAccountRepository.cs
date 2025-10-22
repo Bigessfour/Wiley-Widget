@@ -51,6 +51,15 @@ namespace WileyWidget.Data
             return list;
         }
 
+        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(string typeFilter)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.MunicipalAccounts
+                .Where(a => a.TypeDescription == typeFilter)
+                .OrderBy(ma => ma.AccountNumber!.Value)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<MunicipalAccount>> GetActiveAsync()
         {
             using var context = await _contextFactory.CreateDbContextAsync();

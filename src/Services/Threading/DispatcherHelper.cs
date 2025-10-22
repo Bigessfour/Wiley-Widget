@@ -28,7 +28,7 @@ public class DispatcherHelper : IDispatcherHelper
     {
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
-    
+
     public DispatcherHelper(Dispatcher dispatcher, ILogger<DispatcherHelper> logger)
     {
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
@@ -53,7 +53,7 @@ public class DispatcherHelper : IDispatcherHelper
 
         var callingThreadId = Thread.CurrentThread.ManagedThreadId;
         var uiThreadId = _dispatcher.Thread.ManagedThreadId;
-        
+
         if (CheckAccess())
         {
             _logger?.LogTrace("Dispatcher.Invoke - Already on UI thread (ThreadId: {ThreadId})", callingThreadId);
@@ -61,7 +61,7 @@ public class DispatcherHelper : IDispatcherHelper
         }
         else
         {
-            _logger?.LogTrace("Dispatcher.Invoke - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}", 
+            _logger?.LogTrace("Dispatcher.Invoke - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}",
                 callingThreadId, uiThreadId);
             _dispatcher.Invoke(action);
         }
@@ -79,7 +79,7 @@ public class DispatcherHelper : IDispatcherHelper
 
         var callingThreadId = Thread.CurrentThread.ManagedThreadId;
         var uiThreadId = _dispatcher.Thread.ManagedThreadId;
-        
+
         if (CheckAccess())
         {
             _logger?.LogTrace("Dispatcher.Invoke<T> - Already on UI thread (ThreadId: {ThreadId})", callingThreadId);
@@ -87,7 +87,7 @@ public class DispatcherHelper : IDispatcherHelper
         }
         else
         {
-            _logger?.LogTrace("Dispatcher.Invoke<T> - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}", 
+            _logger?.LogTrace("Dispatcher.Invoke<T> - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}",
                 callingThreadId, uiThreadId);
             return _dispatcher.Invoke(func);
         }
@@ -126,8 +126,8 @@ public class DispatcherHelper : IDispatcherHelper
 
         var callingThreadId = Thread.CurrentThread.ManagedThreadId;
         var uiThreadId = _dispatcher.Thread.ManagedThreadId;
-        
-        _logger?.LogTrace("Dispatcher.InvokeAsync - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}", 
+
+        _logger?.LogTrace("Dispatcher.InvokeAsync - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}",
             priority, callingThreadId, uiThreadId);
 
         return _dispatcher.InvokeAsync(action, priority).Task;
@@ -146,8 +146,8 @@ public class DispatcherHelper : IDispatcherHelper
 
         var callingThreadId = Thread.CurrentThread.ManagedThreadId;
         var uiThreadId = _dispatcher.Thread.ManagedThreadId;
-        
-        _logger?.LogTrace("Dispatcher.InvokeAsync<T> - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}", 
+
+        _logger?.LogTrace("Dispatcher.InvokeAsync<T> - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}",
             priority, callingThreadId, uiThreadId);
 
         return _dispatcher.InvokeAsync(func, priority).Task;

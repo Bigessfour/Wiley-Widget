@@ -27,7 +27,7 @@ public class CurrencyFormatConverter : IValueConverter
         {
             return intValue.ToString("C", CultureInfo.CurrentCulture);
         }
-        
+
         return value?.ToString() ?? string.Empty;
     }
 

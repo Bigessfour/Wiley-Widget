@@ -30,7 +30,7 @@ namespace WileyWidget.Views
         public MainWindow(IRegionManager regionManager, MainViewModel viewModel)
         {
             Log.Debug("MainWindow: Constructor called");
-            
+
             _regionManager = regionManager;
             _viewModel = viewModel;
 
@@ -40,9 +40,9 @@ namespace WileyWidget.Views
                 Interval = TimeSpan.FromMilliseconds(500) // 500ms debounce
             };
             _saveStateTimer.Tick += SaveStateTimer_Tick;
-            
+
             InitializeComponent();
-            
+
             // Add event handlers for diagnostics
             Loaded += MainWindow_Loaded;
             Closed += MainWindow_Closed;
@@ -56,7 +56,7 @@ namespace WileyWidget.Views
                 _viewModel.PropertyChanged += ViewModel_PropertyChanged;
                 DataContext = _viewModel; // Set DataContext for bindings
             }
-            
+
             Log.Debug("MainWindow: Constructor completed, event handlers attached");
         }
 
@@ -101,12 +101,12 @@ namespace WileyWidget.Views
             // Memory tracking - before
             var gcMemoryBefore = GC.GetTotalMemory(forceFullCollection: false);
             var workingSetBefore = Environment.WorkingSet;
-            
+
             Log.Information("MainWindow: Loaded event - Size: {Width}x{Height}, Position: ({Left}, {Top}), State: {State}, Visible: {IsVisible}",
                 ActualWidth, ActualHeight, Left, Top, WindowState, IsVisible);
-            Log.Information("Memory Before Load - GC: {GCMemory:N0} bytes, WorkingSet: {WorkingSet:N0} bytes", 
+            Log.Information("Memory Before Load - GC: {GCMemory:N0} bytes, WorkingSet: {WorkingSet:N0} bytes",
                 gcMemoryBefore, workingSetBefore);
-            
+
             // Step 1: Set DataContext first to ensure ViewModel is available
             if (_viewModel != null)
             {
@@ -118,32 +118,32 @@ namespace WileyWidget.Views
             {
                 Log.Warning("MainViewModel was not injected via constructor");
             }
-            
+
             // Step 2: Initialize Prism regions after DataContext is set
             InitializePrismRegions();
-            
+
             // Step 3: Verify region status and log for diagnostics
             LogRegionStatus();
-            
+
             // Step 4: Load docking state with enhanced error handling
             LoadDockStateWithFallback();
-                
+
             // Log content control state
             var contentControl = Content as System.Windows.Controls.ContentControl;
             if (contentControl != null)
             {
                 Log.Information("MainWindow: ContentControl - ActualSize: {Width}x{Height}, Content: {ContentType}",
-                    contentControl.ActualWidth, contentControl.ActualHeight, 
+                    contentControl.ActualWidth, contentControl.ActualHeight,
                     contentControl.Content?.GetType().Name ?? "null");
             }
-            
+
             // Memory tracking - after
             var gcMemoryAfter = GC.GetTotalMemory(forceFullCollection: false);
             var workingSetAfter = Environment.WorkingSet;
             var gcMemoryDelta = gcMemoryAfter - gcMemoryBefore;
             var workingSetDelta = workingSetAfter - workingSetBefore;
-            
-            Log.Information("Memory After Load - GC: {GCMemory:N0} bytes (+{Delta:N0}), WorkingSet: {WorkingSet:N0} bytes (+{WSDelta:N0})", 
+
+            Log.Information("Memory After Load - GC: {GCMemory:N0} bytes (+{Delta:N0}), WorkingSet: {WorkingSet:N0} bytes (+{WSDelta:N0})",
                 gcMemoryAfter, gcMemoryDelta, workingSetAfter, workingSetDelta);
             Log.Information("Total Memory Impact - GC Delta: {GCDeltaMB:F2} MB, WorkingSet Delta: {WSDeltaMB:F2} MB",
                 gcMemoryDelta / 1024.0 / 1024.0, workingSetDelta / 1024.0 / 1024.0);
@@ -173,7 +173,7 @@ namespace WileyWidget.Views
         private void MainWindow_Closed(object sender, System.EventArgs e)
         {
             Log.Information("MainWindow: Closed event - Saving docking state");
-            
+
             // Save docking state
             try
             {
@@ -197,7 +197,7 @@ namespace WileyWidget.Views
         private void DockingManager_DockStateChanged(object sender, System.EventArgs e)
         {
             Log.Debug("DockingManager: DockStateChanged event");
-            
+
             // Use Dispatcher to ensure UI updates happen on UI thread
             Dispatcher.Invoke(() =>
             {
@@ -235,7 +235,7 @@ namespace WileyWidget.Views
         private void DockingManager_ActiveWindowChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             Log.Debug("DockingManager: ActiveWindowChanged event");
-            
+
             // Use Dispatcher to ensure UI updates happen on UI thread
             Dispatcher.Invoke(() =>
             {
@@ -250,7 +250,7 @@ namespace WileyWidget.Views
 
                     if (dockingManager.ActiveWindow != null)
                     {
-                        Log.Information("Active window changed to: {WindowName}", 
+                        Log.Information("Active window changed to: {WindowName}",
                             dockingManager.ActiveWindow.Name ?? dockingManager.ActiveWindow.GetType().Name);
                     }
                 }
@@ -261,7 +261,7 @@ namespace WileyWidget.Views
         private void DockingManager_WindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             Log.Debug("DockingManager: WindowClosing event for window");
-            
+
             // Add any cleanup logic here if needed
             // e.Cancel = true; // Uncomment to prevent closing
         }
@@ -269,7 +269,7 @@ namespace WileyWidget.Views
         private void DockingManager_WindowClosed(object sender, System.EventArgs e)
         {
             Log.Information("DockingManager: Window closed");
-            
+
             // Handle window closed event - update region states
             Dispatcher.Invoke(() =>
             {
@@ -326,30 +326,31 @@ namespace WileyWidget.Views
                         using (IsolatedStorageFileStream isoStream = new IsolatedStorageFileStream("DockingLayout.xml", FileMode.Open, isoStorage))
                         {
                             XDocument doc = XDocument.Load(isoStream);
-                            
-// Comprehensive validation and filtering of DockState values
-// Include 'Document' to preserve tabbed documents
-var validStates = new[] { "Dock", "Float", "AutoHidden", "Document" };
-var stateElements = doc.Descendants().Where(e => e.Name.LocalName.Contains("State"));
-foreach (var stateElement in stateElements)
-{
-    if (!validStates.Contains(stateElement.Value))
-    {
-        var oldValue = stateElement.Value;
-        stateElement.Value = "Dock";
-        Log.Debug("Invalid DockState '{OldValue}' replaced with 'Dock' for element: {Element}", oldValue, stateElement.Parent?.Name.LocalName ?? "Unknown");
-    }
-}
 
-// Additional validation: ensure no invalid combinations (e.g., AutoHidden with IsActive=false)
-var invalidCombinations = doc.Descendants().Where(e =>
-    e.Name.LocalName.Contains("State") && (e.Value == "AutoHidden" || e.Value == "Float") &&
-    e.Parent?.Descendants().Any(d => d.Name.LocalName.Contains("IsActive") && d.Value == "false") == true);
-foreach (var combo in invalidCombinations)
-{
-    combo.Value = "Dock";
-    Log.Debug("Corrected invalid state combination to 'Dock'");
-}                            using (var reader = doc.CreateReader())
+                            // Comprehensive validation and filtering of DockState values
+                            // Include 'Document' to preserve tabbed documents
+                            var validStates = new[] { "Dock", "Float", "AutoHidden", "Document" };
+                            var stateElements = doc.Descendants().Where(e => e.Name.LocalName.Contains("State"));
+                            foreach (var stateElement in stateElements)
+                            {
+                                if (!validStates.Contains(stateElement.Value))
+                                {
+                                    var oldValue = stateElement.Value;
+                                    stateElement.Value = "Dock";
+                                    Log.Debug("Invalid DockState '{OldValue}' replaced with 'Dock' for element: {Element}", oldValue, stateElement.Parent?.Name.LocalName ?? "Unknown");
+                                }
+                            }
+
+                            // Additional validation: ensure no invalid combinations (e.g., AutoHidden with IsActive=false)
+                            var invalidCombinations = doc.Descendants().Where(e =>
+                                e.Name.LocalName.Contains("State") && (e.Value == "AutoHidden" || e.Value == "Float") &&
+                                e.Parent?.Descendants().Any(d => d.Name.LocalName.Contains("IsActive") && d.Value == "false") == true);
+                            foreach (var combo in invalidCombinations)
+                            {
+                                combo.Value = "Dock";
+                                Log.Debug("Corrected invalid state combination to 'Dock'");
+                            }
+                            using (var reader = doc.CreateReader())
                             {
                                 dockingManager.LoadDockState(reader);
                             }
@@ -388,7 +389,7 @@ foreach (var combo in invalidCombinations)
         private void LoadDefaultDockingLayout()
         {
             Log.Information("Loading default docking layout");
-            
+
             try
             {
                 // Reset to default docking state
@@ -575,7 +576,7 @@ foreach (var combo in invalidCombinations)
         private void LogRegionStatus()
         {
             Log.Information("=== Region Status Report ===");
-            
+
             if (_regionManager == null)
             {
                 Log.Warning("RegionManager is null - no region status available");
@@ -586,15 +587,15 @@ foreach (var combo in invalidCombinations)
             {
                 var totalRegions = _regionManager.Regions.Count();
                 Log.Information("Total regions registered: {RegionCount}", totalRegions);
-                
+
                 foreach (var region in _regionManager.Regions)
                 {
                     var viewCount = region.Views?.Count() ?? 0;
                     var activeView = region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None";
-                    
-                    Log.Information("Region '{RegionName}': {ViewCount} views, Active: {ActiveView}", 
+
+                    Log.Information("Region '{RegionName}': {ViewCount} views, Active: {ActiveView}",
                         region.Name, viewCount, activeView);
-                        
+
                     // Log each view in the region
                     if (region.Views != null)
                     {
@@ -604,7 +605,7 @@ foreach (var combo in invalidCombinations)
                         }
                     }
                 }
-                
+
                 // Check specifically for DashboardRegion since it's critical for initial view
                 if (_regionManager.Regions.ContainsRegionWithName("DashboardRegion"))
                 {
@@ -617,7 +618,7 @@ foreach (var combo in invalidCombinations)
                 {
                     Log.Warning("DashboardRegion not found in region manager!");
                 }
-                
+
                 Log.Information("=== End Region Status Report ===");
             }
             catch (Exception ex)

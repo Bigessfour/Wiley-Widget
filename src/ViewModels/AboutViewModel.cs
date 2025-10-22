@@ -79,8 +79,8 @@ public class AboutViewModel : AsyncViewModelBase
     public AboutViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<AboutViewModel> logger)
         : base(dispatcherHelper, logger)
     {
-    CloseCommand = new Prism.Commands.DelegateCommand(Close);
-    OpenUrlCommand = new Prism.Commands.DelegateCommand<string>(OpenUrl);
+        CloseCommand = new Prism.Commands.DelegateCommand(Close);
+        OpenUrlCommand = new Prism.Commands.DelegateCommand<string>(OpenUrl);
 
         // Initialize with assembly information
         var assembly = Assembly.GetExecutingAssembly();

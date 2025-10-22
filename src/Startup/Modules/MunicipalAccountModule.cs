@@ -15,9 +15,9 @@ namespace WileyWidget.Startup.Modules
     /// Registers MunicipalAccountView with MunicipalAccountRegion.
     /// </summary>
     [Module(ModuleName = "MunicipalAccountModule")]
-    public class MunicipalAccountModule : IModule
+    public class MunicipalAccountModule : ModuleInitializer
     {
-        public void OnInitialized(IContainerProvider containerProvider)
+        protected override void InitializeModule(IContainerProvider containerProvider)
         {
             Log.Information("Initializing MunicipalAccountModule");
 
@@ -85,7 +85,7 @@ namespace WileyWidget.Startup.Modules
             }
         }
 
-        public void RegisterTypes(IContainerRegistry containerRegistry)
+        public override void RegisterTypes(IContainerRegistry containerRegistry)
         {
             // Register MunicipalAccountViewModel
             containerRegistry.Register<MunicipalAccountViewModel>();

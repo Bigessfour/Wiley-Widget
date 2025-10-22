@@ -26,371 +26,371 @@ namespace WileyWidget.ViewModels
 {
     public class DashboardViewModel : BindableBase, IDataErrorInfo, IDisposable
     {
-    private readonly ILogger<DashboardViewModel> _logger;
-    private readonly IEnterpriseRepository _enterpriseRepository;
-    private readonly IWhatIfScenarioEngine _whatIfScenarioEngine;
-    private readonly IUtilityCustomerRepository _utilityCustomerRepository;
-    private readonly IMunicipalAccountRepository _municipalAccountRepository;
-    private readonly FiscalYearSettings _fiscalYearSettings;
-    private readonly IEventAggregator _eventAggregator;
-    private readonly IRegionManager _regionManager;
-    // private readonly IThemeService _themeService;
+        private readonly ILogger<DashboardViewModel> _logger;
+        private readonly IEnterpriseRepository _enterpriseRepository;
+        private readonly IWhatIfScenarioEngine _whatIfScenarioEngine;
+        private readonly IUtilityCustomerRepository _utilityCustomerRepository;
+        private readonly IMunicipalAccountRepository _municipalAccountRepository;
+        private readonly FiscalYearSettings _fiscalYearSettings;
+        private readonly IEventAggregator _eventAggregator;
+        private readonly IRegionManager _regionManager;
+        // private readonly IThemeService _themeService;
 
-    private DispatcherTimer _refreshTimer;
+        private DispatcherTimer _refreshTimer;
 
-    // KPI Properties
-    private int _totalEnterprises;
-    public int TotalEnterprises
-    {
-        get => _totalEnterprises;
-        set => SetProperty(ref _totalEnterprises, value);
-    }
-
-    private decimal _totalBudget;
-    public decimal TotalBudget
-    {
-        get => _totalBudget;
-        set => SetProperty(ref _totalBudget, value);
-    }
-
-    private int _activeProjects;
-    public int ActiveProjects
-    {
-        get => _activeProjects;
-        set => SetProperty(ref _activeProjects, value);
-    }
-
-    private string _systemHealthStatus = "Good";
-    public string SystemHealthStatus
-    {
-        get => _systemHealthStatus;
-        set => SetProperty(ref _systemHealthStatus, value);
-    }
-
-    private Brush _systemHealthColor = Brushes.Green;
-    public Brush SystemHealthColor
-    {
-        get => _systemHealthColor;
-        set => SetProperty(ref _systemHealthColor, value);
-    }
-
-    private int _healthScore = 95;
-    public int HealthScore
-    {
-        get => _healthScore;
-        set => SetProperty(ref _healthScore, value);
-    }
-
-    // Change indicators
-    private string _enterprisesChangeText = "+2 from last month";
-    public string EnterprisesChangeText
-    {
-        get => _enterprisesChangeText;
-        set => SetProperty(ref _enterprisesChangeText, value);
-    }
-
-    private Brush _enterprisesChangeColor = Brushes.Green;
-    public Brush EnterprisesChangeColor
-    {
-        get => _enterprisesChangeColor;
-        set => SetProperty(ref _enterprisesChangeColor, value);
-    }
-
-    private string _budgetChangeText = "+$15K from last month";
-    public string BudgetChangeText
-    {
-        get => _budgetChangeText;
-        set => SetProperty(ref _budgetChangeText, value);
-    }
-
-    private Brush _budgetChangeColor = Brushes.Green;
-    public Brush BudgetChangeColor
-    {
-        get => _budgetChangeColor;
-        set => SetProperty(ref _budgetChangeColor, value);
-    }
-
-    private string _projectsChangeText = "+1 from last week";
-    public string ProjectsChangeText
-    {
-        get => _projectsChangeText;
-        set => SetProperty(ref _projectsChangeText, value);
-    }
-
-    private Brush _projectsChangeColor = Brushes.Green;
-    public Brush ProjectsChangeColor
-    {
-        get => _projectsChangeColor;
-        set => SetProperty(ref _projectsChangeColor, value);
-    }
-
-    // Auto-refresh settings
-    private bool _autoRefreshEnabled = true;
-    public bool AutoRefreshEnabled
-    {
-        get => _autoRefreshEnabled;
-        set => SetProperty(ref _autoRefreshEnabled, value);
-    }
-
-    private int _refreshIntervalMinutes = 5;
-    public int RefreshIntervalMinutes
-    {
-        get => _refreshIntervalMinutes;
-        set => SetProperty(ref _refreshIntervalMinutes, value);
-    }
-
-    // Status
-    private string _dashboardStatus = "Loading...";
-    public string DashboardStatus
-    {
-        get => _dashboardStatus;
-        set => SetProperty(ref _dashboardStatus, value);
-    }
-
-    private string _lastUpdated = "Never";
-    public string LastUpdated
-    {
-        get => _lastUpdated;
-        set => SetProperty(ref _lastUpdated, value);
-    }
-
-    private string _nextRefreshTime = "Calculating...";
-    public string NextRefreshTime
-    {
-        get => _nextRefreshTime;
-        set => SetProperty(ref _nextRefreshTime, value);
-    }
-
-    // Chart data
-    private ObservableCollection<BudgetTrendItem> _budgetTrendData = new();
-    public ObservableCollection<BudgetTrendItem> BudgetTrendData
-    {
-        get => _budgetTrendData;
-        set => SetProperty(ref _budgetTrendData, value);
-    }
-
-    private ObservableCollection<BudgetTrendItem> _historicalData = new();
-    public ObservableCollection<BudgetTrendItem> HistoricalData
-    {
-        get => _historicalData;
-        set => SetProperty(ref _historicalData, value);
-    }
-
-    private ObservableCollection<RateTrendItem> _rateTrendData = new();
-    public ObservableCollection<RateTrendItem> RateTrendData
-    {
-        get => _rateTrendData;
-        set => SetProperty(ref _rateTrendData, value);
-    }
-
-    private ObservableCollection<EnterpriseTypeItem> _enterpriseTypeData = new();
-    public ObservableCollection<EnterpriseTypeItem> EnterpriseTypeData
-    {
-        get => _enterpriseTypeData;
-        set => SetProperty(ref _enterpriseTypeData, value);
-    }
-
-    // Activity and alerts
-    private ObservableCollection<ActivityItem> _recentActivities = new();
-    public ObservableCollection<ActivityItem> RecentActivities
-    {
-        get => _recentActivities;
-        set => SetProperty(ref _recentActivities, value);
-    }
-
-    private ObservableCollection<AlertItem> _systemAlerts = new();
-    public ObservableCollection<AlertItem> SystemAlerts
-    {
-        get => _systemAlerts;
-        set => SetProperty(ref _systemAlerts, value);
-    }
-
-    // Enterprise data for grids
-    private ObservableCollection<Enterprise> _enterprises = new();
-    public ObservableCollection<Enterprise> Enterprises
-    {
-        get => _enterprises;
-        set => SetProperty(ref _enterprises, value);
-    }
-
-    // Loading and status properties
-    private bool _isLoading = false;
-    public bool IsLoading
-    {
-        get => _isLoading;
-        set => SetProperty(ref _isLoading, value);
-    }
-
-    private int _systemHealthScore = 95;
-    public int SystemHealthScore
-    {
-        get => _systemHealthScore;
-        set => SetProperty(ref _systemHealthScore, value);
-    }
-
-    private int _budgetUtilizationScore = 78;
-    public int BudgetUtilizationScore
-    {
-        get => _budgetUtilizationScore;
-        set => SetProperty(ref _budgetUtilizationScore, value);
-    }
-
-    private decimal _suggestedRate;
-    public decimal SuggestedRate
-    {
-        get => _suggestedRate;
-        set => SetProperty(ref _suggestedRate, value);
-    }
-
-    private string _statusMessage = "Ready";
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        set => SetProperty(ref _statusMessage, value);
-    }
-
-    // Missing properties for view bindings
-    private string _currentTheme = "FluentLight";
-    public VisualStyles CurrentTheme
-    {
-        get => MapThemeToVisualStyle(_currentTheme);
-        set
+        // KPI Properties
+        private int _totalEnterprises;
+        public int TotalEnterprises
         {
-            var themeString = MapVisualStyleToTheme(value);
-            if (SetProperty(ref _currentTheme, themeString))
+            get => _totalEnterprises;
+            set => SetProperty(ref _totalEnterprises, value);
+        }
+
+        private decimal _totalBudget;
+        public decimal TotalBudget
+        {
+            get => _totalBudget;
+            set => SetProperty(ref _totalBudget, value);
+        }
+
+        private int _activeProjects;
+        public int ActiveProjects
+        {
+            get => _activeProjects;
+            set => SetProperty(ref _activeProjects, value);
+        }
+
+        private string _systemHealthStatus = "Good";
+        public string SystemHealthStatus
+        {
+            get => _systemHealthStatus;
+            set => SetProperty(ref _systemHealthStatus, value);
+        }
+
+        private Brush _systemHealthColor = Brushes.Green;
+        public Brush SystemHealthColor
+        {
+            get => _systemHealthColor;
+            set => SetProperty(ref _systemHealthColor, value);
+        }
+
+        private int _healthScore = 95;
+        public int HealthScore
+        {
+            get => _healthScore;
+            set => SetProperty(ref _healthScore, value);
+        }
+
+        // Change indicators
+        private string _enterprisesChangeText = "+2 from last month";
+        public string EnterprisesChangeText
+        {
+            get => _enterprisesChangeText;
+            set => SetProperty(ref _enterprisesChangeText, value);
+        }
+
+        private Brush _enterprisesChangeColor = Brushes.Green;
+        public Brush EnterprisesChangeColor
+        {
+            get => _enterprisesChangeColor;
+            set => SetProperty(ref _enterprisesChangeColor, value);
+        }
+
+        private string _budgetChangeText = "+$15K from last month";
+        public string BudgetChangeText
+        {
+            get => _budgetChangeText;
+            set => SetProperty(ref _budgetChangeText, value);
+        }
+
+        private Brush _budgetChangeColor = Brushes.Green;
+        public Brush BudgetChangeColor
+        {
+            get => _budgetChangeColor;
+            set => SetProperty(ref _budgetChangeColor, value);
+        }
+
+        private string _projectsChangeText = "+1 from last week";
+        public string ProjectsChangeText
+        {
+            get => _projectsChangeText;
+            set => SetProperty(ref _projectsChangeText, value);
+        }
+
+        private Brush _projectsChangeColor = Brushes.Green;
+        public Brush ProjectsChangeColor
+        {
+            get => _projectsChangeColor;
+            set => SetProperty(ref _projectsChangeColor, value);
+        }
+
+        // Auto-refresh settings
+        private bool _autoRefreshEnabled = true;
+        public bool AutoRefreshEnabled
+        {
+            get => _autoRefreshEnabled;
+            set => SetProperty(ref _autoRefreshEnabled, value);
+        }
+
+        private int _refreshIntervalMinutes = 5;
+        public int RefreshIntervalMinutes
+        {
+            get => _refreshIntervalMinutes;
+            set => SetProperty(ref _refreshIntervalMinutes, value);
+        }
+
+        // Status
+        private string _dashboardStatus = "Loading...";
+        public string DashboardStatus
+        {
+            get => _dashboardStatus;
+            set => SetProperty(ref _dashboardStatus, value);
+        }
+
+        private string _lastUpdated = "Never";
+        public string LastUpdated
+        {
+            get => _lastUpdated;
+            set => SetProperty(ref _lastUpdated, value);
+        }
+
+        private string _nextRefreshTime = "Calculating...";
+        public string NextRefreshTime
+        {
+            get => _nextRefreshTime;
+            set => SetProperty(ref _nextRefreshTime, value);
+        }
+
+        // Chart data
+        private ObservableCollection<BudgetTrendItem> _budgetTrendData = new();
+        public ObservableCollection<BudgetTrendItem> BudgetTrendData
+        {
+            get => _budgetTrendData;
+            set => SetProperty(ref _budgetTrendData, value);
+        }
+
+        private ObservableCollection<BudgetTrendItem> _historicalData = new();
+        public ObservableCollection<BudgetTrendItem> HistoricalData
+        {
+            get => _historicalData;
+            set => SetProperty(ref _historicalData, value);
+        }
+
+        private ObservableCollection<RateTrendItem> _rateTrendData = new();
+        public ObservableCollection<RateTrendItem> RateTrendData
+        {
+            get => _rateTrendData;
+            set => SetProperty(ref _rateTrendData, value);
+        }
+
+        private ObservableCollection<EnterpriseTypeItem> _enterpriseTypeData = new();
+        public ObservableCollection<EnterpriseTypeItem> EnterpriseTypeData
+        {
+            get => _enterpriseTypeData;
+            set => SetProperty(ref _enterpriseTypeData, value);
+        }
+
+        // Activity and alerts
+        private ObservableCollection<ActivityItem> _recentActivities = new();
+        public ObservableCollection<ActivityItem> RecentActivities
+        {
+            get => _recentActivities;
+            set => SetProperty(ref _recentActivities, value);
+        }
+
+        private ObservableCollection<AlertItem> _systemAlerts = new();
+        public ObservableCollection<AlertItem> SystemAlerts
+        {
+            get => _systemAlerts;
+            set => SetProperty(ref _systemAlerts, value);
+        }
+
+        // Enterprise data for grids
+        private ObservableCollection<Enterprise> _enterprises = new();
+        public ObservableCollection<Enterprise> Enterprises
+        {
+            get => _enterprises;
+            set => SetProperty(ref _enterprises, value);
+        }
+
+        // Loading and status properties
+        private bool _isLoading = false;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetProperty(ref _isLoading, value);
+        }
+
+        private int _systemHealthScore = 95;
+        public int SystemHealthScore
+        {
+            get => _systemHealthScore;
+            set => SetProperty(ref _systemHealthScore, value);
+        }
+
+        private int _budgetUtilizationScore = 78;
+        public int BudgetUtilizationScore
+        {
+            get => _budgetUtilizationScore;
+            set => SetProperty(ref _budgetUtilizationScore, value);
+        }
+
+        private decimal _suggestedRate;
+        public decimal SuggestedRate
+        {
+            get => _suggestedRate;
+            set => SetProperty(ref _suggestedRate, value);
+        }
+
+        private string _statusMessage = "Ready";
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
+
+        // Missing properties for view bindings
+        private string _currentTheme = "FluentLight";
+        public VisualStyles CurrentTheme
+        {
+            get => MapThemeToVisualStyle(_currentTheme);
+            set
             {
-                // _themeService.ApplyTheme(themeString);
+                var themeString = MapVisualStyleToTheme(value);
+                if (SetProperty(ref _currentTheme, themeString))
+                {
+                    // _themeService.ApplyTheme(themeString);
+                }
             }
         }
-    }
 
-    private VisualStyles MapThemeToVisualStyle(string themeName)
-    {
-        return themeName switch
+        private VisualStyles MapThemeToVisualStyle(string themeName)
         {
-            "FluentLight" => VisualStyles.FluentLight,
-            "FluentDark" => VisualStyles.FluentDark,
-            _ => VisualStyles.FluentLight
-        };
-    }
+            return themeName switch
+            {
+                "FluentLight" => VisualStyles.FluentLight,
+                "FluentDark" => VisualStyles.FluentDark,
+                _ => VisualStyles.FluentLight
+            };
+        }
 
-    private string MapVisualStyleToTheme(VisualStyles style)
-    {
-        return style switch
+        private string MapVisualStyleToTheme(VisualStyles style)
         {
-            VisualStyles.FluentLight => "FluentLight",
-            VisualStyles.FluentDark => "FluentDark",
-            _ => "FluentLight"
-        };
-    }
+            return style switch
+            {
+                VisualStyles.FluentLight => "FluentLight",
+                VisualStyles.FluentDark => "FluentDark",
+                _ => "FluentLight"
+            };
+        }
 
-    private ObservableCollection<BudgetUtilizationData> _budgetUtilizationData = new();
-    public ObservableCollection<BudgetUtilizationData> BudgetUtilizationData
-    {
-        get => _budgetUtilizationData;
-        set => SetProperty(ref _budgetUtilizationData, value);
-    }
+        private ObservableCollection<BudgetUtilizationData> _budgetUtilizationData = new();
+        public ObservableCollection<BudgetUtilizationData> BudgetUtilizationData
+        {
+            get => _budgetUtilizationData;
+            set => SetProperty(ref _budgetUtilizationData, value);
+        }
 
-    private decimal _progressPercentage;
-    public decimal ProgressPercentage
-    {
-        get => _progressPercentage;
-        set => SetProperty(ref _progressPercentage, value);
-    }
+        private decimal _progressPercentage;
+        public decimal ProgressPercentage
+        {
+            get => _progressPercentage;
+            set => SetProperty(ref _progressPercentage, value);
+        }
 
-    private decimal _remainingBudget;
-    public decimal RemainingBudget
-    {
-        get => _remainingBudget;
-        set => SetProperty(ref _remainingBudget, value);
-    }
+        private decimal _remainingBudget;
+        public decimal RemainingBudget
+        {
+            get => _remainingBudget;
+            set => SetProperty(ref _remainingBudget, value);
+        }
 
-    private decimal _spentAmount;
-    public decimal SpentAmount
-    {
-        get => _spentAmount;
-        set => SetProperty(ref _spentAmount, value);
-    }
+        private decimal _spentAmount;
+        public decimal SpentAmount
+        {
+            get => _spentAmount;
+            set => SetProperty(ref _spentAmount, value);
+        }
 
-    // Growth scenario properties
-    private decimal _payRaisePercentage;
-    public decimal PayRaisePercentage
-    {
-        get => _payRaisePercentage;
-        set => SetProperty(ref _payRaisePercentage, value);
-    }
+        // Growth scenario properties
+        private decimal _payRaisePercentage;
+        public decimal PayRaisePercentage
+        {
+            get => _payRaisePercentage;
+            set => SetProperty(ref _payRaisePercentage, value);
+        }
 
-    private decimal _benefitsIncreaseAmount;
-    public decimal BenefitsIncreaseAmount
-    {
-        get => _benefitsIncreaseAmount;
-        set => SetProperty(ref _benefitsIncreaseAmount, value);
-    }
+        private decimal _benefitsIncreaseAmount;
+        public decimal BenefitsIncreaseAmount
+        {
+            get => _benefitsIncreaseAmount;
+            set => SetProperty(ref _benefitsIncreaseAmount, value);
+        }
 
-    private decimal _equipmentPurchaseAmount;
-    public decimal EquipmentPurchaseAmount
-    {
-        get => _equipmentPurchaseAmount;
-        set => SetProperty(ref _equipmentPurchaseAmount, value);
-    }
+        private decimal _equipmentPurchaseAmount;
+        public decimal EquipmentPurchaseAmount
+        {
+            get => _equipmentPurchaseAmount;
+            set => SetProperty(ref _equipmentPurchaseAmount, value);
+        }
 
-    private int _equipmentFinancingYears = 5;
-    public int EquipmentFinancingYears
-    {
-        get => _equipmentFinancingYears;
-        set => SetProperty(ref _equipmentFinancingYears, value);
-    }
+        private int _equipmentFinancingYears = 5;
+        public int EquipmentFinancingYears
+        {
+            get => _equipmentFinancingYears;
+            set => SetProperty(ref _equipmentFinancingYears, value);
+        }
 
-    private decimal _reservePercentage;
-    public decimal ReservePercentage
-    {
-        get => _reservePercentage;
-        set => SetProperty(ref _reservePercentage, value);
-    }
+        private decimal _reservePercentage;
+        public decimal ReservePercentage
+        {
+            get => _reservePercentage;
+            set => SetProperty(ref _reservePercentage, value);
+        }
 
-    private ComprehensiveScenario _currentScenario;
-    public ComprehensiveScenario CurrentScenario
-    {
-        get => _currentScenario;
-        set => SetProperty(ref _currentScenario, value);
-    }
+        private ComprehensiveScenario _currentScenario;
+        public ComprehensiveScenario CurrentScenario
+        {
+            get => _currentScenario;
+            set => SetProperty(ref _currentScenario, value);
+        }
 
-    private bool _isScenarioRunning;
-    public bool IsScenarioRunning
-    {
-        get => _isScenarioRunning;
-        set => SetProperty(ref _isScenarioRunning, value);
-    }
+        private bool _isScenarioRunning;
+        public bool IsScenarioRunning
+        {
+            get => _isScenarioRunning;
+            set => SetProperty(ref _isScenarioRunning, value);
+        }
 
-    private string _scenarioStatus;
-    public string ScenarioStatus
-    {
-        get => _scenarioStatus;
-        set => SetProperty(ref _scenarioStatus, value);
-    }
+        private string _scenarioStatus;
+        public string ScenarioStatus
+        {
+            get => _scenarioStatus;
+            set => SetProperty(ref _scenarioStatus, value);
+        }
 
-    // Search and filtering properties
-    private string _searchText = string.Empty;
-    public string SearchText
-    {
-        get => _searchText;
-        set => SetProperty(ref _searchText, value);
-    }
+        // Search and filtering properties
+        private string _searchText = string.Empty;
+        public string SearchText
+        {
+            get => _searchText;
+            set => SetProperty(ref _searchText, value);
+        }
 
-    private ObservableCollection<Enterprise> _filteredEnterprises = new();
-    public ObservableCollection<Enterprise> FilteredEnterprises
-    {
-        get => _filteredEnterprises;
-        set => SetProperty(ref _filteredEnterprises, value);
-    }
+        private ObservableCollection<Enterprise> _filteredEnterprises = new();
+        public ObservableCollection<Enterprise> FilteredEnterprises
+        {
+            get => _filteredEnterprises;
+            set => SetProperty(ref _filteredEnterprises, value);
+        }
 
-    // Error handling
-    private string _errorMessage = string.Empty;
-    public string ErrorMessage
-    {
-        get => _errorMessage;
-        set => SetProperty(ref _errorMessage, value);
-    }
+        // Error handling
+        private string _errorMessage = string.Empty;
+        public string ErrorMessage
+        {
+            get => _errorMessage;
+            set => SetProperty(ref _errorMessage, value);
+        }
 
         // IDataErrorInfo implementation for validation
         public string Error => string.Empty;
@@ -418,131 +418,131 @@ namespace WileyWidget.ViewModels
             }
         }
 
-    // Commands
-    public DelegateCommand LoadDataCommand { get; private set; }
-    public DelegateCommand RefreshDashboardCommand { get; private set; }
-    public DelegateCommand ToggleAutoRefreshCommand { get; private set; }
-    public DelegateCommand ExportDashboardCommand { get; private set; }
-    public DelegateCommand OpenBudgetAnalysisCommand { get; private set; }
-    public DelegateCommand OpenSettingsCommand { get; private set; }
-    public DelegateCommand GenerateReportCommand { get; private set; }
-    public DelegateCommand BackupDataCommand { get; private set; }
-    public DelegateCommand SearchCommand { get; private set; }
-    public DelegateCommand ClearSearchCommand { get; private set; }
-    public DelegateCommand NavigateToAccountsCommand { get; private set; }
-    public DelegateCommand NavigateBackCommand { get; private set; }
-    public DelegateCommand NavigateForwardCommand { get; private set; }
-    public DelegateCommand OpenEnterpriseManagementCommand { get; private set; }
-    public DelegateCommand<object> RunGrowthScenarioCommand { get; private set; }
+        // Commands
+        public DelegateCommand LoadDataCommand { get; private set; }
+        public DelegateCommand RefreshDashboardCommand { get; private set; }
+        public DelegateCommand ToggleAutoRefreshCommand { get; private set; }
+        public DelegateCommand ExportDashboardCommand { get; private set; }
+        public DelegateCommand OpenBudgetAnalysisCommand { get; private set; }
+        public DelegateCommand OpenSettingsCommand { get; private set; }
+        public DelegateCommand GenerateReportCommand { get; private set; }
+        public DelegateCommand BackupDataCommand { get; private set; }
+        public DelegateCommand SearchCommand { get; private set; }
+        public DelegateCommand ClearSearchCommand { get; private set; }
+        public DelegateCommand NavigateToAccountsCommand { get; private set; }
+        public DelegateCommand NavigateBackCommand { get; private set; }
+        public DelegateCommand NavigateForwardCommand { get; private set; }
+        public DelegateCommand OpenEnterpriseManagementCommand { get; private set; }
+        public DelegateCommand<object> RunGrowthScenarioCommand { get; private set; }
 
-    public DashboardViewModel(
-        ILogger<DashboardViewModel> logger,
-        IEnterpriseRepository enterpriseRepository,
-        IWhatIfScenarioEngine whatIfScenarioEngine,
-        IUtilityCustomerRepository utilityCustomerRepository,
-        IMunicipalAccountRepository municipalAccountRepository,
-        FiscalYearSettings fiscalYearSettings,
-        IEventAggregator eventAggregator,
-        IRegionManager regionManager)
-    {
-        _logger = logger;
-        _enterpriseRepository = enterpriseRepository;
-        _whatIfScenarioEngine = whatIfScenarioEngine;
-        _utilityCustomerRepository = utilityCustomerRepository;
-        _municipalAccountRepository = municipalAccountRepository;
-        _fiscalYearSettings = fiscalYearSettings;
-        _eventAggregator = eventAggregator;
-        _regionManager = regionManager;
-        // _themeService = themeService;
-
-        // Subscribe to collection change events for detailed logging
-        Enterprises.CollectionChanged += Enterprises_CollectionChanged;
-        FilteredEnterprises.CollectionChanged += FilteredEnterprises_CollectionChanged;
-
-        // Subscribe to events
-        _eventAggregator.GetEvent<RefreshDataMessage>().Subscribe(OnRefreshDataRequested);
-        _eventAggregator.GetEvent<EnterpriseChangedMessage>().Subscribe(OnEnterpriseChanged);
-        _eventAggregator.GetEvent<BudgetUpdatedMessage>().Subscribe(OnBudgetUpdated, ThreadOption.UIThread);
-
-        // Initialize commands
-        InitializeCommands();
-
-        // Setup auto-refresh timer
-        SetupAutoRefreshTimer();
-
-        // Load initial data
-        _ = LoadDashboardDataAsync();
-    }
-
-    private void InitializeCommands()
-    {
-        LoadDataCommand = new DelegateCommand(async () => await LoadDashboardDataAsync(), () => !IsLoading);
-        RefreshDashboardCommand = new DelegateCommand(async () => await ExecuteRefreshDashboardAsync(), () => !IsLoading);
-        ToggleAutoRefreshCommand = new DelegateCommand(ExecuteToggleAutoRefresh);
-        ExportDashboardCommand = new DelegateCommand(async () => await ExecuteExportDashboardAsync(), () => !IsLoading);
-        OpenBudgetAnalysisCommand = new DelegateCommand(ExecuteOpenBudgetAnalysis);
-        OpenSettingsCommand = new DelegateCommand(ExecuteOpenSettings);
-        GenerateReportCommand = new DelegateCommand(async () => await ExecuteGenerateReportAsync(), () => !IsLoading);
-        BackupDataCommand = new DelegateCommand(async () => await ExecuteBackupDataAsync(), () => !IsLoading);
-        SearchCommand = new DelegateCommand(ExecuteSearch);
-        ClearSearchCommand = new DelegateCommand(ExecuteClearSearch, () => !string.IsNullOrWhiteSpace(SearchText));
-        NavigateToAccountsCommand = new DelegateCommand(ExecuteNavigateToAccounts);
-        NavigateBackCommand = new DelegateCommand(ExecuteNavigateBack, () => CanNavigateBack);
-        NavigateForwardCommand = new DelegateCommand(ExecuteNavigateForward, () => CanNavigateForward);
-        OpenEnterpriseManagementCommand = new DelegateCommand(ExecuteOpenEnterpriseManagement);
-        RunGrowthScenarioCommand = new DelegateCommand<object>(async (param) => await ExecuteRunGrowthScenarioAsync(Convert.ToInt32(param)), (param) => !IsScenarioRunning);
-    }
-
-    private bool CanNavigateBack => _regionManager.Regions.ContainsRegionWithName("MainRegion") && _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoBack;
-    private bool CanNavigateForward => _regionManager.Regions.ContainsRegionWithName("MainRegion") && _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoForward;
-
-    private void SetupAutoRefreshTimer()
-    {
-        // Prevent multiple timer instances
-        if (_refreshTimer != null)
+        public DashboardViewModel(
+            ILogger<DashboardViewModel> logger,
+            IEnterpriseRepository enterpriseRepository,
+            IWhatIfScenarioEngine whatIfScenarioEngine,
+            IUtilityCustomerRepository utilityCustomerRepository,
+            IMunicipalAccountRepository municipalAccountRepository,
+            FiscalYearSettings fiscalYearSettings,
+            IEventAggregator eventAggregator,
+            IRegionManager regionManager)
         {
-            _logger.LogWarning("DashboardView: Auto-refresh timer already exists, skipping setup");
-            return;
+            _logger = logger;
+            _enterpriseRepository = enterpriseRepository;
+            _whatIfScenarioEngine = whatIfScenarioEngine;
+            _utilityCustomerRepository = utilityCustomerRepository;
+            _municipalAccountRepository = municipalAccountRepository;
+            _fiscalYearSettings = fiscalYearSettings;
+            _eventAggregator = eventAggregator;
+            _regionManager = regionManager;
+            // _themeService = themeService;
+
+            // Subscribe to collection change events for detailed logging
+            Enterprises.CollectionChanged += Enterprises_CollectionChanged;
+            FilteredEnterprises.CollectionChanged += FilteredEnterprises_CollectionChanged;
+
+            // Subscribe to events
+            _eventAggregator.GetEvent<RefreshDataMessage>().Subscribe(OnRefreshDataRequested);
+            _eventAggregator.GetEvent<EnterpriseChangedMessage>().Subscribe(OnEnterpriseChanged);
+            _eventAggregator.GetEvent<BudgetUpdatedMessage>().Subscribe(OnBudgetUpdated, ThreadOption.UIThread);
+
+            // Initialize commands
+            InitializeCommands();
+
+            // Setup auto-refresh timer
+            SetupAutoRefreshTimer();
+
+            // Load initial data
+            _ = LoadDashboardDataAsync();
         }
 
-        _refreshTimer = new DispatcherTimer();
-        _refreshTimer.Tick += async (s, e) =>
+        private void InitializeCommands()
         {
-            using var loggingContext = LoggingContext.BeginOperation("AutoRefresh_Tick");
-            var callingThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-            var uiThreadId = Dispatcher.CurrentDispatcher.Thread.ManagedThreadId;
+            LoadDataCommand = new DelegateCommand(async () => await LoadDashboardDataAsync(), () => !IsLoading);
+            RefreshDashboardCommand = new DelegateCommand(async () => await ExecuteRefreshDashboardAsync(), () => !IsLoading);
+            ToggleAutoRefreshCommand = new DelegateCommand(ExecuteToggleAutoRefresh);
+            ExportDashboardCommand = new DelegateCommand(async () => await ExecuteExportDashboardAsync(), () => !IsLoading);
+            OpenBudgetAnalysisCommand = new DelegateCommand(ExecuteOpenBudgetAnalysis);
+            OpenSettingsCommand = new DelegateCommand(ExecuteOpenSettings);
+            GenerateReportCommand = new DelegateCommand(async () => await ExecuteGenerateReportAsync(), () => !IsLoading);
+            BackupDataCommand = new DelegateCommand(async () => await ExecuteBackupDataAsync(), () => !IsLoading);
+            SearchCommand = new DelegateCommand(ExecuteSearch);
+            ClearSearchCommand = new DelegateCommand(ExecuteClearSearch, () => !string.IsNullOrWhiteSpace(SearchText));
+            NavigateToAccountsCommand = new DelegateCommand(ExecuteNavigateToAccounts);
+            NavigateBackCommand = new DelegateCommand(ExecuteNavigateBack, () => CanNavigateBack);
+            NavigateForwardCommand = new DelegateCommand(ExecuteNavigateForward, () => CanNavigateForward);
+            OpenEnterpriseManagementCommand = new DelegateCommand(ExecuteOpenEnterpriseManagement);
+            RunGrowthScenarioCommand = new DelegateCommand<object>(async (param) => await ExecuteRunGrowthScenarioAsync(Convert.ToInt32(param)), (param) => !IsScenarioRunning);
+        }
 
-            _logger.LogDebug("DashboardView AutoRefresh timer tick - ThreadId: {CallingThread} -> UI ThreadId: {UIThread} - {LogContext}",
-                callingThreadId, uiThreadId, loggingContext);
+        private bool CanNavigateBack => _regionManager.Regions.ContainsRegionWithName("MainRegion") && _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoBack;
+        private bool CanNavigateForward => _regionManager.Regions.ContainsRegionWithName("MainRegion") && _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoForward;
 
-            if (AutoRefreshEnabled)
+        private void SetupAutoRefreshTimer()
+        {
+            // Prevent multiple timer instances
+            if (_refreshTimer != null)
             {
-                _logger.LogDebug("DashboardView: Executing auto-refresh - {LogContext}", loggingContext);
-                await RefreshDashboardDataAsync();
-                _logger.LogDebug("DashboardView: Auto-refresh completed - {LogContext}", loggingContext);
+                _logger.LogWarning("DashboardView: Auto-refresh timer already exists, skipping setup");
+                return;
             }
-            else
+
+            _refreshTimer = new DispatcherTimer();
+            _refreshTimer.Tick += async (s, e) =>
             {
-                _logger.LogDebug("DashboardView: Auto-refresh skipped (disabled) - {LogContext}", loggingContext);
-            }
-        };
-        _refreshTimer.Interval = TimeSpan.FromMinutes(RefreshIntervalMinutes);
-        _refreshTimer.Start();
+                using var loggingContext = LoggingContext.BeginOperation("AutoRefresh_Tick");
+                var callingThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+                var uiThreadId = Dispatcher.CurrentDispatcher.Thread.ManagedThreadId;
 
-        _logger.LogInformation("DashboardView: Auto-refresh timer started with {IntervalMinutes} minute interval",
-            RefreshIntervalMinutes);
-    }
+                _logger.LogDebug("DashboardView AutoRefresh timer tick - ThreadId: {CallingThread} -> UI ThreadId: {UIThread} - {LogContext}",
+                    callingThreadId, uiThreadId, loggingContext);
 
-    public async Task LoadDashboardDataAsync()
+                if (AutoRefreshEnabled)
+                {
+                    _logger.LogDebug("DashboardView: Executing auto-refresh - {LogContext}", loggingContext);
+                    await RefreshDashboardDataAsync();
+                    _logger.LogDebug("DashboardView: Auto-refresh completed - {LogContext}", loggingContext);
+                }
+                else
+                {
+                    _logger.LogDebug("DashboardView: Auto-refresh skipped (disabled) - {LogContext}", loggingContext);
+                }
+            };
+            _refreshTimer.Interval = TimeSpan.FromMinutes(RefreshIntervalMinutes);
+            _refreshTimer.Start();
+
+            _logger.LogInformation("DashboardView: Auto-refresh timer started with {IntervalMinutes} minute interval",
+                RefreshIntervalMinutes);
+        }
+
+        public async Task LoadDashboardDataAsync()
         {
             using var loggingContext = LoggingContext.BeginOperation("LoadDashboard");
             var overallStopwatch = Stopwatch.StartNew();
             var hasErrors = false;
-            
+
             try
             {
                 DashboardStatus = "Loading dashboard data...";
-                _logger.LogInformation("Starting dashboard data load - CorrelationId: {CorrelationId}", 
+                _logger.LogInformation("Starting dashboard data load - CorrelationId: {CorrelationId}",
                     loggingContext.CorrelationId);
 
                 // Load all dashboard data in parallel
@@ -560,7 +560,7 @@ namespace WileyWidget.ViewModels
                 LastUpdated = DateTime.Now.ToString("g");
                 UpdateNextRefreshTime();
 
-                _logger.LogInformation("Dashboard data loaded successfully in {ElapsedMs}ms - {TotalEnterprises} enterprises, ${TotalBudget} total budget - {LogContext}", 
+                _logger.LogInformation("Dashboard data loaded successfully in {ElapsedMs}ms - {TotalEnterprises} enterprises, ${TotalBudget} total budget - {LogContext}",
                     overallStopwatch.ElapsedMilliseconds, TotalEnterprises, TotalBudget, loggingContext);
 
                 // Publish DataLoadedEvent to notify other ViewModels
@@ -575,20 +575,20 @@ namespace WileyWidget.ViewModels
                 overallStopwatch.Stop();
                 hasErrors = true;
                 DashboardStatus = "Error loading dashboard";
-                _logger.LogError(ex, "CRITICAL: Dashboard data load failed after {ElapsedMs}ms - {Message} - {LogContext}", 
+                _logger.LogError(ex, "CRITICAL: Dashboard data load failed after {ElapsedMs}ms - {Message} - {LogContext}",
                     overallStopwatch.ElapsedMilliseconds, ex.Message, loggingContext);
-                
+
                 // Don't show misleading success message
                 MessageBox.Show($"Error loading dashboard: {ex.Message}\n\nPlease check the logs for details.", "Dashboard Error",
                               MessageBoxButton.OK, MessageBoxImage.Error);
-                
+
                 throw; // Propagate exception to prevent misleading success logs
             }
             finally
             {
                 if (!hasErrors)
                 {
-                    _logger.LogDebug("Dashboard load completed without errors in {ElapsedMs}ms - {LogContext}", 
+                    _logger.LogDebug("Dashboard load completed without errors in {ElapsedMs}ms - {LogContext}",
                         overallStopwatch.ElapsedMilliseconds, loggingContext);
                 }
             }
@@ -615,9 +615,9 @@ namespace WileyWidget.ViewModels
 
                 // Calculate changes (simplified - in real app would compare with historical data)
                 CalculateChanges();
-                
+
                 stopwatch.Stop();
-                _logger.LogDebug("KPIs loaded successfully in {ElapsedMs}ms: {TotalEnterprises} enterprises, ${TotalBudget} budget", 
+                _logger.LogDebug("KPIs loaded successfully in {ElapsedMs}ms: {TotalEnterprises} enterprises, ${TotalBudget} budget",
                     stopwatch.ElapsedMilliseconds, TotalEnterprises, TotalBudget);
             }
             catch (Exception ex)
@@ -635,24 +635,24 @@ namespace WileyWidget.ViewModels
             {
                 ErrorMessage = string.Empty;
                 Enterprises.Clear();
-                
+
                 // Await directly - repository already uses async/await properly
                 var enterprises = await _enterpriseRepository.GetAllAsync();
-                
+
                 foreach (var enterprise in enterprises)
                 {
                     Enterprises.Add(enterprise);
                 }
-                
+
                 // Initialize filtered collection with all enterprises
                 FilteredEnterprises.Clear();
                 foreach (var enterprise in Enterprises)
                 {
                     FilteredEnterprises.Add(enterprise);
                 }
-                
+
                 stopwatch.Stop();
-                _logger.LogDebug("Loaded {Count} enterprises successfully in {ElapsedMs}ms", 
+                _logger.LogDebug("Loaded {Count} enterprises successfully in {ElapsedMs}ms",
                     enterprises.Count(), stopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
@@ -721,7 +721,7 @@ namespace WileyWidget.ViewModels
                 BudgetTrendData.Clear();
                 HistoricalData.Clear();
                 RateTrendData.Clear();
-                
+
                 for (int i = 5; i >= 0; i--)
                 {
                     var date = DateTime.Now.AddMonths(-i);
@@ -730,7 +730,7 @@ namespace WileyWidget.ViewModels
                         Period = date.ToString("MMM yyyy"),
                         Amount = TotalBudget * (decimal)(0.8 + (i * 0.04)) // Simulated growth
                     };
-                    
+
                     BudgetTrendData.Add(trendItem);
                     HistoricalData.Add(trendItem); // Also populate HistoricalData for binding
 
@@ -756,9 +756,9 @@ namespace WileyWidget.ViewModels
                         Count = group.Count()
                     });
                 }
-                
+
                 stopwatch.Stop();
-                _logger.LogDebug("Chart data loaded successfully in {ElapsedMs}ms - {BudgetPoints} budget points, {TypeGroups} type groups", 
+                _logger.LogDebug("Chart data loaded successfully in {ElapsedMs}ms - {BudgetPoints} budget points, {TypeGroups} type groups",
                     stopwatch.ElapsedMilliseconds, BudgetTrendData.Count, EnterpriseTypeData.Count);
             }
             catch (Exception ex)
@@ -880,250 +880,250 @@ namespace WileyWidget.ViewModels
             await LoadDashboardDataAsync();
         }
 
-    private async Task ExecuteRefreshDashboardAsync()
-    {
-        using var loggingContext = LoggingContext.BeginOperation("RefreshDashboard");
-        _logger.LogInformation("RefreshDashboard command invoked - IsLoading: {IsLoading} - {LogContext}", 
-            IsLoading, loggingContext);
-        
-        IsLoading = true;
-        StatusMessage = "Refreshing dashboard...";
-        
-        try
+        private async Task ExecuteRefreshDashboardAsync()
         {
-            await LoadDashboardDataAsync();
-            StatusMessage = "Dashboard refreshed successfully";
-            _logger.LogInformation("RefreshDashboard command completed successfully - {LogContext}", loggingContext);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = "Error refreshing dashboard";
-            _logger.LogError(ex, "RefreshDashboard command failed: {Message} - {LogContext}", 
-                ex.Message, loggingContext);
-            MessageBox.Show($"Error refreshing dashboard: {ex.Message}", "Refresh Error",
-                          MessageBoxButton.OK);
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
+            using var loggingContext = LoggingContext.BeginOperation("RefreshDashboard");
+            _logger.LogInformation("RefreshDashboard command invoked - IsLoading: {IsLoading} - {LogContext}",
+                IsLoading, loggingContext);
 
-    private void ExecuteToggleAutoRefresh()
-    {
-        AutoRefreshEnabled = !AutoRefreshEnabled;
-        _logger.LogInformation("ToggleAutoRefresh command - New state: {AutoRefreshEnabled}, Interval: {RefreshIntervalMinutes} minutes", 
-            AutoRefreshEnabled, RefreshIntervalMinutes);
-    }
-
-    private async Task ExecuteExportDashboardAsync()
-    {
-        using var loggingContext = LoggingContext.BeginOperation("ExportDashboard");
-        var stopwatch = Stopwatch.StartNew();
-        
-        _logger.LogInformation("ExportDashboard command invoked - {LogContext}", loggingContext);
-        
-        try
-        {
             IsLoading = true;
-            StatusMessage = "Exporting dashboard data...";
-            
-            // Create export data
-            var exportData = new
+            StatusMessage = "Refreshing dashboard...";
+
+            try
             {
-                ExportDate = DateTime.Now,
-                DashboardData = new
-                {
-                    TotalEnterprises = TotalEnterprises,
-                    TotalBudget = TotalBudget,
-                    SystemHealthScore = HealthScore,
-                    SystemHealthStatus = SystemHealthStatus,
-                    AutoRefreshEnabled = AutoRefreshEnabled,
-                    RefreshIntervalMinutes = RefreshIntervalMinutes,
-                    LastUpdated = LastUpdated
-                },
-                Enterprises = Enterprises.Select(e => new
-                {
-                    e.Id,
-                    e.Name,
-                    e.Type,
-                    e.Description
-                }).ToList(),
-                HistoricalData = HistoricalData.ToList(),
-                RateTrendData = RateTrendData.ToList(),
-                EnterpriseTypeData = EnterpriseTypeData.ToList()
-            };
-            
-            // Serialize to JSON
-            var json = System.Text.Json.JsonSerializer.Serialize(exportData, new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
-            
-            // Show save file dialog
-            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Title = "Export Dashboard Data",
-                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                DefaultExt = ".json",
-                FileName = $"WileyWidget_Dashboard_{DateTime.Now:yyyyMMdd_HHmmss}.json"
-            };
-            
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                await System.IO.File.WriteAllTextAsync(saveFileDialog.FileName, json);
-                StatusMessage = $"Dashboard exported to {System.IO.Path.GetFileName(saveFileDialog.FileName)}";
-                _logger.LogInformation("Dashboard data exported successfully to {FilePath} - {LogContext}", 
-                    saveFileDialog.FileName, loggingContext);
-                
-                MessageBox.Show($"Dashboard data exported successfully to {System.IO.Path.GetFileName(saveFileDialog.FileName)}",
-                              "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                await LoadDashboardDataAsync();
+                StatusMessage = "Dashboard refreshed successfully";
+                _logger.LogInformation("RefreshDashboard command completed successfully - {LogContext}", loggingContext);
             }
-            else
+            catch (Exception ex)
             {
-                StatusMessage = "Dashboard export cancelled";
-                _logger.LogInformation("Dashboard export cancelled by user - {LogContext}", loggingContext);
+                StatusMessage = "Error refreshing dashboard";
+                _logger.LogError(ex, "RefreshDashboard command failed: {Message} - {LogContext}",
+                    ex.Message, loggingContext);
+                MessageBox.Show($"Error refreshing dashboard: {ex.Message}", "Refresh Error",
+                              MessageBoxButton.OK);
             }
-            
-            stopwatch.Stop();
-            _logger.LogInformation("ExportDashboard completed in {ElapsedMs}ms - {LogContext}", 
-                stopwatch.ElapsedMilliseconds, loggingContext);
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            StatusMessage = "Error exporting dashboard";
-            _logger.LogError(ex, "ExportDashboard failed after {ElapsedMs}ms - {LogContext}", 
-                stopwatch.ElapsedMilliseconds, loggingContext);
-            MessageBox.Show($"Error exporting dashboard: {ex.Message}", "Export Error",
-                          MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private void ExecuteOpenBudgetAnalysis()
-    {
-        _logger.LogInformation("OpenBudgetAnalysis command invoked");
-        // Navigate to budget analysis region instead of showing dialog
-        _regionManager.RequestNavigate("MainRegion", "BudgetAnalysisView");
-    }
-
-    private void ExecuteOpenSettings()
-    {
-        _logger.LogInformation("OpenSettings command invoked");
-        // Navigate to settings region instead of showing dialog
-        _regionManager.RequestNavigate("SettingsRegion", "SettingsView");
-    }
-
-    private async Task ExecuteGenerateReportAsync()
-    {
-        using var loggingContext = LoggingContext.BeginOperation("GenerateReport");
-        var stopwatch = Stopwatch.StartNew();
-        
-        _logger.LogInformation("GenerateReport command invoked - {LogContext}", loggingContext);
-        
-        try
-        {
-            IsLoading = true;
-            StatusMessage = "Generating dashboard report...";
-            
-            // Create report data
-            var reportData = new
+            finally
             {
-                ReportTitle = "Wiley Widget Dashboard Report",
-                GeneratedDate = DateTime.Now,
-                ReportPeriod = $"{DateTime.Now.AddDays(-30):yyyy-MM-dd} to {DateTime.Now:yyyy-MM-dd}",
-                Summary = new
+                IsLoading = false;
+            }
+        }
+
+        private void ExecuteToggleAutoRefresh()
+        {
+            AutoRefreshEnabled = !AutoRefreshEnabled;
+            _logger.LogInformation("ToggleAutoRefresh command - New state: {AutoRefreshEnabled}, Interval: {RefreshIntervalMinutes} minutes",
+                AutoRefreshEnabled, RefreshIntervalMinutes);
+        }
+
+        private async Task ExecuteExportDashboardAsync()
+        {
+            using var loggingContext = LoggingContext.BeginOperation("ExportDashboard");
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation("ExportDashboard command invoked - {LogContext}", loggingContext);
+
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Exporting dashboard data...";
+
+                // Create export data
+                var exportData = new
                 {
-                    TotalEnterprises = TotalEnterprises,
-                    TotalBudget = TotalBudget,
-                    SystemHealthScore = HealthScore,
-                    SystemHealthStatus = SystemHealthStatus,
-                    EnterpriseChangeText = EnterprisesChangeText,
-                    BudgetChangeText = BudgetChangeText
-                },
-                EnterpriseDetails = Enterprises.Select(e => new
+                    ExportDate = DateTime.Now,
+                    DashboardData = new
+                    {
+                        TotalEnterprises = TotalEnterprises,
+                        TotalBudget = TotalBudget,
+                        SystemHealthScore = HealthScore,
+                        SystemHealthStatus = SystemHealthStatus,
+                        AutoRefreshEnabled = AutoRefreshEnabled,
+                        RefreshIntervalMinutes = RefreshIntervalMinutes,
+                        LastUpdated = LastUpdated
+                    },
+                    Enterprises = Enterprises.Select(e => new
+                    {
+                        e.Id,
+                        e.Name,
+                        e.Type,
+                        e.Description
+                    }).ToList(),
+                    HistoricalData = HistoricalData.ToList(),
+                    RateTrendData = RateTrendData.ToList(),
+                    EnterpriseTypeData = EnterpriseTypeData.ToList()
+                };
+
+                // Serialize to JSON
+                var json = System.Text.Json.JsonSerializer.Serialize(exportData, new System.Text.Json.JsonSerializerOptions
                 {
-                    e.Id,
-                    e.Name,
-                    e.Type,
-                    e.Description
-                }).ToList(),
-                PerformanceMetrics = new
+                    WriteIndented = true
+                });
+
+                // Show save file dialog
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    DataPoints = HistoricalData.Count,
-                    RateTrends = RateTrendData.Count,
-                    EnterpriseTypes = EnterpriseTypeData.Count
-                },
-                Recommendations = new[]
+                    Title = "Export Dashboard Data",
+                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                    DefaultExt = ".json",
+                    FileName = $"WileyWidget_Dashboard_{DateTime.Now:yyyyMMdd_HHmmss}.json"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
                 {
+                    await System.IO.File.WriteAllTextAsync(saveFileDialog.FileName, json);
+                    StatusMessage = $"Dashboard exported to {System.IO.Path.GetFileName(saveFileDialog.FileName)}";
+                    _logger.LogInformation("Dashboard data exported successfully to {FilePath} - {LogContext}",
+                        saveFileDialog.FileName, loggingContext);
+
+                    MessageBox.Show($"Dashboard data exported successfully to {System.IO.Path.GetFileName(saveFileDialog.FileName)}",
+                                  "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    StatusMessage = "Dashboard export cancelled";
+                    _logger.LogInformation("Dashboard export cancelled by user - {LogContext}", loggingContext);
+                }
+
+                stopwatch.Stop();
+                _logger.LogInformation("ExportDashboard completed in {ElapsedMs}ms - {LogContext}",
+                    stopwatch.ElapsedMilliseconds, loggingContext);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                StatusMessage = "Error exporting dashboard";
+                _logger.LogError(ex, "ExportDashboard failed after {ElapsedMs}ms - {LogContext}",
+                    stopwatch.ElapsedMilliseconds, loggingContext);
+                MessageBox.Show($"Error exporting dashboard: {ex.Message}", "Export Error",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private void ExecuteOpenBudgetAnalysis()
+        {
+            _logger.LogInformation("OpenBudgetAnalysis command invoked");
+            // Navigate to budget analysis region instead of showing dialog
+            _regionManager.RequestNavigate("BudgetRegion", "BudgetAnalysisView");
+        }
+
+        private void ExecuteOpenSettings()
+        {
+            _logger.LogInformation("OpenSettings command invoked");
+            // Navigate to settings region instead of showing dialog
+            _regionManager.RequestNavigate("SettingsRegion", "SettingsView");
+        }
+
+        private async Task ExecuteGenerateReportAsync()
+        {
+            using var loggingContext = LoggingContext.BeginOperation("GenerateReport");
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation("GenerateReport command invoked - {LogContext}", loggingContext);
+
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Generating dashboard report...";
+
+                // Create report data
+                var reportData = new
+                {
+                    ReportTitle = "Wiley Widget Dashboard Report",
+                    GeneratedDate = DateTime.Now,
+                    ReportPeriod = $"{DateTime.Now.AddDays(-30):yyyy-MM-dd} to {DateTime.Now:yyyy-MM-dd}",
+                    Summary = new
+                    {
+                        TotalEnterprises = TotalEnterprises,
+                        TotalBudget = TotalBudget,
+                        SystemHealthScore = HealthScore,
+                        SystemHealthStatus = SystemHealthStatus,
+                        EnterpriseChangeText = EnterprisesChangeText,
+                        BudgetChangeText = BudgetChangeText
+                    },
+                    EnterpriseDetails = Enterprises.Select(e => new
+                    {
+                        e.Id,
+                        e.Name,
+                        e.Type,
+                        e.Description
+                    }).ToList(),
+                    PerformanceMetrics = new
+                    {
+                        DataPoints = HistoricalData.Count,
+                        RateTrends = RateTrendData.Count,
+                        EnterpriseTypes = EnterpriseTypeData.Count
+                    },
+                    Recommendations = new[]
+                    {
                     "Monitor system health score above 80%",
                     "Review budget utilization trends",
                     "Check enterprise performance metrics",
                     "Consider rate adjustments based on scenario analysis"
                 }
-            };
-            
-            // Generate HTML report
-            var htmlReport = GenerateHtmlReport(reportData);
-            
-            // Show save file dialog
-            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Title = "Save Dashboard Report",
-                Filter = "HTML files (*.html)|*.html|All files (*.*)|*.*",
-                DefaultExt = ".html",
-                FileName = $"WileyWidget_Dashboard_Report_{DateTime.Now:yyyyMMdd_HHmmss}.html"
-            };
-            
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                await System.IO.File.WriteAllTextAsync(saveFileDialog.FileName, htmlReport);
-                StatusMessage = $"Report generated: {System.IO.Path.GetFileName(saveFileDialog.FileName)}";
-                _logger.LogInformation("Dashboard report generated successfully to {FilePath} - {LogContext}", 
-                    saveFileDialog.FileName, loggingContext);
-                
-                // Ask if user wants to open the report
-                var result = MessageBox.Show($"Report generated successfully. Would you like to open it now?\n\nFile: {System.IO.Path.GetFileName(saveFileDialog.FileName)}",
-                                           "Report Generated", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                
-                if (result == MessageBoxResult.Yes)
+                };
+
+                // Generate HTML report
+                var htmlReport = GenerateHtmlReport(reportData);
+
+                // Show save file dialog
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    Title = "Save Dashboard Report",
+                    Filter = "HTML files (*.html)|*.html|All files (*.*)|*.*",
+                    DefaultExt = ".html",
+                    FileName = $"WileyWidget_Dashboard_Report_{DateTime.Now:yyyyMMdd_HHmmss}.html"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    await System.IO.File.WriteAllTextAsync(saveFileDialog.FileName, htmlReport);
+                    StatusMessage = $"Report generated: {System.IO.Path.GetFileName(saveFileDialog.FileName)}";
+                    _logger.LogInformation("Dashboard report generated successfully to {FilePath} - {LogContext}",
+                        saveFileDialog.FileName, loggingContext);
+
+                    // Ask if user wants to open the report
+                    var result = MessageBox.Show($"Report generated successfully. Would you like to open it now?\n\nFile: {System.IO.Path.GetFileName(saveFileDialog.FileName)}",
+                                               "Report Generated", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
                     {
-                        FileName = saveFileDialog.FileName,
-                        UseShellExecute = true
-                    });
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = saveFileDialog.FileName,
+                            UseShellExecute = true
+                        });
+                    }
                 }
+                else
+                {
+                    StatusMessage = "Report generation cancelled";
+                    _logger.LogInformation("Report generation cancelled by user - {LogContext}", loggingContext);
+                }
+
+                stopwatch.Stop();
+                _logger.LogInformation("GenerateReport completed in {ElapsedMs}ms - {LogContext}",
+                    stopwatch.ElapsedMilliseconds, loggingContext);
             }
-            else
+            catch (Exception ex)
             {
-                StatusMessage = "Report generation cancelled";
-                _logger.LogInformation("Report generation cancelled by user - {LogContext}", loggingContext);
+                stopwatch.Stop();
+                StatusMessage = "Error generating report";
+                _logger.LogError(ex, "GenerateReport failed after {ElapsedMs}ms - {LogContext}",
+                    stopwatch.ElapsedMilliseconds, loggingContext);
+                MessageBox.Show($"Error generating report: {ex.Message}", "Report Generation Error",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            
-            stopwatch.Stop();
-            _logger.LogInformation("GenerateReport completed in {ElapsedMs}ms - {LogContext}", 
-                stopwatch.ElapsedMilliseconds, loggingContext);
+            finally
+            {
+                IsLoading = false;
+            }
         }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            StatusMessage = "Error generating report";
-            _logger.LogError(ex, "GenerateReport failed after {ElapsedMs}ms - {LogContext}", 
-                stopwatch.ElapsedMilliseconds, loggingContext);
-            MessageBox.Show($"Error generating report: {ex.Message}", "Report Generation Error",
-                          MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-    
+
         private string GenerateHtmlReport(object reportData)
         {
             // Cast to dynamic for HTML generation
@@ -1151,7 +1151,7 @@ namespace WileyWidget.ViewModels
         <p>Generated: {data.GeneratedDate:yyyy-MM-dd HH:mm:ss}</p>
         <p>Report Period: {data.ReportPeriod}</p>
     </div>
-    
+
     <div class='section summary'>
         <h2>Executive Summary</h2>
         <div class='metric'>
@@ -1166,7 +1166,7 @@ namespace WileyWidget.ViewModels
         <p><strong>Enterprise Changes:</strong> {data.Summary.EnterpriseChangeText}</p>
         <p><strong>Budget Changes:</strong> {data.Summary.BudgetChangeText}</p>
     </div>
-    
+
     <div class='section'>
         <h2>Enterprise Details</h2>
         <table>
@@ -1183,14 +1183,14 @@ namespace WileyWidget.ViewModels
             </tbody>
         </table>
     </div>
-    
+
     <div class='section'>
         <h2>Performance Metrics</h2>
         <p>Data Points: {data.PerformanceMetrics.DataPoints}</p>
         <p>Rate Trends: {data.PerformanceMetrics.RateTrends}</p>
         <p>Enterprise Types: {data.PerformanceMetrics.EnterpriseTypes}</p>
     </div>
-    
+
     <div class='section recommendations'>
         <h2>Recommendations</h2>
         <ul>
@@ -1200,7 +1200,7 @@ namespace WileyWidget.ViewModels
 </body>
 </html>";
         }
-        
+
         private string GenerateEnterpriseTableRows(dynamic enterpriseDetails)
         {
             var rows = new System.Collections.Generic.List<string>();
@@ -1210,7 +1210,7 @@ namespace WileyWidget.ViewModels
             }
             return string.Join("", rows);
         }
-        
+
         private string GenerateRecommendationsList(dynamic recommendations)
         {
             var items = new System.Collections.Generic.List<string>();
@@ -1221,131 +1221,131 @@ namespace WileyWidget.ViewModels
             return string.Join("", items);
         }
 
-    private async Task ExecuteBackupDataAsync()
-    {
-        using var loggingContext = LoggingContext.BeginOperation("BackupData");
-        var stopwatch = Stopwatch.StartNew();
-        
-        _logger.LogInformation("BackupData command invoked - {LogContext}", loggingContext);
-        
-        try
+        private async Task ExecuteBackupDataAsync()
         {
-            IsLoading = true;
-            StatusMessage = "Creating data backup...";
-            
-            // Create backup directory if it doesn't exist
-            var backupDir = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "WileyWidget",
-                "Backups"
-            );
-            
-            System.IO.Directory.CreateDirectory(backupDir);
-            
-            // Create backup filename with timestamp
-            var backupFileName = $"WileyWidget_Backup_{DateTime.Now:yyyyMMdd_HHmmss}.json";
-            var backupFilePath = System.IO.Path.Combine(backupDir, backupFileName);
-            
-            // Create backup data
-            var backupData = new
-            {
-                BackupDate = DateTime.Now,
-                Version = "1.0",
-                Application = "Wiley Widget",
-                DashboardData = new
-                {
-                    TotalEnterprises = TotalEnterprises,
-                    TotalBudget = TotalBudget,
-                    SystemHealthScore = HealthScore,
-                    SystemHealthStatus = SystemHealthStatus,
-                    AutoRefreshEnabled = AutoRefreshEnabled,
-                    RefreshIntervalMinutes = RefreshIntervalMinutes,
-                    LastUpdated = LastUpdated
-                },
-                Enterprises = Enterprises.Select(e => new
-                {
-                    e.Id,
-                    e.Name,
-                    e.Type,
-                    e.Description,
-                    e.CreatedDate,
-                    e.ModifiedDate
-                }).ToList(),
-                HistoricalData = HistoricalData.ToList(),
-                RateTrendData = RateTrendData.ToList(),
-                EnterpriseTypeData = EnterpriseTypeData.ToList(),
-                Settings = new
-                {
-                    FiscalYearSettings = _fiscalYearSettings,
-                    ApplicationSettings = "Default"
-                }
-            };
-            
-            // Serialize to JSON
-            var json = System.Text.Json.JsonSerializer.Serialize(backupData, new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
-            
-            // Write backup file
-            await System.IO.File.WriteAllTextAsync(backupFilePath, json);
-            
-            // Create a compressed archive if possible
-            var zipFilePath = System.IO.Path.Combine(backupDir, $"WileyWidget_Backup_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+            using var loggingContext = LoggingContext.BeginOperation("BackupData");
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation("BackupData command invoked - {LogContext}", loggingContext);
+
             try
             {
-                using (var archive = System.IO.Compression.ZipFile.Open(zipFilePath, System.IO.Compression.ZipArchiveMode.Create))
-                {
-                    archive.CreateEntryFromFile(backupFilePath, backupFileName);
-                }
-                
-                // Delete the uncompressed file
-                System.IO.File.Delete(backupFilePath);
-                backupFilePath = zipFilePath;
-                backupFileName = System.IO.Path.GetFileName(zipFilePath);
-            }
-            catch
-            {
-                // If compression fails, keep the JSON file
-                _logger.LogWarning("Could not create compressed backup, keeping JSON file");
-            }
-            
-            StatusMessage = $"Backup created: {backupFileName}";
-            _logger.LogInformation("Data backup created successfully at {FilePath} - {LogContext}", 
-                backupFilePath, loggingContext);
-            
-            MessageBox.Show($"Data backup created successfully!\n\nFile: {backupFileName}\nLocation: {backupDir}",
-                          "Backup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-            
-            stopwatch.Stop();
-            _logger.LogInformation("BackupData completed in {ElapsedMs}ms - {LogContext}", 
-                stopwatch.ElapsedMilliseconds, loggingContext);
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            StatusMessage = "Error creating backup";
-            _logger.LogError(ex, "BackupData failed after {ElapsedMs}ms - {LogContext}", 
-                stopwatch.ElapsedMilliseconds, loggingContext);
-            MessageBox.Show($"Error creating backup: {ex.Message}", "Backup Error",
-                          MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
+                IsLoading = true;
+                StatusMessage = "Creating data backup...";
 
-    private void ExecuteSearch()
-    {
-        _logger.LogDebug("Search command invoked - SearchText: '{SearchText}'", SearchText);
-        FilterEnterprises();
-    }
+                // Create backup directory if it doesn't exist
+                var backupDir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "WileyWidget",
+                    "Backups"
+                );
+
+                System.IO.Directory.CreateDirectory(backupDir);
+
+                // Create backup filename with timestamp
+                var backupFileName = $"WileyWidget_Backup_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+                var backupFilePath = System.IO.Path.Combine(backupDir, backupFileName);
+
+                // Create backup data
+                var backupData = new
+                {
+                    BackupDate = DateTime.Now,
+                    Version = "1.0",
+                    Application = "Wiley Widget",
+                    DashboardData = new
+                    {
+                        TotalEnterprises = TotalEnterprises,
+                        TotalBudget = TotalBudget,
+                        SystemHealthScore = HealthScore,
+                        SystemHealthStatus = SystemHealthStatus,
+                        AutoRefreshEnabled = AutoRefreshEnabled,
+                        RefreshIntervalMinutes = RefreshIntervalMinutes,
+                        LastUpdated = LastUpdated
+                    },
+                    Enterprises = Enterprises.Select(e => new
+                    {
+                        e.Id,
+                        e.Name,
+                        e.Type,
+                        e.Description,
+                        e.CreatedDate,
+                        e.ModifiedDate
+                    }).ToList(),
+                    HistoricalData = HistoricalData.ToList(),
+                    RateTrendData = RateTrendData.ToList(),
+                    EnterpriseTypeData = EnterpriseTypeData.ToList(),
+                    Settings = new
+                    {
+                        FiscalYearSettings = _fiscalYearSettings,
+                        ApplicationSettings = "Default"
+                    }
+                };
+
+                // Serialize to JSON
+                var json = System.Text.Json.JsonSerializer.Serialize(backupData, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                // Write backup file
+                await System.IO.File.WriteAllTextAsync(backupFilePath, json);
+
+                // Create a compressed archive if possible
+                var zipFilePath = System.IO.Path.Combine(backupDir, $"WileyWidget_Backup_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+                try
+                {
+                    using (var archive = System.IO.Compression.ZipFile.Open(zipFilePath, System.IO.Compression.ZipArchiveMode.Create))
+                    {
+                        archive.CreateEntryFromFile(backupFilePath, backupFileName);
+                    }
+
+                    // Delete the uncompressed file
+                    System.IO.File.Delete(backupFilePath);
+                    backupFilePath = zipFilePath;
+                    backupFileName = System.IO.Path.GetFileName(zipFilePath);
+                }
+                catch
+                {
+                    // If compression fails, keep the JSON file
+                    _logger.LogWarning("Could not create compressed backup, keeping JSON file");
+                }
+
+                StatusMessage = $"Backup created: {backupFileName}";
+                _logger.LogInformation("Data backup created successfully at {FilePath} - {LogContext}",
+                    backupFilePath, loggingContext);
+
+                MessageBox.Show($"Data backup created successfully!\n\nFile: {backupFileName}\nLocation: {backupDir}",
+                              "Backup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                stopwatch.Stop();
+                _logger.LogInformation("BackupData completed in {ElapsedMs}ms - {LogContext}",
+                    stopwatch.ElapsedMilliseconds, loggingContext);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                StatusMessage = "Error creating backup";
+                _logger.LogError(ex, "BackupData failed after {ElapsedMs}ms - {LogContext}",
+                    stopwatch.ElapsedMilliseconds, loggingContext);
+                MessageBox.Show($"Error creating backup: {ex.Message}", "Backup Error",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private void ExecuteSearch()
+        {
+            _logger.LogDebug("Search command invoked - SearchText: '{SearchText}'", SearchText);
+            FilterEnterprises();
+        }
 
         private void FilterEnterprises()
         {
             FilteredEnterprises.Clear();
-            
+
             if (string.IsNullOrWhiteSpace(SearchText))
             {
                 // No search text, show all enterprises
@@ -1362,7 +1362,7 @@ namespace WileyWidget.ViewModels
                     (e.Type?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
                     (e.Description?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false)
                 );
-                
+
                 foreach (var enterprise in filtered)
                 {
                     FilteredEnterprises.Add(enterprise);
@@ -1391,7 +1391,7 @@ namespace WileyWidget.ViewModels
 
                 stopwatch.Stop();
                 ScenarioStatus = "Scenario inputs loaded";
-                _logger.LogDebug("Scenario inputs loaded in {ElapsedMs}ms - EnterpriseId: {EnterpriseId}, SuggestedRate: ${SuggestedRate}", 
+                _logger.LogDebug("Scenario inputs loaded in {ElapsedMs}ms - EnterpriseId: {EnterpriseId}, SuggestedRate: ${SuggestedRate}",
                     stopwatch.ElapsedMilliseconds, enterpriseId, SuggestedRate);
             }
             catch (Exception ex)
@@ -1458,101 +1458,101 @@ namespace WileyWidget.ViewModels
             }
         }
 
-    private async Task ExecuteRunGrowthScenarioAsync(int enterpriseId)
-    {
-        using var loggingContext = LoggingContext.BeginOperation("RunGrowthScenario");
-        var stopwatch = Stopwatch.StartNew();
-        
-        try
+        private async Task ExecuteRunGrowthScenarioAsync(int enterpriseId)
         {
-            IsScenarioRunning = true;
-            ScenarioStatus = "Running growth scenario analysis...";
-            
-            _logger.LogInformation("Starting growth scenario for EnterpriseId: {EnterpriseId} - {LogContext}", 
-                enterpriseId, loggingContext);
+            using var loggingContext = LoggingContext.BeginOperation("RunGrowthScenario");
+            var stopwatch = Stopwatch.StartNew();
 
-            // Create scenario parameters from user inputs
-            var parameters = new ScenarioParameters
+            try
             {
-                PayRaisePercentage = PayRaisePercentage / 100m, // Convert percentage to decimal
-                BenefitsIncreaseAmount = BenefitsIncreaseAmount,
-                EquipmentPurchaseAmount = EquipmentPurchaseAmount,
-                EquipmentFinancingYears = EquipmentFinancingYears,
-                ReservePercentage = ReservePercentage / 100m // Convert percentage to decimal
-            };
+                IsScenarioRunning = true;
+                ScenarioStatus = "Running growth scenario analysis...";
 
-            // Generate comprehensive scenario
-            var scenario = await _whatIfScenarioEngine.GenerateComprehensiveScenarioAsync(enterpriseId, parameters);
+                _logger.LogInformation("Starting growth scenario for EnterpriseId: {EnterpriseId} - {LogContext}",
+                    enterpriseId, loggingContext);
 
-            // Store the scenario results
-            CurrentScenario = scenario;
+                // Create scenario parameters from user inputs
+                var parameters = new ScenarioParameters
+                {
+                    PayRaisePercentage = PayRaisePercentage / 100m, // Convert percentage to decimal
+                    BenefitsIncreaseAmount = BenefitsIncreaseAmount,
+                    EquipmentPurchaseAmount = EquipmentPurchaseAmount,
+                    EquipmentFinancingYears = EquipmentFinancingYears,
+                    ReservePercentage = ReservePercentage / 100m // Convert percentage to decimal
+                };
 
-            // Recalculate suggested rate with new scenario data
-            SuggestedRate = await CalculateSuggestedRateAsync(enterpriseId);
+                // Generate comprehensive scenario
+                var scenario = await _whatIfScenarioEngine.GenerateComprehensiveScenarioAsync(enterpriseId, parameters);
 
-            stopwatch.Stop();
-            ScenarioStatus = $"Scenario '{scenario.ScenarioName}' completed successfully";
+                // Store the scenario results
+                CurrentScenario = scenario;
 
-            _logger.LogInformation("Growth scenario completed in {ElapsedMs}ms for enterprise {EnterpriseId} - New Rate: ${SuggestedRate} - {LogContext}", 
-                stopwatch.ElapsedMilliseconds, enterpriseId, SuggestedRate, loggingContext);
+                // Recalculate suggested rate with new scenario data
+                SuggestedRate = await CalculateSuggestedRateAsync(enterpriseId);
+
+                stopwatch.Stop();
+                ScenarioStatus = $"Scenario '{scenario.ScenarioName}' completed successfully";
+
+                _logger.LogInformation("Growth scenario completed in {ElapsedMs}ms for enterprise {EnterpriseId} - New Rate: ${SuggestedRate} - {LogContext}",
+                    stopwatch.ElapsedMilliseconds, enterpriseId, SuggestedRate, loggingContext);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                ScenarioStatus = $"Error running scenario: {ex.Message}";
+                _logger.LogError(ex, "Error running growth scenario after {ElapsedMs}ms for enterprise {EnterpriseId} - {LogContext}",
+                    stopwatch.ElapsedMilliseconds, enterpriseId, loggingContext);
+            }
+            finally
+            {
+                IsScenarioRunning = false;
+            }
         }
-        catch (Exception ex)
+
+        private void ExecuteClearSearch()
         {
-            stopwatch.Stop();
-            ScenarioStatus = $"Error running scenario: {ex.Message}";
-            _logger.LogError(ex, "Error running growth scenario after {ElapsedMs}ms for enterprise {EnterpriseId} - {LogContext}", 
-                stopwatch.ElapsedMilliseconds, enterpriseId, loggingContext);
+            _logger.LogDebug("ClearSearch command invoked - Previous SearchText: '{SearchText}'", SearchText);
+            SearchText = string.Empty;
         }
-        finally
-        {
-            IsScenarioRunning = false;
-        }
-    }
-
-    private void ExecuteClearSearch()
-    {
-        _logger.LogDebug("ClearSearch command invoked - Previous SearchText: '{SearchText}'", SearchText);
-        SearchText = string.Empty;
-    }
 
         // Navigation commands for testing journaling
-    private void ExecuteNavigateToAccounts()
-    {
-        _logger.LogInformation("NavigateToAccounts command invoked - Navigating to MunicipalAccountView");
-        _regionManager.RequestNavigate("MainRegion", "MunicipalAccountView");
-    }
-
-    private void ExecuteNavigateBack()
-    {
-        var region = _regionManager.Regions["MainRegion"];
-        var canGoBack = region.NavigationService.Journal.CanGoBack;
-        _logger.LogDebug("NavigateBack command invoked - CanGoBack: {CanGoBack}", canGoBack);
-        
-        if (canGoBack)
+        private void ExecuteNavigateToAccounts()
         {
-            region.NavigationService.Journal.GoBack();
+            _logger.LogInformation("NavigateToAccounts command invoked - Navigating to MunicipalAccountView");
+            _regionManager.RequestNavigate("MunicipalAccountRegion", "MunicipalAccountView");
         }
-    }
 
-    private void ExecuteNavigateForward()
-    {
-        var region = _regionManager.Regions["MainRegion"];
-        var canGoForward = region.NavigationService.Journal.CanGoForward;
-        _logger.LogDebug("NavigateForward command invoked - CanGoForward: {CanGoForward}", canGoForward);
-        
-        if (canGoForward)
+        private void ExecuteNavigateBack()
         {
-            region.NavigationService.Journal.GoForward();
+            var region = _regionManager.Regions["DashboardRegion"];
+            var canGoBack = region.NavigationService.Journal.CanGoBack;
+            _logger.LogDebug("NavigateBack command invoked - CanGoBack: {CanGoBack}", canGoBack);
+
+            if (canGoBack)
+            {
+                region.NavigationService.Journal.GoBack();
+            }
         }
-    }
 
-    private void ExecuteOpenEnterpriseManagement()
-    {
-        _logger.LogInformation("OpenEnterpriseManagement command invoked");
-        try
+        private void ExecuteNavigateForward()
         {
-            // Navigate to enterprise management view
-            _regionManager.RequestNavigate("EnterpriseRegion", "EnterpriseView");
+            var region = _regionManager.Regions["DashboardRegion"];
+            var canGoForward = region.NavigationService.Journal.CanGoForward;
+            _logger.LogDebug("NavigateForward command invoked - CanGoForward: {CanGoForward}", canGoForward);
+
+            if (canGoForward)
+            {
+                region.NavigationService.Journal.GoForward();
+            }
+        }
+
+        private void ExecuteOpenEnterpriseManagement()
+        {
+            _logger.LogInformation("OpenEnterpriseManagement command invoked");
+            try
+            {
+                // Navigate to enterprise management view
+                _regionManager.RequestNavigate("EnterpriseRegion", "EnterpriseView");
                 _logger.LogInformation("Successfully navigated to Enterprise management view");
             }
             catch (Exception ex)
@@ -1567,7 +1567,7 @@ namespace WileyWidget.ViewModels
         private void OnRefreshDataRequested(RefreshDataMessage message)
         {
             _logger.LogInformation("Refresh data requested for view: {ViewName}", message.ViewName);
-            
+
             if (string.IsNullOrEmpty(message.ViewName) || message.ViewName == "Dashboard")
             {
                 _ = LoadDashboardDataAsync();
@@ -1576,9 +1576,9 @@ namespace WileyWidget.ViewModels
 
         private void OnEnterpriseChanged(EnterpriseChangedMessage message)
         {
-            _logger.LogInformation("Enterprise changed: {EnterpriseName} ({ChangeType})", 
+            _logger.LogInformation("Enterprise changed: {EnterpriseName} ({ChangeType})",
                 message.EnterpriseName, message.ChangeType);
-            
+
             // Refresh dashboard data when enterprise changes
             _ = LoadDashboardDataAsync();
         }
@@ -1586,7 +1586,7 @@ namespace WileyWidget.ViewModels
         private void OnBudgetUpdated(BudgetUpdatedMessage message)
         {
             _logger.LogInformation("Budget updated: {Context}. Refreshing dashboard data.", message.Context);
-            
+
             // Refresh dashboard data when budget is updated
             _ = LoadDashboardDataAsync();
         }
@@ -1597,33 +1597,33 @@ namespace WileyWidget.ViewModels
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    _logger.LogDebug("Enterprises collection - Added {Count} items at index {Index}", 
+                    _logger.LogDebug("Enterprises collection - Added {Count} items at index {Index}",
                         e.NewItems?.Count ?? 0, e.NewStartingIndex);
                     if (e.NewItems != null)
                     {
                         foreach (Enterprise enterprise in e.NewItems)
                         {
-                            _logger.LogTrace("Added Enterprise: Id={Id}, Name={Name}, Type={Type}", 
+                            _logger.LogTrace("Added Enterprise: Id={Id}, Name={Name}, Type={Type}",
                                 enterprise.Id, enterprise.Name, enterprise.Type);
                         }
                     }
                     break;
 
                 case NotifyCollectionChangedAction.Remove:
-                    _logger.LogDebug("Enterprises collection - Removed {Count} items at index {Index}", 
+                    _logger.LogDebug("Enterprises collection - Removed {Count} items at index {Index}",
                         e.OldItems?.Count ?? 0, e.OldStartingIndex);
                     if (e.OldItems != null)
                     {
                         foreach (Enterprise enterprise in e.OldItems)
                         {
-                            _logger.LogTrace("Removed Enterprise: Id={Id}, Name={Name}", 
+                            _logger.LogTrace("Removed Enterprise: Id={Id}, Name={Name}",
                                 enterprise.Id, enterprise.Name);
                         }
                     }
                     break;
 
                 case NotifyCollectionChangedAction.Replace:
-                    _logger.LogDebug("Enterprises collection - Replaced {Count} items at index {Index}", 
+                    _logger.LogDebug("Enterprises collection - Replaced {Count} items at index {Index}",
                         e.NewItems?.Count ?? 0, e.NewStartingIndex);
                     break;
 
@@ -1632,7 +1632,7 @@ namespace WileyWidget.ViewModels
                     break;
 
                 case NotifyCollectionChangedAction.Move:
-                    _logger.LogDebug("Enterprises collection - Moved item from index {OldIndex} to {NewIndex}", 
+                    _logger.LogDebug("Enterprises collection - Moved item from index {OldIndex} to {NewIndex}",
                         e.OldStartingIndex, e.NewStartingIndex);
                     break;
             }
@@ -1664,7 +1664,7 @@ namespace WileyWidget.ViewModels
         public void OnNavigatedTo(NavigationContext navigationContext)
         {
             _logger.LogInformation("DashboardViewModel navigated to with context: {Context}", navigationContext?.ToString() ?? "null");
-            
+
             // Handle navigation parameters
             if (navigationContext?.Parameters != null)
             {
@@ -1699,7 +1699,7 @@ namespace WileyWidget.ViewModels
         public void OnNavigatedFrom(NavigationContext navigationContext)
         {
             _logger.LogInformation("DashboardViewModel navigated from");
-            
+
             // Cleanup if needed
             // Cancel any ongoing operations, save state, etc.
         }

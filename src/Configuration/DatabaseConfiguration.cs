@@ -697,7 +697,7 @@ public static class DatabaseConfiguration
             var configuration = sp.GetRequiredService<IConfiguration>();
             var secretVaultService = sp.GetService<ISecretVaultService>();
 
-        // Priority order: Environment variable -> local secret vault -> appsettings
+            // Priority order: Environment variable -> local secret vault -> appsettings
             var xaiApiKey = Environment.GetEnvironmentVariable("XAI_API_KEY") ??
                            TryGetFromSecretVaultAsync(secretVaultService, "XAI-API-KEY", logger).GetAwaiter().GetResult() ??
                            configuration["XAI:ApiKey"];
@@ -734,20 +734,20 @@ public static class DatabaseConfiguration
                 var aiLoggingService = sp.GetRequiredService<IAILoggingService>();
                 var memoryCache = sp.GetRequiredService<IMemoryCache>();
                 return new XAIService(httpClientFactory, configuration, sp.GetRequiredService<ILogger<XAIService>>(), contextService, aiLoggingService, memoryCache);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to initialize XAIService. Falling back to DevNullAIService");
-            return new DevNullAIService();
-        }
-    });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to initialize XAIService. Falling back to DevNullAIService");
+                return new DevNullAIService();
+            }
+        });
 
-    // Register as Singleton for better performance and state management
-    services.TryAddSingleton<IChargeCalculatorService, ServiceChargeCalculatorService>();
-    services.TryAddSingleton<IWhatIfScenarioEngine, WhatIfScenarioEngine>();
+        // Register as Singleton for better performance and state management
+        services.TryAddSingleton<IChargeCalculatorService, ServiceChargeCalculatorService>();
+        services.TryAddSingleton<IWhatIfScenarioEngine, WhatIfScenarioEngine>();
 
-    // Register FiscalYearSettings as singleton (configuration data)
-    services.AddSingleton<FiscalYearSettings>();        // Register Unit of Work (Clean Architecture - UI only depends on Business layer)
+        // Register FiscalYearSettings as singleton (configuration data)
+        services.AddSingleton<FiscalYearSettings>();        // Register Unit of Work (Clean Architecture - UI only depends on Business layer)
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Register health check configuration (service lifetime singleton)
@@ -1192,15 +1192,15 @@ public class SqlServerHealthCheck : Microsoft.Extensions.Diagnostics.HealthCheck
             var connectionString = _configuration.GetConnectionString("AzureConnection") ??
                                     _configuration.GetConnectionString("DefaultConnection");
 
-        // Check if a connection string is configured
+            // Check if a connection string is configured
             if (string.IsNullOrEmpty(connectionString))
             {
                 return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
             "SQL Server connection string not configured");
             }
 
-        // Validate connection string format
-        var validationResult = ValidateSqlConnectionString(connectionString);
+            // Validate connection string format
+            var validationResult = ValidateSqlConnectionString(connectionString);
             if (!validationResult.IsValid)
             {
                 return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(

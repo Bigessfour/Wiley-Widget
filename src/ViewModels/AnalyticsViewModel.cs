@@ -294,7 +294,7 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
         {
             Logger.LogInformation("Received DataLoadedEvent from {ViewModelName} with {ItemCount} items. Refreshing analytics data.",
                 message.ViewModelName, message.ItemCount);
-            
+
             // Optionally refresh analytics data when dashboard loads
             // This ensures analytics stays in sync with dashboard data
             _ = ExecuteRefreshAnalyticsDataAsync();
@@ -470,10 +470,10 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
         Logger.LogInformation("Returned from drill down view");
     }
 
-        private void RaiseDataLoaded()
-        {
-            DataLoaded?.Invoke(this, EventArgs.Empty);
-        }
+    private void RaiseDataLoaded()
+    {
+        DataLoaded?.Invoke(this, EventArgs.Empty);
+    }
 
     private (DateTime startDate, DateTime endDate) GetDateRangeForPeriod(string? period)
     {

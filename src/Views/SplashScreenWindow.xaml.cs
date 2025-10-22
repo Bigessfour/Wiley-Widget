@@ -193,10 +193,10 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
         IsIndeterminate = true;
         IsLoading = true;
         StatusText = "Starting Wiley Widget...";
-        
+
         // Initialize progress tracking
         StartProgressTracking();
-        
+
         // Handle DPI scaling
         var dpiScale = VisualTreeHelper.GetDpi(this);
         if (dpiScale.DpiScaleX > 1 || dpiScale.DpiScaleY > 1)
@@ -217,16 +217,16 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
     private void ScaleFonts(DpiScale dpiScale)
     {
         var scale = Math.Max(dpiScale.DpiScaleX, dpiScale.DpiScaleY);
-        
+
         // Find and scale text elements
         var titleTextBlock = (TextBlock)FindName("TitleTextBlock");
         if (titleTextBlock != null)
             titleTextBlock.FontSize *= scale;
-            
+
         var statusTextBlock = (TextBlock)FindName("StatusTextBlock");
         if (statusTextBlock != null)
             statusTextBlock.FontSize *= scale;
-            
+
         // Scale other text elements
         var progressTextBlock = (TextBlock)FindName("ProgressTextBlock");
         if (progressTextBlock != null)
@@ -295,7 +295,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
     {
         // Use smart progress estimation
         UpdateProgress(progress);
-        
+
         // Use contextual message if available
         if (_progressMessages.TryGetValue(Math.Round(progress / 10) * 10, out var contextualMessage))
         {
@@ -305,7 +305,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
         {
             StatusText = GetEnhancedStatusText(statusText);
         }
-        
+
         IsIndeterminate = progress < 10; // Keep indeterminate for first 10%
     }
 
@@ -344,14 +344,14 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
 
         // Success animation sequence
         await Task.Delay(300);
-        
+
         // Quick success flash
         var successFlash = new DoubleAnimation(1, 1.1, TimeSpan.FromMilliseconds(150))
         {
             AutoReverse = true,
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
-        
+
         var transform = RenderTransform as ScaleTransform ?? new ScaleTransform();
         if (RenderTransform == null)
         {
@@ -359,7 +359,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
         }
         transform.BeginAnimation(ScaleTransform.ScaleXProperty, successFlash);
         transform.BeginAnimation(ScaleTransform.ScaleYProperty, successFlash);
-        
+
         await Task.Delay(500);
         StatusText = "Application ready for use";
     }
@@ -383,59 +383,59 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
         }
     }
 
-        /// <summary>
-        /// Applies advanced Syncfusion Fluent Dark theme features with enhanced animations
-        /// </summary>
-        private void ApplyAdvancedThemeFeatures()
+    /// <summary>
+    /// Applies advanced Syncfusion Fluent Dark theme features with enhanced animations
+    /// </summary>
+    private void ApplyAdvancedThemeFeatures()
+    {
+        // Apply Fluent Dark theme using centralized theme management
+        Services.ThemeUtility.TryApplyTheme(this, "FluentDark");
+
+        // Enhanced fade-in with smooth, professional transition
+        var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(800))
         {
-            // Apply Fluent Dark theme using centralized theme management
-            Services.ThemeUtility.TryApplyTheme(this, "FluentDark");
-
-            // Enhanced fade-in with smooth, professional transition
-            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(800))
+            EasingFunction = new CubicEase
             {
-                EasingFunction = new CubicEase
-                {
-                    EasingMode = EasingMode.EaseOut
-                }
-            };
-            BeginAnimation(OpacityProperty, fadeIn);
+                EasingMode = EasingMode.EaseOut
+            }
+        };
+        BeginAnimation(OpacityProperty, fadeIn);
 
-            // Add subtle scale animation with professional timing
-            var scaleX = new DoubleAnimation(0.95, 1, TimeSpan.FromMilliseconds(600))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-                BeginTime = TimeSpan.FromMilliseconds(100)
-            };
-            var scaleY = new DoubleAnimation(0.95, 1, TimeSpan.FromMilliseconds(600))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-                BeginTime = TimeSpan.FromMilliseconds(100)
-            };
+        // Add subtle scale animation with professional timing
+        var scaleX = new DoubleAnimation(0.95, 1, TimeSpan.FromMilliseconds(600))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            BeginTime = TimeSpan.FromMilliseconds(100)
+        };
+        var scaleY = new DoubleAnimation(0.95, 1, TimeSpan.FromMilliseconds(600))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            BeginTime = TimeSpan.FromMilliseconds(100)
+        };
 
-            var transform = new ScaleTransform();
-            RenderTransform = transform;
-            transform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
-            transform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
+        var transform = new ScaleTransform();
+        RenderTransform = transform;
+        transform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
+        transform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
 
-            // Add subtle glow effect animation
-            var glowAnimation = new DoubleAnimation(0.1, 0.3, TimeSpan.FromMilliseconds(1000))
-            {
-                AutoReverse = true,
-                RepeatBehavior = RepeatBehavior.Forever,
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-            };
+        // Add subtle glow effect animation
+        var glowAnimation = new DoubleAnimation(0.1, 0.3, TimeSpan.FromMilliseconds(1000))
+        {
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
 
-            var glowEffect = new DropShadowEffect
-            {
-                ShadowDepth = 0,
-                BlurRadius = 20,
-                Color = Color.FromRgb(0, 122, 204),
-                Opacity = 0.1
-            };
-            Effect = glowEffect;
-            glowEffect.BeginAnimation(DropShadowEffect.OpacityProperty, glowAnimation);
-        }
+        var glowEffect = new DropShadowEffect
+        {
+            ShadowDepth = 0,
+            BlurRadius = 20,
+            Color = Color.FromRgb(0, 122, 204),
+            Opacity = 0.1
+        };
+        Effect = glowEffect;
+        glowEffect.BeginAnimation(DropShadowEffect.OpacityProperty, glowAnimation);
+    }
 
     /// <summary>
     /// Shows the splash screen and starts the loading animation
@@ -477,10 +477,10 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
         try
         {
             _logger.LogInformation("Requesting splash screen close with smooth transition");
-            
+
             // Publish event to notify Bootstrapper that splash screen is ready to close
             _eventAggregator.GetEvent<SplashScreenCloseRequestedEvent>().Publish();
-            
+
             // Perform smooth fade-out animation
             var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(600))
             {
@@ -510,7 +510,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
 
             // Publish final close event
             _eventAggregator.GetEvent<SplashScreenCloseRequestedEvent>().Publish();
-            
+
             _logger.LogInformation("Splash screen close requested with smooth transition");
         }
         catch (Exception ex)
@@ -532,7 +532,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        
+
         if (e.Key == Key.Escape)
         {
             // Allow user to skip splash if needed
@@ -556,7 +556,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
         ProgressValue = 100;
         StatusText = "Completing setup...";
         IsIndeterminate = false;
-        
+
         // Trigger completion after a short delay
         Dispatcher.Invoke(async () =>
         {

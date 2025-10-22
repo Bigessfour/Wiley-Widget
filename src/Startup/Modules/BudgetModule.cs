@@ -14,27 +14,36 @@ namespace WileyWidget.Startup.Modules
     /// Registers BudgetView, BudgetAnalysisView, and AnalyticsView with their respective regions.
     /// </summary>
     [Module(ModuleName = "BudgetModule")]
+    [ModuleDependency("CoreModule")]
     public class BudgetModule : IModule
     {
         public void OnInitialized(IContainerProvider containerProvider)
         {
             Log.Information("Initializing BudgetModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            try
+            {
+                var regionManager = containerProvider.Resolve<IRegionManager>();
 
-            // Register BudgetView with BudgetRegion
-            regionManager.RegisterViewWithRegion("BudgetRegion", typeof(BudgetView));
-            Log.Information("Successfully registered BudgetView with BudgetRegion");
+                // Register BudgetView with BudgetRegion
+                regionManager.RegisterViewWithRegion("BudgetRegion", typeof(BudgetView));
+                Log.Information("Successfully registered BudgetView with BudgetRegion");
 
-            // Register BudgetAnalysisView with BudgetRegion (can coexist with BudgetView)
-            regionManager.RegisterViewWithRegion("BudgetRegion", typeof(BudgetAnalysisView));
-            Log.Information("Successfully registered BudgetAnalysisView with BudgetRegion");
+                // Register BudgetAnalysisView with BudgetRegion (can coexist with BudgetView)
+                regionManager.RegisterViewWithRegion("BudgetRegion", typeof(BudgetAnalysisView));
+                Log.Information("Successfully registered BudgetAnalysisView with BudgetRegion");
 
-            // Register AnalyticsView with AnalyticsRegion
-            regionManager.RegisterViewWithRegion("AnalyticsRegion", typeof(AnalyticsView));
-            Log.Information("Successfully registered AnalyticsView with AnalyticsRegion");
+                // Register AnalyticsView with AnalyticsRegion
+                regionManager.RegisterViewWithRegion("AnalyticsRegion", typeof(AnalyticsView));
+                Log.Information("Successfully registered AnalyticsView with AnalyticsRegion");
 
-            Log.Information("BudgetModule initialization completed");
+                Log.Information("BudgetModule initialization completed");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to initialize BudgetModule - region registration failed");
+                throw;
+            }
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)

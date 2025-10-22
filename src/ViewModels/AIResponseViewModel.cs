@@ -43,8 +43,8 @@ namespace WileyWidget.ViewModels
         [ObservableProperty]
         private bool hasWarnings;
 
-    // Prism DelegateCommand property replacing CommunityToolkit RelayCommand
-    public Prism.Commands.DelegateCommand ClearCommand { get; private set; }
+        // Prism DelegateCommand property replacing CommunityToolkit RelayCommand
+        public Prism.Commands.DelegateCommand ClearCommand { get; private set; }
 
         /// <summary>
         /// Collection of extracted insights from XAI response.
@@ -159,7 +159,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Pattern 1: Explicit "Insight:" sections
-                var insightMatches = Regex.Matches(text, @"(?:Insight|Finding|Analysis):\s*(.+?)(?=\n\n|\n[A-Z]|$)", 
+                var insightMatches = Regex.Matches(text, @"(?:Insight|Finding|Analysis):\s*(.+?)(?=\n\n|\n[A-Z]|$)",
                     RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
                 foreach (Match match in insightMatches)
@@ -179,7 +179,7 @@ namespace WileyWidget.ViewModels
                 }
 
                 // Pattern 2: Numbered insights (1., 2., 3., etc.)
-                var numberedMatches = Regex.Matches(text, @"^\d+\.\s+(.+?)(?=\n\d+\.|\n\n|$)", 
+                var numberedMatches = Regex.Matches(text, @"^\d+\.\s+(.+?)(?=\n\d+\.|\n\n|$)",
                     RegexOptions.Multiline);
 
                 foreach (Match match in numberedMatches)
@@ -199,15 +199,15 @@ namespace WileyWidget.ViewModels
                 }
 
                 // Pattern 3: Financial metrics (e.g., "$25,000", "15% increase")
-                var financialMatches = Regex.Matches(text, 
-                    @"(\$[\d,]+(?:\.\d{2})?|[\d,]+(?:\.\d+)?%)\s+(?:in|for|from|to)\s+([^.]+?)\.?(?=\n|$)", 
+                var financialMatches = Regex.Matches(text,
+                    @"(\$[\d,]+(?:\.\d{2})?|[\d,]+(?:\.\d+)?%)\s+(?:in|for|from|to)\s+([^.]+?)\.?(?=\n|$)",
                     RegexOptions.Multiline);
 
                 foreach (Match match in financialMatches)
                 {
                     var amount = match.Groups[1].Value;
                     var context = match.Groups[2].Value.Trim();
-                    
+
                     if (!string.IsNullOrWhiteSpace(context))
                     {
                         Insights.Add(new AIResponseInsight
@@ -238,8 +238,8 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Pattern: "Recommend:", "Recommendation:", or "Action:"
-                var recommendationMatches = Regex.Matches(text, 
-                    @"(?:Recommend|Recommendation|Action|Suggested Action):\s*(.+?)(?=\n\n|\n[A-Z]|$)", 
+                var recommendationMatches = Regex.Matches(text,
+                    @"(?:Recommend|Recommendation|Action|Suggested Action):\s*(.+?)(?=\n\n|\n[A-Z]|$)",
                     RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
                 foreach (Match match in recommendationMatches)
@@ -259,8 +259,8 @@ namespace WileyWidget.ViewModels
                 }
 
                 // Pattern: "Should", "Must", "Consider" statements
-                var actionMatches = Regex.Matches(text, 
-                    @"(?:should|must|consider|recommend)\s+([^.]+?)\.(?=\s|$)", 
+                var actionMatches = Regex.Matches(text,
+                    @"(?:should|must|consider|recommend)\s+([^.]+?)\.(?=\s|$)",
                     RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
                 foreach (Match match in actionMatches)
@@ -295,8 +295,8 @@ namespace WileyWidget.ViewModels
             try
             {
                 // Pattern: "Warning:", "Alert:", "Caution:", "Risk:"
-                var warningMatches = Regex.Matches(text, 
-                    @"(?:Warning|Alert|Caution|Risk|Note):\s*(.+?)(?=\n\n|\n[A-Z]|$)", 
+                var warningMatches = Regex.Matches(text,
+                    @"(?:Warning|Alert|Caution|Risk|Note):\s*(.+?)(?=\n\n|\n[A-Z]|$)",
                     RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
                 foreach (Match match in warningMatches)
@@ -340,7 +340,7 @@ namespace WileyWidget.ViewModels
                     Timestamp = DateTime.Now
                 };
 
-                _logger?.LogDebug("Summary extracted: {InsightCount} insights, {RecommendationCount} recommendations", 
+                _logger?.LogDebug("Summary extracted: {InsightCount} insights, {RecommendationCount} recommendations",
                     Summary.TotalInsights, Summary.TotalRecommendations);
             }
             catch (Exception ex)
@@ -405,10 +405,10 @@ namespace WileyWidget.ViewModels
             return "Information";
         }
 
-    /// <summary>
-    /// Clears all parsed data.
-    /// </summary>
-    public void Clear()
+        /// <summary>
+        /// Clears all parsed data.
+        /// </summary>
+        public void Clear()
         {
             ResponseText = string.Empty;
             QueryText = string.Empty;

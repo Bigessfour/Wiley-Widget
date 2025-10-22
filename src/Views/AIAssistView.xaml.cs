@@ -77,7 +77,7 @@ public partial class AIAssistView : UserControl
     private void OnMessageInputKeyDown(object sender, KeyEventArgs e)
     {
         // Support both Enter and Ctrl+Enter for accessibility
-        if ((e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None) || 
+        if ((e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None) ||
             (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control))
         {
             if (ViewModel != null)
@@ -102,10 +102,10 @@ public partial class AIAssistView : UserControl
                 var scrollViewer = FindName("ChatScrollViewer") as System.Windows.Controls.ScrollViewer;
                 scrollViewer?.ScrollToBottom();
             }, System.Windows.Threading.DispatcherPriority.Loaded);
-        // Evidence for Section 8 Async/Threading/Cancellation: UI thread management for collection changes
-        // - Uses Dispatcher.InvokeAsync for thread-safe scroll updates per MS doc: "Update UI from background threads using Dispatcher"
-        // - Responds to PropertyChanged events for reactive UI updates per MS doc: "INotifyPropertyChanged enables data binding"
-        // - Uses DispatcherPriority.Loaded for smooth scrolling per MS doc: "DispatcherPriority controls execution timing"
+            // Evidence for Section 8 Async/Threading/Cancellation: UI thread management for collection changes
+            // - Uses Dispatcher.InvokeAsync for thread-safe scroll updates per MS doc: "Update UI from background threads using Dispatcher"
+            // - Responds to PropertyChanged events for reactive UI updates per MS doc: "INotifyPropertyChanged enables data binding"
+            // - Uses DispatcherPriority.Loaded for smooth scrolling per MS doc: "DispatcherPriority controls execution timing"
         }
     }
 
@@ -159,7 +159,7 @@ public partial class AIAssistView : UserControl
             // 1. Window composition APIs for acrylic (ShowAcrylicBackground)
             // 2. Control templates/styles for hover/pressed effects
             // 3. FocusVisualStyle for keyboard focus visuals
-            
+
             // Apply Acrylic Background effect if enabled
             if (vm.ShowAcrylicBackground)
             {
@@ -194,7 +194,7 @@ public partial class AIAssistView : UserControl
                 {
                     window.Background = new SolidColorBrush(Color.FromArgb(230, 30, 30, 30));
                 }
-                
+
                 Log.Debug("AIAssistView: Acrylic-like effect applied to parent window");
             }
         }

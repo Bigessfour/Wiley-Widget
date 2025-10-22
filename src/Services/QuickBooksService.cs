@@ -481,9 +481,9 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             return false;
         }
 
-    // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
-    var state = Guid.NewGuid().ToString("N");
-    var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
+        // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
+        var state = Guid.NewGuid().ToString("N");
+        var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
         _logger.LogWarning("Launching QuickBooks OAuth flow. Complete sign-in for realm {RealmId}.", _realmId);
         // If provided, launch pre-login URL to ensure correct account context, then launch OAuth
         if (!string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
@@ -526,9 +526,9 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         var request = context.Request;
         var response = context.Response;
         var query = request.QueryString;
-    var returnedState = query["state"];
-    var code = query["code"];
-    var realmIdFromCallback = query["realmId"]; // provided by Intuit on success
+        var returnedState = query["state"];
+        var code = query["code"];
+        var realmIdFromCallback = query["realmId"]; // provided by Intuit on success
         var error = query["error"];
         var success = !string.IsNullOrWhiteSpace(code) && string.Equals(state, returnedState, StringComparison.Ordinal);
 

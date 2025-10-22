@@ -359,14 +359,14 @@ public partial class ExcelImportViewModel : AsyncViewModelBase
             if (extension == ".xlsx" || extension == ".xls")
             {
                 StatusMessages.Add("✓ Valid Excel file format");
-                
+
                 // In a real implementation, you would:
                 // 1. Open the Excel file using Syncfusion.XlsIO
                 // 2. Read worksheet names
                 // 3. Validate column headers
                 // 4. Show preview of first few rows
                 // 5. Check for required columns (Account Number, Description, Amount, etc.)
-                
+
                 StatusMessages.Add("Preview: File appears to be a valid Excel workbook");
                 StatusMessages.Add("Note: Full preview functionality requires Excel reading services");
             }
@@ -423,12 +423,12 @@ public partial class ExcelImportViewModel : AsyncViewModelBase
             var importedRecords = 150; // In real implementation, this would be actual count
             StatusMessages.Add($"✓ Import completed successfully!");
             StatusMessages.Add($"✓ Records imported: {importedRecords}");
-            
+
             if (CreateNewBudgetPeriod)
             {
                 StatusMessages.Add("✓ New budget period created");
             }
-            
+
             StatusMessages.Add("Import process finished");
         }
         catch (Exception ex)

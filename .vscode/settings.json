@@ -139,7 +139,9 @@
   "[powershell]": {
     "editor.defaultFormatter": "ms-vscode.powershell",
     "editor.formatOnSave": true,
-    "editor.formatOnType": true
+    "editor.formatOnType": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
   },
   "[python]": {
     "editor.formatOnSave": true,
@@ -161,11 +163,41 @@
 
   // Enhanced context for C# development
   "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
-  // C# Dev Kit Configuration
+  "dotnet.completion.showNameCompletionSuggestions": true,
+  // C# Dev Kit Configuration - Comprehensive Setup
   "dotnet.server.useOmnisharp": false,
   "dotnet.enableXamlTools": true,
   "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
   "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.enable": true,
+  "dotnet.backgroundAnalysis.maxFileSize": 1024,
+  "dotnet.backgroundAnalysis.analyzerMaxFileSize": 1024,
+  "dotnet.codeLens.enableReferencesCodeLens": true,
+  "dotnet.codeLens.enableTestsCodeLens": true,
+  "dotnet.hover.showHover": true,
+  "dotnet.quickInfo.showRemarksInQuickInfo": true,
+  "dotnet.inlayHints.enableInlayHintsForImplicitObjectCreation": true,
+  "dotnet.inlayHints.enableInlayHintsForImplicitVariableTypes": true,
+  "dotnet.inlayHints.enableInlayHintsForIndexerParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForLambdaParameterTypes": true,
+  "dotnet.inlayHints.enableInlayHintsForLiteralParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForObjectCreationParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForOtherParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForTypes": true,
+  "dotnet.navigation.navigateToDecompiledSources": true,
+  "dotnet.projects.enableAutomaticRestore": true,
+  "dotnet.projects.enableSdkParseEnable": true,
+  "dotnet.symbolSearch.searchReferenceAssemblies": true,
+  "dotnet.codeAction.enableCodeActions": true,
+  "dotnet.codeAction.show": true,
+  "dotnet.diagnostics.enable": true,
+  "dotnet.formatting.enable": true,
+  "dotnet.highlighting.enable": true,
+  "dotnet.rename.enable": true,
+  "dotnet.referencesCodeLens.enable": true,
+  "dotnet.testsCodeLens.enable": true,
+  "dotnet.server.startTimeout": 30000,
   // Disable OmniSharp entirely since we're using C# Dev Kit
   "omnisharp.enableEditorConfigSupport": false,
   "omnisharp.enableRoslynAnalyzers": false,
@@ -227,7 +259,7 @@
   // Auto-format and code actions on save
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll": true
+    "source.fixAll": "explicit"
   },
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
@@ -277,11 +309,23 @@
     "editor.insertSpaces": true,
     "editor.tabSize": 4
   },
-  "[powershell]": {
-    "editor.insertSpaces": true,
-    "editor.tabSize": 4
-  },
   "terminal.integrated.cursorStyle": "line",
+
+  // JSON Schema Validation for Project Files
+  "json.schemas": [
+    {
+      "fileMatch": ["*.csproj", "*.vbproj", "*.fsproj"],
+      "url": "https://json.schemastore.org/project.json"
+    },
+    {
+      "fileMatch": ["global.json"],
+      "url": "https://json.schemastore.org/global.json"
+    },
+    {
+      "fileMatch": ["launch.json"],
+      "url": "https://json.schemastore.org/launchsettings.json"
+    }
+  ],
 
   // File Watcher Exclusions - Critical for preventing OOM crashes
   // Exclude build artifacts, dependencies, and large directories from file watching

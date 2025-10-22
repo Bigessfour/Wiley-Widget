@@ -16,7 +16,7 @@ namespace WileyWidget.Services
     /// </summary>
     public static class SafeResourceDictionaryLoader
     {
-        private static readonly string[] AllowedColorFormats = new[] {"#RRGGBB", "#AARRGGBB", "#RGB", "#ARGB"};
+        private static readonly string[] AllowedColorFormats = new[] { "#RRGGBB", "#AARRGGBB", "#RGB", "#ARGB" };
 
         public static ResourceDictionary Load(string path, ILogger? logger = null)
         {

@@ -15,32 +15,32 @@ namespace WileyWidget.ViewModels
         private UtilityCustomer _customer = new UtilityCustomer();
         public UtilityCustomer Customer
         {
-                get => _customer;
-                set
+            get => _customer;
+            set
+            {
+                if (_customer != null)
+                {
+                    _customer.PropertyChanged -= OnInnerCustomerPropertyChanged;
+                }
+
+                if (SetProperty(ref _customer, value))
                 {
                     if (_customer != null)
                     {
-                        _customer.PropertyChanged -= OnInnerCustomerPropertyChanged;
+                        _customer.PropertyChanged += OnInnerCustomerPropertyChanged;
                     }
 
-                    if (SetProperty(ref _customer, value))
-                    {
-                        if (_customer != null)
-                        {
-                            _customer.PropertyChanged += OnInnerCustomerPropertyChanged;
-                        }
-
-                        // Notify that the Customer reference changed and update SaveCommand CanExecute
-                        RaisePropertyChanged(nameof(Customer));
-                        SaveCommand?.RaiseCanExecuteChanged();
-                    }
+                    // Notify that the Customer reference changed and update SaveCommand CanExecute
+                    RaisePropertyChanged(nameof(Customer));
+                    SaveCommand?.RaiseCanExecuteChanged();
                 }
+            }
         }
 
-    public DelegateCommand SaveCommand { get; }
-    public DelegateCommand CancelCommand { get; }
+        public DelegateCommand SaveCommand { get; }
+        public DelegateCommand CancelCommand { get; }
 
-    private readonly Dictionary<string, List<string>> _errors = new();
+        private readonly Dictionary<string, List<string>> _errors = new();
         private string _validationSummary = string.Empty;
 
         public string ValidationSummary
@@ -88,7 +88,7 @@ namespace WileyWidget.ViewModels
             RequestClose.Invoke(cancel);
         }
 
-    public DialogCloseListener RequestClose { get; set; }
+        public DialogCloseListener RequestClose { get; set; }
 
         public bool CanCloseDialog() => true;
 
@@ -155,7 +155,7 @@ namespace WileyWidget.ViewModels
             // Also include IValidatableObject.Validate results
             try
             {
-                var vv = (Customer as IValidatableObject)?? Customer as IValidatableObject;
+                var vv = (Customer as IValidatableObject) ?? Customer as IValidatableObject;
                 if (vv != null)
                 {
                     var extra = vv.Validate(context);

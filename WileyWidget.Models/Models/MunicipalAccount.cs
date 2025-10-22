@@ -76,7 +76,7 @@ public class AccountNumber
 /// <summary>
 /// Represents a municipal accounting account following GASB standards
 /// </summary>
-public class MunicipalAccount : INotifyPropertyChanged
+public partial class MunicipalAccount : INotifyPropertyChanged
 {
     /// <summary>
     /// Property changed event for data binding
@@ -221,7 +221,19 @@ public class MunicipalAccount : INotifyPropertyChanged
     }
 
     // Human-readable type and fund descriptions (persisted strings).
-    public string TypeDescription { get; set; } = "Asset";
+    private string _typeDescription = "Asset";
+
+    [Required]
+    [StringLength(50)]
+    public string TypeDescription
+    {
+        get => _typeDescription;
+        set
+        {
+            _typeDescription = value;
+            OnTypeDescriptionChanged();
+        }
+    }
     public string FundDescription { get; set; } = "General Fund";
 
     private MunicipalFundType _fund;
@@ -371,6 +383,8 @@ public class MunicipalAccount : INotifyPropertyChanged
     /// </summary>
     [Timestamp]
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+    private void OnTypeDescriptionChanged() { _typeDescription = _typeDescription?.Trim() ?? "Asset"; }
 }
 
 /// <summary>

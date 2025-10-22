@@ -26,7 +26,7 @@ public class BooleanToBrushConverter : IValueConverter
             // Use theme-aware brushes instead of hardcoded colors
             var successBrush = (Brush)Application.Current.FindResource("SuccessForegroundBrush");
             var errorBrush = (Brush)Application.Current.FindResource("ErrorForegroundBrush");
-            
+
             return boolValue ? successBrush : errorBrush;
         }
 

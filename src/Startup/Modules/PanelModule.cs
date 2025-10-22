@@ -25,12 +25,12 @@ namespace WileyWidget.Startup.Modules
             Log.Information("Initializing PanelModule");
 
             var regionManager = containerProvider.Resolve<IRegionManager>();
-            
+
             // Register panel views with their regions
             regionManager.RegisterViewWithRegion("LeftPanelRegion", typeof(DashboardPanelView));
             regionManager.RegisterViewWithRegion("RightPanelRegion", typeof(SettingsPanelView));
             regionManager.RegisterViewWithRegion("BottomPanelRegion", typeof(ToolsPanelView));
-            
+
             Log.Information("Successfully registered panel views");
             Log.Information("PanelModule initialization completed");
         }

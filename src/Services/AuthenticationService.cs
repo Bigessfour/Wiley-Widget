@@ -23,7 +23,7 @@ namespace WileyWidget.Services
 
         public event EventHandler<AuthenticationEventArgs>? AuthenticationStateChanged;
 
-    public virtual bool IsAuthenticated
+        public virtual bool IsAuthenticated
         {
             get
             {
@@ -32,7 +32,7 @@ namespace WileyWidget.Services
             }
         }
 
-    public virtual IAccount? CurrentAccount
+        public virtual IAccount? CurrentAccount
         {
             get
             {
@@ -165,7 +165,8 @@ namespace WileyWidget.Services
                 var recovered = await ErrorReportingService.Instance.TryRecoverAsync(
                     null, // No initial exception
                     "Authentication",
-                    async () => {
+                    async () =>
+                    {
                         var result = await PerformSignIn();
                         return true; // Success
                     });
@@ -238,7 +239,8 @@ namespace WileyWidget.Services
                 var recovered = await ErrorReportingService.Instance.TryRecoverAsync(
                     null, // No initial exception
                     "Authentication",
-                    async () => {
+                    async () =>
+                    {
                         await AcquireToken();
                         return true; // Success
                     });
@@ -264,7 +266,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Gets user information from the current account
         /// </summary>
-    public virtual UserInfo GetUserInfo()
+        public virtual UserInfo GetUserInfo()
         {
             EnsureConfigured();
             var account = CurrentAccount;
@@ -371,4 +373,3 @@ namespace WileyWidget.Services
             : base(message, innerException) { }
     }
 }
-    

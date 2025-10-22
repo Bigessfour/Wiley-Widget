@@ -38,12 +38,12 @@ public interface ISecretVaultService
     /// Lists all secret keys for inventory purposes.
     /// </summary>
     Task<IEnumerable<string>> ListSecretKeysAsync();
-    
+
     /// <summary>
     /// Deletes a secret from the vault. Use when rotating or removing secrets.
     /// </summary>
     Task DeleteSecretAsync(string secretName);
-    
+
     /// <summary>
     /// Atomically rotate an existing secret value. Writes the new value, verifies it, then removes the old value.
     /// </summary>

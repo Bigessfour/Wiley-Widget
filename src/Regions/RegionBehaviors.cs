@@ -50,7 +50,7 @@ namespace WileyWidget.Regions
         {
             // Extract navigation target information
             var uri = e.NavigationContext?.Uri?.ToString() ?? "Unknown";
-            
+
             // Use the centralized error handler for consistent error handling and event publishing
             _errorHandler.HandleNavigationError(
                 Region.Name,

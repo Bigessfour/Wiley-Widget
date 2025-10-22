@@ -69,10 +69,10 @@ namespace WileyWidget.Startup.Modules
                     if (regionManager.Regions.ContainsRegionWithName("DashboardRegion"))
                     {
                         var region = regionManager.Regions["DashboardRegion"];
-                        
+
                         // First, register the view with the region
                         regionManager.RegisterViewWithRegion("DashboardRegion", typeof(DashboardView));
-                        
+
                         // Then explicitly activate the first view (DashboardView)
                         if (region.Views.Any())
                         {
@@ -83,7 +83,7 @@ namespace WileyWidget.Startup.Modules
                         {
                             Log.Warning("DashboardView registered but no views found in region");
                         }
-                        
+
                         return;
                     }
                     else if (attempt < maxRetries)

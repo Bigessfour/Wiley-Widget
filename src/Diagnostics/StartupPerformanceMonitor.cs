@@ -70,7 +70,7 @@ public sealed class StartupPerformanceMonitor : IDisposable
         var duration = timer.Elapsed;
         _completedPhases[phaseName] = duration;
 
-        _logger.Information("Completed phase: {PhaseName} in {Duration:N2}ms", 
+        _logger.Information("Completed phase: {PhaseName} in {Duration:N2}ms",
             phaseName, duration.TotalMilliseconds);
 
         return duration;

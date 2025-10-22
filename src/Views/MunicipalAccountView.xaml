@@ -311,12 +311,14 @@
                     <!-- Hierarchical Data Grid -->
                     <syncfusion:SfDataGrid Grid.Row="1"
                                           x:Name="AccountsGrid"
-                                          ItemsSource="{Binding MunicipalAccounts, FallbackValue=Empty}"
+                                          FilterChanged="AccountsGrid_FilterChanged"
+                                          ItemsSource="{Binding AccountsView, FallbackValue=Empty}"
                                           SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
                                           AutoGenerateColumns="False"
                                           AllowEditing="True"
                                           AllowSorting="True"
                                           AllowFiltering="True"
+                                          FilterRowPosition="Inline"
                                           AllowGrouping="True"
                                           ShowGroupDropArea="True"
                                           ColumnSizer="AutoWithLastColumnFill"
@@ -370,6 +372,7 @@
                                                       MappingName="TypeDescription"
                                                       Width="140"
                                                       AllowEditing="False"
+                                                      AllowFiltering="True"
                                                       ToolTipService.ToolTip="{DynamicResource Tip_Type}" />
 
                             <!-- Balance Column with Custom Formatting -->

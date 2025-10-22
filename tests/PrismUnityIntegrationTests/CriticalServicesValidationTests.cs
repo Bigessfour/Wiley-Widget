@@ -7,15 +7,43 @@ using Xunit;
 
 public class CriticalServicesValidationTests
 {
+    /// <summary>
+    /// Logs the full exception chain for diagnostic purposes.
+    /// </summary>
+    private static void LogExceptionChain(Exception ex)
+    {
+        Console.WriteLine("=== Exception Chain Analysis ===");
+        int depth = 0;
+        Exception? current = ex;
+        while (current != null && depth < 10)
+        {
+            Console.WriteLine($"[{depth}] {current.GetType().Name}: {current.Message}");
+            if (current.StackTrace != null)
+            {
+                Console.WriteLine($"    Stack: {current.StackTrace.Split('\n').FirstOrDefault()?.Trim()}");
+            }
+            current = current.InnerException;
+            depth++;
+        }
+
+        if (depth >= 10)
+        {
+            Console.WriteLine("... (chain truncated)");
+        }
+        Console.WriteLine("=== End Exception Chain ===");
+    }
     [Fact]
     public void RegisterTypes_ThenValidateCriticalServices_ThrowsIfMissing()
     {
+        // Set test mode to enable in-memory DB
+        Environment.SetEnvironmentVariable("WILEY_WIDGET_TESTMODE", "1");
+
         // Create a container extension via the App.CreateContainerExtension() static behavior
         var miCreate = typeof(WileyWidget.App).GetMethod("CreateContainerExtension", BindingFlags.Instance | BindingFlags.NonPublic);
         // Use an uninitialized App instance to avoid WPF Application ctor
         var app = (WileyWidget.App)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(WileyWidget.App));
         var miRegister = typeof(WileyWidget.App).GetMethod("RegisterTypes", BindingFlags.Instance | BindingFlags.NonPublic);
-        var miValidate = typeof(WileyWidget.App).GetMethod("ValidateCriticalServices", BindingFlags.Instance | BindingFlags.NonPublic);
+        var miValidate = typeof(WileyWidget.App).GetMethod("ValidateCriticalServices", BindingFlags.Instance | BindingFlags.NonPublic, null, new Type[] { typeof(Prism.Ioc.IContainerRegistry), typeof(bool) }, null);
 
         Assert.NotNull(miCreate);
         Assert.NotNull(miRegister);
@@ -79,12 +107,17 @@ public class CriticalServicesValidationTests
         // Call RegisterTypes to register services into the container
         miRegister!.Invoke(app, new object[] { containerExt });
 
+        // Determine testMode the same way RegisterTypes does
+        var testMode = (Environment.GetEnvironmentVariable("WILEY_WIDGET_TESTMODE") ?? "0") == "1";
+
         // Now call ValidateCriticalServices - if any critical services are missing, the method should throw
-        var ex = Record.Exception(() => miValidate!.Invoke(app, new object[] { containerExt }));
+        var ex = Record.Exception(() => miValidate!.Invoke(app, new object[] { containerExt, testMode }));
 
         // If it threw a TargetInvocationException, unwrap and rethrow so xUnit reports the inner error
         if (ex is TargetInvocationException tie && tie.InnerException != null)
         {
+            // Log the full exception chain for better diagnostics
+            LogExceptionChain(tie);
             throw tie.InnerException;
         }
 

@@ -455,7 +455,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     /// <summary>
     /// Adds a new customer
     /// </summary>
-    
+
     private async Task ExecuteAddCustomerAsync()
     {
         // Use dialog service for creating a new customer if available
@@ -538,7 +538,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     {
         if (_dialogService == null || SelectedCustomer == null) return;
 
-    var parameters = new Prism.Dialogs.DialogParameters { { "customer", SelectedCustomer } };
+        var parameters = new Prism.Dialogs.DialogParameters { { "customer", SelectedCustomer } };
         _dialogService.ShowDialog(nameof(Views.CustomerEditDialogView), parameters, r =>
         {
             if (r.Parameters.ContainsKey("canceled") && r.Parameters.GetValue<bool>("canceled")) return;
@@ -554,7 +554,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     /// <summary>
     /// Saves changes to the selected customer
     /// </summary>
-    
+
     private async Task ExecuteSaveCustomerAsync()
     {
         if (SelectedCustomer == null) return;
@@ -590,7 +590,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     /// <summary>
     /// Deletes the selected customer
     /// </summary>
-    
+
     private async Task ExecuteDeleteCustomerAsync()
     {
         if (SelectedCustomer == null) return;
@@ -655,7 +655,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     /// <summary>
     /// Clears the search and reloads all customers
     /// </summary>
-    
+
     private async Task ExecuteClearSearchAsync()
     {
         SearchTerm = string.Empty;
@@ -666,7 +666,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     /// <summary>
     /// Clears any error state
     /// </summary>
-    
+
     private void ExecuteClearError()
     {
         ErrorMessage = string.Empty;
@@ -710,7 +710,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
             // In a real implementation, you would fetch from a bill repository
             // For now, we'll generate sample data
             CustomerBills.Clear();
-            
+
             // Generate sample bills (replace with actual repository call)
             var sampleBills = GenerateSampleBills(SelectedCustomer.Id);
             foreach (var bill in sampleBills)
@@ -778,7 +778,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     /// <summary>
     /// Pays a selected bill
     /// </summary>
-    
+
     private Task ExecutePayBillAsync()
     {
         if (SelectedBill == null) return Task.CompletedTask;

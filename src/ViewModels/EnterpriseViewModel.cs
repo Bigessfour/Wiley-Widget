@@ -263,11 +263,11 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                                $"Monthly Expenses: {SelectedEnterprise.MonthlyExpenses:C2}\n" +
                                $"Monthly Balance: {SelectedEnterprise.MonthlyBalance:C2}\n" +
                                $"Citizens Served: {SelectedEnterprise.CitizenCount:N0}";
-            
+
             StatusMessage = $"Selected: {SelectedEnterprise.Name}";
             ErrorMessage = string.Empty;
-            
-            Log.Debug("Enterprise selected: {EnterpriseName} (ID: {EnterpriseId})", 
+
+            Log.Debug("Enterprise selected: {EnterpriseName} (ID: {EnterpriseId})",
                      SelectedEnterprise.Name, SelectedEnterprise.Id);
         }
         else
@@ -1025,7 +1025,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Export selection command
     /// </summary>
-    
+
     private async Task ExecuteExportSelectionAsync()
     {
         try
@@ -1091,30 +1091,30 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
         CancellationToken cancellationToken = default)
     {
         var delay = TimeSpan.FromMilliseconds(500);
-        
+
         for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
             try
             {
                 return await operation(cancellationToken);
             }
-            catch (Exception ex) when (attempt < maxRetries && 
+            catch (Exception ex) when (attempt < maxRetries &&
                                      !(ex is OperationCanceledException))
             {
-                Log.Warning(ex, "Attempt {Attempt} failed, retrying in {DelayMs}ms", 
+                Log.Warning(ex, "Attempt {Attempt} failed, retrying in {DelayMs}ms",
                            attempt + 1, delay.TotalMilliseconds);
                 await System.Threading.Tasks.Task.Delay(delay, cancellationToken);
                 delay = delay * 2; // Exponential backoff
             }
         }
-        
+
         throw new Exception($"Operation failed after {maxRetries + 1} attempts");
     }
 
     /// <summary>
     /// Loads all enterprises from the database (public for View access)
     /// </summary>
-    
+
     public async Task LoadEnterprisesAsync(CancellationToken cancellationToken = default)
     {
         // Prevent concurrent loading operations
@@ -1123,21 +1123,21 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             Log.Information("Enterprise loading already in progress, skipping duplicate request");
             return;
         }
-        
+
         try
         {
             IsLoading = true;
-            
+
             // Check for cancellation before starting
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             var enterprises = await ExecuteWithRetryAsync(
                 async (ct) => await _unitOfWork.Enterprises.GetAllAsync(),
                 cancellationToken: cancellationToken);
-            
+
             // Check for cancellation before updating UI
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             EnterpriseList.Clear();
             foreach (var enterprise in enterprises)
             {
@@ -1234,11 +1234,11 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Adds a new enterprise
     /// </summary>
-    
+
     private async Task ExecuteAddEnterpriseAsync()
     {
         ErrorMessage = string.Empty;
-        
+
         try
         {
             IsLoading = true;
@@ -1259,7 +1259,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             var addedEnterprise = await _unitOfWork.Enterprises.AddAsync(newEnterprise);
             EnterpriseList.Add(addedEnterprise);
             SelectedEnterprise = addedEnterprise;
-            
+
             StatusMessage = $"Enterprise '{addedEnterprise.Name}' created successfully";
             Log.Information("Created new enterprise with ID: {EnterpriseId}", addedEnterprise.Id);
         }
@@ -1278,7 +1278,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Saves changes to the selected enterprise
     /// </summary>
-    
+
     private async Task ExecuteSaveEnterpriseAsync()
     {
         if (SelectedEnterprise == null)
@@ -1288,10 +1288,10 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
         }
 
         // Validate before saving
-        var validationError = this[nameof(SelectedEnterprise.Name)] ?? 
-                            this[nameof(SelectedEnterprise.CurrentRate)] ?? 
+        var validationError = this[nameof(SelectedEnterprise.Name)] ??
+                            this[nameof(SelectedEnterprise.CurrentRate)] ??
                             this[nameof(SelectedEnterprise.CitizenCount)];
-        
+
         if (!string.IsNullOrEmpty(validationError))
         {
             ErrorMessage = $"Validation failed: {validationError}";
@@ -1307,7 +1307,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             StatusMessage = $"Saving '{SelectedEnterprise.Name}'...";
 
             await _unitOfWork.Enterprises.UpdateAsync(SelectedEnterprise);
-            
+
             StatusMessage = $"Enterprise '{SelectedEnterprise.Name}' saved successfully";
             Log.Information("Updated enterprise with ID: {EnterpriseId}", SelectedEnterprise.Id);
         }
@@ -1326,7 +1326,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Deletes the selected enterprise
     /// </summary>
-    
+
     private async Task ExecuteDeleteEnterpriseAsync()
     {
         if (SelectedEnterprise == null)
@@ -1345,7 +1345,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             StatusMessage = $"Deleting '{enterpriseName}'...";
 
             var success = await _unitOfWork.Enterprises.DeleteAsync(enterpriseId);
-            
+
             if (success)
             {
                 EnterpriseList.Remove(SelectedEnterprise);
@@ -1375,7 +1375,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Calculates and displays budget summary
     /// </summary>
-    
+
     private void ExecuteUpdateBudgetSummary()
     {
         BudgetSummaryText = GetBudgetSummary();
@@ -1384,7 +1384,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Bulk update enterprises
     /// </summary>
-    
+
     private async Task ExecuteBulkUpdateAsync()
     {
         try
@@ -1486,7 +1486,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Clear filters
     /// </summary>
-    
+
     private void ExecuteClearFilters()
     {
         SearchText = string.Empty;
@@ -1497,7 +1497,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Clear grouping
     /// </summary>
-    
+
     private void ExecuteClearGrouping()
     {
         _eventAggregator.GetEvent<GroupingMessage>().Publish(new GroupingMessage
@@ -1510,7 +1510,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Copy to clipboard
     /// </summary>
-    
+
     private void ExecuteCopyToClipboard()
     {
         if (SelectedEnterprise == null)
@@ -1544,7 +1544,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Edit enterprise
     /// </summary>
-    
+
     private void ExecuteEditEnterprise()
     {
         if (SelectedEnterprise != null)
@@ -1556,7 +1556,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Generate enterprise report
     /// </summary>
-    
+
     private async Task ExecuteGenerateEnterpriseReport()
     {
         try
@@ -1611,7 +1611,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Group by status
     /// </summary>
-    
+
     private void ExecuteGroupByStatus()
     {
         _eventAggregator.GetEvent<GroupingMessage>().Publish(new GroupingMessage
@@ -1625,7 +1625,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Group by type
     /// </summary>
-    
+
     private void ExecuteGroupByType()
     {
         _eventAggregator.GetEvent<GroupingMessage>().Publish(new GroupingMessage
@@ -1639,7 +1639,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Import data
     /// </summary>
-    
+
     private async Task ExecuteImportData()
     {
         try
@@ -1689,7 +1689,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Load enterprises incrementally
     /// </summary>
-    
+
     private async Task LoadEnterprisesIncrementalAsync()
     {
         try
@@ -1712,7 +1712,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Rate analysis
     /// </summary>
-    
+
     private void RateAnalysis()
     {
         if (EnterpriseList.Count == 0)
@@ -1755,7 +1755,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// View audit history
     /// </summary>
-    
+
     private async Task ViewAuditHistoryAsync()
     {
         if (SelectedEnterprise == null)
@@ -1769,16 +1769,16 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             // Get audit entries for the last 30 days
             var endDate = DateTime.UtcNow;
             var startDate = endDate.AddDays(-30);
-            
+
             var auditEntries = await _unitOfWork.Audits.GetAuditTrailForEntityAsync("Enterprise", SelectedEnterprise.Id, startDate, endDate);
-            
+
             if (auditEntries.Any())
             {
                 var history = string.Join("\n", auditEntries
                     .OrderByDescending(a => a.Timestamp)
                     .Take(10) // Show last 10 entries
                     .Select(a => $"{a.Timestamp:g} - {a.Action} by {a.User}: {a.Changes ?? "No details"}"));
-                
+
                 StatusMessage = $"Audit History for '{SelectedEnterprise.Name}' (last 30 days):\n{history}";
             }
             else
@@ -1796,7 +1796,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Show advanced filter
     /// </summary>
-    
+
     private void ShowAdvancedFilter()
     {
         try
@@ -1823,7 +1823,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Show tree map
     /// </summary>
-    
+
     private void ShowTreeMap()
     {
         try
@@ -1847,7 +1847,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                 });
 
             var treeMapText = "Enterprise Revenue Tree Map (Top 10):\n" +
-                             string.Join("\n", treeMapData.Select(e => 
+                             string.Join("\n", treeMapData.Select(e =>
                                  $"{e.Name}: {e.Revenue:C} ({e.Percentage:F1}%)"));
 
             StatusMessage = treeMapText;
@@ -1863,7 +1863,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Show tree view
     /// </summary>
-    
+
     private void ShowTreeView()
     {
         try
@@ -1967,55 +1967,55 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
 
             return columnName switch
             {
-                nameof(SelectedEnterprise.Name) => 
-                    string.IsNullOrWhiteSpace(SelectedEnterprise.Name) 
-                        ? "Name is required" 
-                        : SelectedEnterprise.Name.Length > 100 
-                            ? "Name cannot exceed 100 characters" 
+                nameof(SelectedEnterprise.Name) =>
+                    string.IsNullOrWhiteSpace(SelectedEnterprise.Name)
+                        ? "Name is required"
+                        : SelectedEnterprise.Name.Length > 100
+                            ? "Name cannot exceed 100 characters"
                             : null,
 
-                nameof(SelectedEnterprise.CurrentRate) => 
-                    SelectedEnterprise.CurrentRate <= 0 
-                        ? "Rate must be greater than 0" 
-                        : SelectedEnterprise.CurrentRate > 9999.99m 
-                            ? "Rate cannot exceed $9,999.99" 
+                nameof(SelectedEnterprise.CurrentRate) =>
+                    SelectedEnterprise.CurrentRate <= 0
+                        ? "Rate must be greater than 0"
+                        : SelectedEnterprise.CurrentRate > 9999.99m
+                            ? "Rate cannot exceed $9,999.99"
                             : null,
 
-                nameof(SelectedEnterprise.MonthlyExpenses) => 
-                    SelectedEnterprise.MonthlyExpenses < 0 
-                        ? "Expenses cannot be negative" 
+                nameof(SelectedEnterprise.MonthlyExpenses) =>
+                    SelectedEnterprise.MonthlyExpenses < 0
+                        ? "Expenses cannot be negative"
                         : null,
 
-                nameof(SelectedEnterprise.CitizenCount) => 
-                    SelectedEnterprise.CitizenCount < 0 
-                        ? "Citizen count cannot be negative" 
-                        : SelectedEnterprise.CitizenCount < 1 
-                            ? "At least one citizen must be served" 
+                nameof(SelectedEnterprise.CitizenCount) =>
+                    SelectedEnterprise.CitizenCount < 0
+                        ? "Citizen count cannot be negative"
+                        : SelectedEnterprise.CitizenCount < 1
+                            ? "At least one citizen must be served"
                             : null,
 
-                nameof(SelectedEnterprise.TotalBudget) => 
-                    SelectedEnterprise.TotalBudget < 0 
-                        ? "Budget cannot be negative" 
+                nameof(SelectedEnterprise.TotalBudget) =>
+                    SelectedEnterprise.TotalBudget < 0
+                        ? "Budget cannot be negative"
                         : null,
 
-                "SelectedEnterprise.Name" => 
-                    string.IsNullOrWhiteSpace(SelectedEnterprise?.Name) 
-                        ? "Name is required" 
+                "SelectedEnterprise.Name" =>
+                    string.IsNullOrWhiteSpace(SelectedEnterprise?.Name)
+                        ? "Name is required"
                         : null,
 
-                "SelectedEnterprise.CurrentRate" => 
-                    SelectedEnterprise?.CurrentRate < 0 
-                        ? "Rate cannot be negative" 
+                "SelectedEnterprise.CurrentRate" =>
+                    SelectedEnterprise?.CurrentRate < 0
+                        ? "Rate cannot be negative"
                         : null,
 
-                "SelectedEnterprise.MonthlyExpenses" => 
-                    SelectedEnterprise?.MonthlyExpenses < 0 
-                        ? "Expenses cannot be negative" 
+                "SelectedEnterprise.MonthlyExpenses" =>
+                    SelectedEnterprise?.MonthlyExpenses < 0
+                        ? "Expenses cannot be negative"
                         : null,
 
-                "SelectedEnterprise.CitizenCount" => 
-                    SelectedEnterprise?.CitizenCount < 0 
-                        ? "Citizen count cannot be negative" 
+                "SelectedEnterprise.CitizenCount" =>
+                    SelectedEnterprise?.CitizenCount < 0
+                        ? "Citizen count cannot be negative"
                         : null,
 
                 _ => null
@@ -2048,7 +2048,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
         Log.Information("EnterpriseViewModel navigated to");
-        
+
         // Handle navigation parameters
         if (navigationContext?.Parameters != null)
         {
@@ -2067,7 +2067,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                 }
             }
         }
-        
+
         // Load enterprises if not already loaded
         _ = LoadEnterprisesAsync();
     }
@@ -2075,7 +2075,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     public void OnNavigatedFrom(NavigationContext navigationContext)
     {
         Log.Information("EnterpriseViewModel navigated from");
-        
+
         // Cleanup if needed
     }
 
@@ -2088,9 +2088,9 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     // Event Handlers for EventAggregator
     private void OnEnterpriseChanged(EnterpriseChangedMessage message)
     {
-        Log.Information("Enterprise changed notification received: {EnterpriseName} ({ChangeType})", 
+        Log.Information("Enterprise changed notification received: {EnterpriseName} ({ChangeType})",
             message.EnterpriseName, message.ChangeType);
-        
+
         // Refresh enterprise list when changes occur
         _ = LoadEnterprisesAsync();
     }

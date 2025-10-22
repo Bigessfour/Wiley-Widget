@@ -126,6 +126,81 @@ public class MunicipalAccountView_FlaUITests : IClassFixture<TestAppFixture>
         });
     }
 
+    [StaFact(DisplayName = "Filter to Cash shows exactly 8 rows with correct TypeDescription"), Trait("Category", "UI")]
+    public void Filter_To_Cash_Shows_Exactly_8_Rows()
+    {
+        RunWithScreenshotOnError("Filter_To_Cash_Shows_Exactly_8_Rows", () =>
+        {
+            // Launch app and navigate to Municipal View
+            var main = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(25));
+            Assert.NotNull(main);
+
+            // Navigate to Accounts view
+            var accountsTab = main.FindFirstDescendant(cf => cf.ByName("Accounts").And(cf.ByControlType(ControlType.Button)));
+            if (accountsTab == null)
+            {
+                accountsTab = main.FindFirstDescendant(cf => cf.ByName("Accounts"));
+            }
+            if (accountsTab != null)
+            {
+                accountsTab.Click();
+                Thread.Sleep(3000); // Wait for navigation and view loading
+            }
+
+            // Find the AccountsGrid
+            var grid = RetryFindByAutomationId(main, "AccountsGrid", TimeSpan.FromSeconds(15));
+            Assert.NotNull(grid);
+
+            // Ensure initial data is loaded
+            var initialRowCount = WaitForRowCount(grid, expectedMinimum: 25, TimeSpan.FromSeconds(10));
+            Assert.True(initialRowCount >= 25);
+
+            // Find the Account Type ComboBox and select "Cash"
+            var typeLabel = main.FindFirstDescendant(cf => cf.ByName("Account Type").And(cf.ByControlType(ControlType.Text)));
+            Assert.NotNull(typeLabel);
+
+            var combo = typeLabel.Parent?.FindFirstDescendant(cf => cf.ByControlType(ControlType.ComboBox))
+                        ?? main.FindFirstDescendant(cf => cf.ByControlType(ControlType.ComboBox).And(cf.ByName("Account Type")));
+            Assert.NotNull(combo);
+
+            var comboBox = combo.AsComboBox();
+            comboBox.Expand();
+            var cashItem = comboBox.Items.FirstOrDefault(i => string.Equals(i.Name, "Cash", StringComparison.OrdinalIgnoreCase));
+            Assert.NotNull(cashItem);
+            cashItem.Click();
+
+            // Click Apply Filters button
+            var applyBtn = main.FindFirstDescendant(cf => cf.ByName("Apply Filters").And(cf.ByControlType(ControlType.Button)));
+            Assert.NotNull(applyBtn);
+            applyBtn.AsButton().Invoke();
+
+            // Wait for filtering to complete and verify exactly 8 rows
+            var filteredRowCount = WaitForPredicate(() =>
+            {
+                var rc = TryGetRowCount(grid);
+                return rc == 8 ? (int?)rc : null;
+            }, TimeSpan.FromSeconds(10));
+
+            Assert.True(filteredRowCount.HasValue, "Filtered row count did not reach exactly 8 in time");
+            Assert.Equal(8, filteredRowCount.Value);
+
+            // Inspect grid items and assert TypeDescription cells are "Cash"
+            var rows = grid.FindAllChildren(cf => cf.ByControlType(ControlType.DataItem));
+            Assert.Equal(8, rows.Length);
+
+            foreach (var row in rows)
+            {
+                // Find the TypeDescription cell (assuming it's the 3rd column based on typical layout)
+                var cells = row.FindAllChildren(cf => cf.ByControlType(ControlType.Text));
+                Assert.True(cells.Length >= 3, $"Row should have at least 3 cells, found {cells.Length}");
+
+                // The TypeDescription is typically in the 3rd column (Account Name, Account Number, Type, etc.)
+                var typeCell = cells.FirstOrDefault(c => string.Equals(c.Name, "Cash", StringComparison.OrdinalIgnoreCase));
+                Assert.NotNull(typeCell, $"Expected TypeDescription cell to contain 'Cash', but found cells: {string.Join(", ", cells.Select(c => c.Name))}");
+            }
+        });
+    }
+
     [StaFact(DisplayName = "SfDataGrid columns are properly configured"), Trait("Category", "UI")]
     public void SfDataGrid_Columns_Are_Configured()
     {

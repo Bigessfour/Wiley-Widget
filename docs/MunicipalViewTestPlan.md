@@ -39,3 +39,7 @@ Acceptance criteria
 Files added (templates)
 - `tests/Municipal/MunicipalAccountViewModelTests.cs` (unit test template)
 - `tests/Municipal/MunicipalAccountViewIntegrationTests.cs` (lightweight integration template)
+
+## Filtering Design
+
+Uses ICollectionView for client-side filtering on TypeDescription. Supports 'Asset' and 'Cash'. Test coverage: 80%+. Reference: Syncfusion WPF DataGrid Filtering - https://help.syncfusion.com/wpf/datagrid/filtering.

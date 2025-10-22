@@ -244,7 +244,7 @@ public class GrokSupercomputer : IGrokSupercomputer
             }
 
             var operationTime = (long)(DateTime.UtcNow - operationStart).TotalMilliseconds;
-            
+
             // Log performance metrics
             _aiLoggingService.LogMetric("GrokSupercomputer.FetchEnterpriseData.ResponseTime", operationTime, new Dictionary<string, object>
             {
@@ -435,11 +435,11 @@ public class GrokSupercomputer : IGrokSupercomputer
             }
         });
     }    /// <summary>
-    /// Generates compliance reports for municipal utility enterprises.
-    /// Ensures regulatory compliance and provides documentation for municipal finance auditing and reporting requirements.
-    /// </summary>
-    /// <param name="enterprise">The Enterprise object containing information about the municipal utility to evaluate.</param>
-    /// <returns>A Task containing ComplianceReport with regulatory compliance status and recommendations.</returns>
+         /// Generates compliance reports for municipal utility enterprises.
+         /// Ensures regulatory compliance and provides documentation for municipal finance auditing and reporting requirements.
+         /// </summary>
+         /// <param name="enterprise">The Enterprise object containing information about the municipal utility to evaluate.</param>
+         /// <returns>A Task containing ComplianceReport with regulatory compliance status and recommendations.</returns>
     public Task<WileyWidget.Models.ComplianceReport> GenerateComplianceReportAsync(Enterprise enterprise)
     {
         if (enterprise == null) throw new ArgumentNullException(nameof(enterprise));

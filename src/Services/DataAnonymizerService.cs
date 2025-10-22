@@ -64,7 +64,7 @@ namespace WileyWidget.Services
                 BudgetAmount = enterprise.BudgetAmount
             };
 
-            _logger.LogInformation("Enterprise anonymized: OriginalName={OriginalName} -> AnonymizedName={AnonymizedName}", 
+            _logger.LogInformation("Enterprise anonymized: OriginalName={OriginalName} -> AnonymizedName={AnonymizedName}",
                 enterprise.Name, anonymized.Name);
 
             return anonymized;
@@ -83,7 +83,7 @@ namespace WileyWidget.Services
                 return null;
             }
 
-            _logger.LogInformation("Anonymizing budget data: Year={Year}, EnterpriseId={EnterpriseId}", 
+            _logger.LogInformation("Anonymizing budget data: Year={Year}, EnterpriseId={EnterpriseId}",
                 budgetData.FiscalYear, budgetData.EnterpriseId);
 
             var anonymized = new BudgetData
@@ -96,7 +96,7 @@ namespace WileyWidget.Services
                 RemainingBudget = budgetData.RemainingBudget
             };
 
-            _logger.LogInformation("Budget data anonymized: EnterpriseId={EnterpriseId}, Year={Year}", 
+            _logger.LogInformation("Budget data anonymized: EnterpriseId={EnterpriseId}, Year={Year}",
                 budgetData.EnterpriseId, budgetData.FiscalYear);
 
             return anonymized;
@@ -119,7 +119,7 @@ namespace WileyWidget.Services
             _logger.LogInformation("Anonymizing collection of {Count} enterprises", enterpriseList.Count);
 
             var anonymized = enterpriseList.Select(e => AnonymizeEnterprise(e)).Where(e => e != null).ToList();
-            
+
             _logger.LogInformation("Anonymized {Count} enterprises successfully", anonymized.Count);
             return anonymized;
         }
@@ -141,7 +141,7 @@ namespace WileyWidget.Services
             _logger.LogInformation("Anonymizing collection of {Count} budget data items", budgetList.Count);
 
             var anonymized = budgetList.Select(b => AnonymizeBudgetData(b)).Where(b => b != null).ToList();
-            
+
             _logger.LogInformation("Anonymized {Count} budget data items successfully", anonymized.Count);
             return anonymized;
         }
@@ -171,10 +171,10 @@ namespace WileyWidget.Services
                 // Generate deterministic hash-based anonymization
                 var hash = GenerateDeterministicHash(name);
                 var anonymized = $"{AnonymizationPrefix}_{type}_{hash}";
-                
+
                 _anonymizationCache[name] = anonymized;
                 _logger.LogDebug("Anonymized {Type} name: {Original} -> {Anonymized}", type, name, anonymized);
-                
+
                 return anonymized;
             }
         }
@@ -346,10 +346,10 @@ namespace WileyWidget.Services
             {
                 var bytes = Encoding.UTF8.GetBytes(input);
                 var hash = sha256.ComputeHash(bytes);
-                
+
                 // Take first 8 bytes and convert to hex
                 var shortHash = BitConverter.ToString(hash, 0, 8).Replace("-", "");
-                
+
                 return shortHash;
             }
         }
