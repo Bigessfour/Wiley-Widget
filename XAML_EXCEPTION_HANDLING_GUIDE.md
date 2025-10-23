@@ -195,6 +195,21 @@ public static class ViewModelLocatorValidator
 </syncfusion:SfDataGrid>
 ```
 
+### Prism Region Interaction and InvalidCastException
+
+A common runtime error is System.InvalidCastException coming from Prism when a Syncfusion control (often `SfDataGrid`) is inadvertently used as a region host. Prism expects region hosts to be compatible with `ItemsControl`, `ContentControl` or `Selector` semantics. `SfDataGrid` is a specialized control for tabular data and is not a drop-in region host. When Prism attempts to adapt a control it doesn't fully support, internal casts can fail and surface as `InvalidCastException` in Prism.dll.
+
+Resolution steps:
+- Avoid calling `regionManager.RegisterViewWithRegion("MyRegion", typeof(MyView))` where the target control is an `SfDataGrid` instance. Instead use a `ContentControl` or `ItemsControl` in XAML for navigation targets and keep `SfDataGrid` inside your view.
+- If you must bridge Prism regions to Syncfusion controls, implement a custom region adapter that maps views to the grid's data items (not UIElement insertion). The repository includes a protective `SfDataGridRegionAdapter` which throws a clear `InvalidOperationException` explaining the correct patterns rather than letting Prism throw an opaque `InvalidCastException`.
+- Example of safe pattern:
+
+    - Create a view (e.g., `CustomersView`) that contains an `SfDataGrid` bound to a viewmodel collection.
+    - Register `CustomersView` for navigation (e.g., `containerRegistry.RegisterForNavigation<CustomersView, CustomersViewModel>()`).
+    - Navigate to `CustomersView` in a `ContentControl` region. The grid remains internal to the view and will not be used as a region host.
+
+See `src/Regions/SfDataGridRegionAdapter.cs` for the protective adapter and `XAML_EXCEPTION_HANDLING_GUIDE.md` for examples.
+
 ## Exception Recovery Strategies
 
 ### Global Exception Handler

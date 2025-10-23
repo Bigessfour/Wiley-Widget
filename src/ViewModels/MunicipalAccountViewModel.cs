@@ -4,11 +4,15 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Collections.Generic;
 using Serilog;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data.Resilience;
 using WileyWidget.Models;
 using WileyWidget.Services;
+using Prism.Navigation;
+using WileyWidget.ViewModels.Messages;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.ViewModels;
 
@@ -16,7 +20,7 @@ namespace WileyWidget.ViewModels;
 /// ViewModel for managing municipal accounts and budget analysis
 /// Implements IDataErrorInfo for balance validation
 /// </summary>
-public partial class MunicipalAccountViewModel : ObservableObject, IDataErrorInfo
+public partial class MunicipalAccountViewModel : ObservableObject, IDataErrorInfo, IDisposable, INavigationAware
 {
     private readonly IMunicipalAccountRepository _accountRepository;
     private readonly IQuickBooksService? _quickBooksService;
@@ -48,9 +52,9 @@ public partial class MunicipalAccountViewModel : ObservableObject, IDataErrorInf
 
         constructorTimer.Stop();
         App.LogDebugEvent("VIEWMODEL_INIT", $"MunicipalAccountViewModel constructor completed in {constructorTimer.ElapsedMilliseconds}ms");
-        App.LogStartupTiming("MunicipalAccountViewModel Constructor", constructorTimer.Elapsed);
-        // Initialize Prism commands
-        LoadAccountsCommand = new Prism.Commands.DelegateCommand(async () => await LoadAccountsAsync());
+    App.LogStartupTiming("MunicipalAccountViewModel Constructor", constructorTimer.Elapsed);
+    // Initialize Prism commands
+    LoadAccountsCommand = new Prism.Commands.DelegateCommand(async () => await LoadAccountsAsync(), () => !IsBusy);
 
         // Initialize converted RelayCommand methods as DelegateCommand
         SyncFromQuickBooksCommand = new Prism.Commands.DelegateCommand(async () => await SyncFromQuickBooksAsync());
@@ -66,6 +70,8 @@ public partial class MunicipalAccountViewModel : ObservableObject, IDataErrorInf
         ClearErrorCommand = new Prism.Commands.DelegateCommand(() => ClearError());
         SearchCommand = new Prism.Commands.DelegateCommand(async () => await SearchAsync());
         AnalyzeSelectedAccountCommand = new Prism.Commands.DelegateCommand(async () => await AnalyzeSelectedAccountAsync());
+        // Command to seed example accounts (for developer/demo scenarios)
+        SeedAccountsCommand = new Prism.Commands.DelegateCommand(async () => await LoadSeededAccountsAsync(), () => !IsBusy);
     }
 
     // Test-friendly constructor overload: allows passing null for optional Prism services
@@ -123,6 +129,8 @@ public partial class MunicipalAccountViewModel : ObservableObject, IDataErrorInf
     public Prism.Commands.DelegateCommand ClearErrorCommand { get; private set; }
     public Prism.Commands.DelegateCommand SearchCommand { get; private set; }
     public Prism.Commands.DelegateCommand AnalyzeSelectedAccountCommand { get; private set; }
+    // Seed command for demo/test data
+    public Prism.Commands.DelegateCommand SeedAccountsCommand { get; private set; }
 
     /// <summary>
     /// Available fund type values for filter dropdown
@@ -324,6 +332,211 @@ public partial class MunicipalAccountViewModel : ObservableObject, IDataErrorInf
             App.LogDebugEvent("DATA_LOADING", $"Municipal accounts load completed in {loadTimer.ElapsedMilliseconds}ms");
             App.LogStartupTiming("Municipal Accounts Load", loadTimer.Elapsed);
         }
+    }
+
+    /// <summary>
+    /// Loads seeded demo accounts for a specified source (Conservation Trust)
+    /// Adds 25 sample accounts if repository supports AddAsync.
+    /// </summary>
+    private async Task LoadSeededAccountsAsync()
+    {
+        try
+        {
+            IsBusy = true;
+            HasError = false;
+            ErrorMessage = string.Empty;
+            StatusMessage = "Seeding demo accounts...";
+
+            var seededAccounts = new List<MunicipalAccount>();
+            for (int i = 1; i <= 25; i++)
+            {
+                var acct = new MunicipalAccount
+                {
+                    AccountNumber = new WileyWidget.Models.AccountNumber($"{i:000}"),
+                    Name = $"Conservation Trust {i}",
+                    Fund = MunicipalFundType.ConservationTrust,
+                    Type = AccountType.Expense,
+                    Balance = 0m,
+                    DepartmentId = 0,
+                    Notes = "Seeded account from Conservation Trust",
+                    FundDescription = "Conservation Trust"
+                };
+
+                // Persist via repository
+                var added = await _accountRepository.AddAsync(acct);
+                seededAccounts.Add(added);
+            }
+
+            // Refresh local collection
+            foreach (var a in seededAccounts)
+            {
+                MunicipalAccounts.Add(a);
+            }
+
+            // Publish event to notify other ViewModels (e.g., Dashboard) that accounts have been loaded
+            _eventAggregator?.GetEvent<AccountsLoadedEvent>().Publish(new AccountsLoadedEvent
+            {
+                AccountCount = seededAccounts.Count,
+                LoadType = "seeded"
+            });
+
+            StatusMessage = $"Seeded {seededAccounts.Count} demo accounts";
+            Log.Information("Seeded {Count} municipal accounts for Conservation Trust", seededAccounts.Count);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to seed accounts: {ex.Message}";
+            HasError = true;
+            StatusMessage = "Seed failed";
+            Log.Error(ex, "Failed to seed municipal accounts");
+        }
+        finally
+        {
+            IsBusy = false;
+            SeedAccountsCommand?.RaiseCanExecuteChanged();
+        }
+    }
+
+    // Prism INavigationAware implementation (production-ready)
+    private CancellationTokenSource? _navigationCts;
+
+    public void OnNavigatedTo(NavigationContext navigationContext)
+    {
+        // Cancel any previous navigation work and start a new token for this navigation
+        try
+        {
+            _navigationCts?.Cancel();
+            _navigationCts?.Dispose();
+        }
+        catch { /* ignore disposal errors */ }
+
+        _navigationCts = new CancellationTokenSource();
+        var ct = _navigationCts.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                IsBusy = true;
+                HasError = false;
+                ErrorMessage = string.Empty;
+                StatusMessage = "Preparing accounts view...";
+
+                // Handle navigation parameters
+                if (navigationContext?.Parameters != null)
+                {
+                    if (navigationContext.Parameters.ContainsKey("refresh") &&
+                        navigationContext.Parameters["refresh"] is bool refresh && refresh)
+                    {
+                        await LoadAccountsAsync();
+                    }
+
+                    if (navigationContext.Parameters.ContainsKey("filter") &&
+                        navigationContext.Parameters["filter"] is string filter)
+                    {
+                        SearchText = filter;
+                        await ApplyFiltersAsync();
+                    }
+                }
+                else
+                {
+                    // Default: ensure accounts are loaded
+                    if (!MunicipalAccounts.Any())
+                        await LoadAccountsAsync();
+                }
+
+                StatusMessage = "Ready";
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Information("MunicipalAccountViewModel navigation load canceled");
+            }
+            catch (Exception ex)
+            {
+                HasError = true;
+                ErrorMessage = ex.Message;
+                StatusMessage = "Navigation load failed";
+                Log.Error(ex, "OnNavigatedTo failed in MunicipalAccountViewModel");
+            }
+            finally
+            {
+                IsBusy = false;
+                SeedAccountsCommand?.RaiseCanExecuteChanged();
+                LoadAccountsCommand?.RaiseCanExecuteChanged();
+            }
+        }, ct);
+    }
+
+    public bool IsNavigationTarget(NavigationContext navigationContext)
+    {
+        // If a refresh parameter is supplied and true, do not reuse the existing instance
+        try
+        {
+            if (navigationContext?.Parameters != null && navigationContext.Parameters.ContainsKey("refresh"))
+            {
+                if (navigationContext.Parameters["refresh"] is bool r && r)
+                    return false;
+            }
+        }
+        catch { }
+
+        return true;
+    }
+
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        // Cancel any ongoing navigation-related work
+        try
+        {
+            if (_navigationCts != null && !_navigationCts.IsCancellationRequested)
+            {
+                _navigationCts.Cancel();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error cancelling navigation token in MunicipalAccountViewModel.OnNavigatedFrom");
+        }
+
+        // Persist transient selections if requested via parameters
+        try
+        {
+            if (navigationContext?.Parameters != null && navigationContext.Parameters.ContainsKey("persistSelection") &&
+                navigationContext.Parameters["persistSelection"] is bool persist && persist && SelectedAccount != null)
+            {
+                // Persistence not available in this context: log intention. If an application state service exists,
+                // consider implementing and injecting it to persist transient UI state across navigations.
+                Log.Information("PersistSelection requested but no application state service available. SelectedAccountId={Id}", SelectedAccount.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to persist selection state from MunicipalAccountViewModel");
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            try
+            {
+                _navigationCts?.Cancel();
+            }
+            catch { }
+            finally
+            {
+                _navigationCts?.Dispose();
+                _navigationCts = null;
+            }
+        }
+        // no unmanaged resources to free
     }
 
     /// <summary>

@@ -22,7 +22,7 @@ namespace WileyWidget.ViewModels;
 /// Implements messaging, busy states, input validation, and IDataErrorInfo
 /// Converted from CommunityToolkit.Mvvm to Prism pattern for consistency
 /// </summary>
-public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
+public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo, INavigationAware
 {
     private readonly IEnterpriseRepository _enterpriseRepository;
     private readonly IBudgetRepository _budgetRepository;
@@ -390,6 +390,29 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
         BudgetAccounts.CollectionChanged += OnBudgetAccountsChanged;
 
         InitializeCommands();
+    }
+
+    // Prism navigation lifecycle
+    public void OnNavigatedTo(NavigationContext navigationContext)
+    {
+        // Load or refresh data when navigated to if needed
+        _ = RefreshBudgetDataAsync();
+    }
+
+    public bool IsNavigationTarget(NavigationContext navigationContext) => true;
+
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        // Stop live updates and release resources when navigating away
+        try
+        {
+            StopLiveUpdates();
+            _refreshTimer?.Stop();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error stopping live updates in BudgetViewModel.OnNavigatedFrom");
+        }
     }
 
     private void OnEnterpriseChanged(EnterpriseChangedMessage message)

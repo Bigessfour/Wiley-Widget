@@ -1,0 +1,50 @@
+XAML Diagnostics Runner
+======================
+Started at: 10/22/2025 19:21:26
+
+Running XAML Diagnostics...
+------------------------
+Building project...
+WARNING: Build failed. Diagnostics may not be accurate.
+Build output: MSBUILD : error MSB1011: Specify which project or solution file to use because this folder contains more than one project or solution file.
+
+1. Checking Syncfusion License...
+   ✗ Syncfusion license NOT found in environment variables
+     Set $env:SyncfusionLicense or add to appsettings.json
+
+2. Checking Required Assemblies...
+   ✗ Microsoft.Xaml.Behaviors.Wpf NOT loaded
+   ✗ Prism.Wpf NOT loaded
+   ✗ Prism.Unity NOT loaded
+   ✗ Syncfusion.SfSkinManager.WPF NOT loaded
+   ✗ Syncfusion.SfGrid.WPF NOT loaded
+   ✗ Syncfusion.Licensing NOT loaded
+
+3. Validating XAML Files...
+   ✗ App.xaml: Missing Syncfusion xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ DataTemplates.xaml: Missing Syncfusion xmlns, Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ Strings.xaml: Missing Syncfusion xmlns, Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ Brushes_FluentLight.xaml: Missing Syncfusion xmlns, Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ FluentDark.xaml: Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ Generic.xaml: Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ WileyMergedTheme.xaml: Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ WileyTheme-Syncfusion.xaml: Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ WileyTheme.xaml: Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ ActivateXaiDialog.xaml: Missing Syncfusion xmlns
+   ✗ ConfirmationDialogView.xaml: Missing Syncfusion xmlns, Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ EnterpriseDialogView.xaml: Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ ErrorDialogView.xaml: Missing Syncfusion xmlns, Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ NotificationDialogView.xaml: Missing Syncfusion xmlns, Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ ProgressView.xaml: Missing Syncfusion xmlns
+   ✗ SettingsDialogView.xaml: Missing Syncfusion xmlns, Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+   ✗ WarningDialogView.xaml: Missing Syncfusion xmlns, Missing Prism xmlns, Missing ViewModelLocator.AutoWireViewModel
+
+4. Checking Project Configuration...
+   ✓ XAML debugging enabled
+
+Diagnostics Summary:
+===================
+XAML files with issues: 17
+Total XAML files checked: 41
+
+Completed at: 10/22/2025 19:21:28

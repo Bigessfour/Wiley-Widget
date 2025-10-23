@@ -1,11 +1,6 @@
 {
   "typeCheckingMode": "basic",
-  "exclude": [
-    "**/.venv/**",
-    "**/node_modules/**",
-    "**/%APPDATA%/**",
-    "**/.trunk/**"
-  ],
+  "exclude": ["**/.venv/**", "**/node_modules/**", "**/%APPDATA%/**", "**/.trunk/**"],
   "useLibraryCodeForTypes": false,
   "autoSearchPaths": false
 }

@@ -12,11 +12,11 @@
     xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
         mc:Ignorable="d"
         d:DesignHeight="900" d:DesignWidth="1200"
-        Loaded="BudgetView_Loaded" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+        xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <!-- GASB-Compliant Municipal Budget Management UserControl -->
     <!-- DataContext set programmatically: {Binding BudgetViewModel} -->
     <!-- Theme: FluentDark with FluentLight fallback via SfSkinManager -->
-    
+
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <local:BalanceColorConverter x:Key="BalanceColorConverter" />
@@ -25,8 +25,8 @@
 
         <!-- Pie Chart Label Template -->
         <DataTemplate x:Key="PieChartLabelTemplate">
-            <TextBlock Text="{Binding Percentage, StringFormat=P0}" 
-                       FontWeight="Bold" 
+            <TextBlock Text="{Binding Percentage, StringFormat=P0}"
+                       FontWeight="Bold"
                        Foreground="White" />
         </DataTemplate>
 
@@ -74,93 +74,93 @@
         <Border x:Name="BudgetFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
 
         <!-- Top Toolbar with Import/Export/Add functionality -->
-        <ToolBar Grid.Row="0" 
+        <ToolBar Grid.Row="0"
                  Style="{DynamicResource BudgetToolBarStyle}"
                  AutomationProperties.Name="Budget Management Toolbar">
-            
-                <syncfusion:ButtonAdv Label="Import Excel" 
+
+                <syncfusion:ButtonAdv Label="Import Excel"
                                       Command="{Binding ImportBudgetCommand}"
                                       ToolTip="Import from TOW/WSD Excel files (handles hierarchies like 410.1)"
                                       IconWidth="16" IconHeight="16">
                     <syncfusion:ButtonAdv.IconTemplate>
                         <DataTemplate>
-                            <Path Data="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,10L16,14H13.5V19H10.5V14H8L12,10Z" 
-                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}" 
-                                  Stretch="Uniform" 
+                            <Path Data="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,10L16,14H13.5V19H10.5V14H8L12,10Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}"
+                                  Stretch="Uniform"
                                   Width="16" Height="16" />
                         </DataTemplate>
                     </syncfusion:ButtonAdv.IconTemplate>
                 </syncfusion:ButtonAdv>
-                
-                <syncfusion:ButtonAdv Label="Export Excel" 
+
+                <syncfusion:ButtonAdv Label="Export Excel"
                                       Command="{Binding ExportBudgetCommand}"
                                       ToolTip="Export budget to Excel with hierarchy preserved"
                                       IconWidth="16" IconHeight="16">
                     <syncfusion:ButtonAdv.IconTemplate>
                         <DataTemplate>
-                            <Path Data="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,19L8,15H10.5V12H13.5V15H16L12,19Z" 
-                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}" 
-                                  Stretch="Uniform" 
+                            <Path Data="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,19L8,15H10.5V12H13.5V15H16L12,19Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}"
+                                  Stretch="Uniform"
                                   Width="16" Height="16" />
                         </DataTemplate>
                     </syncfusion:ButtonAdv.IconTemplate>
                 </syncfusion:ButtonAdv>
-                
+
                 <Separator />
-                
-                <syncfusion:ButtonAdv Label="Add Account" 
+
+                <syncfusion:ButtonAdv Label="Add Account"
                                       Command="{Binding AddAccountCommand}"
                                       ToolTip="Add new budget account"
                                       IconWidth="16" IconHeight="16">
                     <syncfusion:ButtonAdv.IconTemplate>
                         <DataTemplate>
-                            <Path Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" 
-                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}" 
-                                  Stretch="Uniform" 
+                            <Path Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}"
+                                  Stretch="Uniform"
                                   Width="16" Height="16" />
                         </DataTemplate>
                     </syncfusion:ButtonAdv.IconTemplate>
                 </syncfusion:ButtonAdv>
-                
-                <syncfusion:ButtonAdv Label="Delete Account" 
+
+                <syncfusion:ButtonAdv Label="Delete Account"
                                       Command="{Binding DeleteAccountCommand}"
                                       ToolTip="Delete selected account"
                                       IconWidth="16" IconHeight="16">
                     <syncfusion:ButtonAdv.IconTemplate>
                         <DataTemplate>
-                            <Path Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" 
-                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}" 
-                                  Stretch="Uniform" 
+                            <Path Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}"
+                                  Stretch="Uniform"
                                   Width="16" Height="16" />
                         </DataTemplate>
                     </syncfusion:ButtonAdv.IconTemplate>
                 </syncfusion:ButtonAdv>
-                
+
                 <Separator />
-                
-                <syncfusion:ButtonAdv Label="Refresh" 
+
+                <syncfusion:ButtonAdv Label="Refresh"
                                       Command="{Binding RefreshBudgetDataCommand}"
                                       ToolTip="Refresh budget data from database"
                                       IconWidth="16" IconHeight="16">
                     <syncfusion:ButtonAdv.IconTemplate>
                         <DataTemplate>
-                            <Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" 
-                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}" 
-                                  Stretch="Uniform" 
+                            <Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=syncfusion:ButtonAdv}}"
+                                  Stretch="Uniform"
                                   Width="16" Height="16" />
                         </DataTemplate>
                     </syncfusion:ButtonAdv.IconTemplate>
                 </syncfusion:ButtonAdv>
-                
+
                 <Separator />
-                
-                <TextBlock Text="Fiscal Year:" 
-                           VerticalAlignment="Center" 
+
+                <TextBlock Text="Fiscal Year:"
+                           VerticalAlignment="Center"
                            Margin="8,0,4,0" />
-                <syncfusion:ComboBoxAdv Width="150" 
+                <syncfusion:ComboBoxAdv Width="150"
                                        ItemsSource="{Binding FiscalYears}"
                                        SelectedItem="{Binding SelectedFiscalYear, Mode=TwoWay}"
-                                       ToolTip="Select fiscal year for budget view" 
+                                       ToolTip="Select fiscal year for budget view"
                                        Margin="4,0" />
         </ToolBar>
 
@@ -185,39 +185,37 @@
                                    RowHeight="32"
                                    AutoExpandMode="RootNodesExpanded"
                                    Margin="8"
-                                   CellToolTipOpening="BudgetTreeGrid_CellToolTipOpening"
-                                   CurrentCellEndEdit="BudgetTreeGrid_CurrentCellEndEdit"
                                    AutomationProperties.Name="GASB-Compliant Hierarchical Budget Accounts">
-            
+
             <syncfusion:SfTreeGrid.Columns>
                 <!-- Account Number (Tree Column for hierarchy) -->
-                <syncfusion:TreeGridTextColumn HeaderText="Account Number" 
-                                               MappingName="AccountNumber" 
+                <syncfusion:TreeGridTextColumn HeaderText="Account Number"
+                                               MappingName="AccountNumber"
                                                Width="200"
                                                AllowEditing="False"
                                                HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
-                
+
                 <!-- Description -->
-                <syncfusion:TreeGridTextColumn HeaderText="Description" 
-                                               MappingName="Description" 
+                <syncfusion:TreeGridTextColumn HeaderText="Description"
+                                               MappingName="Description"
                                                Width="300"
                                                AllowEditing="True"
                                                HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}"
                                                ToolTipService.ToolTip="Double-click to edit (GASB rules applied)" />
-                
+
                 <!-- Fund Type with Dropdown Editor -->
-                <syncfusion:TreeGridComboBoxColumn HeaderText="Fund Type" 
-                                                   MappingName="FundType" 
+                <syncfusion:TreeGridComboBoxColumn HeaderText="Fund Type"
+                                                   MappingName="FundType"
                                                    Width="150"
                                                    ItemsSource="{Binding FundTypes}"
                                                    DisplayMemberPath="Name"
                                                    SelectedValuePath="Code"
                                                    ToolTipService.ToolTip="Select fund category (General, Special Revenue, Capital, etc.)"
                                                    HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
-                
+
                 <!-- Budget Amount (Currency formatting) -->
-                <syncfusion:TreeGridCurrencyColumn HeaderText="Budgeted Amount" 
-                                                   MappingName="BudgetAmount" 
+                <syncfusion:TreeGridCurrencyColumn HeaderText="Budgeted Amount"
+                                                   MappingName="BudgetAmount"
                                                    Width="150"
                                                    CurrencyDecimalDigits="2"
                                                    CurrencySymbol="$"
@@ -225,10 +223,10 @@
                                                    TextAlignment="Right"
                                                    ToolTipService.ToolTip="Approved budget amount (must be positive)"
                                                    HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
-                
+
                 <!-- Actuals (Currency formatting) -->
-                <syncfusion:TreeGridCurrencyColumn HeaderText="Actual Expenses" 
-                                                   MappingName="ActualAmount" 
+                <syncfusion:TreeGridCurrencyColumn HeaderText="Actual Expenses"
+                                                   MappingName="ActualAmount"
                                                    Width="150"
                                                    CurrencyDecimalDigits="2"
                                                    CurrencySymbol="$"
@@ -236,10 +234,10 @@
                                                    TextAlignment="Right"
                                                    ToolTipService.ToolTip="Year-to-date actual spending"
                                                    HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
-                
+
                 <!-- Variance (Calculated, conditional styling) -->
-                <syncfusion:TreeGridCurrencyColumn HeaderText="Variance" 
-                                                   MappingName="Variance" 
+                <syncfusion:TreeGridCurrencyColumn HeaderText="Variance"
+                                                   MappingName="Variance"
                                                    Width="150"
                                                    CurrencyDecimalDigits="2"
                                                    CurrencySymbol="$"
@@ -248,10 +246,10 @@
                                                    ToolTipService.ToolTip="Budget vs Actual (negative = over budget)"
                                                    CellStyle="{DynamicResource OverBudgetCellStyle}"
                                                    HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
-                
+
                 <!-- Percentage Used -->
-                <syncfusion:TreeGridPercentColumn HeaderText="% Used" 
-                                                  MappingName="PercentageUsed" 
+                <syncfusion:TreeGridPercentColumn HeaderText="% Used"
+                                                  MappingName="PercentageUsed"
                                                   Width="100"
                                                   PercentEditMode="PercentMode"
                                                   AllowEditing="False"
@@ -278,10 +276,10 @@
                        Margin="20"
                        Visibility="{Binding BudgetAccounts.Count, Converter={StaticResource ZeroToVisibleConverter}}" />
         </Grid>        <!-- Footer with Total Calculations -->
-        <Border Grid.Row="2" 
-                Background="#FF2C3038" 
-                BorderBrush="#FF3D4451" 
-                BorderThickness="0,1,0,0" 
+        <Border Grid.Row="2"
+                Background="#FF2C3038"
+                BorderBrush="#FF3D4451"
+                BorderThickness="0,1,0,0"
                 Padding="12,8">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -292,29 +290,29 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" 
-                           Text="Total Budget:" 
-                           FontWeight="SemiBold" 
-                           Foreground="#FFDCE6F5" 
-                           VerticalAlignment="Center" 
+                <TextBlock Grid.Column="0"
+                           Text="Total Budget:"
+                           FontWeight="SemiBold"
+                           Foreground="#FFDCE6F5"
+                           VerticalAlignment="Center"
                            Margin="0,0,8,0" />
-                
-                <TextBlock Grid.Column="1" 
-                           Text="{Binding TotalBudget, Mode=OneWay, StringFormat=C2}" 
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding TotalBudget, Mode=OneWay, StringFormat=C2}"
                            Width="180"
                            FontWeight="Bold"
                            Foreground="#FF4CAF50"
                            ToolTipService.ToolTip="Sum of all budgeted amounts" />
-                
-                <TextBlock Grid.Column="3" 
-                           Text="Total Actual:" 
-                           FontWeight="SemiBold" 
-                           Foreground="#FFDCE6F5" 
-                           VerticalAlignment="Center" 
+
+                <TextBlock Grid.Column="3"
+                           Text="Total Actual:"
+                           FontWeight="SemiBold"
+                           Foreground="#FFDCE6F5"
+                           VerticalAlignment="Center"
                            Margin="16,0,8,0" />
-                
-                <TextBlock Grid.Column="4" 
-                           Text="{Binding TotalActual, Mode=OneWay, StringFormat=C2}" 
+
+                <TextBlock Grid.Column="4"
+                           Text="{Binding TotalActual, Mode=OneWay, StringFormat=C2}"
                            Width="180"
                            FontWeight="Bold"
                            Foreground="{Binding TotalVariance, Converter={StaticResource BalanceColorConverter}}"
@@ -330,16 +328,16 @@
             </Grid.ColumnDefinitions>
 
             <!-- Budget Distribution Pie Chart -->
-            <GroupBox Grid.Column="0" 
-                      Header="Budget Distribution by Fund" 
-                      Margin="0,0,4,0" 
+            <GroupBox Grid.Column="0"
+                      Header="Budget Distribution by Fund"
+                      Margin="0,0,4,0"
                       Padding="8"
                       Foreground="#FFDCE6F5">
                 <chart:SfChart>
                     <chart:SfChart.Legend>
                         <chart:ChartLegend DockPosition="Right" />
                     </chart:SfChart.Legend>
-                    
+
                     <chart:PieSeries ItemsSource="{Binding BudgetDistributionData}"
                                      XBindingPath="FundType"
                                      YBindingPath="Amount"
@@ -348,22 +346,22 @@
                                      LabelPosition="Inside"
                                      Palette="Metro">
                         <chart:PieSeries.AdornmentsInfo>
-                            <chart:ChartAdornmentInfo 
-                                ShowLabel="True" 
+                            <chart:ChartAdornmentInfo
+                                ShowLabel="True"
                                 LabelTemplate="{DynamicResource PieChartLabelTemplate}"
                                 LabelPosition="Auto" />
                         </chart:PieSeries.AdornmentsInfo>
-                        
+
                         <chart:PieSeries.TooltipTemplate>
                             <DataTemplate>
-                                <Border Background="#FF2C3038" 
-                                        BorderBrush="#FF4F6BED" 
-                                        BorderThickness="1" 
-                                        CornerRadius="4" 
+                                <Border Background="#FF2C3038"
+                                        BorderBrush="#FF4F6BED"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
                                         Padding="8">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Item.FundType}" 
-                                                   FontWeight="Bold" 
+                                        <TextBlock Text="{Binding Item.FundType}"
+                                                   FontWeight="Bold"
                                                    Foreground="White" />
                                         <TextBlock Foreground="White">
                                             <Run Text="Amount: " />
@@ -382,24 +380,24 @@
             </GroupBox>
 
             <!-- Budget vs Actual Bar Chart -->
-            <GroupBox Grid.Column="1" 
-                      Header="Budget vs Actual by Category" 
-                      Margin="4,0,0,0" 
+            <GroupBox Grid.Column="1"
+                      Header="Budget vs Actual by Category"
+                      Margin="4,0,0,0"
                       Padding="8"
                       Foreground="#FFDCE6F5">
                 <chart:SfChart>
                     <chart:SfChart.PrimaryAxis>
                         <chart:CategoryAxis LabelRotationAngle="-45" />
                     </chart:SfChart.PrimaryAxis>
-                    
+
                     <chart:SfChart.SecondaryAxis>
                         <chart:NumericalAxis LabelFormat="C0" />
                     </chart:SfChart.SecondaryAxis>
-                    
+
                     <chart:SfChart.Legend>
                         <chart:ChartLegend DockPosition="Top" />
                     </chart:SfChart.Legend>
-                    
+
                     <!-- Budgeted amounts -->
                     <chart:ColumnSeries ItemsSource="{Binding BudgetComparisonData}"
                                         XBindingPath="Category"
@@ -408,13 +406,13 @@
                                         Interior="#FF4CAF50"
                                         EnableAnimation="True">
                         <chart:ColumnSeries.AdornmentsInfo>
-                            <chart:ChartAdornmentInfo 
-                                ShowLabel="True" 
+                            <chart:ChartAdornmentInfo
+                                ShowLabel="True"
                                 LabelPosition="Inner"
                                 SegmentLabelFormat="C0" />
                         </chart:ColumnSeries.AdornmentsInfo>
                     </chart:ColumnSeries>
-                    
+
                     <!-- Actual amounts -->
                     <chart:ColumnSeries ItemsSource="{Binding BudgetComparisonData}"
                                         XBindingPath="Category"
@@ -423,8 +421,8 @@
                                         Interior="#FFF44336"
                                         EnableAnimation="True">
                         <chart:ColumnSeries.AdornmentsInfo>
-                            <chart:ChartAdornmentInfo 
-                                ShowLabel="True" 
+                            <chart:ChartAdornmentInfo
+                                ShowLabel="True"
                                 LabelPosition="Inner"
                                 SegmentLabelFormat="C0" />
                         </chart:ColumnSeries.AdornmentsInfo>

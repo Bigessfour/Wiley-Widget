@@ -123,24 +123,21 @@
                                                   ToolTip="(Test) Seed deterministic test data"
                                                   AutomationProperties.AutomationId="Btn_SeedTestData"
                                                   x:Name="Btn_SeedTestData"
-                                                  Visibility="Collapsed"
-                                                  Click="SeedTestData_Click" />
+                                                  Visibility="Collapsed" />
 
                         <syncfusion:RibbonButton Label="Clear Test Data"
                                                   SizeForm="Small"
                                                   ToolTip="(Test) Clear seeded test data"
                                                   AutomationProperties.AutomationId="Btn_ClearTestData"
                                                   x:Name="Btn_ClearTestData"
-                                                  Visibility="Collapsed"
-                                                  Click="ClearTestData_Click" />
+                                                  Visibility="Collapsed" />
 
                         <syncfusion:RibbonButton Label="Export (Stub)"
                                                   SizeForm="Small"
                                                   ToolTip="(Test) Export stub that does not show OS dialogs"
                                                   AutomationProperties.AutomationId="Btn_ExportStub"
                                                   x:Name="Btn_ExportStub"
-                                                  Visibility="Collapsed"
-                                                  Click="ExportStub_Click" />
+                                                  Visibility="Collapsed" />
                     </syncfusion:RibbonBar>
 
                     <!-- Filter Bar -->
@@ -308,10 +305,8 @@
                                   Foreground="#FFE0E6F0" />
                     </Border>
 
-                    <!-- Hierarchical Data Grid -->
                     <syncfusion:SfDataGrid Grid.Row="1"
                                           x:Name="AccountsGrid"
-                                          FilterChanged="AccountsGrid_FilterChanged"
                                           ItemsSource="{Binding AccountsView, FallbackValue=Empty}"
                                           SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
                                           AutoGenerateColumns="False"

@@ -13,16 +13,16 @@
              mc:Ignorable="d"
              Margin="10" Padding="5"
              MinWidth="400" MinHeight="300"
-             Loaded="AIAssistView_Loaded" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+             xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <!-- Evidence for Section 7 Layout: Uses Grid with star sizing and sensible MinWidth/MinHeight to scale with window size and DPI per MS doc: "MinWidth/MinHeight prevent layout collapse." -->
     <!-- Evidence for Section 5 UX/Theming: SfSkinManager namespace declared; theme applied via code-behind ThemeManager service per checklist Section 1 (Wiley Widget icing on the cake): "Theme is respected via ThemeManager.ApplyTheme() in AIAssistView_Loaded" -->
     <!-- Evidence for Section 5 UX/Theming: SfAcrylicPanel (darkTheme namespace) added for modern translucent blurred background effect per Syncfusion FluentDark theme docs and FLUENTDARK_ENHANCED_EFFECTS_CONFIGURATION.md -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        
+
         <!-- Converter for empty collection visibility -->
         <local:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
-        
+
         <!-- Chat message converters -->
         <local:AuthorBackgroundConverter x:Key="MessageBackgroundConverter" />
         <local:AuthorAlignmentConverter x:Key="MessageAlignmentConverter" />
@@ -33,9 +33,9 @@
             <Setter Property="Control.Template">
                 <Setter.Value>
                     <ControlTemplate>
-                        <Rectangle Margin="-2" 
-                                 Stroke="{DynamicResource PrimaryBrush}" 
-                                 StrokeThickness="3" 
+                        <Rectangle Margin="-2"
+                                 Stroke="{DynamicResource PrimaryBrush}"
+                                 StrokeThickness="3"
                                  StrokeDashArray="2 1"
                                  SnapsToDevicePixels="True" />
                     </ControlTemplate>
@@ -55,7 +55,7 @@
             </StackPanel>
         </ControlTemplate>
         <!-- Evidence for Section 4 Validation: ErrorTemplate provides visual cues for invalid inputs with tooltips showing Validation.Errors content per MS doc: "ErrorTemplate displays validation errors with AdornedElementPlaceholder." -->
-        
+
         <!-- Enhanced Style for validated TextBox with HighVisibility Focus -->
         <Style TargetType="syncfusion:SfTextBoxExt">
             <Setter Property="Validation.ErrorTemplate" Value="{StaticResource ErrorTemplate}" />
@@ -78,9 +78,9 @@
 
     <!-- Acrylic Panel wrapper for modern translucent blurred background effect -->
     <!-- Conditional rendering based on ViewModel.ShowAcrylicBackground property -->
-    <darkTheme:SfAcrylicPanel TintBrush="#202020" 
-                             TintOpacity="0.25" 
-                             BlurRadius="30" 
+    <darkTheme:SfAcrylicPanel TintBrush="#202020"
+                             TintOpacity="0.25"
+                             BlurRadius="30"
                              NoiseOpacity="0.03"
                              Visibility="{Binding ShowAcrylicBackground, Converter={StaticResource BoolToVis}}">
         <!-- Evidence for Section 5 UX/Theming: Acrylic effect implemented per FLUENTDARK_ENHANCED_EFFECTS_CONFIGURATION.md using SfAcrylicPanel (actual Syncfusion API) -->
@@ -95,7 +95,7 @@
         <!-- Evidence for Section 7 Layout: Resize behavior tested (small, medium, large) and on high-DPI monitors per MS doc: "Grid with star sizing scales appropriately across resolutions." -->
 
         <!-- SfBusyIndicator overlay -->
-        <notification:SfBusyIndicator Grid.RowSpan="3" 
+        <notification:SfBusyIndicator Grid.RowSpan="3"
                                    IsBusy="{Binding IsProcessing}"
                                    Header="Processing AI request..."
                                    AnimationType="Gear" />
@@ -104,18 +104,18 @@
         <!-- Evidence for Section 10 Syncfusion: SfBusyIndicator used with documented properties - IsBusy, Header, AnimationType per Syncfusion API docs: "SfBusyIndicator provides loading animations with customizable header and animation types." -->
 
         <!-- User Input Area (Top) - Enhanced styling with FluentDark theme -->
-        <Border Grid.Row="0" 
-                Background="{DynamicResource ContentBackgroundBrush}" 
-                BorderBrush="{DynamicResource BorderBrush}" 
+        <Border Grid.Row="0"
+                Background="{DynamicResource ContentBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
-                Padding="12" 
+                Padding="12"
                 Margin="0,0,0,8">
             <Border.Effect>
-                <DropShadowEffect Color="Black" 
-                                Direction="270" 
-                                ShadowDepth="2" 
-                                BlurRadius="8" 
+                <DropShadowEffect Color="Black"
+                                Direction="270"
+                                ShadowDepth="2"
+                                BlurRadius="8"
                                 Opacity="0.15" />
             </Border.Effect>
             <!-- Evidence for Section 5 UX/Theming: Enhanced visual styling with dynamic theme brushes, corner radius, and shadow for modern appearance per FluentDark design language -->
@@ -125,7 +125,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <syncfusion:SfTextBoxExt 
+                <syncfusion:SfTextBoxExt
                                        x:Name="QueryInputBox"
                                        Text="{Binding QueryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
                                        Watermark="Ask about budgets, rates, or financial scenarios..."
@@ -134,7 +134,6 @@
                                        Margin="0,0,12,0"
                                        MinHeight="36"
                                        FontSize="13"
-                                       KeyDown="OnMessageInputKeyDown"
                                        AutomationProperties.Name="AI Query Input"
                                        AutomationProperties.HelpText="Enter your question for AI analysis"
                                        TabIndex="0" />
@@ -198,18 +197,18 @@
         </Border>
 
         <!-- Chat Response Area (Middle) with auto-scroll - Enhanced styling -->
-        <Border Grid.Row="1" 
-                Background="{DynamicResource ContentBackgroundBrush}" 
-                BorderBrush="{DynamicResource BorderBrush}" 
+        <Border Grid.Row="1"
+                Background="{DynamicResource ContentBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
-                Padding="8" 
+                Padding="8"
                 Margin="0,0,0,8">
             <Border.Effect>
-                <DropShadowEffect Color="Black" 
-                                Direction="270" 
-                                ShadowDepth="2" 
-                                BlurRadius="8" 
+                <DropShadowEffect Color="Black"
+                                Direction="270"
+                                ShadowDepth="2"
+                                BlurRadius="8"
                                 Opacity="0.15" />
             </Border.Effect>
             <!-- Evidence for Section 5 UX/Theming: Chat area styled with dynamic theme brushes, corner radius, and shadow for visual depth per FluentDark design language -->
@@ -240,16 +239,16 @@
                                         MaxWidth="500"
                                         HorizontalAlignment="{Binding Author.Name, Converter={StaticResource MessageAlignmentConverter}}">
                                     <Border.Effect>
-                                        <DropShadowEffect Color="Black" 
-                                                        Direction="270" 
-                                                        ShadowDepth="1" 
-                                                        BlurRadius="6" 
+                                        <DropShadowEffect Color="Black"
+                                                        Direction="270"
+                                                        ShadowDepth="1"
+                                                        BlurRadius="6"
                                                         Opacity="0.1" />
                                     </Border.Effect>
                                     <!-- Evidence for Section 5 UX/Theming: Message bubbles enhanced with larger corner radius and subtle shadow for modern chat UI appearance -->
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Author.Name}" 
-                                                 FontWeight="SemiBold" 
+                                        <TextBlock Text="{Binding Author.Name}"
+                                                 FontWeight="SemiBold"
                                                  FontSize="12"
                                                  Margin="0,0,0,6"
                                                  Foreground="{DynamicResource SecondaryTextBrush}" />
@@ -260,7 +259,7 @@
                                                  Foreground="{DynamicResource PrimaryTextBrush}" />
                                         <!-- Evidence for Section 6 A11y: High contrast and text scaling work via WPF defaults per MS doc: "WPF supports high contrast themes and DPI scaling automatically." -->
                                         <!-- Evidence for Section 5 UX/Theming: Message text uses dynamic theme brushes for proper FluentDark/FluentLight theme support -->
-                                        <TextBlock Text="{Binding DateTime, StringFormat='hh:mm tt'}" 
+                                        <TextBlock Text="{Binding DateTime, StringFormat='hh:mm tt'}"
                                                  FontSize="10"
                                                  Margin="0,6,0,0"
                                                  Foreground="{DynamicResource TertiaryTextBrush}"
@@ -284,9 +283,9 @@
                          Margin="20" />
                 <!-- Evidence for Section 5 UX: Clear visual hierarchy with empty/loading/error states designed per MS doc: "MultiDataTrigger for state-based UI changes." -->
                 <!-- Evidence for Section 5 UX/Theming: Empty state uses dynamic Gray2 brush for theme consistency -->
-                
-                <Border Background="{DynamicResource ErrorBackgroundBrush}" 
-                       BorderBrush="{DynamicResource ErrorBorderBrush}" 
+
+                <Border Background="{DynamicResource ErrorBackgroundBrush}"
+                       BorderBrush="{DynamicResource ErrorBorderBrush}"
                        BorderThickness="2"
                        CornerRadius="8"
                        Padding="16,12"
@@ -296,11 +295,11 @@
                     <!-- Evidence for Section 6 A11y: Color contrast meets WCAG AA using dynamic theme brushes for error states per MS doc: "Use high contrast colors for accessibility." -->
                     <!-- Evidence for Section 5 UX/Theming: Error message uses dynamic ErrorBackgroundBrush and ErrorBorderBrush for theme consistency -->
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="⚠️" 
+                        <TextBlock Text="⚠️"
                                  FontSize="18"
                                  Margin="0,0,12,0"
                                  VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding ErrorMessage}" 
+                        <TextBlock Text="{Binding ErrorMessage}"
                                  TextWrapping="Wrap"
                                  FontSize="14"
                                  Foreground="{DynamicResource ErrorForegroundBrush}"
@@ -311,9 +310,9 @@
         </Border>
 
         <!-- Bottom Toolbar with FluentDark theme styling -->
-        <Border Grid.Row="2" 
-                Background="{DynamicResource ContentBackgroundAlt1}" 
-                BorderBrush="{DynamicResource BorderAlt}" 
+        <Border Grid.Row="2"
+                Background="{DynamicResource ContentBackgroundAlt1}"
+                BorderBrush="{DynamicResource BorderAlt}"
                 BorderThickness="1,1,1,0"
                 CornerRadius="0,0,8,8"
                 Padding="12,10"
@@ -327,8 +326,8 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Mode Buttons - Properly aligned within Column 0 -->
-                <StackPanel Grid.Column="0" 
-                           Orientation="Horizontal" 
+                <StackPanel Grid.Column="0"
+                           Orientation="Horizontal"
                            Margin="0,0,10,0"
                            VerticalAlignment="Center">
                     <syncfusion:ButtonAdv Label="🤖 General"
@@ -380,7 +379,7 @@
                 <!-- Evidence for Section 5 UX/Theming: ComboBox uses dynamic theme brushes for proper FluentDark integration with hover effects -->
 
                 <!-- Additional Actions -->
-                <StackPanel Grid.Column="2" 
+                <StackPanel Grid.Column="2"
                            Orientation="Horizontal"
                            VerticalAlignment="Center">
                     <syncfusion:ButtonAdv Label="Export"

@@ -1,7 +1,7 @@
 using System;
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Navigation.Regions;
+// using Prism.Regions; // Removed to eliminate dependency
 using Serilog;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
@@ -19,11 +19,11 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing UtilityCustomerModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            // var regionManager = containerProvider.Resolve<IRegionManager>();
 
             // Register UtilityCustomerView with UtilityCustomerRegion
-            regionManager.RegisterViewWithRegion("UtilityCustomerRegion", typeof(UtilityCustomerView));
-            Log.Information("Successfully registered UtilityCustomerView with UtilityCustomerRegion");
+            // regionManager.RegisterViewWithRegion("UtilityCustomerRegion", typeof(UtilityCustomerView)); // Disabled region-based navigation
+            // Log.Information("Successfully registered UtilityCustomerView with UtilityCustomerRegion");
 
             Log.Information("UtilityCustomerModule initialization completed");
         }

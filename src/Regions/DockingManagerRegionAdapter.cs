@@ -2,11 +2,11 @@ using System;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Windows;
-using Prism.Navigation.Regions;
 using Syncfusion.Windows.Tools.Controls;
 
 namespace WileyWidget.Regions;
 
+#if false
 /// <summary>
 /// Region adapter for Syncfusion DockingManager to enable Prism region functionality
 /// Allows views to be added/removed from DockingManager regions dynamically
@@ -111,8 +111,8 @@ public class DockingManagerRegionAdapter : RegionAdapterBase<DockingManager>
         // Search through the DockingManager's children for a ContentControl with the matching region name
         foreach (var child in LogicalTreeHelper.GetChildren(dockingManager))
         {
-            if (child is System.Windows.Controls.ContentControl contentControl &&
-                contentControl.GetValue(Prism.Navigation.Regions.RegionManager.RegionNameProperty) as string == regionName)
+            if (child is System.Windows.Controls.ContentControl contentControl)
+                // && contentControl.GetValue(Prism.Regions.RegionManager.RegionNameProperty) as string == regionName)
             {
                 return contentControl;
             }
@@ -121,3 +121,4 @@ public class DockingManagerRegionAdapter : RegionAdapterBase<DockingManager>
         return null;
     }
 }
+#endif

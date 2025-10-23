@@ -138,8 +138,7 @@
                                         AnimationDuration="0:0:0.400">
                 <!-- Main Chart -->
                 <syncfusion:TileViewItem Header="{Binding SelectedChartType, StringFormat='{}Chart: {0}'}">
-                    <syncfusion:SfChart x:Name="AnalyticsChart"
-                                        SelectionChanged="OnChartSelectionChanged">
+                    <syncfusion:SfChart x:Name="AnalyticsChart">
                         <syncfusion:SfChart.PrimaryAxis>
                             <syncfusion:CategoryAxis />
                         </syncfusion:SfChart.PrimaryAxis>

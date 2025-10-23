@@ -25,6 +25,7 @@ Enhanced features for Grok-4 and other AI systems:
 - Configurable behavior via .ai-manifest-config.json
 """
 
+import concurrent.futures
 import datetime
 import hashlib
 import json
@@ -33,7 +34,6 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Any, List, Optional, Set
-import concurrent.futures
 
 
 class RepoManifestGenerator:
@@ -96,21 +96,30 @@ class RepoManifestGenerator:
             "max_file_size_for_summary": 100000,
             "parallel_workers": 4,
             "exclude_patterns": [
-                r'\.env', r'secret', r'password', r'token', r'key',
-                r'config.*secret', r'private.*key', r'\.pem$', r'\.key$',
-                r'credentials', r'auth', r'login'
+                r"\.env",
+                r"secret",
+                r"password",
+                r"token",
+                r"key",
+                r"config.*secret",
+                r"private.*key",
+                r"\.pem$",
+                r"\.key$",
+                r"credentials",
+                r"auth",
+                r"login",
             ],
             "custom_categories": {},
             "analysis_options": {
                 "extract_structure": True,
                 "calculate_complexity": False,
-                "semantic_analysis": False
-            }
+                "semantic_analysis": False,
+            },
         }
 
         if config_path.exists():
             try:
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     user_config = json.load(f)
                 # Merge user config with defaults
                 default_config.update(user_config)
@@ -230,26 +239,28 @@ class RepoManifestGenerator:
             return "Binary or large file - content not summarized"
 
         try:
-            with open(self.repo_path / file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(
+                self.repo_path / file_path, "r", encoding="utf-8", errors="ignore"
+            ) as f:
                 content = f.read(5000)  # First 5KB
 
             # Extract key information based on file type
             if self.config.get("analysis_options", {}).get("extract_structure", True):
-                if file_path.endswith('.py'):
+                if file_path.endswith(".py"):
                     summary = self._extract_python_structure(content)
-                elif file_path.endswith('.cs'):
+                elif file_path.endswith(".cs"):
                     summary = self._extract_csharp_structure(content)
-                elif file_path.endswith('.md'):
+                elif file_path.endswith(".md"):
                     summary = self._extract_markdown_structure(content)
-                elif file_path.endswith('.json'):
+                elif file_path.endswith(".json"):
                     summary = self._extract_json_structure(content)
                 else:
                     # Generic summary: first few lines + key patterns
-                    lines = content.split('\n')[:10]
-                    summary = '\n'.join(lines)
+                    lines = content.split("\n")[:10]
+                    summary = "\n".join(lines)
             else:
-                lines = content.split('\n')[:10]
-                summary = '\n'.join(lines)
+                lines = content.split("\n")[:10]
+                summary = "\n".join(lines)
 
             max_length = self.config.get("max_summary_length", 1000)
             return summary[:max_length]
@@ -258,41 +269,63 @@ class RepoManifestGenerator:
 
     def _extract_python_structure(self, content: str) -> str:
         """Extract Python code structure."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         structure = []
 
         for line in lines[:50]:  # First 50 lines
             line = line.strip()
-            if line.startswith('class ') or line.startswith('def ') or line.startswith('import ') or line.startswith('from '):
+            if (
+                line.startswith("class ")
+                or line.startswith("def ")
+                or line.startswith("import ")
+                or line.startswith("from ")
+            ):
                 structure.append(line)
 
-        return '\n'.join(structure) if structure else "Python file with no clear structure detected"
+        return (
+            "\n".join(structure)
+            if structure
+            else "Python file with no clear structure detected"
+        )
 
     def _extract_csharp_structure(self, content: str) -> str:
         """Extract C# code structure."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         structure = []
 
         for line in lines[:50]:  # First 50 lines
             line = line.strip()
-            if (line.startswith('class ') or line.startswith('interface ') or
-                line.startswith('public ') or line.startswith('private ') or
-                line.startswith('protected ') or line.startswith('internal ') or
-                line.startswith('using ')):
+            if (
+                line.startswith("class ")
+                or line.startswith("interface ")
+                or line.startswith("public ")
+                or line.startswith("private ")
+                or line.startswith("protected ")
+                or line.startswith("internal ")
+                or line.startswith("using ")
+            ):
                 structure.append(line)
 
-        return '\n'.join(structure) if structure else "C# file with no clear structure detected"
+        return (
+            "\n".join(structure)
+            if structure
+            else "C# file with no clear structure detected"
+        )
 
     def _extract_markdown_structure(self, content: str) -> str:
         """Extract Markdown structure."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         structure = []
 
         for line in lines[:30]:  # First 30 lines
-            if line.startswith('#'):
+            if line.startswith("#"):
                 structure.append(line)
 
-        return '\n'.join(structure) if structure else "Markdown file with no headings detected"
+        return (
+            "\n".join(structure)
+            if structure
+            else "Markdown file with no headings detected"
+        )
 
     def _extract_json_structure(self, content: str) -> str:
         """Extract JSON structure."""
@@ -310,12 +343,26 @@ class RepoManifestGenerator:
 
     def _should_exclude_file(self, file_path: str) -> bool:
         """Check if file should be excluded for security/privacy."""
-        exclude_patterns = self.config.get("exclude_patterns", [
-            r'\.env', r'secret', r'password', r'token', r'key',
-            r'config.*secret', r'private.*key', r'\.pem$', r'\.key$',
-            r'credentials', r'auth', r'login'
-        ])
-        return any(re.search(pattern, file_path, re.IGNORECASE) for pattern in exclude_patterns)
+        exclude_patterns = self.config.get(
+            "exclude_patterns",
+            [
+                r"\.env",
+                r"secret",
+                r"password",
+                r"token",
+                r"key",
+                r"config.*secret",
+                r"private.*key",
+                r"\.pem$",
+                r"\.key$",
+                r"credentials",
+                r"auth",
+                r"login",
+            ],
+        )
+        return any(
+            re.search(pattern, file_path, re.IGNORECASE) for pattern in exclude_patterns
+        )
 
         return metadata
 
@@ -603,7 +650,7 @@ class RepoManifestGenerator:
             "concepts": set(),
             "relationships": [],
             "clusters": {},
-            "important_files": []
+            "important_files": [],
         }
 
         # Extract concepts from file names and content
@@ -613,28 +660,39 @@ class RepoManifestGenerator:
 
             # Add important files
             if context.get("importance") == "high":
-                semantic_data["important_files"].append({
-                    "path": path,
-                    "category": context.get("category"),
-                    "description": context.get("description")
-                })
+                semantic_data["important_files"].append(
+                    {
+                        "path": path,
+                        "category": context.get("category"),
+                        "description": context.get("description"),
+                    }
+                )
 
             # Extract concepts from path
-            path_parts = re.split(r'[\\/._-]', path.lower())
+            path_parts = re.split(r"[\\/._-]", path.lower())
             for part in path_parts:
-                if len(part) > 3 and part not in {'src', 'test', 'docs', 'scripts'}:
+                if len(part) > 3 and part not in {"src", "test", "docs", "scripts"}:
                     semantic_data["concepts"].add(part)
 
             # Extract from summary if available
             summary = context.get("summary", "")
             if summary and summary != "Unable to generate summary":
-                words = re.findall(r'\b\w{4,}\b', summary.lower())
+                words = re.findall(r"\b\w{4,}\b", summary.lower())
                 for word in words:
-                    if word not in {'file', 'class', 'function', 'method', 'code', 'data'}:
+                    if word not in {
+                        "file",
+                        "class",
+                        "function",
+                        "method",
+                        "code",
+                        "data",
+                    }:
                         semantic_data["concepts"].add(word)
 
         # Convert sets to sorted lists for JSON serialization
-        semantic_data["concepts"] = sorted(list(semantic_data["concepts"]))[:200]  # Limit size
+        semantic_data["concepts"] = sorted(list(semantic_data["concepts"]))[
+            :200
+        ]  # Limit size
 
         return semantic_data
 

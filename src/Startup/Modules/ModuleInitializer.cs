@@ -116,7 +116,6 @@ namespace WileyWidget.Startup.Modules
                 // Check for common service resolution issues
                 var commonServices = new[]
                 {
-                    typeof(Prism.Navigation.Regions.IRegionManager),
                     typeof(WileyWidget.Services.IModuleHealthService),
                     typeof(WileyWidget.Services.ISecretVaultService),
                     typeof(WileyWidget.Services.IQuickBooksService),

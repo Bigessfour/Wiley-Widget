@@ -93,6 +93,17 @@ public class GeneralErrorEvent : PubSubEvent<GeneralErrorEvent>
 }
 
 /// <summary>
+/// Message sent when municipal accounts have been loaded/ seeded
+/// Used for cross-ViewModel communication to notify dashboard refresh
+/// </summary>
+public class AccountsLoadedEvent : PubSubEvent<AccountsLoadedEvent>
+{
+    public int AccountCount { get; set; }
+    public string LoadType { get; set; } = string.Empty; // "seeded", "loaded", "synced"
+    public DateTime Timestamp { get; } = DateTime.UtcNow;
+}
+
+/// <summary>
 /// Type of change made to an entity
 /// </summary>
 public enum ChangeType

@@ -6,10 +6,7 @@ namespace WileyWidget.Business.Services
 {
     public class AuditService
     {
-        private static readonly Lazy<AuditService> _instance = new(() => new AuditService());
-        public static AuditService Instance => _instance.Value;
-
-        private AuditService() { }
+        public AuditService() { }
 
         public void LogAudit(string user, string action, string entity, string? details = null)
         {

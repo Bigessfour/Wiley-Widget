@@ -18,8 +18,73 @@ using WileyWidget.Configuration;
 
 namespace WileyWidget.ViewModels
 {
-    public partial class SettingsViewModel : ObservableObject, INotifyDataErrorInfo
+    public partial class SettingsViewModel : ObservableObject, INotifyDataErrorInfo, INavigationAware, IDisposable
     {
+        // Prism navigation lifecycle hooks - kept minimal
+    private CancellationTokenSource? _settingsNavCts;
+
+    public void OnNavigatedTo(NavigationContext navigationContext)
+        {
+            _logger?.LogInformation("SettingsViewModel navigated to");
+
+            try
+            {
+                _settingsNavCts?.Cancel();
+                _settingsNavCts?.Dispose();
+            }
+            catch { }
+
+            _settingsNavCts = new CancellationTokenSource();
+            var ct = _settingsNavCts.Token;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // If a 'tab' parameter is supplied, open that settings tab
+                    if (navigationContext?.Parameters != null && navigationContext.Parameters.ContainsKey("tab") &&
+                        navigationContext.Parameters["tab"] is string tabName)
+                    {
+                        _logger?.LogInformation("Opening settings tab: {Tab}", tabName);
+                        // UI view should bind to the SelectedTab property; set it if available
+                        // Fallback: just log if no property exists
+                    }
+
+                    // If refresh param provided, reload setting groups
+                    if (navigationContext?.Parameters != null && navigationContext.Parameters.ContainsKey("refresh") &&
+                        navigationContext.Parameters["refresh"] is bool refresh && refresh)
+                    {
+                        await ExecuteSaveSettingsAsync();
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogInformation("Settings navigation canceled");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error during Settings OnNavigatedTo");
+                }
+            }, ct);
+        }
+
+    public bool IsNavigationTarget(NavigationContext navigationContext) => true;
+
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+        {
+            _logger?.LogInformation("SettingsViewModel navigated from");
+
+            try
+            {
+                _settingsNavCts?.Cancel();
+                _settingsNavCts?.Dispose();
+                _settingsNavCts = null;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error cancelling settings navigation token");
+            }
+        }
         private readonly ILogger<SettingsViewModel> _logger;
         private readonly IOptions<AppOptions> _appOptions;
         private readonly IOptionsMonitor<AppOptions> _appOptionsMonitor;
@@ -1916,6 +1981,26 @@ namespace WileyWidget.ViewModels
                 MaxTokensValidation = string.Empty;
             }
         }
+
+    /// <summary>
+    /// Disposes of managed resources.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes of managed and unmanaged resources.
+    /// </summary>
+    /// <param name="disposing">True if disposing managed resources.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _settingsNavCts?.Dispose();
+        }
     }
 
     /// <summary>
@@ -1926,4 +2011,5 @@ namespace WileyWidget.ViewModels
         public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
     }
+}
 }

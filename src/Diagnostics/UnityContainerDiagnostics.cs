@@ -7,7 +7,6 @@ using Unity;
 using Unity.Registration;
 using Unity.Resolution;
 using Prism.Ioc;
-using Prism.Navigation.Regions;
 using Serilog;
 
 namespace WileyWidget.Diagnostics
@@ -218,8 +217,8 @@ namespace WileyWidget.Diagnostics
                 ("IEnterpriseRepository", typeof(WileyWidget.Business.Interfaces.IEnterpriseRepository)),
                 ("IBudgetRepository", typeof(WileyWidget.Business.Interfaces.IBudgetRepository)),
                 ("IModuleHealthService", typeof(WileyWidget.Services.IModuleHealthService)),
-                ("IEventAggregator", typeof(Prism.Events.IEventAggregator)),
-                ("IRegionManager", typeof(IRegionManager))
+                ("IEventAggregator", typeof(Prism.Events.IEventAggregator))
+                // ("IRegionManager", typeof(IRegionManager)) // Removed with Prism.Regions
             };
 
             if (!testMode)

@@ -110,7 +110,6 @@
     <PackageVersion Include="Prism.Core" Version="9.0.537" />
     <PackageVersion Include="Prism.Wpf" Version="9.0.537" />
     <PackageVersion Include="Prism.Unity" Version="9.0.537" />
-    <PackageVersion Include="Prism.Interactivity" Version="9.0.537" />
     <PackageVersion Include="Unity.Container" Version="5.11.11" />
     <!-- Azure Configuration Packages -->
     <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.4.0" />

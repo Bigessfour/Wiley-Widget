@@ -1,7 +1,7 @@
 using System;
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Navigation.Regions;
+// using Prism.Regions; // Removed to eliminate dependency
 using Serilog;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
@@ -19,11 +19,11 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing ReportsModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            // var regionManager = containerProvider.Resolve<IRegionManager>();
 
             // Register ReportsView with ReportsRegion
-            regionManager.RegisterViewWithRegion("ReportsRegion", typeof(ReportsView));
-            Log.Information("Successfully registered ReportsView with ReportsRegion");
+            // regionManager.RegisterViewWithRegion("ReportsRegion", typeof(ReportsView)); // Disabled region-based navigation
+            // Log.Information("Successfully registered ReportsView with ReportsRegion");
 
             Log.Information("ReportsModule initialization completed");
         }

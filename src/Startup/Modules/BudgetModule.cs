@@ -1,7 +1,7 @@
 using System;
 using Prism.Ioc;
-using Prism.Modularity;
 using Prism.Navigation.Regions;
+using Prism.Modularity;
 using Serilog;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
@@ -27,15 +27,11 @@ namespace WileyWidget.Startup.Modules
 
                 // Register BudgetView with BudgetRegion
                 regionManager.RegisterViewWithRegion("BudgetRegion", typeof(BudgetView));
-                Log.Information("Successfully registered BudgetView with BudgetRegion");
-
-                // Register BudgetAnalysisView with BudgetRegion (can coexist with BudgetView)
-                regionManager.RegisterViewWithRegion("BudgetRegion", typeof(BudgetAnalysisView));
-                Log.Information("Successfully registered BudgetAnalysisView with BudgetRegion");
+                Log.Information("BudgetView registered with BudgetRegion");
 
                 // Register AnalyticsView with AnalyticsRegion
                 regionManager.RegisterViewWithRegion("AnalyticsRegion", typeof(AnalyticsView));
-                Log.Information("Successfully registered AnalyticsView with AnalyticsRegion");
+                Log.Information("AnalyticsView registered with AnalyticsRegion");
 
                 Log.Information("BudgetModule initialization completed");
             }

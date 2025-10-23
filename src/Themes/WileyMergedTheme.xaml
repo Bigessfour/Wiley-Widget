@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:prism="http://prismlibrary.com/"
                     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
                     xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
                     xmlns:converters="clr-namespace:WileyWidget.Converters;assembly=WileyWidget">
@@ -8,15 +9,15 @@
     ====================================================================================
     Wiley Merged Theme - Syncfusion Official Theming Implementation
     ====================================================================================
-    
+
     CRITICAL: Uses Syncfusion SfSkinManager for ALL Syncfusion controls.
     Per official documentation: https://help.syncfusion.com/wpf/themes/skin-manager
-    
+
     Global Application: Set SfSkinManager.VisualStyle="FluentLight" as default in App.xaml
     Switching Logic: Use converter to map theme strings to VisualStyles (e.g., "Light" -> FluentLight)
-    
+
     Prism Integration: Bind to IThemeService.CurrentTheme property for theme toggle.
-    
+
     Version: Syncfusion WPF (Latest version as per project packages)
     See docs/SYNCFUSION_THEMING_OFFICIAL_GUIDE.md for full implementation details.
     ====================================================================================
@@ -28,7 +29,7 @@
     <!-- All brushes reference Syncfusion's built-in theme resource keys      -->
     <!-- Source: https://help.syncfusion.com/wpf/themes/skin-manager#theme-resources -->
     <!-- ====================================================================== -->
-    
+
     <!-- ====================================================================== -->
     <!-- PRIMARY BRAND COLORS (Dynamic)                                        -->
     <!-- ====================================================================== -->
@@ -37,7 +38,7 @@
     <SolidColorBrush x:Key="PrimaryLightBrush" Color="{syncfusionskin:ThemeResource Key=PrimaryLight}" />
     <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{syncfusionskin:ThemeResource Key=PrimaryDark}" />
     <SolidColorBrush x:Key="AccentBrush" Color="{syncfusionskin:ThemeResource Key=PrimaryColor}" />
-    
+
     <!-- ====================================================================== -->
     <!-- BACKGROUND COLORS (Dynamic)                                           -->
     <!-- ====================================================================== -->
@@ -51,29 +52,29 @@
     <SolidColorBrush x:Key="ContentBackgroundAlt3Brush" Color="{syncfusionskin:ThemeResource Key=ContentBackgroundAlt3}" />
     <SolidColorBrush x:Key="PrimaryBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=PrimaryBackground}" />
     <SolidColorBrush x:Key="SecondaryBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=SecondaryBackground}" />
-    
+
     <!-- Header and Title Backgrounds -->
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=HeaderBackground}" />
     <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=HeaderBackground}" />
-    
+
     <!-- Hover and Selection Backgrounds -->
     <SolidColorBrush x:Key="HoverBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=HoverBackground}" />
     <SolidColorBrush x:Key="SelectedBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=SelectedBackground}" />
     <SolidColorBrush x:Key="PressedBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=PressedBackground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- FOREGROUND/TEXT COLORS (Dynamic)                                      -->
     <!-- ====================================================================== -->
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
     <SolidColorBrush x:Key="ForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
     <SolidColorBrush x:Key="ContentForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
-    
+
     <!-- Alternative Text Colors -->
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="{syncfusionskin:ThemeResource Key=ContentForegroundAlt1}" />
     <SolidColorBrush x:Key="TertiaryTextBrush" Color="{syncfusionskin:ThemeResource Key=ContentForegroundAlt2}" />
     <SolidColorBrush x:Key="QuaternaryTextBrush" Color="{syncfusionskin:ThemeResource Key=ContentForegroundAlt3}" />
     <SolidColorBrush x:Key="SecondaryBrush" Color="{syncfusionskin:ThemeResource Key=ContentForegroundAlt3}" />
-    
+
     <!-- State-based Text Colors -->
     <SolidColorBrush x:Key="DisabledTextBrush" Color="{syncfusionskin:ThemeResource Key=DisabledForeground}" />
     <SolidColorBrush x:Key="DisabledForegroundBrush" Color="{syncfusionskin:ThemeResource Key=DisabledForeground}" />
@@ -81,7 +82,7 @@
     <SolidColorBrush x:Key="SelectedForegroundBrush" Color="{syncfusionskin:ThemeResource Key=SelectedForeground}" />
     <SolidColorBrush x:Key="PressedForegroundBrush" Color="{syncfusionskin:ThemeResource Key=PressedForeground}" />
     <SolidColorBrush x:Key="MutedForegroundBrush" Color="{syncfusionskin:ThemeResource Key=MutedForeground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- BORDER COLORS (Dynamic)                                               -->
     <!-- ====================================================================== -->
@@ -90,16 +91,16 @@
     <SolidColorBrush x:Key="CardBorderBrush" Color="{syncfusionskin:ThemeResource Key=BorderAlt}" />
     <SolidColorBrush x:Key="SeparatorBrush" Color="{syncfusionskin:ThemeResource Key=BorderAlt}" />
     <SolidColorBrush x:Key="DividerBrush" Color="{syncfusionskin:ThemeResource Key=BorderAlt}" />
-    
+
     <!-- Focus and Hover Borders -->
     <SolidColorBrush x:Key="FocusBorderBrush" Color="{syncfusionskin:ThemeResource Key=PrimaryColor}" />
     <SolidColorBrush x:Key="HoverBorderBrush" Color="{syncfusionskin:ThemeResource Key=HoverBorder}" />
     <SolidColorBrush x:Key="InnerBorderBrush" Color="{syncfusionskin:ThemeResource Key=InnerBorder}" />
-    
+
     <!-- ====================================================================== -->
     <!-- CONTROL-SPECIFIC COLORS (Dynamic)                                     -->
     <!-- ====================================================================== -->
-    
+
     <!-- Button Colors -->
     <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentBackground}" />
     <SolidColorBrush x:Key="ButtonForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
@@ -107,45 +108,45 @@
     <SolidColorBrush x:Key="ButtonPressedBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=PressedBackground}" />
     <SolidColorBrush x:Key="ButtonDisabledBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=DisabledBackground}" />
     <SolidColorBrush x:Key="ButtonDisabledForegroundBrush" Color="{syncfusionskin:ThemeResource Key=DisabledForeground}" />
-    
+
     <!-- Input Control Colors -->
     <SolidColorBrush x:Key="InputBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentBackground}" />
     <SolidColorBrush x:Key="InputForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
     <SolidColorBrush x:Key="InputBorderBrush" Color="{syncfusionskin:ThemeResource Key=BorderAlt}" />
     <SolidColorBrush x:Key="InputFocusBorderBrush" Color="{syncfusionskin:ThemeResource Key=PrimaryColor}" />
     <SolidColorBrush x:Key="InputDisabledBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=DisabledBackground}" />
-    
+
     <!-- Menu and Popup Colors -->
     <SolidColorBrush x:Key="MenuBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentBackground}" />
     <SolidColorBrush x:Key="MenuForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
     <SolidColorBrush x:Key="MenuHoverBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=HoverBackground}" />
     <SolidColorBrush x:Key="PopupBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentBackground}" />
     <SolidColorBrush x:Key="PopupBorderBrush" Color="{syncfusionskin:ThemeResource Key=BorderAlt}" />
-    
+
     <!-- Toolbar Colors -->
     <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=HeaderBackground}" />
     <SolidColorBrush x:Key="ToolbarForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
-    
+
     <!-- StatusBar Colors -->
     <SolidColorBrush x:Key="StatusBarBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=HeaderBackground}" />
     <SolidColorBrush x:Key="StatusBarForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
-    
+
     <!-- Scrollbar Colors -->
     <SolidColorBrush x:Key="ScrollBarBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentBackgroundAlt1}" />
     <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="{syncfusionskin:ThemeResource Key=ContentForegroundAlt2}" />
     <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="{syncfusionskin:ThemeResource Key=HoverBackground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- CONTROL-SPECIFIC STYLES                                               -->
     <!-- ====================================================================== -->
-    
+
     <!-- ScrollViewer Style -->
     <Style x:Key="WileyScrollViewerStyle" TargetType="ScrollViewer">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource Key=ContentBackground}" />
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource Key=BorderAlt}" />
         <Setter Property="BorderThickness" Value="1" />
     </Style>
-    
+
     <!-- ProgressBar Style -->
     <Style x:Key="WileyProgressBarStyle" TargetType="ProgressBar">
         <Setter Property="Background" Value="{syncfusionskin:ThemeResource Key=ContentBackgroundAlt1}" />
@@ -153,32 +154,32 @@
         <Setter Property="BorderBrush" Value="{syncfusionskin:ThemeResource Key=BorderAlt}" />
         <Setter Property="BorderThickness" Value="1" />
     </Style>
-    
+
     <!-- ====================================================================== -->
     <!-- SEMANTIC/STATUS COLORS (Dynamic where possible)                       -->
     <!-- ====================================================================== -->
-    
+
     <!-- Success Colors -->
     <SolidColorBrush x:Key="SuccessBrush" Color="{syncfusionskin:ThemeResource Key=SuccessBackground}" />
     <SolidColorBrush x:Key="SuccessBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=SuccessBackground}" />
     <SolidColorBrush x:Key="SuccessForegroundBrush" Color="{syncfusionskin:ThemeResource Key=SuccessForeground}" />
-    
+
     <!-- Warning Colors -->
     <SolidColorBrush x:Key="WarningBrush" Color="{syncfusionskin:ThemeResource Key=WarningBackground}" />
     <SolidColorBrush x:Key="WarningBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=WarningBackground}" />
     <SolidColorBrush x:Key="WarningForegroundBrush" Color="{syncfusionskin:ThemeResource Key=WarningForeground}" />
-    
+
     <!-- Error Colors -->
     <SolidColorBrush x:Key="ErrorBrush" Color="{syncfusionskin:ThemeResource Key=ErrorBackground}" />
     <SolidColorBrush x:Key="ErrorBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ErrorBackground}" />
     <SolidColorBrush x:Key="ErrorForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ErrorForeground}" />
-    
+
     <!-- Info Colors -->
     <SolidColorBrush x:Key="InfoBrush" Color="{syncfusionskin:ThemeResource Key=InfoBackground}" />
     <SolidColorBrush x:Key="InfoBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=InfoBackground}" />
     <SolidColorBrush x:Key="InfoForegroundBrush" Color="{syncfusionskin:ThemeResource Key=InfoForeground}" />
     <SolidColorBrush x:Key="ValidationErrorForegroundBrush" Color="{syncfusionskin:ThemeResource Key=ValidationErrorForeground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- FLUENT PALETTE COLORS (Dynamic)                                       -->
     <!-- ====================================================================== -->
@@ -191,14 +192,14 @@
     <SolidColorBrush x:Key="OverlayBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=OverlayBackground}" Opacity="0.5" />
     <SolidColorBrush x:Key="ModalBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentBackground}" />
     <SolidColorBrush x:Key="DialogBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentBackground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- CHART AND VISUALIZATION COLORS (Dynamic)                              -->
     <!-- ====================================================================== -->
     <SolidColorBrush x:Key="ChartBackgroundBrush" Color="{syncfusionskin:ThemeResource Key=ContentBackground}" />
     <SolidColorBrush x:Key="ChartGridLineBrush" Color="{syncfusionskin:ThemeResource Key=BorderAlt}" />
     <SolidColorBrush x:Key="ChartAxisBrush" Color="{syncfusionskin:ThemeResource Key=ContentForeground}" />
-    
+
     <!-- ====================================================================== -->
     <!-- SPECIAL CASE: FALLBACK STATIC COLORS                                  -->
     <!-- Only used when Syncfusion theme is not initialized                    -->
@@ -336,14 +337,14 @@
     <!--
     Per Syncfusion Official Documentation:
     "DO NOT create custom ControlTemplates or Styles for Syncfusion controls."
-    
-    All Syncfusion controls (ButtonAdv, SfDataGrid, SfBusyIndicator, etc.) 
+
+    All Syncfusion controls (ButtonAdv, SfDataGrid, SfBusyIndicator, etc.)
     are themed automatically via SfSkinManager.
-    
+
     Apply themes using:
     1. Application-wide: SfSkinManager.SetTheme(Application.Current, new Theme("FluentDark"));
     2. Control-level: syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
-    
+
     Reference: https://help.syncfusion.com/wpf/themes/skin-manager
     See: docs/SYNCFUSION_THEMING_OFFICIAL_GUIDE.md
     ====================================================================== -->

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
-using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.Views;
 
@@ -52,12 +51,12 @@ namespace WileyWidget.Services
     /// </summary>
     public class ViewRegistrationService : IViewRegistrationService
     {
-        private readonly IRegionManager _regionManager;
+        // private readonly IRegionManager _regionManager;
         private readonly Dictionary<string, List<Type>> _registeredViews;
 
-        public ViewRegistrationService(IRegionManager regionManager)
+        public ViewRegistrationService() // IRegionManager regionManager
         {
-            _regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
+            // _regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
             _registeredViews = new Dictionary<string, List<Type>>();
         }
 
@@ -86,13 +85,13 @@ namespace WileyWidget.Services
             try
             {
                 // Check if region exists before registering
-                if (!_regionManager.Regions.ContainsRegionWithName(regionName))
-                {
-                    Log.Warning("Region '{RegionName}' not found during view registration - will register when region becomes available", regionName);
-                }
+                // if (!_regionManager.Regions.ContainsRegionWithName(regionName))
+                // {
+                //     Log.Warning("Region '{RegionName}' not found during view registration - will register when region becomes available", regionName);
+                // }
 
                 // Register with Prism region manager
-                _regionManager.RegisterViewWithRegion(regionName, viewType);
+                // _regionManager.RegisterViewWithRegion(regionName, viewType);
 
                 // Track registration internally
                 if (!_registeredViews.ContainsKey(regionName))
@@ -156,16 +155,17 @@ namespace WileyWidget.Services
 
             foreach (var regionName in requiredRegions)
             {
-                if (_regionManager.Regions.ContainsRegionWithName(regionName))
-                {
-                    var region = _regionManager.Regions[regionName];
-                    result.ValidRegions.Add(regionName);
-                    result.RegionViewCounts[regionName] = region.Views?.Count() ?? 0;
-                }
-                else
-                {
-                    result.MissingRegions.Add(regionName);
-                }
+                // if (_regionManager.Regions.ContainsRegionWithName(regionName))
+                // {
+                //     var region = _regionManager.Regions[regionName];
+                //     result.ValidRegions.Add(regionName);
+                //     result.RegionViewCounts[regionName] = region.Views?.Count() ?? 0;
+                // }
+                // else
+                // {
+                //     result.MissingRegions.Add(regionName);
+                // }
+                result.MissingRegions.Add(regionName); // All regions missing since no region manager
             }
 
             result.TotalRegions = requiredRegions.Length;

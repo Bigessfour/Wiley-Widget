@@ -1,7 +1,6 @@
 using System;
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
@@ -14,9 +13,9 @@ namespace WileyWidget.Startup.Modules
     /// Implements the module pattern described in Prism's module initialization guidance.
     /// </summary>
     [Module(ModuleName = "CoreModule")]
-    public class CoreModule : ModuleInitializer
+    public class CoreModule : IModule
     {
-        public override void RegisterTypes(IContainerRegistry containerRegistry)
+        public void RegisterTypes(IContainerRegistry containerRegistry)
         {
             // Ensure SettingsView can be resolved for navigation scenarios
             containerRegistry.Register<SettingsViewModel>();
@@ -26,13 +25,13 @@ namespace WileyWidget.Startup.Modules
             Log.Debug("CoreModule types registered");
         }
 
-        protected override void InitializeModule(IContainerProvider containerProvider)
+        public void OnInitialized(IContainerProvider containerProvider)
         {
             var moduleHealthService = containerProvider.Resolve<IModuleHealthService>();
             moduleHealthService.RegisterModule("CoreModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
-            regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
+            // var regionManager = containerProvider.Resolve<IRegionManager>();
+            // regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView)); // Disabled region-based navigation
 
             moduleHealthService.MarkModuleInitialized("CoreModule", success: true);
             Log.Information("CoreModule initialization completed");

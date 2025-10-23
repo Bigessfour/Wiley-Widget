@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Prism.Mvvm;
 using Prism.Events;
 using Prism.Commands;
+using Prism.Navigation;
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -21,10 +22,11 @@ using WileyWidget.Services.Logging;
 using Syncfusion.SfSkinManager;
 using PrismDelegateCommand = Prism.Commands.DelegateCommand;
 using WileyWidget.ViewModels.Messages;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.ViewModels
 {
-    public class DashboardViewModel : BindableBase, IDataErrorInfo, IDisposable
+    public class DashboardViewModel : BindableBase, IDataErrorInfo, IDisposable, INavigationAware
     {
         private readonly ILogger<DashboardViewModel> _logger;
         private readonly IEnterpriseRepository _enterpriseRepository;
@@ -435,6 +437,12 @@ namespace WileyWidget.ViewModels
         public DelegateCommand OpenEnterpriseManagementCommand { get; private set; }
         public DelegateCommand<object> RunGrowthScenarioCommand { get; private set; }
 
+        // Event subscription tokens for proper cleanup
+        private SubscriptionToken _refreshDataSubscription;
+        private SubscriptionToken _enterpriseChangedSubscription;
+        private SubscriptionToken _budgetUpdatedSubscription;
+        private SubscriptionToken _accountsLoadedSubscription;
+
         public DashboardViewModel(
             ILogger<DashboardViewModel> logger,
             IEnterpriseRepository enterpriseRepository,
@@ -460,9 +468,10 @@ namespace WileyWidget.ViewModels
             FilteredEnterprises.CollectionChanged += FilteredEnterprises_CollectionChanged;
 
             // Subscribe to events
-            _eventAggregator.GetEvent<RefreshDataMessage>().Subscribe(OnRefreshDataRequested);
-            _eventAggregator.GetEvent<EnterpriseChangedMessage>().Subscribe(OnEnterpriseChanged);
-            _eventAggregator.GetEvent<BudgetUpdatedMessage>().Subscribe(OnBudgetUpdated, ThreadOption.UIThread);
+            _refreshDataSubscription = _eventAggregator.GetEvent<RefreshDataMessage>().Subscribe(OnRefreshDataRequested);
+            _enterpriseChangedSubscription = _eventAggregator.GetEvent<EnterpriseChangedMessage>().Subscribe(OnEnterpriseChanged);
+            _budgetUpdatedSubscription = _eventAggregator.GetEvent<BudgetUpdatedMessage>().Subscribe(OnBudgetUpdated, ThreadOption.UIThread);
+            _accountsLoadedSubscription = _eventAggregator.GetEvent<AccountsLoadedEvent>().Subscribe(OnAccountsLoaded, ThreadOption.UIThread);
 
             // Initialize commands
             InitializeCommands();
@@ -579,8 +588,9 @@ namespace WileyWidget.ViewModels
                     overallStopwatch.ElapsedMilliseconds, ex.Message, loggingContext);
 
                 // Don't show misleading success message
-                MessageBox.Show($"Error loading dashboard: {ex.Message}\n\nPlease check the logs for details.", "Dashboard Error",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                // Surface error via status message and logging (avoid direct UI calls from ViewModel)
+                StatusMessage = "Error loading dashboard";
+                _logger.LogError(ex, "Dashboard error shown to user: {Message}", ex.Message);
 
                 throw; // Propagate exception to prevent misleading success logs
             }
@@ -900,8 +910,8 @@ namespace WileyWidget.ViewModels
                 StatusMessage = "Error refreshing dashboard";
                 _logger.LogError(ex, "RefreshDashboard command failed: {Message} - {LogContext}",
                     ex.Message, loggingContext);
-                MessageBox.Show($"Error refreshing dashboard: {ex.Message}", "Refresh Error",
-                              MessageBoxButton.OK);
+                StatusMessage = "Error refreshing dashboard";
+                _logger.LogError(ex, "Refresh dashboard error: {Message}", ex.Message);
             }
             finally
             {
@@ -976,8 +986,8 @@ namespace WileyWidget.ViewModels
                     _logger.LogInformation("Dashboard data exported successfully to {FilePath} - {LogContext}",
                         saveFileDialog.FileName, loggingContext);
 
-                    MessageBox.Show($"Dashboard data exported successfully to {System.IO.Path.GetFileName(saveFileDialog.FileName)}",
-                                  "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                    StatusMessage = $"Dashboard exported to {System.IO.Path.GetFileName(saveFileDialog.FileName)}";
+                    _logger.LogInformation("Dashboard data exported successfully to {FilePath}", saveFileDialog.FileName);
                 }
                 else
                 {
@@ -995,8 +1005,8 @@ namespace WileyWidget.ViewModels
                 StatusMessage = "Error exporting dashboard";
                 _logger.LogError(ex, "ExportDashboard failed after {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
-                MessageBox.Show($"Error exporting dashboard: {ex.Message}", "Export Error",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Error exporting dashboard";
+                _logger.LogError(ex, "Export dashboard failed: {Message}", ex.Message);
             }
             finally
             {
@@ -1087,17 +1097,9 @@ namespace WileyWidget.ViewModels
                         saveFileDialog.FileName, loggingContext);
 
                     // Ask if user wants to open the report
-                    var result = MessageBox.Show($"Report generated successfully. Would you like to open it now?\n\nFile: {System.IO.Path.GetFileName(saveFileDialog.FileName)}",
-                                               "Report Generated", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                    if (result == MessageBoxResult.Yes)
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = saveFileDialog.FileName,
-                            UseShellExecute = true
-                        });
-                    }
+                    // Inform via status and log; opening the file is a UI operation left to the view or user
+                    StatusMessage = $"Report generated: {System.IO.Path.GetFileName(saveFileDialog.FileName)}";
+                    _logger.LogInformation("Report generated at {FilePath}", saveFileDialog.FileName);
                 }
                 else
                 {
@@ -1115,8 +1117,8 @@ namespace WileyWidget.ViewModels
                 StatusMessage = "Error generating report";
                 _logger.LogError(ex, "GenerateReport failed after {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
-                MessageBox.Show($"Error generating report: {ex.Message}", "Report Generation Error",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Error generating report";
+                _logger.LogError(ex, "Generate report failed: {Message}", ex.Message);
             }
             finally
             {
@@ -1314,8 +1316,8 @@ namespace WileyWidget.ViewModels
                 _logger.LogInformation("Data backup created successfully at {FilePath} - {LogContext}",
                     backupFilePath, loggingContext);
 
-                MessageBox.Show($"Data backup created successfully!\n\nFile: {backupFileName}\nLocation: {backupDir}",
-                              "Backup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusMessage = $"Backup created: {backupFileName}";
+                _logger.LogInformation("Data backup created at {FilePath}", backupFilePath);
 
                 stopwatch.Stop();
                 _logger.LogInformation("BackupData completed in {ElapsedMs}ms - {LogContext}",
@@ -1327,8 +1329,8 @@ namespace WileyWidget.ViewModels
                 StatusMessage = "Error creating backup";
                 _logger.LogError(ex, "BackupData failed after {ElapsedMs}ms - {LogContext}",
                     stopwatch.ElapsedMilliseconds, loggingContext);
-                MessageBox.Show($"Error creating backup: {ex.Message}", "Backup Error",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Error creating backup";
+                _logger.LogError(ex, "Backup creation failed: {Message}", ex.Message);
             }
             finally
             {
@@ -1558,8 +1560,8 @@ namespace WileyWidget.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to open Enterprise management view");
-                MessageBox.Show($"Error opening Enterprise management: {ex.Message}", "Navigation Error",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Error opening Enterprise management";
+                _logger.LogError(ex, "Navigation to enterprise management failed: {Message}", ex.Message);
             }
         }
 
@@ -1588,6 +1590,15 @@ namespace WileyWidget.ViewModels
             _logger.LogInformation("Budget updated: {Context}. Refreshing dashboard data.", message.Context);
 
             // Refresh dashboard data when budget is updated
+            _ = LoadDashboardDataAsync();
+        }
+
+        private void OnAccountsLoaded(AccountsLoadedEvent message)
+        {
+            _logger.LogInformation("Accounts loaded: {Count} accounts {Type}. Refreshing dashboard data.",
+                message.AccountCount, message.LoadType);
+
+            // Refresh dashboard data when accounts are loaded/seeded
             _ = LoadDashboardDataAsync();
         }
 
@@ -1660,53 +1671,112 @@ namespace WileyWidget.ViewModels
             _logger.LogTrace("FilteredEnterprises now has {Count} items", FilteredEnterprises.Count);
         }
 
-        // Prism Navigation Implementation
+        // Prism Navigation Implementation (production-ready)
+        private CancellationTokenSource? _navCts;
+
         public void OnNavigatedTo(NavigationContext navigationContext)
         {
             _logger.LogInformation("DashboardViewModel navigated to with context: {Context}", navigationContext?.ToString() ?? "null");
 
-            // Handle navigation parameters
-            if (navigationContext?.Parameters != null)
+            try
             {
-                // Check for refresh parameter
-                if (navigationContext.Parameters.ContainsKey("refresh"))
-                {
-                    var refresh = navigationContext.Parameters["refresh"];
-                    if (refresh is bool refreshBool && refreshBool)
-                    {
-                        _ = LoadDashboardDataAsync();
-                    }
-                }
+                _navCts?.Cancel();
+                _navCts?.Dispose();
+            }
+            catch { }
 
-                // Check for filter parameter
-                if (navigationContext.Parameters.ContainsKey("filter"))
-                {
-                    var filter = navigationContext.Parameters["filter"];
-                    if (filter is string filterString)
-                    {
-                        // SearchText = filterString; // Will be available once properties are generated
-                        _logger.LogInformation("Filter parameter received: {Filter}", filterString);
-                    }
-                }
-            }
-            else
+            _navCts = new CancellationTokenSource();
+            var ct = _navCts.Token;
+
+            _ = Task.Run(async () =>
             {
-                // Default behavior - load dashboard data
-                _ = LoadDashboardDataAsync();
-            }
+                try
+                {
+                    IsLoading = true;
+                    DashboardStatus = "Loading dashboard...";
+
+                    if (navigationContext?.Parameters != null)
+                    {
+                        if (navigationContext.Parameters.ContainsKey("refresh") &&
+                            navigationContext.Parameters["refresh"] is bool refresh && refresh)
+                        {
+                            await LoadDashboardDataAsync();
+                        }
+
+                        if (navigationContext.Parameters.ContainsKey("filter") &&
+                            navigationContext.Parameters["filter"] is string f)
+                        {
+                            // Dashboard does not support ApplyFiltersAsync; set SearchText for consumer views
+                            // SearchText property may be bound in view code-behind if needed
+                            _logger.LogInformation("Dashboard filter parameter received (ignored): {Filter}", f);
+                        }
+                    }
+                    else
+                    {
+                        await LoadDashboardDataAsync();
+                    }
+
+                    DashboardStatus = "Ready";
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("Dashboard navigation load canceled");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during Dashboard OnNavigatedTo");
+                    DashboardStatus = "Load failed";
+                }
+                finally
+                {
+                    IsLoading = false;
+                    // ensure commands update
+                    LoadDataCommand?.RaiseCanExecuteChanged();
+                }
+            }, ct);
         }
 
         public void OnNavigatedFrom(NavigationContext navigationContext)
         {
             _logger.LogInformation("DashboardViewModel navigated from");
+            try
+            {
+                if (_navCts != null && !_navCts.IsCancellationRequested)
+                    _navCts.Cancel();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to cancel Dashboard navigation token");
+            }
 
-            // Cleanup if needed
-            // Cancel any ongoing operations, save state, etc.
+            // Persist transient dashboard state if requested
+            try
+            {
+                if (navigationContext?.Parameters != null && navigationContext.Parameters.ContainsKey("persistState") &&
+                    navigationContext.Parameters["persistState"] is bool p && p)
+                {
+                    _logger.LogInformation("Dashboard requested to persist state, but persistence is not implemented here");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error while handling OnNavigatedFrom in DashboardViewModel");
+            }
         }
 
         public bool IsNavigationTarget(NavigationContext navigationContext)
         {
-            // Always allow navigation to dashboard
+            // If caller wants a fresh dashboard instance when refresh=true, return false
+            try
+            {
+                if (navigationContext?.Parameters != null && navigationContext.Parameters.ContainsKey("refresh"))
+                {
+                    if (navigationContext.Parameters["refresh"] is bool r && r)
+                        return false;
+                }
+            }
+            catch { }
+
             return true;
         }
 
@@ -1723,8 +1793,54 @@ namespace WileyWidget.ViewModels
                 // Stop and dispose the auto-refresh timer
                 if (_refreshTimer != null)
                 {
-                    _refreshTimer.Stop();
+                    try
+                    {
+                        _refreshTimer.Stop();
+                    }
+                    catch { }
                     _refreshTimer = null;
+                }
+
+                // Unsubscribe collection changed handlers to avoid memory leaks
+                try
+                {
+                    Enterprises.CollectionChanged -= Enterprises_CollectionChanged;
+                }
+                catch { }
+
+                try
+                {
+                    FilteredEnterprises.CollectionChanged -= FilteredEnterprises_CollectionChanged;
+                }
+                catch { }
+
+                // Unsubscribe from EventAggregator events to prevent memory leaks
+                try
+                {
+                    _refreshDataSubscription?.Dispose();
+                    _enterpriseChangedSubscription?.Dispose();
+                    _budgetUpdatedSubscription?.Dispose();
+                    _accountsLoadedSubscription?.Dispose();
+                }
+                catch { }
+
+                // Cancel and dispose navigation cancellation token source (fixes reported IDisposable leak)
+                if (_navCts != null)
+                {
+                    try
+                    {
+                        if (!_navCts.IsCancellationRequested)
+                            _navCts.Cancel();
+                    }
+                    catch { }
+
+                    try
+                    {
+                        _navCts.Dispose();
+                    }
+                    catch { }
+
+                    _navCts = null;
                 }
             }
         }

@@ -86,8 +86,8 @@ namespace WileyWidget.Data
             entity.HasIndex(e => new { e.Year, e.Status });
         });
 
-        // MunicipalAccount configuration
-        modelBuilder.Entity<MunicipalAccount>(entity =>
+    // MunicipalAccount configuration
+    modelBuilder.Entity<MunicipalAccount>(entity =>
         {
             entity.OwnsOne(e => e.AccountNumber, owned =>
             {
@@ -114,6 +114,16 @@ namespace WileyWidget.Data
             entity.Property(e => e.Balance).HasColumnType("decimal(18,2)");
             entity.Property(e => e.BudgetAmount).HasColumnType("decimal(18,2)");
             entity.Property(e => e.RowVersion).IsConcurrencyToken();
+
+            // In test mode (SQLite in-memory), ensure a default RowVersion value is generated
+            // to satisfy NOT NULL constraints when seeding with EnsureCreated.
+            // SQLite lacks true rowversion/timestamp; randomblob(8) is a practical stand-in.
+            if ((Environment.GetEnvironmentVariable("WILEY_WIDGET_TESTMODE") ?? "0") == "1")
+            {
+                entity.Property(e => e.RowVersion)
+                      .ValueGeneratedOnAddOrUpdate()
+                      .HasDefaultValueSql("randomblob(8)");
+            }
         });
 
         // Fund relations

@@ -1,7 +1,7 @@
 using System;
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Navigation.Regions;
+// using Prism.Regions; // Removed to eliminate dependency
 using Serilog;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
@@ -24,14 +24,14 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing PanelModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            // var regionManager = containerProvider.Resolve<IRegionManager>();
 
             // Register panel views with their regions
-            regionManager.RegisterViewWithRegion("LeftPanelRegion", typeof(DashboardPanelView));
-            regionManager.RegisterViewWithRegion("RightPanelRegion", typeof(SettingsPanelView));
-            regionManager.RegisterViewWithRegion("BottomPanelRegion", typeof(ToolsPanelView));
+            // regionManager.RegisterViewWithRegion("LeftPanelRegion", typeof(DashboardPanelView)); // Disabled region-based navigation
+            // regionManager.RegisterViewWithRegion("RightPanelRegion", typeof(SettingsPanelView));
+            // regionManager.RegisterViewWithRegion("BottomPanelRegion", typeof(ToolsPanelView));
 
-            Log.Information("Successfully registered panel views");
+            // Log.Information("Successfully registered panel views");
             Log.Information("PanelModule initialization completed");
         }
 

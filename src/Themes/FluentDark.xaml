@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:prism="http://prismlibrary.com/"
                     xmlns:syncfusion="http://schemas.syncfusion.com/wpf">
     <!-- Override Syncfusion styles -->
     <SolidColorBrush x:Key="CustomBackground" Color="#1E1E1E" />  <!-- Dark theme example -->

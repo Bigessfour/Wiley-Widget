@@ -423,6 +423,44 @@ An example
 .NOTES
 General notes
 #>
+<#
+.SYNOPSIS
+Short description
+
+.DESCRIPTION
+Long description
+
+.PARAMETER RequiredParam
+Parameter description
+
+.PARAMETER OptionalParam
+Parameter description
+
+.EXAMPLE
+An example
+
+.NOTES
+General notes
+#>
+<#
+.SYNOPSIS
+Short description
+
+.DESCRIPTION
+Long description
+
+.PARAMETER RequiredParam
+Parameter description
+
+.PARAMETER OptionalParam
+Parameter description
+
+.EXAMPLE
+An example
+
+.NOTES
+General notes
+#>
 function Template-Function {
     [CmdletBinding(SupportsShouldProcess)]
     param(

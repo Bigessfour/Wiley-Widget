@@ -3,10 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:prism="http://prismlibrary.com/"
         xmlns:local="clr-namespace:WileyWidget.Views"
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
         xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
         mc:Ignorable="d"
+        prism:ViewModelLocator.AutoWireViewModel="True"
         Title="Enterprise Information" Height="400" Width="500"
         WindowStartupLocation="CenterOwner"
         WindowStyle="ToolWindow"
@@ -40,7 +42,7 @@
 
         <!-- Enterprise Name -->
         <TextBlock Grid.Row="0" Text="Enterprise Name:" Margin="0,0,0,5"/>
-        <TextBox Grid.Row="1" 
+        <TextBox Grid.Row="1"
                  Style="{DynamicResource ValidationTextBox}" Margin="0,0,0,15">
             <TextBox.Text>
                 <Binding Path="Enterprise.Name" UpdateSourceTrigger="PropertyChanged">

@@ -6,28 +6,28 @@ using System.Windows;
 using System.Xml.Linq;
 using Serilog;
 using Syncfusion.Windows.Tools.Controls;
-using Prism.Navigation.Regions;
 using WileyWidget.ViewModels;
 using WileyWidget.Services;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.Views
 {
-    public partial class MainWindow : Window
+    public partial class Shell : Window
     {
         private readonly IRegionManager _regionManager;
         private readonly MainViewModel _viewModel;
         private readonly System.Windows.Threading.DispatcherTimer _saveStateTimer;
 
         // Parameterless constructor for test scenarios
-        public MainWindow() : this(null, null)
+        public Shell() : this(null, null)
         {
         }
 
-        public MainWindow(IRegionManager regionManager) : this(regionManager, null)
+        public Shell(IRegionManager regionManager) : this(regionManager, null)
         {
         }
 
-        public MainWindow(IRegionManager regionManager, MainViewModel viewModel)
+        public Shell(IRegionManager regionManager, MainViewModel viewModel)
         {
             Log.Debug("MainWindow: Constructor called");
 
@@ -42,6 +42,8 @@ namespace WileyWidget.Views
             _saveStateTimer.Tick += SaveStateTimer_Tick;
 
             InitializeComponent();
+
+            // Prism regions are automatically managed - no manual registration needed
 
             // Add event handlers for diagnostics
             Loaded += MainWindow_Loaded;
@@ -119,10 +121,7 @@ namespace WileyWidget.Views
                 Log.Warning("MainViewModel was not injected via constructor");
             }
 
-            // Step 2: Initialize Prism regions after DataContext is set
-            InitializePrismRegions();
-
-            // Step 3: Verify region status and log for diagnostics
+            // Step 2: Verify region status and log for diagnostics
             LogRegionStatus();
 
             // Step 4: Load docking state with enhanced error handling
@@ -511,41 +510,7 @@ namespace WileyWidget.Views
             }
         }
 
-        /// <summary>
-        /// Initializes Prism regions after DataContext is set and DockingManager is ready
-        /// </summary>
-        private void InitializePrismRegions()
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Log.Information("Initializing Prism regions using ViewRegistrationService");
 
-                if (_regionManager == null)
-                {
-                    Log.Warning("RegionManager is null - cannot initialize regions");
-                    return;
-                }
-
-                try
-                {
-                    // Log current region count before initialization
-                    Log.Information("Current regions available: {RegionCount}", _regionManager.Regions.Count());
-
-                    // Check if regions are already available from XAML
-                    var availableRegions = _regionManager.Regions.Select(r => r.Name).ToArray();
-                    Log.Information("Available regions from XAML: [{Regions}]", string.Join(", ", availableRegions));
-
-                    // Note: View registration is now handled by Prism modules
-                    // Each module (DashboardModule, etc.) registers its own views with specific regions
-                    // Expected regions from MainWindow.xaml: DashboardRegion, EnterpriseRegion, MunicipalAccountRegion, etc.
-                    Log.Information("Prism regions initialization completed - modules will register views");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Failed to initialize Prism regions");
-                }
-            }, System.Windows.Threading.DispatcherPriority.Normal);
-        }
 
         /// <summary>
         /// Safely registers a view with a region, checking for region existence first

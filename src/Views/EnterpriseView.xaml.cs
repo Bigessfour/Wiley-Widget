@@ -14,58 +14,17 @@ namespace WileyWidget;
 /// </summary>
 public partial class EnterpriseView : UserControl
 {
-    private IEventAggregator? _eventAggregator;
     // Optional dispatcher helper used to marshal UI updates. If not provided via DI/ViewModel,
     // a default DispatcherHelper will be created on first use.
     private IDispatcherHelper? _dispatcherHelper;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EnterpriseView"/> class.
-    /// Parameterless constructor for XAML designer and Prism region navigation.
+    /// ViewModel is auto-wired by Prism ViewModelLocator.
     /// </summary>
-    public EnterpriseView() : this(null)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="EnterpriseView"/> class with dependency injection.
-    /// </summary>
-    /// <param name="viewModel">The enterprise view model injected by the container.</param>
-    public EnterpriseView(EnterpriseViewModel? viewModel)
+    public EnterpriseView()
     {
         InitializeComponent();
-
-        if (viewModel != null)
-        {
-            DataContext = viewModel;
-            _eventAggregator = viewModel.EventAggregator; // Assuming ViewModel exposes EventAggregator
-        }
-
-        // Subscribe to grouping messages
-        _eventAggregator?.GetEvent<GroupingMessage>().Subscribe(HandleGroupingMessage);
-
-        // Load enterprises when window opens
-        Loaded += (s, e) =>
-        {
-            if (DataContext is EnterpriseViewModel vm)
-            {
-                vm.LoadEnterprisesCommand.Execute();
-            }
-        };
-    }
-
-    private void HandleGroupingMessage(GroupingMessage message)
-    {
-        // Handle grouping messages if needed
-    }
-
-    /// <summary>
-    /// Handles selection changed events from the SfDataGrid
-    /// </summary>
-    private void EnterpriseDataGrid_SelectionChanged(object sender, Syncfusion.UI.Xaml.Grid.GridSelectionChangedEventArgs e)
-    {
-        // Selection changed - no drill-down implementation as requested
-        // The ViewModel'\''s SelectionChangedCommand is called via binding
     }
 
     /// <summary>

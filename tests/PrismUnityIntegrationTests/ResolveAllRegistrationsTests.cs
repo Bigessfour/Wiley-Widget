@@ -7,6 +7,7 @@ using Unity;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
 using WileyWidget.Data;
+using Serilog;
 
 public class ResolveAllRegistrationsTests
 {
@@ -123,10 +124,11 @@ public class ResolveAllRegistrationsTests
         {
             // add known runtime-only types here if necessary, e.g. types that require a database connection
             // UI, platform or external-library types that are not available in test environment:
-            "WileyWidget.Services.INavigationService",
-            "WileyWidget.Services.NavigationService",
-            "WileyWidget.Services.IScopedRegionService",
-            "WileyWidget.Services.ScopedRegionService",
+            // REMOVED: Legacy navigation services deleted
+            // "WileyWidget.Services.INavigationService",
+            // "WileyWidget.Services.NavigationService",
+            // "WileyWidget.Services.IScopedRegionService",
+            // "WileyWidget.Services.ScopedRegionService",
             "WileyWidget.Services.IPrismErrorHandler",
             "WileyWidget.Services.PrismErrorHandler",
             "WileyWidget.Views.MainWindow",
@@ -136,7 +138,8 @@ public class ResolveAllRegistrationsTests
             // Syncfusion and other third-party controls/adapters
             "Syncfusion.Windows.Tools.Controls.DockingManager",
             // Navigation service internals
-            "WileyWidget.Services.NavigationService+*",
+            // REMOVED: Legacy navigation services deleted
+            // "WileyWidget.Services.NavigationService+*",
         };
 
         var failures = new List<string>();

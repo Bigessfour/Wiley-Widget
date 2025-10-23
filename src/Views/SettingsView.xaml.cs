@@ -17,36 +17,9 @@ namespace WileyWidget
     /// </summary>
     public partial class SettingsView : UserControl
     {
-        private bool _loadedOnce;
         public SettingsView()
         {
             InitializeComponent();
-
-            // Apply current theme
-            TryApplyTheme(SettingsService.Instance.Current.Theme);
-
-            // DataContext will be auto-wired by Prism ViewModelLocator
-
-            // Load settings when window opens
-            Loaded += SettingsView_Loaded;
-        }
-
-        private async void SettingsView_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (_loadedOnce) return;
-            _loadedOnce = true;
-
-            try
-            {
-                if (DataContext is SettingsViewModel viewModel)
-                {
-                    await viewModel.LoadSettingsAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "SettingsView: Failed to load settings on first load");
-            }
         }
 
         /// <summary>

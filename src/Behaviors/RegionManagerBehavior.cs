@@ -3,8 +3,8 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Xaml.Behaviors;
-using Prism.Navigation.Regions;
 using Serilog;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.Behaviors
 {
@@ -90,8 +90,8 @@ namespace WileyWidget.Behaviors
                         HorizontalAlignment = HorizontalAlignment.Stretch,
                         VerticalAlignment = VerticalAlignment.Stretch
                     };
-                    Prism.Navigation.Regions.RegionManager.SetRegionName(mainRegionControl, MainRegionName);
-                    Prism.Navigation.Regions.RegionManager.SetRegionManager(mainRegionControl, RegionManager);
+                    // Prism.Regions.RegionManager.SetRegionName(mainRegionControl, MainRegionName);
+                    // Prism.Regions.RegionManager.SetRegionManager(mainRegionControl, RegionManager);
 
                     // Add to the DockingManager as a docked element
                     var dockingManager = FindParentDockingManager();

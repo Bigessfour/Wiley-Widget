@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:prism="http://prismlibrary.com/"
                     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
                     xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF">
 
@@ -7,28 +8,28 @@
     ================================================================================
     Wiley Widget Theme - Syncfusion Official Theming Implementation
     ================================================================================
-    
+
     Documentation Reference:
     - Syncfusion WPF Themes Overview: https://help.syncfusion.com/wpf/themes/overview
     - SfSkinManager Documentation: https://help.syncfusion.com/wpf/themes/skin-manager
     - Theme Studio: https://help.syncfusion.com/wpf/themes/theme-studio
-    
+
     Version: Syncfusion WPF 27.x (2024 Volume 4)
     .NET Target: .NET 9.0
-    
+
     CRITICAL: This theme MUST use Syncfusion's SfSkinManager for ALL Syncfusion controls.
-    Per official documentation: "SfSkinManager allows you to apply themes for both 
+    Per official documentation: "SfSkinManager allows you to apply themes for both
     Syncfusion and Framework controls in your application."
-    
+
     Quote from Syncfusion Docs:
-    "The SfSkinManager helps apply the themes for both Syncfusion and framework controls. 
+    "The SfSkinManager helps apply the themes for both Syncfusion and framework controls.
     The following are the available themes:
     - FluentLight, FluentDark
-    - MaterialLight, MaterialDark  
+    - MaterialLight, MaterialDark
     - MaterialLightBlue, MaterialDarkBlue
     - Office2019Colorful, Office2019Black, Office2019White
     - Windows11Light, Windows11Dark"
-    
+
     Reference: https://help.syncfusion.com/wpf/themes/skin-manager#applying-theme-using-sfskinmanager
     ================================================================================
     -->
@@ -38,29 +39,29 @@
     <!-- These map to Syncfusion's built-in theme brushes                      -->
     <!-- Reference: https://help.syncfusion.com/wpf/themes/skin-manager#theme-resources -->
     <!-- ====================================================================== -->
-    
+
     <!-- Primary Theme Colors -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="{DynamicResource PrimaryColor}" />
     <SolidColorBrush x:Key="PrimaryForegroundBrush" Color="{DynamicResource PrimaryForeground}" />
     <SolidColorBrush x:Key="PrimaryLightBrush" Color="{DynamicResource PrimaryLight}" />
     <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{DynamicResource PrimaryDark}" />
-    
+
     <!-- Background Colors -->
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="PanelBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="{DynamicResource ContentBackground}" />
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="{DynamicResource HeaderBackground}" />
-    
+
     <!-- Border Colors -->
     <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderAlt}" />
     <SolidColorBrush x:Key="CardBorderBrush" Color="{DynamicResource BorderAlt}" />
     <SolidColorBrush x:Key="SeparatorBrush" Color="{DynamicResource BorderAlt}" />
-    
+
     <!-- Text Colors -->
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="{DynamicResource ContentForeground}" />
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="{DynamicResource ContentForegroundAlt1}" />
     <SolidColorBrush x:Key="DisabledTextBrush" Color="{DynamicResource DisabledForeground}" />
-    
+
     <!-- Semantic Colors -->
     <SolidColorBrush x:Key="SuccessBrush" Color="#4CAF50" />
     <SolidColorBrush x:Key="WarningBrush" Color="#FF9800" />
@@ -73,7 +74,7 @@
     <!-- FALLBACK COLOR DEFINITIONS (Static - for non-themed controls)         -->
     <!-- Only used when Syncfusion theme is not applied                        -->
     <!-- ====================================================================== -->
-    
+
     <Color x:Key="PrimaryColor">#1976D2</Color>
     <Color x:Key="PrimaryForeground">#FFFFFF</Color>
     <Color x:Key="PrimaryLight">#BBDEFB</Color>

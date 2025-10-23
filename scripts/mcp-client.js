@@ -79,9 +79,7 @@ async function registerTools(options) {
     throw new Error(`Server missing tools: ${missing.join(", ")}`);
   }
 
-  console.log(
-    `MCP server ready at ${baseUrl}. Registered tools: ${serverNames.join(", ")}`,
-  );
+  console.log(`MCP server ready at ${baseUrl}. Registered tools: ${serverNames.join(", ")}`);
 }
 
 async function callTool(options) {

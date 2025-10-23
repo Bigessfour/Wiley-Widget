@@ -67,11 +67,13 @@ if ($RunDiagnostics) {
     try {
         # Build the project first to ensure latest code
         Write-OutputWithFile "Building project..." $OutputFile
-        $buildResult = dotnet build --verbosity quiet 2>&1
+        # Force a non design-time build to avoid temporary wpftmp project issues
+        $buildResult = dotnet build WileyWidget.csproj -p:DesignTimeBuild=false --verbosity quiet 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-OutputWithFile "WARNING: Build failed. Diagnostics may not be accurate." $OutputFile
             Write-OutputWithFile "Build output: $buildResult" $OutputFile
-        } else {
+        }
+        else {
             Write-OutputWithFile "Build successful." $OutputFile
         }
 
@@ -79,9 +81,18 @@ if ($RunDiagnostics) {
         Write-OutputWithFile "" $OutputFile
         Write-OutputWithFile "1. Checking Syncfusion License..." $OutputFile
         $licenseKey = $env:SyncfusionLicense
+        $appsettingsLicense = ""
+        if (Test-Path "appsettings.json") {
+            $appsettings = Get-Content "appsettings.json" -Raw | ConvertFrom-Json -ErrorAction SilentlyContinue
+            $appsettingsLicense = $appsettings.SyncfusionLicense
+        }
         if ($licenseKey) {
             Write-OutputWithFile "   ✓ Syncfusion license found in environment (length: $($licenseKey.Length))" $OutputFile
-        } else {
+        }
+        elseif ($appsettingsLicense) {
+            Write-OutputWithFile "   ✓ Syncfusion license found in appsettings.json (length: $($appsettingsLicense.Length))" $OutputFile
+        }
+        else {
             Write-OutputWithFile "   ✗ Syncfusion license NOT found in environment variables" $OutputFile
             Write-OutputWithFile "     Set `$env:SyncfusionLicense or add to appsettings.json" $OutputFile
         }
@@ -103,10 +114,12 @@ if ($RunDiagnostics) {
                 $loaded = [System.AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.FullName -like "*$assembly*" }
                 if ($loaded) {
                     Write-OutputWithFile "   ✓ $assembly loaded" $OutputFile
-                } else {
+                }
+                else {
                     Write-OutputWithFile "   ✗ $assembly NOT loaded" $OutputFile
                 }
-            } catch {
+            }
+            catch {
                 Write-OutputWithFile "   ✗ $assembly check failed: $($_.Exception.Message)" $OutputFile
             }
         }
@@ -130,7 +143,8 @@ if ($RunDiagnostics) {
                     $issues += "Missing Prism xmlns"
                 }
 
-                if ($content -notmatch 'prism:ViewModelLocator.AutoWireViewModel="True"') {
+                # Skip ViewModelLocator check for ResourceDictionary files
+                if ($content -notmatch '<ResourceDictionary' -and $content -notmatch 'prism:ViewModelLocator.AutoWireViewModel="True"') {
                     $issues += "Missing ViewModelLocator.AutoWireViewModel"
                 }
 
@@ -152,7 +166,8 @@ if ($RunDiagnostics) {
 
         if ($csprojContent -match '<XamlDebuggingInformation>true</XamlDebuggingInformation>') {
             Write-OutputWithFile "   ✓ XAML debugging enabled" $OutputFile
-        } else {
+        }
+        else {
             Write-OutputWithFile "   ✗ XAML debugging not enabled" $OutputFile
         }
 
@@ -163,7 +178,8 @@ if ($RunDiagnostics) {
         Write-OutputWithFile "XAML files with issues: $xamlIssues" $OutputFile
         Write-OutputWithFile "Total XAML files checked: $($xamlFiles.Count)" $OutputFile
 
-    } catch {
+    }
+    catch {
         Write-OutputWithFile "ERROR: Diagnostics failed - $($_.Exception.Message)" $OutputFile
     }
 }

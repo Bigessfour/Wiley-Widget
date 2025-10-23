@@ -25,5 +25,9 @@
 
     <!-- Ensure nested build outputs are never re-included in compilation -->
     <DefaultItemExcludes>$(DefaultItemExcludes);**\bin\**;**\obj\**</DefaultItemExcludes>
+
+    <!-- WPF/XAML: prevent design-time wpftmp temporary projects which sometimes miss PackageReferences -->
+    <GenerateTemporaryTargetAssembly>false</GenerateTemporaryTargetAssembly>
+    <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
   </PropertyGroup>
 </Project>

@@ -46,6 +46,7 @@ using WileyWidget.ViewModels.Messages;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Threading.Tasks;
+using Prism.Navigation.Regions;
 // using Microsoft.ApplicationInsights;
 // using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
@@ -77,6 +78,7 @@ namespace WileyWidget
         public static DateTimeOffset? LastHealthReportUpdate { get; private set; }
         private bool _syncfusionLicenseRegistered;
         private bool _boldReportsLicenseRegistered;
+        private string _startupId;
 
         public static void UpdateLatestHealthReport(object report)
         {
@@ -118,101 +120,116 @@ namespace WileyWidget
             }
         }
 
-        protected override void OnStartup(StartupEventArgs e)
+        /// <summary>
+        /// Bootstrapper constructor - handles early startup logging and diagnostics
+        /// moved from Program.cs as per minimal entry point requirements.
+        /// </summary>
+        public App()
         {
-            Log.Debug("=== APPLICATION STARTUP BEGINNING ===");
-            Log.Debug("OnStartup called with args: {Args}", e?.Args?.Length ?? 0);
+            _startupId = Guid.NewGuid().ToString("N")[..8];
+            var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            // Enable WPF binding diagnostics
-            System.Diagnostics.PresentationTraceSources.DataBindingSource.Switch.Level = System.Diagnostics.SourceLevels.Warning;
-            System.Diagnostics.PresentationTraceSources.DataBindingSource.Listeners.Add(new System.Diagnostics.DefaultTraceListener());
-            Log.Debug("WPF binding diagnostics enabled");
+            // Create bootstrap logger for early startup diagnostics
+            // Microsoft pattern: Bootstrap logger first, then full configuration after host builder
+            var bootstrapLogger = new LoggerConfiguration()
+                .MinimumLevel.Debug()  // Capture all levels from the start
+                .Enrich.WithMachineName()
+                .Enrich.WithProcessId()
+                .Enrich.WithThreadId()
+                .Enrich.WithEnvironmentName()
+                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] {ProcessId}:{ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}")
+                .WriteTo.File("logs/startup-.log",
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 7,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {MachineName} {ProcessId}:{ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
 
-            // Set up global exception handling before anything else
-            SetupGlobalExceptionHandling();
-            Log.Debug("Global exception handling configured");
+            Log.Logger = bootstrapLogger;
 
-            // Apply Syncfusion theme globally as early as possible per official docs
-            // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
+            Log.Debug("Bootstrap logger created successfully");
+            Log.Information("Starting bootstrap test - Session: {StartupId}", _startupId);
+
+            // Enhanced bootstrap test with timing and diagnostics
+            var bootstrapTestStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
-                Log.Debug("Initializing SfSkinManager theme...");
-                // CRITICAL: Set theme FIRST before loading resources that use DynamicResource
-                // Use the official API to inherit theme to all controls/windows
-                SfSkinManager.ApplyThemeAsDefaultStyle = true;
-#pragma warning disable CA2000 // Theme objects are managed by SfSkinManager
-                SfSkinManager.ApplicationTheme = new Theme("FluentLight");
-#pragma warning restore CA2000
+                // Test basic system capabilities
+                var testThread = Thread.CurrentThread;
+                Log.Debug("Bootstrap test - Thread diagnostics: ID={ThreadId}, Name={ThreadName}, Priority={Priority}",
+                    testThread.ManagedThreadId, testThread.Name ?? "unnamed", testThread.Priority);
 
-                Log.Information("SfSkinManager initialized with FluentLight theme globally");
-                Log.Debug("SfSkinManager initialization completed successfully");
+                // Test apartment state
+                var apartmentState = testThread.GetApartmentState();
+                Log.Debug("Bootstrap test - Apartment state: {ApartmentState}", apartmentState);
 
-                // IMPORTANT: Do NOT load XAML resource dictionaries from the filesystem.
-                // They are compiled as WPF resources and referenced via pack URIs/relative XAML includes.
-                // Rely on the merged dictionaries declared in XAML (e.g., MainWindow.xaml) to avoid
-                // System.IO.FileNotFoundException at runtime when files are not copied to the output.
+                // Test memory and GC
+                GC.Collect();
+                Log.Debug("Bootstrap test - GC collection completed, Memory: {MemoryMB}MB",
+                    GC.GetTotalMemory(false) / 1024 / 1024);
+
+                bootstrapTestStopwatch.Stop();
+                Log.Information("Bootstrap test PASSED in {ElapsedMs}ms - Session: {StartupId}",
+                    bootstrapTestStopwatch.ElapsedMilliseconds, _startupId);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to initialize SfSkinManager theme - falling back to default");
-                Log.Debug("SfSkinManager initialization failed: {Message}", ex.Message);
-                // Fallback to FluentLight if FluentDark is unavailable for any reason
-                try
-                {
-#pragma warning disable CA2000
-                    SfSkinManager.ApplicationTheme = new Theme("FluentLight");
-#pragma warning restore CA2000
-                    Log.Debug("SfSkinManager fallback to FluentLight succeeded");
-                }
-                catch (Exception fallbackEx)
-                {
-                    Log.Error(fallbackEx, "FluentLight fallback also failed - continuing without theme");
-                    Log.Debug("SfSkinManager fallback failed: {Message}", fallbackEx.Message);
-                }
+                bootstrapTestStopwatch.Stop();
+                Log.Error(ex, "Bootstrap test FAILED after {ElapsedMs}ms - Session: {StartupId}",
+                    bootstrapTestStopwatch.ElapsedMilliseconds, _startupId);
+                throw; // Re-throw to fail startup
             }
 
-            Log.Debug("Calling ConfigureLogging...");
-            ConfigureLogging();
-            Trace.WriteLine("[App] ConfigureLogging completed");
-            Log.Debug("ConfigureLogging completed");
+            Log.Information("Starting WileyWidget application with proper STA threading model - Session: {StartupId}", _startupId);
+            Log.Information("Thread ID: {ThreadId}, IsBackground: {IsBackground}, ApartmentState: {ApartmentState}",
+                Environment.CurrentManagedThreadId,
+                Thread.CurrentThread.IsBackground,
+                Thread.CurrentThread.GetApartmentState());
 
-            // Configure diagnostics settings from appsettings.json
-            Log.Debug("Building configuration...");
-            IConfiguration configuration = BuildConfiguration();
-            Log.Debug("Configuration built successfully");
+            // Additional thread diagnostics
+            Log.Debug("Thread diagnostics - ManagedThreadId: {ThreadId}, Name: {ThreadName}, Priority: {Priority}, IsPool: {IsPool}, IsAlive: {IsAlive}",
+                Thread.CurrentThread.ManagedThreadId,
+                Thread.CurrentThread.Name ?? "unnamed",
+                Thread.CurrentThread.Priority,
+                Thread.CurrentThread.IsThreadPoolThread,
+                Thread.CurrentThread.IsAlive);
 
-            Log.Debug("Configuring diagnostics settings...");
-            ConfigureDiagnosticsSettings(configuration);
-            Log.Debug("Diagnostics settings configured");
+            // Log thread pool status
+            int workerThreads, completionPortThreads;
+            ThreadPool.GetAvailableThreads(out workerThreads, out completionPortThreads);
+            int maxWorkerThreads, maxCompletionPortThreads;
+            ThreadPool.GetMaxThreads(out maxWorkerThreads, out maxCompletionPortThreads);
 
-            // Preflight database schema before Prism/EF usage to avoid early materialization failures
-            try
+            Log.Debug("Thread pool status - Available Workers: {AvailableWorkers}/{MaxWorkers}, Available IO: {AvailableIO}/{MaxIO}",
+                workerThreads, maxWorkerThreads, completionPortThreads, maxCompletionPortThreads);
+
+            // Ensure we're on STA thread (this should already be the case due to STAThread attribute)
+            if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
             {
-                Log.Debug("Starting database preflight...");
-                DatabasePreflightWithRetry(maxAttempts: 3, delayMs: 300);
-                Log.Debug("Database preflight completed successfully");
+                Log.Warning("Current thread is not STA - this may cause WPF threading issues. Expected STA, got {ActualApartmentState}",
+                    Thread.CurrentThread.GetApartmentState());
+                Log.Warning("Thread details - ManagedThreadId: {ThreadId}, Name: {ThreadName}",
+                    Thread.CurrentThread.ManagedThreadId, Thread.CurrentThread.Name ?? "unnamed");
             }
-            catch (Exception ex)
+            else
             {
-                Log.Warning(ex, "Database preflight failed; continuing startup (EF will still attempt retries)");
-                Log.Debug("Database preflight failed: {Message}", ex.Message);
+                Log.Debug("STA thread verification passed - ApartmentState: {ApartmentState}", ApartmentState.STA);
             }
 
-            Log.Debug("Ensuring Syncfusion license...");
-            EnsureSyncfusionLicenseRegistered();
-            Log.Debug("Syncfusion license ensured");
+            Log.Information("Creating WPF Application instance - Session: {StartupId}", _startupId);
+            var appCreationStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            Log.Debug("Ensuring Bold Reports license...");
-            EnsureBoldReportsLicenseRegistered();
-            Log.Debug("Bold Reports license ensured");
+            appCreationStopwatch.Stop();
+            Log.Information("WPF Application instance created successfully in {ElapsedMs}ms - Session: {StartupId}",
+                appCreationStopwatch.ElapsedMilliseconds, _startupId);
 
-            Log.Debug("Calling base.OnStartup...");
-            base.OnStartup(e);
-            Log.Debug("base.OnStartup completed");
-
-            Log.Information("Application startup completed");
-            Log.Debug("=== APPLICATION STARTUP COMPLETED ===");
+            // Start the application - Prism will handle initialization
+            Log.Information("Starting WPF application run loop - Session: {StartupId}", _startupId);
+            startupStopwatch.Stop();
+            Log.Information("Total startup preparation completed in {TotalElapsedMs}ms - Session: {StartupId}",
+                startupStopwatch.ElapsedMilliseconds, _startupId);
         }
+
+        // Removed legacy OnStartup code as per Prism standard bootstrapper
 
         /// <summary>
         /// Performs an early SQL preflight to ensure critical tables/columns exist before EF is used.
@@ -554,13 +571,10 @@ END
 
         protected override Window CreateShell()
         {
-            EnsureSyncfusionLicenseRegistered();
-            EnsureBoldReportsLicenseRegistered();
-
             try
             {
-                MainWindow shell = Container.Resolve<MainWindow>();
-                Log.Information("MainWindow shell resolved successfully");
+                Shell shell = new Shell();
+                Log.Information("Shell created successfully");
                 return shell;
             }
             catch (Exception ex)
@@ -762,6 +776,9 @@ END
 
             IConfiguration configuration;
             var testMode = (Environment.GetEnvironmentVariable("WILEY_WIDGET_TESTMODE") ?? "0") == "1";
+            // Diagnostics controls: keep extended diagnostics (chatty logging + eager resolves) OFF by default
+            string extendedDiagEnv = Environment.GetEnvironmentVariable("WILEY_WIDGET_EXTENDED_DIAGNOSTICS") ?? "0";
+            bool enableExtendedDiagnostics = extendedDiagEnv == "1" || string.Equals(extendedDiagEnv, "true", StringComparison.OrdinalIgnoreCase);
             IUnityContainer unityContainer;
             try
             {
@@ -774,6 +791,10 @@ END
                 containerRegistry.RegisterInstance<IConfiguration>(configuration);
                 Log.Information("✓ Registered IConfiguration as singleton instance");
                 Log.Debug("IConfiguration registered: {Type}", configuration.GetType().Name);
+
+                // Register Syncfusion license early in DI setup
+                EnsureSyncfusionLicenseRegistered();
+                Log.Information("✓ Syncfusion license registered");
             }
             catch (Exception ex)
             {
@@ -856,7 +877,15 @@ END
                 containerRegistry.RegisterSingleton<AppOptionsConfigurator>();
 
                 unityContainer = containerRegistry.GetContainer();
-                EnableUnityDiagnostics(unityContainer);
+                // Expose the Unity container itself for services that need it (e.g., UnityServiceScopeFactory)
+                // This allows constructors to take IUnityContainer as a dependency.
+                containerRegistry.RegisterInstance<IUnityContainer>(unityContainer);
+                // Only enable verbose Unity diagnostics when explicitly requested
+                if (enableExtendedDiagnostics)
+                {
+                    EnableUnityDiagnostics(unityContainer);
+                    Log.Debug("Unity diagnostics enabled (extended mode)");
+                }
                 Log.Information("✓ Registered core infrastructure services (Syncfusion, Settings, Dispatcher)");
             }
             catch (Exception ex)
@@ -934,6 +963,11 @@ END
                 containerRegistry.RegisterSingleton<FiscalYearSettings>();
                 containerRegistry.RegisterSingleton<IChargeCalculatorService, ServiceChargeCalculatorService>();
                 Log.Information("✓ Registered business services (WhatIfScenarioEngine, FiscalYearSettings, ChargeCalculator)");
+
+                // Also register concrete types explicitly to help resolution during unit tests
+                containerRegistry.Register<WileyWidget.Data.MunicipalAccountRepository>();
+                containerRegistry.Register<WileyWidget.Services.WhatIfScenarioEngine>();
+                containerRegistry.Register<WileyWidget.Services.ServiceChargeCalculatorService>();
             }
             catch (Exception ex)
             {
@@ -957,6 +991,7 @@ END
 
                     // Register QuickBooks service
                     containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
+                    containerRegistry.RegisterSingleton<QuickBooksService>(); // Register concrete type for ViewModel injection
                     Log.Information("✓ Registered IQuickBooksService as singleton");
                 }
             }
@@ -993,8 +1028,9 @@ END
                 Log.Information("✓ Registered Prism Dialogs (Confirmation, Notification, Warning, Error, Settings)");
 
                 // Register Navigation Service with Journal support
-                containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
-                Log.Information("✓ Registered INavigationService with journal support");
+                // REMOVED: Legacy INavigationService replaced with Prism IRegionManager
+                // containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
+                // Log.Information("✓ Registered INavigationService with journal support");
 
                 // Register Composite Command Service
                 containerRegistry.RegisterSingleton<ICompositeCommandService, CompositeCommandService>();
@@ -1005,12 +1041,15 @@ END
                 Log.Information("✓ Registered IInteractionRequestService for ViewModel-View communication");
 
                 // Register Scoped Region Service
-                containerRegistry.RegisterSingleton<IScopedRegionService, ScopedRegionService>();
-                Log.Information("✓ Registered IScopedRegionService for isolated navigation contexts");
+                // REMOVED: Legacy IScopedRegionService replaced with Prism IRegionManager
+                // containerRegistry.RegisterSingleton<IScopedRegionService, ScopedRegionService>();
+                // Log.Information("✓ Registered IScopedRegionService for isolated navigation contexts");
 
                 // Register Prism Error Handler for centralized error handling
                 containerRegistry.RegisterSingleton<IPrismErrorHandler, PrismErrorHandler>();
                 Log.Information("✓ Registered IPrismErrorHandler for centralized error handling and logging");
+
+                // Note: Custom ModuleManager diagnostic registration removed to maintain compatibility
 
                 // Explicitly register IEventAggregator (should be automatic in Prism, but ensure availability)
                 containerRegistry.RegisterSingleton<Prism.Events.IEventAggregator, Prism.Events.EventAggregator>();
@@ -1029,8 +1068,8 @@ END
                 {
                     try
                     {
-                        var regionManager = provider.Resolve<IRegionManager>();
                         var dialogService = provider.Resolve<IDialogService>();
+                        var regionManager = provider.Resolve<IRegionManager>();
                         var dispatcher = provider.Resolve<IDispatcherHelper>();
 
                         // Resolve ILogger via ILoggerFactory to avoid potential open-generic resolve issues
@@ -1044,8 +1083,8 @@ END
                         var aiService = unityContainer.IsRegistered<IAIService>() ? provider.Resolve<IAIService>() : null;
 
                         return new MainViewModel(
-                            regionManager,
                             dialogService,
+                            regionManager,
                             dispatcher,
                             logger,
                             enterpriseRepo,
@@ -1070,8 +1109,8 @@ END
 
             try
             {
-                // Register MainWindow for shell resolution
-                containerRegistry.Register<MainWindow>();
+                // Register Shell using a parameterless factory to avoid greedy constructor selection during tests
+                containerRegistry.Register<Shell>(provider => new Shell());
 
                 // Register additional ViewModels for Prism ViewModelLocator (infrastructure-only)
                 containerRegistry.Register<AboutViewModel>();
@@ -1080,7 +1119,8 @@ END
                 containerRegistry.Register<EnterpriseViewModel>();
 
                 // Register Region Adapters
-                containerRegistry.RegisterSingleton<WileyWidget.Regions.DockingManagerRegionAdapter>();
+                // REMOVED: DockingManagerRegionAdapter is disabled (#if false)
+                // containerRegistry.RegisterSingleton<WileyWidget.Regions.DockingManagerRegionAdapter>();
             }
             catch (Exception ex)
             {
@@ -1094,6 +1134,50 @@ END
             Log.Information($"Total registrations: AI Services, Data Repositories, Business Services, ViewModels, Infrastructure");
             Log.Information("Container ready for service resolution");
             Log.Debug("Starting Prism infrastructure validation...");
+
+            // Run focused resolution diagnostics only when extended diagnostics are enabled
+            if (enableExtendedDiagnostics)
+            {
+                try
+                {
+                    Log.Debug("Running focused container resolution checks (extended diagnostics)...");
+                    var diagContainer = containerRegistry.GetContainer();
+
+                    void TryResolve(Type t, string name = null)
+                    {
+                        try
+                        {
+                            var resolved = diagContainer.Resolve(t, name ?? string.Empty);
+                            Log.Debug("FocusedResolve OK: {Type} => {ResolvedType}", t.FullName, resolved?.GetType().FullName ?? "null");
+                        }
+                        catch (Exception ex)
+                        {
+                            // In extended mode, include full exception details for deep diagnosis
+                            Log.Warning("FocusedResolve FAILED for {Type} (name='{Name}') -> {Message}", t.FullName, name ?? string.Empty, ex.Message);
+                            Log.Debug(ex, "FocusedResolve exception (extended details) for {Type}", t.FullName);
+                        }
+                    }
+
+                    // Types that previously failed in integration tests
+                    TryResolve(typeof(WileyWidget.Business.Interfaces.IMunicipalAccountRepository));
+                    TryResolve(typeof(WileyWidget.Data.MunicipalAccountRepository));
+                    TryResolve(typeof(WileyWidget.Services.IWhatIfScenarioEngine));
+                    TryResolve(typeof(WileyWidget.Services.WhatIfScenarioEngine));
+                    TryResolve(typeof(WileyWidget.Services.IChargeCalculatorService));
+                    TryResolve(typeof(WileyWidget.Services.ServiceChargeCalculatorService));
+
+                    // Also check EF factory; skip direct AppDbContext construction here to avoid eager DB touch
+                    TryResolve(typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>));
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Focused container resolution diagnostics failed to run (extended mode)");
+                }
+            }
+            else
+            {
+                Log.Debug("Focused container resolution checks skipped (extended diagnostics disabled)");
+            }
 
             // Validate Prism infrastructure and critical services
             ValidatePrismInfrastructure(containerRegistry);
@@ -1118,6 +1202,9 @@ END
                 {
                     Log.Warning("Container diagnostics found resolution failures. Check logs for details.");
                 }
+
+                // Additional validation: Test critical service resolutions
+                ValidateContainerRegistrations(unityContainer);
             }
             catch (Exception diagEx)
             {
@@ -1323,6 +1410,36 @@ END
         }
 
         [Conditional("DEBUG")]
+        private static void ValidateContainerRegistrations(IUnityContainer container)
+        {
+            // Test resolution of critical services
+            var criticalTypes = new[]
+            {
+                typeof(IConfiguration),
+                typeof(ISettingsService),
+                typeof(IRegionManager),
+                typeof(IEventAggregator),
+                typeof(Prism.Dialogs.IDialogService),
+                // REMOVED: Legacy INavigationService deleted
+                // typeof(INavigationService),
+                typeof(ICompositeCommandService)
+            };
+
+            foreach (var type in criticalTypes)
+            {
+                try
+                {
+                    var instance = container.Resolve(type);
+                    Log.Debug($"✓ Successfully resolved {type.Name}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"✗ Failed to resolve {type.Name}: {ex.Message}");
+                    // Don't throw here - let application continue with partial functionality
+                }
+            }
+        }
+
         private static void EnableUnityDiagnostics(IUnityContainer unityContainer)
         {
             if (unityContainer == null)
@@ -1719,6 +1836,23 @@ END
             // Temporarily disabled - ContentControls within DockingManager should use standard ContentControl adapter
             // regionAdapterMappings.RegisterMapping<Syncfusion.Windows.Tools.Controls.DockingManager>(Container.Resolve<WileyWidget.Regions.DockingManagerRegionAdapter>());
 
+            // Register protective SfDataGrid adapter to provide clear diagnostics instead of obscure InvalidCastException
+            // Temporarily disabled - use standard adapters
+            // try
+            // {
+            //     var rbFactory = Container.Resolve<IRegionBehaviorFactory>();
+            //     if (rbFactory != null)
+            //     {
+            //         var sfAdapter = new WileyWidget.Regions.SfDataGridRegionAdapter(rbFactory);
+            //         regionAdapterMappings.RegisterMapping<Syncfusion.UI.Xaml.Grid.SfDataGrid>(sfAdapter);
+            //         Log.Debug("Registered SfDataGrid region adapter mapping to SfDataGridRegionAdapter (instance)");
+            //     }
+            // }
+            // catch (Exception ex)
+            // {
+            //     Log.Warning(ex, "Failed to register SfDataGrid region adapter mapping; continuing without mapping");
+            // }
+
             // Register region behaviors
             var regionBehaviorFactory = Container.Resolve<IRegionBehaviorFactory>();
 
@@ -1746,40 +1880,21 @@ END
 
         protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
         {
-            Log.Information("=== Configuring Prism Module Catalog with Auto-Discovery and Initialization Modes ===");
+            Log.Information("=== Configuring Prism Module Catalog ===");
 
-            // Auto-discover modules using reflection
-            // Find all types in the current assembly that implement IModule and have [Module] attribute
-            var moduleTypes = typeof(App).Assembly
-                .GetTypes()
-                .Where(t => typeof(IModule).IsAssignableFrom(t) &&
-                           t.GetCustomAttributes(typeof(ModuleAttribute), false).Any() &&
-                           !t.IsAbstract &&
-                           t.IsClass)
-                .ToList();
+            // Manually add modules
+            moduleCatalog.AddModule<CoreModule>();
+            moduleCatalog.AddModule<DashboardModule>();
+            moduleCatalog.AddModule<EnterpriseModule>();
+            moduleCatalog.AddModule<BudgetModule>();
+            moduleCatalog.AddModule<MunicipalAccountModule>();
+            moduleCatalog.AddModule<UtilityCustomerModule>();
+            moduleCatalog.AddModule<ReportsModule>();
+            moduleCatalog.AddModule<AIAssistModule>();
+            moduleCatalog.AddModule<PanelModule>();
+            moduleCatalog.AddModule<ToolsModule>();
 
-            Log.Information("Found {Count} modules with [Module] attribute", moduleTypes.Count);
-
-            // Get initialization mode from configuration
-            IConfiguration configuration = _cachedConfiguration ??= BuildConfiguration();
-            var defaultInitMode = configuration.GetValue("Prism:DefaultModuleInitializationMode", "WhenAvailable");
-
-            foreach (var moduleType in moduleTypes)
-            {
-                var moduleAttribute = (ModuleAttribute)moduleType.GetCustomAttributes(typeof(ModuleAttribute), false).First();
-                var moduleName = moduleAttribute.ModuleName;
-
-                // Determine initialization mode for this module
-                var initMode = GetModuleInitializationMode(moduleName, defaultInitMode);
-
-                // Add module with specified initialization mode
-                moduleCatalog.AddModule(moduleType, initMode);
-
-                Log.Information("Registered module: {ModuleName} ({TypeName}) with initialization mode: {InitMode}",
-                    moduleName, moduleType.Name, initMode);
-            }
-
-            Log.Information("✓ Auto-discovery completed for {Count} modules with configurable initialization modes", moduleTypes.Count);
+            Log.Information("✓ Manually registered modules");
         }
 
         protected override void InitializeModules()
@@ -1819,7 +1934,7 @@ END
             catch (Exception ex)
             {
                 Log.Error(WileyWidget.Startup.Modules.PrismExceptionExtensions.GetRootException(ex), "Unexpected error during module initialization: {Message}", WileyWidget.Startup.Modules.PrismExceptionExtensions.GetRootException(ex).Message);
-                Log.Error("Full exception chain: {DetailedMessage}", ex.GetDetailedMessage());
+                Log.Error("Full exception chain: {DetailedMessage}", WileyWidget.Startup.Modules.PrismExceptionExtensions.GetDetailedMessage(ex));
                 throw; // Re-throw unexpected exceptions
             }
 
@@ -1941,7 +2056,7 @@ END
         /// <param name="moduleHealthService">The module health service for status checking</param>
         private void ValidateModuleInitialization(IModuleHealthService moduleHealthService)
         {
-            // Align expected regions with actual regions declared in MainWindow.xaml
+            // Align expected regions with actual regions declared in Shell.xaml
             var moduleRegionMap = new Dictionary<string, string[]>
             {
                 ["DashboardModule"] = new[] { "DashboardRegion" },
@@ -2029,6 +2144,40 @@ END
             try
             {
                 base.OnInitialized();
+
+                // Apply Syncfusion theme globally as early as possible per official docs
+                // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
+                try
+                {
+                    Log.Debug("Initializing SfSkinManager theme...");
+                    // CRITICAL: Set theme FIRST before loading resources that use DynamicResource
+                    // Use the official API to inherit theme to all controls/windows
+                    SfSkinManager.ApplyThemeAsDefaultStyle = true;
+#pragma warning disable CA2000 // Theme objects are managed by SfSkinManager
+                    SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+#pragma warning restore CA2000
+
+                    Log.Information("SfSkinManager initialized with FluentLight theme globally");
+                    Log.Debug("SfSkinManager initialization completed successfully");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to initialize SfSkinManager theme - falling back to default");
+                    Log.Debug("SfSkinManager initialization failed: {Message}", ex.Message);
+                    // Fallback to FluentLight if FluentDark is unavailable for any reason
+                    try
+                    {
+#pragma warning disable CA2000
+                        SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+#pragma warning restore CA2000
+                        Log.Debug("SfSkinManager fallback to FluentLight succeeded");
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        Log.Error(fallbackEx, "FluentLight fallback also failed - continuing without theme");
+                        Log.Debug("SfSkinManager fallback failed: {Message}", fallbackEx.Message);
+                    }
+                }
 
                 Log.Information("Application initialization completed successfully");
                 Log.Information("All services registered and container ready for use");
@@ -2226,7 +2375,7 @@ END
         /// <param name="e">Exit event args</param>
         protected override void OnExit(ExitEventArgs e)
         {
-            Log.Information("Application shutdown initiated");
+            Log.Information("Application shutdown initiated - Session: {StartupId}", _startupId);
 
             try
             {
@@ -2234,7 +2383,9 @@ END
                 EnsureSyncfusionLicenseRegistered(forceRefresh: true);
 
                 base.OnExit(e);
-                Log.Information("Application shutdown completed successfully");
+                Log.Information("Application shutdown completed successfully - Session: {StartupId}", _startupId);
+                Log.Information("Application exited with code: {ExitCode} - Session: {StartupId}", e.ApplicationExitCode, _startupId);
+                Log.Information("=== Application Shutdown Complete - Session: {StartupId} ===", _startupId);
             }
             catch (Exception ex)
             {

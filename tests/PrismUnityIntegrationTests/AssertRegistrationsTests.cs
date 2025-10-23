@@ -4,6 +4,7 @@ using System.Reflection;
 using Prism.Ioc;
 using Unity;
 using Xunit;
+using Serilog;
 
 public class AssertRegistrationsTests
 {
@@ -422,9 +423,9 @@ public class AssertRegistrationsTests
         var containerProviderCast = (Prism.Ioc.IContainerProvider)containerExt;
         coreModule.OnInitialized(containerProvider);
 
-        var regionManagerObj = containerProviderCast.Resolve(typeof(Prism.Navigation.Regions.IRegionManager));
+    var regionManagerObj = containerProviderCast.Resolve(typeof(Prism.Navigation.Regions.IRegionManager));
         Assert.NotNull(regionManagerObj);
-        var rm = (Prism.Navigation.Regions.IRegionManager)regionManagerObj;
+    var rm = (Prism.Navigation.Regions.IRegionManager)regionManagerObj;
         Assert.True(rm.Regions.ContainsRegionWithName("SettingsRegion"), "SettingsRegion was not registered by CoreModule.OnInitialized");
     }
 }

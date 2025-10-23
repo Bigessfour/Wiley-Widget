@@ -8,7 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
-    <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416</NoWarn>
+    <NoWarn>$(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416</NoWarn>
+    <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
     <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
   <StartupObject>WileyWidget.Program</StartupObject>
 
@@ -26,6 +27,9 @@
     <TieredCompilation>true</TieredCompilation>
     <TieredPGO>true</TieredPGO>
     <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+
+  <!-- Avoid WPF temp project (wpftmp) to prevent missing references during XAML compile -->
+  <GenerateTemporaryTargetAssembly>false</GenerateTemporaryTargetAssembly>
 
     <!-- Enable ReadyToRun for Debug builds to improve startup performance -->
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">false</PublishReadyToRun>
@@ -51,9 +55,9 @@
     <PackageReference Include="Microsoft.ApplicationInsights" />
   <!-- Removed explicit Roslyn runtime packages to avoid Hot Reload conflicts in VS -->
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
-    <PackageReference Include="Prism.Core" />
-    <PackageReference Include="Prism.Unity" />
-    <PackageReference Include="Prism.Wpf" />
+  <PackageReference Include="Prism.Core" VersionOverride="9.0.537" />
+  <PackageReference Include="Prism.Unity" VersionOverride="9.0.537" />
+  <PackageReference Include="Prism.Wpf" VersionOverride="9.0.537" />
     <PackageReference Include="Unity.Container" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
@@ -120,6 +124,33 @@
     <ProjectReference Include="WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="WileyWidget.Models\WileyWidget.Models.csproj" />
+  </ItemGroup>
+
+  <!-- Design-time/XAML compile workaround: Ensure Prism assemblies are available
+       for temporary wpftmp projects by adding explicit references to the NuGet cache. -->
+  <ItemGroup>
+    <!-- Prism.Wpf (prefer net8, fallback to net6) -->
+    <Reference Include="Prism.Wpf" Condition="Exists('$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net8.0-windows7.0/Prism.Wpf.dll')">
+      <HintPath>$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net8.0-windows7.0/Prism.Wpf.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Prism.Wpf" Condition="!Exists('$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net8.0-windows7.0/Prism.Wpf.dll') and Exists('$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net6.0-windows7.0/Prism.Wpf.dll')">
+      <HintPath>$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net6.0-windows7.0/Prism.Wpf.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+
+    <!-- Prism.Core -->
+    <Reference Include="Prism" Condition="Exists('$(NuGetPackageRoot)prism.core/9.0.537/lib/net8.0/Prism.dll')">
+      <HintPath>$(NuGetPackageRoot)prism.core/9.0.537/lib/net8.0/Prism.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Prism" Condition="!Exists('$(NuGetPackageRoot)prism.core/9.0.537/lib/net8.0/Prism.dll') and Exists('$(NuGetPackageRoot)prism.core/9.0.537/lib/net6.0/Prism.dll')">
+      <HintPath>$(NuGetPackageRoot)prism.core/9.0.537/lib/net6.0/Prism.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+
+    <!-- Prism.Regions (split in Prism 9) -->
+    <!-- Removed explicit references as Prism.Regions is part of Prism.Wpf -->
   </ItemGroup>
 
   <!-- Exclude test files and sample files from main project build -->

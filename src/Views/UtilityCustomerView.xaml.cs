@@ -22,17 +22,6 @@ public partial class UtilityCustomerView : Window
     public UtilityCustomerView()
     {
         InitializeComponent();
-
-        // Apply current theme
-        ThemeUtility.TryApplyTheme(this, SettingsService.Instance.Current.Theme);
-
-        Loaded += (_, _) =>
-        {
-            if (DataContext is UtilityCustomerViewModel vm && vm.Customers.Count == 0)
-            {
-                vm.LoadCustomersCommand.Execute();
-            }
-        };
     }
 
     /// <summary>

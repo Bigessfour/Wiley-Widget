@@ -304,15 +304,35 @@ protected override void RegisterTypes(IContainerRegistry containerRegistry)
 }
 ```
 
-### 3. Logging and Diagnostics
+### 3. Container Validation (CORRECTED)
+
+**Note**: Unity Container does not have a built-in `Verify()` method. Instead, use runtime resolution testing:
 
 ```csharp
-private void EnableUnityDiagnostics(IUnityContainer unityContainer)
+private void ValidateContainerRegistrations(IUnityContainer container)
 {
-    // Enable Unity diagnostic logging
-    unityContainer.AddExtension(new Unity.Diagnostics.UnityDiagnosticExtension());
+    // Test resolution of critical services
+    var criticalTypes = new[]
+    {
+        typeof(IConfiguration),
+        typeof(ISettingsService),
+        typeof(IRegionManager),
+        typeof(IEventAggregator)
+    };
 
-    Log.Information("Unity diagnostics enabled for troubleshooting");
+    foreach (var type in criticalTypes)
+    {
+        try
+        {
+            var instance = container.Resolve(type);
+            Log.Debug($"✓ Successfully resolved {type.Name}");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, $"✗ Failed to resolve {type.Name}: {ex.GetRootException().Message}");
+            throw;
+        }
+    }
 }
 ```
 
@@ -368,3 +388,33 @@ diagnostics.LogSummary();
 ```
 
 This comprehensive approach ensures that Unity container issues are caught early, diagnosed accurately, and resolved systematically.
+
+---
+
+## Validation Against Online Resources (October 2025)
+
+This guide has been validated against current online resources and Unity/Prism documentation:
+
+### ✅ **Confirmed Accurate**
+- **ResolutionFailedException causes**: Missing registrations, circular dependencies, invalid constructor parameters
+- **ContainerResolutionException**: Valid Prism exception type for DI resolution failures
+- **Exception unwrapping**: TargetInvocationException commonly wraps Unity resolution failures
+- **Property injection for circular dependencies**: Standard Unity/Prism best practice
+- **Module initialization failures**: Common cause of startup exceptions
+
+### ❌ **Corrections Made**
+- **Container.Verify() method**: **DOES NOT EXIST** in Unity Container API. Replaced with runtime resolution testing.
+- **Unity.Diagnostics.UnityDiagnosticExtension**: Not a standard Unity extension. Use custom diagnostic approaches instead.
+
+### 🔍 **Additional Findings**
+- **Prism ContainerResolutionException**: Real exception type used in Prism for container resolution failures
+- **Unity container validation**: Must be done through manual resolution testing, not built-in verification
+- **Circular dependency detection**: Best handled through property injection or service locator patterns
+- **Module loading order**: Critical for preventing resolution failures during initialization
+
+### 📚 **Recommended Approach**
+1. Use runtime resolution testing instead of non-existent `Verify()` method
+2. Implement comprehensive exception unwrapping for all TargetInvocationException instances
+3. Test critical service resolutions during startup validation
+4. Use property injection to break circular dependencies
+5. Validate module dependencies before initialization

@@ -1,5 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:prism="http://prismlibrary.com/"
+                    xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
                     xmlns:vm="clr-namespace:WileyWidget.ViewModels"
                     xmlns:views="clr-namespace:WileyWidget"
                     xmlns:panels="clr-namespace:WileyWidget.Views">

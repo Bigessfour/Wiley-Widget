@@ -9,9 +9,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Prism;
 using Prism.Commands;
 using Prism.Dialogs;
-using Prism.Navigation.Regions;
 using System.Windows;
 using WileyWidget.Services.Logging;
 using WileyWidget.Services.Threading;
@@ -21,24 +21,26 @@ using WileyWidget.ViewModels.Base;
 using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Views;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.ViewModels
 {
     public partial class MainViewModel : AsyncViewModelBase
     {
-        private readonly IRegionManager regionManager;
         private readonly IDialogService dialogService;
+        private readonly IRegionManager _regionManager;
         private readonly IEnterpriseRepository _enterpriseRepository;
         private readonly IExcelReaderService _excelReaderService;
         private readonly IReportExportService _reportExportService;
         private readonly IBudgetRepository _budgetRepository;
         private readonly IAIService? _aiService;
 
-        public MainViewModel(IRegionManager regionManager, IDialogService dialogService, IDispatcherHelper dispatcherHelper, ILogger<MainViewModel> logger, IEnterpriseRepository enterpriseRepository, IExcelReaderService excelReaderService, IReportExportService reportExportService, IBudgetRepository budgetRepository, IAIService? aiService = null)
+        public MainViewModel(IDialogService dialogService, IRegionManager regionManager, IDispatcherHelper dispatcherHelper, ILogger<MainViewModel> logger, IEnterpriseRepository enterpriseRepository, IExcelReaderService excelReaderService, IReportExportService reportExportService, IBudgetRepository budgetRepository, IAIService? aiService = null)
             : base(dispatcherHelper, logger)
         {
-            this.regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
+            // this.regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager)); // Disabled
             this.dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
             _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
             _excelReaderService = excelReaderService ?? throw new ArgumentNullException(nameof(excelReaderService));
             _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
@@ -199,6 +201,98 @@ namespace WileyWidget.ViewModels
             {
                 CurrentViewTitle = "Wiley Widget";
             }
+        }
+
+        // Region Content Properties for custom navigation
+        private object? dashboardContent;
+        public object? DashboardContent
+        {
+            get => dashboardContent;
+            set => SetProperty(ref dashboardContent, value);
+        }
+
+        private object? reportsContent;
+        public object? ReportsContent
+        {
+            get => reportsContent;
+            set => SetProperty(ref reportsContent, value);
+        }
+
+        private object? enterpriseContent;
+        public object? EnterpriseContent
+        {
+            get => enterpriseContent;
+            set => SetProperty(ref enterpriseContent, value);
+        }
+
+        private object? municipalAccountContent;
+        public object? MunicipalAccountContent
+        {
+            get => municipalAccountContent;
+            set => SetProperty(ref municipalAccountContent, value);
+        }
+
+        private object? budgetContent;
+        public object? BudgetContent
+        {
+            get => budgetContent;
+            set => SetProperty(ref budgetContent, value);
+        }
+
+        private object? analyticsContent;
+        public object? AnalyticsContent
+        {
+            get => analyticsContent;
+            set => SetProperty(ref analyticsContent, value);
+        }
+
+        private object? settingsContent;
+        public object? SettingsContent
+        {
+            get => settingsContent;
+            set => SetProperty(ref settingsContent, value);
+        }
+
+        private object? utilityCustomerContent;
+        public object? UtilityCustomerContent
+        {
+            get => utilityCustomerContent;
+            set => SetProperty(ref utilityCustomerContent, value);
+        }
+
+        private object? aiAssistContent;
+        public object? AIAssistContent
+        {
+            get => aiAssistContent;
+            set => SetProperty(ref aiAssistContent, value);
+        }
+
+        private object? quickBooksContent;
+        public object? QuickBooksContent
+        {
+            get => quickBooksContent;
+            set => SetProperty(ref quickBooksContent, value);
+        }
+
+        private object? leftPanelContent;
+        public object? LeftPanelContent
+        {
+            get => leftPanelContent;
+            set => SetProperty(ref leftPanelContent, value);
+        }
+
+        private object? rightPanelContent;
+        public object? RightPanelContent
+        {
+            get => rightPanelContent;
+            set => SetProperty(ref rightPanelContent, value);
+        }
+
+        private object? bottomPanelContent;
+        public object? BottomPanelContent
+        {
+            get => bottomPanelContent;
+            set => SetProperty(ref bottomPanelContent, value);
         }
 
         // DockingManager State Properties for MVVM binding
@@ -421,7 +515,8 @@ namespace WileyWidget.ViewModels
             {
                 IsBusy = true;
                 await Task.Delay(50); // Small delay for UI feedback
-                await NavigateToRegionSafelyAsync("DashboardRegion", "DashboardView", "Dashboard");
+                // Navigate to Dashboard using region navigation
+                await NavigateToRegionSafelyAsync("MainRegion", "DashboardView", "Dashboard");
                 Logger.LogInformation("Navigated to Dashboard");
             }
             catch (Exception ex)
@@ -482,7 +577,8 @@ namespace WileyWidget.ViewModels
             {
                 IsBusy = true;
                 await Task.Delay(50);
-                await NavigateToRegionSafelyAsync("BudgetRegion", "BudgetView", "Budget");
+                var parameters = new Prism.Navigation.NavigationParameters { { "EnterpriseId", SelectedEnterprise?.Id ?? 0 } };
+                await NavigateToRegionSafelyAsync("MainRegion", "BudgetView", "Budget", parameters);
                 Logger.LogInformation("Navigated to Budget");
             }
             catch (Exception ex)
@@ -558,54 +654,21 @@ namespace WileyWidget.ViewModels
         /// <summary>
         /// Safely navigates to a region after checking for existence and logging (Async version)
         /// </summary>
-        private async Task NavigateToRegionSafelyAsync(string regionName, string viewName, string displayName)
+        private async Task NavigateToRegionSafelyAsync(string regionName, string viewName, string displayName, Prism.Navigation.NavigationParameters? parameters = null)
         {
             Logger.LogInformation("Attempting to navigate to {DisplayName} (Region: {RegionName}, View: {ViewName})",
                 displayName, regionName, viewName);
 
             try
             {
-                // Check if region exists before attempting navigation
-                if (!regionManager.Regions.ContainsRegionWithName(regionName))
-                {
-                    Logger.LogWarning("Region '{RegionName}' not found in region manager. Available regions: [{AvailableRegions}]",
-                        regionName, string.Join(", ", regionManager.Regions.Select(r => r.Name)));
-                    return;
-                }
-
-                // Log current region state before navigation
-                var region = regionManager.Regions[regionName];
-                Logger.LogDebug("Region '{RegionName}' found. Current views: {ViewCount}, Active view: {ActiveView}",
-                    regionName,
-                    region.Views?.Count() ?? 0,
-                    region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
-
-                // Perform navigation on the UI thread with callback for result tracking
-                var tcs = new TaskCompletionSource<bool>();
+                // Perform navigation on the UI thread
                 await DispatcherHelper.InvokeAsync(() =>
                 {
-                    regionManager.RequestNavigate(regionName, viewName, (result) =>
-                    {
-                        tcs.SetResult(result.Success);
-                        if (result.Success)
-                        {
-                            Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
-                                displayName, regionName);
-                        }
-                        else
-                        {
-                            Logger.LogWarning("Navigation to {DisplayName} failed. Region: {RegionName}, Error: {Error}",
-                                displayName, regionName, result.Exception?.Message ?? "Unknown navigation error");
-                        }
-                    });
+                    _regionManager.RequestNavigate(regionName, viewName, parameters ?? new Prism.Navigation.NavigationParameters());
                 });
 
-                var navigationResult = await tcs.Task;
-
-                if (!navigationResult)
-                {
-                    Logger.LogWarning("Navigation to {DisplayName} completed but reported failure", displayName);
-                }
+                Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
+                    displayName, regionName);
             }
             catch (Exception ex)
             {
@@ -613,56 +676,102 @@ namespace WileyWidget.ViewModels
                     displayName, regionName);
             }
         }
+        // Other Methods
+        //             Logger.LogWarning("Region '{RegionName}' not found in region manager. Available regions: [{AvailableRegions}]",
+        //                 regionName, string.Join(", ", regionManager.Regions.Select(r => r.Name)));
+        //             return;
+        //         }
+
+        //         // Log current region state before navigation
+        //         var region = regionManager.Regions[regionName];
+        //         Logger.LogDebug("Region '{RegionName}' found. Current views: {ViewCount}, Active view: {ActiveView}",
+        //             regionName,
+        //             region.Views?.Count() ?? 0,
+        //             region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
+
+        //         // Perform navigation on the UI thread with callback for result tracking
+        //         var tcs = new TaskCompletionSource<bool>();
+        //         await DispatcherHelper.InvokeAsync(() =>
+        //         {
+        //             regionManager.RequestNavigate(regionName, viewName, (result) =>
+        //             {
+        //                 tcs.SetResult(result.Success);
+        //                 if (result.Success)
+        //                 {
+        //                     Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
+        //                         displayName, regionName);
+        //                 }
+        //                 else
+        //                 {
+        //                     Logger.LogWarning("Navigation to {DisplayName} failed. Region: {RegionName}, Error: {Error}",
+        //                         displayName, regionName, result.Exception?.Message ?? "Unknown navigation error");
+        //                 }
+        //             });
+        //         });
+
+        //         var navigationResult = await tcs.Task;
+
+        //         if (!navigationResult)
+        //         {
+        //             Logger.LogWarning("Navigation to {DisplayName} completed but reported failure", displayName);
+        //         }
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Logger.LogError(ex, "Exception during navigation to {DisplayName} (Region: {RegionName})",
+        //             displayName, regionName);
+        //     }
+        // }
 
         /// <summary>
         /// Safely navigates to a region after checking for existence and logging (Synchronous version for compatibility)
         /// </summary>
-        private void NavigateToRegionSafely(string regionName, string viewName, string displayName)
-        {
-            Logger.LogInformation("Attempting to navigate to {DisplayName} (Region: {RegionName}, View: {ViewName})",
-                displayName, regionName, viewName);
+        // private void NavigateToRegionSafely(string regionName, string viewName, string displayName) // Disabled
+        // {
+        //     Logger.LogInformation("Attempting to navigate to {DisplayName} (Region: {RegionName}, View: {ViewName})",
+        //         displayName, regionName, viewName);
 
-            try
-            {
-                // Check if region exists before attempting navigation
-                if (!regionManager.Regions.ContainsRegionWithName(regionName))
-                {
-                    Logger.LogWarning("Region '{RegionName}' not found in region manager. Available regions: [{AvailableRegions}]",
-                        regionName, string.Join(", ", regionManager.Regions.Select(r => r.Name)));
-                    return;
-                }
+        //     try
+        //     {
+        //         // Check if region exists before attempting navigation
+        //         if (!regionManager.Regions.ContainsRegionWithName(regionName))
+        //         {
+        //             Logger.LogWarning("Region '{RegionName}' not found in region manager. Available regions: [{AvailableRegions}]",
+        //                 regionName, string.Join(", ", regionManager.Regions.Select(r => r.Name)));
+        //             return;
+        //         }
 
-                // Log current region state before navigation
-                var region = regionManager.Regions[regionName];
-                Logger.LogDebug("Region '{RegionName}' found. Current views: {ViewCount}, Active view: {ActiveView}",
-                    regionName,
-                    region.Views?.Count() ?? 0,
-                    region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
+        //         // Log current region state before navigation
+        //         var region = regionManager.Regions[regionName];
+        //         Logger.LogDebug("Region '{RegionName}' found. Current views: {ViewCount}, Active view: {ActiveView}",
+        //             regionName,
+        //             region.Views?.Count() ?? 0,
+        //             region.ActiveViews?.FirstOrDefault()?.GetType().Name ?? "None");
 
-                // Perform navigation with callback for result tracking on the UI thread
-                DispatcherHelper.Invoke(() =>
-                {
-                    regionManager.RequestNavigate(regionName, viewName, (result) =>
-                    {
-                        if (result.Success)
-                        {
-                            Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
-                                displayName, regionName);
-                        }
-                        else
-                        {
-                            Logger.LogWarning("Navigation to {DisplayName} failed. Region: {RegionName}, Error: {Error}",
-                                displayName, regionName, result.Exception?.Message ?? "Unknown navigation error");
-                        }
-                    });
-                });
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Exception during navigation to {DisplayName} (Region: {RegionName})",
-                    displayName, regionName);
-            }
-        }
+        //         // Perform navigation with callback for result tracking on the UI thread
+        //         DispatcherHelper.Invoke(() =>
+        //         {
+        //             regionManager.RequestNavigate(regionName, viewName, (result) =>
+        //             {
+        //                 if (result.Success)
+        //                 {
+        //                 Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
+        //                     displayName, regionName);
+        //                 }
+        //                 else
+        //                 {
+        //                     Logger.LogWarning("Navigation to {DisplayName} failed. Region: {RegionName}, Error: {Error}",
+        //                         displayName, regionName, result.Exception?.Message ?? "Unknown navigation error");
+        //                 }
+        //             });
+        //         });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Logger.LogError(ex, "Exception during navigation to {DisplayName} (Region: {RegionName})",
+        //             displayName, regionName);
+        //     }
+        // }
 
         // Other Methods
         private async Task RefreshAsync()
@@ -710,10 +819,10 @@ namespace WileyWidget.ViewModels
                 await DispatcherHelper.InvokeAsync(() => Enterprises.Clear(), System.Windows.Threading.DispatcherPriority.Background);
 
                 // Trigger navigation refresh on all regions
-                foreach (var region in regionManager.Regions)
-                {
-                    Logger.LogDebug("Refreshing region: {RegionName}", region.Name);
-                }
+                // foreach (var region in regionManager.Regions) // Disabled
+                // {
+                //     Logger.LogDebug("Refreshing region: {RegionName}", region.Name);
+                // }
 
                 stopwatch.Stop();
                 Logger.LogInformation("All data sources refreshed successfully in {ElapsedMs}ms - {LogContext}",

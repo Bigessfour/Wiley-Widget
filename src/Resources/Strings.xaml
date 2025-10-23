@@ -1,5 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:prism="http://prismlibrary.com/"
+                    xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
   <!-- Accessibility names/help -->
   <sys:String x:Key="MunicipalAccounts_AccessibleName">Municipal Accounts View</sys:String>

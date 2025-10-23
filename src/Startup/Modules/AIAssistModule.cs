@@ -1,7 +1,6 @@
 using System;
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
@@ -13,9 +12,9 @@ namespace WileyWidget.Startup.Modules
     /// Registers AIAssistView with the AIAssistRegion.
     /// </summary>
     [Module(ModuleName = "AIAssistModule")]
-    public class AIAssistModule : ModuleInitializer
+    public class AIAssistModule : IModule
     {
-        public override void RegisterTypes(IContainerRegistry containerRegistry)
+        public void RegisterTypes(IContainerRegistry containerRegistry)
         {
             // Register AIAssistViewModel
             containerRegistry.Register<AIAssistViewModel>();
@@ -29,15 +28,15 @@ namespace WileyWidget.Startup.Modules
             Log.Debug("AI assist types registered");
         }
 
-        protected override void InitializeModule(IContainerProvider containerProvider)
+        public void OnInitialized(IContainerProvider containerProvider)
         {
             Log.Information("Initializing AIAssistModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            // var regionManager = containerProvider.Resolve<IRegionManager>();
 
             // Register AIAssistPanelView with AIAssistRegion (SfAIAssistView-based UI)
-            regionManager.RegisterViewWithRegion("AIAssistRegion", typeof(AIAssistPanelView));
-            Log.Information("Successfully registered AIAssistPanelView with AIAssistRegion");
+            // regionManager.RegisterViewWithRegion("AIAssistRegion", typeof(AIAssistPanelView));
+            Log.Information("AIAssistPanelView registration skipped (regions removed)");
 
             Log.Information("AIAssistModule initialization completed");
         }

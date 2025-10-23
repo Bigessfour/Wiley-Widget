@@ -7,7 +7,8 @@ using System.Windows;
 using Microsoft.Extensions.Logging;
 using Prism.Commands;
 using Prism.Mvvm;
-using Prism.Navigation.Regions;
+using Prism.Navigation;
+// using Prism.Regions; // Removed to eliminate dependency
 using WileyWidget.Services;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Base;
@@ -353,13 +354,13 @@ namespace WileyWidget.ViewModels
         {
             Logger.LogInformation("Navigated to QuickBooks view");
 
-            // Load minimal data on navigation - refresh status
+            // Refresh status when the view becomes active
             _ = RefreshStatusAsync();
         }
 
         public bool IsNavigationTarget(NavigationContext navigationContext)
         {
-            // Allow navigation to this view
+            // Allow navigation to this view; caller can request a fresh instance via parameters if needed
             return true;
         }
 
@@ -367,7 +368,20 @@ namespace WileyWidget.ViewModels
         {
             Logger.LogInformation("Navigated away from QuickBooks view");
 
-            // Cleanup if needed - no long-lived resources to dispose
+            // Cancel any ongoing operations and reset sync state as appropriate
+            try
+            {
+                _cancellationTokenSource?.Cancel();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error cancelling QuickBooks operations on navigation away");
+            }
+            finally
+            {
+                // Create a fresh token source for future operations
+                _cancellationTokenSource = new CancellationTokenSource();
+            }
         }
 
         #endregion

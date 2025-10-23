@@ -19,7 +19,7 @@ namespace WileyWidget.ViewModels;
 /// View model for managing utility customers
 /// Provides data binding for customer CRUD operations and search functionality
 /// </summary>
-public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDisposable
+public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDisposable, INavigationAware
 {
     private readonly IUtilityCustomerRepository _customerRepository;
     private readonly IGrokSupercomputer _grokSupercomputer;
@@ -291,6 +291,87 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
         EditCustomerCommand = new DelegateCommand(() => ShowEditCustomerDialog(), () => !IsLoading && SelectedCustomer != null);
     }
 
+    // Navigation lifecycle (production-ready)
+    public void OnNavigatedTo(NavigationContext navigationContext)
+    {
+        // Cancel any previous load and start fresh if requested
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = new CancellationTokenSource();
+
+        var ct = _cancellationTokenSource.Token;
+
+        // Honor navigation params: refresh / loadCustomerId
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Preparing customers...";
+
+                if (navigationContext?.Parameters != null)
+                {
+                    if (navigationContext.Parameters.ContainsKey("refresh") && navigationContext.Parameters["refresh"] is bool refresh && refresh)
+                    {
+                        await ExecuteLoadCustomersAsync();
+                    }
+
+                    if (navigationContext.Parameters.ContainsKey("loadCustomerId") && navigationContext.Parameters["loadCustomerId"] is int id)
+                    {
+                        var c = Customers.FirstOrDefault(x => x.Id == id);
+                        if (c == null)
+                        {
+                            await ExecuteLoadCustomersAsync();
+                            SelectedCustomer = Customers.FirstOrDefault(x => x.Id == id);
+                        }
+                        else
+                        {
+                            SelectedCustomer = c;
+                        }
+                    }
+                }
+                else
+                {
+                    if (!Customers.Any())
+                        await ExecuteLoadCustomersAsync();
+                }
+
+                StatusMessage = "Ready";
+            }
+            catch (OperationCanceledException)
+            {
+                StatusMessage = "Load cancelled";
+                Log.Information("UtilityCustomer navigation load cancelled");
+            }
+            catch (Exception ex)
+            {
+                HasError = true;
+                ErrorMessage = ex.Message;
+                StatusMessage = "Load failed";
+                Log.Error(ex, "Error during UtilityCustomer OnNavigatedTo");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }, ct);
+    }
+
+    public bool IsNavigationTarget(NavigationContext navigationContext) => true;
+
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        // Cancel background operations to free resources
+        try
+        {
+            _cancellationTokenSource?.Cancel();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error cancelling token in UtilityCustomerViewModel.OnNavigatedFrom");
+        }
+    }
+
     /// <summary>
     /// Loads all customers from the database
     /// </summary>
@@ -463,7 +544,8 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
         {
             var temp = new UtilityCustomer { AccountNumber = await GenerateNextAccountNumberAsync() };
             var parameters = new Prism.Dialogs.DialogParameters { { "customer", temp } };
-            _dialogService.ShowDialog(nameof(Views.CustomerEditDialogView), parameters, r =>
+            // use a string key instead of nameof(...) to avoid compile-time dependency on a missing View type
+            _dialogService.ShowDialog("CustomerEditDialogView", parameters, r =>
             {
                 if (r.Parameters.ContainsKey("canceled") && r.Parameters.GetValue<bool>("canceled")) return;
                 if (r.Parameters.ContainsKey("customer"))
@@ -539,7 +621,8 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
         if (_dialogService == null || SelectedCustomer == null) return;
 
         var parameters = new Prism.Dialogs.DialogParameters { { "customer", SelectedCustomer } };
-        _dialogService.ShowDialog(nameof(Views.CustomerEditDialogView), parameters, r =>
+        // use the same string key here as well
+        _dialogService.ShowDialog("CustomerEditDialogView", parameters, r =>
         {
             if (r.Parameters.ContainsKey("canceled") && r.Parameters.GetValue<bool>("canceled")) return;
             if (r.Parameters.ContainsKey("customer"))

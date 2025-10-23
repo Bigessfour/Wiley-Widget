@@ -3,10 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:behaviors="clr-namespace:WileyWidget.Behaviors"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              mc:Ignorable="d"
              d:DesignHeight="200" d:DesignWidth="400"
+             prism:ViewModelLocator.AutoWireViewModel="True"
              syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
              behaviors:MouseFocusBehavior.EnableOnClick="True"
              behaviors:MouseFocusBehavior.EnableOnFirstMove="True">

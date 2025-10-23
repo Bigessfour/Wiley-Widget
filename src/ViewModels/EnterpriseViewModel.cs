@@ -21,7 +21,7 @@ using WileyWidget.Services.Threading;
 
 namespace WileyWidget.ViewModels;
 
-public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDisposable
+public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDisposable, INavigationAware
 {
     // Dependencies
     private readonly IUnitOfWork _unitOfWork;
@@ -280,22 +280,29 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Navigate to enterprise details view
     /// </summary>
-    private void ExecuteNavigateToDetails(int enterpriseId)
+    private void ExecuteNavigateToDetails(int? enterpriseId)
     {
         try
         {
+            if (enterpriseId == null)
+            {
+                ErrorMessage = "Navigation failed: No enterprise id provided";
+                Log.Warning("Navigation failed: enterprise id was null");
+                return;
+            }
+
             // Find enterprise by ID
-            var enterprise = EnterpriseList.FirstOrDefault(e => e.Id == enterpriseId);
+            var enterprise = EnterpriseList.FirstOrDefault(e => e.Id == enterpriseId.Value);
             if (enterprise != null)
             {
                 SelectedEnterprise = enterprise;
                 StatusMessage = $"Viewing details for: {enterprise.Name}";
-                Log.Information("Navigated to enterprise details: {EnterpriseId}", enterpriseId);
+                Log.Information("Navigated to enterprise details: {EnterpriseId}", enterpriseId.Value);
             }
             else
             {
-                ErrorMessage = $"Enterprise with ID {enterpriseId} not found";
-                Log.Warning("Navigation failed: Enterprise ID {EnterpriseId} not found", enterpriseId);
+                ErrorMessage = $"Enterprise with ID {enterpriseId.Value} not found";
+                Log.Warning("Navigation failed: Enterprise ID {EnterpriseId} not found", enterpriseId.Value);
             }
         }
         catch (Exception ex)
@@ -428,42 +435,20 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                 float yPosition = 20;
 
                 // Title
-                graphics.DrawString("Enterprise Report", headerFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 20, yPosition);
-                yPosition += 30;
-
-                // Report info
-                graphics.DrawString($"Generated: {DateTime.Now:g}", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 20, yPosition);
-                yPosition += 20;
-                graphics.DrawString($"Total Enterprises: {enterprises.Count()}", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 20, yPosition);
-                yPosition += 30;
-
-                // Table headers
-                graphics.DrawString("Name", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 20, yPosition);
-                graphics.DrawString("Type", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 120, yPosition);
-                graphics.DrawString("Rate", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 220, yPosition);
-                graphics.DrawString("Citizens", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 320, yPosition);
-                yPosition += 15;
-
-                // Draw header line
-                graphics.DrawLine(Syncfusion.Pdf.Graphics.PdfPens.Black, 20, yPosition, 400, yPosition);
-                yPosition += 10;
-
-                // Table data
-                foreach (var enterprise in enterprises)
-                {
-                    if (yPosition > page.GetClientSize().Height - 50)
+                    foreach (var enterprise in enterprises)
+                    {
+                        if (yPosition > page.GetClientSize().Height - 50)
                     {
                         page = document.Pages.Add();
                         graphics = page.Graphics;
                         yPosition = 20;
                     }
-
-                    graphics.DrawString(enterprise.Name ?? "N/A", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 20, yPosition);
-                    graphics.DrawString(enterprise.Type ?? "N/A", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 120, yPosition);
-                    graphics.DrawString(enterprise.CurrentRate.ToString("C"), font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 220, yPosition);
-                    graphics.DrawString(enterprise.CitizenCount.ToString(), font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 320, yPosition);
-                    yPosition += 15;
-                }
+                        graphics.DrawString(enterprise.Name ?? "N/A", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 20, yPosition);
+                        graphics.DrawString(enterprise.Type ?? "N/A", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 120, yPosition);
+                        graphics.DrawString(enterprise.CurrentRate.ToString("C"), font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 220, yPosition);
+                        graphics.DrawString(enterprise.CitizenCount.ToString(), font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 320, yPosition);
+                        yPosition += 15;
+                    }
 
                 // Summary
                 if (yPosition > page.GetClientSize().Height - 100)
@@ -1171,7 +1156,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     // Commands
     public DelegateCommand LoadEnterprisesCommand { get; private set; }
     public DelegateCommand SelectionChangedCommand { get; private set; }
-    public DelegateCommand<int> NavigateToDetailsCommand { get; private set; }
+    public DelegateCommand<int?> NavigateToDetailsCommand { get; private set; }
     public DelegateCommand NavigateToBudgetViewCommand { get; private set; }
     public DelegateCommand ExportToExcelCommand { get; private set; }
     public DelegateCommand ExportToPdfReportCommand { get; private set; }
@@ -1209,7 +1194,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     {
         LoadEnterprisesCommand = new DelegateCommand(async () => await LoadEnterprisesAsync(), () => !IsLoading);
         SelectionChangedCommand = new DelegateCommand(ExecuteSelectionChanged);
-        NavigateToDetailsCommand = new DelegateCommand<int>(ExecuteNavigateToDetails);
+    NavigateToDetailsCommand = new DelegateCommand<int?>(ExecuteNavigateToDetails);
         NavigateToBudgetViewCommand = new DelegateCommand(ExecuteNavigateToBudgetView);
         ExportToExcelCommand = new DelegateCommand(async () => await ExecuteExportToExcelAsync(), () => !IsLoading);
         ExportToPdfReportCommand = new DelegateCommand(async () => await ExecuteExportToPdfReportAsync(), () => !IsLoading);
@@ -2044,6 +2029,11 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
         }
     }
 
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        // Navigation cleanup handled in Dispose
+    }
+
     // Prism Navigation Implementation
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
@@ -2072,12 +2062,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
         _ = LoadEnterprisesAsync();
     }
 
-    public void OnNavigatedFrom(NavigationContext navigationContext)
-    {
-        Log.Information("EnterpriseViewModel navigated from");
 
-        // Cleanup if needed
-    }
 
     public bool IsNavigationTarget(NavigationContext navigationContext)
     {

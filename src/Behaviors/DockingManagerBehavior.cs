@@ -2,7 +2,6 @@ using System;
 using System.Windows;
 using Microsoft.Xaml.Behaviors;
 using Syncfusion.Windows.Tools.Controls;
-using Prism.Navigation.Regions;
 using Serilog;
 
 namespace WileyWidget.Behaviors

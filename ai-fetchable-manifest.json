@@ -15842,14 +15842,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF"
-        ],
-        "related_files": [
-          "src/Views/AIAssistPanelView.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF"],
+        "related_files": ["src/Views/AIAssistPanelView.xaml.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.AIAssistPanelView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:chat=\"clr-namespace:Syncfusion.UI.Xaml.Chat;assembly=Syncfusion.SfChat.WPF\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             xmlns:prism=\"http://prismlibrary.com/\""
       }
     },
@@ -15932,16 +15926,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/AIAssistView.xaml.cs",
-          "src/ViewModels/AIAssistViewModel.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/AIAssistView.xaml.cs", "src/ViewModels/AIAssistViewModel.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.AIAssistView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             xmlns:notification=\"clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF\""
       }
     },
@@ -16024,15 +16010,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/AboutWindow.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/AboutWindow.xaml.cs"],
         "summary": "<Window x:Class=\"WileyWidget.AboutWindow\"\n        xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n        xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n        xmlns:viewModels=\"clr-namespace:WileyWidget.ViewModels\"\n        xmlns:prism=\"http://prismlibrary.com/\"\n    xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n        Title=\"About Wiley Widget\" SizeToContent=\"WidthAndHeight\" WindowStartupLocation=\"CenterOwner\"\n    ResizeMode=\"NoResize\" Width=\"600\" Height=\"500\"\n    behaviors:MouseFocusBehavior.EnableOnClick=\"True\""
       }
     },
@@ -16087,13 +16066,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "WPF"
-        ],
-        "related_files": [
-          "src/Views/ActivateXaiDialog.xaml.cs"
-        ],
+        "dependencies": ["Prism", "WPF"],
+        "related_files": ["src/Views/ActivateXaiDialog.xaml.cs"],
         "summary": "<Window x:Class=\"WileyWidget.Views.ActivateXaiDialog\"\n    xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n    xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n    xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n    xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n    xmlns:prism=\"http://prismlibrary.com/\"\n    xmlns:res=\"clr-namespace:WileyWidget.Resources\"\n    xmlns:svc=\"clr-namespace:WileyWidget.Services\"\n    mc:Ignorable=\"d\"\n    prism:ViewModelLocator.AutoWireViewModel=\"True\""
       }
     },
@@ -16148,12 +16122,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/AnalyticsView.xaml.cs",
           "src/ViewModels/AnalyticsViewModel.cs"
@@ -16212,12 +16181,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/BudgetAnalysisView.xaml.cs",
           "src/ViewModels/BudgetAnalysisViewModel.cs"
@@ -16276,14 +16240,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF"
-        ],
-        "related_files": [
-          "src/Views/BudgetPanelView.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF"],
+        "related_files": ["src/Views/BudgetPanelView.xaml.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.BudgetPanelView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             xmlns:notification=\"clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF\"\n             mc:Ignorable=\"d\""
       }
     },
@@ -16338,16 +16296,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/BudgetView.xaml.cs",
-          "src/ViewModels/BudgetViewModel.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/BudgetView.xaml.cs", "src/ViewModels/BudgetViewModel.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.BudgetView\"\n        xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n        xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n        xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n        xmlns:local=\"clr-namespace:WileyWidget\"\n        xmlns:converters=\"clr-namespace:WileyWidget.Converters\"\n    xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n    xmlns:notification=\"http://schemas.syncfusion.com/wpf\"\n    xmlns:chart=\"http://schemas.syncfusion.com/wpf\""
       }
     },
@@ -16402,10 +16352,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["WPF", "Behaviors"],
         "related_files": [
           "src/Views/ConfirmationDialogView.xaml.cs",
           "src/ViewModels/ConfirmationDialogViewModel.cs"
@@ -16492,15 +16439,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/ViewModels/CustomerEditDialogViewModel.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/ViewModels/CustomerEditDialogViewModel.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.CustomerEditDialogView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:prism=\"http://prismlibrary.com/\"\n             xmlns:converters=\"clr-namespace:WileyWidget.Converters\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:darkTheme=\"clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF\""
       }
     },
@@ -16527,15 +16467,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/DashboardPanelView.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/DashboardPanelView.xaml.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.DashboardPanelView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             xmlns:notification=\"clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF\"\n             mc:Ignorable=\"d\""
       }
     },
@@ -16590,12 +16523,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/DashboardView.xaml.cs",
           "src/ViewModels/DashboardViewModel.cs"
@@ -16654,10 +16582,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Syncfusion.WPF",
-          "WPF"
-        ],
+        "dependencies": ["Syncfusion.WPF", "WPF"],
         "related_files": [
           "src/Views/EnterpriseDialogView.xaml.cs",
           "src/ViewModels/EnterpriseDialogViewModel.cs"
@@ -16716,15 +16641,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/EnterprisePanelView.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/EnterprisePanelView.xaml.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.EnterprisePanelView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:notification=\"clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\""
       }
     },
@@ -16779,12 +16697,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/EnterpriseView.xaml.cs",
           "src/ViewModels/EnterpriseViewModel.cs"
@@ -16843,10 +16756,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["WPF", "Behaviors"],
         "related_files": [
           "src/Views/ErrorDialogView.xaml.cs",
           "src/ViewModels/ErrorDialogViewModel.cs"
@@ -16905,12 +16815,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/ExcelImportView.xaml.cs",
           "src/ViewModels/ExcelImportViewModel.cs"
@@ -16969,15 +16874,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/MainWindow.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/MainWindow.xaml.cs"],
         "summary": "<Window x:Class=\"WileyWidget.Views.MainWindow\"\n        xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n        xmlns:prism=\"http://prismlibrary.com/\"\n        xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n        xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n    xmlns:i=\"http://schemas.microsoft.com/xaml/behaviors\"\n    xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n    xmlns:vm=\"clr-namespace:WileyWidget.ViewModels\"\n    xmlns:darkTheme=\"clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF\""
       }
     },
@@ -17032,15 +16930,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/MunicipalAccountPanelView.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/MunicipalAccountPanelView.xaml.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.MunicipalAccountPanelView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             xmlns:notification=\"clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF\"\n             xmlns:sys=\"clr-namespace:System;assembly=mscorlib\""
       }
     },
@@ -17095,12 +16986,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/MunicipalAccountView.xaml.cs",
           "src/ViewModels/MunicipalAccountViewModel.cs"
@@ -17159,10 +17045,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["WPF", "Behaviors"],
         "related_files": [
           "src/Views/NotificationDialogView.xaml.cs",
           "src/ViewModels/NotificationDialogViewModel.cs"
@@ -17221,15 +17104,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/ProgressView.xaml.cs",
-          "src/ViewModels/ProgressViewModel.cs"
-        ],
+        "dependencies": ["Prism", "WPF", "Behaviors"],
+        "related_files": ["src/Views/ProgressView.xaml.cs", "src/ViewModels/ProgressViewModel.cs"],
         "summary": "<Window x:Class=\"WileyWidget.ProgressView\"\n        xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n        xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n        xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n    xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n        xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n        xmlns:prism=\"http://prismlibrary.com/\"\n        mc:Ignorable=\"d\"\n        Title=\"{Binding Title}\""
       }
     },
@@ -17284,12 +17160,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/QuickBooksView.xaml.cs",
           "src/ViewModels/QuickBooksViewModel.cs"
@@ -17348,16 +17219,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/ReportsView.xaml.cs",
-          "src/ViewModels/ReportsViewModel.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/ReportsView.xaml.cs", "src/ViewModels/ReportsViewModel.cs"],
         "summary": "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<UserControl x:Class=\"WileyWidget.ReportsView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:pdf=\"clr-namespace:Syncfusion.Windows.PdfViewer;assembly=Syncfusion.PdfViewer.WPF\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\""
       }
     },
@@ -17412,9 +17275,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "WPF"
-        ],
+        "dependencies": ["WPF"],
         "related_files": [
           "src/Views/SettingsDialogView.xaml.cs",
           "src/ViewModels/SettingsDialogViewModel.cs"
@@ -17473,15 +17334,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/SettingsPanelView.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/SettingsPanelView.xaml.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.SettingsPanelView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             xmlns:notification=\"clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF\""
       }
     },
@@ -17536,16 +17390,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/SettingsView.xaml.cs",
-          "src/ViewModels/SettingsViewModel.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/SettingsView.xaml.cs", "src/ViewModels/SettingsViewModel.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.SettingsView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             xmlns:notification=\"http://schemas.syncfusion.com/wpf\""
       }
     },
@@ -17600,12 +17446,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/SplashScreenWindow.xaml.cs",
           "src/ViewModels/SplashScreenWindowViewModel.cs"
@@ -17664,15 +17505,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
-        "related_files": [
-          "src/Views/ToolsPanelView.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
+        "related_files": ["src/Views/ToolsPanelView.xaml.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.ToolsPanelView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:notification=\"http://schemas.syncfusion.com/wpf\"\n             mc:Ignorable=\"d\""
       }
     },
@@ -17727,14 +17561,8 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF"
-        ],
-        "related_files": [
-          "src/Views/UtilityCustomerPanelView.xaml.cs"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF"],
+        "related_files": ["src/Views/UtilityCustomerPanelView.xaml.cs"],
         "summary": "<UserControl x:Class=\"WileyWidget.Views.UtilityCustomerPanelView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             mc:Ignorable=\"d\"\n             d:DesignHeight=\"800\""
       }
     },
@@ -17789,12 +17617,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "Prism",
-          "Syncfusion.WPF",
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["Prism", "Syncfusion.WPF", "WPF", "Behaviors"],
         "related_files": [
           "src/Views/UtilityCustomerView.xaml.cs",
           "src/ViewModels/UtilityCustomerViewModel.cs"
@@ -17853,10 +17676,7 @@
         "category": "source_code",
         "importance": "high",
         "description": "XAML file containing project code/data",
-        "dependencies": [
-          "WPF",
-          "Behaviors"
-        ],
+        "dependencies": ["WPF", "Behaviors"],
         "related_files": [
           "src/Views/WarningDialogView.xaml.cs",
           "src/ViewModels/WarningDialogViewModel.cs"
