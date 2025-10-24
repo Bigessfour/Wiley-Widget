@@ -1,5 +1,10 @@
 # This file controls the behavior of Trunk: https://docs.trunk.io/cli
 # To learn more about the format of this file, see https://docs.trunk.io/reference/trunk-yaml
+#
+# UPDATED WORKFLOW (October 24, 2025):
+# Use 'trunk check --fix' instead of 'trunk fmt --all' to only process changed files
+# Pre-commit: trunk check --fix && trunk check --ci
+#
 version: 0.1
 cli:
   version: 1.25.0

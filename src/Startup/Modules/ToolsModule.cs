@@ -9,30 +9,10 @@ using WileyWidget.Views;
 namespace WileyWidget.Startup.Modules
 {
     /// <summary>
-    /// Prism module responsible for tools functionality.
-    /// Registers ToolsPanelView with the BottomPanelRegion.
+    /// Deprecated: Tools functionality consolidated into SettingsModule. This class remains for source history only and is not a Prism module.
     /// </summary>
-    [Module(ModuleName = "ToolsModule")]
-    public class ToolsModule : IModule
+    public class ToolsModule
     {
-        public void OnInitialized(IContainerProvider containerProvider)
-        {
-            Log.Information("Initializing ToolsModule");
-
-            // var regionManager = containerProvider.Resolve<IRegionManager>(); // Disabled
-
-            // Note: ToolsPanelView is registered by PanelModule with BottomPanelRegion
-            // We may need to move this registration here in the future
-
-            Log.Information("ToolsModule initialization completed");
-        }
-
-        public void RegisterTypes(IContainerRegistry containerRegistry)
-        {
-            // Register ToolsViewModel
-            containerRegistry.Register<ToolsViewModel>();
-
-            Log.Debug("Tools types registered");
-        }
+        // Intentionally left empty
     }
 }

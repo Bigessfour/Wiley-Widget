@@ -12,10 +12,10 @@ $allSet = $true
 foreach ($var in $envVars) {
     $value = [Environment]::GetEnvironmentVariable($var, 'User')
     if ($value) {
-        Write-Output "✅ $var: Configured"
+        Write-Output "✅ $($var): Configured"
     }
     else {
-        Write-Warning "❌ $var: Missing"
+        Write-Warning "❌ $($var): Missing"
         $allSet = $false
     }
 }

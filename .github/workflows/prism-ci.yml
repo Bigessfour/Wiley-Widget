@@ -1,0 +1,31 @@
+name: Prism CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore WileyWidget.sln
+      - name: Build
+        run: dotnet build WileyWidget.sln -c Release --no-restore
+      - name: Test
+        run: dotnet test tests/PrismUnityIntegrationTests/PrismUnityIntegrationTests.csproj -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/TestResults/*.trx
+            **/TestResults/**/*.xml

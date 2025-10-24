@@ -2,7 +2,7 @@ using System;
 using Microsoft.Extensions.Options;
 using Serilog;
 
-namespace WileyWidget.Configuration;
+namespace WileyWidget.Models;
 
 /// <summary>
 /// Basic <see cref="IOptionsMonitor{TOptions}"/> implementation used to bridge

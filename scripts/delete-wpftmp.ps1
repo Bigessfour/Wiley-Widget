@@ -11,7 +11,7 @@ $targets = @()
 try {
     if (Get-Module -ListAvailable -Name FsTools) {
         Import-Module FsTools -ErrorAction Stop | Out-Null
-        $targets = Find-Files -Pattern '*_wpftmp.csproj' -In $Workspace -Recurse | Select-Object -ExpandProperty FullName
+        $targets = Get-FileMatch -Pattern '*_wpftmp.csproj' -In $Workspace -Recurse | Select-Object -ExpandProperty FullName
     }
     else {
         $targets = Get-ChildItem -Path $Workspace -Recurse -Filter '*_wpftmp.csproj' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName

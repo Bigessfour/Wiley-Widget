@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Microsoft.Extensions.Options;
 
-namespace WileyWidget.Configuration;
+namespace WileyWidget.Models;
 
 /// <summary>
 /// Custom validation for ConnectionStringsOptions

@@ -46,7 +46,7 @@ using WileyWidget.ViewModels.Messages;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Threading.Tasks;
-using Prism.Navigation.Regions;
+using Prism.Regions;
 // using Microsoft.ApplicationInsights;
 // using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
@@ -60,7 +60,8 @@ namespace WileyWidget
         // Static mapping of expected regions for each module for maintainability and reuse
         private static readonly Dictionary<string, string[]> moduleRegionMap = new Dictionary<string, string[]>
         {
-            ["CoreModule"] = new[] { "SettingsRegion" }, // Core module handles settings
+            ["CoreModule"] = Array.Empty<string>(),
+            ["SettingsModule"] = new[] { "SettingsRegion" },
             ["DashboardModule"] = new[] { "MainRegion" },
             ["EnterpriseModule"] = new[] { "EnterpriseRegion" },
             ["BudgetModule"] = new[] { "BudgetRegion", "AnalyticsRegion" },
@@ -68,8 +69,7 @@ namespace WileyWidget
             ["UtilityCustomerModule"] = new[] { "UtilityCustomerRegion" },
             ["ReportsModule"] = new[] { "ReportsRegion" },
             ["AIAssistModule"] = new[] { "AIAssistRegion" },
-            ["PanelModule"] = new[] { "LeftPanelRegion", "RightPanelRegion", "BottomPanelRegion" },
-            ["ToolsModule"] = new[] { "BottomPanelRegion" }
+            ["PanelModule"] = new[] { "LeftPanelRegion", "RightPanelRegion", "BottomPanelRegion" }
         };
         public static void LogDebugEvent(string category, string message) => Log.Debug("[{Category}] {Message}", category, message);
         public static void LogStartupTiming(string message, TimeSpan elapsed) => Log.Debug("{Message} completed in {Ms}ms", message, elapsed.TotalMilliseconds);
@@ -88,18 +88,13 @@ namespace WileyWidget
                 return;
             }
 
-            lock (StartupProgressSyncRoot)
-            {
-                StartupProgress = report;
-                LastHealthReportUpdate = DateTimeOffset.UtcNow;
-            }
-
+            // If the report is a collection of module health infos, summarize it
             if (report is IEnumerable<ModuleHealthInfo> moduleHealthInfos)
             {
                 int totalModules = 0;
                 int healthyModules = 0;
 
-                foreach (ModuleHealthInfo module in moduleHealthInfos)
+                foreach (var module in moduleHealthInfos)
                 {
                     totalModules++;
                     if (module.Status == ModuleHealthStatus.Healthy)
@@ -109,14 +104,17 @@ namespace WileyWidget
                 }
 
                 Log.Debug("Module health report refreshed: {Healthy}/{Total} modules healthy", healthyModules, totalModules);
+                return;
             }
             else if (report is ModuleHealthInfo singleModule)
             {
                 Log.Debug("Module health report refreshed for {ModuleName}: {Status}", singleModule.ModuleName, singleModule.Status);
+                return;
             }
             else
             {
                 Log.Debug("Module health report refreshed ({ReportType})", report.GetType().FullName);
+                return;
             }
         }
 
@@ -306,6 +304,46 @@ END
                     Log.Debug(sqlEx, "Database preflight transient failure (attempt {Attempt}); retrying in {Delay}ms", attempt, delayMs);
                     Task.Delay(delayMs).GetAwaiter().GetResult();
                 }
+            }
+        }
+
+        // Configure custom region adapters for third-party controls (e.g., Syncfusion)
+        protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
+        {
+            base.ConfigureRegionAdapterMappings(regionAdapterMappings);
+            try
+            {
+                var behaviorFactory = Container.Resolve<IRegionBehaviorFactory>();
+                var sfGridAdapter = new WileyWidget.Regions.SfDataGridRegionAdapter(behaviorFactory);
+                regionAdapterMappings.RegisterMapping(typeof(Syncfusion.UI.Xaml.Grid.SfDataGrid), sfGridAdapter);
+                Log.Information("✓ Registered SfDataGridRegionAdapter for Prism regions");
+
+                // Register Syncfusion DockingManager adapter
+                var dockingAdapter = new WileyWidget.Regions.DockingManagerRegionAdapter(behaviorFactory);
+                regionAdapterMappings.RegisterMapping(typeof(Syncfusion.Windows.Tools.Controls.DockingManager), dockingAdapter);
+                Log.Information("✓ Registered DockingManagerRegionAdapter for Prism regions");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to register SfDataGridRegionAdapter; grid regions will be unavailable");
+            }
+        }
+
+        // Configure default region behaviors, including diagnostics and context sync
+        protected override void ConfigureDefaultRegionBehaviors(IRegionBehaviorFactory regionBehaviors)
+        {
+            base.ConfigureDefaultRegionBehaviors(regionBehaviors);
+            try
+            {
+                regionBehaviors.AddIfMissing(WileyWidget.Regions.NavigationLoggingBehavior.BehaviorKey, typeof(WileyWidget.Regions.NavigationLoggingBehavior));
+                regionBehaviors.AddIfMissing(WileyWidget.Regions.AutoActivateBehavior.BehaviorKey, typeof(WileyWidget.Regions.AutoActivateBehavior));
+                regionBehaviors.AddIfMissing(WileyWidget.Regions.AutoSaveBehavior.BehaviorKey, typeof(WileyWidget.Regions.AutoSaveBehavior));
+                regionBehaviors.AddIfMissing(WileyWidget.Regions.SyncContextWithHostBehavior.BehaviorKey, typeof(WileyWidget.Regions.SyncContextWithHostBehavior));
+                Log.Information("✓ Registered default Prism region behaviors (NavigationLogging, AutoActivate, AutoSave, SyncContextWithHost)");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to register one or more region behaviors");
             }
         }
 
@@ -573,13 +611,19 @@ END
         {
             try
             {
-                Shell shell = new Shell();
-                Log.Information("Shell created successfully");
+                var shell = Container.Resolve<Views.Shell>();
+                Log.Information("Shell resolved from container successfully");
+
+                // Set DataContext to MainViewModel to fix navigation anomaly
+                var mainViewModel = Container.Resolve<MainViewModel>();
+                shell.DataContext = mainViewModel;
+                Log.Information("MainViewModel set as Shell DataContext");
+
                 return shell;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to create application shell");
+                Log.Error(ex, "Failed to resolve application shell from container");
                 throw new InvalidOperationException("Failed to create application shell. Check DI registrations and service availability.", ex);
             }
         }
@@ -894,25 +938,27 @@ END
                 throw;
             }
 
-            // Initialize production secrets (synchronous for reliability)
-            try
+            // Defer secrets initialization to a background task to avoid blocking startup
+            _ = System.Threading.Tasks.Task.Run(async () =>
             {
-                ISecretVaultService secretVault = Container.Resolve<ISecretVaultService>();
-                secretVault.MigrateSecretsFromEnvironmentAsync().GetAwaiter().GetResult();
-                Log.Information("✓ Environment secrets migrated to local vault");
-
-                // Only populate production secrets if we're in production environment
-                string environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
-                if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
+                try
                 {
-                    secretVault.PopulateProductionSecretsAsync().GetAwaiter().GetResult();
-                    Log.Information("✓ Production secrets initialized");
+                    var secretVault = Container.Resolve<ISecretVaultService>();
+                    await secretVault.MigrateSecretsFromEnvironmentAsync().ConfigureAwait(false);
+                    Log.Information("✓ (Deferred) Environment secrets migrated to local vault");
+
+                    var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+                    if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await secretVault.PopulateProductionSecretsAsync().ConfigureAwait(false);
+                        Log.Information("✓ (Deferred) Production secrets initialized");
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to initialize production secrets");
-            }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Deferred production secrets initialization failed");
+                }
+            });
 
             try
             {
@@ -964,10 +1010,7 @@ END
                 containerRegistry.RegisterSingleton<IChargeCalculatorService, ServiceChargeCalculatorService>();
                 Log.Information("✓ Registered business services (WhatIfScenarioEngine, FiscalYearSettings, ChargeCalculator)");
 
-                // Also register concrete types explicitly to help resolution during unit tests
-                containerRegistry.Register<WileyWidget.Data.MunicipalAccountRepository>();
-                containerRegistry.Register<WileyWidget.Services.WhatIfScenarioEngine>();
-                containerRegistry.Register<WileyWidget.Services.ServiceChargeCalculatorService>();
+                // Removed duplicate concrete registrations to streamline DI
             }
             catch (Exception ex)
             {
@@ -991,7 +1034,6 @@ END
 
                     // Register QuickBooks service
                     containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
-                    containerRegistry.RegisterSingleton<QuickBooksService>(); // Register concrete type for ViewModel injection
                     Log.Information("✓ Registered IQuickBooksService as singleton");
                 }
             }
@@ -1025,12 +1067,33 @@ END
                 containerRegistry.RegisterDialog<Views.WarningDialogView, ViewModels.WarningDialogViewModel>("WarningDialog");
                 containerRegistry.RegisterDialog<Views.ErrorDialogView, ViewModels.ErrorDialogViewModel>("ErrorDialog");
                 containerRegistry.RegisterDialog<Views.SettingsDialogView, ViewModels.SettingsDialogViewModel>("SettingsDialog");
+                // Register AI Assist as a Prism Dialog for modal prompts
+                containerRegistry.RegisterDialog<WileyWidget.AIAssistView, ViewModels.AIAssistViewModel>("AIAssistDialog");
                 Log.Information("✓ Registered Prism Dialogs (Confirmation, Notification, Warning, Error, Settings)");
 
-                // Register Navigation Service with Journal support
-                // REMOVED: Legacy INavigationService replaced with Prism IRegionManager
-                // containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
-                // Log.Information("✓ Registered INavigationService with journal support");
+                // Register Views for Navigation (recommended)
+                containerRegistry.RegisterForNavigation<WileyWidget.DashboardView, ViewModels.DashboardViewModel>("DashboardView");
+                containerRegistry.RegisterForNavigation<WileyWidget.EnterpriseView, ViewModels.EnterpriseViewModel>("EnterpriseView");
+                containerRegistry.RegisterForNavigation<WileyWidget.BudgetView, ViewModels.BudgetViewModel>("BudgetView");
+                containerRegistry.RegisterForNavigation<WileyWidget.Views.MunicipalAccountView, ViewModels.MunicipalAccountViewModel>("MunicipalAccountView");
+                containerRegistry.RegisterForNavigation<WileyWidget.UtilityCustomerView, ViewModels.UtilityCustomerViewModel>("UtilityCustomerView");
+                containerRegistry.RegisterForNavigation<WileyWidget.ReportsView, ViewModels.ReportsViewModel>("ReportsView");
+                containerRegistry.RegisterForNavigation<WileyWidget.AnalyticsView, ViewModels.AnalyticsViewModel>("AnalyticsView");
+                containerRegistry.RegisterForNavigation<WileyWidget.QuickBooksView, ViewModels.QuickBooksViewModel>("QuickBooksView");
+                containerRegistry.RegisterForNavigation<WileyWidget.Views.ExcelImportView, ViewModels.ExcelImportViewModel>("ExcelImportView");
+                containerRegistry.RegisterForNavigation<WileyWidget.SettingsView, ViewModels.SettingsViewModel>("SettingsView");
+                containerRegistry.RegisterForNavigation<WileyWidget.AIAssistView, ViewModels.AIAssistViewModel>("AIAssistView");
+
+                // Panel views (no dedicated ViewModels)
+                containerRegistry.RegisterForNavigation<Views.DashboardPanelView>("DashboardPanelView");
+                containerRegistry.RegisterForNavigation<Views.EnterprisePanelView>("EnterprisePanelView");
+                containerRegistry.RegisterForNavigation<Views.BudgetPanelView>("BudgetPanelView");
+                containerRegistry.RegisterForNavigation<Views.MunicipalAccountPanelView>("MunicipalAccountPanelView");
+                containerRegistry.RegisterForNavigation<Views.SettingsPanelView>("SettingsPanelView");
+                containerRegistry.RegisterForNavigation<Views.ToolsPanelView>("ToolsPanelView");
+                containerRegistry.RegisterForNavigation<Views.AIAssistPanelView>("AIAssistPanelView");
+                containerRegistry.RegisterForNavigation<Views.UtilityCustomerPanelView>("UtilityCustomerPanelView");
+                Log.Information("✓ Registered Views for navigation (core, analytics, settings, panels)");
 
                 // Register Composite Command Service
                 containerRegistry.RegisterSingleton<ICompositeCommandService, CompositeCommandService>();
@@ -1080,7 +1143,7 @@ END
                         var excelReader = provider.Resolve<IExcelReaderService>();
                         var reportExport = provider.Resolve<IReportExportService>();
                         var budgetRepo = provider.Resolve<IBudgetRepository>();
-                        var aiService = unityContainer.IsRegistered<IAIService>() ? provider.Resolve<IAIService>() : null;
+                        var aiService = provider.IsRegistered<IAIService>() ? provider.Resolve<IAIService>() : null;
 
                         return new MainViewModel(
                             dialogService,
@@ -1130,10 +1193,44 @@ END
 
             // Navigation registrations are now handled by individual modules
 
+            // Convention-based registrations: attempt to auto-register remaining services, repositories, and ViewModels
+            try
+            {
+                var unityContainerForConventions = containerRegistry.GetContainer();
+                RegisterConventions(containerRegistry, unityContainerForConventions);
+                ValidateAndRegisterViewModels(containerRegistry, unityContainerForConventions);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Convention-based registration encountered an error; continuing with explicit registrations only");
+            }
+
             Log.Information("=== DI Container Registration Complete ===");
             Log.Information($"Total registrations: AI Services, Data Repositories, Business Services, ViewModels, Infrastructure");
             Log.Information("Container ready for service resolution");
             Log.Debug("Starting Prism infrastructure validation...");
+
+            try
+            {
+                // Ensure Prism's ViewModelLocationProvider resolves ViewModels from the DI container
+                Prism.Mvvm.ViewModelLocationProvider.SetDefaultViewModelFactory((view, viewModelType) =>
+                {
+                    try
+                    {
+                        return Container.Resolve(viewModelType);
+                    }
+                    catch (Exception)
+                    {
+                        // Fallback: allow Activator to create the ViewModel if it's not registered in the container
+                        return Activator.CreateInstance(viewModelType);
+                    }
+                });
+                Log.Information("✓ Configured Prism ViewModelLocationProvider to resolve ViewModels from DI container");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to configure Prism ViewModelLocationProvider default factory; XAML auto-wiring may fall back to Activator.CreateInstance");
+            }
 
             // Run focused resolution diagnostics only when extended diagnostics are enabled
             if (enableExtendedDiagnostics)
@@ -1420,8 +1517,6 @@ END
                 typeof(IRegionManager),
                 typeof(IEventAggregator),
                 typeof(Prism.Dialogs.IDialogService),
-                // REMOVED: Legacy INavigationService deleted
-                // typeof(INavigationService),
                 typeof(ICompositeCommandService)
             };
 
@@ -1438,6 +1533,169 @@ END
                     // Don't throw here - let application continue with partial functionality
                 }
             }
+        }
+
+        /// <summary>
+        /// Registers types by convention to reduce manual registrations.
+        /// - Services/Repositories/Providers ending with common suffixes are registered as singletons when an interface I{TypeName} exists.
+        /// - ViewModels are registered as transient types so Prism can resolve them via ViewModelLocator.
+        /// This helper is best-effort and will not overwrite existing registrations.
+        /// </summary>
+        private static void RegisterConventions(IContainerRegistry containerRegistry, IUnityContainer unityContainer)
+        {
+            if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
+            if (unityContainer == null) throw new ArgumentNullException(nameof(unityContainer));
+
+            int registeredCount = 0;
+            var suffixesForSingleton = new[] { "Service", "Repository", "Provider", "Engine" };
+
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type[] types;
+                try
+                {
+                    types = asm.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    types = ex.Types.Where(t => t != null).ToArray()!;
+                }
+
+                foreach (var t in types)
+                {
+                    if (t == null) continue;
+                    if (!t.IsClass || t.IsAbstract) continue;
+                    if (t.Namespace == null || !t.Namespace.StartsWith("WileyWidget")) continue;
+
+                    var name = t.Name;
+
+                    try
+                    {
+                        // Services / repositories / providers -> prefer to register against I{TypeName} when available
+                        if (suffixesForSingleton.Any(s => name.EndsWith(s, StringComparison.Ordinal)))
+                        {
+                            var interfaces = t.GetInterfaces().Where(i => i != null && i.Namespace != null && i.Namespace.StartsWith("WileyWidget")).ToArray();
+                            var preferred = interfaces.FirstOrDefault(i => string.Equals(i.Name, "I" + name, StringComparison.Ordinal));
+                            if (preferred != null)
+                            {
+                                if (!unityContainer.IsRegistered(preferred))
+                                {
+                                    unityContainer.RegisterSingleton(preferred, t);
+                                    registeredCount++;
+                                    Log.Debug("Convention: Registered singleton {Interface} -> {Impl}", preferred.FullName, t.FullName);
+                                }
+                                continue;
+                            }
+
+                            // No matching interface, register concrete as singleton if not already
+                            if (!unityContainer.IsRegistered(t))
+                            {
+                                unityContainer.RegisterSingleton(t, t);
+                                registeredCount++;
+                                Log.Debug("Convention: Registered singleton {Type}", t.FullName);
+                            }
+                            continue;
+                        }
+
+                        // ViewModels -> transient (RegisterType) so Prism / ViewModelLocator can create per-view instances
+                        if (name.EndsWith("ViewModel", StringComparison.Ordinal))
+                        {
+                            if (!unityContainer.IsRegistered(t))
+                            {
+                                unityContainer.RegisterType(t, t);
+                                registeredCount++;
+                                Log.Debug("Convention: Registered ViewModel type {Type}", t.FullName);
+                            }
+                            continue;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Convention registration failed for type {Type}", t.FullName);
+                    }
+                }
+            }
+
+            Log.Information("Convention-based registration completed ({Count} new registrations)", registeredCount);
+        }
+
+        /// <summary>
+        /// Validates that Views have an associated ViewModel type available and auto-registers missing ViewModels.
+        /// Logs warnings for Views that have no corresponding ViewModel discovered.
+        /// </summary>
+        private static void ValidateAndRegisterViewModels(IContainerRegistry containerRegistry, IUnityContainer unityContainer)
+        {
+            if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
+            if (unityContainer == null) throw new ArgumentNullException(nameof(unityContainer));
+
+            int autoRegistered = 0;
+            int viewsWithoutVm = 0;
+
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            var allTypes = new List<Type>();
+            foreach (var asm in assemblies)
+            {
+                try
+                {
+                    allTypes.AddRange(asm.GetTypes());
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    allTypes.AddRange(ex.Types.Where(t => t != null)!);
+                }
+            }
+
+            var viewTypes = allTypes.Where(t => t != null && t.IsClass && !t.IsAbstract && t.Name.EndsWith("View", StringComparison.Ordinal)).ToArray();
+
+            foreach (var view in viewTypes)
+            {
+                try
+                {
+                    // Candidate VM name: prefer WileyWidget.ViewModels.{ViewName}Model
+                    var vmName = (view.Namespace != null && view.Namespace.Contains("Views"))
+                        ? view.Namespace.Replace(".Views", ".ViewModels") + "." + view.Name.Replace("View", "ViewModel")
+                        : "WileyWidget.ViewModels." + view.Name.Replace("View", "ViewModel");
+
+                    Type? vmType = null;
+                    foreach (var asm in assemblies)
+                    {
+                        vmType = asm.GetType(vmName);
+                        if (vmType != null) break;
+                    }
+
+                    if (vmType == null)
+                    {
+                        viewsWithoutVm++;
+                        Log.Warning("ViewModel not found for view {View}. Expected type: {Expected}", view.FullName, vmName);
+                        continue;
+                    }
+
+                    if (!unityContainer.IsRegistered(vmType))
+                    {
+                        try
+                        {
+                            // Register transient ViewModel so Prism can resolve it per view
+                            unityContainer.RegisterType(vmType, vmType);
+                            autoRegistered++;
+                            Log.Information("Auto-registered ViewModel {VM} for view {View}", vmType.FullName, view.FullName);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "Failed to auto-register ViewModel {VM}", vmType.FullName);
+                        }
+                    }
+                    else
+                    {
+                        Log.Debug("ViewModel {VM} already registered for view {View}", vmType.FullName, view.FullName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Error validating view {View}", view?.FullName ?? "(unknown)");
+                }
+            }
+
+            Log.Information("ViewModel validation completed: {AutoRegistered} auto-registered, {Missing} views lacked a ViewModel.", autoRegistered, viewsWithoutVm);
         }
 
         private static void EnableUnityDiagnostics(IUnityContainer unityContainer)
@@ -1825,55 +2083,7 @@ END
             }
         }
 
-        protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
-        {
-            base.ConfigureRegionAdapterMappings(regionAdapterMappings);
 
-            // Standard WPF control region adapters are registered by base.ConfigureRegionAdapterMappings()
-            // including TabControl, ContentControl, ItemsControl, and Selector
-
-            // Custom adapter for Syncfusion controls (e.g., DockingManager)
-            // Temporarily disabled - ContentControls within DockingManager should use standard ContentControl adapter
-            // regionAdapterMappings.RegisterMapping<Syncfusion.Windows.Tools.Controls.DockingManager>(Container.Resolve<WileyWidget.Regions.DockingManagerRegionAdapter>());
-
-            // Register protective SfDataGrid adapter to provide clear diagnostics instead of obscure InvalidCastException
-            // Temporarily disabled - use standard adapters
-            // try
-            // {
-            //     var rbFactory = Container.Resolve<IRegionBehaviorFactory>();
-            //     if (rbFactory != null)
-            //     {
-            //         var sfAdapter = new WileyWidget.Regions.SfDataGridRegionAdapter(rbFactory);
-            //         regionAdapterMappings.RegisterMapping<Syncfusion.UI.Xaml.Grid.SfDataGrid>(sfAdapter);
-            //         Log.Debug("Registered SfDataGrid region adapter mapping to SfDataGridRegionAdapter (instance)");
-            //     }
-            // }
-            // catch (Exception ex)
-            // {
-            //     Log.Warning(ex, "Failed to register SfDataGrid region adapter mapping; continuing without mapping");
-            // }
-
-            // Register region behaviors
-            var regionBehaviorFactory = Container.Resolve<IRegionBehaviorFactory>();
-
-            // Navigation logging behavior for all regions
-            regionBehaviorFactory.AddIfMissing(WileyWidget.Regions.NavigationLoggingBehavior.BehaviorKey,
-                typeof(WileyWidget.Regions.NavigationLoggingBehavior));
-
-            // Auto-save behavior for data entry regions
-            regionBehaviorFactory.AddIfMissing(WileyWidget.Regions.AutoSaveBehavior.BehaviorKey,
-                typeof(WileyWidget.Regions.AutoSaveBehavior));
-
-            // Navigation history behavior for main content regions
-            regionBehaviorFactory.AddIfMissing(WileyWidget.Regions.NavigationHistoryBehavior.BehaviorKey,
-                typeof(WileyWidget.Regions.NavigationHistoryBehavior));
-
-            // Auto-activate behavior for single-view regions
-            regionBehaviorFactory.AddIfMissing(WileyWidget.Regions.AutoActivateBehavior.BehaviorKey,
-                typeof(WileyWidget.Regions.AutoActivateBehavior));
-
-            Log.Information("✓ Registered Prism region behaviors: NavigationLogging, AutoSave, NavigationHistory, AutoActivate");
-        }
 
         // Cache configuration to avoid redundant loading
         private IConfiguration? _cachedConfiguration;
@@ -1882,17 +2092,93 @@ END
         {
             Log.Information("=== Configuring Prism Module Catalog ===");
 
-            // Manually add modules
-            moduleCatalog.AddModule<CoreModule>();
-            moduleCatalog.AddModule<DashboardModule>();
-            moduleCatalog.AddModule<EnterpriseModule>();
-            moduleCatalog.AddModule<BudgetModule>();
-            moduleCatalog.AddModule<MunicipalAccountModule>();
-            moduleCatalog.AddModule<UtilityCustomerModule>();
-            moduleCatalog.AddModule<ReportsModule>();
-            moduleCatalog.AddModule<AIAssistModule>();
-            moduleCatalog.AddModule<PanelModule>();
-            moduleCatalog.AddModule<ToolsModule>();
+            // Manually add modules with OnDemand initialization to improve startup time
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(CoreModule).Name,
+                ModuleType = typeof(CoreModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.WhenAvailable
+            });
+
+            // Use typeof-based assembly-qualified name for robustness across test/runtime contexts
+            // Register SettingsModule only if present (avoid hard compile-time dependency)
+            try
+            {
+                var settingsModuleType = Type.GetType("WileyWidget.Startup.Modules.SettingsModule, WileyWidget");
+                if (settingsModuleType != null)
+                {
+                    moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+                    {
+                        ModuleName = "SettingsModule",
+                        ModuleType = settingsModuleType.AssemblyQualifiedName,
+                        InitializationMode = Prism.Modularity.InitializationMode.WhenAvailable
+                    });
+                }
+                else
+                {
+                    Log.Debug("SettingsModule not found; skipping registration");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Skipping SettingsModule registration due to resolution failure");
+            }
+
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(DashboardModule).Name,
+                ModuleType = typeof(DashboardModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
+            });
+
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(EnterpriseModule).Name,
+                ModuleType = typeof(EnterpriseModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
+            });
+
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(BudgetModule).Name,
+                ModuleType = typeof(BudgetModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
+            });
+
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(MunicipalAccountModule).Name,
+                ModuleType = typeof(MunicipalAccountModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
+            });
+
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(UtilityCustomerModule).Name,
+                ModuleType = typeof(UtilityCustomerModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
+            });
+
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(ReportsModule).Name,
+                ModuleType = typeof(ReportsModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
+            });
+
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(AIAssistModule).Name,
+                ModuleType = typeof(AIAssistModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
+            });
+
+            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+            {
+                ModuleName = typeof(PanelModule).Name,
+                ModuleType = typeof(PanelModule).AssemblyQualifiedName,
+                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
+            });
 
             Log.Information("✓ Manually registered modules");
         }
@@ -2033,6 +2319,7 @@ END
 
                 // Feature modules - load on demand to improve startup performance
                 ["DashboardModule"] = InitializationMode.WhenAvailable,
+                ["SettingsModule"] = InitializationMode.WhenAvailable,
                 ["EnterpriseModule"] = InitializationMode.OnDemand,
                 ["BudgetModule"] = InitializationMode.OnDemand,
                 ["MunicipalAccountModule"] = isTestMode ? InitializationMode.WhenAvailable : InitializationMode.OnDemand,
@@ -2042,8 +2329,7 @@ END
                 ["AIAssistModule"] = InitializationMode.WhenAvailable,
 
                 // Panel modules - load when their dependencies are loaded
-                ["PanelModule"] = InitializationMode.WhenAvailable,
-                ["ToolsModule"] = InitializationMode.OnDemand
+                ["PanelModule"] = InitializationMode.WhenAvailable
             };
 
             return moduleInitModes.TryGetValue(moduleName, out var mode) ? mode : Enum.Parse<InitializationMode>(defaultMode);
@@ -2067,7 +2353,7 @@ END
                 ["ReportsModule"] = new[] { "ReportsRegion" },
                 ["AIAssistModule"] = new[] { "AIAssistRegion" },
                 ["PanelModule"] = new[] { "LeftPanelRegion", "RightPanelRegion", "BottomPanelRegion" },
-                ["ToolsModule"] = new[] { "BottomPanelRegion" }
+                ["SettingsModule"] = new[] { "SettingsRegion" }
             };
 
             Log.Information("=== Validating Module Initialization and Region Availability ===");

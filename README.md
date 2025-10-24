@@ -512,7 +512,7 @@ WileyWidget leverages the **Prism framework** for building modular, maintainable
 - `EnterpriseModule`: Enterprise data management
 - `ReportsModule`: Reporting and data visualization
 - `SettingsModule`: Application configuration
-- `ToolsModule`: Utility tools and helpers
+- `SettingsModule` consolidates former `ToolsModule` utilities.
 
 #### **🗣️ Dialog Service**
 - **Modal Dialogs**: Standardized dialog implementation

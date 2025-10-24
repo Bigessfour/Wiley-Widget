@@ -1,6 +1,6 @@
 using System;
 using Prism.Ioc;
-using Prism.Navigation.Regions;
+using Prism.Regions;
 using Prism.Modularity;
 using Serilog;
 using WileyWidget.ViewModels;
@@ -53,8 +53,7 @@ namespace WileyWidget.Startup.Modules
             // Register AnalyticsViewModel
             containerRegistry.Register<AnalyticsViewModel>();
 
-            // Register Budget repository
-            containerRegistry.Register<IBudgetRepository, WileyWidget.Data.BudgetRepository>();
+            // Budget repository is registered centrally in App.RegisterTypes; avoid duplicate registration here
 
             // Register views for navigation
             containerRegistry.RegisterForNavigation<BudgetView, BudgetViewModel>();

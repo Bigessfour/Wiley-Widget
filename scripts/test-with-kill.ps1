@@ -48,7 +48,11 @@ try {
         "build",
         "$PSScriptRoot\..\WileyWidget.csproj",
         "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary"
+        "/consoleloggerparameters:NoSummary",
+        # Force legacy (non-wpftmp) path for XAML to avoid design-time NuGet resolution issues
+        "/p:GenerateTemporaryTargetAssembly=false",
+        "/p:IncludePackageReferencesDuringMarkupCompilation=false",
+        "/p:AlwaysCompileMarkupFilesInSeparateDomain=false"
     )
 
     & dotnet $buildArgs

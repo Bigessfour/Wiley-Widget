@@ -17,12 +17,8 @@ namespace WileyWidget.Startup.Modules
     {
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            // Ensure SettingsView can be resolved for navigation scenarios
-            containerRegistry.Register<SettingsViewModel>();
-            containerRegistry.Register<SettingsView>();
-            containerRegistry.RegisterForNavigation<SettingsView, SettingsViewModel>();
-
-            Log.Debug("CoreModule types registered");
+            // Settings registrations are consolidated into SettingsModule
+            Log.Debug("CoreModule types registered (no settings; consolidated in SettingsModule)");
         }
 
         public void OnInitialized(IContainerProvider containerProvider)

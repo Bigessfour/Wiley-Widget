@@ -241,7 +241,7 @@ namespace WileyWidget.Data
 
         // Seed: Departments already have Id=1 (Public Works) from prior migration
 
-        // Seed: Conservation Trust Fund Chart of Accounts (MunicipalAccount)
+    // Seed: Conservation Trust Fund Chart of Accounts (MunicipalAccount)
         modelBuilder.Entity<MunicipalAccount>().HasData(
             // Assets / Cash & equivalents
             new MunicipalAccount { Id = 1,  Name = "CASH IN BANK",                         Type = AccountType.Cash,               Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
@@ -276,7 +276,15 @@ namespace WileyWidget.Data
             new MunicipalAccount { Id = 22, Name = "BALLFIELD ACCRUED INTEREST",         Type = AccountType.Expense,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
             new MunicipalAccount { Id = 23, Name = "WALKING TRAIL ACCRUED INTEREST",      Type = AccountType.Expense,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
             new MunicipalAccount { Id = 24, Name = "CAPITAL IMP - BALL COMPLEX",          Type = AccountType.CapitalOutlay,      Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
-            new MunicipalAccount { Id = 25, Name = "PARKS - DEVELOPMENT",                 Type = AccountType.CapitalOutlay,      Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true }
+            new MunicipalAccount { Id = 25, Name = "PARKS - DEVELOPMENT",                 Type = AccountType.CapitalOutlay,      Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
+
+            // Additional expenses to complete updated chart (31 total)
+            new MunicipalAccount { Id = 26, Name = "MISC EXPENSE",                        Type = AccountType.Expense,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true, FundDescription = "Conservation Trust Fund" },
+            new MunicipalAccount { Id = 27, Name = "TRAIL MAINTENANCE",                   Type = AccountType.Expense,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true, FundDescription = "Conservation Trust Fund" },
+            new MunicipalAccount { Id = 28, Name = "PARK IMPROVEMENTS",                   Type = AccountType.CapitalOutlay,      Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true, FundDescription = "Conservation Trust Fund" },
+            new MunicipalAccount { Id = 29, Name = "EQUIPMENT PURCHASES",                 Type = AccountType.CapitalOutlay,      Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true, FundDescription = "Conservation Trust Fund" },
+            new MunicipalAccount { Id = 30, Name = "PROJECTS - SMALL",                    Type = AccountType.Expense,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true, FundDescription = "Conservation Trust Fund" },
+            new MunicipalAccount { Id = 31, Name = "RESERVES ALLOCATION",                 Type = AccountType.Transfers,          Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true, FundDescription = "Conservation Trust Fund" }
         );
 
         // Seed: Owned type values for AccountNumber on MunicipalAccounts
@@ -307,7 +315,13 @@ namespace WileyWidget.Data
                 new { MunicipalAccountId = 22, Value = "2111"  },
                 new { MunicipalAccountId = 23, Value = "2112"  },
                 new { MunicipalAccountId = 24, Value = "410"   },
-                new { MunicipalAccountId = 25, Value = "420"   }
+                new { MunicipalAccountId = 25, Value = "420"   },
+                new { MunicipalAccountId = 26, Value = "425"   },
+                new { MunicipalAccountId = 27, Value = "430"   },
+                new { MunicipalAccountId = 28, Value = "435"   },
+                new { MunicipalAccountId = 29, Value = "440"   },
+                new { MunicipalAccountId = 30, Value = "445"   },
+                new { MunicipalAccountId = 31, Value = "450"   }
             );
     }
 

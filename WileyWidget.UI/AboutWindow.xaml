@@ -1,0 +1,138 @@
+<Window x:Class="WileyWidget.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+        xmlns:viewModels="clr-namespace:WileyWidget.ViewModels;assembly=WileyWidget.UI"
+        xmlns:prism="http://prismlibrary.com/"
+        xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+        Title="About Wiley Widget" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterOwner"
+    ResizeMode="NoResize" Width="600" Height="500"
+    behaviors:MouseFocusBehavior.EnableOnClick="True"
+    behaviors:MouseFocusBehavior.EnableOnFirstMove="True"
+        prism:ViewModelLocator.AutoWireViewModel="True">
+    <Window.Resources>
+        <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource WileyHeaderStyle}" />
+        <Style x:Key="SubHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource WileySubHeaderStyle}" />
+        <Style x:Key="NormalTextStyle" TargetType="TextBlock" BasedOn="{StaticResource WileyBodyStyle}" />
+    </Window.Resources>
+
+    <Border BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Margin="16">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="20">
+                <!-- Application Header -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                    <Image Source="pack://application:,,,/Resources/app-icon.png" Width="64" Height="64"
+                           Margin="0,0,15,0" VerticalAlignment="Top"/>
+                    <StackPanel>
+                        <TextBlock Text="Wiley Widget" FontSize="24" FontWeight="Bold" Foreground="#1976D2"/>
+                        <TextBlock Text="AI Enhanced Utility Rate Study Program" FontSize="14" Foreground="#666666" Margin="0,2,0,0"/>
+                        <TextBlock x:Name="VersionText" Text="{Binding Version, Mode=OneWay}" FontSize="12" Foreground="#888888" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Application Description -->
+                <GroupBox Header="About Wiley Widget" Margin="0,0,0,15">
+                    <TextBlock Style="{DynamicResource NormalTextStyle}" TextWrapping="Wrap">
+                        Wiley Widget is a comprehensive AI-enhanced utility rate study program designed specifically for municipal enterprises. Our intelligent platform combines advanced analytics, predictive modeling, and automated reporting to help utility managers optimize service charges, forecast budgets, and make data-driven decisions.
+                    </TextBlock>
+                </GroupBox>
+
+                <!-- Key Features -->
+                <GroupBox Header="Key Features" Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">🤖 AI-Powered Analytics</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
+                            Intelligent rate optimization, predictive forecasting, and automated recommendations powered by advanced machine learning algorithms.
+                        </TextBlock>
+
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">📊 Comprehensive Reporting</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
+                            Generate detailed financial reports, budget projections, and break-even analysis with professional formatting and export capabilities.
+                        </TextBlock>
+
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">🔗 QuickBooks Integration</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
+                            Seamless integration with QuickBooks for automated data synchronization and financial workflow management.
+                        </TextBlock>
+
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">☁️ Cloud-Ready Architecture</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}" Margin="15,0,0,8" TextWrapping="Wrap">
+                            Built on Azure cloud services with enterprise-grade security, scalability, and reliability.
+                        </TextBlock>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- System Requirements -->
+                <GroupBox Header="System Requirements" Margin="0,0,0,15">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Style="{DynamicResource SubHeaderTextStyle}">Minimum Requirements</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• Windows 10/11</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• .NET 8.0 Runtime</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• 4GB RAM</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• 500MB Storage</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• Internet Connection</TextBlock>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{DynamicResource SubHeaderTextStyle}">Recommended</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• Windows 11</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• .NET 8.0+ Runtime</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• 8GB RAM</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• 1GB Storage</TextBlock>
+                            <TextBlock Style="{DynamicResource NormalTextStyle}">• High-speed Internet</TextBlock>
+                        </StackPanel>
+                    </Grid>
+                </GroupBox>
+
+                <!-- Technical Information -->
+                <GroupBox Header="Technical Information" Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">Architecture</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• WPF Desktop Application</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• MVVM Architecture Pattern</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Entity Framework Core</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Syncfusion UI Controls</TextBlock>
+
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}" Margin="0,10,0,0">Database</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• SQL Server/Azure SQL</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Code-First Migrations</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Repository Pattern</TextBlock>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Support Information -->
+                <GroupBox Header="Support &amp; Resources" Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}">Documentation</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• User Guide: docs/README.md</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• API Documentation: docs/api/</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Troubleshooting: docs/troubleshooting.md</TextBlock>
+
+                        <TextBlock Style="{DynamicResource SubHeaderTextStyle}" Margin="0,10,0,0">Contact</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Email: support@wileywidget.com</TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• Website: <Hyperlink Command="{Binding OpenUrlCommand}" CommandParameter="https://wileywidget.com">https://wileywidget.com</Hyperlink></TextBlock>
+                        <TextBlock Style="{DynamicResource NormalTextStyle}">• GitHub: <Hyperlink Command="{Binding OpenUrlCommand}" CommandParameter="https://github.com/wileywidget">github.com/wileywidget</Hyperlink></TextBlock>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Footer -->
+                <Border Background="#F5F5F5" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="10">
+                    <StackPanel>
+                        <TextBlock Text="© 2025 Wiley Widget. All rights reserved." FontSize="11" Foreground="#888888" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Licensed under MIT License" FontSize="11" Foreground="#888888" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="Built with ❤️ using .NET and Azure" FontSize="11" Foreground="#888888" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Close Button -->
+                <Button Content="Close" Margin="0,15,0,0" HorizontalAlignment="Right" Width="80" Height="30" Command="{Binding CloseCommand}" />
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</Window>

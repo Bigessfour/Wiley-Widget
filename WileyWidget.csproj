@@ -28,8 +28,8 @@
     <TieredPGO>true</TieredPGO>
     <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
 
-  <!-- Avoid WPF temp project (wpftmp) to prevent missing references during XAML compile -->
-  <GenerateTemporaryTargetAssembly>false</GenerateTemporaryTargetAssembly>
+      <!-- Prefer modern wpftmp path; allow WPF to copy NuGet assets for temp project -->
+      <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
 
     <!-- Enable ReadyToRun for Debug builds to improve startup performance -->
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">false</PublishReadyToRun>
@@ -51,13 +51,13 @@
 
   <ItemGroup>
     <PackageReference Include="BoldReports.WPF" />
-    <PackageReference Include="CommunityToolkit.Mvvm" />
+  <!-- CommunityToolkit.Mvvm removed: project ViewModels use Prism.BindableBase/DelegateCommand now -->
     <PackageReference Include="Microsoft.ApplicationInsights" />
   <!-- Removed explicit Roslyn runtime packages to avoid Hot Reload conflicts in VS -->
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
-  <PackageReference Include="Prism.Core" VersionOverride="9.0.537" />
-  <PackageReference Include="Prism.Unity" VersionOverride="9.0.537" />
-  <PackageReference Include="Prism.Wpf" VersionOverride="9.0.537" />
+  <PackageReference Include="Prism.Core" />
+  <PackageReference Include="Prism.Unity" />
+  <PackageReference Include="Prism.Wpf" />
     <PackageReference Include="Unity.Container" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
@@ -124,6 +124,8 @@
     <ProjectReference Include="WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="WileyWidget.UI\WileyWidget.UI.csproj" />
+    <ProjectReference Include="WileyWidget.Services\WileyWidget.Services.csproj" />
   </ItemGroup>
 
   <!-- Design-time/XAML compile workaround: Ensure Prism assemblies are available
@@ -151,6 +153,33 @@
 
     <!-- Prism.Regions (split in Prism 9) -->
     <!-- Removed explicit references as Prism.Regions is part of Prism.Wpf -->
+  </ItemGroup>
+
+  <!-- Explicitly seed ReferencePath for WPF markup compilation so the temporary
+       project can resolve Prism assemblies even if RAR misses them -->
+  <ItemGroup>
+    <ReferencePath Include="$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net8.0-windows7.0/Prism.Wpf.dll" Condition="Exists('$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net8.0-windows7.0/Prism.Wpf.dll')" />
+    <ReferencePath Include="$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net6.0-windows7.0/Prism.Wpf.dll" Condition="!Exists('$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net8.0-windows7.0/Prism.Wpf.dll') and Exists('$(NuGetPackageRoot)prism.wpf/9.0.537/lib/net6.0-windows7.0/Prism.Wpf.dll')" />
+    <ReferencePath Include="$(NuGetPackageRoot)prism.core/9.0.537/lib/net8.0/Prism.dll" Condition="Exists('$(NuGetPackageRoot)prism.core/9.0.537/lib/net8.0/Prism.dll')" />
+    <ReferencePath Include="$(NuGetPackageRoot)prism.core/9.0.537/lib/net6.0/Prism.dll" Condition="!Exists('$(NuGetPackageRoot)prism.core/9.0.537/lib/net8.0/Prism.dll') and Exists('$(NuGetPackageRoot)prism.core/9.0.537/lib/net6.0/Prism.dll')" />
+  </ItemGroup>
+
+  <!-- Design-time noise suppression: exclude Region-heavy sources from the
+       temporary wpftmp project only. This does NOT affect normal builds. -->
+  <ItemGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
+    <Compile Remove="src\Regions\**\*.cs" />
+    <Compile Remove="src\Behaviors\**\*.cs" />
+    <Compile Remove="src\Startup\Modules\**\*.cs" />
+    <Compile Remove="src\ViewModels\**\*.cs" />
+    <Compile Remove="src\Views\Shell.xaml.cs" />
+    <Compile Remove="src\App.xaml.cs" />
+    <!-- Also exclude XAML Pages and their code-behind to avoid design-time g.cs references -->
+    <Compile Remove="src\Views\**\*.xaml.cs" />
+    <Page Remove="src\Views\**\*.xaml" />
+    <ApplicationDefinition Remove="src\App.xaml" />
+    <Page Remove="src\App.xaml" />
+    <!-- Exclude services that depend on ViewModels to prevent transient type resolution errors -->
+    <Compile Remove="src\Services\**\*.cs" />
   </ItemGroup>
 
   <!-- Exclude test files and sample files from main project build -->

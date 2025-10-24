@@ -11,10 +11,10 @@ $envVars = @('GITHUB_TOKEN', 'GITHUB_PERSONAL_ACCESS_TOKEN', 'XAI_API_KEY', 'AZU
 foreach ($var in $envVars) {
     $value = [Environment]::GetEnvironmentVariable($var, 'User')
     if ($value) {
-        Write-Output "✅ $var: Set (length: $($value.Length))"
+        Write-Output "✅ $($var): Set (length: $($value.Length))"
     }
     else {
-        Write-Warning "❌ $var: NOT SET"
+        Write-Warning "❌ $($var): NOT SET"
     }
 }
 

@@ -1,11 +1,19 @@
+[CmdletBinding()]
 param(
+    [Parameter(Position = 0)]
     [string]$ProjectRoot = (Split-Path $PSScriptRoot -Parent),
     [switch]$Detailed,
     [switch]$FixIssues
 )
 
 function Get-StringSet {
-    return [System.Collections.Generic.HashSet[string]]::new()
+    try {
+        return [System.Collections.Generic.HashSet[string]]::new()
+    }
+    catch {
+        # Fallback for PowerShell editions where generic HashSet construction may fail
+        return [System.Collections.ArrayList]@()
+    }
 }
 
 function Convert-FieldNameToProperty {
@@ -39,7 +47,9 @@ function Get-XamlBindingInfo {
     param([string]$XamlContent)
 
     $propertySet = Get-StringSet
+    if (-not $propertySet) { $propertySet = [System.Collections.ArrayList]@() }
     $commandSet = Get-StringSet
+    if (-not $commandSet) { $commandSet = [System.Collections.ArrayList]@() }
 
     $bindingMatches = [regex]::Matches($XamlContent, '\{Binding\s+([^}]+)\}')
     foreach ($bindingMatch in $bindingMatches) {
@@ -125,13 +135,39 @@ function Get-ViewModelInfo {
         $content = Get-Content -Path $file.FullName -Raw
 
         $properties = Get-StringSet
+        if (-not $properties) { $properties = [System.Collections.ArrayList]@() }
         $commands = Get-StringSet
+        if (-not $commands) { $commands = [System.Collections.ArrayList]@() }
 
+        # Detect CommunityToolkit source-generator ObservableProperty usage
         $observableMatches = [regex]::Matches($content, '\[ObservableProperty[\s\S]*?\]\s+private\s+[^\s]+\s+([_\w]+)')
         foreach ($match in $observableMatches) {
             $field = $match.Groups[1].Value
             $propertyName = Convert-FieldNameToProperty -FieldName $field
             if ($propertyName) { $properties.Add($propertyName) | Out-Null }
+        }
+
+        # Detect direct ObservableObject inheritance (CommunityToolkit) or other toolkit remnants
+        $usesObservableObject = [regex]::IsMatch($content, '\bObservableObject\b')
+        $usesCommunityToolkit = [regex]::IsMatch($content, 'CommunityToolkit\.Mvvm|ObservableProperty|RelayCommand|ObservableRecipient|IRelayCommand|IAsyncRelayCommand')
+
+        # Detect RelayCommand attribute (source-generator) patterns
+        $relayMatches = [regex]::Matches($content, '\[RelayCommand[\s\S]*?\]\s*(?:private|public)?\s*(?:async\s+)?[\w<>]+\s+(\w+)\s*\(')
+        foreach ($match in $relayMatches) {
+            $methodName = $match.Groups[1].Value
+            $commandBase = $methodName -replace 'Async$', ''
+            $commands.Add("${commandBase}Command") | Out-Null
+        }
+
+        # Detect usage of IRelayCommand/IAsyncRelayCommand or ObservableRecipient types
+        $interfaceRelayMatches = [regex]::Matches($content, '\bI(A?RelayCommand)\b')
+        foreach ($m in $interfaceRelayMatches) { $commands.Add($m.Groups[1].Value) | Out-Null }
+
+        # Detect legacy/simple IoC usage that is not Prism.Unity or Prism DI (e.g., SimpleIoc, ServiceLocator, Ioc.Default, ContainerLocator, GalaSoft)
+        $legacyIoCPatterns = @('SimpleIoc', 'ServiceLocator', 'ContainerLocator', 'Ioc\.Default', 'GalaSoft', 'DependencyService', 'StashBox', 'Autofac')
+        $foundLegacyIoC = @()
+        foreach ($pat in $legacyIoCPatterns) {
+            if ($content -match $pat) { $foundLegacyIoC += $pat }
         }
 
         $publicPropertyMatches = [regex]::Matches($content, 'public\s+[^\s]+\s+(\w+)\s*\{')
@@ -143,19 +179,22 @@ function Get-ViewModelInfo {
         foreach ($match in $relayMatches) {
             $methodName = $match.Groups[1].Value
             $commandBase = $methodName -replace 'Async$', ''
-            $commands.Add("$commandBase`Command") | Out-Null
+            $commands.Add("${commandBase}Command") | Out-Null
         }
 
-        $manualCommandMatches = [regex]::Matches($content, 'public\s+ICommand\s+(\w+)')
+        $manualCommandMatches = [regex]::Matches($content, 'public\s+(?:System\.Windows\.Input\.)?ICommand\s+(\w+)')
         foreach ($match in $manualCommandMatches) {
             $commands.Add($match.Groups[1].Value) | Out-Null
         }
 
         $viewModels += [PSCustomObject]@{
-            Name       = $file.BaseName
-            FilePath   = $file.FullName
-            Properties = $properties
-            Commands   = $commands
+            Name                 = $file.BaseName
+            FilePath             = $file.FullName
+            Properties           = $properties
+            Commands             = $commands
+            UsesToolkit          = $usesCommunityToolkit
+            UsesObservableObject = $usesObservableObject
+            LegacyIoC            = ($foundLegacyIoC -join ', ')
         }
     }
 
@@ -203,9 +242,9 @@ function Get-ExpectedViewName {
 
     $base = $ViewModelName -replace 'ViewModel$', ''
     return @(
-        "$base`View",
-        "$base`Window",
-        "$base`PanelView"
+        "${base}View",
+        "${base}Window",
+        "${base}PanelView"
     )
 }
 
@@ -262,6 +301,69 @@ foreach ($vm in $viewModels) {
         if ($views.Name -contains $expected) {
             $found = $true
             break
+        }
+    }
+
+
+    function Get-BaseMember {
+        param([string]$BaseFile = (Join-Path $ProjectRoot 'src\ViewModels\Base\AsyncViewModelBase.cs'))
+
+        $members = @()
+        if (Test-Path $BaseFile) {
+            $bContent = Get-Content -Path $BaseFile -Raw
+            $bMatches = [regex]::Matches($bContent, 'public\s+[^{;(]+\s+(\w+)\s*(\{|\()')
+            foreach ($m in $bMatches) { $members += $m.Groups[1].Value }
+        }
+        return $members | Select-Object -Unique
+    }
+
+    $baseMembers = Get-BaseMember
+
+    foreach ($vm in $viewModels) {
+        $content = Get-Content -Path $vm.FilePath -Raw
+        foreach ($member in $baseMembers) {
+            # If VM declares a public member with same name but without 'new', warn
+            $pattern = "public\s+(?!new\b)[^\n\r]+\b$member\b"
+            if ([regex]::IsMatch($content, $pattern)) {
+                $results += [PSCustomObject]@{
+                    Type      = 'HidingMember'
+                    Severity  = 'Warning'
+                    ViewModel = $vm.Name
+                    Message   = "Member '$member' declared in ViewModel '$($vm.Name)' hides base member from AsyncViewModelBase without 'new'. Consider adding 'new' or refactoring to reuse base member."
+                    File      = $vm.FilePath
+                }
+            }
+        }
+
+        # Report CommunityToolkit or ObservableObject usage
+        if ($vm.UsesToolkit) {
+            $results += [PSCustomObject]@{
+                Type      = 'CommunityToolkitUsage'
+                Severity  = 'Warning'
+                ViewModel = $vm.Name
+                Message   = 'ViewModel references CommunityToolkit.Mvvm patterns (ObservableProperty, RelayCommand, ObservableObject, etc). Consider converting to Prism BindableBase/DelegateCommand.'
+                File      = $vm.FilePath
+            }
+        }
+
+        if ($vm.UsesObservableObject) {
+            $results += [PSCustomObject]@{
+                Type      = 'ObservableObjectUsage'
+                Severity  = 'Warning'
+                ViewModel = $vm.Name
+                Message   = 'ViewModel inherits or references ObservableObject (CommunityToolkit). Consider migrating to Prism BindableBase.'
+                File      = $vm.FilePath
+            }
+        }
+
+        if ($vm.LegacyIoC) {
+            $results += [PSCustomObject]@{
+                Type      = 'LegacyDI'
+                Severity  = 'Warning'
+                ViewModel = $vm.Name
+                Message   = "Legacy IoC/DI usage detected: $($vm.LegacyIoC). Consider migrating DI to Prism/Unity patterns."
+                File      = $vm.FilePath
+            }
         }
     }
 

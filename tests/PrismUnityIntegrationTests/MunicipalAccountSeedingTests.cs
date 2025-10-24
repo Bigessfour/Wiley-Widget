@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Prism.Events;
-using Prism.Navigation.Regions;
+using Prism.Regions;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.ViewModels;

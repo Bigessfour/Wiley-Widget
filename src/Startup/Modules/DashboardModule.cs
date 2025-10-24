@@ -4,7 +4,7 @@ using System.Collections.Specialized;
 using Microsoft.Extensions.Logging;
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Navigation.Regions;
+using Prism.Regions;
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
@@ -58,9 +58,8 @@ namespace WileyWidget.Startup.Modules
             // Register theme service for centralized theme management
             // containerRegistry.RegisterSingleton<IThemeService, ThemeService>();
 
-            // Register DashboardViewModel as a singleton so all views share one instance
-            // This prevents duplicate data loads and ensures consistent state across regions
-            containerRegistry.RegisterSingleton<DashboardViewModel>();
+            // Register DashboardViewModel as transient to avoid unintended shared state
+            containerRegistry.Register<DashboardViewModel>();
 
             // Register DashboardView for navigation
             containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>();

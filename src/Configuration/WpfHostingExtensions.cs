@@ -27,7 +27,7 @@ using WileyWidget.Services.Threading;
 using FluentValidation;
 using WileyWidget.Models.Validators;
 
-namespace WileyWidget.Configuration;
+namespace WileyWidget.Models;
 
 /// <summary>
 /// Extension methods for configuring WPF applications with the Generic Host pattern.

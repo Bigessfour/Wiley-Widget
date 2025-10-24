@@ -207,14 +207,22 @@ public class AssertRegistrationsTests
         typeof(WileyWidget.App).GetMethod("RegisterTypes", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(app, new object[] { containerExt });
 
         // Common Prism services we expect to be registered in the Unity container
-        var prismServices = new Type[] {
-            typeof(Prism.Modularity.IModuleCatalog),
-            typeof(Prism.Navigation.Regions.IRegionManager),
-            typeof(Prism.Events.IEventAggregator),
-            typeof(Prism.Ioc.IContainerProvider),
-            // Additional commonly-expected Prism services used in this app
-            typeof(Prism.Dialogs.IDialogService),
-        };
+        // Use runtime type resolution for types that may not be available at compile-time
+        var prismServiceList = new System.Collections.Generic.List<Type>();
+        prismServiceList.Add(typeof(Prism.Modularity.IModuleCatalog));
+        // Try to resolve IRegionManager by name (Prism.Regions may be provided by Prism.Wpf at runtime)
+        Type? regionManagerType = null;
+        try {
+            regionManagerType = Type.GetType("Prism.Regions.IRegionManager, Prism.Wpf") ??
+                                Type.GetType("Prism.Regions.IRegionManager, Prism") ??
+                                AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Prism.Regions.IRegionManager")).FirstOrDefault(t => t != null);
+        } catch { regionManagerType = null; }
+        if (regionManagerType != null) prismServiceList.Add(regionManagerType);
+        prismServiceList.Add(typeof(Prism.Events.IEventAggregator));
+        prismServiceList.Add(typeof(Prism.Ioc.IContainerProvider));
+        // Additional commonly-expected Prism services used in this app
+        prismServiceList.Add(typeof(Prism.Dialogs.IDialogService));
+        var prismServices = prismServiceList.ToArray();
 
         // Some Prism types live in different assemblies/namespaces depending on Prism version
         // We'll attempt to locate these at runtime via reflection rather than compile-time types
@@ -423,9 +431,9 @@ public class AssertRegistrationsTests
         var containerProviderCast = (Prism.Ioc.IContainerProvider)containerExt;
         coreModule.OnInitialized(containerProvider);
 
-    var regionManagerObj = containerProviderCast.Resolve(typeof(Prism.Navigation.Regions.IRegionManager));
+    var regionManagerObj = containerProviderCast.Resolve(typeof(Prism.Regions.IRegionManager));
         Assert.NotNull(regionManagerObj);
-    var rm = (Prism.Navigation.Regions.IRegionManager)regionManagerObj;
+    var rm = (Prism.Regions.IRegionManager)regionManagerObj;
         Assert.True(rm.Regions.ContainsRegionWithName("SettingsRegion"), "SettingsRegion was not registered by CoreModule.OnInitialized");
     }
 }

@@ -4,7 +4,7 @@ using WileyWidget.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
-namespace WileyWidget.Configuration;
+namespace WileyWidget.Models;
 
 /// <summary>
 /// Configures AppOptions by loading from database and configuration

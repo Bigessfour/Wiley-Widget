@@ -209,6 +209,5 @@ dotnet test WileyWidget.Tests/WileyWidget.Tests.csproj
 
 - Static analyzers (enable when codebase grows)
 - UI smoke automation (FlaUI)
-- Dynamic DataGrid column support snippet (see README)
 
 Stay ruthless about scope; this is a scaffold, not a framework.

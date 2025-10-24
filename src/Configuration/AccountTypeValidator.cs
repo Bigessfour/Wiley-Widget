@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using WileyWidget.Models;
 
-namespace WileyWidget.Configuration;
+namespace WileyWidget.Models;
 
 /// <summary>
 /// Validator for account types according to GASB standards

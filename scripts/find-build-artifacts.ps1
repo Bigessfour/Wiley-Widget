@@ -20,7 +20,7 @@ catch {
 
 Write-Output 'Searching workspace for *_wpftmp.csproj...'
 if ($fsToolsImported) {
-    $wpftmp = Find-Files -Pattern '*_wpftmp.csproj' -In $Workspace -Recurse
+    $wpftmp = Get-FileMatch -Pattern '*_wpftmp.csproj' -In $Workspace -Recurse
     $wpftmpPaths = $wpftmp | ForEach-Object { $_.FullName }
 }
 else {
@@ -31,7 +31,7 @@ Write-Output ("Found: " + (@($wpftmpPaths).Count))
 
 Write-Output 'Searching for csproj under obj folders...'
 if ($fsToolsImported) {
-    $csprojInObj = Find-Files -Pattern '*.csproj' -In $Workspace -Recurse -IncludeObjBin | Where-Object { $_.FullName -like '*\obj\*' } | Select-Object -ExpandProperty FullName
+    $csprojInObj = Get-FileMatch -Pattern '*.csproj' -In $Workspace -Recurse -IncludeObjBin | Where-Object { $_.FullName -like '*\obj\*' } | Select-Object -ExpandProperty FullName
 }
 else {
     $csprojInObj = Get-ChildItem -Path $Workspace -Recurse -Filter '*.csproj' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -like '*\obj\*' } | Select-Object -ExpandProperty FullName
