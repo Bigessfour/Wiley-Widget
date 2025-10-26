@@ -1,3 +1,6 @@
+// Archived original: moved to _archived/azure/WileyWidget.Models.AzureAdConfig.cs
+// This file's original implementation has been excluded from compilation to remove Azure traces.
+#if false
 namespace WileyWidget.Models;
 
 /// <summary>
@@ -32,3 +35,4 @@ public sealed class AzureAdConfig
         set => _authority = value ?? string.Empty;
     }
 }
+#endif

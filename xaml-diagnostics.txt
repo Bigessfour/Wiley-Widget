@@ -15,7 +15,7 @@ Build output: MSBUILD : error MSB1011: Specify which project or solution file to
 2. Checking Required Assemblies...
    ✗ Microsoft.Xaml.Behaviors.Wpf NOT loaded
    ✗ Prism.Wpf NOT loaded
-   ✗ Prism.Unity NOT loaded
+   ✗ Prism DI container NOT loaded
    ✗ Syncfusion.SfSkinManager.WPF NOT loaded
    ✗ Syncfusion.SfGrid.WPF NOT loaded
    ✗ Syncfusion.Licensing NOT loaded

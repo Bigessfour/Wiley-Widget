@@ -7,8 +7,8 @@
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
 
-    <!-- Disable CPM for this project to ensure wpftmp gets explicit versions -->
-    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  <!-- Enable central package management and rely on Directory.Packages.props for versions -->
+  <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
 
     <!-- Enable package references during XAML markup compilation so wpftmp can access Prism -->
     <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
@@ -18,7 +18,7 @@
     <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
     <XamlDebuggingInformation>false</XamlDebuggingInformation>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416</NoWarn>
+  <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416;CS0436</NoWarn>
   </PropertyGroup>  <ItemGroup>
   </ItemGroup>
 
@@ -55,75 +55,76 @@
   </Target>
 
   <ItemGroup>
+    <!-- Ensure sources belonging to other projects are not compiled into the UI assembly (avoid duplicate-type CS0436) -->
+    <Compile Remove="..\WileyWidget.Services\**\*.cs" />
+    <Compile Remove="..\WileyWidget.Webhooks\**\*.cs" />
+    <Compile Remove="..\WileyWidget.Business\**\*.cs" />
+    <Compile Remove="..\WileyWidget.Data\**\*.cs" />
+    <Compile Remove="..\WileyWidget.Models\**\*.cs" />
     <!-- All versions explicitly specified - no CPM for wpftmp compatibility -->
-    <PackageReference Include="BoldReports.WPF" Version="11.1.15" />
-    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
+    <PackageReference Include="BoldReports.WPF" />
+    <PackageReference Include="Microsoft.ApplicationInsights" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
     <!-- Prism packages MUST have explicit versions for wpftmp -->
-    <PackageReference Include="Prism.Core" Version="9.0.537" />
-    <PackageReference Include="Prism.Wpf" Version="9.0.537" />
-    <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
+    <PackageReference Include="Prism.Core" />
+    <PackageReference Include="Prism.Wpf" />
+    <PackageReference Include="Prism.Container.DryIoc" />
     <!-- Entity Framework Core -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
     <!-- Microsoft.Extensions -->
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.10" />
-    <PackageReference Include="DotNetEnv" Version="3.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+    <PackageReference Include="DotNetEnv" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
     <!-- Serilog -->
-    <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
-    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
-    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-    <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
-    <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
-    <PackageReference Include="Serilog.Sinks.Email" Version="4.1.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+    <PackageReference Include="Serilog.Enrichers.Process" />
+    <PackageReference Include="Serilog.Enrichers.Thread" />
+    <PackageReference Include="Serilog.Settings.Configuration" />
+    <PackageReference Include="Serilog.Sinks.Async" />
+    <PackageReference Include="Serilog.Sinks.Email" />
+    <PackageReference Include="Serilog.Sinks.File" />
     <!-- Syncfusion WPF Components -->
-    <PackageReference Include="Syncfusion.Licensing" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfBusyIndicator.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfChart.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfChat.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfGauge.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfGrid.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfInput.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfProgressBar.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfRichTextBoxAdv.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfSkinManager.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfSpreadsheet.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfTreeView.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.SfGridCommon.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.Shared.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.Themes.FluentDark.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.Themes.FluentLight.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.Tools.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.XlsIO.WPF" Version="31.1.17" />
-    <PackageReference Include="Syncfusion.Pdf.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.Licensing" />
+    <PackageReference Include="Syncfusion.SfBusyIndicator.WPF" />
+    <PackageReference Include="Syncfusion.SfChart.WPF" />
+    <PackageReference Include="Syncfusion.SfChat.WPF" />
+    <PackageReference Include="Syncfusion.SfGauge.WPF" />
+    <PackageReference Include="Syncfusion.SfGrid.WPF" />
+    <PackageReference Include="Syncfusion.SfInput.WPF" />
+    <PackageReference Include="Syncfusion.SfProgressBar.WPF" />
+    <PackageReference Include="Syncfusion.SfRichTextBoxAdv.WPF" />
+    <PackageReference Include="Syncfusion.SfSkinManager.WPF" />
+    <PackageReference Include="Syncfusion.SfSpreadsheet.WPF" />
+    <PackageReference Include="Syncfusion.SfTreeView.WPF" />
+    <PackageReference Include="Syncfusion.SfGridCommon.WPF" />
+    <PackageReference Include="Syncfusion.Shared.WPF" />
+    <PackageReference Include="Syncfusion.Themes.FluentDark.WPF" />
+    <PackageReference Include="Syncfusion.Themes.FluentLight.WPF" />
+    <PackageReference Include="Syncfusion.Tools.WPF" />
+    <PackageReference Include="Syncfusion.XlsIO.WPF" />
+    <PackageReference Include="Syncfusion.Pdf.WPF" />
     <!-- Validation & Other -->
-    <PackageReference Include="FluentValidation" Version="11.11.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.10.0" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="9.10.0" />
-    <PackageReference Include="System.Management" Version="9.0.10" />
-    <PackageReference Include="Polly" Version="8.6.4" />
-    <!-- AI Integration -->
-    <PackageReference Include="Microsoft.Extensions.AI" Version="9.10.0" />
-    <PackageReference Include="OpenAI" Version="2.5.0" />
-    <PackageReference Include="Microsoft.SemanticKernel" Version="1.66.0" />
-    <!-- QuickBooks Integration -->
-    <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
-    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.1" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
+    <PackageReference Include="System.Management" />
+    <PackageReference Include="Polly" />
+  <!-- AI Integration removed from UI project; move to dedicated AI integration module when ready -->
+  <!-- QuickBooks Integration removed from UI project to reduce dependency bloat -->
   </ItemGroup>
 
   <ItemGroup>
@@ -137,7 +138,10 @@
   <!-- Add the built Services assembly to the ReferencePath for wpftmp when present.
        This helps the temporary XAML compilation project resolve service types
        without needing duplicate source definitions inside the UI project. -->
-  <ItemGroup>
+  <ItemGroup Condition="!Exists('$(MSBuildProjectDirectory)\..\WileyWidget.Services\WileyWidget.Services.csproj')">
+    <!-- When the Services project is not present as a source ProjectReference (e.g., in binary-only builds),
+         add the built Services assembly to the ReferencePath for wpftmp so XAML temporary compilation can resolve service types.
+         During local development with the project present this block is skipped to avoid duplicate-type definitions. -->
     <_ServicesAssemblyPath Include="$(MSBuildProjectDirectory)\..\WileyWidget.Services\bin\$(Configuration)\$(TargetFramework)\WileyWidget.Services.dll" Condition="Exists('$(MSBuildProjectDirectory)\..\WileyWidget.Services\bin\$(Configuration)\$(TargetFramework)\WileyWidget.Services.dll')" />
     <ReferencePath Include="@(_ServicesAssemblyPath)" Condition="@(_ServicesAssemblyPath) != ''" />
   </ItemGroup>
@@ -147,10 +151,10 @@
     The custom MSBuild target above ensures wpftmp receives resolved assembly paths. -->
   <ItemGroup>
   <!-- Strings.Designer.cs is present under Resources/ and is included implicitly by the SDK -->
-    <Compile Include="..\src\ThemeUtility.cs" />
+  <Compile Include="..\src\ThemeUtility.cs" />
     <!-- Include shared converter sources so WPF markup compilation (wpftmp) can resolve them
          without requiring the root project assembly at design/markup-compile time. -->
-    <Compile Include="..\src\Converters\MessageConverters.cs" />
+  <Compile Include="..\src\Converters\MessageConverters.cs" />
     <Compile Include="..\src\Converters\ZeroToVisibleConverter.cs" />
     <Compile Include="..\src\Converters\StringToVisibilityConverter.cs" />
     <Compile Include="..\src\Converters\BudgetProgressConverter.cs" />
@@ -159,6 +163,14 @@
     <Compile Include="..\src\Converters\BooleanToVisibilityConverter.cs" />
     <Compile Include="..\src\Converters\ChatConverters.cs" />
     <Compile Include="..\src\Converters\NullToVisibilityConverter.cs" />
+  <!-- Bootstrapper moved to dedicated WileyWidget.Startup project to avoid duplicate-type compilation -->
+    <!-- Prism modules remain owned by the UI project (they reference views/viewmodels) -->
+    <Compile Include="..\src\Startup\Modules\**\*.cs" />
+  </ItemGroup>
+
+  <!-- Add ProjectReference to newly created Startup project only if it's present in the workspace -->
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\..\WileyWidget.Startup\WileyWidget.Startup.csproj')">
+    <ProjectReference Include="..\WileyWidget.Startup\WileyWidget.Startup.csproj" />
   </ItemGroup>
 
 </Project>

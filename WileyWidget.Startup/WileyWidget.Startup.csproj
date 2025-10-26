@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Minimal set of package references required by the lightweight Bootstrapper -->
+    <PackageReference Include="Prism.Core" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="DotNetEnv" />
+    <PackageReference Include="Polly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bootstrapper owns the shared startup sources from the workspace src folder -->
+    <Compile Include="..\src\Startup\Bootstrapper.cs" />
+    <Compile Include="..\src\Startup\BootstrapHelpers.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bootstrapper needs access to the Configuration helpers compiled into WileyWidget.Models -->
+    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+  </ItemGroup>
+
+</Project>

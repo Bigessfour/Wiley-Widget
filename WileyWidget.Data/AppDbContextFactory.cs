@@ -1,34 +1,37 @@
 #nullable enable
 
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using System.IO;
 
-namespace WileyWidget.Data;
-
-public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
+namespace WileyWidget.Data
 {
-    public AppDbContext CreateDbContext(string[] args)
+    /// <summary>
+    /// Application DbContext factory. Provides IDbContextFactory&lt;AppDbContext&gt; using
+    /// configured DbContextOptions. This is the single canonical factory used by the
+    /// application.
+    /// </summary>
+    public sealed class AppDbContextFactory : IDbContextFactory<AppDbContext>
     {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .AddEnvironmentVariables()
-            .Build();
+        private readonly DbContextOptions<AppDbContext> _options;
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection") 
-            ?? "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=true";
+        public AppDbContextFactory(DbContextOptions<AppDbContext> options)
+        {
+            _options = options ?? throw new System.ArgumentNullException(nameof(options));
+        }
 
-        var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlServer(connectionString);
-        optionsBuilder.EnableDetailedErrors();
-#pragma warning disable CA2000 // UseLoggerFactory takes ownership of the ILoggerFactory and disposes it when the DbContext is disposed
-        optionsBuilder.UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
+        public AppDbContext CreateDbContext()
+        {
+#pragma warning disable CA2000 // Factory method - caller is responsible for disposal
+            return new AppDbContext(_options);
 #pragma warning restore CA2000
+        }
 
-        return new AppDbContext(optionsBuilder.Options);
+        public ValueTask<AppDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        {
+#pragma warning disable CA2000 // Factory method - caller is responsible for disposal
+            return new ValueTask<AppDbContext>(new AppDbContext(_options));
+#pragma warning restore CA2000
+        }
     }
 }

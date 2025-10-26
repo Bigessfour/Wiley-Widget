@@ -32,6 +32,11 @@
     <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
+  <!-- Include shared configuration sources from root `src` so configuration helpers are compiled into the Models project -->
+  <ItemGroup>
+    <Compile Include="..\src\Configuration\**\*.cs" />
+  </ItemGroup>
+
     <!-- Prevent transitive global using injected by Prism.DryIoc package from upstream projects -->
     <ItemGroup>
       <Using Remove="Prism.DryIoc" />

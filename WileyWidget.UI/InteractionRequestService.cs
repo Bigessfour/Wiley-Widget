@@ -125,5 +125,3 @@ namespace WileyWidget.Services
         }
     }
 }
-
-}

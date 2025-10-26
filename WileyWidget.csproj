@@ -112,9 +112,7 @@
     <PackageReference Include="Polly" Version="8.6.4" />
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
     <!-- AI Integration Packages -->
-    <PackageReference Include="Microsoft.Extensions.AI" Version="9.10.0" />
-    <PackageReference Include="OpenAI" Version="2.5.0" />
-    <PackageReference Include="Microsoft.SemanticKernel" Version="1.66.0" />
+  <!-- AI Integration Packages (removed - not used in bootstrapper/production code). If needed, re-add in the specific module projects) -->
     <!-- Azure Configuration Packages -->
   <!-- No external QuickBooks SDK yet; using raw HTTP + PKCE. Add Intuit packages later if desired. -->
   <!-- QuickBooks SDK packages (Step 2) - modern package IDs differ from older docs -->
@@ -128,24 +126,20 @@
        Remove those from the root project to avoid CS0436 duplicate-type conflicts,
        but keep the application definition files required by this root project. -->
   <ItemGroup>
+    <!-- Prevent broad compilation of workspace 'src' to avoid duplicate-type definitions.
+         Only include the application entry points here; UI-specific types (converters, views,
+         viewmodels) are compiled into the WileyWidget.UI project to keep assemblies single-authority. -->
     <Compile Remove="src\**\*.cs" />
     <ApplicationDefinition Include="src\App.xaml" />
     <Compile Include="src\App.xaml.cs" />
     <Compile Include="src\Program.cs" />
-    <Compile Include="src\Converters\MessageConverters.cs" />
-    <Compile Include="src\Converters\ZeroToVisibleConverter.cs" />
-    <Compile Include="src\Converters\StringToVisibilityConverter.cs" />
-    <Compile Include="src\Converters\BudgetProgressConverter.cs" />
-    <Compile Include="src\Converters\BooleanToBrushConverter.cs" />
-    <Compile Include="src\Converters\BalanceColorConverter.cs" />
-    <Compile Include="src\Converters\BooleanToVisibilityConverter.cs" />
-    <Compile Include="src\Converters\ChatConverters.cs" />
-    <Compile Include="src\Converters\NullToVisibilityConverter.cs" />
+    <!-- Include Diagnostics sources for application-level diagnostics and tracing -->
+    <Compile Include="src\Diagnostics\**\*.cs" />
   </ItemGroup>
 
-  <!-- Exclude Unity-specific diagnostics from main build to avoid Unity dependency -->
+  <!-- Exclude legacy container-specific diagnostics from main build to avoid optional container dependency -->
   <ItemGroup>
-    <Compile Remove="src\Diagnostics\UnityContainerDiagnostics.cs" />
+    <Compile Remove="src\Diagnostics\ContainerDiagnostics.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -154,6 +148,7 @@
     <ProjectReference Include="WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="WileyWidget.UI\WileyWidget.UI.csproj" />
     <ProjectReference Include="WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="WileyWidget.Startup\WileyWidget.Startup.csproj" Condition="Exists('$(MSBuildProjectDirectory)\WileyWidget.Startup\WileyWidget.Startup.csproj')" />
   </ItemGroup>
 
   <!-- Design-time noise suppression: exclude Region-heavy sources from the

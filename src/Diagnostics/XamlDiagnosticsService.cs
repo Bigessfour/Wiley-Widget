@@ -252,7 +252,8 @@ namespace WileyWidget.Diagnostics
             {
                 "Microsoft.Xaml.Behaviors.Wpf",
                 "Prism.Wpf",
-                "Prism.Unity",
+                // Validate the DryIoc Prism container assembly instead of legacy Unity
+                "Prism.Container.DryIoc",
                 "Syncfusion.SfSkinManager.WPF",
                 "Syncfusion.SfGrid.WPF",
                 "Syncfusion.Licensing"

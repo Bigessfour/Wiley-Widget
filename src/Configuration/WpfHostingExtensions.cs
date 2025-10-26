@@ -319,40 +319,14 @@ public static class WpfHostingExtensions
         // Add PolicyRegistry for centralized policy management using Polly v8
         services.AddPolicyRegistry();
 
-        // Register named policies using modern Polly v8 syntax
+        // Register named policies using the central PolicyFactory to avoid duplication
         services.AddSingleton<IConfigureOptions<PolicyRegistry>>(sp =>
         {
             var registry = sp.GetRequiredService<PolicyRegistry>();
             var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger>();
 
-            // Jittered retry policy for transient failures using Polly v8
-            var jitteredRetryPolicy = Policy<HttpResponseMessage>
-                .Handle<HttpRequestException>()
-                .OrResult(r => r.StatusCode >= System.Net.HttpStatusCode.InternalServerError)
-                .WaitAndRetryAsync(
-                    retryCount: 3,
-                    sleepDurationProvider: retryAttempt =>
-                        TimeSpan.FromMilliseconds(500 * Math.Pow(2, retryAttempt - 1)) +
-                        TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000)),
-                    onRetryAsync: async (outcome, timespan, retryCount, context) =>
-                    {
-                        var statusCode = outcome.Result?.StatusCode.ToString() ?? "Exception";
-                        logger.LogWarning("HTTP request failed (attempt {RetryCount}/{MaxRetries}). Status: {StatusCode}. Retrying in {DelayMs}ms",
-                            retryCount, 3, statusCode, timespan.TotalMilliseconds);
-                        await Task.CompletedTask;
-                    });
-
-            // Circuit breaker policy using Polly v8
-            var circuitBreakerPolicy = Policy<HttpResponseMessage>
-                .Handle<HttpRequestException>()
-                .OrResult(r => r.StatusCode >= System.Net.HttpStatusCode.InternalServerError)
-                .CircuitBreakerAsync(
-                    failureThreshold: 5,
-                    durationOfBreak: TimeSpan.FromSeconds(60),
-                    onBreak: (outcome, breakDelay) =>
-                        logger.LogWarning(outcome.Exception, "Circuit breaker opened for {Duration}", breakDelay),
-                    onReset: () => logger.LogInformation("Circuit breaker reset"),
-                    onHalfOpen: () => logger.LogInformation("Circuit breaker half-open"));
+            var jitteredRetryPolicy = WileyWidget.Configuration.Resilience.PolicyFactory.CreateJitteredRetryPolicy(logger);
+            var circuitBreakerPolicy = WileyWidget.Configuration.Resilience.PolicyFactory.CreateDefaultCircuitBreakerPolicy(logger);
 
             registry.Add("JitteredRetry", jitteredRetryPolicy);
             registry.Add("DefaultCircuitBreaker", circuitBreakerPolicy);

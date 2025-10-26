@@ -19,11 +19,12 @@ using Syncfusion.Licensing;
 using Bold.Licensing;
 using WileyWidget.Views;
 using WileyWidget.Startup.Modules;
+using WileyWidget.Startup;
 using WileyWidget.Services;
 using Serilog;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Windows.Diagnostics;
+// Removed duplicate using System.Diagnostics (already included above)
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Serilog.Extensions.Logging;
@@ -55,7 +56,7 @@ using System.Xaml;
 
 namespace WileyWidget
 {
-    public partial class App : Prism.Wpf.PrismApplicationBase
+    public partial class App : Prism.Wpf.PrismApplication
     {
         // Static mapping of expected regions for each module for maintainability and reuse
         private static readonly Dictionary<string, string[]> moduleRegionMap = new Dictionary<string, string[]>
@@ -149,7 +150,12 @@ namespace WileyWidget
             }
         }
 
-        // Removed legacy OnStartup code as per Prism standard bootstrapper
+        // Simplified OnStartup for PrismApplication
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+        }
+
 
         // Database preflight logic moved out of the bootstrapper for clarity. If needed, implement a dedicated
         // startup task or hosted service to perform DB migrations/preflight outside the UI bootstrap path.
@@ -160,7 +166,7 @@ namespace WileyWidget
             base.ConfigureRegionAdapterMappings(regionAdapterMappings);
             try
             {
-                var behaviorFactory = this.Container.Resolve<IRegionBehaviorFactory>();
+                var behaviorFactory = ResolveWithRetry<IRegionBehaviorFactory>();
                 var sfGridAdapter = new WileyWidget.Regions.SfDataGridRegionAdapter(behaviorFactory);
                 regionAdapterMappings.RegisterMapping(typeof(Syncfusion.UI.Xaml.Grid.SfDataGrid), sfGridAdapter);
                 Log.Information("✓ Registered SfDataGridRegionAdapter for Prism regions");
@@ -203,8 +209,8 @@ namespace WileyWidget
             // Handle unhandled exceptions on the UI thread with XAML-specific recovery
             Application.Current.DispatcherUnhandledException += (sender, e) =>
             {
-                // First, try to unwrap TargetInvocationException from Unity container issues
-                Exception processedException = UnwrapTargetInvocationException(e.Exception);
+                // First, try to unwrap TargetInvocationException from DI container issues
+                Exception processedException = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(e.Exception);
 
                 if (TryHandleDryIocContainerException(processedException))
                 {
@@ -229,7 +235,7 @@ namespace WileyWidget
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 Exception? exception = e.ExceptionObject as Exception;
-                Exception? processedException = UnwrapTargetInvocationException(exception);
+                Exception? processedException = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(exception);
                 Log.Fatal(processedException, "Unhandled background thread exception occurred");
                 // Also log full inner exception chain to help diagnose reflection-wrapped errors
                 LogExceptionDetails(processedException);
@@ -239,7 +245,7 @@ namespace WileyWidget
             // Handle unobserved task exceptions
             System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
-                Exception processedException = UnwrapTargetInvocationException(e.Exception);
+                Exception processedException = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(e.Exception);
                 Log.Error(processedException, "Unobserved task exception occurred");
                 e.SetObserved(); // Prevent it from crashing the finalizer thread
             };
@@ -282,9 +288,9 @@ namespace WileyWidget
             return false;
         }
 
-        /// <summary>
-        /// Attempts to handle and recover from Unity container exceptions
-        /// </summary>
+    /// <summary>
+    /// Attempts to handle and recover from DI container exceptions
+    /// </summary>
         private bool TryHandleDryIocContainerException(Exception exception)
         {
             string message = exception.Message.ToLowerInvariant();
@@ -344,6 +350,73 @@ namespace WileyWidget
             }
 
             return current;
+        }
+
+        /// <summary>
+        /// Generic retry helper for synchronous operations. Lightweight exponential backoff used
+        /// instead of adding an external Polly dependency to keep bootstrapper changes minimal.
+        /// </summary>
+        private static TResult RetryOnException<TResult>(Func<TResult> operation, int maxAttempts = 3, int initialDelayMs = 200)
+        {
+            if (operation == null) throw new ArgumentNullException(nameof(operation));
+
+            int attempts = 0;
+            int delay = initialDelayMs;
+
+            while (true)
+            {
+                try
+                {
+                    return operation();
+                }
+                catch (Exception)
+                {
+                    attempts++;
+                    if (attempts >= maxAttempts) throw;
+                    Thread.Sleep(delay);
+                    delay = Math.Min(delay * 2, 5000); // cap backoff to 5s
+                }
+            }
+        }
+
+        /// <summary>
+        /// Centralized, safer container resolve which will attempt to resolve scoped services
+        /// from an IServiceScopeFactory when available, falling back to container resolve.
+        /// Includes lightweight retry to harden against transient resolution failures.
+        /// </summary>
+        private T ResolveWithRetry<T>(int maxAttempts = 3) where T : class
+        {
+            return WileyWidget.Startup.BootstrapHelpers.RetryOnException(() =>
+            {
+                // Try resolving via a scoped service provider when available (prevents leaked scopes)
+                try
+                {
+                    var scopeFactory = ResolveWithRetry<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>();
+                    if (scopeFactory != null)
+                    {
+                        using var scope = scopeFactory.CreateScope();
+                        var svc = scope.ServiceProvider.GetService(typeof(T)) as T;
+                        if (svc != null)
+                            return svc;
+                    }
+                }
+                catch (Exception)
+                {
+                    // swallow and fallback to root container resolve below
+                }
+
+                // Final fallback to root container resolve (Prism/DryIoc) - avoid recursive call
+                try
+                {
+                    // Prism's IContainerExtension exposes Resolve<T>()
+                    return Container.Resolve<T>();
+                }
+                catch
+                {
+                    // As a last resort try Activator to give a clearer error upstream
+                    return Activator.CreateInstance<T>();
+                }
+             }, maxAttempts);
         }
 
         /// <summary>
@@ -458,11 +531,11 @@ namespace WileyWidget
         {
             try
             {
-                var shell = this.Container.Resolve<Views.Shell>();
+                var shell = ResolveWithRetry<Views.Shell>();
                 Log.Information("Shell resolved from container successfully");
 
                 // Set DataContext to MainViewModel to fix navigation anomaly
-                var mainViewModel = this.Container.Resolve<MainViewModel>();
+                var mainViewModel = ResolveWithRetry<MainViewModel>();
                 shell.DataContext = mainViewModel;
                 Log.Information("MainViewModel set as Shell DataContext");
 
@@ -672,23 +745,13 @@ namespace WileyWidget
             bool enableExtendedDiagnostics = extendedDiagEnv == "1" || string.Equals(extendedDiagEnv, "true", StringComparison.OrdinalIgnoreCase);
             try
             {
-                // Build configuration first
-                Log.Debug("Building configuration for DI registration...");
-                configuration = BuildConfiguration();
-                Log.Debug("Configuration built successfully");
-
-                // Register configuration as singleton
-                containerRegistry.RegisterInstance<IConfiguration>(configuration);
-                Log.Information("✓ Registered IConfiguration as singleton instance");
-                Log.Debug("IConfiguration registered: {Type}", configuration.GetType().Name);
-
-                // Register Syncfusion license early in DI setup
-                EnsureSyncfusionLicenseRegistered();
-                Log.Information("✓ Syncfusion license registered");
+                // Use direct Bootstrapper registration for simplified startup
+                configuration = new WileyWidget.Startup.Bootstrapper().RegisterTypes(containerRegistry);
+                Log.Debug("Configuration and logging registered via Bootstrapper");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to register configuration services");
+                Log.Error(ex, "Bootstrapper registration failed during early registration");
                 throw;
             }
 
@@ -782,7 +845,7 @@ namespace WileyWidget
             {
                 try
                 {
-                    var secretVault = Container.Resolve<ISecretVaultService>();
+                    var secretVault = ResolveWithRetry<ISecretVaultService>();
                     await secretVault.MigrateSecretsFromEnvironmentAsync().ConfigureAwait(false);
                     Log.Information("✓ (Deferred) Environment secrets migrated to local vault");
 
@@ -809,7 +872,7 @@ namespace WileyWidget
                     memoryCacheOptions.SizeLimit = sizeLimit;
                 }
 
-#pragma warning disable CA2000 // Unity will dispose the registered singleton when the container is disposed
+#pragma warning disable CA2000 // DI container will dispose the registered singleton when the container is disposed
                 MemoryCache memoryCache = new MemoryCache(memoryCacheOptions);
 #pragma warning restore CA2000
                 containerRegistry.RegisterInstance<IMemoryCache>(memoryCache);
@@ -826,8 +889,10 @@ namespace WileyWidget
 
             try
             {
-                // Register data repositories required during startup validation to prevent Unity resolution failures
-                containerRegistry.Register<IEnterpriseRepository, WileyWidget.Data.EnterpriseRepository>();
+                // Register data repositories required during startup validation to prevent DI container resolution failures
+                // Enterprise repository is registered by EnterpriseModule; remove duplicate central registration to
+                // avoid multiple registrations and maintain module ownership of its services.
+                // containerRegistry.Register<IEnterpriseRepository, WileyWidget.Data.EnterpriseRepository>();
                 containerRegistry.Register<IBudgetRepository, WileyWidget.Data.BudgetRepository>();
                 containerRegistry.Register<IAuditRepository, WileyWidget.Data.AuditRepository>();
                 containerRegistry.Register<IMunicipalAccountRepository, WileyWidget.Data.MunicipalAccountRepository>();
@@ -841,7 +906,7 @@ namespace WileyWidget
 
                 // Register IServiceScopeFactory for DryIoc-based scoped services (required by WhatIfScenarioEngine)
                 containerRegistry.RegisterSingleton<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory, DryIocServiceScopeFactory>();
-                Log.Information("✓ Registered IServiceScopeFactory using Unity child container adapter");
+                Log.Information("✓ Registered IServiceScopeFactory using DryIoc child container adapter");
 
                 // Register business services
                 containerRegistry.RegisterSingleton<IWhatIfScenarioEngine, WhatIfScenarioEngine>();
@@ -1124,29 +1189,6 @@ namespace WileyWidget
 
             // Validate public accessibility to prevent InvalidRegistrationException
             ValidatePublicAccessibility();
-
-            // Run container diagnostics in debug mode
-#if DEBUG
-            try
-            {
-                Log.Debug("Running container resolution diagnostics in debug mode...");
-                var diagnosticReport = WileyWidget.Diagnostics.UnityContainerDiagnostics.TestContainerResolutions(containerRegistry, testMode);
-                diagnosticReport.LogSummary();
-
-                if (diagnosticReport.HasFailures)
-                {
-                    Log.Warning("Container diagnostics found resolution failures. Check logs for details.");
-                }
-
-                // Additional validation: Test critical service resolutions against the actual container
-                var diagContainerForValidation = containerRegistry.GetContainer();
-                ValidateContainerRegistrations(diagContainerForValidation);
-            }
-            catch (Exception diagEx)
-            {
-                Log.Warning(diagEx, "Container diagnostics failed to run");
-            }
-#endif
         }
 
         private void TryRegisterImplementationByName(IContainerRegistry containerRegistry, Type interfaceType, string implementationFullName)
@@ -1261,7 +1303,7 @@ namespace WileyWidget
         }
 
         /// <summary>
-        /// Ensures Prism and Unity remain the single composition root by validating container state and legacy configuration.
+    /// Ensures Prism and the DI container remain the single composition root by validating container state and legacy configuration.
         /// </summary>
         /// <param name="containerRegistry">The active Prism container registry</param>
         private void ValidatePrismInfrastructure(IContainerRegistry containerRegistry)
@@ -1335,7 +1377,7 @@ namespace WileyWidget
                     // Try to obtain AppOptionsConfigurator from the Prism container provider; avoid depending on DryIoc directly
                     try
                     {
-                        var configurator = Container.Resolve<AppOptionsConfigurator>();
+                        var configurator = ResolveWithRetry<AppOptionsConfigurator>();
                         configurator.Configure(appOptions);
                     }
                     catch (Exception)
@@ -1643,7 +1685,7 @@ namespace WileyWidget
         /// Registers HttpClient infrastructure for AI services with retry policies and timeout configuration.
         /// Production-ready implementation with comprehensive error handling and logging.
         /// </summary>
-        /// <param name="containerRegistry">The Unity container registry for DI registration</param>
+    /// <param name="containerRegistry">The DI container registry for DI registration</param>
         /// <param name="configuration">Application configuration for HttpClient settings</param>
         private void RegisterHttpClientServices(IContainerRegistry containerRegistry, IConfiguration configuration)
         {
@@ -1721,7 +1763,7 @@ namespace WileyWidget
         /// <summary>
         /// Registers database services using Microsoft.Extensions.DependencyInjection pattern
         /// </summary>
-        /// <param name="containerRegistry">The Unity container registry for DI registration</param>
+    /// <param name="containerRegistry">The DI container registry for DI registration</param>
         /// <param name="configuration">Application configuration for database settings</param>
         private void RegisterDatabaseServices(IContainerRegistry containerRegistry, IConfiguration configuration)
         {
@@ -1729,10 +1771,10 @@ namespace WileyWidget
 
             try
             {
-                // Unity-only approach: build DbContextOptions<AppDbContext> from configuration
-                // and register a small Unity-friendly factory implementation that takes
-                // DbContextOptions<AppDbContext> in its constructor. This removes the
-                // cross-container ServiceCollection usage and keeps DI with Unity only.
+                // Legacy approach: build DbContextOptions<AppDbContext> from configuration
+                // and register a small legacy-compatible factory implementation that takes
+                // DbContextOptions<AppDbContext> in its constructor. This avoids cross-container
+                // ServiceCollection usage and keeps DI container composition consistent.
 
                 var connectionString = configuration.GetConnectionString("DefaultConnection")
                                        ?? "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=true";
@@ -1751,22 +1793,16 @@ namespace WileyWidget
 
                 var options = optionsBuilder.Options;
 
-                // Register the options instance with Unity
-                containerRegistry.RegisterInstance<DbContextOptions<AppDbContext>>(options);
 
-                // Register a Unity-friendly factory implementation that Unity can construct
-                // because it takes DbContextOptions<AppDbContext> in its ctor
-                containerRegistry.RegisterSingleton<IDbContextFactory<AppDbContext>, WileyWidget.Data.UnityAppDbContextFactory>();
+                // Centralize EF Core registrations to a single helper to avoid duplicates
+                RegisterDbContextCore(containerRegistry, options);
 
-                // Register AppDbContext using the factory
-                containerRegistry.Register<AppDbContext>(provider => provider.Resolve<IDbContextFactory<AppDbContext>>().CreateDbContext());
-
-                Log.Information("✓ Registered database services (AppDbContext, IDbContextFactory via Unity)");
+                Log.Information("✓ Registered database services (AppDbContext, IDbContextFactory via DI)");
                 Log.Information("  - Provider: SQL Server with connection pooling");
-                Log.Information("  - Features: Unity-only registration, repositories, audit logging");
+                Log.Information("  - Features: container-scoped registration, repositories, audit logging");
 
                 // Ensure minimal additive schema hotfixes are applied very early in startup
-                // This mirrors DatabaseConfiguration.ApplySchemaHotfixesAsync but works with DryIoc via Prism DI.
+                    // This mirrors DatabaseConfiguration.ApplySchemaHotfixesAsync but works with DryIoc via Prism DI.
                 try
                 {
                     // Apply additive schema hotfixes using the DI container to resolve the EF factory.
@@ -1786,7 +1822,7 @@ namespace WileyWidget
         }
 
         /// <summary>
-        /// Unity-only additive schema hotfix runner to unblock environments with slight drift.
+            /// Legacy container-only additive schema hotfix runner to unblock environments with slight drift.
         /// Safe to run multiple times. Adds missing columns used by runtime queries.
         /// </summary>
         private void ApplyAdditiveSchemaHotfixes()
@@ -1794,7 +1830,7 @@ namespace WileyWidget
             // Resolve IDbContextFactory from the Prism container provider and execute idempotent ALTERs
             try
             {
-                var factory = Container.Resolve<IDbContextFactory<AppDbContext>>();
+                var factory = ResolveWithRetry<IDbContextFactory<AppDbContext>>();
                 using var context = factory.CreateDbContext();
 
                 const string addQboClientId = @"IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
@@ -1822,7 +1858,7 @@ namespace WileyWidget
         /// Includes GrokSupercomputer, WileyWidgetContextService, and enhanced XAIService.
         /// All services are registered as singletons for optimal performance and resource management.
         /// </summary>
-        /// <param name="containerRegistry">The Unity container registry for DI registration</param>
+    /// <param name="containerRegistry">The DI container registry for DI registration</param>
         private void RegisterAIIntegrationServices(IContainerRegistry containerRegistry)
         {
             Log.Information("=== Registering AI Integration Services (Phase 1 - Production) ===");
@@ -1833,7 +1869,7 @@ namespace WileyWidget
                 // Production telemetry for AI service monitoring and performance tracking
                 // NOTE: Commented out until Azure/Application Insights is configured
                 /*
-                var config = Container.Resolve<IConfiguration>();
+                var config = ResolveWithRetry<IConfiguration>();
                 var instrumentationKey = config["ApplicationInsights:InstrumentationKey"];
                 if (!string.IsNullOrEmpty(instrumentationKey))
                 {
@@ -1884,7 +1920,7 @@ namespace WileyWidget
                 Log.Information("  - xAI/Grok integration for AI-powered insights");
                 Log.Information("  - Features: Insights, data analysis, area review, mock data generation");
                 Log.Information("  - Dependencies: IHttpClientFactory, IConfiguration, ILogger<XAIService>, IWileyWidgetContextService, IAILoggingService, IMemoryCache");
-                Log.Information("  - Configuration: XAI:ApiKey, XAI:BaseUrl, XAI:Model, XAI:TimeoutSeconds");
+                Log.Information("   - Configuration: XAI:ApiKey, XAI:BaseUrl, XAI:Model, XAI:TimeoutSeconds");
 
                 // 3. Register IGrokSupercomputer -> GrokSupercomputer (Singleton)
                 // AI-powered municipal utility analytics and compliance reporting engine
@@ -1925,11 +1961,32 @@ namespace WileyWidget
             optionsBuilder.EnableDetailedErrors();
 
             var options = optionsBuilder.Options;
-            containerRegistry.RegisterInstance<DbContextOptions<AppDbContext>>(options);
-            containerRegistry.RegisterSingleton<IDbContextFactory<AppDbContext>, WileyWidget.Data.UnityAppDbContextFactory>();
+            // Centralized registration helper for in-memory DB as well
+            RegisterDbContextCore(containerRegistry, options);
 
             // Also register a test quickbooks repo if needed - repositories use AppDbContext so factory is enough
             Log.Information("In-memory DB registration complete");
+        }
+
+        /// <summary>
+        /// Central helper to register EF Core DbContext options, factory and DbContext
+        /// to avoid duplicated registration logic across production and test paths.
+        /// </summary>
+        private void RegisterDbContextCore(IContainerRegistry containerRegistry, DbContextOptions<AppDbContext> options)
+        {
+            Log.Debug("Centralizing EF Core registrations (options, factory, AppDbContext)");
+
+            // Register the options instance
+            containerRegistry.RegisterInstance<DbContextOptions<AppDbContext>>(options);
+
+            // Register a factory implementation used by the app (legacy name retained)
+            // Use app-scoped DbContext factory implementation (renamed from legacy container-specific naming)
+            containerRegistry.RegisterSingleton<IDbContextFactory<AppDbContext>, WileyWidget.Data.AppDbContextFactory>();
+
+            // Register AppDbContext via factory to ensure proper creation per scope
+            containerRegistry.Register<AppDbContext>(provider => provider.Resolve<IDbContextFactory<AppDbContext>>().CreateDbContext());
+
+            Log.Information("✓ Central EF Core registrations complete (DbContextOptions, IDbContextFactory, AppDbContext)");
         }
 
         /// <summary>
@@ -1942,7 +1999,7 @@ namespace WileyWidget
 
             try
             {
-                var config = Container.Resolve<IConfiguration>();
+                var config = ResolveWithRetry<IConfiguration>();
                 var validationErrors = new List<string>();
 
                 // Validate XAI configuration
@@ -2020,97 +2077,33 @@ namespace WileyWidget
 
         protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
         {
-            Log.Information("=== Configuring Prism Module Catalog ===");
+            Log.Information("=== Configuring Prism Module Catalog (auto-discovery mode) ===");
 
-            // Manually add modules with OnDemand initialization to improve startup time
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(CoreModule).Name,
-                ModuleType = typeof(CoreModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.WhenAvailable
-            });
-
-            // Use typeof-based assembly-qualified name for robustness across test/runtime contexts
-            // Register SettingsModule only if present (avoid hard compile-time dependency)
+            // Try to register CoreModule if available; otherwise rely on module attribute discovery.
             try
             {
-                var settingsModuleType = Type.GetType("WileyWidget.Startup.Modules.SettingsModule, WileyWidget");
-                if (settingsModuleType != null)
-                {
-                    moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
+                var coreType = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(a =>
                     {
-                        ModuleName = "SettingsModule",
-                        ModuleType = settingsModuleType.AssemblyQualifiedName,
-                        InitializationMode = Prism.Modularity.InitializationMode.WhenAvailable
-                    });
+                        try { return a.GetTypes(); } catch { return Array.Empty<Type>(); }
+                    })
+                    .FirstOrDefault(t => string.Equals(t.FullName, "WileyWidget.CoreModule", StringComparison.Ordinal)
+                                      || t.Name == "CoreModule");
+
+                if (coreType != null)
+                {
+                    moduleCatalog.AddModule(coreType);
+                    Log.Information("✓ Registered CoreModule (type: {Type})", coreType.FullName);
                 }
                 else
                 {
-                    Log.Debug("SettingsModule not found; skipping registration");
+                    Log.Warning("CoreModule type not found; relying on Prism's assembly discovery for modules.");
                 }
             }
             catch (Exception ex)
             {
-                Log.Debug(ex, "Skipping SettingsModule registration due to resolution failure");
+                Log.Warning(ex, "Failed to register CoreModule reflectively; continuing and relying on assembly discovery.");
             }
-
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(DashboardModule).Name,
-                ModuleType = typeof(DashboardModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
-            });
-
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(EnterpriseModule).Name,
-                ModuleType = typeof(EnterpriseModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
-            });
-
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(BudgetModule).Name,
-                ModuleType = typeof(BudgetModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
-            });
-
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(MunicipalAccountModule).Name,
-                ModuleType = typeof(MunicipalAccountModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
-            });
-
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(UtilityCustomerModule).Name,
-                ModuleType = typeof(UtilityCustomerModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
-            });
-
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(ReportsModule).Name,
-                ModuleType = typeof(ReportsModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
-            });
-
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(AIAssistModule).Name,
-                ModuleType = typeof(AIAssistModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
-            });
-
-            moduleCatalog.AddModule(new Prism.Modularity.ModuleInfo
-            {
-                ModuleName = typeof(PanelModule).Name,
-                ModuleType = typeof(PanelModule).AssemblyQualifiedName,
-                InitializationMode = Prism.Modularity.InitializationMode.OnDemand
-            });
-
-            Log.Information("✓ Manually registered modules");
         }
 
         protected override void InitializeModules()
@@ -2136,7 +2129,7 @@ namespace WileyWidget
                 // Try to get module health service for additional diagnostics
                 try
                 {
-                    var healthService = Container.Resolve<IModuleHealthService>();
+                    var healthService = ResolveWithRetry<IModuleHealthService>();
                     Log.Error("Module health status: {Status}", string.Join(", ", healthService.GetAllModuleStatuses().Select(m => $"{m.ModuleName}: {m.Status}")));
                 }
                 catch
@@ -2158,7 +2151,7 @@ namespace WileyWidget
             IModuleHealthService? moduleHealthService = null;
             try
             {
-                moduleHealthService = Container.Resolve<IModuleHealthService>();
+                moduleHealthService = ResolveWithRetry<IModuleHealthService>();
             }
             catch (Exception ex)
             {
@@ -2188,8 +2181,8 @@ namespace WileyWidget
             try
             {
                 // Resolve the error handler service
-                var errorHandler = Container.Resolve<IPrismErrorHandler>();
-                var eventAggregator = Container.Resolve<Prism.Events.IEventAggregator>();
+                var errorHandler = ResolveWithRetry<IPrismErrorHandler>();
+                var eventAggregator = ResolveWithRetry<Prism.Events.IEventAggregator>();
 
                 if (eventAggregator == null)
                 {
@@ -2288,7 +2281,7 @@ namespace WileyWidget
 
             Log.Information("=== Validating Module Initialization and Region Availability ===");
 
-            var regionManager = Container.Resolve<IRegionManager>();
+            var regionManager = ResolveWithRetry<IRegionManager>();
             var validationResults = new List<string>();
 
             foreach (var moduleStatus in moduleHealthService.GetAllModuleStatuses())
@@ -2408,7 +2401,7 @@ namespace WileyWidget
                 // Log module health report after initialization
                 try
                 {
-                    var moduleHealthService = Container.Resolve<IModuleHealthService>();
+                    var moduleHealthService = ResolveWithRetry<IModuleHealthService>();
                     moduleHealthService.LogHealthReport();
 
                     // Validate module initialization and region availability
@@ -2461,10 +2454,11 @@ namespace WileyWidget
             }
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Prism's DryIocContainerExtension takes ownership of the DryIoc Container and will dispose it when appropriate.")]
         protected override IContainerExtension CreateContainerExtension()
         {
             // Use DryIoc as the Prism container implementation
-            // Note: keep this simple - more adaptations for Unity-specific helpers will follow in later iterations
+            // Note: keep this simple - more adaptations for legacy-container-specific helpers will follow in later iterations
             var container = new Container();
             return new DryIocContainerExtension(container);
         }
@@ -2541,7 +2535,7 @@ namespace WileyWidget
                 .AddUserSecrets<App>(optional: true);
 
             var configurationRoot = builder.Build();
-            ResolveConfigurationPlaceholders(configurationRoot);
+            WileyWidget.Startup.BootstrapHelpers.ResolveConfigurationPlaceholders(configurationRoot);
 
             return configurationRoot;
         }
@@ -2640,8 +2634,9 @@ namespace WileyWidget
                 throw new InvalidOperationException("Application is not initialized or not of type App.");
             }
 
+            // Container is PrismApplication's IContainerExtension - expose the IContainerProvider
             return app.Container
-                ?? throw new InvalidOperationException("Prism container is not available during application lifetime.");
+                 ?? throw new InvalidOperationException("Prism container is not available during application lifetime.");
         }
 
         private void ConfigureDiagnosticsSettings(IConfiguration configuration)
@@ -2723,7 +2718,7 @@ namespace WileyWidget
                 if (!type.IsPublic && !type.IsNestedPublic)
                 {
                     Log.Error("Type {Type} is not public - this may cause InvalidRegistrationException", type.FullName);
-                    throw new InvalidOperationException($"Type {type.FullName} must be public for Unity registration");
+                    throw new InvalidOperationException($"Type {type.FullName} must be public for DI container registration");
                 }
 
                 var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);

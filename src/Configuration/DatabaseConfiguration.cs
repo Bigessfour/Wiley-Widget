@@ -55,10 +55,13 @@ public static class DatabaseConfiguration
     /// <summary>
     /// Adds enterprise-grade database services to the dependency injection container
     /// </summary>
-    public static IServiceCollection AddEnterpriseDatabaseServices(
+        public static IServiceCollection AddEnterpriseDatabaseServices(
         this IServiceCollection services,
         IConfiguration configuration)
     {
+            // Register EF interceptors and helpers used by DbContext
+            services.AddSingleton<WileyWidget.Data.Interceptors.AuditInterceptor>();
+
         // EF Core DI Lifetime Fix: Use AddDbContextFactory with Singleton lifetime for factory
         // This provides a singleton factory that creates scoped DbContexts
         services.AddDbContextFactory<AppDbContext>((sp, options) =>
@@ -108,6 +111,20 @@ public static class DatabaseConfiguration
             ConfigureSqlServer(options, connectionString, logger, environmentName);
         }
         ConfigureEnterpriseDbContextOptions(options, logger);
+
+        // Add registered interceptors (AuditInterceptor) into DbContext options
+        try
+        {
+            var auditInterceptor = sp.GetService<WileyWidget.Data.Interceptors.AuditInterceptor>();
+            if (auditInterceptor != null)
+            {
+                options.AddInterceptors(auditInterceptor);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to attach AuditInterceptor to DbContext options (non-fatal)");
+        }
 
         // Configure EF 9 seeding methods for automatic database initialization
         // ConfigureDatabaseSeeding(options, logger);

@@ -66,9 +66,9 @@ public static class XamlValidator
 ### Core WPF Dependencies
 ```xml
 <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
-<PackageReference Include="Prism.Core" Version="8.1.97" />
-<PackageReference Include="Prism.Wpf" Version="8.1.97" />
-<PackageReference Include="Prism.Unity" Version="8.1.97" />
+<PackageReference Include="Prism.Core" Version="9.0.537" />
+<PackageReference Include="Prism.Wpf" Version="9.0.537" />
+<PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
 ```
 
 ### Syncfusion Dependencies

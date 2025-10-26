@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace WileyWidget.Data
 {
     /// <summary>
-    /// Adapter that delegates to an inner IDbContextFactory to allow Unity to hold
+    /// Adapter that delegates to an inner IDbContextFactory to allow the DI container to hold
     /// a concrete instance for the interface registration.
     /// </summary>
     public sealed class AppDbContextFactoryAdapter : IDbContextFactory<AppDbContext>

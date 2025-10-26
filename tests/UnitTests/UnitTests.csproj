@@ -14,14 +14,19 @@
   </ItemGroup>
 
   <ItemGroup>
-  <ProjectReference Include="..\..\WileyWidget.Data\WileyWidget.Data.csproj" />
-  <ProjectReference Include="..\..\WileyWidget.Models\WileyWidget.Models.csproj" />
-  <ProjectReference Include="..\..\WileyWidget.csproj" />
-  <ProjectReference Include="..\..\WileyWidget.UI\WileyWidget.UI.csproj" />
+  <!-- Removed project references to avoid building unrelated UI projects during fast unit tests.
+       Tests are self-contained and use the TestPolicyFactory helper. Add project references back
+       if you need integration tests that depend on application projects. -->
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\Unit\**\*.cs" />
+    <PackageReference Include="Polly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Only include the quick resilience tests and their helpers to keep this test run fast and isolated -->
+    <Compile Include="..\Unit\Resilience\**\*.cs" />
+    <Compile Include="..\Unit\TestHelpers\**\*.cs" />
   </ItemGroup>
 
 </Project>
