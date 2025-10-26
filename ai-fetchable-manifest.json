@@ -3,37 +3,37 @@
     "remote_url": "https://github.com/Bigessfour/Wiley-Widget",
     "owner_repo": "Bigessfour/Wiley-Widget",
     "branch": "main",
-    "commit_hash": "36f1b20d2186bba3619fe3150c6df7f40ba885c5",
+    "commit_hash": "31121fd9ee7264285ce9cfb8990f890ccf136030",
     "is_dirty": true,
-    "generated_at": "2025-10-26T16:25:42.461748"
+    "generated_at": "2025-10-26T17:53:45.586961"
   },
   "summary": {
-    "total_files": 707,
-    "total_size": 17490780,
+    "total_files": 712,
+    "total_size": 17559905,
     "categories": {
       "configuration": 21,
       "unknown": 55,
       "test": 69,
-      "documentation": 56,
-      "source_code": 381,
-      "automation": 125
+      "documentation": 57,
+      "source_code": 384,
+      "automation": 126
     },
     "languages": {
       "JSON": 32,
       "YAML": 12,
-      "Markdown": 75,
+      "Markdown": 76,
       "Unknown": 26,
       "TOML": 2,
       "Configuration": 2,
-      "C#": 340,
+      "C#": 342,
       "C# Project": 14,
-      "XAML": 41,
+      "XAML": 42,
       "Text": 16,
       "Visual Studio Solution": 1,
       "XML": 1,
       "SQL": 3,
       "Python": 26,
-      "PowerShell": 111,
+      "PowerShell": 112,
       "Batch": 1,
       "JavaScript": 1,
       "Shell": 1,
@@ -282,6 +282,7 @@
     "event",
     "example",
     "excel",
+    "excelexportservice",
     "excelimportview",
     "excelimportviewmodel",
     "excelreaderservice",
@@ -539,8 +540,7 @@
     "regionmanagerbehavior",
     "regions",
     "regionviewregistry",
-    "registration",
-    "release"
+    "registration"
   ],
   "files": [
     {
@@ -883,15 +883,15 @@
       "metadata": {
         "path": ".gitignore",
         "exists": true,
-        "size": 2608,
-        "last_modified": "2025-10-19T09:34:01.963156",
+        "size": 2626,
+        "last_modified": "2025-10-26T17:44:24.893447",
         "extension": "",
         "language": "Unknown",
         "mime_type": "text/plain",
         "line_count": 73,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "d594d7b14ca5be79155f54f2a473b46914fef6691a9b255e7e102ecf658aee0f"
+        "sha256": "0da3bee9dba9250b93ed05890a5c53dae29867f7276ea173e85db3543c991c9b"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/.gitignore",
@@ -1080,7 +1080,7 @@
         "path": ".trunk/logs",
         "exists": true,
         "size": 4096,
-        "last_modified": "2025-10-26T16:24:30.932843",
+        "last_modified": "2025-10-26T17:48:31.763770",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -1108,7 +1108,7 @@
         "path": ".trunk/notifications",
         "exists": true,
         "size": 4096,
-        "last_modified": "2025-10-26T16:14:08.443535",
+        "last_modified": "2025-10-26T17:48:29.418109",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -1136,7 +1136,7 @@
         "path": ".trunk/out",
         "exists": true,
         "size": 3407872,
-        "last_modified": "2025-10-26T12:32:15.993488",
+        "last_modified": "2025-10-26T17:47:14.674093",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -1191,8 +1191,8 @@
       "metadata": {
         "path": ".trunk/tools",
         "exists": true,
-        "size": 32768,
-        "last_modified": "2025-10-26T16:24:41.455813",
+        "size": 40960,
+        "last_modified": "2025-10-26T17:51:56.091985",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -4913,6 +4913,34 @@
     },
     {
       "metadata": {
+        "path": "WileyWidget.Services/Export/ExcelExportService.cs",
+        "exists": true,
+        "size": 11792,
+        "last_modified": "2025-10-26T16:37:00.692574",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 31,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "56f8396894b1cee7279e5658c1f35815b73b995630216c7b1cba7048a563e409"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Services/Export/ExcelExportService.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.Services/Export/ExcelExportService.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.Services/Export/ExcelExportService.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Collections.Generic;\nusing System.IO;\nusing System.Linq;\nusing System.Threading.Tasks;\nusing Microsoft.Extensions.Logging;\nusing Syncfusion.XlsIO;\nusing WileyWidget.Models;\npublic interface IExcelExportService\npublic class ExcelExportService : IExcelExportService\nprivate readonly ILogger<ExcelExportService> _logger;\npublic ExcelExportService(ILogger<ExcelExportService> logger)\npublic async Task<string> ExportBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string filePath)"
+      }
+    },
+    {
+      "metadata": {
         "path": "WileyWidget.Services/FileSecurityHelper.cs",
         "exists": true,
         "size": 2227,
@@ -6733,6 +6761,62 @@
     },
     {
       "metadata": {
+        "path": "WileyWidget.UI/Controls/ThemeToggleControl.xaml",
+        "exists": true,
+        "size": 5042,
+        "last_modified": "2025-10-26T16:41:35.853189",
+        "extension": ".xaml",
+        "language": "XAML",
+        "mime_type": "application/xaml+xml",
+        "line_count": 19,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "cc4232e6fc1622e6efa8533f9bcfa761a13c0f359a89d553dc064bfb16261686"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Controls/ThemeToggleControl.xaml",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Controls/ThemeToggleControl.xaml",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Controls/ThemeToggleControl.xaml"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "XAML file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "<UserControl x:Class=\"WileyWidget.UI.Controls.ThemeToggleControl\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             mc:Ignorable=\"d\"\n             d:DesignHeight=\"50\" d:DesignWidth=\"250\">\n    <UserControl.Resources>\n        <!-- Toggle Switch Style for CheckBox -->\n        <Style x:Key=\"ToggleSwitchStyle\" TargetType=\"CheckBox\">"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Controls/ThemeToggleControl.xaml.cs",
+        "exists": true,
+        "size": 2177,
+        "last_modified": "2025-10-26T16:44:21.247933",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 37,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "b51324cc11b895828f3891ddc8a9745895fd7938760b5406c1badd2fda59edae"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Controls/ThemeToggleControl.xaml.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Controls/ThemeToggleControl.xaml.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Controls/ThemeToggleControl.xaml.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Windows;\nusing System.Windows.Controls;\nusing Prism.Mvvm;\nusing WileyWidget.Services;\npublic partial class ThemeToggleControl : UserControl\npublic ThemeToggleControl()\npublic ThemeToggleControl(IThemeService themeService) : this()\npublic class ThemeToggleViewModel : BindableBase\nprivate readonly IThemeService _themeService;\nprivate bool _isDarkMode;\npublic ThemeToggleViewModel(IThemeService themeService)\npublic bool IsDarkMode"
+      }
+    },
+    {
+      "metadata": {
         "path": "WileyWidget.UI/Converters.cs",
         "exists": true,
         "size": 11934,
@@ -8331,15 +8415,15 @@
       "metadata": {
         "path": "WileyWidget.UI/SettingsView.xaml",
         "exists": true,
-        "size": 36311,
-        "last_modified": "2025-10-26T16:08:38.917228",
+        "size": 36809,
+        "last_modified": "2025-10-26T16:48:54.183307",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 16,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "c6eb2875342703f370ec3e832b54adde6547c4750981a671404fa9e995ca6d23"
+        "sha256": "413ec3acf00ee587d22863144d279682d6f456790364b3c24b19f74d329979da"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/SettingsView.xaml",
@@ -8352,7 +8436,7 @@
         "description": "XAML file containing project code/data",
         "dependencies": [],
         "related_files": [],
-        "summary": "<UserControl x:Class=\"WileyWidget.SettingsView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget.Converters\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.UI.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n             xmlns:notification=\"http://schemas.syncfusion.com/wpf\""
+        "summary": "<UserControl x:Class=\"WileyWidget.SettingsView\"\n             xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n             xmlns:d=\"http://schemas.microsoft.com/expression/blend/2008\"\n             xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"\n             xmlns:local=\"clr-namespace:WileyWidget.Converters\"\n             xmlns:controls=\"clr-namespace:WileyWidget.UI.Controls\"\n             xmlns:behaviors=\"clr-namespace:WileyWidget.UI.Behaviors\"\n             xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n             xmlns:syncfusionskin=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\""
       }
     },
     {
@@ -8387,15 +8471,15 @@
       "metadata": {
         "path": "WileyWidget.UI/Shell.xaml",
         "exists": true,
-        "size": 19383,
-        "last_modified": "2025-10-26T16:08:38.919281",
+        "size": 19380,
+        "last_modified": "2025-10-26T17:28:44.873043",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 15,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "1c906f2cc11d8a183f18bd718415c51ee0b6b1a4c2a6d0ffb7c2b2eba02924d6"
+        "sha256": "5159c219d1b80c5a877b108f84e4fcdad27f5475c903c65007948be74d2faa72"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Shell.xaml",
@@ -10039,15 +10123,15 @@
       "metadata": {
         "path": "WileyWidget.csproj",
         "exists": true,
-        "size": 15229,
-        "last_modified": "2025-10-26T16:09:51.429004",
+        "size": 15280,
+        "last_modified": "2025-10-26T17:41:22.959597",
         "extension": ".csproj",
         "language": "C# Project",
         "mime_type": "application/xml",
         "line_count": 20,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "af3713ffa1562ccf1be3f81c18638da49845d63044b45a05b91b487e826f9ae5"
+        "sha256": "a54937ecf3033477b3b5aadb8957805bbd61660685a692fbac1f2801e1d27636"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.csproj",
@@ -10123,15 +10207,15 @@
       "metadata": {
         "path": "ai-fetchable-manifest.json",
         "exists": true,
-        "size": 1074994,
-        "last_modified": "2025-10-26T12:32:16.445883",
+        "size": 1096748,
+        "last_modified": "2025-10-26T17:45:25.934419",
         "extension": ".json",
         "language": "JSON",
         "mime_type": "application/json",
         "line_count": 46,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "9bdb3dae7554f95d87538a3048f7995c68ea39c87eaf98811fd0d8aac45034cf"
+        "sha256": "5eb20febd05d3b83c4a9ce95e6ff0fd80decb04a7be14677ec0551474012d930"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/ai-fetchable-manifest.json",
@@ -10509,6 +10593,34 @@
         "dependencies": [],
         "related_files": [],
         "summary": "# AI-Fetchable Manifest\n## What it contains\n## New fields and heuristics\n## Generate the manifest\n# Generate in the repository root (all categories)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "docs/ARCHITECTURE.md",
+        "exists": true,
+        "size": 18273,
+        "last_modified": "2025-10-26T16:38:14.782284",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 29,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "f76f44b3b11ecfeb2079111aed9b9cb959000f0d374ea7fad2fd5523bde43b0b"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/docs/ARCHITECTURE.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/docs/ARCHITECTURE.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/docs/ARCHITECTURE.md"
+      },
+      "context": {
+        "category": "documentation",
+        "importance": "medium",
+        "description": "Markdown file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "# Wiley Widget Architecture Documentation\n## Table of Contents\n## Architecture Overview"
       }
     },
     {
@@ -13147,15 +13259,15 @@
       "metadata": {
         "path": "scripts/PowerShell-Standards.ps1",
         "exists": true,
-        "size": 10675,
-        "last_modified": "2025-10-26T16:24:40.833347",
+        "size": 11121,
+        "last_modified": "2025-10-26T17:48:33.245220",
         "extension": ".ps1",
         "language": "PowerShell",
         "mime_type": null,
         "line_count": 73,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "1d0e9657523e893c21ce5e9965479d43830e4c9a1494ab34337273463163e598"
+        "sha256": "be21a1252b21871cc4bf4ad33a1974793ab728b5a542068e566090f117d9519b"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/PowerShell-Standards.ps1",
@@ -15469,6 +15581,34 @@
     },
     {
       "metadata": {
+        "path": "scripts/profile-startup-performance.ps1",
+        "exists": false,
+        "size": 0,
+        "last_modified": null,
+        "extension": ".ps1",
+        "language": "PowerShell",
+        "mime_type": null,
+        "line_count": 0,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": ""
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/profile-startup-performance.ps1",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/scripts/profile-startup-performance.ps1",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/scripts/profile-startup-performance.ps1"
+      },
+      "context": {
+        "category": "automation",
+        "importance": "medium",
+        "description": "PowerShell file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "Unable to generate summary"
+      }
+    },
+    {
+      "metadata": {
         "path": "scripts/profile-startup.ps1",
         "exists": true,
         "size": 5875,
@@ -17123,15 +17263,15 @@
       "metadata": {
         "path": "src/App.xaml",
         "exists": true,
-        "size": 2803,
-        "last_modified": "2025-10-26T09:54:21.238843",
+        "size": 2915,
+        "last_modified": "2025-10-26T17:13:47.779564",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "b36ade8877754d4cbeb2822c1daf543198ff65fc12788c6f8e70ec7fc94aa83a"
+        "sha256": "070a1813951d24b523cf96d4f51eb3dd7eb8ed5fc75a43cf572ae2a3cd0b635c"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/App.xaml",
@@ -17144,22 +17284,22 @@
         "description": "XAML file containing project code/data",
         "dependencies": [],
         "related_files": [],
-        "summary": "<Application x:Class=\"WileyWidget.App\"\n                        xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n                        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n                        xmlns:prism=\"http://prismlibrary.com/\"\n                        xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n                        xmlns:syncfusionClr=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n                        xmlns:syncfusionThemes=\"clr-namespace:Syncfusion.Themes.FluentLight.WPF;assembly=Syncfusion.Themes.FluentLight.WPF\"\n                        xmlns:converters=\"clr-namespace:WileyWidget.Converters;assembly=WileyWidget.UI\"\n                        xmlns:local=\"clr-namespace:WileyWidget\"\n                        prism:ViewModelLocator.AutoWireViewModel=\"True\">"
+        "summary": "<prism:PrismApplication x:Class=\"WileyWidget.App\"\n                        xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n                        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n                        xmlns:prism=\"clr-namespace:Prism.DryIoc;assembly=Prism.DryIoc.Wpf\"\n                        xmlns:mvvm=\"http://prismlibrary.com/\"\n                        xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"\n                        xmlns:syncfusionClr=\"clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF\"\n                        xmlns:syncfusionThemes=\"clr-namespace:Syncfusion.Themes.FluentLight.WPF;assembly=Syncfusion.Themes.FluentLight.WPF\"\n                        xmlns:converters=\"clr-namespace:WileyWidget.Converters;assembly=WileyWidget.UI\"\n                        xmlns:local=\"clr-namespace:WileyWidget\""
       }
     },
     {
       "metadata": {
         "path": "src/App.xaml.cs",
         "exists": true,
-        "size": 136377,
-        "last_modified": "2025-10-26T15:12:34.271574",
+        "size": 137150,
+        "last_modified": "2025-10-26T17:29:30.204130",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 38,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "56fc7ca05289eef7b357c0f3b37b000c1db1180fa3026ba2dc0aee366651ce10"
+        "sha256": "df6bf93673332e86c48c92a5b4c4646e0fc9db9367ad3e24fdee20eac04cc132"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/App.xaml.cs",
@@ -20518,6 +20658,7 @@
       "_isactive",
       "_isbusy",
       "_isconnected",
+      "_isdarkmode",
       "_isdataloaded",
       "_isdismissed",
       "_isindeterminate",
@@ -20540,8 +20681,7 @@
       "_metricslock",
       "_migrationattempts",
       "_migrationduration",
-      "_migrationfailures",
-      "_municipalaccountrepository"
+      "_migrationfailures"
     ],
     "relationships": [],
     "clusters": {},
@@ -21157,6 +21297,11 @@
         "description": "C# file containing project code/data"
       },
       {
+        "path": "WileyWidget.Services/Export/ExcelExportService.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
         "path": "WileyWidget.Services/FileSecurityHelper.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
@@ -21478,6 +21623,16 @@
       },
       {
         "path": "WileyWidget.UI/ConfirmationDialogView.xaml.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Controls/ThemeToggleControl.xaml",
+        "category": "source_code",
+        "description": "XAML file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Controls/ThemeToggleControl.xaml.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
       },
