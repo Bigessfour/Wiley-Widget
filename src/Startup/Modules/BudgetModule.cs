@@ -1,6 +1,6 @@
 using System;
 using Prism.Ioc;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 using Prism.Modularity;
 using Serilog;
 using WileyWidget.ViewModels;

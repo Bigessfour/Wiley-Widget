@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Windows;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.Regions
 {

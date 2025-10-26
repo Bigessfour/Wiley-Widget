@@ -4,16 +4,16 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:WileyWidget.Views"
-             xmlns:converters="clr-namespace:WileyWidget"
+             xmlns:converters="clr-namespace:WileyWidget.Converters"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:sfchart="clr-namespace:Syncfusion.UI.Xaml.Charts;assembly=Syncfusion.SfChart.WPF"
              xmlns:sfgrid="clr-namespace:Syncfusion.UI.Xaml.Grid;assembly=Syncfusion.SfGrid.WPF"
              mc:Ignorable="d"
              d:DesignHeight="700" d:DesignWidth="900" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <UserControl.Resources>
-        <local:ComparisonConverter x:Key="ComparisonConverter"/>
+        <converters:ComparisonConverter x:Key="ComparisonConverter"/>
         <converters:BalanceColorConverter x:Key="BalanceColorConverter"/>
-        <local:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -56,7 +56,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="20" xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+    <Grid Margin="20" xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
         behaviors:MouseFocusBehavior.EnableOnClick="True"
         behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
         <Grid.RowDefinitions>

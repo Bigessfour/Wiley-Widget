@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:local="clr-namespace:WileyWidget"
-             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
@@ -18,7 +18,7 @@
     <!-- Evidence for Section 5 UX/Theming: SfSkinManager namespace declared; theme applied via code-behind ThemeManager service per checklist Section 1 (Wiley Widget icing on the cake): "Theme is respected via ThemeManager.ApplyTheme() in AIAssistView_Loaded" -->
     <!-- Evidence for Section 5 UX/Theming: SfAcrylicPanel (darkTheme namespace) added for modern translucent blurred background effect per Syncfusion FluentDark theme docs and FLUENTDARK_ENHANCED_EFFECTS_CONFIGURATION.md -->
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <!-- Converter for empty collection visibility -->
         <local:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
@@ -151,7 +151,6 @@
                                         MinWidth="80"
                                         MinHeight="36"
                                         Margin="0,0,6,0"
-                                        CornerRadius="6"
                                         IconHeight="16"
                                         IconWidth="16"
                                         AutomationProperties.Name="Send Query Button"
@@ -181,15 +180,14 @@
                                         MinWidth="95"
                                         MinHeight="36"
                                         Margin="0,0,6,0"
-                                        CornerRadius="6" />
+                                         />
                     <syncfusion:ButtonAdv Label="_Clear"
                                         Command="{Binding ClearChatCommand}"
                                         ToolTip="Clear conversation history (Alt+C)"
                                         Background="{DynamicResource SecondaryBrush}"
                                         Foreground="{DynamicResource ContentForegroundBrush}"
                                         MinWidth="75"
-                                        MinHeight="36"
-                                        CornerRadius="6" />
+                                        MinHeight="36" />
                 </StackPanel>
                 <!-- Evidence for Section 3 Commands: Access keys provided for high-value actions (Alt+S for Send, Alt+R for Refresh, Alt+C for Clear) per MS doc: "Access keys enable keyboard shortcuts with Alt key." -->
                 <!-- Evidence for Section 10 Syncfusion: ButtonAdv controls use documented properties - Label, Command, ToolTip, Background, Foreground per Syncfusion API docs: "ButtonAdv provides consistent theming and command support." -->

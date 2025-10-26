@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-  <TargetFramework>net9.0-windows7.0</TargetFramework>
+  <TargetFramework>net9.0-windows10.0.19041</TargetFramework>
     <IsPackable>false</IsPackable>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
@@ -17,6 +17,7 @@
   <ProjectReference Include="..\..\WileyWidget.Data\WileyWidget.Data.csproj" />
   <ProjectReference Include="..\..\WileyWidget.Models\WileyWidget.Models.csproj" />
   <ProjectReference Include="..\..\WileyWidget.csproj" />
+  <ProjectReference Include="..\..\WileyWidget.UI\WileyWidget.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

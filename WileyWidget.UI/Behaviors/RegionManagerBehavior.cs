@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Xaml.Behaviors;
 using Serilog;
-using Prism.Regions;
+// Removed: using Prism.Regions; - Using fully qualified names instead
 
 namespace WileyWidget.Behaviors
 {
@@ -14,11 +14,11 @@ namespace WileyWidget.Behaviors
     public class RegionManagerBehavior : Behavior<FrameworkElement>
     {
         public static readonly DependencyProperty RegionManagerProperty =
-            DependencyProperty.Register("RegionManager", typeof(IRegionManager), typeof(RegionManagerBehavior), new PropertyMetadata(null));
+            DependencyProperty.Register("RegionManager", typeof(Prism.Navigation.Regions.IRegionManager), typeof(RegionManagerBehavior), new PropertyMetadata(null));
 
-        public IRegionManager RegionManager
+        public Prism.Navigation.Regions.IRegionManager RegionManager
         {
-            get => (IRegionManager)GetValue(RegionManagerProperty);
+            get => (Prism.Navigation.Regions.IRegionManager)GetValue(RegionManagerProperty);
             set => SetValue(RegionManagerProperty, value);
         }
 
@@ -90,8 +90,8 @@ namespace WileyWidget.Behaviors
                         HorizontalAlignment = HorizontalAlignment.Stretch,
                         VerticalAlignment = VerticalAlignment.Stretch
                     };
-                    // Prism.Regions.RegionManager.SetRegionName(mainRegionControl, MainRegionName);
-                    // Prism.Regions.RegionManager.SetRegionManager(mainRegionControl, RegionManager);
+                    // Prism.Navigation.Regions.RegionManager.SetRegionName(mainRegionControl, MainRegionName);
+                    // Prism.Navigation.Regions.RegionManager.SetRegionManager(mainRegionControl, RegionManager);
 
                     // Add to the DockingManager as a docked element
                     var dockingManager = FindParentDockingManager();

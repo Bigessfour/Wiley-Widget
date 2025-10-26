@@ -33,6 +33,6 @@ public class InverseBooleanToVisibilityConverter : IValueConverter
     /// </summary>
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }

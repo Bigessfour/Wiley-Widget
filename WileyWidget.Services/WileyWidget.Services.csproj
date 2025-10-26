@@ -1,83 +1,90 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <NoWarn>$(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416</NoWarn>
     <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
-  </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="BoldReports.WPF" />
-    <PackageReference Include="Microsoft.ApplicationInsights" />
-    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
-    <PackageReference Include="Prism.Core" />
-    <PackageReference Include="Prism.Unity" />
-    <PackageReference Include="Prism.Wpf" />
-    <PackageReference Include="Unity.Container" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
+    <!-- Disable CPM for consistency with other WPF projects -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>  <ItemGroup>
+    <PackageReference Include="BoldReports.WPF" Version="11.1.15" />
+    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.78.0" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
+    <!-- Prism packages - explicit versions for consistency -->
+    <PackageReference Include="Prism.Core" Version="9.0.537" />
+    <PackageReference Include="Prism.Wpf" Version="9.0.537" />
+    <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
-    <PackageReference Include="DotNetEnv" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Microsoft.Extensions.Http" />
-    <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="Serilog" />
-    <PackageReference Include="Serilog.Enrichers.Environment" />
-    <PackageReference Include="Serilog.Enrichers.Process" />
-    <PackageReference Include="Serilog.Enrichers.Thread" />
-    <PackageReference Include="Serilog.Settings.Configuration" />
-    <PackageReference Include="Serilog.Sinks.Async" />
-    <PackageReference Include="Serilog.Sinks.Email" />
-    <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="Syncfusion.Licensing" />
-    <PackageReference Include="Syncfusion.SfBusyIndicator.WPF" />
-    <PackageReference Include="Syncfusion.SfChart.WPF" />
-    <PackageReference Include="Syncfusion.SfChat.WPF" />
-    <PackageReference Include="Syncfusion.SfGauge.WPF" />
-    <PackageReference Include="Syncfusion.SfGrid.WPF" />
-    <PackageReference Include="Syncfusion.SfInput.WPF" />
-    <PackageReference Include="Syncfusion.SfProgressBar.WPF" />
-    <PackageReference Include="Syncfusion.SfRichTextBoxAdv.WPF" />
-    <PackageReference Include="Syncfusion.SfSkinManager.WPF" />
-    <PackageReference Include="Syncfusion.SfSpreadsheet.WPF" />
-    <PackageReference Include="Syncfusion.SfTreeView.WPF" />
-    <PackageReference Include="Syncfusion.SfGridCommon.WPF" />
-    <PackageReference Include="Syncfusion.Shared.WPF" />
-    <PackageReference Include="Syncfusion.Themes.FluentDark.WPF" />
-    <PackageReference Include="Syncfusion.Themes.FluentLight.WPF" />
-    <PackageReference Include="Syncfusion.Tools.WPF" />
-    <PackageReference Include="Syncfusion.XlsIO.WPF" />
-    <PackageReference Include="Syncfusion.Pdf.WPF" />
-    <PackageReference Include="FluentValidation" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
-    <PackageReference Include="System.Management" />
-    <PackageReference Include="Polly" />
-    <PackageReference Include="Microsoft.Extensions.AI" />
-    <PackageReference Include="OpenAI" />
-    <PackageReference Include="Microsoft.SemanticKernel" />
-    <PackageReference Include="IppOAuth2PlatformSdk" />
-    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.10" />
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
+    <PackageReference Include="Serilog.Sinks.Email" Version="4.1.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
+    <PackageReference Include="Syncfusion.Licensing" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfBusyIndicator.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfChart.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfChat.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfGauge.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfGrid.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfInput.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfProgressBar.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfRichTextBoxAdv.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfSkinManager.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfSpreadsheet.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfTreeView.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.SfGridCommon.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.Shared.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.Themes.FluentDark.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.Themes.FluentLight.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.Tools.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.XlsIO.WPF" Version="31.1.17" />
+    <PackageReference Include="Syncfusion.Pdf.WPF" Version="31.1.17" />
+    <PackageReference Include="FluentValidation" Version="11.11.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.10.0" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="9.10.0" />
+    <PackageReference Include="System.Management" Version="9.0.10" />
+    <PackageReference Include="Polly" Version="8.6.4" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="9.10.0" />
+    <PackageReference Include="OpenAI" Version="2.5.0" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.66.0" />
+    <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
+    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\src\QuickBooksService.cs" />
+    <Compile Include="..\src\SettingsService.cs" />
   </ItemGroup>
 
 </Project>

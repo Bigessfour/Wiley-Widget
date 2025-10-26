@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
@@ -24,10 +24,10 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="../Resources/Strings.xaml" />
             </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <views:BalanceColorConverter x:Key="BalanceColorConverter" />
-        <views:UniqueDepartmentsConverter x:Key="UniqueDepartmentsConverter" />
+    </ResourceDictionary>
+    <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+    <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
+    <converters:UniqueDepartmentsConverter x:Key="UniqueDepartmentsConverter" />
         <converters:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
 
         <!-- Balance Color Converter -->
@@ -70,10 +70,8 @@
           behaviors:FocusOnLoadBehavior.IsEnabled="True"
           behaviors:FocusOnLoadBehavior.TargetName="MunicipalFocusAnchor"
           AutomationProperties.Name="{DynamicResource MunicipalAccounts_AccessibleName}"
-          AutomationProperties.HelpText="{DynamicResource MunicipalAccounts_AccessibleHelp}">
-        <syncfusionskin:SfSkinManager.Theme>
-            <syncfusionskin:Theme ThemeName="FluentDark" />
-        </syncfusionskin:SfSkinManager.Theme>
+          AutomationProperties.HelpText="{DynamicResource MunicipalAccounts_AccessibleHelp}"
+          syncfusionskin:SfSkinManager.VisualStyle="FluentDark">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -318,7 +316,6 @@
                                           ShowGroupDropArea="True"
                                           ColumnSizer="AutoWithLastColumnFill"
                                           RowHeight="32"
-                                          GridLinesVisibility="Horizontal"
                                           HeaderRowHeight="36"
                                           SelectionMode="Single"
                                           NavigationMode="Row"
@@ -431,8 +428,7 @@
                         <syncfusion:SfDataGrid.TableSummaryRows>
                             <syncfusion:GridTableSummaryRow ShowSummaryInRow="True"
                                                            Position="Bottom"
-                                                           Title="{DynamicResource Summary_Title}"
-                                                           TitleColumnCount="4">
+                                                           Title="{DynamicResource Summary_Title}">
                                 <syncfusion:GridTableSummaryRow.SummaryColumns>
                                     <syncfusion:GridSummaryColumn Name="Count"
                                                                  Format="'{Count}'"
@@ -668,7 +664,6 @@
                                               ColumnSizer="Star"
                                               RowHeight="28"
                                               HeaderRowHeight="32"
-                                              GridLinesVisibility="Horizontal"
                                               SelectionMode="Single">
 
                             <syncfusion:SfDataGrid.Columns>
@@ -743,9 +738,8 @@
                             <!-- Transaction Summary -->
                             <syncfusion:SfDataGrid.TableSummaryRows>
                                 <syncfusion:GridTableSummaryRow ShowSummaryInRow="True"
-                                                               Position="Bottom"
-                                                               Title="Total: Debit {Debit} | Credit {Credit}"
-                                                               TitleColumnCount="2">
+                                                      Position="Bottom"
+                                                      Title="Total: Debit {Debit} | Credit {Credit}">
                                     <syncfusion:GridTableSummaryRow.SummaryColumns>
                                         <syncfusion:GridSummaryColumn Name="Debit"
                                                                      Format="'{Sum:C2}'"

@@ -3,7 +3,7 @@
                     xmlns:prism="http://prismlibrary.com/"
                     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
                     xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
-                    xmlns:converters="clr-namespace:WileyWidget.Converters;assembly=WileyWidget">
+                    xmlns:converters="clr-namespace:WileyWidget.Converters">
 
     <!--
     ====================================================================================

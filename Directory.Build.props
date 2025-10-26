@@ -29,5 +29,7 @@
     <!-- WPF/XAML: prevent design-time wpftmp temporary projects which sometimes miss PackageReferences -->
     <GenerateTemporaryTargetAssembly>false</GenerateTemporaryTargetAssembly>
     <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
+    <!-- Ensure NuGet PackageReferences are available to the WPF markup compilation (wpftmp) step -->
+    <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
   </PropertyGroup>
 </Project>

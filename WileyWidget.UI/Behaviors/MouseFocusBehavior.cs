@@ -2,7 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Input;
 
-namespace WileyWidget.Behaviors
+namespace WileyWidget.UI.Behaviors
 {
     /// <summary>
     /// Sets keyboard focus to the element on mouse interaction.
@@ -10,7 +10,7 @@ namespace WileyWidget.Behaviors
     /// - OnFirstMove: optional; focus on first mouse move after load to prime input without stealing focus repeatedly.
     /// Based on Microsoft WPF focus guidance: use Keyboard.Focus and respect focus scopes.
     /// </summary>
-    public static class MouseFocusBehavior
+    public class MouseFocusBehavior
     {
         public static readonly DependencyProperty EnableOnClickProperty = DependencyProperty.RegisterAttached(
             "EnableOnClick",

@@ -5,8 +5,7 @@ using Prism;
 using Serilog;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Services;
-using Prism.Regions;
-using Prism.Navigation;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.Regions
 {

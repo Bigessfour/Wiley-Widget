@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows.Data;
 
-namespace WileyWidget;
+namespace WileyWidget.Converters;
 
 /// <summary>
 /// Converter for scaling budget amounts to progress bar values (0-100)

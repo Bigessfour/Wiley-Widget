@@ -21,16 +21,23 @@ public class BooleanToBrushConverter : IValueConverter
     /// <returns>Success brush if true, error brush if false</returns>
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is bool boolValue)
+        try
         {
-            // Use theme-aware brushes instead of hardcoded colors
-            var successBrush = (Brush)Application.Current.FindResource("SuccessForegroundBrush");
-            var errorBrush = (Brush)Application.Current.FindResource("ErrorForegroundBrush");
+            if (value is bool boolValue)
+            {
+                // Use theme-aware brushes instead of hardcoded colors
+                var successBrush = Application.Current?.TryFindResource("SuccessForegroundBrush") as Brush ?? Brushes.Green;
+                var errorBrush = Application.Current?.TryFindResource("ErrorForegroundBrush") as Brush ?? Brushes.Red;
 
-            return boolValue ? successBrush : errorBrush;
+                return boolValue ? successBrush : errorBrush;
+            }
+
+            return Application.Current?.TryFindResource("DisabledForegroundBrush") as Brush ?? Brushes.Gray; // Default for non-boolean values
         }
-
-        return (Brush)Application.Current.FindResource("DisabledForegroundBrush"); // Default for non-boolean values
+        catch
+        {
+            return Brushes.Gray;
+        }
     }
 
     /// <summary>
@@ -38,6 +45,6 @@ public class BooleanToBrushConverter : IValueConverter
     /// </summary>
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }

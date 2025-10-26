@@ -3,13 +3,13 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 
-namespace WileyWidget.Behaviors
+namespace WileyWidget.UI.Behaviors
 {
     /// <summary>
     /// Attached behavior to set keyboard focus when a control finishes loading.
     /// Usage: behaviors:FocusOnLoadBehavior.IsEnabled="True" and optional behaviors:FocusOnLoadBehavior.TargetName="ElementName"
     /// </summary>
-    public static class FocusOnLoadBehavior
+    public class FocusOnLoadBehavior
     {
         public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
             "IsEnabled",

@@ -14,7 +14,7 @@ using WileyWidget.Services;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Windows.Shared;
 using Microsoft.Extensions.Options;
-using WileyWidget.Configuration;
+using WileyWidget.Models;
 
 namespace WileyWidget.ViewModels
 {

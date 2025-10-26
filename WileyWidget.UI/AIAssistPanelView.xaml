@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:WileyWidget"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:chat="clr-namespace:Syncfusion.UI.Xaml.Chat;assembly=Syncfusion.SfChat.WPF"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
@@ -21,7 +21,7 @@
         <KeyBinding Key="R" Modifiers="Alt" Command="{Binding RefreshLiveDataCommand}" />
     </UserControl.InputBindings>
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <!-- Message styling converters -->
         <local:UserMessageBackgroundConverter x:Key="UserMessageBackgroundConverter" />

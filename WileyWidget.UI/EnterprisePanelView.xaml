@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:local="clr-namespace:WileyWidget"
-             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
@@ -12,7 +12,7 @@
              d:DesignHeight="700" d:DesignWidth="1200"
              xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
         <local:BalanceColorConverter x:Key="BalanceColorConverter" />
     </UserControl.Resources>
 
@@ -50,7 +50,7 @@
         </syncfusion:Ribbon>
 
         <!-- Main Content Area with Busy Indicator -->
-        <notification:SfBusyIndicator IsBusy="{Binding IsLoading}" 
+        <notification:SfBusyIndicator IsBusy="{Binding IsLoading}"
                                      AnimationType="SingleCircle"
                                      ViewboxWidth="80"
                                      ViewboxHeight="80"
@@ -61,7 +61,7 @@
                     <Setter Property="Foreground" Value="#4CAF50" />
                 </Style>
             </notification:SfBusyIndicator.Style>
-            
+
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

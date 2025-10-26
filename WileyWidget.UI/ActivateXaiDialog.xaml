@@ -6,7 +6,7 @@
     xmlns:prism="http://prismlibrary.com/"
     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
     xmlns:res="clr-namespace:WileyWidget.Resources"
-    xmlns:svc="clr-namespace:WileyWidget.Services"
+    xmlns:svc="clr-namespace:WileyWidget.Services;assembly=WileyWidget.Services"
     mc:Ignorable="d"
     prism:ViewModelLocator.AutoWireViewModel="True"
     Title="{x:Static res:Strings.ActivateDialogTitle}" Height="320" Width="520" WindowStartupLocation="CenterOwner" ResizeMode="NoResize">

@@ -12,14 +12,9 @@ namespace WileyWidget.Converters;
 public class ZeroToVisibleConverter : IValueConverter
 {
     /// <summary>
-    /// Converts integer count to Visibility
+    /// Converts integer count to Visibility (explicit interface implementation to avoid duplicate-member collisions)
     /// </summary>
-    /// <param name="value">Integer count value</param>
-    /// <param name="targetType">Target type (Visibility)</param>
-    /// <param name="parameter">Optional parameter</param>
-    /// <param name="culture">Culture info</param>
-    /// <returns>Visible if count is 0, Collapsed otherwise</returns>
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    object IValueConverter.Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is int count)
         {
@@ -30,10 +25,15 @@ public class ZeroToVisibleConverter : IValueConverter
     }
 
     /// <summary>
-    /// Not implemented for one-way binding
+    /// Not implemented for one-way binding (explicit interface implementation)
     /// </summary>
+    object IValueConverter.ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return DependencyProperty.UnsetValue;
+    }
+
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException("ZeroToVisibleConverter does not support two-way binding");
+        return DependencyProperty.UnsetValue;
     }
 }

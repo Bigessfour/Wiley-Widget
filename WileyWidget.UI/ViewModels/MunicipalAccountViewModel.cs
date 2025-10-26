@@ -11,9 +11,10 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Data.Resilience;
 using WileyWidget.Models;
 using WileyWidget.Services;
-using Prism.Navigation;
+using WileyWidget;
+// Removed Prism.Navigation; WPF region navigation types are in Prism.Regions
 using WileyWidget.ViewModels.Messages;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.ViewModels;
 
@@ -37,7 +38,7 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
         IEventAggregator? eventAggregator)
     {
         var constructorTimer = Stopwatch.StartNew();
-        App.LogDebugEvent("VIEWMODEL_INIT", "MunicipalAccountViewModel constructor started");
+    Log.Debug("[VIEWMODEL_INIT] MunicipalAccountViewModel constructor started");
 
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
         _quickBooksService = quickBooksService;
@@ -45,15 +46,15 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
         _regionManager = regionManager;
         _eventAggregator = eventAggregator;
 
-        App.LogDebugEvent("VIEWMODEL_INIT", "Initializing MunicipalAccounts and BudgetAnalysis collections");
+    Log.Debug("[VIEWMODEL_INIT] Initializing MunicipalAccounts and BudgetAnalysis collections");
         MunicipalAccounts = new ObservableCollection<MunicipalAccount>();
         BudgetAnalysis = new ObservableCollection<MunicipalAccount>();
 
         _accountsView = CollectionViewSource.GetDefaultView(MunicipalAccounts);
 
         constructorTimer.Stop();
-        App.LogDebugEvent("VIEWMODEL_INIT", $"MunicipalAccountViewModel constructor completed in {constructorTimer.ElapsedMilliseconds}ms");
-    App.LogStartupTiming("MunicipalAccountViewModel Constructor", constructorTimer.Elapsed);
+        Log.Debug("[VIEWMODEL_INIT] MunicipalAccountViewModel constructor completed in {ElapsedMs}ms", constructorTimer.ElapsedMilliseconds);
+    Log.Debug("MunicipalAccountViewModel Constructor completed in {Ms}ms", constructorTimer.Elapsed.TotalMilliseconds);
         // Initialize Prism commands
     LoadAccountsCommand = new DelegateCommand(async () => await LoadAccountsAsync(), () => !IsBusy);
 
@@ -382,23 +383,23 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
     private async Task LoadAccountsAsync()
     {
         var loadTimer = Stopwatch.StartNew();
-        App.LogDebugEvent("DATA_LOADING", "Starting municipal accounts load");
+    Log.Debug("[DATA_LOADING] Starting municipal accounts load");
 
         try
         {
-            App.LogDebugEvent("DATA_LOADING", "Setting busy state and status message");
+            Log.Debug("[DATA_LOADING] Setting busy state and status message");
             IsBusy = true;
             HasError = false;
             ErrorMessage = string.Empty;
             StatusMessage = "Loading accounts...";
 
-            App.LogDebugEvent("DATA_LOADING", "Querying account repository in background");
+            Log.Debug("[DATA_LOADING] Querying account repository in background");
 
             // Async repository call with Polly retry policy
             var accountsEnum = await DatabaseResiliencePolicy.ExecuteAsync(() => _accountRepository.GetAllAsync());
             var accounts = accountsEnum.ToList();
 
-            App.LogDebugEvent("DATA_LOADING", $"Retrieved {accounts.Count} accounts, clearing and repopulating collection");
+            Log.Debug("[DATA_LOADING] Retrieved {Count} accounts, clearing and repopulating collection", accounts.Count);
             MunicipalAccounts.Clear();
             foreach (var account in accounts)
             {
@@ -408,7 +409,7 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
             Log.Debug($"Loaded {accounts.Count} accounts. Filtered to {AccountsView.Cast<MunicipalAccount>().Count()}.");
 
             StatusMessage = $"Loaded {accounts.Count} accounts successfully";
-            App.LogDebugEvent("DATA_LOADING", $"Successfully loaded {accounts.Count} municipal accounts");
+            Log.Debug("[DATA_LOADING] Successfully loaded {Count} municipal accounts", accounts.Count);
             Log.Information("Loaded {Count} municipal accounts", accounts.Count);
 
             // Publish AccountsUpdatedEvent for cross-module updates (e.g., dashboards)
@@ -420,7 +421,7 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
         }
         catch (Exception ex)
         {
-            App.LogDebugEvent("DATA_LOADING_ERROR", $"Failed to load municipal accounts: {ex.Message}");
+            Log.Debug(ex, "[DATA_LOADING_ERROR] Failed to load municipal accounts: {Message}", ex.Message);
             ErrorMessage = $"Failed to load accounts: {ex.Message}";
             HasError = true;
             StatusMessage = "Load failed";
@@ -428,12 +429,12 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
         }
         finally
         {
-            App.LogDebugEvent("DATA_LOADING", "Setting IsBusy = false");
+            Log.Debug("[DATA_LOADING] Setting IsBusy = false");
             IsBusy = false;
 
             loadTimer.Stop();
-            App.LogDebugEvent("DATA_LOADING", $"Municipal accounts load completed in {loadTimer.ElapsedMilliseconds}ms");
-            App.LogStartupTiming("Municipal Accounts Load", loadTimer.Elapsed);
+            Log.Debug("[DATA_LOADING] Municipal accounts load completed in {ElapsedMs}ms", loadTimer.ElapsedMilliseconds);
+            Log.Debug("Municipal Accounts Load completed in {Ms}ms", loadTimer.Elapsed.TotalMilliseconds);
         }
     }
 

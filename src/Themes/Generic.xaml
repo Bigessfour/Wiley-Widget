@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:prism="http://prismlibrary.com/"
     xmlns:local="clr-namespace:WileyWidget"
-    xmlns:converters="clr-namespace:WileyWidget.Converters;assembly=WileyWidget"
+    xmlns:converters="clr-namespace:WileyWidget.Converters"
     xmlns:views="clr-namespace:WileyWidget.Views"
     xmlns:controls="clr-namespace:WileyWidget.Controls"
     xmlns:syncfusion="http://schemas.syncfusion.com/wpf">

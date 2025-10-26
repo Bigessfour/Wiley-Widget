@@ -4,9 +4,18 @@
     <Version>0.1.0</Version>
     <FileVersion>0.1.0.0</FileVersion>
     <InformationalVersion>0.1.0+local</InformationalVersion>
+
+    <!-- Ensure package references are included during XAML compilation (wpftmp projects) -->
+    <IncludePackageReferencesDuringMarkupCompilation Condition="'$(BuildingProject)' != 'false'">true</IncludePackageReferencesDuringMarkupCompilation>
   </PropertyGroup>
 
-  <!-- Build Caching Targets -->
+  <!--
+    Prism Package References were moved to individual project files
+    because Directory.Build.targets does NOT reliably provide packages to wpftmp projects.
+
+    WileyWidget.UI.csproj now contains explicit Prism package references.
+    Other projects (WileyWidget, WileyWidget.Services) should also add them explicitly.
+  -->  <!-- Build Caching Targets -->
   <Target Name="PrepareForBuildCache" BeforeTargets="Build">
     <Message Text="Preparing build cache optimization..." Importance="low" />
 

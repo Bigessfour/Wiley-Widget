@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
 
-namespace WileyWidget;
+namespace WileyWidget.Converters;
 
 /// <summary>
 /// Converter for displaying balance amounts with appropriate colors:
@@ -48,6 +48,6 @@ public class BalanceColorConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return System.Windows.DependencyProperty.UnsetValue;
     }
 }

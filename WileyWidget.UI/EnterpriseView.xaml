@@ -3,10 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:local="clr-namespace:WileyWidget"
-             xmlns:views="clr-namespace:WileyWidget.Views"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:views="clr-namespace:WileyWidget.Views;assembly=WileyWidget.UI"
              xmlns:converters="clr-namespace:WileyWidget.Converters"
-             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:notification="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
@@ -15,9 +15,9 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <views:BalanceColorConverter x:Key="BalanceColorConverter" />
-        <views:StatusColorConverter x:Key="StatusColorConverter" />
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+    <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
+    <converters:StatusColorConverter x:Key="StatusColorConverter" />
         <converters:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
 
         <!-- Currency Cell Template with Color Indicators -->
@@ -176,7 +176,6 @@
                                                x:Name="SearchTextBox"
                                                Watermark="Search enterprises by name, type, or status..."
                                                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                               ShowClearButton="True"
                                                Margin="0,0,8,0"
                                                ToolTip="Enter search terms to filter enterprise list&#x0a;Press Enter to search, use Clear button to reset">
                             <syncfusion:SfTextBoxExt.WatermarkTemplate>

@@ -4,7 +4,7 @@ using System.Collections.Specialized;
 using Microsoft.Extensions.Logging;
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;

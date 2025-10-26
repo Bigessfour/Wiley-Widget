@@ -6,145 +6,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 
-namespace WileyWidget;
-
-internal static class ConverterUtilities
-{
-    private static readonly BrushConverter BrushConverter = new();
-    private static readonly FontWeightConverter FontWeightConverter = new();
-
-    public static Brush ParseBrush(string? token, Brush fallback)
-    {
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return fallback;
-        }
-
-        try
-        {
-            if (BrushConverter.ConvertFromString(token) is Brush brush)
-            {
-                if (brush is Freezable freezable && freezable.CanFreeze)
-                {
-                    freezable.Freeze();
-                }
-
-                return brush;
-            }
-        }
-        catch
-        {
-            // Ignore parsing errors and fall back to default brush.
-        }
-
-        return fallback;
-    }
-
-    public static FontWeight ParseFontWeight(string? token, FontWeight fallback)
-    {
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return fallback;
-        }
-
-        try
-        {
-            return (FontWeight)FontWeightConverter.ConvertFromString(token)!;
-        }
-        catch
-        {
-            return fallback;
-        }
-    }
-
-    public static (string? TrueValue, string? FalseValue) SplitParameter(string? parameter)
-    {
-        if (string.IsNullOrWhiteSpace(parameter))
-        {
-            return (null, null);
-        }
-
-        var parts = parameter.Split('|');
-        return parts.Length switch
-        {
-            0 => (null, null),
-            1 => (parts[0], null),
-            _ => (parts[0], parts[1])
-        };
-    }
-}
-
-/// <summary>
-/// Converter for user message background color
-/// </summary>
-public class UserMessageBackgroundConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is bool isUser && isUser)
-        {
-            return new SolidColorBrush(Color.FromRgb(25, 118, 210)); // Blue for user
-        }
-        return new SolidColorBrush(Color.FromRgb(224, 224, 224)); // Gray for AI
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}
-
-/// <summary>
-/// Converter for message alignment
-/// </summary>
-public class MessageAlignmentConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        var isUser = value is bool user && user;
-
-        if (parameter is string rawParameter)
-        {
-            var parameterToken = rawParameter.Trim().ToLowerInvariant();
-
-            return parameterToken switch
-            {
-                "background" => isUser
-                    ? ConverterUtilities.ParseBrush("#1976D2", Brushes.SteelBlue)
-                    : ConverterUtilities.ParseBrush("#CFD8DC", Brushes.LightSlateGray),
-                "avatar" => isUser ? "You" : "AI",
-                _ => isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left
-            };
-        }
-
-        return isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}
-
-/// <summary>
-/// Converter for message text color
-/// </summary>
-public class MessageForegroundConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        var (trueToken, falseToken) = ConverterUtilities.SplitParameter(parameter as string);
-        var userBrush = ConverterUtilities.ParseBrush(trueToken, Brushes.White);
-        var assistantBrush = ConverterUtilities.ParseBrush(falseToken, Brushes.Black);
-
-        return value is bool isUser && isUser ? userBrush : assistantBrush;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}
+namespace WileyWidget.Converters;
 
 /// <summary>
 /// Converter for profit/loss display
@@ -162,7 +24,7 @@ public class ProfitLossTextConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }
 
@@ -182,7 +44,7 @@ public class ProfitBrushConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }
 
@@ -202,7 +64,7 @@ public class ProfitBorderBrushConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }
 
@@ -222,7 +84,7 @@ public class ProfitTextBrushConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }
 
@@ -254,66 +116,11 @@ public class BoolToBackgroundConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }
 
-/// <summary>
-/// Converter for boolean to visibility (inverse)
-/// </summary>
-public class BoolToVisibilityConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        var comparisonParameter = (parameter as string)?.Trim();
-        var visibility = EvaluateVisibility(value, comparisonParameter);
-        return visibility ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-
-    private static bool EvaluateVisibility(object? value, string? parameter)
-    {
-        bool baseResult = value switch
-        {
-            bool boolValue => boolValue,
-            string stringValue => !string.IsNullOrWhiteSpace(stringValue),
-            int intValue => intValue != 0,
-            null => false,
-            _ => true
-        };
-
-        if (string.IsNullOrWhiteSpace(parameter))
-        {
-            return baseResult;
-        }
-
-        if (parameter.Equals("invert", StringComparison.OrdinalIgnoreCase) || parameter == "!")
-        {
-            return !baseResult;
-        }
-
-        if (parameter.Equals("empty", StringComparison.OrdinalIgnoreCase) && value is string textValue)
-        {
-            return string.IsNullOrWhiteSpace(textValue);
-        }
-
-        if (parameter.Equals("notempty", StringComparison.OrdinalIgnoreCase) && value is string nonEmptyValue)
-        {
-            return !string.IsNullOrWhiteSpace(nonEmptyValue);
-        }
-
-        if (int.TryParse(parameter, out var target) && value is int count)
-        {
-            return count == target;
-        }
-
-        return baseResult;
-    }
-}
+// Removed duplicate BoolToVisibilityConverter. Use WileyWidget.Converters.BooleanToVisibilityConverter instead.
 
 /// <summary>
 /// Converter for empty string to visibility
@@ -331,7 +138,7 @@ public class EmptyStringToVisibilityConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }
 
@@ -342,17 +149,20 @@ public class CountToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is int count && parameter is string param)
+        if (value is int count)
         {
-            int targetCount = int.Parse(param);
-            return count == targetCount ? Visibility.Visible : Visibility.Collapsed;
+            if (parameter is string param && int.TryParse(param, out var targetCount))
+            {
+                return count == targetCount ? Visibility.Visible : Visibility.Collapsed;
+            }
+            return DependencyProperty.UnsetValue; // invalid or missing parameter
         }
-        return Visibility.Collapsed;
+        return DependencyProperty.UnsetValue;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }
 
@@ -384,7 +194,7 @@ public class BoolToForegroundConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return DependencyProperty.UnsetValue;
     }
 }
 
@@ -395,12 +205,12 @@ public class InverseBooleanConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        return value is bool boolValue ? !boolValue : true;
+        return value is bool boolValue ? !boolValue : DependencyProperty.UnsetValue;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        return value is bool boolValue ? !boolValue : true;
+        return value is bool boolValue ? !boolValue : DependencyProperty.UnsetValue;
     }
 }
 
@@ -420,6 +230,6 @@ public class BooleanToFontWeightConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        return Binding.DoNothing;
+        return DependencyProperty.UnsetValue;
     }
 }

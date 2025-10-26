@@ -25,21 +25,64 @@ public sealed class SettingsService : ISettingsService
     /// <summary>
     /// Gets the singleton instance from DI container.
     /// </summary>
-    public static SettingsService Instance => App.GetContainerProvider().Resolve<SettingsService>()
-        ?? throw new InvalidOperationException("SettingsService not registered in DI container");
+    // Provide a best-effort static instance accessor to maintain compatibility with
+    // existing call-sites that expect SettingsService.Instance. Prefer resolving
+    // from DI in the application startup; if not available, fall back to a
+    // process-wide lazy singleton to keep behavior working in unit tests and
+    // simple execution scenarios.
+    private static SettingsService? _singleton;
+    private static readonly object _singletonLock = new();
+    // Use a Lazy fallback for the default instance creation and a single atomic
+    // assignment to avoid double-checked-locking patterns that can confuse analyzers.
+    private static readonly Lazy<SettingsService> _defaultSingleton = new(() => new SettingsService(), true);
+
+    public static SettingsService Instance
+    {
+        get
+        {
+            // Fast-path: if a DI-provided instance has been set, return it.
+            if (_singleton != null) return _singleton;
+
+            // Ensure a single assignment of the default instance in a thread-safe way
+            // without relying on a second null-check that static analyzers may consider dead.
+            var created = _defaultSingleton.Value;
+            System.Threading.Interlocked.CompareExchange(ref _singleton, created, null);
+            return _singleton!;
+        }
+    }
+
+    /// <summary>
+    /// Allows the application (typically during startup) to provide the DI-constructed
+    /// instance so call-sites that use the static accessor get the container-managed object.
+    /// </summary>
+    public static void SetInstance(SettingsService instance)
+    {
+        if (instance == null) throw new ArgumentNullException(nameof(instance));
+        lock (_singletonLock)
+        {
+            _singleton = instance;
+        }
+    }
 
     private readonly IConfiguration? _configuration;
     private readonly ILogger<SettingsService> _logger;
 
     private string _root = string.Empty;
     private string _file = string.Empty;
-
-    public AppSettings Current { get; private set; } = new();
-
-    public SettingsService()
+    /// <summary>
+    /// Parameterless constructor for legacy or test scenarios only.
+    /// Prefer resolving via DI to ensure dependencies are injected.
+    /// </summary>
+    internal SettingsService()
         : this(null, NullLogger<SettingsService>.Instance)
     {
     }
+
+    /// <summary>
+    /// The in-memory settings instance.
+    /// Implemented to satisfy <see cref="ISettingsService"/> and used throughout the app.
+    /// </summary>
+    public AppSettings Current { get; private set; } = new AppSettings();
 
     public SettingsService(IConfiguration? configuration, ILogger<SettingsService>? logger)
     {

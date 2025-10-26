@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:local="clr-namespace:WileyWidget"
-             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="http://schemas.syncfusion.com/wpf"
@@ -16,11 +16,11 @@
         <KeyBinding Key="R" Modifiers="Control" Command="{Binding ResetSettingsCommand}" />
     </UserControl.InputBindings>
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
+
         <!-- ZeroToVisibleConverter for empty state handling -->
         <local:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
-        
+
         <Style x:Key="ValidationErrorBorder" TargetType="Control">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.HasError)}" Value="True">
@@ -47,7 +47,7 @@
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="SettingsRibbon">
             <syncfusion:RibbonTab Caption="Settings">
                 <syncfusion:RibbonBar Header="Actions">
-                    <syncfusion:RibbonButton Label="Save" SizeForm="Large" Command="{Binding SaveSettingsCommand}" 
+                    <syncfusion:RibbonButton Label="Save" SizeForm="Large" Command="{Binding SaveSettingsCommand}"
                                            ToolTip="Save all settings (Ctrl+S)" />
                     <syncfusion:RibbonButton Label="Reset" Command="{Binding ResetSettingsCommand}"
                                            ToolTip="Reset all settings to defaults (Ctrl+R)" />
@@ -55,7 +55,7 @@
                                            ToolTip="Test database connection" />
                 </syncfusion:RibbonBar>
                 <syncfusion:RibbonBar Header="Search">
-                    <TextBox Width="200" 
+                    <TextBox Width="200"
                            Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                            Margin="5"
                            ToolTip="Search settings by name or description" />
@@ -67,7 +67,7 @@
         <TabControl x:Name="SettingsTabControl" Margin="8">
             <!-- Help Text -->
             <TabControl.Resources>
-                <TextBlock x:Key="HelpText" 
+                <TextBlock x:Key="HelpText"
                          Text="* Required fields"
                          FontStyle="Italic"
                          Foreground="Gray"
@@ -147,7 +147,7 @@
                     </Grid.RowDefinitions>
 
                     <!-- Help Text -->
-                    <TextBlock Grid.Row="0" 
+                    <TextBlock Grid.Row="0"
                              Text="Use the Property Grid below to view and edit all settings organized by category"
                              FontStyle="Italic"
                              Foreground="Gray"
@@ -160,7 +160,7 @@
                             <TextBlock Text="Application settings will be displayed here."
                                      FontSize="14"
                                      Margin="0,8,0,16" />
-                            
+
                             <!-- Settings controls will be added here programmatically or via binding -->
                         </StackPanel>
                     </ScrollViewer>
@@ -468,13 +468,13 @@
 
                                 <Separator Margin="0,8" />
 
-                                <TextBlock FontWeight="Bold" 
+                                <TextBlock FontWeight="Bold"
                                          Foreground="DarkOrange"
                                          TextWrapping="Wrap"
                                          Margin="0,0,0,4">
                                     ⚠️ Warning: Changing fiscal year settings affects:
                                 </TextBlock>
-                                <TextBlock TextWrapping="Wrap" 
+                                <TextBlock TextWrapping="Wrap"
                                          Foreground="Gray"
                                          Margin="16,0,0,8">
                                     • Budget period calculations<LineBreak/>
@@ -497,7 +497,7 @@
                                 <ListBox ItemsSource="{Binding AvailableFiscalYears}"
                                         Height="120"
                                         Margin="0,0,0,8" />
-                                
+
                                 <TextBlock Text="Note: Budget periods and reports can filter by these fiscal years."
                                          FontStyle="Italic"
                                          Foreground="Gray" />

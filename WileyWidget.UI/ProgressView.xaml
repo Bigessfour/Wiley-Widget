@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:prism="http://prismlibrary.com/"
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
-    xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+    xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+    xmlns:converters="clr-namespace:WileyWidget.Converters"
         xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
         mc:Ignorable="d"
         Title="{Binding Title}"
@@ -19,7 +20,7 @@
         syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
         prism:ViewModelLocator.AutoWireViewModel="True">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
 
     <Grid Margin="20" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="ProgressFocusAnchor">

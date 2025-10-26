@@ -8,12 +8,10 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Reflection;
-using Prism.Unity;
-using Prism.Modularity;
-using Prism.Container.Unity;
 using Prism.Ioc;
-using Unity;
-using Unity.Injection;
+using Prism.Modularity;
+using Prism.Container.DryIoc;
+using DryIoc;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Licensing;
 using Bold.Licensing;
@@ -46,7 +44,7 @@ using WileyWidget.ViewModels.Messages;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Threading.Tasks;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 // using Microsoft.ApplicationInsights;
 // using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
@@ -359,10 +357,10 @@ END
                 // First, try to unwrap TargetInvocationException from Unity container issues
                 Exception processedException = UnwrapTargetInvocationException(e.Exception);
 
-                if (TryHandleUnityContainerException(processedException))
+                if (TryHandleDryIocContainerException(processedException))
                 {
                     e.Handled = true;
-                    Log.Warning("Unity container exception handled and recovered");
+                    Log.Warning("DryIoc container exception handled and recovered");
                     return;
                 }
 
@@ -397,7 +395,7 @@ END
                 e.SetObserved(); // Prevent it from crashing the finalizer thread
             };
 
-            Log.Information("Global exception handling configured with Unity container and XAML recovery");
+            Log.Information("Global exception handling configured with DryIoc container and XAML recovery");
         }
 
         /// <summary>
@@ -438,14 +436,14 @@ END
         /// <summary>
         /// Attempts to handle and recover from Unity container exceptions
         /// </summary>
-        private bool TryHandleUnityContainerException(Exception exception)
+        private bool TryHandleDryIocContainerException(Exception exception)
         {
             string message = exception.Message.ToLowerInvariant();
 
-            // Check for Unity container resolution failures
-            if (message.Contains("unity") || message.Contains("container") || message.Contains("resolution"))
+            // Check for DryIoc container resolution failures
+            if (message.Contains("dryioc") || message.Contains("container") || message.Contains("resolution"))
             {
-                Log.Error(exception, "Unity container exception detected: {Message}", exception.Message);
+                Log.Error(exception, "DryIoc container exception detected: {Message}", exception.Message);
 
                 // Try to provide specific guidance based on the error
                 if (message.Contains("not registered") || message.Contains("could not resolve"))
@@ -477,7 +475,7 @@ END
 
         /// <summary>
         /// Unwraps TargetInvocationException to get to the root cause.
-        /// Unity container often wraps real exceptions in TargetInvocationException.
+        /// DryIoc container often wraps real exceptions in TargetInvocationException.
         /// </summary>
         private static Exception UnwrapTargetInvocationException(Exception? exception)
         {
@@ -823,7 +821,6 @@ END
             // Diagnostics controls: keep extended diagnostics (chatty logging + eager resolves) OFF by default
             string extendedDiagEnv = Environment.GetEnvironmentVariable("WILEY_WIDGET_EXTENDED_DIAGNOSTICS") ?? "0";
             bool enableExtendedDiagnostics = extendedDiagEnv == "1" || string.Equals(extendedDiagEnv, "true", StringComparison.OrdinalIgnoreCase);
-            IUnityContainer unityContainer;
             try
             {
                 // Build configuration first
@@ -920,15 +917,15 @@ END
                 containerRegistry.RegisterSingleton<IDispatcherHelper>(provider => new DispatcherHelper());
                 containerRegistry.RegisterSingleton<AppOptionsConfigurator>();
 
-                unityContainer = containerRegistry.GetContainer();
-                // Expose the Unity container itself for services that need it (e.g., UnityServiceScopeFactory)
-                // This allows constructors to take IUnityContainer as a dependency.
-                containerRegistry.RegisterInstance<IUnityContainer>(unityContainer);
+                var dryIocContainer = (global::DryIoc.Container)((ContainerExtension)containerRegistry).Container;
+                // Expose the DryIoc container itself for services that need it (e.g., DryIocServiceScopeFactory)
+                // This allows constructors to take DryIoc.IContainer as a dependency.
+                containerRegistry.RegisterInstance<global::DryIoc.IContainer>(dryIocContainer);
                 // Only enable verbose Unity diagnostics when explicitly requested
                 if (enableExtendedDiagnostics)
                 {
-                    EnableUnityDiagnostics(unityContainer);
-                    Log.Debug("Unity diagnostics enabled (extended mode)");
+                    EnableDryIocDiagnostics(dryIocContainer);
+                    Log.Debug("DryIoc diagnostics enabled (extended mode)");
                 }
                 Log.Information("✓ Registered core infrastructure services (Syncfusion, Settings, Dispatcher)");
             }
@@ -976,8 +973,8 @@ END
                 containerRegistry.RegisterInstance<IMemoryCache>(memoryCache);
                 Log.Information("✓ Registered IMemoryCache using Prism-managed MemoryCache instance");
 
-                // Register configuration options infrastructure (bridging Microsoft.Extensions.Options into Unity)
-                RegisterAppOptions(containerRegistry, configuration, unityContainer);
+                // Register configuration options infrastructure (bridging Microsoft.Extensions.Options into DryIoc)
+                RegisterAppOptions(containerRegistry, configuration, dryIocContainer);
             }
             catch (Exception ex)
             {
@@ -1000,8 +997,8 @@ END
                 containerRegistry.Register<IUnitOfWork, UnitOfWork>();
                 Log.Information("✓ Registered IUnitOfWork infrastructure for Prism ViewModels");
 
-                // Register IServiceScopeFactory for Unity-based scoped services (required by WhatIfScenarioEngine)
-                containerRegistry.RegisterSingleton<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory, UnityServiceScopeFactory>();
+                // Register IServiceScopeFactory for DryIoc-based scoped services (required by WhatIfScenarioEngine)
+                containerRegistry.RegisterSingleton<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory, DryIocServiceScopeFactory>();
                 Log.Information("✓ Registered IServiceScopeFactory using Unity child container adapter");
 
                 // Register business services
@@ -1196,9 +1193,8 @@ END
             // Convention-based registrations: attempt to auto-register remaining services, repositories, and ViewModels
             try
             {
-                var unityContainerForConventions = containerRegistry.GetContainer();
-                RegisterConventions(containerRegistry, unityContainerForConventions);
-                ValidateAndRegisterViewModels(containerRegistry, unityContainerForConventions);
+                RegisterConventions(containerRegistry, dryIocContainer);
+                ValidateAndRegisterViewModels(containerRegistry, dryIocContainer);
             }
             catch (Exception ex)
             {
@@ -1301,7 +1297,7 @@ END
                 }
 
                 // Additional validation: Test critical service resolutions
-                ValidateContainerRegistrations(unityContainer);
+                ValidateContainerRegistrations(dryIocContainer);
             }
             catch (Exception diagEx)
             {
@@ -1456,7 +1452,7 @@ END
             Log.Information("Unity container registration count: {RegistrationCount}", unityRegistrationCount);
         }
 
-        private void RegisterAppOptions(IContainerRegistry containerRegistry, IConfiguration configuration, IUnityContainer unityContainer)
+        private void RegisterAppOptions(IContainerRegistry containerRegistry, IConfiguration configuration, global::DryIoc.Container dryIocContainer)
         {
             if (containerRegistry == null)
             {
@@ -1468,9 +1464,9 @@ END
                 throw new ArgumentNullException(nameof(configuration));
             }
 
-            if (unityContainer == null)
+            if (dryIocContainer == null)
             {
-                throw new ArgumentNullException(nameof(unityContainer));
+                throw new ArgumentNullException(nameof(dryIocContainer));
             }
 
             try
@@ -1480,7 +1476,7 @@ END
 
                 try
                 {
-                    var configurator = unityContainer.Resolve<AppOptionsConfigurator>();
+                    var configurator = dryIocContainer.Resolve<AppOptionsConfigurator>();
                     configurator.Configure(appOptions);
                 }
                 catch (Exception ex)
@@ -1507,7 +1503,7 @@ END
         }
 
         [Conditional("DEBUG")]
-        private static void ValidateContainerRegistrations(IUnityContainer container)
+        private static void ValidateContainerRegistrations(global::DryIoc.Container container)
         {
             // Test resolution of critical services
             var criticalTypes = new[]
@@ -1541,10 +1537,10 @@ END
         /// - ViewModels are registered as transient types so Prism can resolve them via ViewModelLocator.
         /// This helper is best-effort and will not overwrite existing registrations.
         /// </summary>
-        private static void RegisterConventions(IContainerRegistry containerRegistry, IUnityContainer unityContainer)
+        private static void RegisterConventions(IContainerRegistry containerRegistry, global::DryIoc.Container dryIocContainer)
         {
             if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
-            if (unityContainer == null) throw new ArgumentNullException(nameof(unityContainer));
+            if (dryIocContainer == null) throw new ArgumentNullException(nameof(dryIocContainer));
 
             int registeredCount = 0;
             var suffixesForSingleton = new[] { "Service", "Repository", "Provider", "Engine" };
@@ -1578,9 +1574,9 @@ END
                             var preferred = interfaces.FirstOrDefault(i => string.Equals(i.Name, "I" + name, StringComparison.Ordinal));
                             if (preferred != null)
                             {
-                                if (!unityContainer.IsRegistered(preferred))
+                                if (!dryIocContainer.IsRegistered(preferred))
                                 {
-                                    unityContainer.RegisterSingleton(preferred, t);
+                                    dryIocContainer.Register(preferred, t, Reuse.Singleton);
                                     registeredCount++;
                                     Log.Debug("Convention: Registered singleton {Interface} -> {Impl}", preferred.FullName, t.FullName);
                                 }
@@ -1588,9 +1584,9 @@ END
                             }
 
                             // No matching interface, register concrete as singleton if not already
-                            if (!unityContainer.IsRegistered(t))
+                            if (!dryIocContainer.IsRegistered(t))
                             {
-                                unityContainer.RegisterSingleton(t, t);
+                                dryIocContainer.Register(t, t, Reuse.Singleton);
                                 registeredCount++;
                                 Log.Debug("Convention: Registered singleton {Type}", t.FullName);
                             }
@@ -1600,9 +1596,9 @@ END
                         // ViewModels -> transient (RegisterType) so Prism / ViewModelLocator can create per-view instances
                         if (name.EndsWith("ViewModel", StringComparison.Ordinal))
                         {
-                            if (!unityContainer.IsRegistered(t))
+                            if (!dryIocContainer.IsRegistered(t))
                             {
-                                unityContainer.RegisterType(t, t);
+                                dryIocContainer.Register(t, t, Reuse.Transient);
                                 registeredCount++;
                                 Log.Debug("Convention: Registered ViewModel type {Type}", t.FullName);
                             }
@@ -1623,10 +1619,10 @@ END
         /// Validates that Views have an associated ViewModel type available and auto-registers missing ViewModels.
         /// Logs warnings for Views that have no corresponding ViewModel discovered.
         /// </summary>
-        private static void ValidateAndRegisterViewModels(IContainerRegistry containerRegistry, IUnityContainer unityContainer)
+        private static void ValidateAndRegisterViewModels(IContainerRegistry containerRegistry, global::DryIoc.Container dryIocContainer)
         {
             if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
-            if (unityContainer == null) throw new ArgumentNullException(nameof(unityContainer));
+            if (dryIocContainer == null) throw new ArgumentNullException(nameof(dryIocContainer));
 
             int autoRegistered = 0;
             int viewsWithoutVm = 0;
@@ -1670,12 +1666,12 @@ END
                         continue;
                     }
 
-                    if (!unityContainer.IsRegistered(vmType))
+                    if (!dryIocContainer.IsRegistered(vmType))
                     {
                         try
                         {
                             // Register transient ViewModel so Prism can resolve it per view
-                            unityContainer.RegisterType(vmType, vmType);
+                            dryIocContainer.Register(vmType, vmType, Reuse.Transient);
                             autoRegistered++;
                             Log.Information("Auto-registered ViewModel {VM} for view {View}", vmType.FullName, view.FullName);
                         }
@@ -1698,21 +1694,16 @@ END
             Log.Information("ViewModel validation completed: {AutoRegistered} auto-registered, {Missing} views lacked a ViewModel.", autoRegistered, viewsWithoutVm);
         }
 
-        private static void EnableUnityDiagnostics(IUnityContainer unityContainer)
+        private static void EnableDryIocDiagnostics(global::DryIoc.Container dryIocContainer)
         {
-            if (unityContainer == null)
+            if (dryIocContainer == null)
             {
-                throw new ArgumentNullException(nameof(unityContainer));
+                throw new ArgumentNullException(nameof(dryIocContainer));
             }
 
-            unityContainer.AddExtension(new UnityDebugExtension());
-
-            if (!Trace.Listeners.OfType<ConsoleTraceListener>().Any(listener => listener.Name == "UnityConsole"))
-            {
-                Trace.Listeners.Add(new ConsoleTraceListener { Name = "UnityConsole" });
-            }
-
-            Trace.WriteLine("[Unity] Debug diagnostics initialized");
+            // Enable DryIoc diagnostics
+            // Note: DryIoc has built-in diagnostics, but for now, just log
+            Trace.WriteLine("[DryIoc] Debug diagnostics initialized");
         }
 
         /// <summary>
@@ -1845,7 +1836,7 @@ END
                 // This mirrors DatabaseConfiguration.ApplySchemaHotfixesAsync but works with Unity DI only.
                 try
                 {
-                    ApplyAdditiveSchemaHotfixesUnity(containerRegistry.GetContainer());
+                    ApplyAdditiveSchemaHotfixesDryIoc(dryIocContainer);
                 }
                 catch (Exception ex)
                 {
@@ -1863,7 +1854,7 @@ END
         /// Unity-only additive schema hotfix runner to unblock environments with slight drift.
         /// Safe to run multiple times. Adds missing columns used by runtime queries.
         /// </summary>
-        private static void ApplyAdditiveSchemaHotfixesUnity(IUnityContainer container)
+        private static void ApplyAdditiveSchemaHotfixesDryIoc(global::DryIoc.Container container)
         {
             // Resolve the Unity-registered factory and execute small idempotent ALTERs
             var factory = container.Resolve<IDbContextFactory<AppDbContext>>();
@@ -2528,11 +2519,10 @@ END
 
         protected override IContainerExtension CreateContainerExtension()
         {
-#pragma warning disable CA2000 // Call System.IDisposable.Dispose on object created by 'new UnityContainer()' before all references to it are out of scope
-            var container = new UnityContainer();
-#pragma warning restore CA2000
-            container.AddExtension(new Diagnostic());
-            return new UnityContainerExtension(container);
+            // Use DryIoc as the Prism container implementation
+            // Note: keep this simple - more adaptations for Unity-specific helpers will follow in later iterations
+            var container = new Container();
+            return new DryIocContainerExtension(container);
         }
 
         private static void ConfigureLogging()

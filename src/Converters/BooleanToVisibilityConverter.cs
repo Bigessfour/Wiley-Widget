@@ -22,7 +22,8 @@ public class BooleanToVisibilityConverter : IValueConverter
     {
         if (value is bool boolValue)
         {
-            bool isInverse = parameter?.ToString()?.Equals("Inverse", StringComparison.OrdinalIgnoreCase) == true;
+            bool isInverse = parameter?.ToString()?.Equals("Inverse", StringComparison.OrdinalIgnoreCase) == true
+                             || parameter?.ToString() == "!";
             bool result = isInverse ? !boolValue : boolValue;
             return result ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -37,11 +38,13 @@ public class BooleanToVisibilityConverter : IValueConverter
     {
         if (value is Visibility visibility)
         {
-            bool isInverse = parameter?.ToString()?.Equals("Inverse", StringComparison.OrdinalIgnoreCase) == true;
+            bool isInverse = parameter?.ToString()?.Equals("Inverse", StringComparison.OrdinalIgnoreCase) == true
+                             || parameter?.ToString() == "!";
             bool result = visibility == Visibility.Visible;
             return isInverse ? !result : result;
         }
 
-        return false;
+        // Unsupported input -> signal binding engine to ignore
+        return DependencyProperty.UnsetValue;
     }
 }

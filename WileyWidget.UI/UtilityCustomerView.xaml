@@ -4,9 +4,10 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:WileyWidget"
-             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:converters="clr-namespace:WileyWidget.Converters"
              xmlns:prism="http://prismlibrary.com/"
              mc:Ignorable="d"
              prism:ViewModelLocator.AutoWireViewModel="True"
@@ -25,21 +26,21 @@
         <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}" />
     </Window.InputBindings>
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+
         <!-- Error Template for validation errors -->
         <ControlTemplate x:Key="ErrorTemplate">
             <DockPanel LastChildFill="True">
-                <Border BorderBrush="Red" BorderThickness="1" CornerRadius="2" DockPanel.Dock="Right" 
+                <Border BorderBrush="Red" BorderThickness="1" CornerRadius="2" DockPanel.Dock="Right"
                         Background="White" Margin="5,0,0,0" Width="20" Height="20">
-                    <TextBlock Text="!" FontWeight="Bold" Foreground="Red" 
-                              HorizontalAlignment="Center" VerticalAlignment="Center" 
+                    <TextBlock Text="!" FontWeight="Bold" Foreground="Red"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
                               ToolTip="{Binding ElementName=adornerPlaceholder, Path=AdornedElement.(Validation.Errors)[0].ErrorContent}" />
                 </Border>
                 <AdornedElementPlaceholder x:Name="adornerPlaceholder" />
             </DockPanel>
         </ControlTemplate>
-        
+
         <!-- Style for overdue bill rows -->
         <Style x:Key="OverdueCellStyle" TargetType="syncfusion:GridCell">
             <Style.Triggers>
@@ -58,25 +59,25 @@
         <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="CustomerRibbon">
             <syncfusion:RibbonTab Caption="Customers">
                 <syncfusion:RibbonBar Header="Actions">
-                    <syncfusion:RibbonButton Label="Load All" SizeForm="Large" 
+                    <syncfusion:RibbonButton Label="Load All" SizeForm="Large"
                                             Command="{Binding LoadCustomersAsyncCommand}"
                                             ToolTip="Load all utility customers" />
-                    <syncfusion:RibbonButton Label="Active Only" 
+                    <syncfusion:RibbonButton Label="Active Only"
                                             Command="{Binding LoadActiveCustomersAsyncCommand}"
                                             ToolTip="Load active customers only" />
-                    <syncfusion:RibbonButton Label="Outside City" 
+                    <syncfusion:RibbonButton Label="Outside City"
                                             Command="{Binding LoadCustomersOutsideCityLimitsAsyncCommand}"
                                             ToolTip="Load customers outside city limits" />
-                    <syncfusion:RibbonButton Label="Add New" SizeForm="Large" 
+                    <syncfusion:RibbonButton Label="Add New" SizeForm="Large"
                                             Command="{Binding AddCustomerAsyncCommand}"
                                             ToolTip="Add a new customer account" />
-                    <syncfusion:RibbonButton Label="Edit" 
+                    <syncfusion:RibbonButton Label="Edit"
                                             Command="{Binding EditCustomerCommand}"
                                             ToolTip="Edit the selected customer" />
-                    <syncfusion:RibbonButton Label="Save" 
+                    <syncfusion:RibbonButton Label="Save"
                                             Command="{Binding SaveCustomerAsyncCommand}"
                                             ToolTip="Save changes to selected customer" />
-                    <syncfusion:RibbonButton Label="Delete" 
+                    <syncfusion:RibbonButton Label="Delete"
                                             Command="{Binding DeleteCustomerAsyncCommand}"
                                             ToolTip="Delete selected customer" />
                 </syncfusion:RibbonBar>
@@ -88,10 +89,10 @@
                     <syncfusion:RibbonButton Label="Clear" Command="{Binding ClearSearchAsyncCommand}" />
                 </syncfusion:RibbonBar>
                 <syncfusion:RibbonBar Header="Bills">
-                    <syncfusion:RibbonButton Label="Load Bills" 
+                    <syncfusion:RibbonButton Label="Load Bills"
                                             Command="{Binding LoadCustomerBillsAsyncCommand}"
                                             ToolTip="Load billing history for selected customer" />
-                    <syncfusion:RibbonButton Label="Pay Bill" 
+                    <syncfusion:RibbonButton Label="Pay Bill"
                                             Command="{Binding PayBillAsyncCommand}"
                                             ToolTip="Process payment for selected bill" />
                 </syncfusion:RibbonBar>
@@ -104,24 +105,24 @@
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" MinHeight="280" />
             </Grid.RowDefinitions>
-            
+
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*" />
                 <ColumnDefinition Width="450" />
             </Grid.ColumnDefinitions>
 
             <!-- Customer List Section -->
-            <Border Grid.Row="0" Grid.Column="0" 
-                    Background="{DynamicResource ContentBackgroundAlt2Brush}" 
-                    BorderBrush="{DynamicResource BorderAltBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="6" 
+            <Border Grid.Row="0" Grid.Column="0"
+                    Background="{DynamicResource ContentBackgroundAlt2Brush}"
+                    BorderBrush="{DynamicResource BorderAltBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
                     Margin="0,0,4,4">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" 
-                              Text="Utility Customers" 
-                              FontSize="16" 
-                              FontWeight="Bold" 
+                    <TextBlock DockPanel.Dock="Top"
+                              Text="Utility Customers"
+                              FontSize="16"
+                              FontWeight="Bold"
                               Margin="12,12,12,8"
                               Foreground="{DynamicResource ContentForegroundBrush}" />
 
@@ -146,31 +147,31 @@
                         AutomationProperties.HelpText="Grid displaying all utility customers with account information, contact details, and service status">
 
                         <syncfusion:SfDataGrid.Columns>
-                            <syncfusion:GridTextColumn HeaderText="Account #" 
-                                                      MappingName="AccountNumber" 
+                            <syncfusion:GridTextColumn HeaderText="Account #"
+                                                      MappingName="AccountNumber"
                                                       Width="110" />
-                            <syncfusion:GridTextColumn HeaderText="Name" 
-                                                      MappingName="DisplayName" 
+                            <syncfusion:GridTextColumn HeaderText="Name"
+                                                      MappingName="DisplayName"
                                                       Width="200" />
-                            <syncfusion:GridTextColumn HeaderText="Type" 
-                                                      MappingName="CustomerTypeDescription" 
+                            <syncfusion:GridTextColumn HeaderText="Type"
+                                                      MappingName="CustomerTypeDescription"
                                                       Width="110" />
-                            <syncfusion:GridTextColumn HeaderText="Location" 
-                                                      MappingName="ServiceLocationDescription" 
+                            <syncfusion:GridTextColumn HeaderText="Location"
+                                                      MappingName="ServiceLocationDescription"
                                                       Width="130" />
-                            <syncfusion:GridTextColumn HeaderText="Address" 
-                                                      MappingName="ServiceAddress" 
+                            <syncfusion:GridTextColumn HeaderText="Address"
+                                                      MappingName="ServiceAddress"
                                                       Width="220" />
-                            <syncfusion:GridTextColumn HeaderText="Phone" 
-                                                      MappingName="PhoneNumber" 
+                            <syncfusion:GridTextColumn HeaderText="Phone"
+                                                      MappingName="PhoneNumber"
                                                       Width="120" />
-                            <syncfusion:GridTextColumn HeaderText="Meter #" 
-                                                      MappingName="MeterNumber" 
+                            <syncfusion:GridTextColumn HeaderText="Meter #"
+                                                      MappingName="MeterNumber"
                                                       Width="110" />
-                            <syncfusion:GridTextColumn HeaderText="Status" 
-                                                      MappingName="StatusDescription" 
+                            <syncfusion:GridTextColumn HeaderText="Status"
+                                                      MappingName="StatusDescription"
                                                       Width="90" />
-                            <syncfusion:GridNumericColumn HeaderText="Balance" 
+                            <syncfusion:GridNumericColumn HeaderText="Balance"
                                                          MappingName="CurrentBalance"
                                                          NumberDecimalDigits="2"
                                                          Width="110" />
@@ -189,16 +190,16 @@
             </Border>
 
             <!-- Bill History Section -->
-            <Border Grid.Row="1" Grid.Column="0" 
-                    Background="{DynamicResource ContentBackgroundAlt2Brush}" 
-                    BorderBrush="{DynamicResource BorderAltBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="6" 
+            <Border Grid.Row="1" Grid.Column="0"
+                    Background="{DynamicResource ContentBackgroundAlt2Brush}"
+                    BorderBrush="{DynamicResource BorderAltBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
                     Margin="0,4,4,0">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12,12,12,8">
-                        <TextBlock Text="Billing History" 
-                                  FontSize="16" 
+                        <TextBlock Text="Billing History"
+                                  FontSize="16"
                                   FontWeight="Bold"
                                   Foreground="{DynamicResource ContentForegroundBrush}" />
                         <TextBlock Text="{Binding SelectedCustomer.DisplayName, StringFormat=' - {0}'}"
@@ -225,16 +226,16 @@
                         AutomationProperties.HelpText="Grid showing billing history for the selected customer including bill dates, amounts, and payment status">
 
                         <syncfusion:SfDataGrid.Columns>
-                            <syncfusion:GridTextColumn HeaderText="Bill #" 
-                                                      MappingName="BillNumber" 
+                            <syncfusion:GridTextColumn HeaderText="Bill #"
+                                                      MappingName="BillNumber"
                                                       Width="150"
                                                       ToolTipService.ToolTip="Bill number" />
-                            <syncfusion:GridDateTimeColumn HeaderText="Bill Date" 
+                            <syncfusion:GridDateTimeColumn HeaderText="Bill Date"
                                                           MappingName="BillDate"
                                                           Pattern="ShortDate"
                                                           Width="120"
                                                           ToolTipService.ToolTip="Date bill was generated" />
-                            <syncfusion:GridDateTimeColumn HeaderText="Due Date" 
+                            <syncfusion:GridDateTimeColumn HeaderText="Due Date"
                                                           MappingName="DueDate"
                                                           Pattern="ShortDate"
                                                           Width="120"
@@ -245,12 +246,12 @@
                                                          CurrencyDecimalDigits="2"
                                                          Width="100"
                                                          ToolTipService.ToolTip="Water service charges" />
-                            <syncfusion:GridNumericColumn HeaderText="Sewer" 
+                            <syncfusion:GridNumericColumn HeaderText="Sewer"
                                                          MappingName="SewerCharges"
                                                          NumberDecimalDigits="2"
                                                          Width="100"
                                                          ToolTipService.ToolTip="Sewer service charges" />
-                            <syncfusion:GridNumericColumn HeaderText="Garbage" 
+                            <syncfusion:GridNumericColumn HeaderText="Garbage"
                                                          MappingName="GarbageCharges"
                                                          NumberDecimalDigits="2"
                                                          Width="100"
@@ -261,7 +262,7 @@
                                     </DataTemplate>
                                 </syncfusion:GridNumericColumn.ToolTipTemplate>
                             </syncfusion:GridNumericColumn>
-                            <syncfusion:GridNumericColumn HeaderText="Total" 
+                            <syncfusion:GridNumericColumn HeaderText="Total"
                                                          MappingName="TotalAmount"
                                                          NumberDecimalDigits="2"
                                                          Width="110"
@@ -272,7 +273,7 @@
                                     </DataTemplate>
                                 </syncfusion:GridNumericColumn.ToolTipTemplate>
                             </syncfusion:GridNumericColumn>
-                            <syncfusion:GridNumericColumn HeaderText="Paid" 
+                            <syncfusion:GridNumericColumn HeaderText="Paid"
                                                          MappingName="AmountPaid"
                                                          NumberDecimalDigits="2"
                                                          Width="110"
@@ -283,7 +284,7 @@
                                     </DataTemplate>
                                 </syncfusion:GridNumericColumn.ToolTipTemplate>
                             </syncfusion:GridNumericColumn>
-                            <syncfusion:GridNumericColumn HeaderText="Due" 
+                            <syncfusion:GridNumericColumn HeaderText="Due"
                                                          MappingName="AmountDue"
                                                          NumberDecimalDigits="2"
                                                          Width="110"
@@ -295,8 +296,8 @@
                                     </DataTemplate>
                                 </syncfusion:GridNumericColumn.ToolTipTemplate>
                             </syncfusion:GridNumericColumn>
-                            <syncfusion:GridTextColumn HeaderText="Status" 
-                                                      MappingName="StatusDescription" 
+                            <syncfusion:GridTextColumn HeaderText="Status"
+                                                      MappingName="StatusDescription"
                                                       Width="120"
                                                       ShowToolTip="True">
                                 <syncfusion:GridTextColumn.ToolTipTemplate>
@@ -322,7 +323,7 @@
             <!-- Customer Details Panel -->
             <Border Grid.Column="1" BorderBrush="{DynamicResource BorderAltBrush}" BorderThickness="1" Margin="0,8,8,8" CornerRadius="4">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="Customer Details" FontSize="14" FontWeight="Bold" Margin="8" 
+                    <TextBlock DockPanel.Dock="Top" Text="Customer Details" FontSize="14" FontWeight="Bold" Margin="8"
                               AutomationProperties.Name="Customer Details Section Header" />
 
                     <ScrollViewer VerticalScrollBarVisibility="Auto"
@@ -346,17 +347,17 @@
                                 <StackPanel>
                                     <Label Content="Account Number:" />
                                     <TextBox Text="{Binding SelectedCustomer.AccountNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" 
+                                           Margin="0,0,0,8"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="First Name:" />
                                     <TextBox Text="{Binding SelectedCustomer.FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" 
+                                           Margin="0,0,0,8"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="Last Name:" />
                                     <TextBox Text="{Binding SelectedCustomer.LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" 
+                                           Margin="0,0,0,8"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="Company Name:" />
@@ -385,22 +386,22 @@
 
                                     <Label Content="Address:" />
                                     <TextBox Text="{Binding SelectedCustomer.ServiceAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" 
+                                           Margin="0,0,0,8"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="City:" />
                                     <TextBox Text="{Binding SelectedCustomer.ServiceCity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" 
+                                           Margin="0,0,0,8"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="State:" />
                                     <TextBox Text="{Binding SelectedCustomer.ServiceState, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" MaxLength="2" 
+                                           Margin="0,0,0,8" MaxLength="2"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="ZIP Code:" />
                                     <TextBox Text="{Binding SelectedCustomer.ServiceZipCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" MaxLength="10" 
+                                           Margin="0,0,0,8" MaxLength="10"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
                                 </StackPanel>
                             </GroupBox>
@@ -431,12 +432,12 @@
                                 <StackPanel>
                                     <Label Content="Phone Number:" />
                                     <TextBox Text="{Binding SelectedCustomer.PhoneNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" 
+                                           Margin="0,0,0,8"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="Email Address:" />
                                     <TextBox Text="{Binding SelectedCustomer.EmailAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                           Margin="0,0,0,8" 
+                                           Margin="0,0,0,8"
                                            Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
 
                                     <Label Content="Meter Number:" />
@@ -488,7 +489,7 @@
                 <TextBlock Text="{Binding SummaryText}" />
             </StatusBarItem>
             <StatusBarItem>
-                <syncfusion:SfBusyIndicator IsBusy="{Binding IsLoading}" 
+                <syncfusion:SfBusyIndicator IsBusy="{Binding IsLoading}"
                                            Header="{Binding StatusMessage, FallbackValue='Loading...'}"
                                            AnimationType="Windmill" />
             </StatusBarItem>

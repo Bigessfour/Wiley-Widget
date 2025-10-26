@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Prism.Mvvm;
 using Prism.Events;
 using Prism.Commands;
-using Prism.Navigation;
+// Removed Prism.Navigation; WPF uses Prism.Regions for region navigation
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -22,7 +22,7 @@ using WileyWidget.Services.Logging;
 using Syncfusion.SfSkinManager;
 using PrismDelegateCommand = Prism.Commands.DelegateCommand;
 using WileyWidget.ViewModels.Messages;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.ViewModels
 {

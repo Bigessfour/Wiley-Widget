@@ -7,8 +7,7 @@ using System.Windows;
 using Microsoft.Extensions.Logging;
 using Prism.Commands;
 using Prism.Mvvm;
-using Prism.Navigation;
-// using Prism.Regions; // Removed to eliminate dependency
+using Prism.Navigation.Regions;
 using WileyWidget.Services;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Base;

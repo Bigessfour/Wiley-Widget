@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Specialized;
 using System.Windows;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 using Serilog;
 using Syncfusion.UI.Xaml.Grid;
 

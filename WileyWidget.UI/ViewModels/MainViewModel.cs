@@ -21,7 +21,7 @@ using WileyWidget.ViewModels.Base;
 using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Views;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.ViewModels
 {

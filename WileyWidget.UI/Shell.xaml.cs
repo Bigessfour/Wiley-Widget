@@ -8,7 +8,7 @@ using Serilog;
 using Syncfusion.Windows.Tools.Controls;
 using WileyWidget.ViewModels;
 using WileyWidget.Services;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.Views
 {

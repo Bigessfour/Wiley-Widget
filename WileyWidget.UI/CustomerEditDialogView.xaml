@@ -5,7 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:converters="clr-namespace:WileyWidget.Converters"
-             xmlns:behaviors="clr-namespace:WileyWidget.Behaviors;assembly=WileyWidget.UI"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
@@ -18,7 +18,7 @@
              behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="FirstFocusable">
     <UserControl.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
         <ControlTemplate x:Key="ErrorTemplate">
             <DockPanel LastChildFill="True">
                 <Border BorderBrush="{DynamicResource ErrorBorderBrush}" BorderThickness="1" CornerRadius="2" DockPanel.Dock="Right"
@@ -99,7 +99,7 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
-                
+
                  <syncfusion:ButtonAdv Label="_Cancel" Command="{Binding CancelCommand}" MinWidth="100" Margin="0,0,8,0" AutomationProperties.Name="Cancel" />
                  <syncfusion:ButtonAdv Label="_Save" Command="{Binding SaveCommand}" MinWidth="100" AutomationProperties.Name="Save" />
             </StackPanel>

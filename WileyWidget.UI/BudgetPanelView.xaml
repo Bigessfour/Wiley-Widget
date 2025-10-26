@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:WileyWidget"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
@@ -12,7 +12,7 @@
              d:DesignWidth="800"
              syncfusionskin:SfSkinManager.VisualStyle="FluentDark" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
         <local:BalanceColorConverter x:Key="BalanceColorConverter" />
 
     <!-- Fluent Dark palette for budget UI -->
@@ -193,8 +193,7 @@
                 <syncfusion:GridTableSummaryRow
                     Position="Bottom"
                     ShowSummaryInRow="True"
-                    Title="Portfolio Summary — Total Items: {ItemCount} | Combined Budget: {BudgetSum}"
-                    TitleColumnCount="2">
+                    Title="Portfolio Summary — Total Items: {ItemCount} | Combined Budget: {BudgetSum}">
                     <syncfusion:GridTableSummaryRow.SummaryColumns>
                         <syncfusion:GridSummaryColumn Name="ItemCount" SummaryType="CountAggregate" Format="'{CountAggregate}'" />
                         <syncfusion:GridSummaryColumn Name="BudgetSum" MappingName="BudgetAmount" SummaryType="DoubleAggregate" Format="'{Sum:C0}'" />
@@ -227,7 +226,7 @@
                                 BorderBrush="{DynamicResource PanelBorderBrush}"
                                 BorderThickness="1">
                 <syncfusion:SfChart.Legend>
-                    <syncfusion:ChartLegend Visibility="Visible" DockPosition="Bottom" />
+                    <syncfusion:ChartLegend Visibility="Visible" />
                 </syncfusion:SfChart.Legend>
                 <syncfusion:SfChart.PrimaryAxis>
                     <syncfusion:CategoryAxis Header="Period" />
@@ -235,7 +234,7 @@
                 <syncfusion:SfChart.SecondaryAxis>
                     <syncfusion:NumericalAxis Header="Rate ($)" />
                 </syncfusion:SfChart.SecondaryAxis>
-                
+
                 <!-- Current Rate Trend -->
                 <syncfusion:LineSeries ItemsSource="{Binding RateTrendData}"
                                        XBindingPath="Period"
@@ -246,14 +245,13 @@
                         <SolidColorBrush Color="#FF60A5FA" />
                     </syncfusion:LineSeries.Interior>
                 </syncfusion:LineSeries>
-                
+
                 <!-- Projected Rate Trend -->
                 <syncfusion:LineSeries ItemsSource="{Binding ProjectedRateData}"
                                        XBindingPath="Period"
                                        YBindingPath="Value"
                                        Label="Projected Rate"
-                                       StrokeThickness="2"
-                                       StrokeDashArray="5,3">
+                                       StrokeThickness="2">
                     <syncfusion:LineSeries.Interior>
                         <SolidColorBrush Color="#FFA500" />
                     </syncfusion:LineSeries.Interior>
@@ -267,7 +265,7 @@
                                 BorderBrush="{DynamicResource PanelBorderBrush}"
                                 BorderThickness="1">
                 <syncfusion:SfChart.Legend>
-                    <syncfusion:ChartLegend Visibility="Visible" DockPosition="Bottom" />
+                    <syncfusion:ChartLegend Visibility="Visible" />
                 </syncfusion:SfChart.Legend>
                 <syncfusion:SfChart.PrimaryAxis>
                     <syncfusion:CategoryAxis Header="Enterprise" />
@@ -275,7 +273,7 @@
                 <syncfusion:SfChart.SecondaryAxis>
                     <syncfusion:NumericalAxis Header="Amount ($)" />
                 </syncfusion:SfChart.SecondaryAxis>
-                
+
                 <!-- Budgeted Amount -->
                 <syncfusion:ColumnSeries ItemsSource="{Binding BudgetPerformanceData}"
                                          XBindingPath="Category"
@@ -285,7 +283,7 @@
                         <SolidColorBrush Color="#28A745" />
                     </syncfusion:ColumnSeries.Interior>
                 </syncfusion:ColumnSeries>
-                
+
                 <!-- Actual Amount -->
                 <syncfusion:ColumnSeries ItemsSource="{Binding BudgetPerformanceData}"
                                          XBindingPath="Category"

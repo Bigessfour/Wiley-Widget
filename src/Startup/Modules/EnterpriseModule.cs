@@ -1,7 +1,7 @@
 using System;
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;

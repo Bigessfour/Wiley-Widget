@@ -15,7 +15,7 @@ using Syncfusion.UI.Xaml.Chat;
 // Resolve ChatMessage naming conflict explicitly
 using ChatMessageModel = WileyWidget.Models.ChatMessage;
 using System.Threading;
-using Prism.Navigation;
+using Prism.Navigation.Regions;
 using Prism.Events;
 using WileyWidget.ViewModels.Messages;
 using System.ComponentModel;
