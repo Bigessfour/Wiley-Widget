@@ -24,6 +24,7 @@ using WileyWidget.Models.Entities;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using System.Collections.Generic;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace WileyWidget.Configuration;
 

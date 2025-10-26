@@ -56,6 +56,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
   <!-- Removed explicit Roslyn runtime packages to avoid Hot Reload conflicts in VS -->
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
+    <PackageReference Include="Polly.Extensions" Version="8.6.4" />
     <!-- Prism packages - explicit versions for wpftmp compatibility -->
     <PackageReference Include="Prism.Core" Version="9.0.537" />
     <PackageReference Include="Prism.Wpf" Version="9.0.537" />
@@ -111,6 +112,7 @@
     <!-- Resilience Packages -->
     <PackageReference Include="Polly" Version="8.6.4" />
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.1.0" />
     <!-- AI Integration Packages -->
   <!-- AI Integration Packages (removed - not used in bootstrapper/production code). If needed, re-add in the specific module projects) -->
     <!-- Azure Configuration Packages -->
@@ -133,8 +135,21 @@
     <ApplicationDefinition Include="src\App.xaml" />
     <Compile Include="src\App.xaml.cs" />
     <Compile Include="src\Program.cs" />
-    <!-- Include Diagnostics sources for application-level diagnostics and tracing -->
-    <Compile Include="src\Diagnostics\**\*.cs" />
+    <!-- Include Configuration sources needed by App.xaml.cs (excluding PolicyFactory which is in Startup project) -->
+    <Compile Include="src\Configuration\AppOptionsConfiguration.cs" />
+    <Compile Include="src\Configuration\DatabaseConfiguration.cs" />
+    <Compile Include="src\Configuration\WpfHostingExtensions.cs" />
+    <Compile Include="src\Configuration\WpfApplicationHostExtensions.cs" />
+    <Compile Include="src\Configuration\OptionsValidators.cs" />
+    <Compile Include="src\Configuration\StaticOptionsMonitor.cs" />
+    <Compile Include="src\Configuration\AccountTypeValidator.cs" />
+    <!-- Include Diagnostics sources needed by App.xaml.cs -->
+    <Compile Include="src\Diagnostics\StartupPerformanceMonitor.cs" />
+    <Compile Include="src\Diagnostics\BindingErrorTraceListener.cs" />
+    <Compile Include="src\Diagnostics\XamlDiagnosticsService.cs" />
+    <Compile Include="src\HealthCheckHostedService.cs" />
+    <!-- NOTE: Bootstrapper and BootstrapHelpers are compiled into WileyWidget.Startup.csproj
+         Do NOT include them here to avoid CS0436 duplicate type conflicts -->
   </ItemGroup>
 
   <!-- Exclude legacy container-specific diagnostics from main build to avoid optional container dependency -->

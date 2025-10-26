@@ -234,7 +234,7 @@ public static class WpfHostingExtensions
         services.AddEnterpriseDatabaseServices(configuration);
 
         // Critical services - load immediately
-        services.AddSingleton<AuthenticationService>();
+        // AuthenticationService removed - Azure integration archived
         services.AddSingleton<ISyncfusionLicenseService, SyncfusionLicenseService>();
         services.AddSingleton<ApplicationMetricsService>();
         services.AddSingleton<SettingsService>();

@@ -1,60 +1,77 @@
 using System;
 using System.Net.Http;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Polly;
-using Polly.Registry;
+using Polly.Retry;
+using Polly.CircuitBreaker;
+using Polly.Timeout;
 
 namespace WileyWidget.Configuration.Resilience
 {
     public static class PolicyFactory
     {
-        public static IAsyncPolicy<HttpResponseMessage> CreateJitteredRetryPolicy(ILogger? logger = null)
+        // Polly 8.x uses ResiliencePipeline builder pattern
+        public static void AddStandardResilienceHandler(IHttpClientBuilder builder, ILogger? logger = null)
         {
-            // Jittered retry: 3 attempts with exponential backoff + random jitter
-            return Policy<HttpResponseMessage>
-                .Handle<HttpRequestException>()
-                .OrResult(r => (int)r.StatusCode >= 500)
-                .WaitAndRetryAsync(
-                    retryCount: 3,
-                    sleepDurationProvider: retryAttempt =>
-                        TimeSpan.FromMilliseconds(500 * Math.Pow(2, retryAttempt - 1)) +
-                        TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000)),
-                    onRetryAsync: async (outcome, timespan, retryCount, context) =>
+            builder.AddResilienceHandler("standard-resilience", (resiliencePipelineBuilder, context) =>
+            {
+                // Add retry strategy with exponential backoff and jitter
+                resiliencePipelineBuilder.AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+                {
+                    MaxRetryAttempts = 3,
+                    Delay = TimeSpan.FromMilliseconds(500),
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                        .HandleResult(response => (int)response.StatusCode >= 500)
+                        .Handle<HttpRequestException>(),
+                    OnRetry = args =>
                     {
-                        try
-                        {
-                            var status = outcome.Result?.StatusCode.ToString() ?? "Exception";
-                            logger?.LogWarning("HTTP request failed (attempt {RetryCount}/{MaxRetries}). Status: {Status}. Delaying {Delay}ms",
-                                retryCount, 3, status, timespan.TotalMilliseconds);
-                        }
-                        catch { }
-                        await Task.CompletedTask;
-                    });
-        }
+                        logger?.LogWarning("HTTP request failed (attempt {Attempt}). Delaying {Delay}ms. Outcome: {Outcome}",
+                            args.AttemptNumber + 1, args.RetryDelay.TotalMilliseconds, args.Outcome);
+                        return default;
+                    }
+                });
 
-        public static IAsyncPolicy<HttpResponseMessage> CreateDefaultCircuitBreakerPolicy(ILogger? logger = null)
-        {
-            return Policy<HttpResponseMessage>
-                .Handle<HttpRequestException>()
-                .OrResult(r => (int)r.StatusCode >= 500)
-                .CircuitBreakerAsync(
-                    failureThreshold: 5,
-                    durationOfBreak: TimeSpan.FromSeconds(60),
-                    onBreak: (outcome, breakDelay) =>
+                // Add circuit breaker
+                resiliencePipelineBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
+                {
+                    SamplingDuration = TimeSpan.FromSeconds(30),
+                    FailureRatio = 0.5,
+                    MinimumThroughput = 5,
+                    BreakDuration = TimeSpan.FromSeconds(60),
+                    ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                        .HandleResult(response => (int)response.StatusCode >= 500)
+                        .Handle<HttpRequestException>(),
+                    OnClosed = args =>
                     {
-                        try { logger?.LogWarning(outcome.Exception, "Circuit breaker opened for {Duration}", breakDelay); } catch { }
+                        logger?.LogInformation("Circuit breaker closed");
+                        return default;
                     },
-                    onReset: () => { try { logger?.LogInformation("Circuit breaker reset"); } catch { } },
-                    onHalfOpen: () => { try { logger?.LogInformation("Circuit breaker half-open"); } catch { } });
-        }
+                    OnOpened = args =>
+                    {
+                        logger?.LogWarning("Circuit breaker opened for {Duration}", args.BreakDuration);
+                        return default;
+                    },
+                    OnHalfOpened = args =>
+                    {
+                        logger?.LogInformation("Circuit breaker half-open");
+                        return default;
+                    }
+                });
 
-        public static PolicyRegistry CreateDefaultPolicyRegistry(ILogger? logger = null)
-        {
-            var registry = new PolicyRegistry();
-            registry.Add("JitteredRetry", CreateJitteredRetryPolicy(logger));
-            registry.Add("DefaultCircuitBreaker", CreateDefaultCircuitBreakerPolicy(logger));
-            return registry;
+                // Add timeout
+                resiliencePipelineBuilder.AddTimeout(new TimeoutStrategyOptions
+                {
+                    Timeout = TimeSpan.FromSeconds(30),
+                    OnTimeout = args =>
+                    {
+                        logger?.LogWarning("Request timed out after {Timeout}s", args.Timeout.TotalSeconds);
+                        return default;
+                    }
+                });
+            });
         }
     }
 }

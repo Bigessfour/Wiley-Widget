@@ -63,7 +63,9 @@ namespace WileyWidget.Startup
 
             // Register a default MemoryCache instance for early consumers
             var memoryCacheOptions = new MemoryCacheOptions();
+#pragma warning disable CA2000 // MemoryCache registered as singleton; disposed when container disposes
             var memoryCache = new MemoryCache(memoryCacheOptions);
+#pragma warning restore CA2000
             containerRegistry.RegisterInstance<IMemoryCache>(memoryCache);
             Log.Information("Bootstrapper: IMemoryCache registered");
 
@@ -72,15 +74,9 @@ namespace WileyWidget.Startup
             // to the Prism container so other parts of the app can consume IHttpClientFactory or create scopes.
             var services = new ServiceCollection();
 
-            // Register Microsoft DI services for HttpClient using a local PolicyRegistry created from the shared PolicyFactory.
-            // This ensures the local service provider used by the bootstrapper has the same named policies available.
-            var policyRegistry = WileyWidget.Configuration.Resilience.PolicyFactory.CreateDefaultPolicyRegistry(loggerFactory.CreateLogger("Resilience"));
-            services.AddSingleton<Polly.Registry.PolicyRegistry>(policyRegistry);
-            services.AddSingleton<Polly.Registry.IPolicyRegistry<string>>(policyRegistry);
-
-            services.AddHttpClient("WileyApiClient")
-                .AddPolicyHandlerFromRegistry("JitteredRetry")
-                .AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
+            // Register HttpClient with Polly 8.x standard resilience handler
+            var httpClientBuilder = services.AddHttpClient("WileyApiClient");
+            WileyWidget.Configuration.Resilience.PolicyFactory.AddStandardResilienceHandler(httpClientBuilder, loggerFactory.CreateLogger("Resilience"));
 
             // Build and expose IServiceProvider so other parts of the app can consume IHttpClientFactory if needed
             var serviceProvider = services.BuildServiceProvider();
@@ -103,11 +99,14 @@ namespace WileyWidget.Startup
             {
                 var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
                 var assemblyDir = Path.GetDirectoryName(assemblyLocation) ?? AppDomain.CurrentDomain.BaseDirectory;
-                var projectDir = Directory.GetParent(Directory.GetParent(assemblyDir).FullName).FullName;
-                var envPath = Path.Combine(projectDir, ".env");
-                if (File.Exists(envPath))
+                var assemblyParent = Directory.GetParent(assemblyDir);
+                if (assemblyParent?.Parent?.FullName is string projectDir)
                 {
-                    DotNetEnv.Env.Load(envPath);
+                    var envPath = Path.Combine(projectDir, ".env");
+                    if (File.Exists(envPath))
+                    {
+                        DotNetEnv.Env.Load(envPath);
+                    }
                 }
             }
             catch (Exception ex)

@@ -447,10 +447,19 @@ public class HealthCheckHostedService : IHostedService, IDisposable
                 return HealthCheckResult.Unhealthy("QuickBooks", "QuickBooks Client ID or Realm ID not configured");
             }
 
-            // Check if token is valid
-            if (qbService is QuickBooksService concreteService && !concreteService.HasValidAccessToken())
+            // Check if token is valid (only if concrete type supports it)
+            if (qbService.GetType().Name == "QuickBooksService")
             {
-                return HealthCheckResult.Degraded("QuickBooks", "QuickBooks access token is expired or not available");
+                // Use reflection to check if token is valid
+                var hasValidTokenMethod = qbService.GetType().GetMethod("HasValidAccessToken");
+                if (hasValidTokenMethod != null)
+                {
+                    var hasValidToken = (bool?)hasValidTokenMethod.Invoke(qbService, null);
+                    if (hasValidToken == false)
+                    {
+                        return HealthCheckResult.Degraded("QuickBooks", "QuickBooks access token is expired or not available");
+                    }
+                }
             }
 
             // Test actual connection - if it fails with "No Connection", treat as expected (service not configured yet)

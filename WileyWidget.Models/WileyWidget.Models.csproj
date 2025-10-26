@@ -22,6 +22,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Enrichers.Environment" />
     <PackageReference Include="Serilog.Enrichers.Process" />
@@ -32,10 +34,12 @@
     <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
-  <!-- Include shared configuration sources from root `src` so configuration helpers are compiled into the Models project -->
   <ItemGroup>
-    <Compile Include="..\src\Configuration\**\*.cs" />
+    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
   </ItemGroup>
+
+  <!-- Configuration files removed - they belong in the main WileyWidget project to avoid circular dependencies -->
+  <!-- The Models project should only contain domain models and not have dependencies on Business/Data/Services -->
 
     <!-- Prevent transitive global using injected by Prism.DryIoc package from upstream projects -->
     <ItemGroup>

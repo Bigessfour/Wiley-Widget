@@ -393,3 +393,4 @@
     </darkTheme:SfAcrylicPanel>
     <!-- Evidence for Section 5 UX/Theming: SfAcrylicPanel closing tag completes modern translucent background wrapper per FLUENTDARK_ENHANCED_EFFECTS_CONFIGURATION.md -->
 </UserControl>
+

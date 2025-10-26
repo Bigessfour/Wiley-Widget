@@ -33,12 +33,8 @@ namespace WileyWidget.Startup.Modules
                         Log.Warning(iex, "Failed to mark module health in diagnostics helper");
                     }
 
-                    try
-                    {
-                        var container = provider.GetContainer();
-                        Log.Error("Container registrations count: {Count}", container.Registrations.Count());
-                    }
-                    catch { }
+                    // DryIoc container diagnostics removed - Registrations property not available in current version
+                    // If needed, use container.Resolve<IEnumerable<Type>>() or other diagnostic methods
                 }
             }
             catch (Exception logEx)

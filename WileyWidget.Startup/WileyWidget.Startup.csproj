@@ -11,6 +11,7 @@
     <!-- Minimal set of package references required by the lightweight Bootstrapper -->
     <PackageReference Include="Prism.Core" />
     <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
@@ -20,12 +21,16 @@
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="DotNetEnv" />
     <PackageReference Include="Polly" />
+    <PackageReference Include="Polly.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Bootstrapper owns the shared startup sources from the workspace src folder -->
     <Compile Include="..\src\Startup\Bootstrapper.cs" />
     <Compile Include="..\src\Startup\BootstrapHelpers.cs" />
+    <!-- Include Configuration sources needed by Bootstrapper -->
+    <Compile Include="..\src\Configuration\Resilience\PolicyFactory.cs" />
   </ItemGroup>
 
   <ItemGroup>

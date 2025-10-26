@@ -72,3 +72,4 @@
                 AutomationProperties.HelpText="Cancel the current operation" />
     </Grid>
 </Window>
+

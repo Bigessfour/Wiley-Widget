@@ -2,6 +2,8 @@
 
   <PropertyGroup>
   <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>WileyWidget</RootNamespace>
+    <AssemblyName>WileyWidget.UI</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
@@ -152,17 +154,7 @@
   <ItemGroup>
   <!-- Strings.Designer.cs is present under Resources/ and is included implicitly by the SDK -->
   <Compile Include="..\src\ThemeUtility.cs" />
-    <!-- Include shared converter sources so WPF markup compilation (wpftmp) can resolve them
-         without requiring the root project assembly at design/markup-compile time. -->
-  <Compile Include="..\src\Converters\MessageConverters.cs" />
-    <Compile Include="..\src\Converters\ZeroToVisibleConverter.cs" />
-    <Compile Include="..\src\Converters\StringToVisibilityConverter.cs" />
-    <Compile Include="..\src\Converters\BudgetProgressConverter.cs" />
-    <Compile Include="..\src\Converters\BooleanToBrushConverter.cs" />
-    <Compile Include="..\src\Converters\BalanceColorConverter.cs" />
-    <Compile Include="..\src\Converters\BooleanToVisibilityConverter.cs" />
-    <Compile Include="..\src\Converters\ChatConverters.cs" />
-    <Compile Include="..\src\Converters\NullToVisibilityConverter.cs" />
+    <!-- Converters now live in WileyWidget.UI\Converters\ and are auto-included by SDK -->
   <!-- Bootstrapper moved to dedicated WileyWidget.Startup project to avoid duplicate-type compilation -->
     <!-- Prism modules remain owned by the UI project (they reference views/viewmodels) -->
     <Compile Include="..\src\Startup\Modules\**\*.cs" />
