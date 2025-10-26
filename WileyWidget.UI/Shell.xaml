@@ -224,23 +224,83 @@
     <!-- Main Content Area with Prism Regions -->
     <Grid Grid.Row="1">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Panel Region -->
+        <ContentControl x:Name="LeftPanelRegionControl"
+                       Grid.Row="0" Grid.RowSpan="3" Grid.Column="0"
+                       prism:RegionManager.RegionName="LeftPanelRegion"
+                       AutomationProperties.Name="Left Panel Region"
+                       AutomationProperties.HelpText="Left panel for dashboard and navigation controls"/>
 
         <!-- Main Region for primary content -->
         <ContentControl x:Name="MainRegionControl"
-                       Grid.Row="0"
+                       Grid.Row="1" Grid.Column="1"
                        prism:RegionManager.RegionName="MainRegion"
                        AutomationProperties.Name="Main Content Region"
                        AutomationProperties.HelpText="Primary content area for dynamic view injection"/>
 
+        <!-- Municipal Account Region -->
+        <ContentControl x:Name="MunicipalAccountRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="MunicipalAccountRegion"
+                       AutomationProperties.Name="Municipal Account Region"
+                       AutomationProperties.HelpText="Region for municipal account views"
+                       Visibility="Collapsed"/>
+
+        <!-- Utility Customer Region -->
+        <ContentControl x:Name="UtilityCustomerRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="UtilityCustomerRegion"
+                       AutomationProperties.Name="Utility Customer Region"
+                       AutomationProperties.HelpText="Region for utility customer views"
+                       Visibility="Collapsed"/>
+
+        <!-- Reports Region -->
+        <ContentControl x:Name="ReportsRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="ReportsRegion"
+                       AutomationProperties.Name="Reports Region"
+                       AutomationProperties.HelpText="Region for reports views"
+                       Visibility="Collapsed"/>
+
+        <!-- Settings Region -->
+        <ContentControl x:Name="SettingsRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="SettingsRegion"
+                       AutomationProperties.Name="Settings Region"
+                       AutomationProperties.HelpText="Region for settings views"
+                       Visibility="Collapsed"/>
+
+        <!-- Right Panel Region -->
+        <ContentControl x:Name="RightPanelRegionControl"
+                       Grid.Row="0" Grid.RowSpan="3" Grid.Column="2"
+                       prism:RegionManager.RegionName="RightPanelRegion"
+                       AutomationProperties.Name="Right Panel Region"
+                       AutomationProperties.HelpText="Right panel for settings and tools"/>
+
+        <!-- Bottom Panel Region -->
+        <ContentControl x:Name="BottomPanelRegionControl"
+                       Grid.Row="2" Grid.Column="1"
+                       prism:RegionManager.RegionName="BottomPanelRegion"
+                       AutomationProperties.Name="Bottom Panel Region"
+                       AutomationProperties.HelpText="Bottom panel for tools and status"/>
+
         <!-- Tab Region for tabbed content -->
         <TabControl x:Name="TabRegionControl"
-                   Grid.Row="1"
+                   Grid.Row="1" Grid.Column="1"
                    prism:RegionManager.RegionName="TabRegion"
                    AutomationProperties.Name="Tab Content Region"
-                   AutomationProperties.HelpText="Tabbed content area for dynamic view injection"/>
+                   AutomationProperties.HelpText="Tabbed content area for dynamic view injection"
+                   Visibility="Collapsed"/>
     </Grid>
 
         <!-- Status Bar in Row 2 -->

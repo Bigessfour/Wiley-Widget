@@ -484,12 +484,12 @@ WileyWidget/
 
 ### Technology Stack by Layer
 
-| Layer | Framework | ORM | Testing | UI | External APIs |
-|-------|-----------|-----|---------|----|---------------|
-| **Presentation** | .NET 9.0 WPF | - | FlaUI | Syncfusion | - |
-| **Business** | .NET 8.0 | - | xUnit, Moq | - | QuickBooks API |
-| **Data** | .NET 8.0 | EF Core 9.0.8 | xUnit, TestContainers | - | Azure SQL |
-| **Domain** | .NET 8.0 | - | xUnit | - | - |
+| Layer | Framework | ORM | Testing | UI | External APIs | Resilience |
+|-------|-----------|-----|---------|----|---------------|------------|
+| **Presentation** | .NET 9.0 WPF | - | FlaUI | Syncfusion | - | - |
+| **Business** | .NET 8.0 | - | xUnit, Moq | - | QuickBooks API | Polly v8.6.4 |
+| **Data** | .NET 8.0 | EF Core 9.0.8 | xUnit, TestContainers | - | Azure SQL | Polly v8.6.4 |
+| **Domain** | .NET 8.0 | - | xUnit | - | - | - |
 
 This layered architecture ensures WileyWidget is maintainable, testable, and ready for enterprise-scale deployment while following Microsoft's recommended patterns for modern .NET applications.
 
@@ -807,7 +807,67 @@ dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj
 
 ---
 
-## 📚 **Documentation**
+## �️ **Resilience Framework (Polly v8.6.4)**
+
+WileyWidget implements comprehensive resilience patterns using **Polly v8.6.4**, the industry-standard .NET resilience library. Polly provides robust fault tolerance and recovery mechanisms for handling transient failures across HTTP clients, database operations, and external API integrations.
+
+### **Resilience Patterns Implemented**
+
+#### **🔄 HTTP Client Resilience**
+- **Retry Policies:** Exponential backoff with jitter for transient HTTP failures
+- **Circuit Breaker:** Prevents cascade failures during service outages
+- **Timeout Policies:** Prevents hanging requests with configurable timeouts
+- **Applied To:** AI Services, External APIs, QuickBooks OAuth operations
+
+#### **🗄️ Database Resilience**
+- **Authentication Retry:** Handles Azure SQL authentication timeouts
+- **Timeout Retry:** Manages query timeouts with linear backoff
+- **Concurrency Retry:** Resolves EF Core optimistic concurrency conflicts
+- **Circuit Breaker:** Protects against database unavailability
+- **Operation-Specific Policies:** Differentiated resilience for read vs write operations
+
+#### **🏥 Health Check Resilience**
+- **Retry with Backoff:** Health checks retry failed services with exponential backoff
+- **Circuit Breaker Integration:** Prevents overwhelming unhealthy services
+- **Timeout Protection:** Individual health checks have timeout limits
+- **Comprehensive Coverage:** Configuration, Database, AI Service, QuickBooks, Syncfusion License validation
+
+### **Configuration & Usage**
+
+**HTTP Client Setup:**
+```csharp
+// Automatic resilience via PolicyRegistry
+services.AddHttpClient("AIServices", client => {
+    client.Timeout = TimeSpan.FromSeconds(60);
+})
+.AddPolicyHandlerFromRegistry("JitteredRetry")
+.AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
+```
+
+**Database Operations:**
+```csharp
+// Operation-specific resilience
+var accounts = await DatabaseResiliencePolicy.ExecuteReadAsync(() =>
+    _accountRepository.GetAllAsync());
+```
+
+**Health Checks:**
+```csharp
+// Automatic retry and circuit breaker
+return await retryPolicy.ExecuteAsync(async () =>
+    await CheckDatabaseHealthAsync());
+```
+
+### **Benefits**
+- ✅ **Fault Tolerance:** Graceful handling of transient failures
+- ✅ **Performance:** Prevents resource exhaustion during outages
+- ✅ **Reliability:** Maintains service availability under adverse conditions
+- ✅ **Observability:** Comprehensive logging of resilience events
+- ✅ **Enterprise-Grade:** Production-ready resilience patterns
+
+---
+
+## �📚 **Documentation**
 
 - **[North Star Roadmap](docs/wiley-widget-north-star-v1.1.md)** - Complete implementation plan
 - **[Contributing Guide](CONTRIBUTING.md)** - Development workflow

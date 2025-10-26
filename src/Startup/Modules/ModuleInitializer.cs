@@ -2,7 +2,7 @@ using System;
 using Prism.Ioc;
 using Prism.Modularity;
 using Serilog;
-using Unity.Resolution;
+// using Unity.Resolution; // Unity-specific diagnostics disabled; avoid hard dependency
 
 namespace WileyWidget.Startup.Modules
 {
@@ -88,17 +88,18 @@ namespace WileyWidget.Startup.Modules
             try
             {
                 // Check if this is a dependency resolution issue
-                if (exception is ResolutionFailedException resolutionEx)
+                // Avoid hard Unity dependency: detect by type name to gather context when available
+                if (exception.GetType().Name == "ResolutionFailedException")
                 {
                     // Try to get type information from the exception
                     string typeName = "Unknown";
                     try
                     {
                         // ResolutionFailedException should have Type property, but check if it exists
-                        var typeProperty = resolutionEx.GetType().GetProperty("Type");
+                        var typeProperty = exception.GetType().GetProperty("Type");
                         if (typeProperty != null)
                         {
-                            var resolvedType = typeProperty.GetValue(resolutionEx) as Type;
+                            var resolvedType = typeProperty.GetValue(exception) as Type;
                             typeName = resolvedType?.Name ?? "Unknown";
                         }
                     }
@@ -109,8 +110,7 @@ namespace WileyWidget.Startup.Modules
                     }
 
                     Log.Error("Dependency resolution failed for type: {TypeName}", typeName);
-                    Log.Error("Container has {ServiceCount} registered services",
-                        containerProvider.GetContainer().Registrations.Count());
+                    // Container registration count not available without container-specific API; skip to avoid hard dependency
                 }
 
                 // Check for common service resolution issues

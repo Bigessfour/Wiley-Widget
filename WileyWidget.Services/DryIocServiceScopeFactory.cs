@@ -1,6 +1,9 @@
 using System;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using DryIoc;
+using Prism.Ioc;
+using WileyWidget.Services;
 
 namespace WileyWidget.Services;
 
@@ -12,55 +15,90 @@ public class DryIocServiceScopeFactory : IServiceScopeFactory
 {
     private readonly DryIoc.IContainer _container;
 
-    public DryIocServiceScopeFactory(DryIoc.IContainer container)
+    public DryIocServiceScopeFactory(IContainerProvider containerProvider)
     {
-        _container = container ?? throw new ArgumentNullException(nameof(container));
+        if (containerProvider == null) throw new ArgumentNullException(nameof(containerProvider));
+
+        // Try to obtain the underlying DryIoc container from the Prism container provider using reflection.
+        // This keeps the DI registration at Prism/IContainerRegistry level while still supporting
+        // services that need DryIoc scoping behavior.
+        _container = TryGetDryIocContainer(containerProvider) ?? throw new InvalidOperationException("DryIoc container could not be obtained from the Prism container provider.");
     }
 
     public IServiceScope CreateScope()
     {
         // Create scoped resolver/context from DryIoc container
         var scope = _container.OpenScope(); // returns IResolverContext
-        return new DryIocServiceScope(scope);
-    }
-}
-
-/// <summary>
-/// DryIoc-based implementation of IServiceScope that wraps a DryIoc scope.
-/// Provides isolated service resolution for scoped operations (e.g., per-scenario DB contexts).
-/// </summary>
-public sealed class DryIocServiceScope : IServiceScope, IDisposable
-{
-    private readonly DryIoc.IResolverContext _resolverContext;
-    private bool _disposed;
-
-    public DryIocServiceScope(DryIoc.IResolverContext resolverContext)
-    {
-        _resolverContext = resolverContext ?? throw new ArgumentNullException(nameof(resolverContext));
+        return new DryIocServiceScopeImpl(scope);
     }
 
-    public IServiceProvider ServiceProvider => new DryIocServiceProviderAdapter(_resolverContext);
-
-    // Standard IDisposable pattern
-    private void Dispose(bool disposing)
+    private static DryIoc.IContainer? TryGetDryIocContainer(IContainerProvider provider)
     {
-        if (_disposed) return;
-
-        if (disposing)
+        try
         {
-            // Dispose resolver context if it implements IDisposable
-            if (_resolverContext is IDisposable d)
+            var provType = provider.GetType();
+
+            // 1) Try public 'Container' property (common on ContainerExtension types)
+            var prop = provType.GetProperty("Container", BindingFlags.Public | BindingFlags.Instance);
+            if (prop != null)
             {
-                d.Dispose();
+                var val = prop.GetValue(provider);
+                if (val is DryIoc.IContainer di) return di;
+                // Sometimes the property returns a container wrapper - try to inspect its properties too
+                if (val != null)
+                {
+                    var innerProp = val.GetType().GetProperty("Container", BindingFlags.Public | BindingFlags.Instance);
+                    if (innerProp != null)
+                    {
+                        var innerVal = innerProp.GetValue(val);
+                        if (innerVal is DryIoc.IContainer di2) return di2;
+                    }
+                }
+            }
+
+            // 2) Try a parameterless method named 'GetContainer' (some adapters expose this)
+            var getContainerMethod = provType.GetMethod("GetContainer", BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic, Type.DefaultBinder, Type.EmptyTypes, null);
+            if (getContainerMethod != null)
+            {
+                var result = getContainerMethod.Invoke(provider, null);
+                if (result is DryIoc.IContainer di3) return di3;
+            }
+
+            // 3) Try private/internal fields commonly used to hold the underlying container (e.g., '_container' or 'container')
+            var field = provType.GetField("_container", BindingFlags.NonPublic | BindingFlags.Instance) ?? provType.GetField("container", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field != null)
+            {
+                var fval = field.GetValue(provider);
+                if (fval is DryIoc.IContainer di4) return di4;
+            }
+
+            // 4) As a last resort, scan all public properties/fields for an instance of DryIoc.IContainer
+            foreach (var p in provType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                try
+                {
+                    var v = p.GetValue(provider);
+                    if (v is DryIoc.IContainer di5) return di5;
+                }
+                catch { /* ignore property getter exceptions */ }
+            }
+
+            foreach (var f in provType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            {
+                try
+                {
+                    var v = f.GetValue(provider);
+                    if (v is DryIoc.IContainer di6) return di6;
+                }
+                catch { }
             }
         }
+        catch
+        {
+            // swallow - we will surface a clearer error at ctor time
+        }
 
-        _disposed = true;
-    }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
+        return null;
     }
 }
+// Removed the DryIocServiceScopeImpl class definition

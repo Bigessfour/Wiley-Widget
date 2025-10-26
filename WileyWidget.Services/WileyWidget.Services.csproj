@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+  <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -80,6 +80,7 @@
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

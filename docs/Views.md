@@ -1,13 +1,13 @@
 # Wiley Widget Views Documentation
 
-**Last Updated**: October 14, 2025  
-**Status**: Consolidated view documentation  
+**Last Updated**: October 14, 2025
+**Status**: Consolidated view documentation
 
 ---
 
 ## Overview
 
-This document consolidates all view-related documentation for the Wiley Widget WPF application. The application uses Prism.DryIoc for navigation and dependency injection, with Syncfusion WPF controls for the UI.
+This document consolidates all view-related documentation for the Wiley Widget WPF application. The application uses Prism.Container.DryIoc for navigation and dependency injection, with Syncfusion WPF controls for the UI.
 
 ---
 
@@ -19,14 +19,35 @@ This document consolidates all view-related documentation for the Wiley Widget W
 - **Views**: XAML UI in `src/Views/`
 
 ### Navigation
-- **Framework**: Prism.DryIoc navigation
+- **Framework**: Prism.Container.DryIoc navigation (.NET 9 compatible)
 - **Region Management**: Prism RegionManager
-- **Main Region**: `MainRegion` in MainWindow
+- **Main Region**: `MainRegion` in Shell
 
 ### Dependency Injection
-- **Container**: DryIoc (Prism's default)
+- **Container**: DryIoc via Prism.Container.DryIoc extension
 - **Registration**: `App.cs` `RegisterTypes()` method
 - **View Registration**: `RegisterForNavigation<TView, TViewModel>()`
+
+---
+
+## Migration from Prism.DryIoc to Prism.Container.DryIoc
+
+### Background
+The application was migrated from `Prism.DryIoc` to `Prism.Container.DryIoc` to ensure compatibility with .NET 9 and follow Prism 9.0 best practices.
+
+### Changes Made
+1. **Package Reference**: Replaced `Prism.DryIoc` with `Prism.Container.DryIoc` in `Directory.Packages.props`
+2. **Bootstrapper**: Updated `App.cs` to inherit from `PrismApplication` and use `DryIocContainerExtension`
+3. **Container Creation**: Implemented `CreateContainerExtension()` to return `new DryIocContainerExtension(new Container())`
+4. **Global Usings**: Removed transitive `Prism.DryIoc` usings from downstream projects
+5. **DryIoc Version**: Pinned to compatible version (5.4.3) as required by `Prism.Container.DryIoc`
+
+### Benefits
+- ✅ Full .NET 9 compatibility
+- ✅ Modern Prism 9.0 architecture
+- ✅ Better separation of concerns
+- ✅ Improved maintainability
+- ✅ Future-proof for Prism updates
 
 ---
 
@@ -234,7 +255,7 @@ public class MunicipalAccount
 
 ## DashboardViewModel Integration
 
-**Date**: 2025-10-01  
+**Date**: 2025-10-01
 **Status**: ✅ RESOLVED
 
 ### Solution Summary
@@ -271,8 +292,8 @@ builder.Services.AddScoped<ViewModels.DashboardViewModel>();
 
 ### Verification
 
-Build Status: ✅ **Success**  
-Integration: ✅ **Complete**  
+Build Status: ✅ **Success**
+Integration: ✅ **Complete**
 Pattern: ✅ **Consistent with other view models**
 
 ---
@@ -291,7 +312,7 @@ protected override void RegisterTypes(IContainerRegistry containerRegistry)
     containerRegistry.RegisterSingleton<MainViewModel>();
     containerRegistry.Register<DashboardViewModel>();
     containerRegistry.Register<MunicipalAccountViewModel>();
-    
+
     // Register Views for Navigation
     containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>();
     containerRegistry.RegisterForNavigation<MunicipalAccountView, MunicipalAccountViewModel>();
@@ -351,17 +372,17 @@ Prism automatically associates views and view models by:
 public class MyViewModel : BindableBase
 {
     public DelegateCommand SaveCommand { get; }
-    
+
     public MyViewModel()
     {
         SaveCommand = new DelegateCommand(ExecuteSave, CanExecuteSave);
     }
-    
+
     private void ExecuteSave()
     {
         // Save logic
     }
-    
+
     private bool CanExecuteSave()
     {
         return !string.IsNullOrEmpty(SomeProperty);
@@ -417,6 +438,46 @@ public async Task LoadDataAsync()
 2. Verify view model constructors can be resolved
 3. Ensure all dependencies are registered in DI container
 4. Check for circular dependencies
+
+---
+
+## Prism Best Practices Guide
+
+### Module Development
+1. **Module Registration**: Always register modules with `IModuleHealthService` for monitoring
+2. **Region Registration**: Use `RegisterViewWithRegion()` in `OnInitialized()` for region-based navigation
+3. **Error Handling**: Implement try-catch in module initialization with fallback strategies
+4. **Health Tracking**: Mark module initialization status with `MarkModuleInitialized()`
+
+### ViewModelLocator Configuration
+1. **Naming Convention**: Follow `ViewName` → `ViewNameViewModel` pattern
+2. **Auto-Wiring**: Use `prism:ViewModelLocator.AutoWireViewModel="True"` in XAML
+3. **Error Handling**: ViewModelLocator is configured with custom error handling and logging
+4. **Validation**: Automatic validation of View-ViewModel naming conventions
+
+### Region Management
+1. **Region Names**: Use descriptive region names (e.g., `MainRegion`, `LeftPanelRegion`)
+2. **Region Adapters**: Custom region adapters for Syncfusion controls
+3. **Navigation**: Use `IRegionManager.RequestNavigate()` for programmatic navigation
+4. **Region Behaviors**: Implement custom behaviors for logging and auto-activation
+
+### Dependency Injection
+1. **Registration**: Register services in `RegisterTypes()` method
+2. **Lifetime**: Use appropriate lifetimes (Singleton, Transient, Scoped)
+3. **Navigation**: Use `RegisterForNavigation<TView, TViewModel>()` for navigable views
+4. **Resolution**: Resolve services in constructors or via `IContainerProvider`
+
+### XAML Integration
+1. **xmlns:prism**: Include `xmlns:prism="http://prismlibrary.com/"` in all XAML files
+2. **AutoWireViewModel**: Set `prism:ViewModelLocator.AutoWireViewModel="True"` for views
+3. **Region Names**: Use `prism:RegionManager.RegionName` for region definitions
+4. **Data Binding**: Follow WPF data binding best practices
+
+### Error Handling
+1. **Module Failures**: Modules continue loading even if one fails
+2. **ViewModel Errors**: Logged and handled gracefully by ViewModelLocator
+3. **Navigation Failures**: Logged with recovery strategies
+4. **XAML Parse Errors**: Attempt recovery with theme re-application
 
 ---
 

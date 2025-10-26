@@ -26,8 +26,8 @@ namespace WileyWidget.Startup.Modules
             var moduleHealthService = containerProvider.Resolve<IModuleHealthService>();
             moduleHealthService.RegisterModule("CoreModule");
 
-            // var regionManager = containerProvider.Resolve<IRegionManager>();
-            // regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView)); // Disabled region-based navigation
+            var regionManager = containerProvider.Resolve<IRegionManager>();
+            regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
 
             moduleHealthService.MarkModuleInitialized("CoreModule", success: true);
             Log.Information("CoreModule initialization completed");

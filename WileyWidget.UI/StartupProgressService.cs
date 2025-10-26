@@ -11,13 +11,7 @@ namespace WileyWidget.Services;
 /// Provides a single point for reporting startup progress so the splash screen and diagnostics stay in sync.
 /// Thread-safe and resilient to cases where the splash screen is not yet constructed.
 /// </summary>
-public interface IStartupProgressReporter
-{
-    void Report(double progress, string message, bool? isIndeterminate = null);
-    void Complete(string? finalMessage = null);
-    void AttachSplashScreen(SplashScreenWindow? splashScreen);
-}
-
+// IStartupProgressReporter is defined in WileyWidget.Abstractions to avoid UI/service duplication.
 internal sealed class StartupProgressService : IStartupProgressReporter
 {
     private readonly object _syncRoot = new();
@@ -85,8 +79,9 @@ internal sealed class StartupProgressService : IStartupProgressReporter
         }
     }
 
-    public void AttachSplashScreen(SplashScreenWindow? splashScreen)
+    public void AttachSplashScreen(object? splashObj)
     {
+        var splashScreen = splashObj as SplashScreenWindow;
         lock (_syncRoot)
         {
             if (_splashScreen == splashScreen)

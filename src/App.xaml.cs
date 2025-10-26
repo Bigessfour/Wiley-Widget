@@ -10,6 +10,8 @@ using System.Threading;
 using System.Reflection;
 using Prism.Ioc;
 using Prism.Modularity;
+using Prism;
+using Prism.Mvvm;
 using Prism.Container.DryIoc;
 using DryIoc;
 using Syncfusion.SfSkinManager;
@@ -37,7 +39,7 @@ using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
-using Azure.Identity;
+// Azure.Identity removed from App.xaml.cs — azure-specific logic moved out of bootstrapper
 using System.Text.RegularExpressions;
 using Prism.Events;
 using WileyWidget.ViewModels.Messages;
@@ -53,7 +55,7 @@ using System.Xaml;
 
 namespace WileyWidget
 {
-    public partial class App : PrismApplication
+    public partial class App : Prism.Wpf.PrismApplicationBase
     {
         // Static mapping of expected regions for each module for maintainability and reuse
         private static readonly Dictionary<string, string[]> moduleRegionMap = new Dictionary<string, string[]>
@@ -122,188 +124,35 @@ namespace WileyWidget
         /// </summary>
         public App()
         {
+            // Simplified bootstrapper: keep early logging and global exception handling.
             _startupId = Guid.NewGuid().ToString("N")[..8];
-            var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            // Create bootstrap logger for early startup diagnostics
-            // Microsoft pattern: Bootstrap logger first, then full configuration after host builder
-            var bootstrapLogger = new LoggerConfiguration()
-                .MinimumLevel.Debug()  // Capture all levels from the start
+            // Minimal bootstrap logger: file-based, capture Info+ by default to reduce noise
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
                 .Enrich.WithMachineName()
                 .Enrich.WithProcessId()
                 .Enrich.WithThreadId()
-                .Enrich.WithEnvironmentName()
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] {ProcessId}:{ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}")
-                .WriteTo.File("logs/startup-.log",
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 7,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {MachineName} {ProcessId}:{ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}")
+                .WriteTo.File("logs/startup-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
                 .CreateLogger();
 
-            Log.Logger = bootstrapLogger;
+            Log.Information("WileyWidget bootstrap starting - Session: {StartupId}", _startupId);
 
-            Log.Debug("Bootstrap logger created successfully");
-            Log.Information("Starting bootstrap test - Session: {StartupId}", _startupId);
-
-            // Enhanced bootstrap test with timing and diagnostics
-            var bootstrapTestStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            // Configure global exception handling early so any later initialization is covered
             try
             {
-                // Test basic system capabilities
-                var testThread = Thread.CurrentThread;
-                Log.Debug("Bootstrap test - Thread diagnostics: ID={ThreadId}, Name={ThreadName}, Priority={Priority}",
-                    testThread.ManagedThreadId, testThread.Name ?? "unnamed", testThread.Priority);
-
-                // Test apartment state
-                var apartmentState = testThread.GetApartmentState();
-                Log.Debug("Bootstrap test - Apartment state: {ApartmentState}", apartmentState);
-
-                // Test memory and GC
-                GC.Collect();
-                Log.Debug("Bootstrap test - GC collection completed, Memory: {MemoryMB}MB",
-                    GC.GetTotalMemory(false) / 1024 / 1024);
-
-                bootstrapTestStopwatch.Stop();
-                Log.Information("Bootstrap test PASSED in {ElapsedMs}ms - Session: {StartupId}",
-                    bootstrapTestStopwatch.ElapsedMilliseconds, _startupId);
+                SetupGlobalExceptionHandling();
             }
             catch (Exception ex)
             {
-                bootstrapTestStopwatch.Stop();
-                Log.Error(ex, "Bootstrap test FAILED after {ElapsedMs}ms - Session: {StartupId}",
-                    bootstrapTestStopwatch.ElapsedMilliseconds, _startupId);
-                throw; // Re-throw to fail startup
+                Log.Warning(ex, "Failed to setup global exception handling during bootstrap");
             }
-
-            Log.Information("Starting WileyWidget application with proper STA threading model - Session: {StartupId}", _startupId);
-            Log.Information("Thread ID: {ThreadId}, IsBackground: {IsBackground}, ApartmentState: {ApartmentState}",
-                Environment.CurrentManagedThreadId,
-                Thread.CurrentThread.IsBackground,
-                Thread.CurrentThread.GetApartmentState());
-
-            // Additional thread diagnostics
-            Log.Debug("Thread diagnostics - ManagedThreadId: {ThreadId}, Name: {ThreadName}, Priority: {Priority}, IsPool: {IsPool}, IsAlive: {IsAlive}",
-                Thread.CurrentThread.ManagedThreadId,
-                Thread.CurrentThread.Name ?? "unnamed",
-                Thread.CurrentThread.Priority,
-                Thread.CurrentThread.IsThreadPoolThread,
-                Thread.CurrentThread.IsAlive);
-
-            // Log thread pool status
-            int workerThreads, completionPortThreads;
-            ThreadPool.GetAvailableThreads(out workerThreads, out completionPortThreads);
-            int maxWorkerThreads, maxCompletionPortThreads;
-            ThreadPool.GetMaxThreads(out maxWorkerThreads, out maxCompletionPortThreads);
-
-            Log.Debug("Thread pool status - Available Workers: {AvailableWorkers}/{MaxWorkers}, Available IO: {AvailableIO}/{MaxIO}",
-                workerThreads, maxWorkerThreads, completionPortThreads, maxCompletionPortThreads);
-
-            // Ensure we're on STA thread (this should already be the case due to STAThread attribute)
-            if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
-            {
-                Log.Warning("Current thread is not STA - this may cause WPF threading issues. Expected STA, got {ActualApartmentState}",
-                    Thread.CurrentThread.GetApartmentState());
-                Log.Warning("Thread details - ManagedThreadId: {ThreadId}, Name: {ThreadName}",
-                    Thread.CurrentThread.ManagedThreadId, Thread.CurrentThread.Name ?? "unnamed");
-            }
-            else
-            {
-                Log.Debug("STA thread verification passed - ApartmentState: {ApartmentState}", ApartmentState.STA);
-            }
-
-            Log.Information("Creating WPF Application instance - Session: {StartupId}", _startupId);
-            var appCreationStopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-            appCreationStopwatch.Stop();
-            Log.Information("WPF Application instance created successfully in {ElapsedMs}ms - Session: {StartupId}",
-                appCreationStopwatch.ElapsedMilliseconds, _startupId);
-
-            // Start the application - Prism will handle initialization
-            Log.Information("Starting WPF application run loop - Session: {StartupId}", _startupId);
-            startupStopwatch.Stop();
-            Log.Information("Total startup preparation completed in {TotalElapsedMs}ms - Session: {StartupId}",
-                startupStopwatch.ElapsedMilliseconds, _startupId);
         }
 
         // Removed legacy OnStartup code as per Prism standard bootstrapper
 
-        /// <summary>
-        /// Performs an early SQL preflight to ensure critical tables/columns exist before EF is used.
-        /// Uses idempotent DDL wrapped in simple retries to handle transient startup races.
-        /// </summary>
-        private void DatabasePreflightWithRetry(int maxAttempts = 3, int delayMs = 300)
-        {
-            IConfiguration configuration = _cachedConfiguration ??= BuildConfiguration();
-            string connectionString = configuration.GetConnectionString("DefaultConnection")
-                ?? "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=true";
-
-            const string preflightSql = @"
--- AppSettings table should already exist via EF migrations
--- Just ensure required columns exist
-
-IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
-    ALTER TABLE dbo.AppSettings ADD QboClientId NVARCHAR(MAX) NULL;
-
-IF COL_LENGTH('dbo.AppSettings','QboClientSecret') IS NULL
-    ALTER TABLE dbo.AppSettings ADD QboClientSecret NVARCHAR(MAX) NULL;
-
-IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber') IS NOT NULL
-   AND COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
-    ALTER TABLE dbo.MunicipalAccounts ADD [AccountNumber_Value] AS ([AccountNumber]);
-
--- Ensure at least one AppSettings record exists
-IF NOT EXISTS (SELECT 1 FROM dbo.AppSettings)
-BEGIN
-    INSERT INTO dbo.AppSettings (
-        Theme,
-        UseDynamicColumns,
-        QuickBooksEnvironment,
-        QboTokenExpiry
-    ) VALUES (
-        N'Default',           -- Theme (required, no default)
-        0,                    -- UseDynamicColumns (required, no default)
-        N'',                  -- QuickBooksEnvironment (required, no default)
-        '0001-01-01T00:00:00' -- QboTokenExpiry (required, no default)
-    );
-END
-";
-
-            int attempt = 0;
-            for (; ; )
-            {
-                attempt++;
-                try
-                {
-                    using var conn = new SqlConnection(connectionString);
-                    conn.Open();
-                    using var cmd = conn.CreateCommand();
-                    cmd.CommandText = preflightSql;
-                    cmd.CommandType = CommandType.Text;
-                    cmd.CommandTimeout = 15;
-                    int _ = cmd.ExecuteNonQuery();
-                    Log.Information("Database preflight OK (attempt {Attempt})", attempt);
-                    break;
-                }
-                catch (SqlException sqlEx)
-                {
-                    // Permission issue: log clearly and stop retrying since retries won’t help
-                    if (sqlEx.Number == 262 || sqlEx.Message.Contains("permission", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Log.Warning(sqlEx, "Database preflight skipped due to insufficient permissions");
-                        break;
-                    }
-
-                    if (attempt >= maxAttempts)
-                    {
-                        Log.Warning(sqlEx, "Database preflight failed after {Attempts} attempts", attempt);
-                        throw;
-                    }
-
-                    Log.Debug(sqlEx, "Database preflight transient failure (attempt {Attempt}); retrying in {Delay}ms", attempt, delayMs);
-                    Task.Delay(delayMs).GetAwaiter().GetResult();
-                }
-            }
-        }
+        // Database preflight logic moved out of the bootstrapper for clarity. If needed, implement a dedicated
+        // startup task or hosted service to perform DB migrations/preflight outside the UI bootstrap path.
 
         // Configure custom region adapters for third-party controls (e.g., Syncfusion)
         protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
@@ -311,7 +160,7 @@ END
             base.ConfigureRegionAdapterMappings(regionAdapterMappings);
             try
             {
-                var behaviorFactory = Container.Resolve<IRegionBehaviorFactory>();
+                var behaviorFactory = this.Container.Resolve<IRegionBehaviorFactory>();
                 var sfGridAdapter = new WileyWidget.Regions.SfDataGridRegionAdapter(behaviorFactory);
                 regionAdapterMappings.RegisterMapping(typeof(Syncfusion.UI.Xaml.Grid.SfDataGrid), sfGridAdapter);
                 Log.Information("✓ Registered SfDataGridRegionAdapter for Prism regions");
@@ -609,11 +458,11 @@ END
         {
             try
             {
-                var shell = Container.Resolve<Views.Shell>();
+                var shell = this.Container.Resolve<Views.Shell>();
                 Log.Information("Shell resolved from container successfully");
 
                 // Set DataContext to MainViewModel to fix navigation anomaly
-                var mainViewModel = Container.Resolve<MainViewModel>();
+                var mainViewModel = this.Container.Resolve<MainViewModel>();
                 shell.DataContext = mainViewModel;
                 Log.Information("MainViewModel set as Shell DataContext");
 
@@ -917,16 +766,9 @@ END
                 containerRegistry.RegisterSingleton<IDispatcherHelper>(provider => new DispatcherHelper());
                 containerRegistry.RegisterSingleton<AppOptionsConfigurator>();
 
-                var dryIocContainer = (global::DryIoc.Container)((ContainerExtension)containerRegistry).Container;
-                // Expose the DryIoc container itself for services that need it (e.g., DryIocServiceScopeFactory)
-                // This allows constructors to take DryIoc.IContainer as a dependency.
-                containerRegistry.RegisterInstance<global::DryIoc.IContainer>(dryIocContainer);
-                // Only enable verbose Unity diagnostics when explicitly requested
-                if (enableExtendedDiagnostics)
-                {
-                    EnableDryIocDiagnostics(dryIocContainer);
-                    Log.Debug("DryIoc diagnostics enabled (extended mode)");
-                }
+                // Do NOT expose the concrete DryIoc container here. Depend on Prism's IContainerRegistry/IContainerProvider
+                // abstraction instead. If a service truly requires DryIoc-specific APIs it should obtain the concrete
+                // implementation via an adapter or request IContainerProvider and obtain the underlying container there.
                 Log.Information("✓ Registered core infrastructure services (Syncfusion, Settings, Dispatcher)");
             }
             catch (Exception ex)
@@ -973,8 +815,8 @@ END
                 containerRegistry.RegisterInstance<IMemoryCache>(memoryCache);
                 Log.Information("✓ Registered IMemoryCache using Prism-managed MemoryCache instance");
 
-                // Register configuration options infrastructure (bridging Microsoft.Extensions.Options into DryIoc)
-                RegisterAppOptions(containerRegistry, configuration, dryIocContainer);
+                // Register configuration options infrastructure (bridging Microsoft.Extensions.Options into container)
+                RegisterAppOptions(containerRegistry, configuration);
             }
             catch (Exception ex)
             {
@@ -1190,11 +1032,11 @@ END
 
             // Navigation registrations are now handled by individual modules
 
-            // Convention-based registrations: attempt to auto-register remaining services, repositories, and ViewModels
+                // Convention-based registrations: attempt to auto-register remaining services, repositories, and ViewModels
             try
             {
-                RegisterConventions(containerRegistry, dryIocContainer);
-                ValidateAndRegisterViewModels(containerRegistry, dryIocContainer);
+                RegisterConventions(containerRegistry);
+                ValidateAndRegisterViewModels(containerRegistry);
             }
             catch (Exception ex)
             {
@@ -1296,8 +1138,9 @@ END
                     Log.Warning("Container diagnostics found resolution failures. Check logs for details.");
                 }
 
-                // Additional validation: Test critical service resolutions
-                ValidateContainerRegistrations(dryIocContainer);
+                // Additional validation: Test critical service resolutions against the actual container
+                var diagContainerForValidation = containerRegistry.GetContainer();
+                ValidateContainerRegistrations(diagContainerForValidation);
             }
             catch (Exception diagEx)
             {
@@ -1386,7 +1229,7 @@ END
             {
                 try
                 {
-                    IUnityContainer validationContainer = containerRegistry.GetContainer();
+                    IContainer validationContainer = containerRegistry.GetContainer();
                     object service = validationContainer.Resolve(serviceType);
                     if (service == null)
                     {
@@ -1428,10 +1271,10 @@ END
                 throw new ArgumentNullException(nameof(containerRegistry));
             }
 
-            var unityContainer = containerRegistry.GetContainer();
-            if (unityContainer == null)
+            var prismContainer = containerRegistry.GetContainer();
+            if (prismContainer == null)
             {
-                throw new InvalidOperationException("Unity container is not available during Prism startup.");
+                throw new InvalidOperationException("Prism container is not available during Prism startup.");
             }
 
             var prismContainerType = Container?.GetType().FullName ?? "(unavailable)";
@@ -1448,11 +1291,29 @@ END
                 Application.Current.StartupUri = null;
             }
 
-            var unityRegistrationCount = unityContainer.Registrations.Count();
-            Log.Information("Unity container registration count: {RegistrationCount}", unityRegistrationCount);
+            // Try to introspect 'Registrations' via reflection so this code works with different container implementations
+            int registrationCount = -1;
+            try
+            {
+                var regProp = prismContainer.GetType().GetProperty("Registrations");
+                if (regProp != null)
+                {
+                    var regsObj = regProp.GetValue(prismContainer);
+                    if (regsObj is System.Collections.IEnumerable regsEnum)
+                    {
+                        registrationCount = regsEnum.Cast<object>().Count();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed to introspect container registrations via reflection");
+            }
+
+            Log.Information("Container registration count: {RegistrationCount}", registrationCount >= 0 ? registrationCount.ToString() : "unknown");
         }
 
-        private void RegisterAppOptions(IContainerRegistry containerRegistry, IConfiguration configuration, global::DryIoc.Container dryIocContainer)
+        private void RegisterAppOptions(IContainerRegistry containerRegistry, IConfiguration configuration)
         {
             if (containerRegistry == null)
             {
@@ -1464,11 +1325,6 @@ END
                 throw new ArgumentNullException(nameof(configuration));
             }
 
-            if (dryIocContainer == null)
-            {
-                throw new ArgumentNullException(nameof(dryIocContainer));
-            }
-
             try
             {
                 var appOptions = new AppOptions();
@@ -1476,8 +1332,17 @@ END
 
                 try
                 {
-                    var configurator = dryIocContainer.Resolve<AppOptionsConfigurator>();
-                    configurator.Configure(appOptions);
+                    // Try to obtain AppOptionsConfigurator from the Prism container provider; avoid depending on DryIoc directly
+                    try
+                    {
+                        var configurator = Container.Resolve<AppOptionsConfigurator>();
+                        configurator.Configure(appOptions);
+                    }
+                    catch (Exception)
+                    {
+                        // If configurator isn't registered or fails, continue with configuration-only values
+                        throw;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1503,7 +1368,7 @@ END
         }
 
         [Conditional("DEBUG")]
-        private static void ValidateContainerRegistrations(global::DryIoc.Container container)
+        private static void ValidateContainerRegistrations(IContainer container)
         {
             // Test resolution of critical services
             var criticalTypes = new[]
@@ -1537,13 +1402,19 @@ END
         /// - ViewModels are registered as transient types so Prism can resolve them via ViewModelLocator.
         /// This helper is best-effort and will not overwrite existing registrations.
         /// </summary>
-        private static void RegisterConventions(IContainerRegistry containerRegistry, global::DryIoc.Container dryIocContainer)
+        private static void RegisterConventions(IContainerRegistry containerRegistry)
         {
             if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
-            if (dryIocContainer == null) throw new ArgumentNullException(nameof(dryIocContainer));
 
             int registeredCount = 0;
             var suffixesForSingleton = new[] { "Service", "Repository", "Provider", "Engine" };
+
+            var regSingletonTwo = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "RegisterSingleton" && m.IsGenericMethod && m.GetGenericArguments().Length == 2);
+            var regSingletonOne = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "RegisterSingleton" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
+            var regRegisterTwo = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 2);
+            var regRegisterOne = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
+
+            var prismContainer = containerRegistry.GetContainer();
 
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -1574,9 +1445,25 @@ END
                             var preferred = interfaces.FirstOrDefault(i => string.Equals(i.Name, "I" + name, StringComparison.Ordinal));
                             if (preferred != null)
                             {
-                                if (!dryIocContainer.IsRegistered(preferred))
+                                var already = false;
+                                try
                                 {
-                                    dryIocContainer.Register(preferred, t, Reuse.Singleton);
+                                    var resolved = prismContainer.Resolve(preferred);
+                                    already = resolved != null;
+                                }
+                                catch { /* not registered */ }
+
+                                if (!already)
+                                {
+                                    if (regSingletonTwo != null)
+                                    {
+                                        regSingletonTwo.MakeGenericMethod(preferred, t).Invoke(containerRegistry, null);
+                                    }
+                                    else if (regRegisterTwo != null)
+                                    {
+                                        regRegisterTwo.MakeGenericMethod(preferred, t).Invoke(containerRegistry, null);
+                                    }
+
                                     registeredCount++;
                                     Log.Debug("Convention: Registered singleton {Interface} -> {Impl}", preferred.FullName, t.FullName);
                                 }
@@ -1584,9 +1471,25 @@ END
                             }
 
                             // No matching interface, register concrete as singleton if not already
-                            if (!dryIocContainer.IsRegistered(t))
+                            var alreadyConcrete = false;
+                            try
                             {
-                                dryIocContainer.Register(t, t, Reuse.Singleton);
+                                var resolved = prismContainer.Resolve(t);
+                                alreadyConcrete = resolved != null;
+                            }
+                            catch { }
+
+                            if (!alreadyConcrete)
+                            {
+                                if (regSingletonOne != null)
+                                {
+                                    regSingletonOne.MakeGenericMethod(t).Invoke(containerRegistry, null);
+                                }
+                                else if (regRegisterOne != null)
+                                {
+                                    regRegisterOne.MakeGenericMethod(t).Invoke(containerRegistry, null);
+                                }
+
                                 registeredCount++;
                                 Log.Debug("Convention: Registered singleton {Type}", t.FullName);
                             }
@@ -1596,9 +1499,20 @@ END
                         // ViewModels -> transient (RegisterType) so Prism / ViewModelLocator can create per-view instances
                         if (name.EndsWith("ViewModel", StringComparison.Ordinal))
                         {
-                            if (!dryIocContainer.IsRegistered(t))
+                            var alreadyVm = false;
+                            try
                             {
-                                dryIocContainer.Register(t, t, Reuse.Transient);
+                                var resolved = prismContainer.Resolve(t);
+                                alreadyVm = resolved != null;
+                            }
+                            catch { }
+
+                            if (!alreadyVm)
+                            {
+                                if (regRegisterOne != null)
+                                {
+                                    regRegisterOne.MakeGenericMethod(t).Invoke(containerRegistry, null);
+                                }
                                 registeredCount++;
                                 Log.Debug("Convention: Registered ViewModel type {Type}", t.FullName);
                             }
@@ -1619,10 +1533,9 @@ END
         /// Validates that Views have an associated ViewModel type available and auto-registers missing ViewModels.
         /// Logs warnings for Views that have no corresponding ViewModel discovered.
         /// </summary>
-        private static void ValidateAndRegisterViewModels(IContainerRegistry containerRegistry, global::DryIoc.Container dryIocContainer)
+        private static void ValidateAndRegisterViewModels(IContainerRegistry containerRegistry)
         {
             if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
-            if (dryIocContainer == null) throw new ArgumentNullException(nameof(dryIocContainer));
 
             int autoRegistered = 0;
             int viewsWithoutVm = 0;
@@ -1642,6 +1555,9 @@ END
             }
 
             var viewTypes = allTypes.Where(t => t != null && t.IsClass && !t.IsAbstract && t.Name.EndsWith("View", StringComparison.Ordinal)).ToArray();
+
+            var regRegisterOne = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
+            var prismContainer = containerRegistry.GetContainer();
 
             foreach (var view in viewTypes)
             {
@@ -1666,12 +1582,23 @@ END
                         continue;
                     }
 
-                    if (!dryIocContainer.IsRegistered(vmType))
+                    var already = false;
+                    try
+                    {
+                        var resolved = prismContainer.Resolve(vmType);
+                        already = resolved != null;
+                    }
+                    catch { }
+
+                    if (!already)
                     {
                         try
                         {
                             // Register transient ViewModel so Prism can resolve it per view
-                            dryIocContainer.Register(vmType, vmType, Reuse.Transient);
+                            if (regRegisterOne != null)
+                            {
+                                regRegisterOne.MakeGenericMethod(vmType).Invoke(containerRegistry, null);
+                            }
                             autoRegistered++;
                             Log.Information("Auto-registered ViewModel {VM} for view {View}", vmType.FullName, view.FullName);
                         }
@@ -1694,16 +1621,22 @@ END
             Log.Information("ViewModel validation completed: {AutoRegistered} auto-registered, {Missing} views lacked a ViewModel.", autoRegistered, viewsWithoutVm);
         }
 
-        private static void EnableDryIocDiagnostics(global::DryIoc.Container dryIocContainer)
+        private static void EnableDryIocDiagnostics(IContainer prismContainer)
         {
-            if (dryIocContainer == null)
+            if (prismContainer == null)
             {
-                throw new ArgumentNullException(nameof(dryIocContainer));
+                throw new ArgumentNullException(nameof(prismContainer));
             }
 
-            // Enable DryIoc diagnostics
-            // Note: DryIoc has built-in diagnostics, but for now, just log
-            Trace.WriteLine("[DryIoc] Debug diagnostics initialized");
+            // Enable container diagnostics (DryIoc via Prism.Container.DryIoc)
+            try
+            {
+                Trace.WriteLine("[Container] Debug diagnostics initialized");
+            }
+            catch
+            {
+                // Swallow diagnostics failures - this is non-critical
+            }
         }
 
         /// <summary>
@@ -1833,14 +1766,16 @@ END
                 Log.Information("  - Features: Unity-only registration, repositories, audit logging");
 
                 // Ensure minimal additive schema hotfixes are applied very early in startup
-                // This mirrors DatabaseConfiguration.ApplySchemaHotfixesAsync but works with Unity DI only.
+                // This mirrors DatabaseConfiguration.ApplySchemaHotfixesAsync but works with DryIoc via Prism DI.
                 try
                 {
-                    ApplyAdditiveSchemaHotfixesDryIoc(dryIocContainer);
+                    // Apply additive schema hotfixes using the DI container to resolve the EF factory.
+                    // This avoids relying on the concrete DryIoc implementation here.
+                    ApplyAdditiveSchemaHotfixes();
                 }
                 catch (Exception ex)
                 {
-                    Log.Warning(ex, "Schema hotfixes (Unity) failed to apply; continuing without hotfixes");
+                    Log.Warning(ex, "Schema hotfixes failed to apply; continuing without hotfixes");
                 }
             }
             catch (Exception ex)
@@ -1854,28 +1789,32 @@ END
         /// Unity-only additive schema hotfix runner to unblock environments with slight drift.
         /// Safe to run multiple times. Adds missing columns used by runtime queries.
         /// </summary>
-        private static void ApplyAdditiveSchemaHotfixesDryIoc(global::DryIoc.Container container)
+        private void ApplyAdditiveSchemaHotfixes()
         {
-            // Resolve the Unity-registered factory and execute small idempotent ALTERs
-            var factory = container.Resolve<IDbContextFactory<AppDbContext>>();
-            using var context = factory.CreateDbContext();
+            // Resolve IDbContextFactory from the Prism container provider and execute idempotent ALTERs
+            try
+            {
+                var factory = Container.Resolve<IDbContextFactory<AppDbContext>>();
+                using var context = factory.CreateDbContext();
 
-            // QBO client columns on AppSettings
-            const string addQboClientId = @"IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
+                const string addQboClientId = @"IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
                                     ALTER TABLE dbo.AppSettings ADD QboClientId NVARCHAR(MAX) NULL;";
-            const string addQboClientSecret = @"IF COL_LENGTH('dbo.AppSettings','QboClientSecret') IS NULL
+                const string addQboClientSecret = @"IF COL_LENGTH('dbo.AppSettings','QboClientSecret') IS NULL
                                        ALTER TABLE dbo.AppSettings ADD QboClientSecret NVARCHAR(MAX) NULL;";
-
-            // Computed mirror for AccountNumber to support queries that project AccountNumber_Value
-            const string addAccountNumberValue = @"IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
+                const string addAccountNumberValue = @"IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
                                           ALTER TABLE dbo.MunicipalAccounts ADD [AccountNumber_Value] AS ([AccountNumber]);";
 
-            // Execute synchronously; statements are idempotent via COL_LENGTH guards
-            context.Database.ExecuteSqlRaw(addQboClientId);
-            context.Database.ExecuteSqlRaw(addQboClientSecret);
-            context.Database.ExecuteSqlRaw(addAccountNumberValue);
+                context.Database.ExecuteSqlRaw(addQboClientId);
+                context.Database.ExecuteSqlRaw(addQboClientSecret);
+                context.Database.ExecuteSqlRaw(addAccountNumberValue);
 
-            Log.Information("Schema hotfixes (Unity) applied if needed: QboClientId, QboClientSecret, AccountNumber_Value");
+                Log.Information("Schema hotfixes applied if needed: QboClientId, QboClientSecret, AccountNumber_Value");
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed to apply additive schema hotfixes via container-resolved factory");
+                throw;
+            }
         }
 
         /// <summary>
@@ -2421,6 +2360,11 @@ END
             try
             {
                 base.OnInitialized();
+
+                // AutoWireViewModelCreated subscription removed: prefer Prism's IContainerProvider + ViewModelLocationProvider
+                // for resolving and creating ViewModels. Custom runtime validation or conventions can be implemented
+                // using container-based validation or as part of build-time analyzers. See RegisterTypes() where
+                // ViewModel factory is configured to resolve from the DI container.
 
                 // Apply Syncfusion theme globally as early as possible per official docs
                 // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application

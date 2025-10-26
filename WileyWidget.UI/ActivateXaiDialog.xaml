@@ -5,11 +5,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:prism="http://prismlibrary.com/"
     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
-    xmlns:res="clr-namespace:WileyWidget.Resources"
+    xmlns:res="clr-namespace:WileyWidget.Resources;assembly=WileyWidget.UI"
     xmlns:svc="clr-namespace:WileyWidget.Services;assembly=WileyWidget.Services"
     mc:Ignorable="d"
     prism:ViewModelLocator.AutoWireViewModel="True"
-    Title="{x:Static res:Strings.ActivateDialogTitle}" Height="320" Width="520" WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    Title="Activate xAI API Key" Height="320" Width="520" WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -18,22 +18,22 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="{x:Static res:Strings.ActivateDialogHeading}" FontSize="16" FontWeight="Bold"/>
-    <TextBlock Grid.Row="1" TextWrapping="Wrap" Margin="0,8,0,12" Text="{Binding Path=GetXaiActivationGuidance, Mode=OneTime}" AutomationProperties.HelpText="{x:Static res:Strings.ActivateDialogHeading}"/>
+        <TextBlock Text="Activate your xAI API key" FontSize="16" FontWeight="Bold"/>
+    <TextBlock Grid.Row="1" TextWrapping="Wrap" Margin="0,8,0,12" Text="{Binding Path=GetXaiActivationGuidance, Mode=OneTime}" AutomationProperties.HelpText="Activate your xAI API key"/>
 
         <StackPanel Grid.Row="2" Orientation="Vertical">
-            <Label Content="{x:Static res:Strings.ApiKeyLabel}" Target="{Binding ElementName=ApiKeyBox}"/>
-            <PasswordBox x:Name="ApiKeyBox" Width="Auto" Height="28" AutomationProperties.Name="{x:Static res:Strings.ApiKeyLabel}" svc:PasswordBoxHelper.BoundPassword="{Binding XaiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <Label Content="API Key (paste here)" Target="{Binding ElementName=ApiKeyBox}"/>
+            <PasswordBox x:Name="ApiKeyBox" Width="Auto" Height="28" AutomationProperties.Name="API Key (paste here)" svc:PasswordBoxHelper.BoundPassword="{Binding XaiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <Button x:Name="OpenConsoleBtn" Content="{x:Static res:Strings.OpenConsole}" Width="100" Margin="0,0,8,0" AutomationProperties.Name="{x:Static res:Strings.OpenConsole}" Command="{Binding OpenActivateXaiDialogCommand}"/>
-                <Button x:Name="ValidateBtn" Content="{x:Static res:Strings.Validate}" Width="100" Margin="0,0,8,0" AutomationProperties.Name="{x:Static res:Strings.Validate}" Command="{Binding ValidateXaiKeyCommand}" CommandParameter="{Binding XaiApiKey}"/>
-                <Button x:Name="SaveBtn" Content="{x:Static res:Strings.Save}" Width="100" IsEnabled="{Binding IsXaiKeyValidated}" AutomationProperties.Name="{x:Static res:Strings.Save}" Command="{Binding ValidateAndSaveXaiKeyCommand}" CommandParameter="{Binding XaiApiKey}"/>
-                <Button x:Name="CancelBtn" Content="{x:Static res:Strings.Cancel}" Width="80" Margin="8,0,0,0" AutomationProperties.Name="{x:Static res:Strings.Cancel}" Command="{Binding CloseCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                <Button x:Name="OpenConsoleBtn" Content="Open Console" Width="100" Margin="0,0,8,0" AutomationProperties.Name="Open Console" Command="{Binding OpenActivateXaiDialogCommand}"/>
+                <Button x:Name="ValidateBtn" Content="Validate" Width="100" Margin="0,0,8,0" AutomationProperties.Name="Validate" Command="{Binding ValidateXaiKeyCommand}" CommandParameter="{Binding XaiApiKey}"/>
+                <Button x:Name="SaveBtn" Content="Save" Width="100" IsEnabled="{Binding IsXaiKeyValidated}" AutomationProperties.Name="Save" Command="{Binding ValidateAndSaveXaiKeyCommand}" CommandParameter="{Binding XaiApiKey}"/>
+                <Button x:Name="CancelBtn" Content="Cancel" Width="80" Margin="8,0,0,0" AutomationProperties.Name="Cancel" Command="{Binding CloseCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
             </StackPanel>
-            <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="Gray" FontSize="12" Text="{x:Static res:Strings.GuidanceNote}"/>
+            <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="Gray" FontSize="12" Text="If you're unsure, click 'Open Console' to view API key creation instructions in your browser."/>
             <TextBlock x:Name="StatusBlock" Margin="0,12,0,0" Foreground="DarkRed" TextWrapping="Wrap" Text="{Binding XaiValidationMessage, Mode=OneWay}" AutomationProperties.LiveSetting="Polite"/>
         </StackPanel>
 
-        <TextBlock Grid.Row="3" HorizontalAlignment="Right" Foreground="Gray" FontSize="11">{x:Static res:Strings.KeyStorageNotice}</TextBlock>
+    <TextBlock Grid.Row="3" HorizontalAlignment="Right" Foreground="Gray" FontSize="11">Keys are stored securely on this machine and never sent to logs.</TextBlock>
     </Grid>
 </Window>

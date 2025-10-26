@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+  <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -36,6 +36,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+  </ItemGroup>
+
+  <!-- Prevent transitive global using injected by Prism.DryIoc from UI layer -->
+  <ItemGroup>
+    <Using Remove="Prism.DryIoc" />
   </ItemGroup>
 
 </Project>

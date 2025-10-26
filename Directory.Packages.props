@@ -90,6 +90,7 @@
     <PackageVersion Include="DotNetEnv" Version="3.1.1" />
     <!-- Resilience Packages -->
     <PackageVersion Include="Polly" Version="8.6.4" />
+    <PackageVersion Include="Polly.Extensions.Http" Version="3.0.0" />
     <!-- Test Packages -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.2" />
@@ -112,9 +113,8 @@
     <PackageVersion Include="Prism.Core" Version="9.0.537" />
     <PackageVersion Include="Prism.Wpf" Version="9.0.537" />
     <PackageVersion Include="Prism.Container.DryIoc" Version="9.0.107" />
-  <!-- DryIoc.dll 5.4.3 comes transitively from Prism.Container.DryIoc -->
-  <!-- Pin DryIoc.dll to the version Prism.Container.DryIoc expects to avoid NU1102 errors during restore. -->
-  <PackageVersion Include="DryIoc.dll" Version="5.4.3" />
+  <!-- Pin DryIoc to the version expected by Prism.Container.DryIoc to avoid duplicate/ambiguous references -->
+  <PackageVersion Include="DryIoc" Version="5.4.3" />
     <!-- Prism.DryIoc removed: replaced with Prism.Container.DryIoc for .NET 9 compatibility -->
     <!-- Azure Configuration Packages -->
     <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.4.0" />

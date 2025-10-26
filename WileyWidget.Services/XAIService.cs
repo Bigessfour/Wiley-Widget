@@ -30,7 +30,7 @@ public class XAIService : IAIService, IDisposable
     private readonly IMemoryCache _memoryCache;
     private readonly SemaphoreSlim _concurrencySemaphore;
     // private readonly dynamic _telemetryClient; // Commented out until Azure is configured
-    private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
+    private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
     private bool _disposed;
 
     /// <summary>

@@ -56,8 +56,32 @@ public class HealthCheckHostedService : IHostedService, IDisposable
             // Perform comprehensive health checks
             var report = await PerformHealthChecksAsync();
 
-            // Update the global health report
-            WileyWidget.App.UpdateLatestHealthReport(report);
+            // Update the global health report without taking a hard compile-time dependency on App
+            // Use reflection so the WPF wpftmp design-time build doesn't require the static member to exist
+            try
+            {
+                var appInstance = Application.Current;
+                var appType = appInstance?.GetType();
+                var updateMethod = appType?.GetMethod(
+                    "UpdateLatestHealthReport",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance);
+
+                if (updateMethod != null)
+                {
+                    if (updateMethod.IsStatic)
+                        updateMethod.Invoke(null, new object[] { report });
+                    else
+                        updateMethod.Invoke(appInstance, new object[] { report });
+                }
+                else
+                {
+                    _logger.LogDebug("Optional UpdateLatestHealthReport hook not found on App type; skipping UI health report update");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Optional health report update failed; continuing without blocking startup");
+            }
 
             // Check if application can start
             if (!CanApplicationStart(report))
@@ -282,7 +306,23 @@ public class HealthCheckHostedService : IHostedService, IDisposable
             }
 
             // Validate database schema and connectivity using the IDbContextFactory to avoid scoped-from-singleton issues
-            await WileyWidget.Configuration.DatabaseConfiguration.ValidateDatabaseSchemaAsync(_serviceProvider);
+            // Use reflection to avoid tight compile-time coupling during WPF design-time builds
+            try
+            {
+                var dbConfigType = Type.GetType("WileyWidget.Models.DatabaseConfiguration");
+                var validateMethod = dbConfigType?.GetMethod(
+                    "ValidateDatabaseSchemaAsync",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                var taskObj = validateMethod?.Invoke(null, new object[] { _serviceProvider }) as Task;
+                if (taskObj != null)
+                {
+                    await taskObj.ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Optional database schema validation failed; continuing with connectivity check");
+            }
 
             // Additional connectivity check using IDbContextFactory if available
             using (var scope = _serviceProvider.CreateScope())

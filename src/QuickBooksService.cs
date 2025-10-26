@@ -53,11 +53,14 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private const string AuthorizationEndpoint = "https://appcenter.intuit.com/connect/oauth2";
     private const string TokenEndpoint = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 
-    public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger)
+    private readonly HttpClient _httpClient;
+
+    public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, HttpClient httpClient)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _secretVault = keyVaultService; // may be null in some test contexts
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
         // Secrets and OAuth client are loaded lazily via EnsureInitializedAsync()
         EnsureSettingsLoaded();
@@ -606,7 +609,6 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     private async Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code)
     {
-        using var client = new HttpClient();
         using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
         var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
@@ -618,7 +620,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             new("redirect_uri", _redirectUri)
         };
         req.Content = new FormUrlEncodedContent(form);
-        using var resp = await client.SendAsync(req).ConfigureAwait(false);
+        using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
         var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
         {
@@ -636,7 +638,6 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     private async Task<TokenResult> RefreshAccessTokenAsync(string refreshToken)
     {
-        using var client = new HttpClient();
         using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
         var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
@@ -647,7 +648,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             new("refresh_token", refreshToken)
         };
         req.Content = new FormUrlEncodedContent(form);
-        using var resp = await client.SendAsync(req).ConfigureAwait(false);
+        using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
         var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
         {

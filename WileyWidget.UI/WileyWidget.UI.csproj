@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+  <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
@@ -131,12 +131,22 @@
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
   </ItemGroup>
+
+  <!-- Add the built Services assembly to the ReferencePath for wpftmp when present.
+       This helps the temporary XAML compilation project resolve service types
+       without needing duplicate source definitions inside the UI project. -->
+  <ItemGroup>
+    <_ServicesAssemblyPath Include="$(MSBuildProjectDirectory)\..\WileyWidget.Services\bin\$(Configuration)\$(TargetFramework)\WileyWidget.Services.dll" Condition="Exists('$(MSBuildProjectDirectory)\..\WileyWidget.Services\bin\$(Configuration)\$(TargetFramework)\WileyWidget.Services.dll')" />
+    <ReferencePath Include="@(_ServicesAssemblyPath)" Condition="@(_ServicesAssemblyPath) != ''" />
+  </ItemGroup>
+
 
   <!-- References to Prism assemblies are provided via PackageReference and central package management
     The custom MSBuild target above ensures wpftmp receives resolved assembly paths. -->
   <ItemGroup>
-    <Compile Include="..\src\Resources\Strings.Designer.cs" />
+  <!-- Strings.Designer.cs is present under Resources/ and is included implicitly by the SDK -->
     <Compile Include="..\src\ThemeUtility.cs" />
     <!-- Include shared converter sources so WPF markup compilation (wpftmp) can resolve them
          without requiring the root project assembly at design/markup-compile time. -->

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+  <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <!-- Nullable enabled for better null safety and code quality -->
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -110,6 +110,7 @@
     <PackageReference Include="System.Management" Version="9.0.10" />
     <!-- Resilience Packages -->
     <PackageReference Include="Polly" Version="8.6.4" />
+    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
     <!-- AI Integration Packages -->
     <PackageReference Include="Microsoft.Extensions.AI" Version="9.10.0" />
     <PackageReference Include="OpenAI" Version="2.5.0" />
@@ -119,6 +120,32 @@
   <!-- QuickBooks SDK packages (Step 2) - modern package IDs differ from older docs -->
     <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.1" />
+  </ItemGroup>
+
+  <!-- Prevent duplicate compilation of sources that belong to other class library projects.
+       The workspace contains full-source copies under `src\` which are compiled into
+       their respective projects (WileyWidget.UI, WileyWidget.Services, etc.).
+       Remove those from the root project to avoid CS0436 duplicate-type conflicts,
+       but keep the application definition files required by this root project. -->
+  <ItemGroup>
+    <Compile Remove="src\**\*.cs" />
+    <ApplicationDefinition Include="src\App.xaml" />
+    <Compile Include="src\App.xaml.cs" />
+    <Compile Include="src\Program.cs" />
+    <Compile Include="src\Converters\MessageConverters.cs" />
+    <Compile Include="src\Converters\ZeroToVisibleConverter.cs" />
+    <Compile Include="src\Converters\StringToVisibilityConverter.cs" />
+    <Compile Include="src\Converters\BudgetProgressConverter.cs" />
+    <Compile Include="src\Converters\BooleanToBrushConverter.cs" />
+    <Compile Include="src\Converters\BalanceColorConverter.cs" />
+    <Compile Include="src\Converters\BooleanToVisibilityConverter.cs" />
+    <Compile Include="src\Converters\ChatConverters.cs" />
+    <Compile Include="src\Converters\NullToVisibilityConverter.cs" />
+  </ItemGroup>
+
+  <!-- Exclude Unity-specific diagnostics from main build to avoid Unity dependency -->
+  <ItemGroup>
+    <Compile Remove="src\Diagnostics\UnityContainerDiagnostics.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -145,6 +172,10 @@
     <Page Remove="src\App.xaml" />
     <!-- Exclude services that depend on ViewModels to prevent transient type resolution errors -->
     <Compile Remove="src\Services\**\*.cs" />
+    <!-- Exclude diagnostics and configuration sources that are not required during markup compile
+         and may reference optional containers/libraries (e.g., Unity) not present in wpftmp -->
+    <Compile Remove="src\Diagnostics\**\*.cs" />
+    <Compile Remove="src\Configuration\**\*.cs" />
   </ItemGroup>
 
   <!-- Exclude test files and sample files from main project build -->

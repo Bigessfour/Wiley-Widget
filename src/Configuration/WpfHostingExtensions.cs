@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly;
+using Polly.Registry;
 using Serilog;
 using Serilog.Debugging;
 using WileyWidget.Business.Interfaces;
@@ -27,7 +29,7 @@ using WileyWidget.Services.Threading;
 using FluentValidation;
 using WileyWidget.Models.Validators;
 
-namespace WileyWidget.Models;
+namespace WileyWidget.Configuration;
 
 /// <summary>
 /// Extension methods for configuring WPF applications with the Generic Host pattern.
@@ -306,11 +308,58 @@ public static class WpfHostingExtensions
             }
         });
 
+        // QuickBooks service with typed HttpClient
+        services.AddSingleton<IQuickBooksService, QuickBooksService>();
+
         services.AddSingleton<WileyWidget.Services.HealthCheckService>();
     }
 
     private static void ConfigureHttpClients(IServiceCollection services)
     {
+        // Add PolicyRegistry for centralized policy management using Polly v8
+        services.AddPolicyRegistry();
+
+        // Register named policies using modern Polly v8 syntax
+        services.AddSingleton<IConfigureOptions<PolicyRegistry>>(sp =>
+        {
+            var registry = sp.GetRequiredService<PolicyRegistry>();
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger>();
+
+            // Jittered retry policy for transient failures using Polly v8
+            var jitteredRetryPolicy = Policy<HttpResponseMessage>
+                .Handle<HttpRequestException>()
+                .OrResult(r => r.StatusCode >= System.Net.HttpStatusCode.InternalServerError)
+                .WaitAndRetryAsync(
+                    retryCount: 3,
+                    sleepDurationProvider: retryAttempt =>
+                        TimeSpan.FromMilliseconds(500 * Math.Pow(2, retryAttempt - 1)) +
+                        TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000)),
+                    onRetryAsync: async (outcome, timespan, retryCount, context) =>
+                    {
+                        var statusCode = outcome.Result?.StatusCode.ToString() ?? "Exception";
+                        logger.LogWarning("HTTP request failed (attempt {RetryCount}/{MaxRetries}). Status: {StatusCode}. Retrying in {DelayMs}ms",
+                            retryCount, 3, statusCode, timespan.TotalMilliseconds);
+                        await Task.CompletedTask;
+                    });
+
+            // Circuit breaker policy using Polly v8
+            var circuitBreakerPolicy = Policy<HttpResponseMessage>
+                .Handle<HttpRequestException>()
+                .OrResult(r => r.StatusCode >= System.Net.HttpStatusCode.InternalServerError)
+                .CircuitBreakerAsync(
+                    failureThreshold: 5,
+                    durationOfBreak: TimeSpan.FromSeconds(60),
+                    onBreak: (outcome, breakDelay) =>
+                        logger.LogWarning(outcome.Exception, "Circuit breaker opened for {Duration}", breakDelay),
+                    onReset: () => logger.LogInformation("Circuit breaker reset"),
+                    onHalfOpen: () => logger.LogInformation("Circuit breaker half-open"));
+
+            registry.Add("JitteredRetry", jitteredRetryPolicy);
+            registry.Add("DefaultCircuitBreaker", circuitBreakerPolicy);
+
+            return new ConfigureOptions<PolicyRegistry>(_ => { });
+        });
+
         services.AddHttpClient();
 
         services.AddHttpClient("Default", client =>
@@ -323,13 +372,27 @@ public static class WpfHostingExtensions
         {
             client.Timeout = TimeSpan.FromSeconds(60);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-AI/1.0");
-        });
+        })
+        .AddPolicyHandlerFromRegistry("JitteredRetry")
+        .AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
 
         services.AddHttpClient("ExternalAPIs", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(45);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-API/1.0");
-        });
+        })
+        .AddPolicyHandlerFromRegistry("JitteredRetry")
+        .AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
+
+        // Typed client for QuickBooks OAuth operations
+        services.AddHttpClient<QuickBooksService>(client =>
+        {
+            client.BaseAddress = new Uri("https://oauth.platform.intuit.com");
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-QuickBooks/1.0");
+        })
+        .AddPolicyHandlerFromRegistry("JitteredRetry")
+        .AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
     }
 
     private static void ConfigureWpfServices(IServiceCollection services)

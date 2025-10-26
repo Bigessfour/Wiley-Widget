@@ -7,46 +7,6 @@ using WileyWidget.Views;
 namespace WileyWidget.Services
 {
     /// <summary>
-    /// Service for managing Prism region view registrations
-    /// Provides centralized registration and validation of views with regions
-    /// </summary>
-    public interface IViewRegistrationService
-    {
-        /// <summary>
-        /// Registers all views with their appropriate regions
-        /// </summary>
-        [Obsolete("RegisterAllViews is deprecated. Register views in Prism modules instead.")]
-        void RegisterAllViews();
-
-        /// <summary>
-        /// Registers a specific view with a region
-        /// </summary>
-        /// <param name="regionName">Target region name</param>
-        /// <param name="viewType">View type to register</param>
-        bool RegisterView(string regionName, Type viewType);
-
-        /// <summary>
-        /// Checks if a view is registered for navigation
-        /// </summary>
-        /// <param name="viewName">View name to check</param>
-        /// <returns>True if registered</returns>
-        bool IsViewRegistered(string viewName);
-
-        /// <summary>
-        /// Gets all registered views for a region
-        /// </summary>
-        /// <param name="regionName">Region name</param>
-        /// <returns>Collection of registered view types</returns>
-        IEnumerable<Type> GetRegisteredViews(string regionName);
-
-        /// <summary>
-        /// Validates that all required regions exist
-        /// </summary>
-        /// <returns>Validation result with missing regions</returns>
-        RegionValidationResult ValidateRegions();
-    }
-
-    /// <summary>
     /// Implementation of the view registration service
     /// </summary>
     public class ViewRegistrationService : IViewRegistrationService
@@ -185,21 +145,5 @@ namespace WileyWidget.Services
         }
     }
 
-    /// <summary>
-    /// Result of region validation operation
-    /// </summary>
-    public class RegionValidationResult
-    {
-        public bool IsValid { get; set; }
-        public int TotalRegions { get; set; }
-        public int ValidRegionsCount { get; set; }
-        public List<string> ValidRegions { get; set; } = new List<string>();
-        public List<string> MissingRegions { get; set; } = new List<string>();
-        public Dictionary<string, int> RegionViewCounts { get; set; } = new Dictionary<string, int>();
-
-        public override string ToString()
-        {
-            return $"RegionValidation: {ValidRegionsCount}/{TotalRegions} valid, IsValid: {IsValid}";
-        }
-    }
+    // RegionValidationResult is defined in WileyWidget.Abstractions to avoid duplicate definitions.
 }

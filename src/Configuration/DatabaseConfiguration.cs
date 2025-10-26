@@ -25,7 +25,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using System.Collections.Generic;
 
-namespace WileyWidget.Models;
+namespace WileyWidget.Configuration;
 
 /// <summary>
 /// Enterprise-grade database configuration for SQL Server
