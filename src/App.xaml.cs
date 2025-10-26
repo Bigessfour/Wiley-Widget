@@ -56,7 +56,7 @@ using System.Xaml;
 
 namespace WileyWidget
 {
-    public partial class App : Prism.Wpf.PrismApplication
+    public partial class App : Prism.DryIoc.PrismApplication
     {
         // Static mapping of expected regions for each module for maintainability and reuse
         private static readonly Dictionary<string, string[]> moduleRegionMap = new Dictionary<string, string[]>
@@ -386,12 +386,28 @@ namespace WileyWidget
         /// </summary>
         private T ResolveWithRetry<T>(int maxAttempts = 3) where T : class
         {
+            // IMPORTANT: Avoid self-recursion when attempting to resolve IServiceScopeFactory.
+            // We first try the root Prism container, and only if a scope factory is ALREADY available
+            // do we create a scope to resolve the requested service. We never call ResolveWithRetry
+            // from within itself.
             return WileyWidget.Startup.BootstrapHelpers.RetryOnException(() =>
             {
-                // Try resolving via a scoped service provider when available (prevents leaked scopes)
+                // 1) Try resolve directly from Prism's container
                 try
                 {
-                    var scopeFactory = ResolveWithRetry<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>();
+                    var instance = Container.Resolve<T>();
+                    if (instance != null)
+                        return instance;
+                }
+                catch
+                {
+                    // ignore and try via scope below
+                }
+
+                // 2) If an IServiceScopeFactory has been registered, attempt to resolve via a scope
+                try
+                {
+                    var scopeFactory = Container.Resolve<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>();
                     if (scopeFactory != null)
                     {
                         using var scope = scopeFactory.CreateScope();
@@ -400,23 +416,14 @@ namespace WileyWidget
                             return svc;
                     }
                 }
-                catch (Exception)
-                {
-                    // swallow and fallback to root container resolve below
-                }
-
-                // Final fallback to root container resolve (Prism/DryIoc) - avoid recursive call
-                try
-                {
-                    // Prism's IContainerExtension exposes Resolve<T>()
-                    return Container.Resolve<T>();
-                }
                 catch
                 {
-                    // As a last resort try Activator to give a clearer error upstream
-                    return Activator.CreateInstance<T>();
+                    // ignore and fall back to Activator
                 }
-             }, maxAttempts);
+
+                // 3) Last resort
+                return Activator.CreateInstance<T>();
+            }, maxAttempts);
         }
 
         /// <summary>
@@ -534,10 +541,9 @@ namespace WileyWidget
                 var shell = ResolveWithRetry<Views.Shell>();
                 Log.Information("Shell resolved from container successfully");
 
-                // Set DataContext to MainViewModel to fix navigation anomaly
-                var mainViewModel = ResolveWithRetry<MainViewModel>();
-                shell.DataContext = mainViewModel;
-                Log.Information("MainViewModel set as Shell DataContext");
+                // Prefer Prism's ViewModelLocator to wire the DataContext per official guidance
+                // If AutoWire is disabled on Shell, it will still work since MainViewModel is registered
+                // and can be resolved when needed.
 
                 return shell;
             }
@@ -952,6 +958,14 @@ namespace WileyWidget
                 // Register Excel services
                 containerRegistry.RegisterSingleton<IExcelReaderService, ExcelReaderService>();
                 Log.Information("✓ Registered IExcelReaderService as singleton");
+
+                // Register Excel Export service (NEW)
+                containerRegistry.RegisterSingleton<WileyWidget.Services.Export.IExcelExportService, WileyWidget.Services.Export.ExcelExportService>();
+                Log.Information("✓ Registered IExcelExportService as singleton");
+
+                // Register Theme service (NEW)
+                containerRegistry.RegisterSingleton<IThemeService, ThemeService>();
+                Log.Information("✓ Registered IThemeService as singleton");
 
                 // Register report export service
                 containerRegistry.RegisterSingleton<IReportExportService, ReportExportService>();

@@ -3,19 +3,19 @@
     "remote_url": "https://github.com/Bigessfour/Wiley-Widget",
     "owner_repo": "Bigessfour/Wiley-Widget",
     "branch": "main",
-    "commit_hash": "6301b9d3eba0318f8e59d03d58170d833ac85ee5",
+    "commit_hash": "36f1b20d2186bba3619fe3150c6df7f40ba885c5",
     "is_dirty": true,
-    "generated_at": "2025-10-26T12:26:34.001916"
+    "generated_at": "2025-10-26T16:25:42.461748"
   },
   "summary": {
-    "total_files": 695,
-    "total_size": 17539032,
+    "total_files": 707,
+    "total_size": 17490780,
     "categories": {
       "configuration": 21,
-      "unknown": 65,
-      "test": 66,
+      "unknown": 55,
+      "test": 69,
       "documentation": 56,
-      "source_code": 362,
+      "source_code": 381,
       "automation": 125
     },
     "languages": {
@@ -25,8 +25,8 @@
       "Unknown": 26,
       "TOML": 2,
       "Configuration": 2,
-      "C#": 329,
-      "C# Project": 13,
+      "C#": 340,
+      "C# Project": 14,
       "XAML": 41,
       "Text": 16,
       "Visual Studio Solution": 1,
@@ -56,10 +56,7 @@
     "addappsettingsentity",
     "addbackendenhancements",
     "addmunicipalaccountdescriptions",
-    "addmunicipalaccounts",
     "addqboclientcolumnstoappsettings",
-    "addrowversiontoentities",
-    "addutilitycustomer",
     "admin",
     "ai",
     "aiassistmodule",
@@ -91,20 +88,19 @@
     "appsettings",
     "architecture",
     "archive",
-    "archived",
     "artifacts",
     "assemblyinfo",
     "asyncviewmodelbase",
     "attributes",
     "audit",
     "auditentry",
+    "auditinterceptor",
     "auditrepository",
     "auditservice",
     "automation",
     "autowire",
     "availability",
     "azure",
-    "azureadconfig",
     "balancecolorconverter",
     "balancecolorconvertertests",
     "base",
@@ -120,6 +116,8 @@
     "booleantobrushconvertertests",
     "booleantovisibilityconverter",
     "booleantovisibilityconvertertests",
+    "bootstraphelpers",
+    "bootstrapper",
     "brushes",
     "budget",
     "budgetaccount",
@@ -166,6 +164,7 @@
     "command",
     "communitytoolkit",
     "compare",
+    "comparisonconverter",
     "complete",
     "completion",
     "compliance",
@@ -370,13 +369,13 @@
     "imunicipalaccountrepository",
     "incremental",
     "index",
-    "initialcreate",
     "inspect",
     "install",
     "installation,",
     "instructions",
     "integration",
     "interactionrequestservice",
+    "interceptors",
     "interfaces",
     "inversebooleantovisibilityconverter",
     "invoice",
@@ -490,6 +489,8 @@
     "plugins",
     "png",
     "policy",
+    "policyfactory",
+    "policyfactorytests",
     "polishhost",
     "powershell",
     "pre",
@@ -539,8 +540,7 @@
     "regions",
     "regionviewregistry",
     "registration",
-    "release",
-    "remaining"
+    "release"
   ],
   "files": [
     {
@@ -1080,7 +1080,7 @@
         "path": ".trunk/logs",
         "exists": true,
         "size": 4096,
-        "last_modified": "2025-10-26T12:25:23.473028",
+        "last_modified": "2025-10-26T16:24:30.932843",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -1108,7 +1108,7 @@
         "path": ".trunk/notifications",
         "exists": true,
         "size": 4096,
-        "last_modified": "2025-10-26T12:24:54.864357",
+        "last_modified": "2025-10-26T16:14:08.443535",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -1136,7 +1136,7 @@
         "path": ".trunk/out",
         "exists": true,
         "size": 3407872,
-        "last_modified": "2025-10-26T12:23:07.218201",
+        "last_modified": "2025-10-26T12:32:15.993488",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -1191,8 +1191,8 @@
       "metadata": {
         "path": ".trunk/tools",
         "exists": true,
-        "size": 28672,
-        "last_modified": "2025-10-26T12:25:10.271264",
+        "size": 32768,
+        "last_modified": "2025-10-26T16:24:41.455813",
         "extension": "",
         "language": "Unknown",
         "mime_type": null,
@@ -1469,17 +1469,45 @@
     },
     {
       "metadata": {
+        "path": "DI_CONTAINER_TROUBLESHOOTING_GUIDE.md",
+        "exists": true,
+        "size": 3420,
+        "last_modified": "2025-10-26T13:03:01.153077",
+        "extension": ".md",
+        "language": "Markdown",
+        "mime_type": null,
+        "line_count": 27,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "b4a11d8771dbba57d1accc8a9c4745acc3b61d395c2e0639e2e7af8cab6eddd5"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/DI_CONTAINER_TROUBLESHOOTING_GUIDE.md",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/DI_CONTAINER_TROUBLESHOOTING_GUIDE.md",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/DI_CONTAINER_TROUBLESHOOTING_GUIDE.md"
+      },
+      "context": {
+        "category": "unknown",
+        "importance": "normal",
+        "description": "Markdown file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "# DI Container TargetInvocationException Troubleshooting Guide\n## Overview\n## Common Causes\n### 1. Missing Service Registrations\n### 2. Circular Dependencies\n### 3. Invalid Constructor Parameters\n### 4. Module Initialization Failures\n## Diagnostic Tools\n### 1. Enhanced Global Exception Handling"
+      }
+    },
+    {
+      "metadata": {
         "path": "Directory.Build.props",
         "exists": true,
-        "size": 1776,
-        "last_modified": "2025-10-24T17:16:22.470235",
+        "size": 1892,
+        "last_modified": "2025-10-26T16:18:55.400892",
         "extension": ".props",
         "language": "Unknown",
         "mime_type": "application/xml",
-        "line_count": 24,
+        "line_count": 23,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "36a2069806b101a7c4957c3f8236a9153fa0b6bd2394826b7895aa8f2892ef63"
+        "sha256": "d88c2ed75ce3cf8f3013786de3a327327087f57804319f1aa4a3e21aa5fcb0e3"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/Directory.Build.props",
@@ -1527,15 +1555,15 @@
       "metadata": {
         "path": "Directory.Packages.props",
         "exists": true,
-        "size": 8434,
-        "last_modified": "2025-10-26T09:32:41.367785",
+        "size": 8474,
+        "last_modified": "2025-10-26T16:09:51.272361",
         "extension": ".props",
         "language": "Unknown",
         "mime_type": "application/xml",
         "line_count": 17,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "046359cb451eff5fbb6153f6f70969881383989a26eaa9d2da6bcddcf7a70add"
+        "sha256": "8e59850e5a577bfc23247c73e7ce20cfc5601dbf9ff1771bdf0a72483588443a"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/Directory.Packages.props",
@@ -1661,34 +1689,6 @@
         "dependencies": [],
         "related_files": [],
         "summary": "# The Big TODO List\n## High"
-      }
-    },
-    {
-      "metadata": {
-        "path": "UNITY_CONTAINER_TROUBLESHOOTING_GUIDE.md",
-        "exists": true,
-        "size": 13145,
-        "last_modified": "2025-10-22T19:14:18.231553",
-        "extension": ".md",
-        "language": "Markdown",
-        "mime_type": null,
-        "line_count": 27,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "bf16f81a7e0aa6be23ea47c365b72cc6bc992ea750dc134c3edf9586f8d57191"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/UNITY_CONTAINER_TROUBLESHOOTING_GUIDE.md",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/UNITY_CONTAINER_TROUBLESHOOTING_GUIDE.md",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/UNITY_CONTAINER_TROUBLESHOOTING_GUIDE.md"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "Markdown file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "# Unity Container TargetInvocationException Troubleshooting Guide\n## Overview\n## Common Causes\n### 1. Missing Service Registrations\n### 2. Circular Dependencies\n### 3. Invalid Constructor Parameters\n### 4. Module Initialization Failures\n## Diagnostic Tools\n### 1. Enhanced Global Exception Handling"
       }
     },
     {
@@ -2311,15 +2311,15 @@
       "metadata": {
         "path": "WileyWidget.Data/AppDbContextFactory.cs",
         "exists": true,
-        "size": 1420,
-        "last_modified": "2025-10-18T14:19:03.855350",
+        "size": 1272,
+        "last_modified": "2025-10-26T13:05:50.578976",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 26,
+        "line_count": 30,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "9bdb6039e0458d0a7a7c9c63487ff2c8165b05d5c806844edd47554cd850d89e"
+        "sha256": "50a0c9bed0cf8e498aade939a2a5d6e9a73657068d95e160a300a26d126bd9d6"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Data/AppDbContextFactory.cs",
@@ -2332,22 +2332,22 @@
         "description": "C# file containing project code/data",
         "dependencies": [],
         "related_files": [],
-        "summary": "using Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Design;\nusing Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.Logging;\nusing System.IO;\npublic class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>\npublic AppDbContext CreateDbContext(string[] args)"
+        "summary": "using System.Threading;\nusing System.Threading.Tasks;\nusing Microsoft.EntityFrameworkCore;\npublic sealed class AppDbContextFactory : IDbContextFactory<AppDbContext>\nprivate readonly DbContextOptions<AppDbContext> _options;\npublic AppDbContextFactory(DbContextOptions<AppDbContext> options)\npublic AppDbContext CreateDbContext()\npublic ValueTask<AppDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)"
       }
     },
     {
       "metadata": {
         "path": "WileyWidget.Data/AppDbContextFactoryAdapter.cs",
         "exists": true,
-        "size": 1072,
-        "last_modified": "2025-10-16T10:45:45.510772",
+        "size": 1083,
+        "last_modified": "2025-10-26T13:02:37.125967",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 29,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "5118320e7e5167b213782e7366b373a0647d230127437291e7deef959037c3e0"
+        "sha256": "84ea0ac3b311c6e14d8b1c00cc6360b7b9c703997dd918ee3410684914deb0a1"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Data/AppDbContextFactoryAdapter.cs",
@@ -3093,34 +3093,6 @@
     },
     {
       "metadata": {
-        "path": "WileyWidget.Data/UnityAppDbContextFactory.cs",
-        "exists": true,
-        "size": 1366,
-        "last_modified": "2025-10-16T17:06:15.137309",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 29,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "79ec3fe141c2c9b110f648bf53d2f432edaf3f0b838c890b3dda47d69c71a2cb"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Data/UnityAppDbContextFactory.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.Data/UnityAppDbContextFactory.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.Data/UnityAppDbContextFactory.cs"
-      },
-      "context": {
-        "category": "source_code",
-        "importance": "high",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System.Threading;\nusing System.Threading.Tasks;\nusing Microsoft.EntityFrameworkCore;\npublic sealed class UnityAppDbContextFactory : IDbContextFactory<AppDbContext>\nprivate readonly DbContextOptions<AppDbContext> _options;\npublic UnityAppDbContextFactory(DbContextOptions<AppDbContext> options)\npublic AppDbContext CreateDbContext()\npublic ValueTask<AppDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)"
-      }
-    },
-    {
-      "metadata": {
         "path": "WileyWidget.Data/UtilityCustomerRepository.cs",
         "exists": true,
         "size": 7332,
@@ -3229,34 +3201,6 @@
         "dependencies": [],
         "related_files": [],
         "summary": "using System;\npublic class GridDisplayAttribute : Attribute\npublic int DisplayOrder { get; set; }\npublic int Width { get; set; }\npublic bool Visible { get; set; } = true;\npublic int DecimalDigits { get; set; } = -1;\npublic string? Format { get; set; }\npublic GridDisplayAttribute(int displayOrder, int width)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "WileyWidget.Models/AzureAdConfig.cs",
-        "exists": true,
-        "size": 992,
-        "last_modified": "2025-10-24T11:20:10.200242",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 34,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "97d5b7be549adccf7dca0344a199f4a1fdd8fbb8e3bd92815df8fca24926a53b"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Models/AzureAdConfig.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.Models/AzureAdConfig.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.Models/AzureAdConfig.cs"
-      },
-      "context": {
-        "category": "source_code",
-        "importance": "high",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "public sealed class AzureAdConfig\nprivate string _authority = string.Empty;\npublic string ClientId { get; set; } = string.Empty;\npublic string TenantId { get; set; } = string.Empty;\npublic string Authority"
       }
     },
     {
@@ -4551,15 +4495,15 @@
       "metadata": {
         "path": "WileyWidget.Models/WileyWidget.Models.csproj",
         "exists": true,
-        "size": 1899,
-        "last_modified": "2025-10-26T09:52:56.188546",
+        "size": 2448,
+        "last_modified": "2025-10-26T15:54:11.316735",
         "extension": ".csproj",
         "language": "C# Project",
         "mime_type": "application/xml",
         "line_count": 21,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "cdb8bba5f4686171a5a9b31424f83229f9ba4a9ea5f339af745ddcec185d11ad"
+        "sha256": "1d85b52aa7898061429add92bbad8e931998f0171c2694cd4706678fb0259fc0"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Models/WileyWidget.Models.csproj",
@@ -5923,15 +5867,15 @@
       "metadata": {
         "path": "WileyWidget.Services/WileyWidget.Services.csproj",
         "exists": true,
-        "size": 6128,
-        "last_modified": "2025-10-26T11:46:08.776286",
+        "size": 5967,
+        "last_modified": "2025-10-26T15:55:49.266751",
         "extension": ".csproj",
         "language": "C# Project",
         "mime_type": "application/xml",
-        "line_count": 19,
+        "line_count": 20,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "c0cc6464e1bb154bb37155bb1b8f30142463331bdda5796691242705921ac755"
+        "sha256": "e2497d0feb52f2f260a6ad833aa24df479338b060d0ec5b015b29201cfb6c23d"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Services/WileyWidget.Services.csproj",
@@ -6005,17 +5949,45 @@
     },
     {
       "metadata": {
+        "path": "WileyWidget.Startup/WileyWidget.Startup.csproj",
+        "exists": true,
+        "size": 1892,
+        "last_modified": "2025-10-26T15:53:50.481901",
+        "extension": ".csproj",
+        "language": "C# Project",
+        "mime_type": "application/xml",
+        "line_count": 21,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "c15411d5cc75a1c5d383df158844cbdd0ea9efe2b4e6a76e5858a6a986f215b8"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.Startup/WileyWidget.Startup.csproj",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.Startup/WileyWidget.Startup.csproj",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.Startup/WileyWidget.Startup.csproj"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# Project file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>net9.0</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>\n  </PropertyGroup>\n\n  <ItemGroup>"
+      }
+    },
+    {
+      "metadata": {
         "path": "WileyWidget.UI/AIAssistPanelView.xaml",
         "exists": true,
-        "size": 24186,
-        "last_modified": "2025-10-25T21:10:10.479119",
+        "size": 24188,
+        "last_modified": "2025-10-26T16:08:22.855841",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 16,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "9f9d64da5851f1787c1948317a84197d884207a863226dbc5cfc271582183484"
+        "sha256": "a0f028bce6bb6cc3538fd77058d7680819f2daff8a18f297303ae079044029ac"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/AIAssistPanelView.xaml",
@@ -6091,15 +6063,15 @@
       "metadata": {
         "path": "WileyWidget.UI/AIAssistView.xaml",
         "exists": true,
-        "size": 29245,
-        "last_modified": "2025-10-25T21:10:10.189123",
+        "size": 29247,
+        "last_modified": "2025-10-26T16:08:38.861212",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 13,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "0bf5c12e95e26e2e89ab6016a7398209cf56e51372e280db7d195c1187876223"
+        "sha256": "cf096a489784e2acd5a2bc2a0eed70389a541ae35c6087097696124f5b12ece0"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/AIAssistView.xaml",
@@ -6511,15 +6483,15 @@
       "metadata": {
         "path": "WileyWidget.UI/BudgetAnalysisView.xaml",
         "exists": true,
-        "size": 25950,
-        "last_modified": "2025-10-25T20:47:28.962851",
+        "size": 25952,
+        "last_modified": "2025-10-26T16:08:38.864457",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "32f75caab70e7923d15be4dca94784f0ebbab82afd7284994c76f651e90bffbe"
+        "sha256": "2ad864d1dd59076c46f281a68784fa75047d2b1f19a752eb94c7493c76333d64"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/BudgetAnalysisView.xaml",
@@ -6567,15 +6539,15 @@
       "metadata": {
         "path": "WileyWidget.UI/BudgetPanelView.xaml",
         "exists": true,
-        "size": 18850,
-        "last_modified": "2025-10-25T21:10:09.744376",
+        "size": 18852,
+        "last_modified": "2025-10-26T16:08:38.867755",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "b6d258176168b361130e291a96041e81ca95afcffb4933539fca6fd673edff9a"
+        "sha256": "2c7e83c1aae4753b75ff5a09d9d6030c6cfd3a07e778cc58816085b8f58d45af"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/BudgetPanelView.xaml",
@@ -6623,15 +6595,15 @@
       "metadata": {
         "path": "WileyWidget.UI/BudgetView.xaml",
         "exists": true,
-        "size": 21675,
-        "last_modified": "2025-10-25T21:10:08.872831",
+        "size": 21677,
+        "last_modified": "2025-10-26T16:08:38.876181",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 16,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "f541d04b43e4fd18be8c4b6a3d841adf6fce279cedf425ecf6823b0222be0855"
+        "sha256": "cadffe214ed5669815713384d1fbc027a7dacb6d9e48860c6812d2133b2941e7"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/BudgetView.xaml",
@@ -6763,15 +6735,15 @@
       "metadata": {
         "path": "WileyWidget.UI/Converters.cs",
         "exists": true,
-        "size": 13678,
-        "last_modified": "2025-10-25T20:37:57.416980",
+        "size": 11934,
+        "last_modified": "2025-10-26T16:01:17.355466",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 43,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "af39f7022bfd532efacfd35ef5fd1c26bc0f470baf5f753813148975297cc523"
+        "sha256": "9c82541b3879f21aa79a005a5268854123a429b521f27510d54f928673814809"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters.cs",
@@ -6789,17 +6761,493 @@
     },
     {
       "metadata": {
+        "path": "WileyWidget.UI/Converters/BalanceColorConverter.cs",
+        "exists": true,
+        "size": 1498,
+        "last_modified": "2025-10-25T21:01:04.996390",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 36,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "8a81517f0ac70beeabc5d836a22100dc7ad1d50f2dd42d3288f8f93354259ae1"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/BalanceColorConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/BalanceColorConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/BalanceColorConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows.Data;\nusing System.Windows.Media;\npublic class BalanceColorConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/BaseValueConverter.cs",
+        "exists": true,
+        "size": 1487,
+        "last_modified": "2025-10-25T20:58:37.965156",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 29,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "512d132f91ae71864c51ed33a509f890f6a4d3f5bd46890321cb4c76ae022540"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/BaseValueConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/BaseValueConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/BaseValueConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic abstract class ValueConverterBase : IValueConverter\npublic abstract object Convert(object value, Type targetType, object parameter, CultureInfo culture);\npublic virtual object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)\nprotected static bool IsInverse(object parameter)\npublic abstract class MultiValueConverterBase : IMultiValueConverter\npublic abstract object Convert(object[] values, Type targetType, object parameter, CultureInfo culture);\npublic virtual object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/BooleanToBrushConverter.cs",
+        "exists": true,
+        "size": 1737,
+        "last_modified": "2025-10-25T21:01:05.967276",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 29,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "6dcaac39f269d34b790b6fc1861a6c5baf4716ce9e7bc5503e6009f34f4a665a"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/BooleanToBrushConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/BooleanToBrushConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/BooleanToBrushConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows.Data;\nusing System.Windows.Media;\nusing System.Windows;\npublic class BooleanToBrushConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/BooleanToVisibilityConverter.cs",
+        "exists": true,
+        "size": 1887,
+        "last_modified": "2025-10-25T20:59:14.333923",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 26,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "6d2aa9094c2849fca48064f158765cf143f4071ad03c9a2d02b7d862902780e6"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/BooleanToVisibilityConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/BooleanToVisibilityConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/BooleanToVisibilityConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class BooleanToVisibilityConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/BudgetOverrunStyleSelector.cs",
+        "exists": true,
+        "size": 2119,
+        "last_modified": "2025-10-22T13:50:52.263770",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 32,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "09a04a8a11d9c541f54a80259cc9732eae71202607b6f956d20e77ed2758f58a"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/BudgetOverrunStyleSelector.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/BudgetOverrunStyleSelector.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/BudgetOverrunStyleSelector.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System.Windows;\nusing System.Windows.Controls;\nusing System.Windows.Media;\nusing WileyWidget.Models;\npublic class BudgetOverrunStyleSelector : StyleSelector\npublic Style NormalStyle { get; set; }\npublic Style OverBudgetStyle { get; set; }\npublic override Style SelectStyle(object item, DependencyObject container)\nprivate Style CreateNormalStyle()"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/BudgetProgressConverter.cs",
+        "exists": true,
+        "size": 1352,
+        "last_modified": "2025-10-25T20:46:04.868507",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 27,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "a1e8f03224bf3e1f582947293d22c71e1a8f28d5dc62203113e3dca1a9cfa2ad"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/BudgetProgressConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/BudgetProgressConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/BudgetProgressConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Linq;\nusing System.Windows.Data;\npublic class BudgetProgressConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/ChatConverters.cs",
+        "exists": true,
+        "size": 1494,
+        "last_modified": "2025-10-25T21:01:10.104183",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 34,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "9151f82a42cb66358926423bfe2f88b7b51080e994b7474ee46fc4bbaf47e2ba"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/ChatConverters.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/ChatConverters.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/ChatConverters.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class AuthorBackgroundConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)\npublic class AuthorAlignmentConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/ComparisonConverter.cs",
+        "exists": true,
+        "size": 1545,
+        "last_modified": "2025-10-26T15:51:09.931044",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 26,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "e2b6acc537b0cbeccc5ddd4a6362c82ba577339494cb539a04f17894b9d32df1"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/ComparisonConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/ComparisonConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/ComparisonConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class ComparisonConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/CurrencyFormatConverter.cs",
+        "exists": true,
+        "size": 1116,
+        "last_modified": "2025-10-25T21:01:08.880453",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 34,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "624169eb70e6c69a1fa011a462e97d9bfc48a6b086434c579307752c281218b8"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/CurrencyFormatConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/CurrencyFormatConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/CurrencyFormatConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows.Data;\npublic class CurrencyFormatConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/GreaterThanConverter.cs",
+        "exists": true,
+        "size": 1334,
+        "last_modified": "2025-10-25T21:01:06.735898",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 26,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "790db197df2bc1a8d5f936ef4fb491585b6170c247f534779e343fa0e2af00e2"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/GreaterThanConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/GreaterThanConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/GreaterThanConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class GreaterThanConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/InverseBooleanToVisibilityConverter.cs",
+        "exists": true,
+        "size": 1218,
+        "last_modified": "2025-10-25T20:59:32.857921",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 32,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "88f3ec652ac9187ed8b4ccaa3724e3def6edd62909e3f00e4fd8017ea15bec2c"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/InverseBooleanToVisibilityConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/InverseBooleanToVisibilityConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/InverseBooleanToVisibilityConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class InverseBooleanToVisibilityConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/MessageConverters.cs",
+        "exists": true,
+        "size": 7671,
+        "last_modified": "2025-10-25T21:01:10.715379",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 40,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "3a691d8a5a14b75cb3dab0a4da40378536f8d2fdffcbfc3d6c5b7aed3354ed2b"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/MessageConverters.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/MessageConverters.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/MessageConverters.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\nusing System.Windows.Media;\npublic class ProfitLossTextConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)\npublic class ProfitBrushConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/NullToBoolConverter.cs",
+        "exists": true,
+        "size": 1228,
+        "last_modified": "2025-10-22T13:50:52.277641",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 28,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "9c8455c3d19ecf3b8c8e5f438150c9ed078847354501913e83edba3a2661935e"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/NullToBoolConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/NullToBoolConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/NullToBoolConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows.Data;\npublic class NullToBoolConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/NullToVisibilityConverter.cs",
+        "exists": true,
+        "size": 1493,
+        "last_modified": "2025-10-25T20:59:33.006268",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 24,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "4a3cea7e5849bd9f51972272ffa3f30e4d61a691d24e6cbaac603028f1d94dc9"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/NullToVisibilityConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/NullToVisibilityConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/NullToVisibilityConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class NullToVisibilityConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/StringEqualsConverter.cs",
+        "exists": true,
+        "size": 1189,
+        "last_modified": "2025-10-22T13:50:52.278190",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 32,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "ede06edfb1a1f9a9112068368d7dc9332b357cd130417ec1c37f03485631efe6"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/StringEqualsConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/StringEqualsConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/StringEqualsConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows.Data;\npublic class StringEqualsConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/StringToVisibilityConverter.cs",
+        "exists": true,
+        "size": 1403,
+        "last_modified": "2025-10-25T20:59:50.039306",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 25,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "b88e07f694ab0c7fd75a866b7b8ef68e58575ce9a73129fb71f68208a38f2df2"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/StringToVisibilityConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/StringToVisibilityConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/StringToVisibilityConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class StringToVisibilityConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "WileyWidget.UI/Converters/ZeroToVisibleConverter.cs",
+        "exists": true,
+        "size": 1219,
+        "last_modified": "2025-10-25T20:59:49.106569",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 32,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "6a8a7a2805ae3779dee7fa097167dac5289db9eff9c9db06c145f58469b49b01"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Converters/ZeroToVisibleConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/Converters/ZeroToVisibleConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/Converters/ZeroToVisibleConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class ZeroToVisibleConverter : IValueConverter\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
         "path": "WileyWidget.UI/CustomerEditDialogView.xaml",
         "exists": true,
-        "size": 7770,
-        "last_modified": "2025-10-25T21:10:08.343282",
+        "size": 7772,
+        "last_modified": "2025-10-26T16:08:38.877180",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 15,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "0867005cd905e5018dacaf1a20dd538722076b2150858bedb259ae345d477a96"
+        "sha256": "c4d9674f6a7180bb509587fd22cdf532d7e7055b2b1d4360729e509a537c8f05"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/CustomerEditDialogView.xaml",
@@ -6819,15 +7267,15 @@
       "metadata": {
         "path": "WileyWidget.UI/DashboardPanelView.xaml",
         "exists": true,
-        "size": 19616,
-        "last_modified": "2025-10-25T21:10:07.600408",
+        "size": 19618,
+        "last_modified": "2025-10-26T16:08:38.881364",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "7bbc8ef62cae0a29d5a21b5cb728281af1bfafec9094bd29cbd00f98b8f15db7"
+        "sha256": "ca9961a118d76d14feddef767f7e9dc8210ca34755636bd4e4a750a7a0cf257d"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/DashboardPanelView.xaml",
@@ -6875,15 +7323,15 @@
       "metadata": {
         "path": "WileyWidget.UI/DashboardView.xaml",
         "exists": true,
-        "size": 54530,
-        "last_modified": "2025-10-25T21:10:07.078379",
+        "size": 54532,
+        "last_modified": "2025-10-26T16:08:38.887163",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 13,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "d5850fc3dd9bea2a2cc8b4cb522b889477f43d757ec43e86c053c79388b4c4bf"
+        "sha256": "9db412e5df5aaba8be074c80703100bd6d79ae35455c207eec72e49206434850"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/DashboardView.xaml",
@@ -6987,15 +7435,15 @@
       "metadata": {
         "path": "WileyWidget.UI/EnterprisePanelView.xaml",
         "exists": true,
-        "size": 17806,
-        "last_modified": "2025-10-25T21:04:42.716683",
+        "size": 17808,
+        "last_modified": "2025-10-26T16:08:38.891260",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "e435d51c611b0da32ab21a92ac3afb72e0ef89a1822997543a8af2ab83c4a9df"
+        "sha256": "935c34bf595b9cb076b6b62b0d486308f8ab95e74a5f3f1b264d03c06850bfca"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/EnterprisePanelView.xaml",
@@ -7043,15 +7491,15 @@
       "metadata": {
         "path": "WileyWidget.UI/EnterpriseView.xaml",
         "exists": true,
-        "size": 36633,
-        "last_modified": "2025-10-25T21:04:43.434475",
+        "size": 36635,
+        "last_modified": "2025-10-26T16:08:38.891260",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "f58201d2e3613142b16ddb6854dff35ed5772b0b2939c05cbc8c15f52d4e2bbc"
+        "sha256": "9e3916093aaee4531da06630061b8821e41e2f6fd27d6149d1f31db06e5b37d6"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/EnterpriseView.xaml",
@@ -7155,15 +7603,15 @@
       "metadata": {
         "path": "WileyWidget.UI/ExcelImportView.xaml",
         "exists": true,
-        "size": 12247,
-        "last_modified": "2025-10-25T20:51:11.967161",
+        "size": 12249,
+        "last_modified": "2025-10-26T16:08:38.897776",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 15,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "2c618cd33c60731cec5a95b67dbe7255a6ceefe73945fa26b370b97c757c654b"
+        "sha256": "487b4d18be50cb121d54e987b0c58029b5ec7db065e9545339dbaa9259cbba4b"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/ExcelImportView.xaml",
@@ -7209,34 +7657,6 @@
     },
     {
       "metadata": {
-        "path": "WileyWidget.UI/IPrismErrorHandler.cs",
-        "exists": true,
-        "size": 1865,
-        "last_modified": "2025-10-22T13:50:52.285476",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 25,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "f9ce744da4e909acd4d8a0fb3eb6b8e7de0a79cdbb936cd6714ed3eb84c3171a"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/IPrismErrorHandler.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/WileyWidget.UI/IPrismErrorHandler.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/WileyWidget.UI/IPrismErrorHandler.cs"
-      },
-      "context": {
-        "category": "source_code",
-        "importance": "high",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Prism.Events;\npublic interface IPrismErrorHandler"
-      }
-    },
-    {
-      "metadata": {
         "path": "WileyWidget.UI/IViewRegistrationService.cs",
         "exists": true,
         "size": 5775,
@@ -7267,15 +7687,15 @@
       "metadata": {
         "path": "WileyWidget.UI/InteractionRequestService.cs",
         "exists": true,
-        "size": 4756,
-        "last_modified": "2025-10-26T11:49:26.241005",
+        "size": 4753,
+        "last_modified": "2025-10-26T14:04:56.939244",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 28,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "4eaef48ca0be1f1d2bfec463feed94e45a1238c49c8ce7b4b06d362fa5c170a2"
+        "sha256": "2b2406e9bf46ee82abc2d25bf404f026cd8ea4be153888258f3b4393cd683eeb"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/InteractionRequestService.cs",
@@ -7295,15 +7715,15 @@
       "metadata": {
         "path": "WileyWidget.UI/MunicipalAccountPanelView.xaml",
         "exists": true,
-        "size": 8196,
-        "last_modified": "2025-10-25T21:03:50.186929",
+        "size": 8198,
+        "last_modified": "2025-10-26T16:08:38.900863",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "c983b51b3ce13307c5762458f19b977652a28d0bce1c614ee9c293166e026370"
+        "sha256": "30f810f222e9842595bb237fb33976d480ab65e24fcd64f1d50a3342a752d878"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/MunicipalAccountPanelView.xaml",
@@ -7351,15 +7771,15 @@
       "metadata": {
         "path": "WileyWidget.UI/MunicipalAccountView.xaml",
         "exists": true,
-        "size": 52855,
-        "last_modified": "2025-10-25T21:03:37.260281",
+        "size": 52857,
+        "last_modified": "2025-10-26T16:08:38.904437",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 12,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "be32eff4b90ac3d621f5767e328b648c22a668f8ddd51c684fd221b88e141a63"
+        "sha256": "f4f6cde30fac618c546e7223b79a17f9064439f33fa56e2037eaac06a325f570"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/MunicipalAccountView.xaml",
@@ -7491,15 +7911,15 @@
       "metadata": {
         "path": "WileyWidget.UI/ProgressView.xaml",
         "exists": true,
-        "size": 3434,
-        "last_modified": "2025-10-25T21:03:37.251410",
+        "size": 3436,
+        "last_modified": "2025-10-26T16:08:38.907337",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 21,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "b56f0652a0312a74128d43a7f4975f0d0152e64b917351a3a4932d25cbd4e654"
+        "sha256": "eedff38c9efd0e8a52ce5e01ce7e8c76c1dc87b267c9abdae412fc5691ff0a84"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/ProgressView.xaml",
@@ -7547,15 +7967,15 @@
       "metadata": {
         "path": "WileyWidget.UI/QuickBooksView.xaml",
         "exists": true,
-        "size": 11363,
-        "last_modified": "2025-10-25T20:28:51.558363",
+        "size": 11365,
+        "last_modified": "2025-10-26T16:08:38.909336",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 18,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "0937c23e3c61b1cac13befbcd5d4047324301b38fcb7c043949c1a360ea29b69"
+        "sha256": "8b34eaf85e79d26921b43ad39308b39c8a44b06369b897e961da4a8a881b7211"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/QuickBooksView.xaml",
@@ -7855,15 +8275,15 @@
       "metadata": {
         "path": "WileyWidget.UI/SettingsPanelView.xaml",
         "exists": true,
-        "size": 27034,
-        "last_modified": "2025-10-25T21:02:46.955225",
+        "size": 27036,
+        "last_modified": "2025-10-26T16:08:38.911337",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 13,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "7c75bcea24fb4a835d59bde20a911ebc42c9957978db2d666639d4fba0c84944"
+        "sha256": "d17e536f95810a63e641bd3fdd0046e55a230d8d3c03a4a6e8bf34ff3604d7b6"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/SettingsPanelView.xaml",
@@ -7911,15 +8331,15 @@
       "metadata": {
         "path": "WileyWidget.UI/SettingsView.xaml",
         "exists": true,
-        "size": 36309,
-        "last_modified": "2025-10-25T21:02:31.369278",
+        "size": 36311,
+        "last_modified": "2025-10-26T16:08:38.917228",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 16,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "a88df05ce2c42e8e4985b447f501439640eb6c05a2b929c129b141c21d91a0f5"
+        "sha256": "c6eb2875342703f370ec3e832b54adde6547c4750981a671404fa9e995ca6d23"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/SettingsView.xaml",
@@ -7967,15 +8387,15 @@
       "metadata": {
         "path": "WileyWidget.UI/Shell.xaml",
         "exists": true,
-        "size": 19381,
-        "last_modified": "2025-10-26T09:26:38.372448",
+        "size": 19383,
+        "last_modified": "2025-10-26T16:08:38.919281",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 15,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "a906cae341c0d57d70effacc367a107d5cc2dc12dc2900732ec33b40cc3992f7"
+        "sha256": "1c906f2cc11d8a183f18bd718415c51ee0b6b1a4c2a6d0ffb7c2b2eba02924d6"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/Shell.xaml",
@@ -8107,15 +8527,15 @@
       "metadata": {
         "path": "WileyWidget.UI/ToolsPanelView.xaml",
         "exists": true,
-        "size": 12577,
-        "last_modified": "2025-10-25T21:02:07.348984",
+        "size": 12579,
+        "last_modified": "2025-10-26T16:08:38.923551",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 18,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "a93e01f2b18f47f51a508388404be0f207dda18dab4a77b4ff99a0bac3e815ad"
+        "sha256": "4ced4decd237489e8de0422ece45f36a716257c8b4ee6156a4b5c062220f4b57"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/ToolsPanelView.xaml",
@@ -8219,15 +8639,15 @@
       "metadata": {
         "path": "WileyWidget.UI/UtilityCustomerView.xaml",
         "exists": true,
-        "size": 33657,
-        "last_modified": "2025-10-25T21:02:09.222146",
+        "size": 33659,
+        "last_modified": "2025-10-26T16:08:38.926554",
         "extension": ".xaml",
         "language": "XAML",
         "mime_type": "application/xaml+xml",
         "line_count": 17,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "d3cd8d33c3480878f08c49b477c19cf30ced0f35acc4b173d8df86f6ec93997f"
+        "sha256": "1706c4ca10c651f3fb9b41b3dd150245e51c8e86017e13fd8db2eb2b52b14a22"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/UtilityCustomerView.xaml",
@@ -9283,15 +9703,15 @@
       "metadata": {
         "path": "WileyWidget.UI/WileyWidget.UI.csproj",
         "exists": true,
-        "size": 10805,
-        "last_modified": "2025-10-26T11:46:08.650566",
+        "size": 10493,
+        "last_modified": "2025-10-26T16:09:51.368690",
         "extension": ".csproj",
         "language": "C# Project",
         "mime_type": "application/xml",
         "line_count": 21,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "2308c084ed74149db733c196481415cdad8a118cdc5d94bc5cfd0309e2070722"
+        "sha256": "5d70af4d3b748647fe09dd6d7419c4f04ef7bbc734afd39ce34e9ffb5b09cf81"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.UI/WileyWidget.UI.csproj",
@@ -9304,7 +9724,7 @@
         "description": "C# Project file containing project code/data",
         "dependencies": [],
         "related_files": [],
-        "summary": "<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n  <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>\n    <ImplicitUsings>enable</ImplicitUsings>\n    <Nullable>enable</Nullable>\n    <UseWPF>true</UseWPF>\n    <LangVersion>latest</LangVersion>\n\n    <!-- Disable CPM for this project to ensure wpftmp gets explicit versions -->"
+        "summary": "<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n  <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>\n    <RootNamespace>WileyWidget</RootNamespace>\n    <AssemblyName>WileyWidget.UI</AssemblyName>\n    <ImplicitUsings>enable</ImplicitUsings>\n    <Nullable>enable</Nullable>\n    <UseWPF>true</UseWPF>\n    <LangVersion>latest</LangVersion>"
       }
     },
     {
@@ -9619,15 +10039,15 @@
       "metadata": {
         "path": "WileyWidget.csproj",
         "exists": true,
-        "size": 14141,
-        "last_modified": "2025-10-26T09:49:10.056842",
+        "size": 15229,
+        "last_modified": "2025-10-26T16:09:51.429004",
         "extension": ".csproj",
         "language": "C# Project",
         "mime_type": "application/xml",
         "line_count": 20,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "489228685ca1a5ebd5a298d12bd28d454221e9bf48d99a871447cd568996f38b"
+        "sha256": "af3713ffa1562ccf1be3f81c18638da49845d63044b45a05b91b487e826f9ae5"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/WileyWidget.csproj",
@@ -9675,15 +10095,15 @@
       "metadata": {
         "path": "XAML_EXCEPTION_HANDLING_GUIDE.md",
         "exists": true,
-        "size": 12484,
-        "last_modified": "2025-10-22T15:06:24.117765",
+        "size": 12498,
+        "last_modified": "2025-10-26T13:05:51.531772",
         "extension": ".md",
         "language": "Markdown",
         "mime_type": null,
         "line_count": 26,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "68d82f1cdcd0b2a09cbd82b09a582636597c40976018c57072013d0784ab4330"
+        "sha256": "20e561029b40ec700458a26a033f1f34904be79961f3f30e2f875bd1669e8c1b"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/XAML_EXCEPTION_HANDLING_GUIDE.md",
@@ -9701,297 +10121,17 @@
     },
     {
       "metadata": {
-        "path": "_archived/Migrations_root_unused/20250828175508_InitialCreate.Designer.cs",
-        "exists": true,
-        "size": 3254,
-        "last_modified": "2025-10-11T00:27:18.234749",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 31,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "7d8bc844de2b6143880e1a89f688bfdd7f00ea71775b8777fdf468dbe6107c12"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20250828175508_InitialCreate.Designer.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20250828175508_InitialCreate.Designer.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20250828175508_InitialCreate.Designer.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Infrastructure;\nusing Microsoft.EntityFrameworkCore.Metadata;\nusing Microsoft.EntityFrameworkCore.Migrations;\nusing Microsoft.EntityFrameworkCore.Storage.ValueConversion;\nusing WileyWidget.Data;\nprotected override void BuildTargetModel(ModelBuilder modelBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/20250828175508_InitialCreate.cs",
-        "exists": true,
-        "size": 2735,
-        "last_modified": "2025-10-22T13:50:52.444988",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 24,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "280c166649d29619579535587f7f8dc394e981e9b0ea44b02da83ef520f37414"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20250828175508_InitialCreate.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20250828175508_InitialCreate.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20250828175508_InitialCreate.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore.Migrations;\npublic partial class InitialCreate : Migration\nprotected override void Up(MigrationBuilder migrationBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/20250919183553_AddMunicipalAccounts.Designer.cs",
-        "exists": true,
-        "size": 9657,
-        "last_modified": "2025-10-11T00:27:18.240751",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 30,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "9bf451689a8ef5996598bf8bf2ca20a9d6815a66e3bd5c758565abddab80f577"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20250919183553_AddMunicipalAccounts.Designer.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20250919183553_AddMunicipalAccounts.Designer.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20250919183553_AddMunicipalAccounts.Designer.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Infrastructure;\nusing Microsoft.EntityFrameworkCore.Metadata;\nusing Microsoft.EntityFrameworkCore.Migrations;\nusing Microsoft.EntityFrameworkCore.Storage.ValueConversion;\nusing WileyWidget.Data;\nprotected override void BuildTargetModel(ModelBuilder modelBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/20250919183553_AddMunicipalAccounts.cs",
-        "exists": true,
-        "size": 11088,
-        "last_modified": "2025-10-22T13:50:52.445925",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 26,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "cfc30112ede4028d588920da88103abb7646db85a5e7b50d88476d5f9218c36b"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20250919183553_AddMunicipalAccounts.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20250919183553_AddMunicipalAccounts.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20250919183553_AddMunicipalAccounts.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore.Migrations;\npublic partial class AddMunicipalAccounts : Migration\nprotected override void Up(MigrationBuilder migrationBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/20250919184040_AddUtilityCustomer.Designer.cs",
-        "exists": true,
-        "size": 15561,
-        "last_modified": "2025-10-11T00:27:18.250600",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 30,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "7427404e0a4d1b0faa4c84643da08cd8105bb1dc4396081cc7f58b76302d05a7"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20250919184040_AddUtilityCustomer.Designer.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20250919184040_AddUtilityCustomer.Designer.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20250919184040_AddUtilityCustomer.Designer.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Infrastructure;\nusing Microsoft.EntityFrameworkCore.Metadata;\nusing Microsoft.EntityFrameworkCore.Migrations;\nusing Microsoft.EntityFrameworkCore.Storage.ValueConversion;\nusing WileyWidget.Data;\nprotected override void BuildTargetModel(ModelBuilder modelBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/20250919184040_AddUtilityCustomer.cs",
-        "exists": true,
-        "size": 5015,
-        "last_modified": "2025-10-22T13:50:52.445925",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 23,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "4a6976a6d98c7218e3e6d4c6bafc2967c30c5cee722ca728ba6ceab52714b71f"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20250919184040_AddUtilityCustomer.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20250919184040_AddUtilityCustomer.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20250919184040_AddUtilityCustomer.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore.Migrations;\npublic partial class AddUtilityCustomer : Migration\nprotected override void Up(MigrationBuilder migrationBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/20250921135818_AddRowVersionToEntities.Designer.cs",
-        "exists": true,
-        "size": 19755,
-        "last_modified": "2025-10-11T00:27:18.256585",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 30,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "8a847d7cd8e42e663de0c07338257be0a8fd3aec0d6230dcdb9b0e0159e892c4"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20250921135818_AddRowVersionToEntities.Designer.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20250921135818_AddRowVersionToEntities.Designer.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20250921135818_AddRowVersionToEntities.Designer.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Infrastructure;\nusing Microsoft.EntityFrameworkCore.Metadata;\nusing Microsoft.EntityFrameworkCore.Migrations;\nusing Microsoft.EntityFrameworkCore.Storage.ValueConversion;\nusing WileyWidget.Data;\nprotected override void BuildTargetModel(ModelBuilder modelBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/20250921135818_AddRowVersionToEntities.cs",
-        "exists": true,
-        "size": 9330,
-        "last_modified": "2025-10-22T13:50:52.447936",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 31,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "33f87fbd64c339a3edc18b461f8d9831d10dd6e9503ec8a302a29fd02b3e5933"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20250921135818_AddRowVersionToEntities.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20250921135818_AddRowVersionToEntities.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20250921135818_AddRowVersionToEntities.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore.Migrations;\npublic partial class AddRowVersionToEntities : Migration\nprotected override void Up(MigrationBuilder migrationBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/20251021074923_AddQboClientColumnsToAppSettings.cs",
-        "exists": true,
-        "size": 1081,
-        "last_modified": "2025-10-22T13:50:52.447936",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 34,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "dc3fa782bba60f1b3b18f9eb41a8ed3adc7ff5155533d3b03231f7894a6a7349"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/20251021074923_AddQboClientColumnsToAppSettings.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/20251021074923_AddQboClientColumnsToAppSettings.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/20251021074923_AddQboClientColumnsToAppSettings.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using Microsoft.EntityFrameworkCore.Migrations;\npublic partial class AddQboClientColumnsToAppSettings : Migration\nprotected override void Up(MigrationBuilder migrationBuilder)\nprotected override void Down(MigrationBuilder migrationBuilder)"
-      }
-    },
-    {
-      "metadata": {
-        "path": "_archived/Migrations_root_unused/AppDbContextModelSnapshot.cs",
-        "exists": true,
-        "size": 19631,
-        "last_modified": "2025-10-11T00:27:18.265593",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 29,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "afaad3c4574fcbfcf8166aaa2d965e7cec4811d5c12877d163c1144389fbd74f"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/_archived/Migrations_root_unused/AppDbContextModelSnapshot.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/_archived/Migrations_root_unused/AppDbContextModelSnapshot.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/_archived/Migrations_root_unused/AppDbContextModelSnapshot.cs"
-      },
-      "context": {
-        "category": "unknown",
-        "importance": "normal",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Infrastructure;\nusing Microsoft.EntityFrameworkCore.Metadata;\nusing Microsoft.EntityFrameworkCore.Storage.ValueConversion;\nusing WileyWidget.Data;\nprotected override void BuildModel(ModelBuilder modelBuilder)"
-      }
-    },
-    {
-      "metadata": {
         "path": "ai-fetchable-manifest.json",
         "exists": true,
-        "size": 1058904,
-        "last_modified": "2025-10-25T21:31:11.086389",
+        "size": 1074994,
+        "last_modified": "2025-10-26T12:32:16.445883",
         "extension": ".json",
         "language": "JSON",
         "mime_type": "application/json",
-        "line_count": 47,
+        "line_count": 46,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "b366282e0d7297ca61601b3edf8a7b91398a5dc0092331183df986894227fbd0"
+        "sha256": "9bdb3dae7554f95d87538a3048f7995c68ea39c87eaf98811fd0d8aac45034cf"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/ai-fetchable-manifest.json",
@@ -13007,15 +13147,15 @@
       "metadata": {
         "path": "scripts/PowerShell-Standards.ps1",
         "exists": true,
-        "size": 7333,
-        "last_modified": "2025-10-26T12:24:53.984574",
+        "size": 10675,
+        "last_modified": "2025-10-26T16:24:40.833347",
         "extension": ".ps1",
         "language": "PowerShell",
         "mime_type": null,
         "line_count": 73,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "2e6280dcc8d6ac051f449e7b13ce240ee8fbef7fe17ee9502f5633a0b718ef9b"
+        "sha256": "1d0e9657523e893c21ce5e9965479d43830e4c9a1494ab34337273463163e598"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/scripts/PowerShell-Standards.ps1",
@@ -13028,7 +13168,7 @@
         "description": "PowerShell file containing project code/data",
         "dependencies": [],
         "related_files": [],
-        "summary": "﻿# PowerShell Coding Standards for WileyWidget Project\n# Add this to your PowerShell profile or source it in scripts\n\n# Preferred error handling approach\n$ErrorActionPreference = 'Stop'\n\n# Function template with proper parameter handling\n<#\n.SYNOPSIS\nShort description"
+        "summary": "# PowerShell Coding Standards for WileyWidget Project\n# Add this to your PowerShell profile or source it in scripts\n\n# Preferred error handling approach\n$ErrorActionPreference = 'Stop'\n\n# Function template with proper parameter handling\n<#\n.SYNOPSIS\nShort description"
       }
     },
     {
@@ -17011,15 +17151,15 @@
       "metadata": {
         "path": "src/App.xaml.cs",
         "exists": true,
-        "size": 136440,
-        "last_modified": "2025-10-26T12:16:52.373306",
+        "size": 136377,
+        "last_modified": "2025-10-26T15:12:34.271574",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 38,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "d3c5aee59d0974e104fc92e36df28b3409b435f8d6b768fc5ed0909dd692d27a"
+        "sha256": "56fc7ca05289eef7b357c0f3b37b000c1db1180fa3026ba2dc0aee366651ce10"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/App.xaml.cs",
@@ -17032,7 +17172,7 @@
         "description": "C# file containing project code/data",
         "dependencies": [],
         "related_files": [],
-        "summary": "using System.Windows;\nusing System;\nusing System.Collections.Generic;\nusing System.Linq;\nusing System.Diagnostics;\nusing System.Net;\nusing System.Net.Http;\nusing System.Net.Http.Headers;\nusing System.Threading;\nusing System.Reflection;\nusing Prism.Ioc;\nusing Prism.Modularity;\nusing Prism;\nusing Prism.Mvvm;\nusing Prism.Container.DryIoc;\nusing DryIoc;\nusing Syncfusion.SfSkinManager;\nusing Syncfusion.Licensing;\nusing Bold.Licensing;\nusing WileyWidget.Views;\nusing WileyWidget.Startup.Modules;\nusing WileyWidget.Services;\nusing Serilog;\nusing Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.Logging;\nusing System.Windows.Diagnostics;\nusing Microsoft.Extensions.Caching.Memory;\nusing Microsoft.Extensions.Options;\nusing Serilog.Extensions.Logging;\nusing WileyWidget.Configuration;\nusing WileyWidget.Data;\nusing DotNetEnv;\nusing WileyWidget.Regions;\nusing WileyWidget.Business.Interfaces;\nusing WileyWidget.Models;\nusing WileyWidget.Diagnostics;\nusing WileyWidget.Services.Excel;\nusing WileyWidget.Services.Threading;\nusing WileyWidget.ViewModels;\nusing Microsoft.EntityFrameworkCore;\nusing System.Diagnostics.CodeAnalysis;\nusing System.Text.RegularExpressions;\nusing Prism.Events;\nusing WileyWidget.ViewModels.Messages;\nusing Microsoft.Data.SqlClient;\nusing System.Data;\nusing System.Threading.Tasks;\nusing Prism.Navigation.Regions;"
+        "summary": "using System.Windows;\nusing System;\nusing System.Collections.Generic;\nusing System.Linq;\nusing System.Diagnostics;\nusing System.Net;\nusing System.Net.Http;\nusing System.Net.Http.Headers;\nusing System.Threading;\nusing System.Reflection;\nusing Prism.Ioc;\nusing Prism.Modularity;\nusing Prism;\nusing Prism.Mvvm;\nusing Prism.Container.DryIoc;\nusing DryIoc;\nusing Syncfusion.SfSkinManager;\nusing Syncfusion.Licensing;\nusing Bold.Licensing;\nusing WileyWidget.Views;\nusing WileyWidget.Startup.Modules;\nusing WileyWidget.Startup;\nusing WileyWidget.Services;\nusing Serilog;\nusing Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.Logging;\nusing Microsoft.Extensions.Caching.Memory;\nusing Microsoft.Extensions.Options;\nusing Serilog.Extensions.Logging;\nusing WileyWidget.Configuration;\nusing WileyWidget.Data;\nusing DotNetEnv;\nusing WileyWidget.Regions;\nusing WileyWidget.Business.Interfaces;\nusing WileyWidget.Models;\nusing WileyWidget.Diagnostics;\nusing WileyWidget.Services.Excel;\nusing WileyWidget.Services.Threading;\nusing WileyWidget.ViewModels;\nusing Microsoft.EntityFrameworkCore;\nusing System.Diagnostics.CodeAnalysis;\nusing System.Text.RegularExpressions;\nusing Prism.Events;\nusing WileyWidget.ViewModels.Messages;\nusing Microsoft.Data.SqlClient;\nusing System.Data;\nusing System.Threading.Tasks;\nusing Prism.Navigation.Regions;"
       }
     },
     {
@@ -17123,15 +17263,15 @@
       "metadata": {
         "path": "src/Configuration/DatabaseConfiguration.cs",
         "exists": true,
-        "size": 65747,
-        "last_modified": "2025-10-25T21:49:35.458483",
+        "size": 66475,
+        "last_modified": "2025-10-26T15:29:51.389064",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 32,
+        "line_count": 33,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "5c78e0b3280b80095be899c52612e0e9046b740b08f0a1c0caff45fea95c12b4"
+        "sha256": "9bae80a4add35dc3d19c86801be3056d582edcc5e28a4e48d3688e3260d91519"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Configuration/DatabaseConfiguration.cs",
@@ -17144,7 +17284,7 @@
         "description": "C# file containing project code/data",
         "dependencies": [],
         "related_files": [],
-        "summary": "using System;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Sqlite;\nusing Microsoft.Extensions.Caching.Memory;\nusing Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\nusing Microsoft.Extensions.Logging;\nusing System.Threading.Tasks;\nusing System.Diagnostics;\nusing Microsoft.Data.SqlClient;\nusing WileyWidget.Data;\nusing WileyWidget.Services;\nusing WileyWidget.Business.Interfaces;\nusing System.Data.Common;\nusing System.Net.Http;\nusing Microsoft.EntityFrameworkCore.Storage;\nusing Polly;\nusing Polly.CircuitBreaker;\nusing Polly.Retry;\nusing WileyWidget.Models;\nusing WileyWidget.Models.Entities;\nusing Microsoft.Extensions.DependencyInjection.Extensions;\nusing Microsoft.Extensions.Hosting;\nusing System.Collections.Generic;\npublic static class DatabaseConfiguration\ninternal static readonly AsyncCircuitBreakerPolicy CircuitBreaker = Policy\ninternal static readonly AsyncRetryPolicy DevelopmentRetryPolicy = Policy"
+        "summary": "using System;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Sqlite;\nusing Microsoft.Extensions.Caching.Memory;\nusing Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\nusing Microsoft.Extensions.Logging;\nusing System.Threading.Tasks;\nusing System.Diagnostics;\nusing Microsoft.Data.SqlClient;\nusing WileyWidget.Data;\nusing WileyWidget.Services;\nusing WileyWidget.Business.Interfaces;\nusing System.Data.Common;\nusing System.Net.Http;\nusing Microsoft.EntityFrameworkCore.Storage;\nusing Polly;\nusing Polly.CircuitBreaker;\nusing Polly.Retry;\nusing WileyWidget.Models;\nusing WileyWidget.Models.Entities;\nusing Microsoft.Extensions.DependencyInjection.Extensions;\nusing Microsoft.Extensions.Hosting;\nusing System.Collections.Generic;\nusing Microsoft.Extensions.Diagnostics.HealthChecks;\npublic static class DatabaseConfiguration\ninternal static readonly AsyncCircuitBreakerPolicy CircuitBreaker = Policy\ninternal static readonly AsyncRetryPolicy DevelopmentRetryPolicy = Policy"
       }
     },
     {
@@ -17173,6 +17313,34 @@
         "dependencies": [],
         "related_files": [],
         "summary": "using System;\nusing System.Collections.Generic;\nusing System.ComponentModel.DataAnnotations;\nusing System.Linq;\nusing Microsoft.Extensions.Options;\npublic class ConnectionStringsOptionsValidator : IValidateOptions<ConnectionStringsOptions>\npublic ValidateOptionsResult Validate(string? name, ConnectionStringsOptions options)\npublic class QuickBooksOptionsValidator : IValidateOptions<QuickBooksOptions>\npublic ValidateOptionsResult Validate(string? name, QuickBooksOptions options)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "src/Configuration/Resilience/PolicyFactory.cs",
+        "exists": true,
+        "size": 3378,
+        "last_modified": "2025-10-26T15:35:21.199219",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 26,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "ee6e7cdf392522f3d4cb9b509ecf76ab59bfe23af254b6beb774d6d526060e89"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Configuration/Resilience/PolicyFactory.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/Configuration/Resilience/PolicyFactory.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/Configuration/Resilience/PolicyFactory.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Net.Http;\nusing Microsoft.Extensions.Logging;\nusing Microsoft.Extensions.DependencyInjection;\nusing Polly;\nusing Polly.Retry;\nusing Polly.CircuitBreaker;\nusing Polly.Timeout;\npublic static class PolicyFactory\npublic static void AddStandardResilienceHandler(IHttpClientBuilder builder, ILogger? logger = null)"
       }
     },
     {
@@ -17235,15 +17403,15 @@
       "metadata": {
         "path": "src/Configuration/WpfHostingExtensions.cs",
         "exists": true,
-        "size": 23676,
-        "last_modified": "2025-10-26T09:05:48.546750",
+        "size": 22108,
+        "last_modified": "2025-10-26T15:26:59.720522",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 27,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "36226fe6f44c013af5330bc6ec2fa87e043d1a3972ec1d1293b2a5698e7ddc2e"
+        "sha256": "0127aefecceda81fcb4aeaa88581bd1013a724f034a6c32daa02450dace51bc2"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Configuration/WpfHostingExtensions.cs",
@@ -17481,6 +17649,34 @@
         "dependencies": [],
         "related_files": [],
         "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class AuthorBackgroundConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)\npublic class AuthorAlignmentConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "src/Converters/ComparisonConverter.cs",
+        "exists": true,
+        "size": 1545,
+        "last_modified": "2025-10-26T15:51:09.931044",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 26,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "e2b6acc537b0cbeccc5ddd4a6362c82ba577339494cb539a04f17894b9d32df1"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Converters/ComparisonConverter.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/Converters/ComparisonConverter.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/Converters/ComparisonConverter.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Globalization;\nusing System.Windows;\nusing System.Windows.Data;\npublic class ComparisonConverter : IValueConverter\npublic object Convert(object value, Type targetType, object parameter, CultureInfo culture)\npublic object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)"
       }
     },
     {
@@ -17793,45 +17989,17 @@
     },
     {
       "metadata": {
-        "path": "src/Diagnostics/UnityContainerDiagnostics.cs",
-        "exists": true,
-        "size": 13351,
-        "last_modified": "2025-10-22T21:15:00.796312",
-        "extension": ".cs",
-        "language": "C#",
-        "mime_type": "text/plain",
-        "line_count": 26,
-        "encoding": "utf-8",
-        "is_binary": false,
-        "sha256": "7132f5e47c5c951190600f1e0fef9383f129fc84c98915efbfcec049d7d2bf10"
-      },
-      "urls": {
-        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Diagnostics/UnityContainerDiagnostics.cs",
-        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/Diagnostics/UnityContainerDiagnostics.cs",
-        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/Diagnostics/UnityContainerDiagnostics.cs"
-      },
-      "context": {
-        "category": "source_code",
-        "importance": "high",
-        "description": "C# file containing project code/data",
-        "dependencies": [],
-        "related_files": [],
-        "summary": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\nusing System.Reflection;\nusing System.Diagnostics;\nusing Unity;\nusing Unity.Registration;\nusing Unity.Resolution;\nusing Prism.Ioc;\nusing Serilog;\npublic static class UnityContainerDiagnostics\npublic static ContainerDiagnosticReport TestContainerResolutions(IContainerRegistry containerRegistry, bool testMode = false)"
-      }
-    },
-    {
-      "metadata": {
         "path": "src/Diagnostics/XamlDiagnosticsService.cs",
         "exists": true,
-        "size": 11946,
-        "last_modified": "2025-10-22T13:57:07.615352",
+        "size": 12045,
+        "last_modified": "2025-10-26T12:42:11.570823",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 38,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "7da725689fb3d83dd4d2714f2051ef9f2828baf004cd426b9a67716a858c4aa6"
+        "sha256": "971d2ddc6246d3da80d60ace631410252e93495697fe98e7a6c91eaeaf0a742a"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Diagnostics/XamlDiagnosticsService.cs",
@@ -17851,15 +18019,15 @@
       "metadata": {
         "path": "src/HealthCheckHostedService.cs",
         "exists": true,
-        "size": 36277,
-        "last_modified": "2025-10-25T21:47:34.148541",
+        "size": 36706,
+        "last_modified": "2025-10-26T16:10:55.945932",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 31,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "5e6dd7ca4ae33c992459c74af3aa601c87bb3acf701e24eeffc4463e33ca18e2"
+        "sha256": "b3bf333bdf26c687dd79f9404e381c5c0cd38cda27292fca677a2caa241fc63d"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/HealthCheckHostedService.cs",
@@ -18493,6 +18661,62 @@
     },
     {
       "metadata": {
+        "path": "src/Startup/BootstrapHelpers.cs",
+        "exists": true,
+        "size": 3982,
+        "last_modified": "2025-10-26T15:12:39.955891",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 33,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "c3184304561bd89298afb0f06d25ac6e02b8dac4c597f3be75dff90b7c1a57e2"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Startup/BootstrapHelpers.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/Startup/BootstrapHelpers.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/Startup/BootstrapHelpers.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Collections.Generic;\nusing System.Text.RegularExpressions;\nusing System.Threading;\nusing Microsoft.Extensions.Configuration;\nusing Serilog;\npublic static class BootstrapHelpers\npublic static Exception UnwrapTargetInvocationException(Exception? exception)\npublic static TResult RetryOnException<TResult>(Func<TResult> operation, int maxAttempts = 3, int initialDelayMs = 200)"
+      }
+    },
+    {
+      "metadata": {
+        "path": "src/Startup/Bootstrapper.cs",
+        "exists": true,
+        "size": 6667,
+        "last_modified": "2025-10-26T16:09:51.319077",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 31,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "e5c62f49d870c5be3a05d8f6b5edcbca5386edd824dbc3f734d3d206df59c4a9"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Startup/Bootstrapper.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/Startup/Bootstrapper.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/Startup/Bootstrapper.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing Serilog;\nusing Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.Logging;\nusing Serilog.Extensions.Logging;\nusing Microsoft.Extensions.Caching.Memory;\nusing Microsoft.Extensions.Options;\nusing Microsoft.Extensions.DependencyInjection;\nusing System.Net.Http;\nusing Prism.Ioc;\nusing System.IO;\nusing DotNetEnv;\npublic class Bootstrapper\nprivate readonly string _startupId = Guid.NewGuid().ToString(\"N\")[..8];\npublic void Run()\npublic IConfiguration RegisterTypes(IContainerRegistry containerRegistry)"
+      }
+    },
+    {
+      "metadata": {
         "path": "src/Startup/Modules/AIAssistModule.cs",
         "exists": true,
         "size": 1545,
@@ -18579,15 +18803,15 @@
       "metadata": {
         "path": "src/Startup/Modules/CustomModuleManager.cs",
         "exists": true,
-        "size": 2040,
-        "last_modified": "2025-10-22T15:00:52.326544",
+        "size": 1986,
+        "last_modified": "2025-10-26T15:36:28.981131",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
         "line_count": 24,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "ed5888d23039a5785761e1f0b1e438cc9ffb201746f3522ba76dba84a6a9e213"
+        "sha256": "82842b03bb379c8c1251043a7acf4620386837076f5204d69f5d881f85aaf827"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/Startup/Modules/CustomModuleManager.cs",
@@ -19193,6 +19417,34 @@
     },
     {
       "metadata": {
+        "path": "src/WileyWidget.Data/Interceptors/AuditInterceptor.cs",
+        "exists": true,
+        "size": 2155,
+        "last_modified": "2025-10-26T13:35:50.592908",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 26,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "7255a6f6683432a0322122dba2e16c823bf03d12c167a971a2e11cfb82037cdf"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/src/WileyWidget.Data/Interceptors/AuditInterceptor.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/src/WileyWidget.Data/Interceptors/AuditInterceptor.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/src/WileyWidget.Data/Interceptors/AuditInterceptor.cs"
+      },
+      "context": {
+        "category": "source_code",
+        "importance": "high",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Linq;\nusing System.Threading;\nusing System.Threading.Tasks;\nusing Microsoft.EntityFrameworkCore.Diagnostics;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.Extensions.Logging;\npublic class AuditInterceptor : SaveChangesInterceptor\nprivate readonly ILogger<AuditInterceptor> _logger;\npublic AuditInterceptor(ILogger<AuditInterceptor> logger)\npublic override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,"
+      }
+    },
+    {
+      "metadata": {
         "path": "summary.md",
         "exists": true,
         "size": 2460,
@@ -19447,15 +19699,15 @@
       "metadata": {
         "path": "tests/Unit/DependencyInjectionTests.cs",
         "exists": true,
-        "size": 2104,
-        "last_modified": "2025-10-22T12:56:53.784359",
+        "size": 315,
+        "last_modified": "2025-10-26T12:35:11.870084",
         "extension": ".cs",
         "language": "C#",
         "mime_type": "text/plain",
-        "line_count": 29,
+        "line_count": 14,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "4db19daa656459b0265d85e7b1a4664c77f7c769d96070a3b6db3e1adfd3472a"
+        "sha256": "c8c12075f9b6c378622853d0ac3120b1fa3db9b83cfe4887efd257dcf9e62a90"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/tests/Unit/DependencyInjectionTests.cs",
@@ -19468,7 +19720,7 @@
         "description": "C# file containing project code/data",
         "dependencies": [],
         "related_files": [],
-        "summary": "using System;\nusing Xunit;\nusing Prism.Unity;\nusing Prism.Ioc;\nusing WileyWidget.Services;\nusing WileyWidget.Data;\nusing Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.Logging;\nusing Serilog;\nusing Unity;\npublic class DependencyInjectionTests\npublic void RegisterTypes_ShouldNotThrowInvalidRegistrationException()\npublic void CriticalServices_ShouldBeResolvable()"
+        "summary": "using Xunit;\npublic class DependencyInjectionTests\npublic void PlaceholderTests_Run()"
       }
     },
     {
@@ -19501,17 +19753,101 @@
     },
     {
       "metadata": {
+        "path": "tests/Unit/Resilience/PolicyFactoryTests.cs",
+        "exists": true,
+        "size": 838,
+        "last_modified": "2025-10-26T14:01:29.458488",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 28,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "03667938d66b1105b68dfba79af534d4bb3f15ac1b53d5d1888004b6a2c60ca3"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/tests/Unit/Resilience/PolicyFactoryTests.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/tests/Unit/Resilience/PolicyFactoryTests.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/tests/Unit/Resilience/PolicyFactoryTests.cs"
+      },
+      "context": {
+        "category": "test",
+        "importance": "medium",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System.Net.Http;\nusing Polly;\nusing Polly.Registry;\nusing Unit.Resilience.TestHelpers;\nusing Xunit;\npublic class PolicyFactoryTests\npublic void CreateDefaultPolicyRegistry_ContainsExpectedKeys()"
+      }
+    },
+    {
+      "metadata": {
+        "path": "tests/Unit/Resilience/ResilienceBehaviorTests.cs",
+        "exists": true,
+        "size": 2440,
+        "last_modified": "2025-10-26T14:01:29.502631",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 35,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "4a39a2eed3a33e01e9e04153bc107d79990e5ac1c3a21d9913e872dc14dfb3b7"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/tests/Unit/Resilience/ResilienceBehaviorTests.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/tests/Unit/Resilience/ResilienceBehaviorTests.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/tests/Unit/Resilience/ResilienceBehaviorTests.cs"
+      },
+      "context": {
+        "category": "test",
+        "importance": "medium",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Net;\nusing System.Net.Http;\nusing System.Threading.Tasks;\nusing Polly;\nusing Polly.CircuitBreaker;\nusing Xunit;\npublic class ResilienceBehaviorTests\npublic async Task RetryPolicy_RetriesOnTransientFailures()\npublic async Task CircuitBreaker_OpensAfterThreshold()"
+      }
+    },
+    {
+      "metadata": {
+        "path": "tests/Unit/TestHelpers/TestPolicyFactory.cs",
+        "exists": true,
+        "size": 1232,
+        "last_modified": "2025-10-26T13:57:16.835459",
+        "extension": ".cs",
+        "language": "C#",
+        "mime_type": "text/plain",
+        "line_count": 30,
+        "encoding": "utf-8",
+        "is_binary": false,
+        "sha256": "9f350802447a51ad3eec8a5774b8ced726fbb3f0f3d25bfe72c1995192a17f0a"
+      },
+      "urls": {
+        "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/tests/Unit/TestHelpers/TestPolicyFactory.cs",
+        "raw_url": "https://github.com/Bigessfour/Wiley-Widget/raw/main/tests/Unit/TestHelpers/TestPolicyFactory.cs",
+        "history_url": "https://github.com/Bigessfour/Wiley-Widget/commits/main/tests/Unit/TestHelpers/TestPolicyFactory.cs"
+      },
+      "context": {
+        "category": "test",
+        "importance": "medium",
+        "description": "C# file containing project code/data",
+        "dependencies": [],
+        "related_files": [],
+        "summary": "using System;\nusing System.Net.Http;\nusing Polly;\nusing Polly.Registry;\npublic static class TestPolicyFactory\npublic static IAsyncPolicy<HttpResponseMessage> CreateJitteredRetryPolicy()\npublic static IAsyncPolicy<HttpResponseMessage> CreateDefaultCircuitBreakerPolicy()\npublic static PolicyRegistry CreateDefaultPolicyRegistry()"
+      }
+    },
+    {
+      "metadata": {
         "path": "tests/UnitTests/UnitTests.csproj",
         "exists": true,
-        "size": 902,
-        "last_modified": "2025-10-25T09:33:09.397024",
+        "size": 1130,
+        "last_modified": "2025-10-26T14:01:29.546881",
         "extension": ".csproj",
         "language": "C# Project",
         "mime_type": "application/xml",
-        "line_count": 27,
+        "line_count": 28,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "91cd99f354558c4cabe77e16d617a63b5aad63c82ac68597ccb21883548c3c93"
+        "sha256": "aaad5827c8151b5479b8ce314926cbc5efb222808122d1a2c32f539abfd3f672"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/tests/UnitTests/UnitTests.csproj",
@@ -19979,15 +20315,15 @@
       "metadata": {
         "path": "xaml-diagnostics.txt",
         "exists": true,
-        "size": 2775,
-        "last_modified": "2025-10-22T19:21:28.039426",
+        "size": 2782,
+        "last_modified": "2025-10-26T13:05:52.482535",
         "extension": ".txt",
         "language": "Text",
         "mime_type": "text/plain",
         "line_count": 25,
         "encoding": "utf-8",
         "is_binary": false,
-        "sha256": "a5ad939ea404a5c84a74c5ff4e6a37272a07bb6d6f8c50ae48cb253f05da1f40"
+        "sha256": "dc315e0c6dd2bd2019d1486f6a3f44720cc36b346b086c24c95de2a67a02d016"
       },
       "urls": {
         "blob_url": "https://github.com/Bigessfour/Wiley-Widget/blob/main/xaml-diagnostics.txt",
@@ -20022,15 +20358,10 @@
       "2022",
       "2024",
       "2025",
-      "20250828175508",
-      "20250919183553",
-      "20250919184040",
-      "20250921135818",
       "20251012223946",
       "20251012224059",
       "20251013152132",
       "20251013153901",
-      "20251021074923",
       "20251021134644",
       "20251021231427",
       "20251022200702",
@@ -20085,7 +20416,6 @@
       "_auditpath",
       "_auditrepository",
       "_audits",
-      "_authority",
       "_automation",
       "_averagerate",
       "_billdate",
@@ -20205,7 +20535,13 @@
       "_logger",
       "_loggerfactory",
       "_memorycache",
-      "_message"
+      "_message",
+      "_meter",
+      "_metricslock",
+      "_migrationattempts",
+      "_migrationduration",
+      "_migrationfailures",
+      "_municipalaccountrepository"
     ],
     "relationships": [],
     "clusters": {},
@@ -20496,11 +20832,6 @@
         "description": "C# file containing project code/data"
       },
       {
-        "path": "WileyWidget.Data/UnityAppDbContextFactory.cs",
-        "category": "source_code",
-        "description": "C# file containing project code/data"
-      },
-      {
         "path": "WileyWidget.Data/UtilityCustomerRepository.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
@@ -20517,11 +20848,6 @@
       },
       {
         "path": "WileyWidget.Models/Attributes/GridDisplayAttribute.cs",
-        "category": "source_code",
-        "description": "C# file containing project code/data"
-      },
-      {
-        "path": "WileyWidget.Models/AzureAdConfig.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
       },
@@ -21016,6 +21342,11 @@
         "description": "C# file containing project code/data"
       },
       {
+        "path": "WileyWidget.Startup/WileyWidget.Startup.csproj",
+        "category": "source_code",
+        "description": "C# Project file containing project code/data"
+      },
+      {
         "path": "WileyWidget.UI/AIAssistPanelView.xaml",
         "category": "source_code",
         "description": "XAML file containing project code/data"
@@ -21156,6 +21487,91 @@
         "description": "C# file containing project code/data"
       },
       {
+        "path": "WileyWidget.UI/Converters/BalanceColorConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/BaseValueConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/BooleanToBrushConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/BooleanToVisibilityConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/BudgetOverrunStyleSelector.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/BudgetProgressConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/ChatConverters.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/ComparisonConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/CurrencyFormatConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/GreaterThanConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/InverseBooleanToVisibilityConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/MessageConverters.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/NullToBoolConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/NullToVisibilityConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/StringEqualsConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/StringToVisibilityConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "WileyWidget.UI/Converters/ZeroToVisibleConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
         "path": "WileyWidget.UI/CustomerEditDialogView.xaml",
         "category": "source_code",
         "description": "XAML file containing project code/data"
@@ -21227,11 +21643,6 @@
       },
       {
         "path": "WileyWidget.UI/ExcelImportView.xaml.cs",
-        "category": "source_code",
-        "description": "C# file containing project code/data"
-      },
-      {
-        "path": "WileyWidget.UI/IPrismErrorHandler.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
       },
@@ -21776,6 +22187,11 @@
         "description": "C# file containing project code/data"
       },
       {
+        "path": "src/Configuration/Resilience/PolicyFactory.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
         "path": "src/Configuration/StaticOptionsMonitor.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
@@ -21831,6 +22247,11 @@
         "description": "C# file containing project code/data"
       },
       {
+        "path": "src/Converters/ComparisonConverter.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
         "path": "src/Converters/CurrencyFormatConverter.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
@@ -21882,11 +22303,6 @@
       },
       {
         "path": "src/Diagnostics/StartupPerformanceMonitor.cs",
-        "category": "source_code",
-        "description": "C# file containing project code/data"
-      },
-      {
-        "path": "src/Diagnostics/UnityContainerDiagnostics.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
       },
@@ -22007,6 +22423,16 @@
       },
       {
         "path": "src/SettingsService.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "src/Startup/BootstrapHelpers.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
+      },
+      {
+        "path": "src/Startup/Bootstrapper.cs",
         "category": "source_code",
         "description": "C# file containing project code/data"
       },
@@ -22134,6 +22560,11 @@
         "path": "src/Themes/WileyTheme.xaml",
         "category": "source_code",
         "description": "XAML file containing project code/data"
+      },
+      {
+        "path": "src/WileyWidget.Data/Interceptors/AuditInterceptor.cs",
+        "category": "source_code",
+        "description": "C# file containing project code/data"
       }
     ]
   }

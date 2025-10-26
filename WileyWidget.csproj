@@ -59,6 +59,7 @@
     <PackageReference Include="Polly.Extensions" Version="8.6.4" />
     <!-- Prism packages - explicit versions for wpftmp compatibility -->
     <PackageReference Include="Prism.Core" Version="9.0.537" />
+    <PackageReference Include="Prism.DryIoc" Version="9.0.537" />
     <PackageReference Include="Prism.Wpf" Version="9.0.537" />
     <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
@@ -174,12 +175,10 @@
     <Compile Remove="src\Startup\Modules\**\*.cs" />
     <Compile Remove="src\ViewModels\**\*.cs" />
     <Compile Remove="src\Views\Shell.xaml.cs" />
-    <Compile Remove="src\App.xaml.cs" />
     <!-- Also exclude XAML Pages and their code-behind to avoid design-time g.cs references -->
     <Compile Remove="src\Views\**\*.xaml.cs" />
     <Page Remove="src\Views\**\*.xaml" />
-    <ApplicationDefinition Remove="src\App.xaml" />
-    <Page Remove="src\App.xaml" />
+  <!-- Keep App.xaml and App.xaml.cs included for wpftmp so abstract PrismApplication methods are implemented -->
     <!-- Exclude services that depend on ViewModels to prevent transient type resolution errors -->
     <Compile Remove="src\Services\**\*.cs" />
     <!-- Exclude diagnostics and configuration sources that are not required during markup compile

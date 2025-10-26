@@ -115,6 +115,7 @@ temp-grant/
 
 # Build logs and artifacts
 build.log
+build-output.txt
 *.binlog
 msbuild.binlog
 

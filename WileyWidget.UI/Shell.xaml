@@ -24,7 +24,7 @@
         ShowInTaskbar="True"
     Visibility="Hidden"
     syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
-    prism:ViewModelLocator.AutoWireViewModel="False">    <Window.Resources>
+    prism:ViewModelLocator.AutoWireViewModel="True">    <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <!-- Theme resources -->
@@ -318,4 +318,3 @@
         </StatusBar>
     </Grid>
 </Window>
-

@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:controls="clr-namespace:WileyWidget.UI.Controls"
              xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
@@ -87,6 +88,12 @@
                                          Margin="0,0,0,8"
                                          IsEditable="False"
                                          ToolTip="Choose the visual theme for the application interface. Changes apply immediately to toggle between FluentDark and FluentLight themes." />
+
+                                <!-- Quick Theme Toggle Control -->
+                                <Label Content="Quick Theme Switch:" />
+                                <controls:ThemeToggleControl Margin="0,4,0,12"
+                                                           HorizontalAlignment="Left"
+                                                           ToolTip="Toggle between Light and Dark themes instantly" />
 
                                 <Label Content="Window Width:" />
                                 <syncfusion:IntegerTextBox Value="{Binding WindowWidth, Mode=TwoWay, ValidatesOnDataErrors=True, NotifyOnValidationError=True}"
@@ -582,4 +589,3 @@
         </StatusBar>
     </DockPanel>
 </UserControl>
-
