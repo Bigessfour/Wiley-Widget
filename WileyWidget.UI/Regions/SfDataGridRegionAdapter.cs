@@ -1,8 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Windows;
-using Prism.Navigation.Regions;
+using Prism;
 using Serilog;
 using Syncfusion.UI.Xaml.Grid;
 

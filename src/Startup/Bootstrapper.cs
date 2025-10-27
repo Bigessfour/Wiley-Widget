@@ -217,11 +217,12 @@ namespace WileyWidget.Startup
             Log.Debug("No .env file found in standard locations; continuing with environment variables");
         }
 
-        /// <summary>
-        /// Registers hardened HttpClient infrastructure with Polly 8.x standard resilience handler.
-        /// Provides retry, circuit breaker, timeout, and rate limiting policies for all HTTP operations.
-        /// </summary>
-        private void RegisterHttpClients(IContainerRegistry containerRegistry, IConfiguration configuration)
+    /// <summary>
+    /// Registers hardened HttpClient infrastructure with Polly 8.x standard resilience handler.
+    /// Provides retry, circuit breaker, timeout, and rate limiting policies for all HTTP operations.
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.19041.0")]
+    private void RegisterHttpClients(IContainerRegistry containerRegistry, IConfiguration configuration)
         {
             Log.Information("=== Registering Hardened HttpClient Infrastructure ===");
 
@@ -394,9 +395,12 @@ namespace WileyWidget.Startup
             // Use DryIoc registration that tracks disposable transients so DbContext instances
             // created by the factory are disposed when the container scope ends.
             // Cast to access DryIoc-specific container methods
-            if (containerRegistry is IContainerProvider<IContainer> containerProvider)
+            if (containerRegistry is IContainerProvider)
             {
-                var prismContainer = containerProvider.GetContainer();
+                // Use the non-generic IContainerProvider abstraction (Prism) and
+                // the GetContainer() extension (available when Prism.Container.DryIoc
+                // is referenced) to obtain the underlying DryIoc container.
+                var prismContainer = containerRegistry.GetContainer();
                 prismContainer.RegisterDelegate<AppDbContext>(
                     r => r.Resolve<IDbContextFactory<AppDbContext>>().CreateDbContext(),
                     setup: Setup.With(trackDisposableTransient: true));

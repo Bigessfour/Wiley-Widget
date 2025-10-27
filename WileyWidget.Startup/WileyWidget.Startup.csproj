@@ -10,7 +10,7 @@
   <ItemGroup>
     <!-- Minimal set of package references required by the lightweight Bootstrapper -->
     <PackageReference Include="Prism.Core" />
-    <PackageReference Include="DryIoc" />
+  <PackageReference Include="DryIoc" ExcludeAssets="contentFiles" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />

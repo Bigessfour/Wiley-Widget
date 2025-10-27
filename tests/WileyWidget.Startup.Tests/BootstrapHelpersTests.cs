@@ -156,7 +156,7 @@ namespace WileyWidget.Startup.Tests
 
             await action.Should().ThrowAsync<InvalidOperationException>()
                 .WithMessage("Always fails");
-            mockOperation.Verify(x => x(), Times.Exactly(3));
+            mockOperation.Verify(x => x(), Times.Exactly(4)); // Initial attempt + 3 retries
         }
 
         [Fact]

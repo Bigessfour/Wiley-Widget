@@ -10,9 +10,12 @@ using System.Threading;
 using System.Reflection;
 using Prism.Ioc;
 using Prism.Modularity;
+using PrismIoc = Prism.Ioc;
+using PrismModularity = Prism.Modularity;
 using Prism;
 using Prism.Mvvm;
 using Prism.Container.DryIoc;
+using Prism.Navigation.Regions;
 using DryIoc;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Licensing;
@@ -47,7 +50,7 @@ using WileyWidget.ViewModels.Messages;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Threading.Tasks;
-using Prism.Navigation.Regions;
+using Prism;
 // using Microsoft.ApplicationInsights;
 // using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
@@ -56,9 +59,9 @@ using System.Xaml;
 
 namespace WileyWidget
 {
-    public partial class App : Prism.DryIoc.PrismApplication
+    public partial class App : Application
     {
-        // Task that completes when deferred secret initialization finishes.
+        // Task that completes when de1ferred secret initialization finishes.
         // Consumers can await App.SecretsInitializationTask to know when secrets are available.
         private static readonly System.Threading.Tasks.TaskCompletionSource<bool> _secretsInitializationTcs = new(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
         public static System.Threading.Tasks.Task SecretsInitializationTask => _secretsInitializationTcs.Task;
@@ -209,7 +212,7 @@ namespace WileyWidget
         // startup task or hosted service to perform DB migrations/preflight outside the UI bootstrap path.
 
         // Configure custom region adapters for third-party controls (e.g., Syncfusion)
-        protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
+    protected void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
         {
             base.ConfigureRegionAdapterMappings(regionAdapterMappings);
             try
@@ -231,7 +234,7 @@ namespace WileyWidget
         }
 
         // Configure default region behaviors, including diagnostics and context sync
-        protected override void ConfigureDefaultRegionBehaviors(IRegionBehaviorFactory regionBehaviors)
+    protected void ConfigureDefaultRegionBehaviors(IRegionBehaviorFactory regionBehaviors)
         {
             base.ConfigureDefaultRegionBehaviors(regionBehaviors);
             try
@@ -542,7 +545,7 @@ namespace WileyWidget
             return false;
         }
 
-        protected override Window CreateShell()
+    protected Window CreateShell()
         {
             try
             {
@@ -562,7 +565,7 @@ namespace WileyWidget
             }
         }
 
-        protected override void InitializeShell(Window shell)
+    protected void InitializeShell(Window shell)
         {
             // With SfSkinManager.ApplicationTheme set in OnStartup, all windows inherit the theme automatically
             Application.Current.MainWindow = shell;
@@ -747,7 +750,7 @@ namespace WileyWidget
             }
         }
 
-        protected override void RegisterTypes(IContainerRegistry containerRegistry)
+    protected void RegisterTypes(PrismIoc.IContainerRegistry containerRegistry)
         {
             Log.Information("=== Starting DI Container Registration ===");
             Log.Debug("RegisterTypes called with containerRegistry: {Type}", containerRegistry?.GetType().Name);
@@ -1168,7 +1171,7 @@ namespace WileyWidget
             ValidatePublicAccessibility();
         }
 
-        private void TryRegisterImplementationByName(IContainerRegistry containerRegistry, Type interfaceType, string implementationFullName)
+    private void TryRegisterImplementationByName(PrismIoc.IContainerRegistry containerRegistry, Type interfaceType, string implementationFullName)
         {
             try
             {
@@ -1216,7 +1219,7 @@ namespace WileyWidget
         /// This prevents runtime errors due to missing DI registrations.
         /// </summary>
         /// <param name="containerRegistry">The container registry to validate</param>
-        private void ValidateCriticalServices(IContainerRegistry containerRegistry, bool testMode)
+    private void ValidateCriticalServices(PrismIoc.IContainerRegistry containerRegistry, bool testMode)
         {
             Log.Information("Validating critical service registrations...");
 
@@ -1283,7 +1286,7 @@ namespace WileyWidget
     /// Ensures Prism and the DI container remain the single composition root by validating container state and legacy configuration.
         /// </summary>
         /// <param name="containerRegistry">The active Prism container registry</param>
-        private void ValidatePrismInfrastructure(IContainerRegistry containerRegistry)
+    private void ValidatePrismInfrastructure(PrismIoc.IContainerRegistry containerRegistry)
         {
             if (containerRegistry == null)
             {
@@ -1332,7 +1335,7 @@ namespace WileyWidget
             Log.Information("Container registration count: {RegistrationCount}", registrationCount >= 0 ? registrationCount.ToString() : "unknown");
         }
 
-        private void RegisterAppOptions(IContainerRegistry containerRegistry, IConfiguration configuration)
+    private void RegisterAppOptions(PrismIoc.IContainerRegistry containerRegistry, IConfiguration configuration)
         {
             if (containerRegistry == null)
             {
@@ -1421,17 +1424,17 @@ namespace WileyWidget
         /// - ViewModels are registered as transient types so Prism can resolve them via ViewModelLocator.
         /// This helper is best-effort and will not overwrite existing registrations.
         /// </summary>
-        private static void RegisterConventions(IContainerRegistry containerRegistry)
+    private static void RegisterConventions(PrismIoc.IContainerRegistry containerRegistry)
         {
             if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
 
             int registeredCount = 0;
             var suffixesForSingleton = new[] { "Service", "Repository", "Provider", "Engine" };
 
-            var regSingletonTwo = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "RegisterSingleton" && m.IsGenericMethod && m.GetGenericArguments().Length == 2);
-            var regSingletonOne = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "RegisterSingleton" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
-            var regRegisterTwo = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 2);
-            var regRegisterOne = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
+            var regSingletonTwo = typeof(PrismIoc.IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "RegisterSingleton" && m.IsGenericMethod && m.GetGenericArguments().Length == 2);
+            var regSingletonOne = typeof(PrismIoc.IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "RegisterSingleton" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
+            var regRegisterTwo = typeof(PrismIoc.IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 2);
+            var regRegisterOne = typeof(PrismIoc.IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
 
             var prismContainer = containerRegistry.GetContainer();
 
@@ -1552,7 +1555,7 @@ namespace WileyWidget
         /// Validates that Views have an associated ViewModel type available and auto-registers missing ViewModels.
         /// Logs warnings for Views that have no corresponding ViewModel discovered.
         /// </summary>
-        private static void ValidateAndRegisterViewModels(IContainerRegistry containerRegistry)
+    private static void ValidateAndRegisterViewModels(PrismIoc.IContainerRegistry containerRegistry)
         {
             if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
 
@@ -1671,7 +1674,7 @@ namespace WileyWidget
         /// All services are registered as singletons for optimal performance and resource management.
         /// </summary>
     /// <param name="containerRegistry">The DI container registry for DI registration</param>
-        private void RegisterAIIntegrationServices(IContainerRegistry containerRegistry)
+    private void RegisterAIIntegrationServices(PrismIoc.IContainerRegistry containerRegistry)
         {
             Log.Information("=== Registering AI Integration Services (Phase 1 - Production) ===");
 
@@ -1845,7 +1848,7 @@ namespace WileyWidget
         // Cache configuration to avoid redundant loading
         private IConfiguration? _cachedConfiguration;
 
-        protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
+    protected void ConfigureModuleCatalog(PrismModularity.IModuleCatalog moduleCatalog)
         {
             Log.Information("=== Configuring Prism Module Catalog (auto-discovery mode) ===");
 
@@ -1876,7 +1879,7 @@ namespace WileyWidget
             }
         }
 
-        protected override void InitializeModules()
+    protected void InitializeModules()
         {
             Log.Information("Modules initializing...");
 
@@ -2118,7 +2121,7 @@ namespace WileyWidget
             }
         }
 
-        protected override void OnInitialized()
+    protected void OnInitialized()
         {
             try
             {
@@ -2208,7 +2211,7 @@ namespace WileyWidget
         /// <param name="healthService">The health service to track the module</param>
         /// <param name="moduleName">The name of the module for tracking</param>
         /// <param name="registerAction">The action to perform the module registration</param>
-        private void RegisterModuleWithHealthTracking(IModuleCatalog moduleCatalog, IModuleHealthService healthService, string moduleName, Action registerAction)
+    private void RegisterModuleWithHealthTracking(PrismModularity.IModuleCatalog moduleCatalog, IModuleHealthService healthService, string moduleName, Action registerAction)
         {
             try
             {
@@ -2225,7 +2228,7 @@ namespace WileyWidget
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Prism's DryIocContainerExtension takes ownership of the DryIoc Container and will dispose it when appropriate.")]
-        protected override IContainerExtension CreateContainerExtension()
+    protected PrismIoc.IContainerExtension CreateContainerExtension()
         {
             // Use DryIoc as the Prism container implementation
             // Note: keep this simple - more adaptations for legacy-container-specific helpers will follow in later iterations

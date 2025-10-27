@@ -224,7 +224,13 @@
         "-o",
         "${workspaceFolder}/publish"
       ],
-      "problemMatcher": "$msCompile"
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
     },
     {
       "label": "run",
@@ -232,7 +238,13 @@
       "type": "process",
       "args": ["run", "--project", "${workspaceFolder}/WileyWidget.csproj"],
       "problemMatcher": "$msCompile",
-      "group": "build"
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
     },
     {
       "label": "watch",
@@ -241,13 +253,25 @@
       "args": ["watch", "run", "--project", "${workspaceFolder}/WileyWidget.csproj"],
       "problemMatcher": "$msCompile",
       "isBackground": true,
-      "group": "build"
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
     },
     {
       "label": "cleanup-dotnet",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["${workspaceFolder}/scripts/cleanup-dotnet.py", "--force"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "build",
       "presentation": {
         "echo": true,
@@ -278,12 +302,18 @@
     {
       "label": "watch-py",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": [
         "${workspaceFolder}/scripts/watch-py.py",
-        "python",
+        "${workspaceFolder}/.venv/Scripts/python.exe",
         "${workspaceFolder}/scripts/dev-start.py"
       ],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "build",
       "isBackground": true,
       "presentation": {
@@ -297,8 +327,14 @@
     {
       "label": "load-env",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["${workspaceFolder}/scripts/load-env.py", "--load"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "build",
       "presentation": {
         "echo": true,
@@ -310,8 +346,14 @@
     {
       "label": "test-fast",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["-m", "pytest", ".", "-v", "--tb=short"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -324,8 +366,14 @@
     {
       "label": "test-with-config",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["${workspaceFolder}/tools/python/test_config.py", "--verbose"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -338,8 +386,14 @@
     {
       "label": "test-coverage",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["${workspaceFolder}/tools/python/test_config.py", "--coverage"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -352,8 +406,14 @@
     {
       "label": "test-all-python",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["-m", "pytest", ".", "-v", "--tb=short"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -366,8 +426,14 @@
     {
       "label": "test-python-coverage",
       "type": "shell",
-      "command": "coverage",
-      "args": ["run", "--source=${workspaceFolder}", "-m", "pytest", ".", "-v"],
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "coverage", "run", "--source=${workspaceFolder}", "-m", "pytest", ".", "-v"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -443,14 +509,13 @@
         "-Verbosity",
         "normal",
         "-Filter",
-        "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming",
-        ">",
-        "${workspaceFolder}/logs/test-ui.log"
+        "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming"
       ],
       "options": {
         "env": {
           "POWERSHELL_EXE": "C:/Program Files/PowerShell/7/pwsh.exe"
-        }
+        },
+        "cwd": "${workspaceFolder}"
       },
       "group": "test",
       "presentation": {
@@ -486,7 +551,7 @@
     {
       "label": "debug-startup-debugpy",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["${workspaceFolder}/scripts/dev-start-debugpy.py", "--timing"],
       "group": "build",
       "presentation": {
@@ -498,6 +563,7 @@
       "options": {
         "env": {
           "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv",
           "DEBUG_STARTUP": "true"
         }
       },
@@ -506,8 +572,14 @@
     {
       "label": "test-debugpy",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["${workspaceFolder}/scripts/test-debugpy.py"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -556,8 +628,14 @@
     {
       "label": "view-coverage",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["-m", "http.server", "8000", "--directory", "${workspaceFolder}/coverage"],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -568,16 +646,14 @@
     },
     {
       "label": "grok-test-syncfusion",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-c",
-        "dotnet test WileyWidget.UiTests --filter SfDataGrid; if ($LASTEXITCODE -ne 0) { code --wait .; }"
-      ],
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "WileyWidget.UiTests", "--filter", "SfDataGrid"],
       "group": "test",
       "presentation": {
         "reveal": "always"
-      }
+      },
+      "problemMatcher": ["$msCompile"]
     },
     {
       "label": "build-once",
@@ -609,7 +685,7 @@
     },
     {
       "label": "run-webhooks",
-      "type": "shell",
+      "type": "process",
       "command": "dotnet",
       "args": [
         "run",
@@ -619,12 +695,18 @@
       ],
       "isBackground": true,
       "problemMatcher": ["$msCompile"],
-      "group": "build"
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
     },
     {
       "label": "pytest-single-quickbooksstructure",
       "type": "shell",
-      "command": "python",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": [
         "-m",
         "pytest",
@@ -632,7 +714,13 @@
         "-q",
         "--maxfail=1",
         "--tb=short"
-      ]
+      ],
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+        }
+      }
     },
     {
       "label": "full-workspace-reload",
@@ -651,17 +739,23 @@
     },
     {
       "label": "test-prism",
-      "type": "shell",
-      "command": "pwsh",
+      "type": "process",
+      "command": "dotnet",
       "args": [
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        "dotnet test \"${workspaceFolder}/tests/PrismUnityIntegrationTests/PrismUnityIntegrationTests.csproj\" -v minimal"
+        "test",
+        "${workspaceFolder}/tests/WileyWidget.Startup.Tests/WileyWidget.Startup.Tests.csproj",
+        "-v",
+        "minimal"
       ],
       "isBackground": false,
       "problemMatcher": ["$msCompile"],
-      "group": "test"
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
     },
     {
       "label": "ps-parse-scripts",

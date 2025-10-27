@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\WileyWidget.Startup\WileyWidget.Startup.csproj" />
+    <ProjectReference Include="..\..\WileyWidget.csproj" />
   </ItemGroup>
 
 </Project>

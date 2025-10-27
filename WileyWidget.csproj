@@ -57,10 +57,11 @@
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
     <PackageReference Include="Polly.Extensions" Version="8.6.4" />
     <!-- Prism packages - explicit versions for wpftmp compatibility -->
-    <PackageReference Include="Prism.Core" Version="9.0.537" />
-    <PackageReference Include="Prism.DryIoc" Version="9.0.537" />
-    <PackageReference Include="Prism.Wpf" Version="9.0.537" />
+  <PackageReference Include="Prism.Core" Version="9.0.537" />
+  <!-- Prism.DryIoc removed: migrated to Prism.Container.DryIoc (net9 compatible). Keep Prism.Core + Prism.Wpf only. -->
+  <PackageReference Include="Prism.Wpf" Version="9.0.537" />
     <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
+    <!-- Prism.DryIoc.Wpf is not a published NuGet package; do not reference it. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
@@ -193,6 +194,10 @@
       available during wpftmp markup compilation. Removing the full configuration folder makes those types missing.
       Comment out the removal so configuration sources remain available in wpftmp. -->
     <!-- <Compile Remove="src\Configuration\**\*.cs" /> -->
+    <!-- Include a temporary shim that provides minimal Prism types when the WPF markup
+         temporary project (wpftmp) cannot resolve NuGet package references. This avoids
+         design-time/markup-compile errors while leaving runtime behavior unchanged. -->
+    <Compile Include="src\PrismWpftmpShim.cs" />
   </ItemGroup>
 
   <!-- Exclude test files and sample files from main project build -->
