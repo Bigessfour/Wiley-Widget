@@ -943,7 +943,9 @@ namespace WileyWidget
                     RegisterAIIntegrationServices(containerRegistry);
 
                     // Register QuickBooks service
-                    containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
+                    // Use non-generic Type-based registration to avoid temporary wpftmp generic constraint issues
+                    // (wpftmp can produce duplicate-type/assembly identity problems during XAML compile).
+                    containerRegistry.RegisterSingleton(typeof(IQuickBooksService), typeof(QuickBooksService));
                     Log.Information("✓ Registered IQuickBooksService as singleton");
                 }
             }
