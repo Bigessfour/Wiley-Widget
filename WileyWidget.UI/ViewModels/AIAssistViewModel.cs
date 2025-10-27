@@ -1,24 +1,24 @@
-using System.Collections.ObjectModel;
-using Prism.Mvvm;
-using Serilog;
-using WileyWidget.Services;
-using WileyWidget.Services.Threading;
-using WileyWidget.Models;
-using WileyWidget.Business.Interfaces;
-using System.Text.RegularExpressions;
-using System.Globalization;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using Prism.Events;
+using Prism.Mvvm;
+using Prism.Navigation.Regions;
+using Serilog;
 using Syncfusion.UI.Xaml.Chat;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
+using WileyWidget.Services;
+using WileyWidget.Services.Threading;
+using WileyWidget.ViewModels.Messages;
 // Resolve ChatMessage naming conflict explicitly
 using ChatMessageModel = WileyWidget.Models.ChatMessage;
-using System.Threading;
-using Prism.Navigation.Regions;
-using Prism.Events;
-using WileyWidget.ViewModels.Messages;
-using System.ComponentModel;
 
 namespace WileyWidget.ViewModels;
 

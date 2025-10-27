@@ -1,20 +1,21 @@
-using Prism.Mvvm;
-using Microsoft.Extensions.Logging;
 using System;
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
-using WileyWidget.Business.Interfaces;
-using WileyWidget.Data;
-using WileyWidget.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Prism.Dialogs;
+using Prism.Mvvm;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Windows.Shared;
-using Microsoft.Extensions.Options;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Data;
 using WileyWidget.Models;
+using WileyWidget.Services;
 
 namespace WileyWidget.ViewModels
 {
@@ -96,8 +97,8 @@ namespace WileyWidget.ViewModels
         private readonly IAIService _aiService;
         private readonly IAuditService _auditService;
         // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles all theming globally
-        private readonly ISettingsService _settingsService;
-        private readonly IInteractionRequestService _interactionRequestService;
+    private readonly ISettingsService _settingsService;
+    private readonly Prism.Dialogs.IDialogService _dialogService;
 
         private readonly Dictionary<string, List<string>> _errors = new();
         public Prism.Commands.DelegateCommand OpenXaiConsoleCommand { get; private set; }
@@ -1020,7 +1021,7 @@ namespace WileyWidget.ViewModels
             IAIService aiService,
             IAuditService auditService,
             ISettingsService settingsService,
-            IInteractionRequestService interactionRequestService)
+            Prism.Dialogs.IDialogService dialogService)
         {
             // Validate required dependencies
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -1035,7 +1036,7 @@ namespace WileyWidget.ViewModels
             _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
             // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles theming globally
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
-            _interactionRequestService = interactionRequestService ?? throw new ArgumentNullException(nameof(interactionRequestService));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
 
             // Initialize system info
             SystemInfo = $"OS: {Environment.OSVersion}\n" +
@@ -1719,7 +1720,7 @@ namespace WileyWidget.ViewModels
 
         private async Task ExecuteResetSettingsAsync()
         {
-            var confirmed = await _interactionRequestService.ShowConfirmationAsync(
+            var confirmed = await ShowConfirmationAsync(
                 "Reset All Settings",
                 "Are you sure you want to reset ALL settings to their default values?\n\n" +
                 "This action cannot be undone and will:\n" +
@@ -2143,7 +2144,7 @@ namespace WileyWidget.ViewModels
                 SettingsStatus = "Fiscal year settings saved successfully";
                 LastSaved = DateTime.Now.ToString("g");
 
-                await _interactionRequestService.ShowInformationAsync(
+                await ShowInformationAsync(
                     "Settings Saved",
                     "Fiscal year settings saved successfully.\nChanges will affect budget periods and financial reports.");
             }
@@ -2152,11 +2153,70 @@ namespace WileyWidget.ViewModels
                 SettingsStatus = $"Error saving fiscal year settings: {ex.Message}";
                 _logger.LogError(ex, "Failed to save fiscal year settings");
 
-                await _interactionRequestService.ShowErrorAsync(
+                await ShowErrorAsync(
                     "Error",
                     $"Failed to save fiscal year settings:\n{ex.Message}");
             }
         }
+
+        #region Dialog helpers (use Prism IDialogService directly)
+
+        private Task<IDialogResult?> ShowDialogByNameAsync(string dialogName, string title, DialogParameters parameters)
+        {
+            var tcs = new TaskCompletionSource<IDialogResult?>();
+
+            var dialogParams = new DialogParameters
+            {
+                { "Title", title }
+            };
+
+            if (parameters != null)
+            {
+                foreach (var p in parameters)
+                    dialogParams.Add(p.Key, p.Value);
+            }
+
+            _dialogService.ShowDialog(dialogName, dialogParams, result => tcs.SetResult(result));
+
+            return tcs.Task;
+        }
+
+        private async Task<bool> ShowConfirmationAsync(string title, string message, string confirmButtonText = "Yes", string cancelButtonText = "No")
+        {
+            var parameters = new DialogParameters
+            {
+                { "Message", message },
+                { "ConfirmButtonText", confirmButtonText },
+                { "CancelButtonText", cancelButtonText }
+            };
+
+            var result = await ShowDialogByNameAsync("ConfirmationDialog", title, parameters);
+            return result?.Result == ButtonResult.Yes || result?.Result == ButtonResult.OK;
+        }
+
+        private async Task ShowInformationAsync(string title, string message, string buttonText = "OK")
+        {
+            var parameters = new DialogParameters
+            {
+                { "Message", message },
+                { "ButtonText", buttonText }
+            };
+
+            await ShowDialogByNameAsync("NotificationDialog", title, parameters);
+        }
+
+        private async Task ShowErrorAsync(string title, string message, string buttonText = "OK")
+        {
+            var parameters = new DialogParameters
+            {
+                { "Message", message },
+                { "ButtonText", buttonText }
+            };
+
+            await ShowDialogByNameAsync("ErrorDialog", title, parameters);
+        }
+
+        #endregion
 
         private async Task LoadFiscalYearDisplayAsync()
         {

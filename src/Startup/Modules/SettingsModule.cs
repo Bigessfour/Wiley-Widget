@@ -30,7 +30,11 @@ namespace WileyWidget.Startup.Modules
         public void OnInitialized(IContainerProvider containerProvider)
         {
             Log.Information("Initializing SettingsModule (consolidated settings and tools)");
-            // If region-based registration is re-enabled later, do it here.
+
+            var regionManager = containerProvider.Resolve<IRegionManager>();
+            regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
+            Log.Information("SettingsView registered with SettingsRegion");
+
             Log.Information("SettingsModule initialization completed");
         }
     }

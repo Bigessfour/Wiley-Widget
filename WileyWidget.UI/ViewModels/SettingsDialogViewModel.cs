@@ -1,6 +1,6 @@
-using Prism.Mvvm;
 using Prism.Commands;
 using Prism.Dialogs;
+using Prism.Mvvm;
 
 namespace WileyWidget.ViewModels
 {

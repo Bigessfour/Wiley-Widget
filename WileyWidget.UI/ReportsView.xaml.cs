@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using Prism.Ioc;
 using Microsoft.Extensions.DependencyInjection;
+using Prism.Ioc;
 //using Syncfusion.Windows.Reports.Viewer;
 using WileyWidget.ViewModels;
 

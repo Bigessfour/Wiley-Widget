@@ -4,8 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Prism.Ioc;
 using Prism.Modularity;
-using WileyWidget.Services;
 using Serilog;
+using WileyWidget.Services;
 
 namespace WileyWidget.Startup.Modules
 {

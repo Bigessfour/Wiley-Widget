@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -8,7 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
-    <NoWarn>$(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416</NoWarn>
+  <NoWarn>$(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS0103;CS1061;CS1929;CA1416;CA1812</NoWarn>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
     <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
   <StartupObject>WileyWidget.Program</StartupObject>
@@ -49,6 +50,18 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
+
+  <!-- Ensure Prism references are available to the WPF markup temporary project (wpftmp)
+       so App.xaml XAML can resolve PrismApplication and Prism types during markup compilation. -->
+  <Target Name="IncludePrismInTemporaryAssembly" BeforeTargets="GenerateTemporaryTargetAssembly;MarkupCompilePass1" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <_PrismAssemblies Include="@(ReferencePath)" Condition="'%(ReferencePath.NuGetPackageId)' == 'Prism.Wpf' OR '%(ReferencePath.NuGetPackageId)' == 'Prism.Core' OR '%(ReferencePath.NuGetPackageId)' == 'Prism.Container.DryIoc' OR '%(ReferencePath.Filename)' == 'DryIoc'" />
+    </ItemGroup>
+    <Message Text="Passing Prism assemblies to wpftmp: @(_PrismAssemblies)" Importance="high" />
+    <ItemGroup>
+      <ReferencePath Include="@(_PrismAssemblies)" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="BoldReports.WPF" Version="11.1.15" />
@@ -273,5 +286,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <!-- Clear VS designer cache after build to prevent stale XAML issues -->
+  <Target Name="ClearDesignerCache" AfterTargets="Clean">
+    <Exec Command="del /Q /S $(ProjectDir)\obj\*.cache" />
+  </Target>
 
 </Project>

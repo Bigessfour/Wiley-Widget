@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
 
   <PropertyGroup>
   <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
@@ -159,6 +159,10 @@
     <!-- Prism modules remain owned by the UI project (they reference views/viewmodels) -->
     <Compile Include="..\src\Startup\Modules\**\*.cs" />
   </ItemGroup>
+  <!-- Clear VS designer cache after Clean to avoid stale designer/layout state -->
+  <Target Name="ClearDesignerCache" AfterTargets="Clean">
+    <Exec Command="del /Q /S $(ProjectDir)\obj\*.cache" />
+  </Target>
 
   <!-- Add ProjectReference to newly created Startup project only if it's present in the workspace -->
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\..\WileyWidget.Startup\WileyWidget.Startup.csproj')">

@@ -1,15 +1,15 @@
 using System;
-using System.Collections.ObjectModel;
-using System.Linq;
 using System.Collections;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
-using Prism.Mvvm;
-using Prism.Commands;
-using WileyWidget.Data;
-using WileyWidget.Models;
+using System.Linq;
 using System.Threading.Tasks;
+using Prism.Commands;
+using Prism.Mvvm;
 using Serilog;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Data;
+using WileyWidget.Models;
 using WileyWidget.Services;
 using PrismDialog = Prism.Dialogs;
 

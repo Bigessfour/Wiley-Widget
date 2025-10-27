@@ -4,11 +4,11 @@ using System.IO.IsolatedStorage;
 using System.Linq;
 using System.Windows;
 using System.Xml.Linq;
+using Prism.Navigation.Regions;
 using Serilog;
 using Syncfusion.Windows.Tools.Controls;
-using WileyWidget.ViewModels;
 using WileyWidget.Services;
-using Prism.Navigation.Regions;
+using WileyWidget.ViewModels;
 
 namespace WileyWidget.Views
 {
@@ -314,7 +314,7 @@ namespace WileyWidget.Views
                     Log.Debug("DockingManager event handlers attached");
 
                     // Suppress ActiveWindowChanged processing while we perform bulk layout operations
-                    WileyWidget.Behaviors.DockingManagerSuppress.SetSuppressActiveWindowEvents(dockingManager, true);
+                    Prism.Behaviors.DockingManagerSuppress.SetSuppressActiveWindowEvents(dockingManager, true);
                     Log.Debug("Suppressed ActiveWindowChanged events on DockingManager for bulk load");
 
                     // Load from IsolatedStorage with validation
@@ -363,8 +363,8 @@ namespace WileyWidget.Views
                     Log.Information("Docking state loaded and validated successfully");
 
                     // Clear suppression and emit one consolidated ActiveWindowChanged handling/log
-                    WileyWidget.Behaviors.DockingManagerSuppress.SetSuppressActiveWindowEvents(dockingManager, false);
-                    var lastName = WileyWidget.Behaviors.DockingManagerSuppress.GetLastActiveWindowName(dockingManager);
+                    Prism.Behaviors.DockingManagerSuppress.SetSuppressActiveWindowEvents(dockingManager, false);
+                    var lastName = Prism.Behaviors.DockingManagerSuppress.GetLastActiveWindowName(dockingManager);
                     Log.Debug("Cleared suppression; last queued active window: {LastQueued}", string.IsNullOrEmpty(lastName) ? "(unknown)" : lastName);
                     // Manually trigger a final update to viewmodel and log the active window once
                     Dispatcher.Invoke(() =>

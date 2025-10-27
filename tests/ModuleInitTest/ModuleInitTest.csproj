@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Use a cross-platform TFM so the harness can run in Linux containers for CI and local testing -->
+    <TargetFramework>net9.0</TargetFramework>
+    <UseWPF>false</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- All source files in this folder are included by default; ThrowingModule.cs has been added to the project directory -->
+
+</Project>

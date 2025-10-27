@@ -3,10 +3,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Xaml.Behaviors;
-using Syncfusion.Windows.Tools.Controls;
 using Serilog;
+using Syncfusion.Windows.Tools.Controls;
 
-namespace WileyWidget.Behaviors
+namespace Prism.Behaviors
 {
     /// <summary>
     /// Activates/selects the DockingManager tab that contains the associated element when the mouse hovers it.

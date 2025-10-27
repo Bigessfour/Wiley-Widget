@@ -31,7 +31,7 @@ namespace WileyWidget.Tests
             var quickBooksMock = new Mock<WileyWidget.Services.IQuickBooksService>();
             var syncfusionMock = new Mock<WileyWidget.Services.ISyncfusionLicenseService>();
             var settingsServiceMock = new Mock<WileyWidget.Services.ISettingsService>();
-            var interactionMock = new Mock<WileyWidget.Services.IInteractionRequestService>();
+            var dialogServiceMock = new Mock<Prism.Dialogs.IDialogService>();
 
             var vm = new SettingsViewModel(
                 logger,
@@ -45,7 +45,7 @@ namespace WileyWidget.Tests
                 aiMock.Object,
                 auditMock.Object,
                 settingsServiceMock.Object,
-                interactionMock.Object
+                dialogServiceMock.Object
             );
 
             return vm;
@@ -56,7 +56,7 @@ namespace WileyWidget.Tests
         {
             var vm = CreateViewModel(out var aiMock, out var vaultMock, out var auditMock);
 
-            var testKey = "xai-valid-key-1234567890";
+            var testKey = "TEST_XAI_VALID_KEY";
             aiMock.Setup(x => x.ValidateApiKeyAsync(testKey)).ReturnsAsync(new WileyWidget.Services.AIResponseResult(200, "OK", null));
             vaultMock.Setup(v => v.RotateSecretAsync("XAI-ApiKey", testKey)).Returns(Task.CompletedTask);
             aiMock.Setup(x => x.UpdateApiKeyAsync(testKey)).Returns(Task.CompletedTask);
@@ -75,7 +75,7 @@ namespace WileyWidget.Tests
         public async Task Validate_Failure_Audited()
         {
             var vm = CreateViewModel(out var aiMock, out var vaultMock, out var auditMock);
-            var testKey = "xai-bad-key";
+            var testKey = "TEST_XAI_BAD_KEY";
             aiMock.Setup(x => x.ValidateApiKeyAsync(testKey)).ReturnsAsync(new WileyWidget.Services.AIResponseResult(401, "Unauthorized", "AuthFailure"));
             auditMock.Setup(a => a.AuditAsync(It.IsAny<string>(), It.IsAny<object>())).Returns(Task.CompletedTask).Verifiable();
 

@@ -3,9 +3,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels;
 using WileyWidget.ViewModels.Messages;
-using WileyWidget.Services.Threading;
 
 namespace WileyWidget;
 

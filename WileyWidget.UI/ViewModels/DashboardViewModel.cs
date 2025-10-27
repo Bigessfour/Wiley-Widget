@@ -1,7 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Prism.Mvvm;
-using Prism.Events;
-using Prism.Commands;
 // Removed Prism.Navigation; WPF uses Prism.Regions for region navigation
 using System;
 using System.Collections.ObjectModel;
@@ -15,14 +11,18 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
-using WileyWidget.Models;
+using Microsoft.Extensions.Logging;
+using Prism.Commands;
+using Prism.Events;
+using Prism.Mvvm;
+using Prism.Navigation.Regions;
+using Syncfusion.SfSkinManager;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Logging;
-using Syncfusion.SfSkinManager;
-using PrismDelegateCommand = Prism.Commands.DelegateCommand;
 using WileyWidget.ViewModels.Messages;
-using Prism.Navigation.Regions;
+using PrismDelegateCommand = Prism.Commands.DelegateCommand;
 
 namespace WileyWidget.ViewModels
 {

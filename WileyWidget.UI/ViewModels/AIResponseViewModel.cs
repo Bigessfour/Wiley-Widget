@@ -4,8 +4,8 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Prism.Mvvm;
 using Microsoft.Extensions.Logging;
+using Prism.Mvvm;
 using WileyWidget.Models;
 
 namespace WileyWidget.ViewModels

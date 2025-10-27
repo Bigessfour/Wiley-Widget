@@ -59,7 +59,7 @@ using System.Xaml;
 
 namespace WileyWidget
 {
-    public partial class App : Application
+    public partial class App : Prism.PrismApplication
     {
         // Task that completes when de1ferred secret initialization finishes.
         // Consumers can await App.SecretsInitializationTask to know when secrets are available.
@@ -177,6 +177,25 @@ namespace WileyWidget
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Ensure we capture any unhandled exceptions on the UI Dispatcher as a last line of defense
+            Application.Current.DispatcherUnhandledException += (s, args) =>
+            {
+                try
+                {
+                    // Log and swallow (mark handled) to avoid abrupt crashes in production UIs
+                    var ex = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(args.Exception);
+                    Log.Error(ex, "Unhandled UI dispatcher exception caught in OnStartup hook");
+                    args.Handled = true;
+                }
+                catch (Exception hookEx)
+                {
+                    // If logging fails, ensure we still mark handled to avoid crash loops
+                    try { Log.Error(hookEx, "Error while handling DispatcherUnhandledException"); } catch { }
+                    args.Handled = true;
+                }
+            };
+
             InitializeApplication();
         }
 
@@ -212,7 +231,7 @@ namespace WileyWidget
         // startup task or hosted service to perform DB migrations/preflight outside the UI bootstrap path.
 
         // Configure custom region adapters for third-party controls (e.g., Syncfusion)
-    protected void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
+    protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
         {
             base.ConfigureRegionAdapterMappings(regionAdapterMappings);
             try
@@ -234,7 +253,7 @@ namespace WileyWidget
         }
 
         // Configure default region behaviors, including diagnostics and context sync
-    protected void ConfigureDefaultRegionBehaviors(IRegionBehaviorFactory regionBehaviors)
+    protected override void ConfigureDefaultRegionBehaviors(IRegionBehaviorFactory regionBehaviors)
         {
             base.ConfigureDefaultRegionBehaviors(regionBehaviors);
             try
@@ -250,6 +269,9 @@ namespace WileyWidget
                 Log.Warning(ex, "Failed to register one or more region behaviors");
             }
         }
+
+        // Module catalog configuration is centralized later in this file to keep startup ordering predictable.
+        // See ConfigureModuleCatalog(...) lower in the file where module registration occurs.
 
         /// <summary>
         /// Sets up global exception handling for production readiness.
@@ -397,7 +419,7 @@ namespace WileyWidget
                 // 1) Try resolve directly from Prism's container
                 try
                 {
-                    var instance = Container.Resolve<T>();
+                    var instance = this.Container.Resolve<T>();
                     if (instance != null)
                         return instance;
                 }
@@ -545,18 +567,11 @@ namespace WileyWidget
             return false;
         }
 
-    protected Window CreateShell()
+    protected override Window CreateShell()
         {
             try
             {
-                var shell = ResolveWithRetry<Views.Shell>();
-                Log.Information("Shell resolved from container successfully");
-
-                // Prefer Prism's ViewModelLocator to wire the DataContext per official guidance
-                // If AutoWire is disabled on Shell, it will still work since MainViewModel is registered
-                // and can be resolved when needed.
-
-                return shell;
+                return base.Container.Resolve<Views.Shell>();
             }
             catch (Exception ex)
             {
@@ -565,7 +580,7 @@ namespace WileyWidget
             }
         }
 
-    protected void InitializeShell(Window shell)
+    protected override void InitializeShell(Window shell)
         {
             // With SfSkinManager.ApplicationTheme set in OnStartup, all windows inherit the theme automatically
             Application.Current.MainWindow = shell;
@@ -750,7 +765,7 @@ namespace WileyWidget
             }
         }
 
-    protected void RegisterTypes(PrismIoc.IContainerRegistry containerRegistry)
+    protected override void RegisterTypes(Prism.Ioc.IContainerRegistry containerRegistry)
         {
             Log.Information("=== Starting DI Container Registration ===");
             Log.Debug("RegisterTypes called with containerRegistry: {Type}", containerRegistry?.GetType().Name);
@@ -983,9 +998,8 @@ namespace WileyWidget
                 containerRegistry.RegisterSingleton<ICompositeCommandService, CompositeCommandService>();
                 Log.Information("✓ Registered ICompositeCommandService for coordinating multiple commands");
 
-                // Register Interaction Request Service
-                containerRegistry.RegisterSingleton<IInteractionRequestService, InteractionRequestService>();
-                Log.Information("✓ Registered IInteractionRequestService for ViewModel-View communication");
+                // InteractionRequestService wrapper retained as an internal convenience implementation
+                // ViewModels should prefer Prism's IDialogService directly for uniformity.
 
                 // Register Scoped Region Service
                 // REMOVED: Legacy IScopedRegionService replaced with Prism IRegionManager
@@ -995,6 +1009,11 @@ namespace WileyWidget
                 // Register Prism Error Handler for centralized error handling
                 containerRegistry.RegisterSingleton<IPrismErrorHandler, PrismErrorHandler>();
                 Log.Information("✓ Registered IPrismErrorHandler for centralized error handling and logging");
+
+                // Also register as the broader IExceptionHandler contract so Prism/DryIoc consumers
+                // or future features can depend on the lightweight exception handler abstraction.
+                containerRegistry.RegisterSingleton<IExceptionHandler, PrismErrorHandler>();
+                Log.Information("✓ Registered IExceptionHandler -> PrismErrorHandler for global exception handling (DryIoc)");
 
                 // Note: Custom ModuleManager diagnostic registration removed to maintain compatibility
 
@@ -1848,38 +1867,22 @@ namespace WileyWidget
         // Cache configuration to avoid redundant loading
         private IConfiguration? _cachedConfiguration;
 
-    protected void ConfigureModuleCatalog(PrismModularity.IModuleCatalog moduleCatalog)
+    protected override void ConfigureModuleCatalog(Prism.Modularity.IModuleCatalog moduleCatalog)
         {
-            Log.Information("=== Configuring Prism Module Catalog (auto-discovery mode) ===");
-
-            // Try to register CoreModule if available; otherwise rely on module attribute discovery.
+            Log.Information("=== Configuring Prism Module Catalog (explicit registration) ===");
             try
             {
-                var coreType = AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a =>
-                    {
-                        try { return a.GetTypes(); } catch { return Array.Empty<Type>(); }
-                    })
-                    .FirstOrDefault(t => string.Equals(t.FullName, "WileyWidget.CoreModule", StringComparison.Ordinal)
-                                      || t.Name == "CoreModule");
-
-                if (coreType != null)
-                {
-                    moduleCatalog.AddModule(coreType);
-                    Log.Information("✓ Registered CoreModule (type: {Type})", coreType.FullName);
-                }
-                else
-                {
-                    Log.Warning("CoreModule type not found; relying on Prism's assembly discovery for modules.");
-                }
+                WileyWidget.Startup.Modules.CustomModuleManager.RegisterModules(moduleCatalog);
+                Log.Information("✓ Registered modules via CustomModuleManager");
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "Failed to register CoreModule reflectively; continuing and relying on assembly discovery.");
+                Log.Error(ex, "Failed to configure module catalog via CustomModuleManager");
+                throw;
             }
         }
 
-    protected void InitializeModules()
+    protected override void InitializeModules()
         {
             Log.Information("Modules initializing...");
 
@@ -2121,7 +2124,7 @@ namespace WileyWidget
             }
         }
 
-    protected void OnInitialized()
+    protected override void OnInitialized()
         {
             try
             {
@@ -2228,12 +2231,9 @@ namespace WileyWidget
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Prism's DryIocContainerExtension takes ownership of the DryIoc Container and will dispose it when appropriate.")]
-    protected PrismIoc.IContainerExtension CreateContainerExtension()
+    protected override Prism.Ioc.IContainerExtension CreateContainerExtension()
         {
-            // Use DryIoc as the Prism container implementation
-            // Note: keep this simple - more adaptations for legacy-container-specific helpers will follow in later iterations
-            var container = new Container();
-            return new DryIocContainerExtension(container);
+            return new DryIocContainerExtension();
         }
 
         private static void ConfigureLogging()

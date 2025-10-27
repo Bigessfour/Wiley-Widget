@@ -1,11 +1,11 @@
-using Prism.Commands;
-using Prism.Mvvm;
-using Prism.Dialogs;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using Prism.Commands;
+using Prism.Dialogs;
+using Prism.Mvvm;
 using WileyWidget.Models;
 
 namespace WileyWidget.ViewModels

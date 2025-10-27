@@ -539,10 +539,10 @@ WileyWidget leverages the **Prism framework** for building modular, maintainable
 ### Prism Configuration
 
 ```csharp
-// App.xaml.cs - Prism owns dependency injection via Unity
+// App.xaml.cs - Prism uses DryIoc container via Prism.Container.DryIoc in this workspace
 using Prism.Ioc;
 using Prism.Modularity;
-using Prism.Unity;
+using Prism.Container.DryIoc;
 
 public class App : PrismApplication
 {

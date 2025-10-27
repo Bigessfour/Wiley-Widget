@@ -32,11 +32,11 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing AIAssistModule");
 
-            // var regionManager = containerProvider.Resolve<IRegionManager>();
+            var regionManager = containerProvider.Resolve<IRegionManager>();
 
             // Register AIAssistPanelView with AIAssistRegion (SfAIAssistView-based UI)
-            // regionManager.RegisterViewWithRegion("AIAssistRegion", typeof(AIAssistPanelView));
-            Log.Information("AIAssistPanelView registration skipped (regions removed)");
+            regionManager.RegisterViewWithRegion("AIAssistRegion", typeof(AIAssistPanelView));
+            Log.Information("AIAssistPanelView registered with AIAssistRegion");
 
             Log.Information("AIAssistModule initialization completed");
         }

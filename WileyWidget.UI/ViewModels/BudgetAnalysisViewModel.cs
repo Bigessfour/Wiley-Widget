@@ -2,15 +2,15 @@
 
 using System;
 using System.Collections.ObjectModel;
-using Prism.Mvvm;
-using Prism.Commands;
+using System.Windows.Input;
 using Microsoft.Extensions.Logging;
+using Prism.Commands;
+using Prism.Mvvm;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Base;
-using WileyWidget.Business.Interfaces;
-using WileyWidget.Models;
-using System.Windows.Input;
 
 namespace WileyWidget.ViewModels;
 

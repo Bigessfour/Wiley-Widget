@@ -4,7 +4,9 @@ using Prism.Modularity;
 // using Prism.Regions; // Removed to eliminate dependency
 using Serilog;
 using WileyWidget.ViewModels;
+using WileyWidget.ViewModels; // Ensure this is present for CustomerEditDialogViewModel
 using WileyWidget.Views;
+using WileyWidget.Views; // Ensure this is present for CustomerEditDialogView
 
 namespace WileyWidget.Startup.Modules
 {
@@ -37,7 +39,7 @@ namespace WileyWidget.Startup.Modules
             containerRegistry.RegisterForNavigation<UtilityCustomerView, UtilityCustomerViewModel>();
 
             // Register dialog for editing/creating customers (Prism Dialog)
-            containerRegistry.RegisterDialog<WileyWidget.Views.CustomerEditDialogView, WileyWidget.ViewModels.CustomerEditDialogViewModel>();
+            containerRegistry.RegisterDialog<CustomerEditDialogView, CustomerEditDialogViewModel>();
 
             Log.Debug("Utility customer types registered");
         }

@@ -1,6 +1,6 @@
 using System.Windows;
-using Prism.Mvvm;
 using Prism.Dialogs;
+using Prism.Mvvm;
 using WileyWidget.Models;
 
 namespace WileyWidget.ViewModels;

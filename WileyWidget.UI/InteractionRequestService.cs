@@ -1,10 +1,10 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using Microsoft.Extensions.Logging;
 using Prism;
 using Prism.Dialogs;
 using Serilog;
-using Microsoft.Extensions.Logging;
 using WileyWidget.ViewModels;
 
 namespace WileyWidget.Services
@@ -13,7 +13,8 @@ namespace WileyWidget.Services
     /// Service for handling common interaction requests between ViewModels and Views.
     /// Provides standardized ways to show confirmations, notifications, and custom dialogs.
     /// </summary>
-    public class InteractionRequestService : IInteractionRequestService
+    [Obsolete("InteractionRequestService is a convenience wrapper. Prefer Prism.Dialogs.IDialogService in ViewModels.")]
+    public class InteractionRequestService
     {
         private readonly IDialogService _dialogService;
         private readonly ILogger<InteractionRequestService> _logger;

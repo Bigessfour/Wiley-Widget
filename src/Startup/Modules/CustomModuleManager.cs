@@ -1,7 +1,8 @@
 using System;
 using System.Linq;
-using Serilog;
 using Prism.Ioc;
+using Prism.Modularity;
+using Serilog;
 using WileyWidget.Services;
 
 namespace WileyWidget.Startup.Modules
@@ -40,6 +41,65 @@ namespace WileyWidget.Startup.Modules
             catch (Exception logEx)
             {
                 Log.Warning(logEx, "ModuleInitializationDiagnostics failed to log exception details");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Helper to explicitly register application modules into a Prism IModuleCatalog.
+    /// Use this from App.ConfigureModuleCatalog(moduleCatalog) to avoid MEF/implicit scanning.
+    /// </summary>
+    public static class CustomModuleManager
+    {
+        /// <summary>
+        /// Register modules in a strongly-typed, explicit manner. Prefer AddModule<T>() where possible.
+        /// Mark heavy/optional modules OnDemand via ModuleInfo + InitializationMode.OnDemand.
+        /// </summary>
+        public static void RegisterModules(IModuleCatalog catalog)
+        {
+            if (catalog == null) throw new ArgumentNullException(nameof(catalog));
+
+            try
+            {
+                // Core modules (load at startup)
+                catalog.AddModule<CoreModule>();
+                catalog.AddModule<DashboardModule>();
+                catalog.AddModule<AIAssistModule>();
+                catalog.AddModule<BudgetModule>();
+                catalog.AddModule<EnterpriseModule>();
+                catalog.AddModule<MunicipalAccountModule>();
+                catalog.AddModule<PanelModule>();
+                // Test module used to intentionally throw during Initialize for verifying global error handling.
+                // It will only throw when the environment variable THROW_MODULE_INIT_EXCEPTION is set to '1'.
+                catalog.AddModule<ThrowingModule>();
+                catalog.AddModule<SettingsModule>();
+                // ToolsModule is deprecated and consolidated into SettingsModule.
+                // It does not implement IModule and is kept for source/history only,
+                // so do not attempt to register it into the Prism module catalog.
+                catalog.AddModule<UtilityCustomerModule>();
+
+                // Reports module is medium-weight; register normally but could be switched to OnDemand if desired
+                catalog.AddModule<ReportsModule>();
+
+                // QuickBooks integration is heavier and optional in some environments - register as OnDemand
+                var qbInfo = new ModuleInfo
+                {
+                    ModuleName = nameof(QuickBooksModule),
+                    ModuleType = typeof(QuickBooksModule).AssemblyQualifiedName,
+                    InitializationMode = InitializationMode.OnDemand
+                };
+                // Ensure we don't double-add if someone used AddModule elsewhere
+                if (!catalog.Modules.Any(m => m.ModuleName == qbInfo.ModuleName))
+                {
+                    catalog.AddModule(qbInfo);
+                }
+
+                Log.Information("CustomModuleManager: Registered modules into module catalog");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "CustomModuleManager: Failed to register modules into catalog");
+                throw;
             }
         }
     }

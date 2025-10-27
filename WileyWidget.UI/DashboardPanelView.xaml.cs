@@ -1,11 +1,11 @@
 using System;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using WileyWidget.ViewModels;
+using Serilog;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Windows.Shared;
 using WileyWidget.Services;
-using Serilog;
+using WileyWidget.ViewModels;
 
 #pragma warning disable CS8600, CS8601, CS8602, CS8603, CS8604, CS8618, CS8622, CS8625 // Suppress nullability warnings in WPF application
 

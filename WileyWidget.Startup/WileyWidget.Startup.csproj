@@ -35,6 +35,8 @@
     <Compile Include="..\src\Startup\BootstrapHelpers.cs" />
     <!-- Include Configuration sources needed by Bootstrapper -->
     <Compile Include="..\src\Configuration\Resilience\PolicyFactory.cs" />
+    <!-- Include test and module helpers (ThrowingModule used for module init tests) -->
+    <Compile Include="..\src\Startup\Modules\ThrowingModule.cs" />
   </ItemGroup>
 
   <ItemGroup>

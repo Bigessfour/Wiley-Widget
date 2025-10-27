@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace WileyWidget.Behaviors
+namespace Prism.Behaviors
 {
     /// <summary>
     /// Provides attached properties to temporarily suppress ActiveWindowChanged handling

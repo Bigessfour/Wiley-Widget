@@ -1,10 +1,10 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using WileyWidget.ViewModels;
+using Serilog;
 using Syncfusion.SfSkinManager;
 using Syncfusion.UI.Xaml.Grid;
-using Serilog;
+using WileyWidget.ViewModels;
 
 namespace WileyWidget.Views
 {

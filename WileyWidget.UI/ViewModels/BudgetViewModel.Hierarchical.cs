@@ -1,12 +1,12 @@
 using System.Collections.ObjectModel;
-using WileyWidget.Models;
-using System.Threading.Tasks;
+using System.IO;
 using System.Linq;
-using Serilog;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
-using System.IO;
+using Serilog;
 using Syncfusion.XlsIO;
+using WileyWidget.Models;
 
 namespace WileyWidget.ViewModels;
 

@@ -2,13 +2,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Markup;
 using System.Windows.Media;
-using WileyWidget.Services;
-using WileyWidget.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using WileyWidget.Data;
+using Serilog;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Windows.Shared;
-using Serilog;
+using WileyWidget.Data;
+using WileyWidget.Services;
+using WileyWidget.ViewModels;
 using BusinessInterfaces = WileyWidget.Business.Interfaces;
 
 namespace WileyWidget.Views;

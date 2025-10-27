@@ -10,7 +10,7 @@ namespace WileyWidget.Services
     /// Centralized error handler for Prism applications.
     /// Provides consistent error handling, logging, and event publishing for navigation and general errors.
     /// </summary>
-    public class PrismErrorHandler : IPrismErrorHandler
+    public class PrismErrorHandler : IPrismErrorHandler, IExceptionHandler
     {
         private readonly ILogger<PrismErrorHandler> _logger;
         private readonly IEventAggregator _eventAggregator;

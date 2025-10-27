@@ -2,11 +2,11 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using WileyWidget.ViewModels;
+using Serilog;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Windows.Shared;
 using WileyWidget.Services;
-using Serilog;
+using WileyWidget.ViewModels;
 
 #nullable enable
 

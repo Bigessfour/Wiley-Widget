@@ -8,6 +8,10 @@
 
 using System;
 using System.Windows;
+using System.Windows.Markup;
+
+[assembly: XmlnsDefinition("http://prismlibrary.com/", "Prism")]
+[assembly: XmlnsPrefix("http://prismlibrary.com/", "prism")]
 
 namespace Prism
 {

@@ -8,20 +8,20 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using Microsoft.Extensions.Logging;
 using Prism;
 using Prism.Commands;
 using Prism.Dialogs;
-using System.Windows;
+using Prism.Navigation.Regions;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
+using WileyWidget.Services;
+using WileyWidget.Services.Excel;
 using WileyWidget.Services.Logging;
 using WileyWidget.Services.Threading;
-using WileyWidget.Services.Excel;
-using WileyWidget.Services;
 using WileyWidget.ViewModels.Base;
-using WileyWidget.Models;
-using WileyWidget.Business.Interfaces;
 using WileyWidget.Views;
-using Prism.Navigation.Regions;
 
 namespace WileyWidget.ViewModels
 {

@@ -2,12 +2,12 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
-using WileyWidget.ViewModels;
-using WileyWidget.Services;
-using Syncfusion.SfSkinManager;
-using Syncfusion.UI.Xaml.TreeGrid;
-using Syncfusion.UI.Xaml.Grid;
 using Serilog;
+using Syncfusion.SfSkinManager;
+using Syncfusion.UI.Xaml.Grid;
+using Syncfusion.UI.Xaml.TreeGrid;
+using WileyWidget.Services;
+using WileyWidget.ViewModels;
 
 namespace WileyWidget;
 

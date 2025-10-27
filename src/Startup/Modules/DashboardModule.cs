@@ -1,14 +1,14 @@
 using System;
-using System.Linq;
 using System.Collections.Specialized;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using Prism.Ioc;
 using Prism.Modularity;
 using Prism.Navigation.Regions;
+using Serilog;
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
-using Serilog;
 
 namespace WileyWidget.Startup.Modules
 {

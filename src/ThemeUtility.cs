@@ -1,7 +1,7 @@
 using System;
+using Serilog;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Windows.Shared;
-using Serilog;
 using WileyWidget.Services;
 
 namespace WileyWidget.Services;

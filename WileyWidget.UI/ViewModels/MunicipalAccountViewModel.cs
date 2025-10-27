@@ -1,20 +1,20 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Data;
-using Prism.Mvvm;
 using Prism.Commands;
-using System.Collections.Generic;
+using Prism.Mvvm;
+using Prism.Navigation.Regions;
 using Serilog;
+using WileyWidget;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data.Resilience;
 using WileyWidget.Models;
 using WileyWidget.Services;
-using WileyWidget;
 // Removed Prism.Navigation; WPF region navigation types are in Prism.Regions
 using WileyWidget.ViewModels.Messages;
-using Prism.Navigation.Regions;
 
 namespace WileyWidget.ViewModels;
 

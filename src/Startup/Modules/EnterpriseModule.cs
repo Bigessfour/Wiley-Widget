@@ -3,9 +3,9 @@ using Prism.Ioc;
 using Prism.Modularity;
 using Prism.Navigation.Regions;
 using Serilog;
+using WileyWidget.Business.Interfaces;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
-using WileyWidget.Business.Interfaces;
 
 namespace WileyWidget.Startup.Modules
 {

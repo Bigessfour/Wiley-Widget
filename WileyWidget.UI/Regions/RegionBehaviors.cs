@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Prism;
-using Serilog;
 using Microsoft.Extensions.Logging;
-using WileyWidget.Services;
+using Prism;
 using Prism.Navigation.Regions;
+using Serilog;
+using WileyWidget.Services;
 
 namespace WileyWidget.Regions
 {

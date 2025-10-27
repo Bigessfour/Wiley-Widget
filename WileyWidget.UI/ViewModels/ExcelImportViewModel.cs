@@ -1,13 +1,13 @@
 #nullable enable
 
 using System.Collections.ObjectModel;
-using Prism.Mvvm;
-using Prism.Commands;
-using WileyWidget.Services.Threading;
-using WileyWidget.ViewModels.Base;
+using System.IO;
 using System.Windows.Input;
 using Microsoft.Win32;
-using System.IO;
+using Prism.Commands;
+using Prism.Mvvm;
+using WileyWidget.Services.Threading;
+using WileyWidget.ViewModels.Base;
 
 namespace WileyWidget.ViewModels;
 

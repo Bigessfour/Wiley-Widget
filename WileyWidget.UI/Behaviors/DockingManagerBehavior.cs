@@ -1,10 +1,11 @@
 using System;
 using System.Windows;
 using Microsoft.Xaml.Behaviors;
-using Syncfusion.Windows.Tools.Controls;
 using Serilog;
+using Syncfusion.Windows.Tools.Controls;
+using WileyWidget.ViewModels;
 
-namespace WileyWidget.Behaviors
+namespace Prism.Behaviors
 {
     /// <summary>
     /// Behavior that manages DockingManager state persistence and event handling
@@ -120,19 +121,19 @@ namespace WileyWidget.Behaviors
                 return;
             }
 
-            var isSuppressed = WileyWidget.Behaviors.DockingManagerSuppress.GetSuppressActiveWindowEvents(AssociatedObject);
+            var isSuppressed = Prism.Behaviors.DockingManagerSuppress.GetSuppressActiveWindowEvents(AssociatedObject);
             if (isSuppressed)
             {
                 // record pending active window; don't update viewmodel or log repeatedly
                 _pendingActiveWindow = AssociatedObject.ActiveWindow;
                 // store a friendly name for diagnostics
-                WileyWidget.Behaviors.DockingManagerSuppress.SetLastActiveWindowName(AssociatedObject, _pendingActiveWindow?.GetType().Name ?? string.Empty);
+                Prism.Behaviors.DockingManagerSuppress.SetLastActiveWindowName(AssociatedObject, _pendingActiveWindow?.GetType().Name ?? string.Empty);
                 Log.Debug("DockingManagerBehavior: ActiveWindowChanged suppressed; queued: {WindowName}", _pendingActiveWindow?.GetType().Name ?? "(null)");
                 return;
             }
 
             // Normal processing when not suppressed
-            if (AssociatedObject.DataContext is ViewModels.MainViewModel viewModel)
+            if (AssociatedObject.DataContext is MainViewModel viewModel)
             {
                 viewModel.ActiveWindow = AssociatedObject.ActiveWindow;
 

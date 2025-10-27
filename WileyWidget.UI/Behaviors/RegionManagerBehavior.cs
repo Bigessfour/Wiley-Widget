@@ -3,10 +3,10 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Xaml.Behaviors;
+using Prism.Navigation.Regions;
 using Serilog;
-// Removed: using Prism.Regions; - Using fully qualified names instead
 
-namespace WileyWidget.Behaviors
+namespace Prism.Behaviors
 {
     /// <summary>
     /// Behavior that manages Prism region initialization and coordination with DockingManager
@@ -14,11 +14,11 @@ namespace WileyWidget.Behaviors
     public class RegionManagerBehavior : Behavior<FrameworkElement>
     {
         public static readonly DependencyProperty RegionManagerProperty =
-            DependencyProperty.Register("RegionManager", typeof(Prism.Navigation.Regions.IRegionManager), typeof(RegionManagerBehavior), new PropertyMetadata(null));
+            DependencyProperty.Register("RegionManager", typeof(IRegionManager), typeof(RegionManagerBehavior), new PropertyMetadata(null));
 
-        public Prism.Navigation.Regions.IRegionManager RegionManager
+        public IRegionManager RegionManager
         {
-            get => (Prism.Navigation.Regions.IRegionManager)GetValue(RegionManagerProperty);
+            get => (IRegionManager)GetValue(RegionManagerProperty);
             set => SetValue(RegionManagerProperty, value);
         }
 

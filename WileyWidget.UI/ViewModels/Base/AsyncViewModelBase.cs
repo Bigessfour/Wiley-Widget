@@ -1,11 +1,11 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Threading;
-using Prism.Mvvm;
-using Prism.Commands;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Prism.Commands;
+using Prism.Mvvm;
 using WileyWidget.Services;
 using WileyWidget.Services.Threading;
 

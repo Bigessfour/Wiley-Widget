@@ -1,11 +1,13 @@
+// NOTE: This interface is deprecated. Prefer Prism's IDialogService directly in ViewModels.
+// The file is retained as an obsolete shim to ease incremental refactors across the codebase.
+// Once all references are removed, this file can be deleted.
+using System;
 using System.Threading.Tasks;
 using Prism.Dialogs;
 
 namespace WileyWidget.Services
 {
-    /// <summary>
-    /// Interface for the interaction request service.
-    /// </summary>
+    [Obsolete("IInteractionRequestService is deprecated. Use Prism.Dialogs.IDialogService instead.")]
     public interface IInteractionRequestService
     {
         Task<bool> ShowConfirmationAsync(string title, string message, string confirmButtonText = "Yes", string cancelButtonText = "No");

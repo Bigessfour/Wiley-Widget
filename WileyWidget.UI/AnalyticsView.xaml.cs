@@ -4,11 +4,11 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using Syncfusion.UI.Xaml.Charts;
-using Syncfusion.SfSkinManager;
-using WileyWidget.ViewModels;
-using WileyWidget.Services;
 using Serilog;
+using Syncfusion.SfSkinManager;
+using Syncfusion.UI.Xaml.Charts;
+using WileyWidget.Services;
+using WileyWidget.ViewModels;
 
 namespace WileyWidget;
 

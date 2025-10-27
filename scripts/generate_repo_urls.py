@@ -165,16 +165,26 @@ class RepoManifestGenerator:
         commit_hash = self._run_git_command(["rev-parse", "HEAD"])
         is_dirty = bool(self._run_git_command(["status", "--porcelain"]))
 
-        # Extract owner/repo from URL
+        # Extract owner/repo from URL (handle HTTPS and SSH forms)
         owner_repo = ""
         if remote_url:
-            if "github.com" in remote_url:
-                # Handle various GitHub URL formats
-                if remote_url.endswith(".git"):
-                    remote_url = remote_url[:-4]
-                parts = remote_url.split("/")
-                if len(parts) >= 2:
-                    owner_repo = f"{parts[-2]}/{parts[-1]}"
+            try:
+                url = remote_url.strip()
+                # strip .git
+                if url.endswith('.git'):
+                    url = url[:-4]
+
+                # SSH form: git@github.com:owner/repo
+                if url.startswith('git@') and ':' in url:
+                    after = url.split(':', 1)[1]
+                    owner_repo = after
+                else:
+                    # HTTP/HTTPS form: https://github.com/owner/repo
+                    parts = url.split('/')
+                    if len(parts) >= 2:
+                        owner_repo = f"{parts[-2]}/{parts[-1]}"
+            except Exception:
+                owner_repo = ""
 
         return {
             "remote_url": remote_url,
@@ -230,6 +240,15 @@ class RepoManifestGenerator:
             except Exception:
                 metadata["is_binary"] = True
 
+        # Attach git metadata placeholder (populated later per-file)
+        metadata["git"] = {
+            "last_commit": None,
+            "last_commit_hash": None,
+            "last_commit_author": None,
+            "last_commit_date": None,
+            "last_commit_message": None,
+        }
+
         return metadata
 
     def _get_file_summary(self, file_path: str, metadata: dict[str, Any]) -> str:
@@ -239,10 +258,16 @@ class RepoManifestGenerator:
             return "Binary or large file - content not summarized"
 
         try:
-            with open(
-                self.repo_path / file_path, "r", encoding="utf-8", errors="ignore"
-            ) as f:
-                content = f.read(5000)  # First 5KB
+            with open(self.repo_path / file_path, "r", encoding="utf-8", errors="ignore") as f:
+                # read head and tail for a better sample
+                head = f.read(4096)
+                tail = ""
+                try:
+                    f.seek(max(0, f.seek(0, 2) - 2048))
+                    tail = f.read(2048)
+                except Exception:
+                    tail = ""
+                content = head + "\n...\n" + tail
 
             # Extract key information based on file type
             if self.config.get("analysis_options", {}).get("extract_structure", True):
@@ -360,11 +385,7 @@ class RepoManifestGenerator:
                 r"login",
             ],
         )
-        return any(
-            re.search(pattern, file_path, re.IGNORECASE) for pattern in exclude_patterns
-        )
-
-        return metadata
+        return any(re.search(pattern, file_path, re.IGNORECASE) for pattern in exclude_patterns)
 
     def _generate_file_urls(self, file_path: str) -> dict[str, str]:
         """Generate URLs for the file."""

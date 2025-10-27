@@ -1,22 +1,22 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Media.Animation;
-using System.Windows.Threading;
-using Syncfusion.SfSkinManager;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Windows.Media;
-using System.Windows.Media.Effects;
-using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows.Input;
-using WileyWidget.Services;
-using Serilog;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
+using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Prism.Events;
+using Serilog;
+using Syncfusion.SfSkinManager;
+using WileyWidget.Services;
 
 namespace WileyWidget;
 

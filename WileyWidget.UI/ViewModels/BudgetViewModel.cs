@@ -1,18 +1,18 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
-using System.ComponentModel;
-using Prism.Mvvm;
 using Prism.Commands;
 using Prism.Events;
-using WileyWidget.Models;
-using WileyWidget.Business.Interfaces;
-using WileyWidget.ViewModels.Messages;
-using System.Threading.Tasks;
-using System.Linq;
+using Prism.Mvvm;
 using Serilog;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
 using WileyWidget.Services;
+using WileyWidget.ViewModels.Messages;
 
 namespace WileyWidget.ViewModels;
 

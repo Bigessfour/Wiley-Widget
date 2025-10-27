@@ -2,11 +2,11 @@ using System;
 using Microsoft.Extensions.Logging;
 using Prism.Ioc;
 using Prism.Modularity;
+using Serilog;
 // using Prism.Regions; // Removed to eliminate dependency
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
-using Serilog;
 
 namespace WileyWidget.Startup.Modules
 {

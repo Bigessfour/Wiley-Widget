@@ -7,7 +7,7 @@
                         xmlns:syncfusionThemes="clr-namespace:Syncfusion.Themes.FluentLight.WPF;assembly=Syncfusion.Themes.FluentLight.WPF"
                         xmlns:converters="clr-namespace:WileyWidget.Converters;assembly=WileyWidget.UI"
                         xmlns:local="clr-namespace:WileyWidget"
-                        prism:ViewModelLocator.AutoWireViewModel="True">
+                        >
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
