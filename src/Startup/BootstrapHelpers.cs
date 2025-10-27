@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
@@ -17,12 +19,23 @@ namespace WileyWidget.Startup
             }
 
             var current = exception;
-            var seen = new HashSet<Exception>();
 
-            while (current is System.Reflection.TargetInvocationException tie && tie.InnerException != null && !seen.Contains(tie))
+            // Unwrap TargetInvocationException and AggregateException layers
+            while (true)
             {
-                seen.Add(tie);
-                current = tie.InnerException;
+                if (current is System.Reflection.TargetInvocationException tie && tie.InnerException != null)
+                {
+                    current = tie.InnerException;
+                    continue;
+                }
+
+                if (current is AggregateException ae)
+                {
+                    current = ae.Flatten().InnerException ?? current;
+                    continue;
+                }
+
+                break;
             }
 
             return current;
@@ -41,17 +54,53 @@ namespace WileyWidget.Startup
                 {
                     return operation();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     attempts++;
+                    Log.Warning(ex, "Attempt {Attempt}/{Max} failed; retrying in {Delay}ms", attempts, maxAttempts, delay);
                     if (attempts >= maxAttempts) throw;
-                    Thread.Sleep(delay);
+
+                    // Use Task.Delay().Wait() instead of Thread.Sleep for better async compatibility
+                    // This allows the thread to be released back to the thread pool during the delay
+                    Task.Delay(delay).Wait();
                     delay = Math.Min(delay * 2, 5000);
                 }
             }
         }
 
-        public static void LogExceptionDetails(Exception? ex)
+        /// <summary>
+        /// Async version of RetryOnException with exponential backoff.
+        /// Provides better WPF responsiveness by using async/await pattern.
+        /// </summary>
+        public static async Task<TResult> RetryOnExceptionAsync<TResult>(
+            Func<Task<TResult>> operation,
+            int maxAttempts = 3,
+            int initialDelayMs = 200,
+            CancellationToken cancellationToken = default)
+        {
+            if (operation == null) throw new ArgumentNullException(nameof(operation));
+
+            int attempts = 0;
+            int delay = initialDelayMs;
+
+            while (true)
+            {
+                try
+                {
+                    return await operation().ConfigureAwait(false);
+                }
+                catch (Exception ex) when (attempts < maxAttempts)
+                {
+                    attempts++;
+                    Log.Warning(ex, "Attempt {Attempt}/{Max} failed; retrying in {Delay}ms", attempts, maxAttempts, delay);
+
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    delay = Math.Min(delay * 2, 5000);
+                }
+            }
+        }
+
+        public static void LogExceptionDetails(Exception? ex, bool includeStackTrace = true)
         {
             if (ex == null)
             {
@@ -61,22 +110,31 @@ namespace WileyWidget.Startup
 
             int depth = 0;
             Exception? current = ex;
-            while (current != null && depth < 20)
+            while (current != null && depth < 10)
             {
                 Log.Error(current, "[ExceptionDepth:{Depth}] {ExceptionType}: {Message}", depth, current.GetType().FullName, current.Message);
+
+                if (includeStackTrace && !string.IsNullOrWhiteSpace(current.StackTrace))
+                {
+                    Log.Error("Stack trace: {StackTrace}", current.StackTrace);
+                }
+
                 current = current.InnerException;
                 depth++;
             }
 
-            if (depth >= 20)
+            if (depth >= 10)
             {
-                Log.Warning("Exception chain exceeded {MaxDepth} levels; truncated", 20);
+                Log.Warning("Exception chain exceeded {MaxDepth} levels; truncated", 10);
             }
         }
 
         private static readonly Regex PlaceholderRegex = new("\\$\\{(?<name>[A-Za-z0-9_]+)\\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        public static void ResolveConfigurationPlaceholders(IConfigurationRoot configurationRoot)
+        /// <summary>
+        /// Extension method to resolve configuration placeholders like ${VARIABLE_NAME}
+        /// </summary>
+        public static void ResolvePlaceholders(this IConfigurationRoot configurationRoot)
         {
             if (configurationRoot == null)
             {
@@ -113,6 +171,15 @@ namespace WileyWidget.Startup
                     configurationRoot[entry.Key] = replaced;
                 }
             }
+        }
+
+        /// <summary>
+        /// Legacy method - use ResolvePlaceholders extension method instead
+        /// </summary>
+        [Obsolete("Use configurationRoot.ResolvePlaceholders() extension method instead")]
+        public static void ResolveConfigurationPlaceholders(IConfigurationRoot configurationRoot)
+        {
+            configurationRoot?.ResolvePlaceholders();
         }
     }
 }

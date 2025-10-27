@@ -6,7 +6,6 @@
   "python.testing.pytestArgs": ["scripts"],
   "workbench.panel.defaultLocation": "right",
   "testExplorer.activityBarIcon": "test-explorer-icon",
-  "files.trimTrailingWhitespace": true,
 
   // Editor whitespace/indentation handling (explicit workspace rules)
   "editor.detectIndentation": false,
@@ -125,7 +124,7 @@
   //   "temperature": 0.15
   // },
   "github.copilot.chat.agent.enabled": true,
-  "chat.tools.autoApprove": "always",
+  "chat.tools.autoApprove": "manual",
   // Removed unused model settings
   // "copilot.model": "grok-code-fast-1",
   // "kilocode.model": "grok-code-fast-1",
@@ -167,11 +166,11 @@
   // C# Dev Kit Configuration - Comprehensive Setup
   "dotnet.server.useOmnisharp": false,
   "dotnet.enableXamlTools": true,
-  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
-  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "fullSolution",
+  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "fullSolution",
   "dotnet.backgroundAnalysis.enable": true,
-  "dotnet.backgroundAnalysis.maxFileSize": 1024,
-  "dotnet.backgroundAnalysis.analyzerMaxFileSize": 1024,
+  "dotnet.backgroundAnalysis.maxFileSize": 8192,
+  "dotnet.backgroundAnalysis.analyzerMaxFileSize": 8192,
   "dotnet.codeLens.enableReferencesCodeLens": true,
   "dotnet.codeLens.enableTestsCodeLens": true,
   "dotnet.hover.showHover": true,
@@ -242,7 +241,7 @@
   "terminal.integrated.enablePersistentSessions": true,
   "terminal.integrated.inheritEnv": true,
   "github.copilot.chat.experimental.terminalOutputCapture": true,
-  "chat.tools.terminal.autoReplyToPrompts": true,
+  "chat.tools.terminal.autoReplyToPrompts": false,
   "chat.tools.terminal.terminalProfile.windows": {
     "path": "C:/Program Files/PowerShell/7/pwsh.exe",
     "args": ["-NoLogo", "-NoProfile"],
@@ -271,9 +270,9 @@
   "extensions.autoCheckUpdates": true,
   "extensions.autoUpdate": true,
   "git.autofetch": true,
-  "git.confirmSync": false,
-  "git.enableSmartCommit": true,
-  "mcp.autoApprove": true,
+  "git.confirmSync": true,
+  "git.enableSmartCommit": false,
+  "mcp.autoApprove": false,
   // "mcp.servers.github.autoApprove": true, // Removed: MCP github server commented out
   "terminal.integrated.confirmOnExit": "never",
   "terminal.integrated.confirmOnKill": "never",
@@ -438,7 +437,7 @@
   "workbench.editor.tabActionLocation": "left",
 
   // Trunk Configuration
-  "trunk.enabled": false,
+  "trunk.enabled": true,
   "trunk.checkOnSave": true,
   "trunk.checkOnOpen": true,
   "trunk.showStatusBarItem": true,

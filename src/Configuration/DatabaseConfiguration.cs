@@ -61,7 +61,14 @@ public static class DatabaseConfiguration
         IConfiguration configuration)
     {
             // Register EF interceptors and helpers used by DbContext
-            services.AddSingleton<WileyWidget.Data.Interceptors.AuditInterceptor>();
+            // Use runtime type resolution to avoid temporary wpftmp compilation issues
+            // where the same types may be compiled into multiple assemblies during WPF markup
+            // compilation. Resolve the interceptor type from the WileyWidget.Data assembly at runtime.
+            var auditInterceptorType = Type.GetType("WileyWidget.Data.Interceptors.AuditInterceptor, WileyWidget.Data");
+            if (auditInterceptorType != null)
+            {
+                services.AddSingleton(auditInterceptorType);
+            }
 
         // EF Core DI Lifetime Fix: Use AddDbContextFactory with Singleton lifetime for factory
         // This provides a singleton factory that creates scoped DbContexts
@@ -116,10 +123,15 @@ public static class DatabaseConfiguration
         // Add registered interceptors (AuditInterceptor) into DbContext options
         try
         {
-            var auditInterceptor = sp.GetService<WileyWidget.Data.Interceptors.AuditInterceptor>();
-            if (auditInterceptor != null)
+            // Resolve the interceptor at runtime to avoid cross-assembly duplicate-type issues
+            var auditInterceptorTypeRuntime = Type.GetType("WileyWidget.Data.Interceptors.AuditInterceptor, WileyWidget.Data");
+            if (auditInterceptorTypeRuntime != null)
             {
-                options.AddInterceptors(auditInterceptor);
+                var auditInterceptorInstance = sp.GetService(auditInterceptorTypeRuntime);
+                if (auditInterceptorInstance is Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor efInterceptor)
+                {
+                    options.AddInterceptors(efInterceptor);
+                }
             }
         }
         catch (Exception ex)
@@ -701,13 +713,67 @@ public static class DatabaseConfiguration
     /// </summary>
     private static void RegisterEnterpriseServices(IServiceCollection services)
     {
-        services.AddScoped<IQuickBooksService>(sp =>
+        // Register QuickBooks service using runtime type bindings to avoid duplicate-type/interface mismatches
+        var qbInterfaceType = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(a => a.GetType("WileyWidget.Services.IQuickBooksService"))
+            .FirstOrDefault(t => t != null);
+
+        if (qbInterfaceType != null)
         {
-            var settings = SettingsService.Instance;
-            var secretVaultService = sp.GetService<ISecretVaultService>();
-            var logger = sp.GetRequiredService<ILogger<QuickBooksService>>();
-            return new QuickBooksService(settings, secretVaultService, logger);
-        });
+            services.AddScoped(qbInterfaceType, sp =>
+            {
+                var settings = SettingsService.Instance;
+
+                // Resolve ISecretVaultService at runtime
+                object? secretVaultService = null;
+                var secretVaultInterfaceType = AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(a => a.GetType("WileyWidget.Services.ISecretVaultService"))
+                    .FirstOrDefault(t => t != null);
+                if (secretVaultInterfaceType != null)
+                {
+                    try
+                    {
+                        secretVaultService = sp.GetService(secretVaultInterfaceType);
+                    }
+                    catch { }
+                }
+
+                // Obtain QuickBooksService type and create an instance via Activator to avoid direct compile-time coupling
+                var qbImplType = AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(a => a.GetType("WileyWidget.Services.QuickBooksService"))
+                    .FirstOrDefault(t => t != null);
+
+                var loggerType = typeof(ILogger<>).MakeGenericType(qbImplType ?? typeof(object));
+                var logger = sp.GetRequiredService(loggerType);
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("QuickBooks");
+
+                if (qbImplType != null)
+                {
+                    // Try to construct using the (SettingsService, ISecretVaultService, ILogger<QuickBooksService>, HttpClient) signature
+                    try
+                    {
+                        object? instance;
+                        if (secretVaultService != null)
+                        {
+                            instance = Activator.CreateInstance(qbImplType, settings, secretVaultService, logger, httpClient);
+                        }
+                        else
+                        {
+                            instance = Activator.CreateInstance(qbImplType, settings, null, logger, httpClient);
+                        }
+
+                        if (instance != null)
+                            return instance;
+                    }
+                    catch { }
+                }
+
+                // Last-resort: try to resolve an existing registration from DI container
+                var resolved = sp.GetService(qbInterfaceType);
+                return resolved!;
+            });
+        }
 
         services.AddScoped<IAIService>(sp =>
         {
@@ -774,15 +840,18 @@ public static class DatabaseConfiguration
         // Do not register it here to avoid conflicting lifetimes.
     }
 
-    private static async Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? secretVaultService, string secretName, ILogger logger)
+    private static async Task<string?> TryGetFromSecretVaultAsync(object? secretVaultService, string secretName, ILogger logger)
     {
+        // If no secret vault available, return null
         if (secretVaultService == null)
             return null;
 
         try
         {
-            // Retrieve secret asynchronously to avoid blocking the UI thread
-            var secret = await secretVaultService.GetSecretAsync(secretName);
+            // Use dynamic invocation to call GetSecretAsync on the runtime-resolved secret vault instance.
+            dynamic dyn = secretVaultService;
+            Task<string?> getSecretTask = dyn.GetSecretAsync(secretName);
+            var secret = await getSecretTask.ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(secret))
             {

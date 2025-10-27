@@ -12,7 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
-using Polly.Registry;
+using WileyWidget.Configuration.Resilience;
 using Serilog;
 using Serilog.Debugging;
 using WileyWidget.Business.Interfaces;
@@ -237,8 +237,11 @@ public static class WpfHostingExtensions
         // AuthenticationService removed - Azure integration archived
         services.AddSingleton<ISyncfusionLicenseService, SyncfusionLicenseService>();
         services.AddSingleton<ApplicationMetricsService>();
-        services.AddSingleton<SettingsService>();
-        services.AddSingleton<ISettingsService>(sp => sp.GetRequiredService<SettingsService>());
+    // Register SettingsService and expose as ISettingsService.
+    // Use non-generic overload to avoid compile-time generic assignability checks
+    // in environments where types may be compiled across multiple projects.
+    services.AddSingleton<SettingsService>();
+    services.AddSingleton(typeof(ISettingsService), sp => sp.GetRequiredService<SettingsService>());
         // Audit service: structured, append-only, no secrets
         services.AddSingleton<IAuditService, AuditService>();
         services.AddSingleton(ErrorReportingService.Instance);
@@ -308,32 +311,22 @@ public static class WpfHostingExtensions
             }
         });
 
-        // QuickBooks service with typed HttpClient
-        services.AddSingleton<IQuickBooksService, QuickBooksService>();
+        // QuickBooks named HttpClient for OAuth operations; the service instance is created
+        // in DatabaseConfiguration.RegisterEnterpriseServices where the secret-vault integration
+        // and settings instance are available.
+        services.AddHttpClient("QuickBooks", client =>
+        {
+            client.BaseAddress = new Uri("https://oauth.platform.intuit.com");
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-QuickBooks/1.0");
+        });
 
         services.AddSingleton<WileyWidget.Services.HealthCheckService>();
     }
 
     private static void ConfigureHttpClients(IServiceCollection services)
     {
-        // Add PolicyRegistry for centralized policy management using Polly v8
-        services.AddPolicyRegistry();
-
-        // Register named policies using the central PolicyFactory to avoid duplication
-        services.AddSingleton<IConfigureOptions<PolicyRegistry>>(sp =>
-        {
-            var registry = sp.GetRequiredService<PolicyRegistry>();
-            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger>();
-
-            var jitteredRetryPolicy = WileyWidget.Configuration.Resilience.PolicyFactory.CreateJitteredRetryPolicy(logger);
-            var circuitBreakerPolicy = WileyWidget.Configuration.Resilience.PolicyFactory.CreateDefaultCircuitBreakerPolicy(logger);
-
-            registry.Add("JitteredRetry", jitteredRetryPolicy);
-            registry.Add("DefaultCircuitBreaker", circuitBreakerPolicy);
-
-            return new ConfigureOptions<PolicyRegistry>(_ => { });
-        });
-
+        // Basic named clients
         services.AddHttpClient();
 
         services.AddHttpClient("Default", client =>
@@ -342,31 +335,24 @@ public static class WpfHostingExtensions
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget/1.0");
         });
 
-        services.AddHttpClient("AIServices", client =>
+        // AIServices with standard resilience pipeline
+        var aiBuilder = services.AddHttpClient("AIServices", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(60);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-AI/1.0");
-        })
-        .AddPolicyHandlerFromRegistry("JitteredRetry")
-        .AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
+        });
+        // Use project's PolicyFactory (Polly v8 pipeline) to attach resilience
+        PolicyFactory.AddStandardResilienceHandler(aiBuilder);
 
-        services.AddHttpClient("ExternalAPIs", client =>
+        // External APIs with standard resilience
+        var externalBuilder = services.AddHttpClient("ExternalAPIs", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(45);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-API/1.0");
-        })
-        .AddPolicyHandlerFromRegistry("JitteredRetry")
-        .AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
+        });
+        PolicyFactory.AddStandardResilienceHandler(externalBuilder);
 
-        // Typed client for QuickBooks OAuth operations
-        services.AddHttpClient<QuickBooksService>(client =>
-        {
-            client.BaseAddress = new Uri("https://oauth.platform.intuit.com");
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-QuickBooks/1.0");
-        })
-        .AddPolicyHandlerFromRegistry("JitteredRetry")
-        .AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
+    // Typed client for QuickBooks OAuth operations is registered below (QuickBooksService)
     }
 
     private static void ConfigureWpfServices(IServiceCollection services)

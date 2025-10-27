@@ -58,6 +58,11 @@ namespace WileyWidget
 {
     public partial class App : Prism.DryIoc.PrismApplication
     {
+        // Task that completes when deferred secret initialization finishes.
+        // Consumers can await App.SecretsInitializationTask to know when secrets are available.
+        private static readonly System.Threading.Tasks.TaskCompletionSource<bool> _secretsInitializationTcs = new(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+        public static System.Threading.Tasks.Task SecretsInitializationTask => _secretsInitializationTcs.Task;
+
         // Static mapping of expected regions for each module for maintainability and reuse
         private static readonly Dictionary<string, string[]> moduleRegionMap = new Dictionary<string, string[]>
         {
@@ -122,6 +127,8 @@ namespace WileyWidget
         /// <summary>
         /// Bootstrapper constructor - handles early startup logging and diagnostics
         /// moved from Program.cs as per minimal entry point requirements.
+        /// CRITICAL: Syncfusion license registration MUST be in App() constructor per official documentation:
+        /// https://help.syncfusion.com/wpf/licensing/how-to-register-in-an-application
         /// </summary>
         public App()
         {
@@ -139,6 +146,19 @@ namespace WileyWidget
 
             Log.Information("WileyWidget bootstrap starting - Session: {StartupId}", _startupId);
 
+            // CRITICAL: Register Syncfusion and Bold Reports licenses BEFORE any Syncfusion control is initiated
+            // Per Syncfusion documentation: "The generated license key is just a string that needs to be registered
+            // before any Syncfusion control is initiated" and MUST be in App() constructor for WPF applications
+            try
+            {
+                EnsureSyncfusionLicenseRegistered();
+                EnsureBoldReportsLicenseRegistered();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to register licenses during App constructor (non-fatal, will retry later)");
+            }
+
             // Configure global exception handling early so any later initialization is covered
             try
             {
@@ -154,8 +174,36 @@ namespace WileyWidget
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            InitializeApplication();
         }
 
+        /// <summary>
+        /// Performs application-level initialization after Prism startup.
+        /// Handles theme setup and initial navigation.
+        /// NOTE: License registration is done in App() constructor per Syncfusion requirements.
+        /// </summary>
+        private void InitializeApplication()
+        {
+            try
+            {
+                // License registration already done in App() constructor per Syncfusion documentation
+                // Do NOT register licenses here - must be in constructor
+
+                // Apply theme globally via SfSkinManager per Syncfusion best practices
+                SfSkinManager.ApplyThemeAsDefaultStyle = true;
+                SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+                Log.Information("✓ Applied FluentLight theme globally via SfSkinManager");
+
+                // Future: Add initial navigation or health checks here if needed
+                // var regionManager = Container.Resolve<IRegionManager>();
+                // regionManager.RequestNavigate("MainRegion", "DashboardView");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Application initialization failed during theme/license setup");
+                throw;
+            }
+        }
 
         // Database preflight logic moved out of the bootstrapper for clarity. If needed, implement a dedicated
         // startup task or hosted service to perform DB migrations/preflight outside the UI bootstrap path.
@@ -238,7 +286,7 @@ namespace WileyWidget
                 Exception? processedException = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(exception);
                 Log.Fatal(processedException, "Unhandled background thread exception occurred");
                 // Also log full inner exception chain to help diagnose reflection-wrapped errors
-                LogExceptionDetails(processedException);
+                WileyWidget.Startup.BootstrapHelpers.LogExceptionDetails(processedException);
                 // Application will terminate after this
             };
 
@@ -329,57 +377,6 @@ namespace WileyWidget
         }
 
         /// <summary>
-        /// Unwraps TargetInvocationException to get to the root cause.
-        /// DryIoc container often wraps real exceptions in TargetInvocationException.
-        /// </summary>
-        private static Exception UnwrapTargetInvocationException(Exception? exception)
-        {
-            if (exception == null)
-            {
-                return new InvalidOperationException("Exception was null");
-            }
-
-            var current = exception;
-            var seen = new HashSet<Exception>();
-
-            // Unwrap TargetInvocationException chain
-            while (current is TargetInvocationException tie && tie.InnerException != null && !seen.Contains(tie))
-            {
-                seen.Add(tie);
-                current = tie.InnerException;
-            }
-
-            return current;
-        }
-
-        /// <summary>
-        /// Generic retry helper for synchronous operations. Lightweight exponential backoff used
-        /// instead of adding an external Polly dependency to keep bootstrapper changes minimal.
-        /// </summary>
-        private static TResult RetryOnException<TResult>(Func<TResult> operation, int maxAttempts = 3, int initialDelayMs = 200)
-        {
-            if (operation == null) throw new ArgumentNullException(nameof(operation));
-
-            int attempts = 0;
-            int delay = initialDelayMs;
-
-            while (true)
-            {
-                try
-                {
-                    return operation();
-                }
-                catch (Exception)
-                {
-                    attempts++;
-                    if (attempts >= maxAttempts) throw;
-                    Thread.Sleep(delay);
-                    delay = Math.Min(delay * 2, 5000); // cap backoff to 5s
-                }
-            }
-        }
-
-        /// <summary>
         /// Centralized, safer container resolve which will attempt to resolve scoped services
         /// from an IServiceScopeFactory when available, falling back to container resolve.
         /// Includes lightweight retry to harden against transient resolution failures.
@@ -390,7 +387,9 @@ namespace WileyWidget
             // We first try the root Prism container, and only if a scope factory is ALREADY available
             // do we create a scope to resolve the requested service. We never call ResolveWithRetry
             // from within itself.
-            return WileyWidget.Startup.BootstrapHelpers.RetryOnException(() =>
+            bool activatorFallbackUsed = false;
+
+            var result = WileyWidget.Startup.BootstrapHelpers.RetryOnException(() =>
             {
                 // 1) Try resolve directly from Prism's container
                 try
@@ -422,10 +421,19 @@ namespace WileyWidget
                 }
 
                 // 3) Last resort
+                activatorFallbackUsed = true;
                 return Activator.CreateInstance<T>();
             }, maxAttempts);
-        }
 
+            if (activatorFallbackUsed)
+            {
+                // Warn when we had to fallback to Activator. This indicates a missing or misconfigured
+                // registration in the DI container and should be investigated (but is tolerated at runtime).
+                Log.Warning("ResolveWithRetry used Activator.CreateInstance fallback for type {Type}. This may indicate a missing DI registration.", typeof(T).FullName);
+            }
+
+            return result;
+        }
         /// <summary>
         /// Attempts recovery from XamlParseException
         /// </summary>
@@ -445,12 +453,12 @@ namespace WileyWidget
                 try
                 {
                     EnsureSyncfusionLicenseRegistered();
-                    Log.Information("Syncfusion license re-registered successfully");
+                    Log.Information("✓ Successfully recovered from Syncfusion license XamlParseException");
                     return true;
                 }
                 catch (Exception recoveryEx)
                 {
-                    Log.Error(recoveryEx, "Failed to recover Syncfusion license");
+                    Log.Error(recoveryEx, "✗ Failed to recover from Syncfusion license XamlParseException");
                 }
             }
 
@@ -478,12 +486,12 @@ namespace WileyWidget
             try
             {
                 SfSkinManager.ApplicationTheme = new Theme("FluentLight");
-                Log.Information("Theme re-applied successfully");
+                Log.Information("✓ Successfully recovered from XamlParseException by re-applying theme");
                 return true;
             }
             catch (Exception themeEx)
             {
-                Log.Error(themeEx, "Theme re-application failed");
+                Log.Error(themeEx, "✗ Theme re-application recovery failed");
             }
 
             return false;
@@ -513,7 +521,7 @@ namespace WileyWidget
             }
 
             // Attempt general recovery by clearing resource dictionaries and re-applying theme
-            Log.Warning("Attempting general XAML recovery");
+            Log.Warning("Attempting general XAML recovery from XamlObjectWriterException");
             try
             {
                 // Force re-application of theme
@@ -523,12 +531,12 @@ namespace WileyWidget
                 Application.Current.Resources.MergedDictionaries.Clear();
                 // Note: In a real recovery scenario, you'd reload the necessary resource dictionaries
 
-                Log.Information("General XAML recovery completed");
+                Log.Information("✓ Successfully recovered from XamlObjectWriterException via theme re-application");
                 return true;
             }
             catch (Exception recoveryEx)
             {
-                Log.Error(recoveryEx, "General XAML recovery failed");
+                Log.Error(recoveryEx, "✗ General XAML recovery from XamlObjectWriterException failed");
             }
 
             return false;
@@ -751,73 +759,21 @@ namespace WileyWidget
             bool enableExtendedDiagnostics = extendedDiagEnv == "1" || string.Equals(extendedDiagEnv, "true", StringComparison.OrdinalIgnoreCase);
             try
             {
-                // Use direct Bootstrapper registration for simplified startup
-                configuration = new WileyWidget.Startup.Bootstrapper().RegisterTypes(containerRegistry);
-                Log.Debug("Configuration and logging registered via Bootstrapper");
+                // Use expanded Bootstrapper.Run() for centralized startup orchestration
+                // Handles: Configuration, Logging, HttpClient (with Polly), DbContext (with retries)
+                var bootstrapper = new WileyWidget.Startup.Bootstrapper();
+                configuration = bootstrapper.Run(containerRegistry);
+                Log.Debug("Configuration, logging, HttpClient, and database services registered via Bootstrapper.Run()");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Bootstrapper registration failed during early registration");
+                Log.Error(ex, "Bootstrapper.Run() failed during infrastructure registration");
                 throw;
             }
 
-            try
-            {
-                // Register Microsoft.Extensions.Logging integration with Serilog
-#pragma warning disable CA2000
-                SerilogLoggerFactory loggerFactory = new SerilogLoggerFactory(Log.Logger, dispose: false);
-#pragma warning restore CA2000
-                containerRegistry.RegisterInstance<ILoggerFactory>(loggerFactory);
-                // Register ILogger<> as open generic type using Logger<T> which properly implements ILogger<T>
-                containerRegistry.Register(typeof(ILogger<>), typeof(Microsoft.Extensions.Logging.Logger<>));
-                Log.Information("✓ Registered ILoggerFactory and ILogger<> with Serilog integration");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to register logging services");
-                throw;
-            }
+            // HttpClient and Database services are now handled by Bootstrapper - no need to duplicate here
+            Log.Debug("Infrastructure services (HttpClient, Database) already configured by Bootstrapper - skipping duplicate registration");
 
-            try
-            {
-                // Register HttpClient infrastructure for AI services
-                RegisterHttpClientServices(containerRegistry, configuration);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to register HttpClient services");
-                throw;
-            }
-
-            try
-            {
-                // Register database services
-                // If running in test mode, use an in-memory SQLite DB and short-circuit external services
-                Log.Debug("Test mode detection: WILEY_WIDGET_TESTMODE={Value}, testMode={Result}",
-                    Environment.GetEnvironmentVariable("WILEY_WIDGET_TESTMODE") ?? "null", testMode);
-
-                if (testMode)
-                {
-                    Log.Information("Test mode enabled via WILEY_WIDGET_TESTMODE=1: switching to in-memory DB and test fakes");
-                    Log.Debug("Registering in-memory database services...");
-                    RegisterInMemoryDatabaseServices(containerRegistry);
-                    Log.Debug("In-memory database services registered");
-
-                    // Test mode: external services are disabled to isolate issues
-                    Log.Information("✓ Test mode: external AI services disabled for diagnosis");
-                }
-                else
-                {
-                    Log.Debug("Registering production database services...");
-                    RegisterDatabaseServices(containerRegistry, configuration);
-                    Log.Debug("Production database services registered");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to register database services");
-                throw;
-            }
 
             try
             {
@@ -861,10 +817,15 @@ namespace WileyWidget
                         await secretVault.PopulateProductionSecretsAsync().ConfigureAwait(false);
                         Log.Information("✓ (Deferred) Production secrets initialized");
                     }
+
+                    // Signal successful completion of deferred secret initialization
+                    _secretsInitializationTcs.TrySetResult(true);
                 }
                 catch (Exception ex)
                 {
                     Log.Warning(ex, "Deferred production secrets initialization failed");
+                    // Surface failure to any awaiters so readiness checks can act accordingly
+                    _secretsInitializationTcs.TrySetException(ex);
                 }
             });
 
@@ -1703,171 +1664,6 @@ namespace WileyWidget
         /// </summary>
     /// <param name="containerRegistry">The DI container registry for DI registration</param>
         /// <param name="configuration">Application configuration for HttpClient settings</param>
-        private void RegisterHttpClientServices(IContainerRegistry containerRegistry, IConfiguration configuration)
-        {
-            Log.Information("=== Registering HttpClient Infrastructure for AI Services ===");
-
-            try
-            {
-                var xaiBaseUrl = configuration["XAI:BaseUrl"];
-                if (string.IsNullOrWhiteSpace(xaiBaseUrl))
-                {
-                    xaiBaseUrl = "https://api.x.ai/v1/";
-                }
-
-                if (!double.TryParse(configuration["XAI:TimeoutSeconds"], out var timeoutSeconds) || timeoutSeconds <= 0)
-                {
-                    timeoutSeconds = 30d;
-                }
-
-                var aiTimeout = TimeSpan.FromSeconds(timeoutSeconds);
-                var defaultTimeout = TimeSpan.FromSeconds(30);
-
-                Func<string, HttpClient> clientBuilder = name =>
-                {
-                    var normalized = string.IsNullOrWhiteSpace(name) ? "Default" : name;
-
-                    var handler = new SocketsHttpHandler
-                    {
-                        AllowAutoRedirect = true,
-                        MaxAutomaticRedirections = 3,
-                        AutomaticDecompression = DecompressionMethods.All,
-                        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-                        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
-                    };
-
-                    var client = new HttpClient(handler, disposeHandler: true)
-                    {
-                        Timeout = defaultTimeout
-                    };
-
-                    client.DefaultRequestHeaders.UserAgent.Clear();
-                    client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget/1.0");
-                    client.DefaultRequestHeaders.Accept.Clear();
-                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-                    if (string.Equals(normalized, "AIServices", StringComparison.OrdinalIgnoreCase))
-                    {
-                        client.BaseAddress = new Uri(xaiBaseUrl);
-                        client.Timeout = aiTimeout;
-                        Log.Debug("Configured HttpClient '{ClientName}' with BaseAddress {BaseAddress} and Timeout {TimeoutSeconds}s", normalized, client.BaseAddress, aiTimeout.TotalSeconds);
-                    }
-                    else
-                    {
-                        Log.Debug("Configured HttpClient '{ClientName}' with default timeout {TimeoutSeconds}s", normalized, defaultTimeout.TotalSeconds);
-                    }
-
-                    return client;
-                };
-
-#pragma warning disable CA2000 // Prism container manages the lifetime of the registered factory singleton
-                var httpClientFactory = new PrismHttpClientFactory(clientBuilder);
-#pragma warning restore CA2000
-                containerRegistry.RegisterInstance<IHttpClientFactory>(httpClientFactory);
-
-                Log.Information("✓ Registered PrismHttpClientFactory for IHttpClientFactory");
-                Log.Information("  - Named client 'AIServices' => Base URL: {BaseUrl}, Timeout: {Timeout}s", xaiBaseUrl, aiTimeout.TotalSeconds);
-                Log.Information("  - Default timeout for unnamed clients: {DefaultTimeout}s", defaultTimeout.TotalSeconds);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to register HttpClient infrastructure for AI services");
-                throw new InvalidOperationException("Failed to configure HttpClient for AI services. Check configuration and network settings.", ex);
-            }
-        }
-
-        /// <summary>
-        /// Registers database services using Microsoft.Extensions.DependencyInjection pattern
-        /// </summary>
-    /// <param name="containerRegistry">The DI container registry for DI registration</param>
-        /// <param name="configuration">Application configuration for database settings</param>
-        private void RegisterDatabaseServices(IContainerRegistry containerRegistry, IConfiguration configuration)
-        {
-            Log.Information("=== Registering Database Services ===");
-
-            try
-            {
-                // Legacy approach: build DbContextOptions<AppDbContext> from configuration
-                // and register a small legacy-compatible factory implementation that takes
-                // DbContextOptions<AppDbContext> in its constructor. This avoids cross-container
-                // ServiceCollection usage and keeps DI container composition consistent.
-
-                var connectionString = configuration.GetConnectionString("DefaultConnection")
-                                       ?? "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=true";
-
-                var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-                // Configure SQL Server with reasonable defaults (migrations assembly, retries, timeout)
-                optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
-                {
-                    sqlOptions.MigrationsAssembly("WileyWidget.Data");
-                    sqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
-                    sqlOptions.CommandTimeout(30);
-                });
-
-                optionsBuilder.EnableDetailedErrors();
-                optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.TrackAll);
-
-                var options = optionsBuilder.Options;
-
-
-                // Centralize EF Core registrations to a single helper to avoid duplicates
-                RegisterDbContextCore(containerRegistry, options);
-
-                Log.Information("✓ Registered database services (AppDbContext, IDbContextFactory via DI)");
-                Log.Information("  - Provider: SQL Server with connection pooling");
-                Log.Information("  - Features: container-scoped registration, repositories, audit logging");
-
-                // Ensure minimal additive schema hotfixes are applied very early in startup
-                    // This mirrors DatabaseConfiguration.ApplySchemaHotfixesAsync but works with DryIoc via Prism DI.
-                try
-                {
-                    // Apply additive schema hotfixes using the DI container to resolve the EF factory.
-                    // This avoids relying on the concrete DryIoc implementation here.
-                    ApplyAdditiveSchemaHotfixes();
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Schema hotfixes failed to apply; continuing without hotfixes");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to register database services");
-                throw new InvalidOperationException("Failed to configure database services. Check connection string and database availability.", ex);
-            }
-        }
-
-        /// <summary>
-            /// Legacy container-only additive schema hotfix runner to unblock environments with slight drift.
-        /// Safe to run multiple times. Adds missing columns used by runtime queries.
-        /// </summary>
-        private void ApplyAdditiveSchemaHotfixes()
-        {
-            // Resolve IDbContextFactory from the Prism container provider and execute idempotent ALTERs
-            try
-            {
-                var factory = ResolveWithRetry<IDbContextFactory<AppDbContext>>();
-                using var context = factory.CreateDbContext();
-
-                const string addQboClientId = @"IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
-                                    ALTER TABLE dbo.AppSettings ADD QboClientId NVARCHAR(MAX) NULL;";
-                const string addQboClientSecret = @"IF COL_LENGTH('dbo.AppSettings','QboClientSecret') IS NULL
-                                       ALTER TABLE dbo.AppSettings ADD QboClientSecret NVARCHAR(MAX) NULL;";
-                const string addAccountNumberValue = @"IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
-                                          ALTER TABLE dbo.MunicipalAccounts ADD [AccountNumber_Value] AS ([AccountNumber]);";
-
-                context.Database.ExecuteSqlRaw(addQboClientId);
-                context.Database.ExecuteSqlRaw(addQboClientSecret);
-                context.Database.ExecuteSqlRaw(addAccountNumberValue);
-
-                Log.Information("Schema hotfixes applied if needed: QboClientId, QboClientSecret, AccountNumber_Value");
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "Failed to apply additive schema hotfixes via container-resolved factory");
-                throw;
-            }
-        }
 
         /// <summary>
         /// Registers AI Integration Services for Phase 1 production deployment.
@@ -1962,48 +1758,6 @@ namespace WileyWidget
             }
         }
 
-        /// <summary>
-        /// Registers an in-memory SQLite database and lightweight EF Core options for test mode.
-        /// This keeps UI tests deterministic and avoids external DB dependencies.
-        /// </summary>
-        /// <param name="containerRegistry">DI container</param>
-        private void RegisterInMemoryDatabaseServices(IContainerRegistry containerRegistry)
-        {
-            Log.Information("Registering in-memory SQLite DB for test mode");
-
-            var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-            optionsBuilder.UseSqlite("DataSource=:memory:");
-            optionsBuilder.EnableSensitiveDataLogging();
-            optionsBuilder.EnableDetailedErrors();
-
-            var options = optionsBuilder.Options;
-            // Centralized registration helper for in-memory DB as well
-            RegisterDbContextCore(containerRegistry, options);
-
-            // Also register a test quickbooks repo if needed - repositories use AppDbContext so factory is enough
-            Log.Information("In-memory DB registration complete");
-        }
-
-        /// <summary>
-        /// Central helper to register EF Core DbContext options, factory and DbContext
-        /// to avoid duplicated registration logic across production and test paths.
-        /// </summary>
-        private void RegisterDbContextCore(IContainerRegistry containerRegistry, DbContextOptions<AppDbContext> options)
-        {
-            Log.Debug("Centralizing EF Core registrations (options, factory, AppDbContext)");
-
-            // Register the options instance
-            containerRegistry.RegisterInstance<DbContextOptions<AppDbContext>>(options);
-
-            // Register a factory implementation used by the app (legacy name retained)
-            // Use app-scoped DbContext factory implementation (renamed from legacy container-specific naming)
-            containerRegistry.RegisterSingleton<IDbContextFactory<AppDbContext>, WileyWidget.Data.AppDbContextFactory>();
-
-            // Register AppDbContext via factory to ensure proper creation per scope
-            containerRegistry.Register<AppDbContext>(provider => provider.Resolve<IDbContextFactory<AppDbContext>>().CreateDbContext());
-
-            Log.Information("✓ Central EF Core registrations complete (DbContextOptions, IDbContextFactory, AppDbContext)");
-        }
 
         /// <summary>
         /// Validates AI service configuration to ensure all required settings are present.
@@ -2503,34 +2257,6 @@ namespace WileyWidget
             Log.Information("✓ WPF binding error tracing enabled");
         }
 
-        /// <summary>
-        /// Logs an exception and its inner exception chain to aid diagnosing reflection-wrapped errors
-        /// such as TargetInvocationException which often hide the real cause inside InnerException.
-        /// </summary>
-        /// <param name="ex">The exception to log (may be null).</param>
-        private static void LogExceptionDetails(Exception? ex)
-        {
-            if (ex == null)
-            {
-                Log.Debug("LogExceptionDetails called with null exception");
-                return;
-            }
-
-            int depth = 0;
-            Exception? current = ex;
-            while (current != null && depth < 20)
-            {
-                Log.Error(current, "[ExceptionDepth:{Depth}] {ExceptionType}: {Message}", depth, current.GetType().FullName, current.Message);
-                current = current.InnerException;
-                depth++;
-            }
-
-            if (depth >= 20)
-            {
-                Log.Warning("Exception chain exceeded {MaxDepth} levels; truncated", 20);
-            }
-        }
-
         private IConfiguration BuildConfiguration()
         {
             // Load .env file from project directory
@@ -2551,51 +2277,10 @@ namespace WileyWidget
                 .AddUserSecrets<App>(optional: true);
 
             var configurationRoot = builder.Build();
-            WileyWidget.Startup.BootstrapHelpers.ResolveConfigurationPlaceholders(configurationRoot);
+            configurationRoot.ResolvePlaceholders();
 
             return configurationRoot;
         }
-
-        private static void ResolveConfigurationPlaceholders(IConfigurationRoot configurationRoot)
-        {
-            if (configurationRoot == null)
-            {
-                return;
-            }
-
-            var values = configurationRoot.AsEnumerable().ToList();
-            foreach (var entry in values)
-            {
-                if (string.IsNullOrWhiteSpace(entry.Value) || entry.Value.IndexOf("${", StringComparison.Ordinal) < 0)
-                {
-                    continue;
-                }
-
-                var replaced = PlaceholderRegex.Replace(entry.Value, match =>
-                {
-                    var variableName = match.Groups["name"].Value;
-                    if (string.IsNullOrWhiteSpace(variableName))
-                    {
-                        return match.Value;
-                    }
-
-                    var resolved = Environment.GetEnvironmentVariable(variableName);
-                    if (string.IsNullOrEmpty(resolved))
-                    {
-                        resolved = configurationRoot[variableName];
-                    }
-
-                    return string.IsNullOrEmpty(resolved) ? match.Value : resolved;
-                });
-
-                if (!string.Equals(replaced, entry.Value, StringComparison.Ordinal))
-                {
-                    configurationRoot[entry.Key] = replaced;
-                }
-            }
-        }
-
-        private static readonly Regex PlaceholderRegex = new("\\$\\{(?<name>[A-Za-z0-9_]+)\\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         /// <summary>
         /// Ensure application shutdown is robust. Some third-party libraries (Syncfusion) may attempt to show
@@ -2637,22 +2322,6 @@ namespace WileyWidget
                 // Ensure logger flush
                 try { Log.CloseAndFlush(); } catch { }
             }
-        }
-
-        /// <summary>
-        /// Provides access to Prism's active container provider for scenarios where
-        /// code-behind needs to resolve services outside of the ViewModelLocator pipeline.
-        /// </summary>
-        public static IContainerProvider GetContainerProvider()
-        {
-            if (Application.Current is not App app)
-            {
-                throw new InvalidOperationException("Application is not initialized or not of type App.");
-            }
-
-            // Container is PrismApplication's IContainerExtension - expose the IContainerProvider
-            return app.Container
-                 ?? throw new InvalidOperationException("Prism container is not available during application lifetime.");
         }
 
         private void ConfigureDiagnosticsSettings(IConfiguration configuration)

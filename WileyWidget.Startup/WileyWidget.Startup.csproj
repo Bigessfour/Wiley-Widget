@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -10,6 +10,7 @@
   <ItemGroup>
     <!-- Minimal set of package references required by the lightweight Bootstrapper -->
     <PackageReference Include="Prism.Core" />
+    <PackageReference Include="DryIoc" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
@@ -23,6 +24,9 @@
     <PackageReference Include="Polly" />
     <PackageReference Include="Polly.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +40,10 @@
   <ItemGroup>
     <!-- Bootstrapper needs access to the Configuration helpers compiled into WileyWidget.Models -->
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <!-- Bootstrapper needs access to WileyWidget.Data for DbContext registration -->
+    <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <!-- Bootstrapper needs access to WileyWidget.Services for PrismHttpClientFactory -->
+    <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
   </ItemGroup>
 
 </Project>

@@ -179,11 +179,20 @@
     <Page Remove="src\Views\**\*.xaml" />
   <!-- Keep App.xaml and App.xaml.cs included for wpftmp so abstract PrismApplication methods are implemented -->
     <!-- Exclude services that depend on ViewModels to prevent transient type resolution errors -->
-    <Compile Remove="src\Services\**\*.cs" />
+    <!-- App.xaml.cs registers/uses a small number of service types (e.g., QuickBooksService) during bootstrap. Removing
+      the entire services folder from wpftmp causes concrete types referenced by App.xaml.cs to be unavailable, which
+      leads to CS0311/CS0246 during markup compilation. Keep the service sources available for the temporary project. -->
+    <!-- <Compile Remove="src\Services\**\*.cs" /> -->
     <!-- Exclude diagnostics and configuration sources that are not required during markup compile
-         and may reference optional containers/libraries (e.g., Unity) not present in wpftmp -->
-    <Compile Remove="src\Diagnostics\**\*.cs" />
-    <Compile Remove="src\Configuration\**\*.cs" />
+      and may reference optional containers/libraries (e.g., Unity) not present in wpftmp -->
+    <!-- NOTE: App.xaml.cs references a small set of diagnostics helpers (BindingErrorTraceListener, StartupPerformanceMonitor,
+      XamlDiagnosticsService). Removing the entire diagnostics folder from the wpftmp temporary project makes those types
+      unavailable during markup compilation and causes CS0234. Keep diagnostics sources available for wpftmp. -->
+    <!-- <Compile Remove="src\Diagnostics\**\*.cs" /> -->
+    <!-- App.xaml.cs depends on configuration helpers (AppOptionsConfigurator, StaticOptionsMonitor<T>) which must be
+      available during wpftmp markup compilation. Removing the full configuration folder makes those types missing.
+      Comment out the removal so configuration sources remain available in wpftmp. -->
+    <!-- <Compile Remove="src\Configuration\**\*.cs" /> -->
   </ItemGroup>
 
   <!-- Exclude test files and sample files from main project build -->
