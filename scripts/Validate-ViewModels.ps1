@@ -139,21 +139,21 @@ function Get-ViewModelInfo {
         $commands = Get-StringSet
         if (-not $commands) { $commands = [System.Collections.ArrayList]@() }
 
-        # Detect CommunityToolkit source-generator ObservableProperty usage
-        $observableMatches = [regex]::Matches($content, '\[ObservableProperty[\s\S]*?\]\s+private\s+[^\s]+\s+([_\w]+)')
-        foreach ($match in $observableMatches) {
+        # Detect Prism source-generator DelegateCommand usage
+        $delegateMatches = [regex]::Matches($content, 'DelegateCommand[\s\S]*?\]\s+private\s+[^\s]+\s+([_\w]+)')
+        foreach ($match in $delegateMatches) {
             $field = $match.Groups[1].Value
             $propertyName = Convert-FieldNameToProperty -FieldName $field
             if ($propertyName) { $properties.Add($propertyName) | Out-Null }
         }
 
-        # Detect direct ObservableObject inheritance (CommunityToolkit) or other toolkit remnants
-        $usesObservableObject = [regex]::IsMatch($content, '\bObservableObject\b')
-        $usesCommunityToolkit = [regex]::IsMatch($content, 'CommunityToolkit\.Mvvm|ObservableProperty|RelayCommand|ObservableRecipient|IRelayCommand|IAsyncRelayCommand')
+        # Detect Prism MVVM patterns
+        $usesPrismMvvm = [regex]::IsMatch($content, 'Prism\.Mvvm|BindableBase|RaisePropertyChanged')
+        $usesPrismCommands = [regex]::IsMatch($content, 'Prism\.Commands|DelegateCommand')
 
-        # Detect RelayCommand attribute (source-generator) patterns
-        $relayMatches = [regex]::Matches($content, '\[RelayCommand[\s\S]*?\]\s*(?:private|public)?\s*(?:async\s+)?[\w<>]+\s+(\w+)\s*\(')
-        foreach ($match in $relayMatches) {
+        # Detect DelegateCommand initialization patterns
+        $delegateCommandMatches = [regex]::Matches($content, 'DelegateCommand[\s\S]*?\]\s*(?:private|public)?\s*(?:async\s+)?[\w<>]+\s+(\w+)\s*\(')
+        foreach ($match in $delegateCommandMatches) {
             $methodName = $match.Groups[1].Value
             $commandBase = $methodName -replace 'Async$', ''
             $commands.Add("${commandBase}Command") | Out-Null
@@ -188,13 +188,13 @@ function Get-ViewModelInfo {
         }
 
         $viewModels += [PSCustomObject]@{
-            Name                 = $file.BaseName
-            FilePath             = $file.FullName
-            Properties           = $properties
-            Commands             = $commands
-            UsesToolkit          = $usesCommunityToolkit
-            UsesObservableObject = $usesObservableObject
-            LegacyIoC            = ($foundLegacyIoC -join ', ')
+            Name              = $file.BaseName
+            FilePath          = $file.FullName
+            Properties        = $properties
+            Commands          = $commands
+            UsesPrismMvvm     = $usesPrismMvvm
+            UsesPrismCommands = $usesPrismCommands
+            LegacyIoC         = ($foundLegacyIoC -join ', ')
         }
     }
 
@@ -335,23 +335,23 @@ foreach ($vm in $viewModels) {
             }
         }
 
-        # Report CommunityToolkit or ObservableObject usage
-        if ($vm.UsesToolkit) {
+        # Report Prism MVVM usage
+        if (-not $vm.UsesPrismMvvm) {
             $results += [PSCustomObject]@{
-                Type      = 'CommunityToolkitUsage'
+                Type      = 'MissingPrismMvvm'
                 Severity  = 'Warning'
                 ViewModel = $vm.Name
-                Message   = 'ViewModel references CommunityToolkit.Mvvm patterns (ObservableProperty, RelayCommand, ObservableObject, etc). Consider converting to Prism BindableBase/DelegateCommand.'
+                Message   = 'ViewModel does not appear to use Prism.Mvvm patterns (BindableBase, RaisePropertyChanged). Consider migrating to Prism MVVM.'
                 File      = $vm.FilePath
             }
         }
 
-        if ($vm.UsesObservableObject) {
+        if (-not $vm.UsesPrismCommands -and $vm.Commands.Count -gt 0) {
             $results += [PSCustomObject]@{
-                Type      = 'ObservableObjectUsage'
+                Type      = 'MissingPrismCommands'
                 Severity  = 'Warning'
                 ViewModel = $vm.Name
-                Message   = 'ViewModel inherits or references ObservableObject (CommunityToolkit). Consider migrating to Prism BindableBase.'
+                Message   = 'ViewModel has commands but does not appear to use Prism.Commands. Consider using DelegateCommand.'
                 File      = $vm.FilePath
             }
         }

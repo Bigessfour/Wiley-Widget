@@ -75,7 +75,7 @@ namespace WileyWidget.ViewModels
             set => SetProperty(ref hasWarnings, value);
         }
 
-        // Prism DelegateCommand property replacing CommunityToolkit RelayCommand
+        // Prism DelegateCommand property for UI bindings
         public Prism.Commands.DelegateCommand ClearCommand { get; private set; }
 
         /// <summary>

@@ -483,7 +483,7 @@ public partial class AIAssistViewModel : BindableBase, IDisposable, INavigationA
         set => SetProperty(ref isInputValid, value);
     }
 
-    // Prism DelegateCommand properties (replacing CommunityToolkit RelayCommand source-generated commands)
+    // Prism DelegateCommand properties for UI bindings
     // Evidence for Section 3 Commands: All user actions ICommand-backed with CanExecute and RaiseCanExecuteChanged on deps per Prism doc: "DelegateCommand provides CanExecute with requery support."
     public Prism.Commands.DelegateCommand SendCommand { get; private set; }
     public Prism.Commands.DelegateCommand SendMessageCommand { get; private set; }
@@ -515,7 +515,7 @@ public partial class AIAssistViewModel : BindableBase, IDisposable, INavigationA
 
         // ChatMessages is the single source of truth for messages displayed in SfAIAssistView
 
-        // Initialize Prism DelegateCommands for UI bindings (replaces CommunityToolkit RelayCommand)
+        // Initialize Prism DelegateCommands for UI bindings
         SendCommand = new Prism.Commands.DelegateCommand(async () => await Send(), () => CanSend());
         // Removed ClearResponsesCommand; use ClearChat instead
         SendMessageCommand = new Prism.Commands.DelegateCommand(async () => await SendMessage(), () => CanSendMessage());

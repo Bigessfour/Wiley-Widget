@@ -625,7 +625,7 @@ WileyWidget/
 
 ### **Code Standards**
 - **EF Core 9.0.8:** Use for all data operations with SQL Server Express
-- **CommunityToolkit.Mvvm 8.4.0:** For ViewModel bindings and commands
+- **Prism.Mvvm:** For ViewModel bindings and commands
 - **Syncfusion WPF 31.1.20:** For UI components and theming
 - **Serilog 4.3.0:** For structured logging with file and async sinks
 - **No nullable reference types:** Per project guidelines
@@ -955,7 +955,7 @@ Minimal enough that future-you won’t hate past-you.
 ## Features
 
 - Syncfusion DataGrid + Ribbon (add your license key)
-- MVVM (CommunityToolkit.Mvvm)
+- MVVM (Prism.Mvvm)
 - NUnit tests + coverage
 - CI & Release GitHub workflows
 - Central versioning (`Directory.Build.targets`)

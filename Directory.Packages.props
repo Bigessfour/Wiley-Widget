@@ -27,8 +27,6 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.10" />
-    <!-- CommunityToolkit MVVM -->
-    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <!-- Identity -->
   <!-- Identity/MSAL entries removed from central package versions (archived) -->
     <PackageVersion Include="Microsoft.Graph" Version="5.67.0" />

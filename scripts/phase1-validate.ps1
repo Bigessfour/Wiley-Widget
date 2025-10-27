@@ -101,8 +101,7 @@ else {
     $csprojContent = Get-Content $csprojPath -Raw
     $requiredPackages = @(
         "Microsoft.EntityFrameworkCore",
-        "Microsoft.EntityFrameworkCore.SqlServer",
-        "CommunityToolkit.Mvvm"
+        "Microsoft.EntityFrameworkCore.SqlServer"
     )
 
     foreach ($package in $requiredPackages) {

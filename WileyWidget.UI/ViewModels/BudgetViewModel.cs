@@ -20,7 +20,6 @@ namespace WileyWidget.ViewModels;
 /// View model for budget analysis and reporting
 /// Provides comprehensive budget insights and financial analysis
 /// Implements messaging, busy states, input validation, and IDataErrorInfo
-/// Converted from CommunityToolkit.Mvvm to Prism pattern for consistency
 /// </summary>
 public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo, INavigationAware
 {

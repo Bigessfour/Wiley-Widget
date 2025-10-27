@@ -9,7 +9,7 @@ Highlights:
 - Modern Syncfusion UI (Ribbon + DataGrid) with theme switching (Fluent Dark/Light)
 - Persistent window size/position + theme + settings
 - Structured Serilog logging (rolling daily, enriched context)
-- MVVM (CommunityToolkit.Mvvm) baseline
+- MVVM (Prism.Mvvm) baseline
 - Unit test + coverage plumbing (CI enforces 70% line coverage)
 
 Next up (roadmap snippets): SkinManager live theme improvements, UI automation, signing/updater.

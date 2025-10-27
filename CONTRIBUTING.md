@@ -80,7 +80,7 @@ dotnet ef database update
 ### Architecture
 
 - **MVVM Pattern**: Strict separation - no code-behind logic in XAML files
-- **CommunityToolkit.Mvvm**: Use `[ObservableObject]`, `[RelayCommand]`, `[ObservableProperty]`
+- **Prism.Mvvm**: Use `BindableBase`, `DelegateCommand` for ViewModel bindings and commands
 - **EF Core**: Microsoft.EntityFrameworkCore.SqlServer for Azure SQL integration
 - **Testing**: NUnit with minimum 70% coverage (CI enforced)
 

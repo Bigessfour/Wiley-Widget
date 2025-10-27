@@ -116,7 +116,7 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
     private ICollectionView _accountsView;
     public ICollectionView AccountsView => _accountsView;
 
-    // Prism DelegateCommand properties (replace CommunityToolkit RelayCommand)
+    // Prism DelegateCommand properties for UI bindings
     public Prism.Commands.DelegateCommand LoadAccountsCommand { get; private set; }
     public Prism.Commands.DelegateCommand SyncFromQuickBooksCommand { get; private set; }
     public Prism.Commands.DelegateCommand LoadBudgetAnalysisCommand { get; private set; }
