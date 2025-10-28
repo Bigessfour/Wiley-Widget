@@ -1,0 +1,204 @@
+services:
+  # ============================================================================
+  # UI Test Runner Service - Production Configuration
+  # ============================================================================
+  uitest-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.uitest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: wileywidget/uitest:latest
+    container_name: wiley-widget-uitest
+
+    # Resource constraints for stable test execution
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8G
+        reservations:
+          cpus: "2.0"
+          memory: 4G
+
+    # Volume mappings for test results and logs
+    volumes:
+      # Test results output (read-write)
+      - ../TestResults:/test-results:rw
+      # Test logs (read-write)
+      - ../test-logs:/test-logs:rw
+      # Coverage reports (read-write)
+      - ../coverage:/coverage:rw
+      # Shared temp directory for screenshots
+      - uitest-temp:/temp:rw
+
+    # Environment configuration
+    environment:
+      # Test execution settings
+      WILEY_WIDGET_TESTMODE: "1"
+      WILEY_WIDGET_ROOT: "C:\\app"
+
+      # .NET configuration
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_NOLOGO: "1"
+      DOTNET_GCServer: "0"
+
+      # DPI and display settings for WPF
+      DOTNET_SYSTEM_WINDOWS_FORMS_DPIAWARENESS: "PerMonitorV2"
+
+      # Test framework settings
+      VSTEST_CONNECTION_TIMEOUT: "180"
+      XUNIT_DIAGNOSTICS: "false"
+
+      # Logging configuration
+      SERILOG_MINIMUMLEVEL: "Information"
+
+      # Syncfusion license (from host environment or secrets)
+      SYNCFUSION_LICENSE_KEY: "${SYNCFUSION_LICENSE_KEY:-}"
+
+      # Temporal directory for UI automation
+      TEMP: "C:\\temp"
+      TMP: "C:\\temp"
+
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+
+    # Network configuration
+    networks:
+      - uitest-network
+
+    # Startup dependencies (if SQL Server is needed)
+    depends_on:
+      sqlserver-test:
+        condition: service_healthy
+
+    # Command override for specific test filters (can be overridden at runtime)
+    # Default: runs all UI tests
+    command: >
+      powershell -Command "
+        Write-Host '=== Wiley Widget UI Test Execution ===' -ForegroundColor Cyan;
+        Write-Host 'Test Mode: Containerized' -ForegroundColor Yellow;
+        Write-Host 'Timestamp:' (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') -ForegroundColor Yellow;
+        Write-Host '';
+
+        $$filter = if ($$env:TEST_FILTER) { $$env:TEST_FILTER } else { '' };
+        $$verbosity = if ($$env:TEST_VERBOSITY) { $$env:TEST_VERBOSITY } else { 'detailed' };
+
+        Write-Host \"Test Filter: $$(if ($$filter) { $$filter } else { 'All tests' })\" -ForegroundColor Green;
+        Write-Host \"Verbosity: $$verbosity\" -ForegroundColor Green;
+        Write-Host '';
+
+        $$testArgs = @(
+          'test',
+          'WileyWidget.UiTests/WileyWidget.UiTests.csproj',
+          '--configuration', 'Debug',
+          '--no-build',
+          '--logger', 'trx;LogFileName=uitest-results.trx',
+          '--logger', \"console;verbosity=$$verbosity\",
+          '--results-directory', 'C:/test-results',
+          '--blame-hang-timeout', '5m',
+          '--collect:XPlat Code Coverage'
+        );
+
+        if ($$filter) {
+          $$testArgs += '--filter';
+          $$testArgs += $$filter;
+        }
+
+        Write-Host 'Starting test execution...' -ForegroundColor Cyan;
+        Write-Host '';
+
+        $$exitCode = 0;
+        try {
+          & dotnet @testArgs;
+          $$exitCode = $$LASTEXITCODE;
+        } catch {
+          Write-Host \"Error during test execution: $$_\" -ForegroundColor Red;
+          $$exitCode = 1;
+        }
+
+        Write-Host '';
+        Write-Host '=== Test Execution Summary ===' -ForegroundColor Cyan;
+        if ($$exitCode -eq 0) {
+          Write-Host 'Status: PASSED' -ForegroundColor Green;
+        } else {
+          Write-Host 'Status: FAILED' -ForegroundColor Red;
+        }
+        Write-Host \"Exit Code: $$exitCode\" -ForegroundColor Yellow;
+
+        if (Test-Path 'C:/test-results') {
+          $$results = Get-ChildItem 'C:/test-results' -Recurse -File;
+          Write-Host \"Result Files: $$($$results.Count)\" -ForegroundColor Yellow;
+          $$results | ForEach-Object { Write-Host \"  - $$($_.FullName)\" -ForegroundColor Gray };
+        }
+
+        exit $$exitCode
+      "
+
+    # Health check for the test runner
+    healthcheck:
+      test: ["CMD", "powershell", "-Command", "dotnet --version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================================================
+  # SQL Server Test Database (Optional - for integration tests)
+  # ============================================================================
+  sqlserver-test:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: wiley-widget-sqlserver-test
+
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      MSSQL_PID: "Developer"
+
+    volumes:
+      - sqlserver-test-data:/var/opt/mssql
+
+    networks:
+      - uitest-network
+
+    ports:
+      - "1433:1433"
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q 'SELECT 1' -C || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "1.0"
+          memory: 1G
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  uitest-network:
+    driver: nat
+    name: wiley-widget-uitest-net
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  uitest-temp:
+    driver: local
+  sqlserver-test-data:
+    driver: local

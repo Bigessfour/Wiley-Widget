@@ -1,0 +1,124 @@
+# Production-ready Dockerfile for WPF UI Tests with FlaUI
+# Base: Windows Server Core LTSC 2022 with .NET 9.0 SDK
+# Includes: Desktop Runtime for WPF support, optimized layer caching
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0-windowsservercore-ltsc2022 AS base
+
+# Set PowerShell as default shell for better error handling
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Install Windows Desktop Runtime 9.0 for WPF support
+RUN Write-Host 'Installing .NET Desktop Runtime 9.0...'; \
+    $url = 'https://download.visualstudio.microsoft.com/download/pr/8053d038-3e3a-464a-aa12-e3c95b8c9f2e/daeb5b4c6bad44b384a65757b0a96e50/windowsdesktop-runtime-9.0.1-win-x64.exe'; \
+    Invoke-WebRequest -Uri $url -OutFile 'windowsdesktop-runtime.exe' -UseBasicParsing; \
+    Start-Process -FilePath 'windowsdesktop-runtime.exe' -ArgumentList '/install', '/quiet', '/norestart' -Wait; \
+    Remove-Item -Force 'windowsdesktop-runtime.exe'; \
+    Write-Host 'Desktop Runtime installed successfully.'
+
+# Configure display settings for UI automation (headless mode)
+RUN Write-Host 'Configuring display settings for UI automation...'; \
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name 'AutoAdminLogon' -Value '1' -Type String -ErrorAction SilentlyContinue; \
+    Write-Host 'Display configuration complete.'
+
+# Set working directory
+WORKDIR /app
+
+# ===== LAYER 1: Solution and project file structure (rarely changes) =====
+COPY ["WileyWidget.sln", "./"]
+COPY ["global.json", "./"]
+COPY ["Directory.Build.props", "./"]
+COPY ["Directory.Build.targets", "./"]
+COPY ["Directory.Packages.props", "./"]
+
+# ===== LAYER 2: Project files only (for dependency restoration) =====
+COPY ["WileyWidget.csproj", "./"]
+COPY ["WileyWidget.Abstractions/WileyWidget.Abstractions.csproj", "./WileyWidget.Abstractions/"]
+COPY ["WileyWidget.Business/WileyWidget.Business.csproj", "./WileyWidget.Business/"]
+COPY ["WileyWidget.Models/WileyWidget.Models.csproj", "./WileyWidget.Models/"]
+COPY ["WileyWidget.Services/WileyWidget.Services.csproj", "./WileyWidget.Services/"]
+COPY ["WileyWidget.Startup/WileyWidget.Startup.csproj", "./WileyWidget.Startup/"]
+COPY ["WileyWidget.UI/WileyWidget.UI.csproj", "./WileyWidget.UI/"]
+COPY ["WileyWidget.UiTests/WileyWidget.UiTests.csproj", "./WileyWidget.UiTests/"]
+
+# ===== LAYER 3: NuGet restore (cached unless packages change) =====
+RUN Write-Host 'Restoring NuGet packages...'; \
+    dotnet restore 'WileyWidget.sln' --runtime win-x64 --verbosity minimal; \
+    Write-Host 'Package restoration complete.'
+
+# ===== LAYER 4: Source code (changes frequently) =====
+COPY ["WileyWidget.Abstractions/", "./WileyWidget.Abstractions/"]
+COPY ["WileyWidget.Business/", "./WileyWidget.Business/"]
+COPY ["WileyWidget.Models/", "./WileyWidget.Models/"]
+COPY ["WileyWidget.Services/", "./WileyWidget.Services/"]
+COPY ["WileyWidget.Startup/", "./WileyWidget.Startup/"]
+COPY ["WileyWidget.UI/", "./WileyWidget.UI/"]
+COPY ["WileyWidget.UiTests/", "./WileyWidget.UiTests/"]
+COPY ["app.config", "./"]
+COPY ["appsettings.json", "./"]
+
+# Copy config directory if exists
+COPY ["config/", "./config/"]
+
+# ===== LAYER 5: Build applications (Debug for better test debugging) =====
+RUN Write-Host 'Building WileyWidget application...'; \
+    dotnet build 'WileyWidget.csproj' --configuration Debug --no-restore --verbosity minimal; \
+    Write-Host 'Application build complete.'
+
+RUN Write-Host 'Building UI test project...'; \
+    dotnet build 'WileyWidget.UiTests/WileyWidget.UiTests.csproj' --configuration Debug --no-restore --verbosity minimal; \
+    Write-Host 'Test project build complete.'
+
+# ===== LAYER 6: Runtime configuration =====
+# Set environment variables for test execution
+ENV WILEY_WIDGET_TESTMODE=1 \
+    WILEY_WIDGET_ROOT=C:\\app \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+    DOTNET_NOLOGO=1 \
+    # DPI awareness for consistent rendering
+    DOTNET_SYSTEM_WINDOWS_FORMS_DPIAWARENESS=PerMonitorV2 \
+    # Disable hardware acceleration for stability
+    DOTNET_GCServer=0 \
+    # Test result configuration
+    VSTEST_CONNECTION_TIMEOUT=180
+
+# Create test results directory
+RUN New-Item -ItemType Directory -Force -Path 'C:\test-results' | Out-Null; \
+    Write-Host 'Test results directory created.'
+
+# Health check to ensure .NET and Desktop Runtime are available
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD powershell -Command "dotnet --info | Select-String 'Microsoft.WindowsDesktop.App' -Quiet"
+
+# Default entry point: Run UI tests with detailed logging
+ENTRYPOINT ["powershell", "-Command", \
+    "Write-Host 'Starting UI test execution...'; \
+    $exitCode = 0; \
+    try { \
+        dotnet test 'WileyWidget.UiTests/WileyWidget.UiTests.csproj' \
+            --configuration Debug \
+            --no-build \
+            --logger 'trx;LogFileName=uitest-results.trx' \
+            --logger 'console;verbosity=detailed' \
+            --results-directory 'C:/test-results' \
+            --blame-hang-timeout 5m \
+            --collect:'XPlat Code Coverage'; \
+        $exitCode = $LASTEXITCODE; \
+    } catch { \
+        Write-Host \"Test execution failed: $_\" -ForegroundColor Red; \
+        $exitCode = 1; \
+    } finally { \
+        Write-Host \"Test execution completed with exit code: $exitCode\"; \
+        if (Test-Path 'C:/test-results') { \
+            Get-ChildItem 'C:/test-results' -Recurse | ForEach-Object { Write-Host \"Result file: $($_.FullName)\" }; \
+        } \
+    } \
+    exit $exitCode"]
+
+# Labels for metadata
+LABEL maintainer="Wiley Widget Team" \
+      description="WPF UI Test Runner with FlaUI and .NET 9.0 Desktop Runtime" \
+      version="1.0.0" \
+      framework=".NET 9.0" \
+      test-framework="xUnit + FlaUI" \
+      base-image="mcr.microsoft.com/dotnet/sdk:9.0-windowsservercore-ltsc2022"
