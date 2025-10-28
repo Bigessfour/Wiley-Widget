@@ -14,6 +14,7 @@ Usage:
 
 Output: JSON printed to stdout with keys: prism_core, prism_wpf, types, attributes
 """
+
 from __future__ import annotations
 
 import json
@@ -21,14 +22,17 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 
 def ensure_dnfile() -> None:
     try:
         return
     except Exception:
-        print("dnfile not found; attempting to install via pip into current environment...", file=sys.stderr)
+        print(
+            "dnfile not found; attempting to install via pip into current environment...",
+            file=sys.stderr,
+        )
         subprocess.check_call([sys.executable, "-m", "pip", "install", "dnfile"])
 
 
@@ -72,11 +76,11 @@ def inspect_assembly(path: Path) -> Dict:
     # Collect type names (TypeDef table)
     try:
         metadata = pe.net.mdtables
-        if hasattr(metadata, 'TypeDef'):
+        if hasattr(metadata, "TypeDef"):
             for row in metadata.TypeDef:
                 try:
-                    ns = getattr(row, 'TypeNamespace', None)
-                    name = getattr(row, 'TypeName', None)
+                    ns = getattr(row, "TypeNamespace", None)
+                    name = getattr(row, "TypeName", None)
                     if ns:
                         types.append(f"{ns}.{name}")
                     else:
@@ -88,11 +92,11 @@ def inspect_assembly(path: Path) -> Dict:
 
     # Collect custom attribute type names and fixed arg blobs (best-effort)
     try:
-        if hasattr(metadata, 'CustomAttribute'):
+        if hasattr(metadata, "CustomAttribute"):
             for ca in metadata.CustomAttribute:
                 try:
                     # ca.Type will be a coded token; convert to string if possible
-                    typename = getattr(ca.Type, 'TypeName', None)
+                    typename = getattr(ca.Type, "TypeName", None)
                     if not typename:
                         typename = str(ca.Type)
                     attrs.append(str(typename))

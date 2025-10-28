@@ -59,7 +59,7 @@ using System.Xaml;
 
 namespace WileyWidget
 {
-    public partial class App : Prism.PrismApplication
+    public partial class App : Prism.PrismApplicationBase
     {
         // Task that completes when de1ferred secret initialization finishes.
         // Consumers can await App.SecretsInitializationTask to know when secrets are available.
@@ -1597,7 +1597,7 @@ namespace WileyWidget
 
             var viewTypes = allTypes.Where(t => t != null && t.IsClass && !t.IsAbstract && t.Name.EndsWith("View", StringComparison.Ordinal)).ToArray();
 
-            var regRegisterOne = typeof(IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
+            var regRegisterOne = typeof(Prism.Ioc.IContainerRegistry).GetMethods().FirstOrDefault(m => m.Name == "Register" && m.IsGenericMethod && m.GetGenericArguments().Length == 1);
             var prismContainer = containerRegistry.GetContainer();
 
             foreach (var view in viewTypes)

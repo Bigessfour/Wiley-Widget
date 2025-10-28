@@ -15,13 +15,15 @@ try {
         exit 2
     }
 
-    $issues = Invoke-ScriptAnalyzer -Path $scriptPath -Severity Error,Warning
+    $issues = Invoke-ScriptAnalyzer -Path $scriptPath -Severity Error, Warning
     if ($issues) {
         $issues | Format-List
-    } else {
+    }
+    else {
         Write-Output 'No findings'
     }
-} catch {
+}
+catch {
     Write-Error "Failed to run PSScriptAnalyzer: $($_.Exception.Message)"
     exit 1
 }

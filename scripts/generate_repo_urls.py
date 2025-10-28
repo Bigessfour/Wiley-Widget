@@ -171,16 +171,16 @@ class RepoManifestGenerator:
             try:
                 url = remote_url.strip()
                 # strip .git
-                if url.endswith('.git'):
+                if url.endswith(".git"):
                     url = url[:-4]
 
                 # SSH form: git@github.com:owner/repo
-                if url.startswith('git@') and ':' in url:
-                    after = url.split(':', 1)[1]
+                if url.startswith("git@") and ":" in url:
+                    after = url.split(":", 1)[1]
                     owner_repo = after
                 else:
                     # HTTP/HTTPS form: https://github.com/owner/repo
-                    parts = url.split('/')
+                    parts = url.split("/")
                     if len(parts) >= 2:
                         owner_repo = f"{parts[-2]}/{parts[-1]}"
             except Exception:
@@ -258,7 +258,9 @@ class RepoManifestGenerator:
             return "Binary or large file - content not summarized"
 
         try:
-            with open(self.repo_path / file_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(
+                self.repo_path / file_path, "r", encoding="utf-8", errors="ignore"
+            ) as f:
                 # read head and tail for a better sample
                 head = f.read(4096)
                 tail = ""
@@ -385,7 +387,9 @@ class RepoManifestGenerator:
                 r"login",
             ],
         )
-        return any(re.search(pattern, file_path, re.IGNORECASE) for pattern in exclude_patterns)
+        return any(
+            re.search(pattern, file_path, re.IGNORECASE) for pattern in exclude_patterns
+        )
 
     def _generate_file_urls(self, file_path: str) -> dict[str, str]:
         """Generate URLs for the file."""

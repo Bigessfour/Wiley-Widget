@@ -238,6 +238,7 @@
       "type": "process",
       "args": ["run", "--project", "${workspaceFolder}/WileyWidget.csproj"],
       "problemMatcher": "$msCompile",
+      "dependsOn": ["kill-dotnet"],
       "group": "build",
       "presentation": {
         "echo": true,

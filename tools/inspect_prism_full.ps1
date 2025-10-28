@@ -37,7 +37,8 @@ try {
         ForEach-Object { Write-Output ($_.GetType().FullName + ' -> ' + $_.ToString()) }
 
     exit 0
-} catch {
+}
+catch {
     Write-Error "Error inspecting Prism assemblies: $($_.Exception.Message)"
     exit 1
 }

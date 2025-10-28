@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -119,7 +119,6 @@
     <PackageReference Include="Syncfusion.XlsIO.WPF" Version="31.1.17" />
     <PackageReference Include="Syncfusion.Pdf.WPF" Version="31.1.17" />
   <PackageReference Include="FluentValidation" Version="11.11.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.10.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="9.10.0" />
     <PackageReference Include="System.Management" Version="9.0.10" />

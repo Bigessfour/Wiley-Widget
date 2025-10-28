@@ -34,7 +34,8 @@ try {
         ForEach-Object { Write-Output ($_.GetType().FullName + ' -> ' + $_.ToString()) }
 
     exit 0
-} catch {
+}
+catch {
     Write-Error "Error inspecting assembly: $($_.Exception.Message)"
     Write-Verbose "Exception details: $($_ | Out-String)"
     exit 1

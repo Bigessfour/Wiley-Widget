@@ -10,7 +10,7 @@ repo_root = Path(__file__).resolve().parent
 assemblies_dir = repo_root / "tools" / "python" / "clr_tests" / "assemblies"
 
 try:
-    import clr
+    import clr  # type: ignore
 
     # Add reference using full path to the dll
     clr.AddReference(str(assemblies_dir / "WileyWidget.dll"))

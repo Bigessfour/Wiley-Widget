@@ -4,9 +4,7 @@ using Prism.Modularity;
 // using Prism.Regions; // Removed to eliminate dependency
 using Serilog;
 using WileyWidget.ViewModels;
-using WileyWidget.ViewModels; // Ensure this is present for CustomerEditDialogViewModel
 using WileyWidget.Views;
-using WileyWidget.Views; // Ensure this is present for CustomerEditDialogView
 
 namespace WileyWidget.Startup.Modules
 {
