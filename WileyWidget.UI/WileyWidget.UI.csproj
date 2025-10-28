@@ -21,6 +21,9 @@
     <XamlDebuggingInformation>false</XamlDebuggingInformation>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   <NoWarn>$(NoWarn);NETSDK1206;NU1605;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416;CS0436</NoWarn>
+
+    <!-- Disable default Page items to avoid duplicates with explicit inclusions -->
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
   </PropertyGroup>  <ItemGroup>
   </ItemGroup>
 
@@ -167,6 +170,11 @@
   <!-- Add ProjectReference to newly created Startup project only if it's present in the workspace -->
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\..\WileyWidget.Startup\WileyWidget.Startup.csproj')">
     <ProjectReference Include="..\WileyWidget.Startup\WileyWidget.Startup.csproj" />
+  </ItemGroup>
+
+  <!-- Explicitly set BuildAction for XAML files to ensure InitializeComponent is generated -->
+  <ItemGroup>
+    <Page Include="**\*.xaml" Exclude="obj\**;bin\**" />
   </ItemGroup>
 
 </Project>
