@@ -334,7 +334,7 @@ namespace WileyWidget.Views
                             // Comprehensive validation and filtering of DockState values
                             // Include 'Document' to preserve tabbed documents
                             var validStates = new[] { "Dock", "Float", "AutoHidden", "Document" };
-                            var stateElements = doc.Descendants().Where(e => e.Name.LocalName.Contains("State"));
+                            var stateElements = doc.Descendants().Where(e => e.Name.LocalName.Contains("State", StringComparison.OrdinalIgnoreCase));
                             foreach (var stateElement in stateElements)
                             {
                                 if (!validStates.Contains(stateElement.Value))
@@ -347,8 +347,8 @@ namespace WileyWidget.Views
 
                             // Additional validation: ensure no invalid combinations (e.g., AutoHidden with IsActive=false)
                             var invalidCombinations = doc.Descendants().Where(e =>
-                                e.Name.LocalName.Contains("State") && (e.Value == "AutoHidden" || e.Value == "Float") &&
-                                e.Parent?.Descendants().Any(d => d.Name.LocalName.Contains("IsActive") && d.Value == "false") == true);
+                                e.Name.LocalName.Contains("State", StringComparison.OrdinalIgnoreCase) && (e.Value == "AutoHidden" || e.Value == "Float") &&
+                                e.Parent?.Descendants().Any(d => d.Name.LocalName.Contains("IsActive", StringComparison.OrdinalIgnoreCase) && d.Value == "false") == true);
                             foreach (var combo in invalidCombinations)
                             {
                                 combo.Value = "Dock";

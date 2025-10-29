@@ -148,8 +148,8 @@ public static class DatabaseConfiguration
     /// </summary>
     internal static bool IsLocalSqlServerConnection(string connectionString)
     {
-        return connectionString.Contains("(localdb)") ||
-               connectionString.Contains("localhost") ||
+        return connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase) ||
+               connectionString.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
                connectionString.Contains(Environment.MachineName, StringComparison.OrdinalIgnoreCase) ||
                connectionString.Contains("SQLEXPRESS", StringComparison.OrdinalIgnoreCase);
     }

@@ -207,6 +207,9 @@ public class AccountTypeValidator
     /// <returns>Validation result with success status and any errors</returns>
     public ValidationResult ValidateAccountTypeCompliance(IEnumerable<MunicipalAccount> accounts)
     {
+        if (accounts == null)
+            throw new ArgumentNullException(nameof(accounts));
+
         var allErrors = new List<string>();
 
         foreach (var account in accounts)

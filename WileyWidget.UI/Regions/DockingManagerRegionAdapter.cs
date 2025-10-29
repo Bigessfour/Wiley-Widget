@@ -39,6 +39,7 @@ public class DockingManagerRegionAdapter : RegionAdapterBase<DockingManager>
     /// <param name="regionTarget">The DockingManager control</param>
     protected override void Adapt(IRegion region, DockingManager regionTarget)
     {
+        ArgumentNullException.ThrowIfNull(region);
         region.Views.CollectionChanged += (sender, e) =>
         {
             switch (e.Action)

@@ -222,7 +222,7 @@ namespace WileyWidget.ViewModels
             if (_errors.TryGetValue(propertyName, out var list)) return list;
 
             const string prefix = nameof(Customer) + ".";
-            if (propertyName.StartsWith(prefix) && _errors.TryGetValue(propertyName.Substring(prefix.Length), out var shortList)) return shortList;
+            if (propertyName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && _errors.TryGetValue(propertyName.Substring(prefix.Length), out var shortList)) return shortList;
 
             // If asked for the short name but we have stored the prefixed key, try that too
             var prefixed = prefix + propertyName;
@@ -238,7 +238,7 @@ namespace WileyWidget.ViewModels
             var list = new List<string>();
 
             // Normalize to short property name (e.g. "FirstName") for switch comparisons
-            var shortName = propertyName?.StartsWith(nameof(Customer) + ".") == true
+            var shortName = propertyName?.StartsWith(nameof(Customer) + ".", StringComparison.OrdinalIgnoreCase) == true
                 ? propertyName.Substring((nameof(Customer) + ".").Length)
                 : propertyName;
 

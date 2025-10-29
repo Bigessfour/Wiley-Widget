@@ -20,6 +20,31 @@ public interface IBudgetRepository
     Task<IEnumerable<BudgetEntry>> GetByFiscalYearAsync(int fiscalYear);
 
     /// <summary>
+    /// Gets budget entries by fund
+    /// </summary>
+    Task<IEnumerable<BudgetEntry>> GetByFundAsync(int fundId);
+
+    /// <summary>
+    /// Gets budget entries by department
+    /// </summary>
+    Task<IEnumerable<BudgetEntry>> GetByDepartmentAsync(int departmentId);
+
+    /// <summary>
+    /// Gets budget entries by fund and fiscal year
+    /// </summary>
+    Task<IEnumerable<BudgetEntry>> GetByFundAndFiscalYearAsync(int fundId, int fiscalYear);
+
+    /// <summary>
+    /// Gets budget entries by department and fiscal year
+    /// </summary>
+    Task<IEnumerable<BudgetEntry>> GetByDepartmentAndFiscalYearAsync(int departmentId, int fiscalYear);
+
+    /// <summary>
+    /// Gets sewer enterprise fund budget entries for a fiscal year
+    /// </summary>
+    Task<IEnumerable<BudgetEntry>> GetSewerBudgetEntriesAsync(int fiscalYear);
+
+    /// <summary>
     /// Gets a budget entry by ID
     /// </summary>
     Task<BudgetEntry?> GetByIdAsync(int id);

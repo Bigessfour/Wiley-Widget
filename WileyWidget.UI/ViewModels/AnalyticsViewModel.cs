@@ -11,6 +11,7 @@ using Prism.Mvvm;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services;
+using WileyWidget.Abstractions;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Base;
 using WileyWidget.ViewModels.Messages;
@@ -26,6 +27,7 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
     private string? _selectedTimePeriod;
     private bool _isDataLoaded;
     private readonly IEventAggregator _eventAggregator;
+    private readonly ICacheService? _cacheService;
 
     /// <summary>
     /// Gets the collection of available chart types
@@ -267,16 +269,77 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
     /// <param name="municipalAccountRepository">The municipal account repository for data access</param>
     /// <param name="reportExportService">The report export service for exporting data</param>
     /// <param name="enterpriseRepository">The enterprise repository for data access</param>
-    public AnalyticsViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<AnalyticsViewModel> logger, IBudgetRepository budgetRepository, IMunicipalAccountRepository municipalAccountRepository, IReportExportService reportExportService, IEnterpriseRepository enterpriseRepository, IEventAggregator eventAggregator)
+    public AnalyticsViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<AnalyticsViewModel> logger, IBudgetRepository budgetRepository, IMunicipalAccountRepository municipalAccountRepository, IReportExportService reportExportService, IEnterpriseRepository enterpriseRepository, IEventAggregator eventAggregator, ICacheService? cacheService = null)
         : base(dispatcherHelper, logger)
     {
         _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
         _municipalAccountRepository = municipalAccountRepository ?? throw new ArgumentNullException(nameof(municipalAccountRepository));
         _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
-        _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
-        _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+    _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+    _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+    _cacheService = cacheService;
 
         Enterprises = new ObservableCollection<Enterprise>();
+
+        // Auto-load enterprises into local collection to improve E2E readiness (load from cache first)
+        try
+        {
+            if (_cacheService != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var cached = await _cacheService.GetAsync<System.Collections.Generic.List<Enterprise>>("enterprises");
+                        if (cached != null && cached.Any())
+                        {
+                            DispatcherHelper.Invoke(() =>
+                            {
+                                foreach (var e in cached) Enterprises.Add(e);
+                            });
+                            return;
+                        }
+
+                        var all = await _enterpriseRepository.GetAllAsync();
+                        var list = all?.ToList() ?? new System.Collections.Generic.List<Enterprise>();
+                        if (list.Any())
+                        {
+                            await _cacheService.SetAsync("enterprises", list, TimeSpan.FromHours(6));
+                            DispatcherHelper.Invoke(() =>
+                            {
+                                foreach (var e in list) Enterprises.Add(e);
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "Failed to auto-load enterprises in background");
+                    }
+                });
+            }
+            else
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var all = await _enterpriseRepository.GetAllAsync();
+                        DispatcherHelper.Invoke(() =>
+                        {
+                            foreach (var e in all) Enterprises.Add(e);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "Failed to auto-load enterprises in background (no cache)");
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Auto-load enterprises scheduling failed");
+        }
 
         // Subscribe to DataLoadedEvent from DashboardViewModel
         _eventAggregator.GetEvent<DataLoadedEvent>().Subscribe(OnDataLoaded, ThreadOption.UIThread);
@@ -392,7 +455,7 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
                 Title = "Export Chart Data",
                 Filter = "Excel files (*.xlsx)|*.xlsx",
                 DefaultExt = ".xlsx",
-                FileName = $"{SelectedChartType?.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+                FileName = $"{SelectedChartType?.Replace(" ", "_", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
             };
 
             if (saveFileDialog.ShowDialog() == true)

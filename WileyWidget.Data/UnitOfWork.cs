@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 // Clean Architecture: Data layer implements interfaces from Business layer
 using WileyWidget.Business.Interfaces;
 
@@ -20,6 +21,7 @@ public class UnitOfWork : IUnitOfWork
     private readonly AppDbContext _context;
     private readonly ILogger<UnitOfWork> _logger;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IMemoryCache _cache;
     private IDbContextTransaction? _currentTransaction;
     private bool _disposed;
 
@@ -34,11 +36,12 @@ public class UnitOfWork : IUnitOfWork
     /// <summary>
     /// Constructor with DbContext injection
     /// </summary>
-    public UnitOfWork(AppDbContext context, ILogger<UnitOfWork> logger, ILoggerFactory loggerFactory)
+    public UnitOfWork(AppDbContext context, ILogger<UnitOfWork> logger, ILoggerFactory loggerFactory, IMemoryCache cache)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
 
     /// <summary>
@@ -51,7 +54,7 @@ public class UnitOfWork : IUnitOfWork
             if (_budgets == null)
             {
                 var factory = new SingleContextFactory(_context);
-                _budgets = new BudgetRepository(factory);
+                _budgets = new BudgetRepository(factory, _cache);
             }
             return _budgets;
         }
@@ -67,7 +70,7 @@ public class UnitOfWork : IUnitOfWork
             if (_departments == null)
             {
                 var factory = new SingleContextFactory(_context);
-                _departments = new DepartmentRepository(factory);
+                _departments = new DepartmentRepository(factory, _cache);
             }
             return _departments;
         }
@@ -83,7 +86,7 @@ public class UnitOfWork : IUnitOfWork
             if (_municipalAccounts == null)
             {
                 var factory = new SingleContextFactory(_context);
-                _municipalAccounts = new MunicipalAccountRepository(factory);
+                _municipalAccounts = new MunicipalAccountRepository(factory, _cache);
             }
             return _municipalAccounts;
         }
@@ -100,7 +103,7 @@ public class UnitOfWork : IUnitOfWork
             {
                 var factory = new SingleContextFactory(_context);
                 var ucLogger = _loggerFactory.CreateLogger<UtilityCustomerRepository>();
-                _utilityCustomers = new UtilityCustomerRepository(factory, ucLogger);
+                _utilityCustomers = new UtilityCustomerRepository(factory, ucLogger, _cache);
             }
             return _utilityCustomers;
         }
@@ -117,7 +120,7 @@ public class UnitOfWork : IUnitOfWork
             {
                 var factory = new SingleContextFactory(_context);
                 var logger = _loggerFactory.CreateLogger<EnterpriseRepository>();
-                _enterprises = new EnterpriseRepository(factory, logger);
+                _enterprises = new EnterpriseRepository(factory, logger, _cache);
             }
             return _enterprises;
         }
@@ -133,7 +136,7 @@ public class UnitOfWork : IUnitOfWork
             if (_audits == null)
             {
                 var factory = new SingleContextFactory(_context);
-                _audits = new AuditRepository(factory);
+                _audits = new AuditRepository(factory, _cache);
             }
             return _audits;
         }
@@ -229,7 +232,7 @@ public class UnitOfWork : IUnitOfWork
             await _currentTransaction.RollbackAsync(cancellationToken);
             _logger.LogDebug("Transaction rolled back: {TransactionId}", _currentTransaction.TransactionId);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("completed"))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("completed", StringComparison.OrdinalIgnoreCase))
         {
             // Transaction already completed, ignore
             _logger.LogDebug("Transaction already completed, ignoring rollback");

@@ -510,7 +510,7 @@ public class ToolsViewModel : AsyncViewModelBase
                 {
                     var files = Directory.GetFiles(dir, "*.log", SearchOption.AllDirectories)
                         .Concat(Directory.GetFiles(dir, "*.txt", SearchOption.AllDirectories))
-                        .Where(f => Path.GetFileName(f).ToLower(CultureInfo.InvariantCulture).Contains("log"));
+                        .Where(f => Path.GetFileName(f).ToLower(CultureInfo.InvariantCulture).Contains("log", StringComparison.OrdinalIgnoreCase));
                     logFiles.AddRange(files);
                 }
             }
@@ -658,7 +658,7 @@ public class ToolsViewModel : AsyncViewModelBase
                     try
                     {
                         var content = await File.ReadAllTextAsync(configFile);
-                        if (content.Contains("ConnectionStrings") && content.Contains("DefaultConnection"))
+                        if (content.Contains("ConnectionStrings", StringComparison.OrdinalIgnoreCase) && content.Contains("DefaultConnection", StringComparison.OrdinalIgnoreCase))
                         {
                             ToolOutput += $"✓ {configFile} contains connection string\n";
                         }

@@ -10,8 +10,16 @@ namespace WileyWidget.Services
         public static readonly DependencyProperty BoundPasswordProperty =
             DependencyProperty.RegisterAttached("BoundPassword", typeof(string), typeof(PasswordBoxHelper), new PropertyMetadata(string.Empty, OnBoundPasswordChanged));
 
-        public static string GetBoundPassword(DependencyObject obj) => (string)obj.GetValue(BoundPasswordProperty);
-        public static void SetBoundPassword(DependencyObject obj, string value) => obj.SetValue(BoundPasswordProperty, value);
+        public static string GetBoundPassword(DependencyObject obj)
+        {
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
+            return (string)obj.GetValue(BoundPasswordProperty);
+        }
+        public static void SetBoundPassword(DependencyObject obj, string value)
+        {
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
+            obj.SetValue(BoundPasswordProperty, value);
+        }
 
         private static void OnBoundPasswordChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {

@@ -241,7 +241,7 @@ public class HealthCheckCircuitBreaker
     private readonly object /* ApplicationMetricsService */? _metricsService;
     private readonly string _serviceName;
 
-    public HealthCheckCircuitBreaker(int failureThreshold = 3, TimeSpan timeoutPeriod = default, 
+    public HealthCheckCircuitBreaker(int failureThreshold = 3, TimeSpan timeoutPeriod = default,
         object /* ApplicationMetricsService */? metricsService = null, string serviceName = "unknown")
     {
         _failureThreshold = failureThreshold;
@@ -261,6 +261,8 @@ public class HealthCheckCircuitBreaker
 
     public async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default)
     {
+        if (operation == null) throw new ArgumentNullException(nameof(operation));
+
         lock (_lock)
         {
             if (_state == CircuitBreakerState.Open)
@@ -304,8 +306,8 @@ public class HealthCheckCircuitBreaker
         if (previousState != CircuitBreakerState.Closed)
         {
             // _metricsService?.RecordCircuitBreakerTransition(
-            //     previousState.ToString(), 
-            //     CircuitBreakerState.Closed.ToString(), 
+            //     previousState.ToString(),
+            //     CircuitBreakerState.Closed.ToString(),
             //     _serviceName);
         }
     }
@@ -329,8 +331,8 @@ public class HealthCheckCircuitBreaker
         if (previousState != _state)
         {
             // _metricsService?.RecordCircuitBreakerTransition(
-            //     previousState.ToString(), 
-            //     _state.ToString(), 
+            //     previousState.ToString(),
+            //     _state.ToString(),
             //     _serviceName);
         }
     }

@@ -5,12 +5,22 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Prism.Ioc;
 using Serilog;
 
 namespace WileyWidget.Startup
 {
     public static class BootstrapHelpers
     {
+        /// <summary>
+        /// Runs the Bootstrapper to register all infrastructure services
+        /// </summary>
+        public static IConfiguration TryRunBootstrapper(IContainerRegistry containerRegistry)
+        {
+            var bootstrapper = new Bootstrapper();
+            return bootstrapper.Run(containerRegistry);
+        }
+
         public static Exception UnwrapTargetInvocationException(Exception? exception)
         {
             if (exception == null)

@@ -5,14 +5,14 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Project,
     [string]$Verbosity = "normal",
-    [int]$TimeoutMinutes = 5,
+    [int]$TimeoutSeconds = 30,
     [string]$Filter
 )
 
 Write-Output "🚀 UI Test Runner with Process Cleanup"
 Write-Output "Project: $Project"
 Write-Output "Verbosity: $Verbosity"
-Write-Output "Timeout: $TimeoutMinutes minutes"
+Write-Output "Timeout: $TimeoutSeconds seconds"
 Write-Output ""
 
 # Ensure we're in the right directory
@@ -74,8 +74,8 @@ try {
         $testArgs += "--filter", $Filter
     }
 
-    # Add timeout (convert minutes to milliseconds for blame-hang-timeout)
-    $timeoutMs = $TimeoutMinutes * 60 * 1000
+    # Add timeout (convert seconds to milliseconds for blame-hang-timeout)
+    $timeoutMs = $TimeoutSeconds * 1000
     $testArgs += "--blame-hang-timeout", "$timeoutMs"
 
     Write-Output "Command: dotnet $($testArgs -join ' ')"
@@ -92,6 +92,14 @@ try {
 
     Write-Output ""
     Write-Output "⏱️  UI Testing completed in $($duration.TotalSeconds.ToString("F1")) seconds"
+
+    # Write full output to log file
+    $logFile = "$PSScriptRoot\..\test-output.log"
+    Write-Output "📝 Writing full test output to $logFile..."
+    $testOutput | Out-File -FilePath $logFile -Encoding utf8
+
+    # Also display the output to console
+    $testOutput | Write-Output
 
     # Process test output for error file
     $errorFile = "$PSScriptRoot\..\test-error.txt"

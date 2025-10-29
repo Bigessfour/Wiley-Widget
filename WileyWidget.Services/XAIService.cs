@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -46,34 +47,39 @@ public class XAIService : IAIService, IDisposable
         // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
     {
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+    _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _contextService = contextService ?? throw new ArgumentNullException(nameof(contextService));
         _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
         _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
+    if (httpClientFactory is null) throw new ArgumentNullException(nameof(httpClientFactory));
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
-        _apiKey = configuration["XAI:ApiKey"] ?? throw new ArgumentNullException("XAI:ApiKey", "XAI API key not configured");
+        _apiKey = configuration["XAI:ApiKey"];
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            throw new InvalidOperationException("XAI API key not configured");
+        }
 
         var baseUrl = configuration["XAI:BaseUrl"] ?? "https://api.x.ai/v1/";
-        var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "15");
+        var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "15", CultureInfo.InvariantCulture);
 
         // Validate API key format (basic check) - wrapped to handle exceptions gracefully
-        try
-        {
-            if (_apiKey.Length < 20)
+            try
             {
-                throw new ArgumentException("API key appears to be invalid (too short)", "XAI:ApiKey");
+                if (_apiKey.Length < 20)
+                {
+                    throw new InvalidOperationException("API key appears to be invalid (too short)");
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "XAI API key validation failed during construction");
-            throw; // Re-throw to prevent invalid service creation
-        }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "XAI API key validation failed during construction");
+                throw; // Re-throw to prevent invalid service creation
+            }
 
         // Initialize concurrency control (limit to 5 concurrent requests to avoid throttling)
-        var maxConcurrentRequests = int.Parse(configuration["XAI:MaxConcurrentRequests"] ?? "5");
+        var maxConcurrentRequests = int.Parse(configuration["XAI:MaxConcurrentRequests"] ?? "5", CultureInfo.InvariantCulture);
         _concurrencySemaphore = new SemaphoreSlim(maxConcurrentRequests, maxConcurrentRequests);
 
         _httpClient = httpClientFactory.CreateClient("AIServices");
@@ -128,12 +134,12 @@ public class XAIService : IAIService, IDisposable
 
         // Remove or escape potentially dangerous characters
         return input
-            .Replace("\\", "\\\\")  // Escape backslashes first
-            .Replace("\"", "\\\"")  // Escape quotes
-            .Replace("\n", " ")     // Replace newlines with spaces
-            .Replace("\r", " ")     // Replace carriage returns with spaces
-            .Replace("\t", " ")     // Replace tabs with spaces
-            .Replace("\0", "")      // Remove null characters
+            .Replace("\\", "\\\\", StringComparison.Ordinal)  // Escape backslashes first
+            .Replace("\"", "\\\"", StringComparison.Ordinal)  // Escape quotes
+            .Replace("\n", " ", StringComparison.Ordinal)     // Replace newlines with spaces
+            .Replace("\r", " ", StringComparison.Ordinal)     // Replace carriage returns with spaces
+            .Replace("\t", " ", StringComparison.Ordinal)     // Replace tabs with spaces
+            .Replace("\0", "", StringComparison.Ordinal)      // Remove null characters
             .Trim();                // Trim whitespace
     }
 
@@ -170,7 +176,7 @@ public class XAIService : IAIService, IDisposable
         ValidateAndSanitizeInputs(ref context, ref question);
 
         // Create cache key from sanitized inputs
-        var cacheKey = $"XAI:{context.GetHashCode()}:{question.GetHashCode()}";
+        var cacheKey = $"XAI:{context.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{question.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
 
         // Check cache first
         if (_memoryCache.TryGetValue(cacheKey, out string cachedResponse))
@@ -363,6 +369,8 @@ public class XAIService : IAIService, IDisposable
         IEnumerable<(string context, string question)> requests,
         CancellationToken cancellationToken = default)
     {
+        if (requests == null) throw new ArgumentNullException(nameof(requests));
+
         var results = new Dictionary<string, string>();
         var apiRequests = new List<(string cacheKey, string context, string question, int index)>();
 
@@ -375,7 +383,7 @@ public class XAIService : IAIService, IDisposable
             var sanitizedQuestion = question;
             ValidateAndSanitizeInputs(ref sanitizedContext, ref sanitizedQuestion);
 
-            var cacheKey = $"XAI:{sanitizedContext.GetHashCode()}:{sanitizedQuestion.GetHashCode()}";
+            var cacheKey = $"XAI:{sanitizedContext.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{sanitizedQuestion.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
 
             // Check cache first
             if (_memoryCache.TryGetValue(cacheKey, out string cachedResponse))

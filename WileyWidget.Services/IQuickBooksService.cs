@@ -21,10 +21,13 @@ namespace WileyWidget.Services
         Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate);
         Task<List<Budget>> GetBudgetsAsync();
 
-        // Connection management methods with cancellation support
+        // Data synchronization with cancellation support
         System.Threading.Tasks.Task<bool> ConnectAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default);
+
+        // Chart of accounts import with cancellation support
+        System.Threading.Tasks.Task<ImportResult> ImportChartOfAccountsAsync(CancellationToken cancellationToken = default);
 
         // Data synchronization with cancellation support
         System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default);
@@ -62,5 +65,19 @@ namespace WileyWidget.Services
         public int RecordsSynced { get; set; }
         public string? ErrorMessage { get; set; }
         public TimeSpan Duration { get; set; }
+    }
+
+    /// <summary>
+    /// Result of chart of accounts import operation
+    /// </summary>
+    public sealed class ImportResult
+    {
+        public bool Success { get; set; }
+        public int AccountsImported { get; set; }
+        public int AccountsUpdated { get; set; }
+        public int AccountsSkipped { get; set; }
+        public string? ErrorMessage { get; set; }
+        public TimeSpan Duration { get; set; }
+        public List<string>? ValidationErrors { get; set; }
     }
 }

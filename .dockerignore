@@ -1,0 +1,258 @@
+# ============================================================================
+# .dockerignore - Optimize Docker Build Context for Wiley Widget
+# ============================================================================
+# Purpose: Exclude unnecessary files to speed up builds and reduce image size
+# Last Updated: 2025-10-27
+# ============================================================================
+
+# ============================================================================
+# VERSION CONTROL & CI/CD
+# ============================================================================
+.git/
+.github/
+.gitignore
+.gitattributes
+.trunk/
+*.md
+!README.md
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+.editorconfig
+.vscode/
+.vs/
+
+# ============================================================================
+# BUILD ARTIFACTS & OUTPUT
+# ============================================================================
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bb]uild[Ll]og.*
+*.binlog
+
+# Test results
+TestResults/
+test-results/
+test-logs/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+htmlcov/
+.coverage
+coverage.xml
+*.codecov.yml
+
+# ============================================================================
+# NUGET & PACKAGE MANAGEMENT
+# ============================================================================
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!Directory.Packages.props
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ============================================================================
+# DEVELOPMENT & IDE FILES
+# ============================================================================
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Visual Studio
+.vs/
+.vscode/
+*.vsidx
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# ============================================================================
+# PYTHON DEVELOPMENT
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+*.egg
+
+# ============================================================================
+# NODE / NPM (if used for tooling)
+# ============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ============================================================================
+# LOGS & TEMPORARY FILES
+# ============================================================================
+logs/
+*.log
+log.txt
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+.log
+temp/
+tmp/
+
+# ============================================================================
+# DOCKER & CONTAINERS
+# ============================================================================
+# Exclude other Dockerfiles to prevent recursion
+Dockerfile
+Dockerfile.*
+!docker/Dockerfile.uitest
+docker-compose.yml
+docker-compose.*.yml
+!docker/docker-compose.uitest.yml
+.dockerignore
+
+# ============================================================================
+# DATABASE & SECRETS
+# ============================================================================
+*.db
+*.db-shm
+*.db-wal
+*.mdf
+*.ldf
+secrets/
+*.pfx
+*.p12
+*.key
+*.pem
+*.cer
+*.crt
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+.env
+.env.*
+*.secret
+
+# ============================================================================
+# DOCUMENTATION & RESOURCES (keep minimal)
+# ============================================================================
+docs/
+*.pdf
+*.docx
+*.xlsx
+*.pptx
+
+# Keep essential docs
+!docs/AI_FETCHABLE_MANIFEST.md
+!docs/README.md
+
+# ============================================================================
+# MEDIA & ASSETS (exclude large files)
+# ============================================================================
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.wav
+*.mp3
+*.iso
+*.dmg
+
+# ============================================================================
+# BUILD CACHE & OPTIMIZATION
+# ============================================================================
+.buildcache/
+.build/
+*.cache
+.cr/
+
+# ============================================================================
+# SYNCFUSION & THIRD-PARTY LICENSES
+# ============================================================================
+licenses/
+signing/
+
+# ============================================================================
+# PUBLISH OUTPUT
+# ============================================================================
+publish/
+PublishProfiles/
+
+# ============================================================================
+# MISC EXCLUSIONS
+# ============================================================================
+*.stackdump
+*.launch
+.settings/
+*.tmproj
+*.workspace
+.history/
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin
+$RECYCLE.BIN/
+
+# Mac OS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ============================================================================
+# KEEP ESSENTIAL FILES - Override exclusions above if needed
+# ============================================================================
+# These are explicitly included by using '!' prefix above:
+# - Directory.Packages.props
+# - Directory.Build.props
+# - Directory.Build.targets
+# - global.json
+# - appsettings.json
+# - README.md

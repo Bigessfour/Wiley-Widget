@@ -178,24 +178,24 @@ namespace WileyWidget.Diagnostics
                 var issues = new List<string>();
 
                 // Check for required xmlns declarations
-                if (!content.Contains("xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\""))
+                if (!content.Contains("xmlns:syncfusion=\"http://schemas.syncfusion.com/wpf\"", StringComparison.Ordinal))
                 {
                     issues.Add("Missing Syncfusion xmlns declaration");
                 }
 
-                if (!content.Contains("xmlns:prism=\"http://prismlibrary.com/\""))
+                if (!content.Contains("xmlns:prism=\"http://prismlibrary.com/\"", StringComparison.Ordinal))
                 {
                     issues.Add("Missing Prism xmlns declaration");
                 }
 
-                if (!content.Contains("prism:ViewModelLocator.AutoWireViewModel=\"True\""))
+                if (!content.Contains("prism:ViewModelLocator.AutoWireViewModel=\"True\"", StringComparison.Ordinal))
                 {
                     issues.Add("Missing or incorrect ViewModelLocator.AutoWireViewModel setting");
                 }
 
                 // Check for SfSkinManager theme application
-                if (content.Contains("<syncfusion:") &&
-                    !content.Contains("syncfusionskin:SfSkinManager.VisualStyle"))
+                if (content.Contains("<syncfusion:", StringComparison.Ordinal) &&
+                    !content.Contains("syncfusionskin:SfSkinManager.VisualStyle", StringComparison.Ordinal))
                 {
                     issues.Add("Syncfusion controls found but SfSkinManager theme not applied");
                 }

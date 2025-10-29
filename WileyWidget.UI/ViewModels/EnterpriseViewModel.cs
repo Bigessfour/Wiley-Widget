@@ -10,14 +10,15 @@ using System.Threading.Tasks;
 using Prism.Commands;
 using Prism.Events;
 using Prism.Mvvm;
+using Prism.Navigation.Regions;
 using Serilog;
 using Syncfusion.Pdf;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services;
-// using Prism.Regions; // Remove for now; avoid dependency if not referenced elsewhere
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Messages;
+using WileyWidget.Abstractions;
 
 namespace WileyWidget.ViewModels;
 
@@ -28,6 +29,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     private readonly IEventAggregator _eventAggregator;
     private readonly IReportExportService _reportExportService;
     private readonly IDispatcherHelper _dispatcherHelper;
+    private readonly ICacheService? _cacheService;
 
     // Expose services for View scenarios that need them (e.g., export helpers, event subscriptions)
     public IEventAggregator EventAggregator => _eventAggregator;
@@ -445,8 +447,8 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                     }
                         graphics.DrawString(enterprise.Name ?? "N/A", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 20, yPosition);
                         graphics.DrawString(enterprise.Type ?? "N/A", font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 120, yPosition);
-                        graphics.DrawString(enterprise.CurrentRate.ToString("C"), font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 220, yPosition);
-                        graphics.DrawString(enterprise.CitizenCount.ToString(), font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 320, yPosition);
+                        graphics.DrawString(enterprise.CurrentRate.ToString("C", CultureInfo.InvariantCulture), font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 220, yPosition);
+                        graphics.DrawString(enterprise.CitizenCount.ToString(CultureInfo.InvariantCulture), font, Syncfusion.Pdf.Graphics.PdfBrushes.Black, 320, yPosition);
                         yPosition += 15;
                     }
 
@@ -485,13 +487,13 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                 // Write data rows
                 foreach (var enterprise in enterprises)
                 {
-                    var name = enterprise.Name?.Replace("\"", "\"\"") ?? ""; // Escape quotes
-                    var type = enterprise.Type?.Replace("\"", "\"\"") ?? "";
-                    var rate = enterprise.CurrentRate.ToString("F2");
-                    var expenses = enterprise.MonthlyExpenses.ToString("F2");
-                    var citizens = enterprise.CitizenCount.ToString();
-                    var created = enterprise.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
-                    var modified = enterprise.ModifiedDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
+                    var name = enterprise.Name?.Replace("\"", "\"\"", StringComparison.Ordinal) ?? ""; // Escape quotes
+                    var type = enterprise.Type?.Replace("\"", "\"\"", StringComparison.Ordinal) ?? "";
+                    var rate = enterprise.CurrentRate.ToString("F2", CultureInfo.InvariantCulture);
+                    var expenses = enterprise.MonthlyExpenses.ToString("F2", CultureInfo.InvariantCulture);
+                    var citizens = enterprise.CitizenCount.ToString(CultureInfo.InvariantCulture);
+                    var created = enterprise.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                    var modified = enterprise.ModifiedDate?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "";
 
                     writer.WriteLine($"\"{name}\",\"{type}\",\"{rate}\",\"{expenses}\",\"{citizens}\",\"{created}\",\"{modified}\"");
                 }
@@ -522,9 +524,9 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
 
                 // Report info
                 worksheet.Range["A3"].Text = "Generated:";
-                worksheet.Range["B3"].Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Range["B3"].Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
                 worksheet.Range["A4"].Text = "Total Enterprises:";
-                worksheet.Range["B4"].Text = enterprises.Count().ToString();
+                worksheet.Range["B4"].Text = enterprises.Count().ToString(CultureInfo.InvariantCulture);
 
                 // Column headers
                 worksheet.Range["A6"].Text = "Name";
@@ -552,8 +554,8 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                     worksheet.Range[$"D{row}"].Number = (double)enterprise.MonthlyExpenses;
                     worksheet.Range[$"D{row}"].NumberFormat = "$#,##0.00";
                     worksheet.Range[$"E{row}"].Number = enterprise.CitizenCount;
-                    worksheet.Range[$"F{row}"].Text = enterprise.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss");
-                    worksheet.Range[$"G{row}"].Text = enterprise.ModifiedDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
+                    worksheet.Range[$"F{row}"].Text = enterprise.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                    worksheet.Range[$"G{row}"].Text = enterprise.ModifiedDate?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "";
 
                     row++;
                 }
@@ -686,9 +688,9 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                 summarySheet.Range["A1"].CellStyle.Font.Bold = true;
 
                 summarySheet.Range["A3"].Text = "Generated:";
-                summarySheet.Range["B3"].Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                summarySheet.Range["B3"].Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
                 summarySheet.Range["A4"].Text = "Total Enterprises:";
-                summarySheet.Range["B4"].Text = enterprises.Count().ToString();
+                summarySheet.Range["B4"].Text = enterprises.Count().ToString(CultureInfo.InvariantCulture);
 
                 summarySheet.Range["A6"].Text = "Executive Summary";
                 summarySheet.Range["A6:B6"].Merge();
@@ -1093,7 +1095,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             }
         }
 
-        throw new Exception($"Operation failed after {maxRetries + 1} attempts");
+        throw new InvalidOperationException($"Operation failed after {maxRetries + 1} attempts");
     }
 
     /// <summary>
@@ -1180,14 +1182,49 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public EnterpriseViewModel(IUnitOfWork unitOfWork, IEventAggregator eventAggregator, IReportExportService reportExportService)
+    public EnterpriseViewModel(IUnitOfWork unitOfWork, IEventAggregator eventAggregator, IReportExportService reportExportService, ICacheService? cacheService = null)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
         _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
         _dispatcherHelper = new DispatcherHelper();
+    _cacheService = cacheService;
 
         InitializeCommands();
+
+        // Auto-load enterprises from cache or database to improve E2E readiness
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (_cacheService != null)
+                {
+                    var cached = await _cacheService.GetAsync<System.Collections.Generic.List<Enterprise>>("enterprises");
+                    if (cached != null && cached.Any())
+                    {
+                        _dispatcherHelper.Invoke(() =>
+                        {
+                            foreach (var e in cached) EnterpriseList.Add(e);
+                        });
+                        return;
+                    }
+                }
+
+                var all = await _unitOfWork.Enterprises.GetAllAsync();
+                var list = all?.ToList() ?? new System.Collections.Generic.List<Enterprise>();
+                if (_cacheService != null && list.Any())
+                    await _cacheService.SetAsync("enterprises", list, TimeSpan.FromHours(6));
+
+                _dispatcherHelper.Invoke(() =>
+                {
+                    foreach (var e in list) EnterpriseList.Add(e);
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to auto-load enterprises in EnterpriseViewModel");
+            }
+        });
     }
 
     private void InitializeCommands()

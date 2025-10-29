@@ -4,6 +4,7 @@ using WileyWidget.Models.DTOs;
 using WileyWidget.Business.Interfaces;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace WileyWidget.Data;
 
@@ -14,14 +15,16 @@ public class EnterpriseRepository : IEnterpriseRepository
 {
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly ILogger<EnterpriseRepository> _logger;
+    private readonly IMemoryCache _cache;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public EnterpriseRepository(IDbContextFactory<AppDbContext> contextFactory, ILogger<EnterpriseRepository> logger)
+    public EnterpriseRepository(IDbContextFactory<AppDbContext> contextFactory, ILogger<EnterpriseRepository> logger, IMemoryCache cache)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _logger.LogInformation("EnterpriseRepository constructed and DB factory injected");
     }
 
@@ -30,12 +33,59 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<IEnumerable<Enterprise>> GetAllAsync()
     {
+        const string cacheKey = "Enterprises_All";
+
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<Enterprise>? enterprises))
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            enterprises = await context.Enterprises
+                .Where(e => !e.IsDeleted)
+                .AsNoTracking()
+                .OrderBy(e => e.Name)
+                .ToListAsync();
+
+            _cache.Set(cacheKey, enterprises, TimeSpan.FromMinutes(10));
+        }
+
+        return enterprises!;
+    }
+
+    /// <summary>
+    /// Gets paged enterprises with sorting support
+    /// </summary>
+    public async Task<(IEnumerable<Enterprise> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber = 1,
+        int pageSize = 50,
+        string? sortBy = null,
+        bool sortDescending = false)
+    {
         await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Enterprises
-            .Where(e => !e.IsDeleted)
+
+        var query = context.Enterprises.Where(e => !e.IsDeleted).AsQueryable();
+
+        // Apply sorting
+        query = ApplySorting(query, sortBy, sortDescending);
+
+        // Get total count
+        var totalCount = await query.CountAsync();
+
+        // Apply paging
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .AsNoTracking()
-            .OrderBy(e => e.Name)
             .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    /// <summary>
+    /// Gets an IQueryable for flexible querying and paging
+    /// </summary>
+    public async Task<IQueryable<Enterprise>> GetQueryableAsync()
+    {
+        var context = await _contextFactory.CreateDbContextAsync();
+        return context.Enterprises.Where(e => !e.IsDeleted).AsQueryable();
     }
 
     /// <summary>
@@ -89,12 +139,14 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<Enterprise> UpdateAsync(Enterprise enterprise)
     {
+        ArgumentNullException.ThrowIfNull(enterprise);
+
         var context = await _contextFactory.CreateDbContextAsync();
-        
+
         // Set audit fields
         enterprise.ModifiedDate = DateTime.UtcNow;
         enterprise.ModifiedBy = enterprise.ModifiedBy ?? "System";
-        
+
         context.Enterprises.Update(enterprise);
         try
         {
@@ -164,7 +216,7 @@ public class EnterpriseRepository : IEnterpriseRepository
 
         foreach (var kvp in headerValueMap)
         {
-            var key = kvp.Key.ToLowerInvariant().Replace(" ", "");
+            var key = kvp.Key.ToLowerInvariant().Replace(" ", "", StringComparison.Ordinal);
             var value = kvp.Value?.Trim();
 
             switch (key)
@@ -335,5 +387,37 @@ public class EnterpriseRepository : IEnterpriseRepository
         enterprise.DeletedBy = null;
         await context.SaveChangesAsync();
         return true;
+    }
+
+    private IQueryable<Enterprise> ApplySorting(IQueryable<Enterprise> query, string? sortBy, bool sortDescending)
+    {
+        if (string.IsNullOrEmpty(sortBy))
+        {
+            return sortDescending
+                ? query.OrderByDescending(e => e.Name)
+                : query.OrderBy(e => e.Name);
+        }
+
+        return sortBy.ToLowerInvariant() switch
+        {
+            "name" => sortDescending
+                ? query.OrderByDescending(e => e.Name)
+                : query.OrderBy(e => e.Name),
+            "currentrate" => sortDescending
+                ? query.OrderByDescending(e => e.CurrentRate)
+                : query.OrderBy(e => e.CurrentRate),
+            "citizencount" => sortDescending
+                ? query.OrderByDescending(e => e.CitizenCount)
+                : query.OrderBy(e => e.CitizenCount),
+            "monthlyexpenses" => sortDescending
+                ? query.OrderByDescending(e => e.MonthlyExpenses)
+                : query.OrderBy(e => e.MonthlyExpenses),
+            "type" => sortDescending
+                ? query.OrderByDescending(e => e.Type)
+                : query.OrderBy(e => e.Type),
+            _ => sortDescending
+                ? query.OrderByDescending(e => e.Name)
+                : query.OrderBy(e => e.Name)
+        };
     }
 }

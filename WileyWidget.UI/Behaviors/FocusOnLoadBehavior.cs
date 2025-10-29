@@ -17,8 +17,22 @@ namespace WileyWidget.UI.Behaviors
             typeof(FocusOnLoadBehavior),
             new PropertyMetadata(false, OnIsEnabledChanged));
 
-        public static void SetIsEnabled(DependencyObject element, bool value) => element.SetValue(IsEnabledProperty, value);
-        public static bool GetIsEnabled(DependencyObject element) => (bool)element.GetValue(IsEnabledProperty);
+        public static void SetIsEnabled(DependencyObject element, bool value)
+        {
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            element.SetValue(IsEnabledProperty, value);
+        }
+        public static bool GetIsEnabled(DependencyObject element)
+        {
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            return (bool)element.GetValue(IsEnabledProperty);
+        }
 
         public static readonly DependencyProperty TargetNameProperty = DependencyProperty.RegisterAttached(
             "TargetName",
@@ -26,8 +40,22 @@ namespace WileyWidget.UI.Behaviors
             typeof(FocusOnLoadBehavior),
             new PropertyMetadata(null));
 
-        public static void SetTargetName(DependencyObject element, string? value) => element.SetValue(TargetNameProperty, value);
-        public static string? GetTargetName(DependencyObject element) => (string?)element.GetValue(TargetNameProperty);
+        public static void SetTargetName(DependencyObject element, string? value)
+        {
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            element.SetValue(TargetNameProperty, value);
+        }
+        public static string? GetTargetName(DependencyObject element)
+        {
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            return (string?)element.GetValue(TargetNameProperty);
+        }
 
         private static void OnIsEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {

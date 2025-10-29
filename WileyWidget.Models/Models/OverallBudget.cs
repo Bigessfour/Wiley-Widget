@@ -31,6 +31,8 @@ public class OverallBudget : INotifyPropertyChanged, IValidatableObject
     /// </summary>
     protected void OnPropertyChanged(params string[] propertyNames)
     {
+        if (propertyNames == null) throw new ArgumentNullException(nameof(propertyNames));
+
         foreach (var propertyName in propertyNames)
         {
             OnPropertyChanged(propertyName);
@@ -180,7 +182,7 @@ public class OverallBudget : INotifyPropertyChanged, IValidatableObject
     {
         if (SnapshotDate == DateTime.MinValue)
         {
-            yield return new ValidationResult("Snapshot date must be set to a valid date", 
+            yield return new ValidationResult("Snapshot date must be set to a valid date",
                 new[] { nameof(SnapshotDate) });
         }
     }

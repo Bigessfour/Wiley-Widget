@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Windows;
 using Prism;
+using Prism.Navigation.Regions;
 using Serilog;
 using Syncfusion.UI.Xaml.Grid;
 
@@ -37,6 +38,16 @@ namespace WileyWidget.Regions
 
         protected override void Adapt(IRegion region, SfDataGrid regionTarget)
         {
+            if (region is null)
+            {
+                throw new ArgumentNullException(nameof(region));
+            }
+
+            if (regionTarget is null)
+            {
+                throw new ArgumentNullException(nameof(regionTarget));
+            }
+
             // Virtualization hints for performance
             regionTarget.EnableDataVirtualization = true;
 

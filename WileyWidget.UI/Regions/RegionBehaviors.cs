@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Prism;
+using Prism.Navigation;
 using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.Services;
@@ -128,7 +129,7 @@ namespace WileyWidget.Regions
 
         private void OnNavigated(object? sender, RegionNavigationEventArgs e)
         {
-            var entry = new NavigationHistoryEntry(e.Uri, e.NavigationContext.Parameters as NavigationParameters ?? new NavigationParameters());
+            var entry = new NavigationHistoryEntry(e.Uri, e.NavigationContext.Parameters);
 
             // Remove any forward history when new navigation occurs
             if (_currentIndex < _history.Count - 1)
@@ -244,9 +245,9 @@ namespace WileyWidget.Regions
     public class NavigationHistoryEntry
     {
         public Uri Uri { get; }
-        public NavigationParameters Parameters { get; }
+        public INavigationParameters Parameters { get; }
 
-        public NavigationHistoryEntry(Uri uri, NavigationParameters parameters)
+        public NavigationHistoryEntry(Uri uri, INavigationParameters? parameters)
         {
             Uri = uri;
             Parameters = parameters ?? new NavigationParameters();

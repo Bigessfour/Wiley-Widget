@@ -10,6 +10,8 @@ namespace WileyWidget.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.AddColumn<int>(
                 name: "CacheExpirationMinutes",
                 table: "AppSettings",
@@ -49,6 +51,8 @@ namespace WileyWidget.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.DropColumn(
                 name: "CacheExpirationMinutes",
                 table: "AppSettings");

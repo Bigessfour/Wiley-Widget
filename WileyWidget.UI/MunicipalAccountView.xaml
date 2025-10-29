@@ -101,6 +101,27 @@
                                                   AutomationProperties.Name="{DynamicResource Btn_SyncQuickBooks}"
                                                   AutomationProperties.AutomationId="Btn_SyncQuickBooks" />
 
+                        <syncfusion:RibbonButton Label="Add Account"
+                                                  SizeForm="Large"
+                                                  Command="{Binding AddAccountCommand}"
+                                                  ToolTip="Add a new municipal account"
+                                                  AutomationProperties.Name="Add Account"
+                                                  AutomationProperties.AutomationId="Btn_AddAccount" />
+
+                        <syncfusion:RibbonButton Label="Update Account"
+                                                  SizeForm="Large"
+                                                  Command="{Binding UpdateAccountCommand}"
+                                                  ToolTip="Update the selected account"
+                                                  AutomationProperties.Name="Update Account"
+                                                  AutomationProperties.AutomationId="Btn_UpdateAccount" />
+
+                        <syncfusion:RibbonButton Label="Delete Account"
+                                                  SizeForm="Large"
+                                                  Command="{Binding DeleteAccountCommand}"
+                                                  ToolTip="Delete the selected account"
+                                                  AutomationProperties.Name="Delete Account"
+                                                  AutomationProperties.AutomationId="Btn_DeleteAccount" />
+
                         <syncfusion:RibbonButton Label="{DynamicResource Btn_BudgetAnalysis}"
                                                   SizeForm="Small"
                                                   Command="{Binding LoadBudgetAnalysisCommand}"
@@ -250,13 +271,36 @@
 
                         <syncfusion:RibbonButton Label="{DynamicResource Btn_Export}"
                                                   SizeForm="Small"
+                                                  Command="{Binding ExportToExcelCommand}"
                                                   ToolTip="{DynamicResource Tip_Export}"
                                                   AutomationProperties.Name="{DynamicResource Btn_Export}" />
 
                         <syncfusion:RibbonButton Label="{DynamicResource Btn_Print}"
                                                   SizeForm="Small"
+                                                  Command="{Binding PrintReportCommand}"
                                                   ToolTip="{DynamicResource Tip_Print}"
                                                   AutomationProperties.Name="{DynamicResource Btn_Print}" />
+                    </syncfusion:RibbonBar>
+
+                    <!-- Bold Reports Bar -->
+                    <syncfusion:RibbonBar Header="Bold Reports">
+                        <syncfusion:RibbonButton Label="View Report"
+                                                  SizeForm="Large"
+                                                  Command="{Binding ViewBoldReportCommand}"
+                                                  ToolTip="View municipal accounts report using Bold Reports"
+                                                  AutomationProperties.Name="Btn_ViewBoldReport" />
+
+                        <syncfusion:RibbonButton Label="Export PDF"
+                                                  SizeForm="Small"
+                                                  Command="{Binding ExportBoldReportToPdfCommand}"
+                                                  ToolTip="Export report to PDF using Bold Reports"
+                                                  AutomationProperties.Name="Btn_ExportBoldPdf" />
+
+                        <syncfusion:RibbonButton Label="Export Excel"
+                                                  SizeForm="Small"
+                                                  Command="{Binding ExportBoldReportToExcelCommand}"
+                                                  ToolTip="Export report to Excel using Bold Reports"
+                                                  AutomationProperties.Name="Btn_ExportBoldExcel" />
                     </syncfusion:RibbonBar>
 
                     <!-- View Options Bar -->
@@ -305,7 +349,7 @@
 
                     <syncfusion:SfDataGrid Grid.Row="1"
                                           x:Name="AccountsGrid"
-                                          ItemsSource="{Binding AccountsView, FallbackValue=Empty}"
+                                          ItemsSource="{Binding PagedAccounts, FallbackValue=Empty}"
                                           SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
                                           AutoGenerateColumns="False"
                                           AllowEditing="True"
@@ -458,14 +502,22 @@
                         <!-- Context Menu -->
                         <syncfusion:SfDataGrid.RecordContextMenu>
                             <ContextMenu>
+                                <MenuItem Header="Add New Account" Command="{Binding AddAccountCommand}" />
+                                <MenuItem Header="Edit Selected Account" Command="{Binding UpdateAccountCommand}" />
+                                <MenuItem Header="Delete Selected Account" Command="{Binding DeleteAccountCommand}" />
+                                <Separator />
                                 <MenuItem Header="View Details" />
-                                <MenuItem Header="Edit Account" />
+                                <MenuItem Header="Analyze Account" Command="{Binding AnalyzeSelectedAccountCommand}" />
                                 <Separator />
                                 <MenuItem Header="View Transactions" />
                                 <MenuItem Header="View Budget History" />
                                 <Separator />
-                                <MenuItem Header="Export to Excel" />
-                                <MenuItem Header="Print Account Report" />
+                                <MenuItem Header="Export to Excel" Command="{Binding ExportToExcelCommand}" />
+                                <MenuItem Header="Print Account Report" Command="{Binding PrintReportCommand}" />
+                                <Separator />
+                                <MenuItem Header="View Bold Report" Command="{Binding ViewBoldReportCommand}" />
+                                <MenuItem Header="Export Bold PDF" Command="{Binding ExportBoldReportToPdfCommand}" />
+                                <MenuItem Header="Export Bold Excel" Command="{Binding ExportBoldReportToExcelCommand}" />
                             </ContextMenu>
                         </syncfusion:SfDataGrid.RecordContextMenu>
 
@@ -835,4 +887,3 @@
     </Grid>
     </darkTheme:SfAcrylicPanel>
 </UserControl>
-

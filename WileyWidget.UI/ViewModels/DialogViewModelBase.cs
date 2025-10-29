@@ -17,6 +17,11 @@ namespace WileyWidget.ViewModels
 
         public virtual void OnDialogOpened(IDialogParameters parameters)
         {
+            if (parameters is null)
+            {
+                throw new ArgumentNullException(nameof(parameters));
+            }
+
             if (parameters.TryGetValue("Title", out string title))
             {
                 Title = title;

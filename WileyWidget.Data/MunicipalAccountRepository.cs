@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using WileyWidget.Models;
 // Clean Architecture: Interfaces defined in Business layer, implemented in Data layer
 using WileyWidget.Business.Interfaces;
@@ -13,14 +14,17 @@ namespace WileyWidget.Data
     /// <summary>
     /// Repository implementation for MunicipalAccount data operations
     /// </summary>
-    public class MunicipalAccountRepository : IMunicipalAccountRepository
+    public class MunicipalAccountRepository : IMunicipalAccountRepository, IDisposable
     {
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
+        private readonly IMemoryCache _cache;
+        private bool _disposed;
 
         // Primary constructor for DI with IDbContextFactory
-        public MunicipalAccountRepository(IDbContextFactory<AppDbContext> contextFactory)
+        public MunicipalAccountRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         }
 
         // Convenience constructor for unit tests that supply an AppDbContext directly
@@ -28,27 +32,99 @@ namespace WileyWidget.Data
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
 
-            // Create a lightweight factory that returns the provided context instance
-            _contextFactory = new TestDbContextFactory(context);
+            throw new NotSupportedException("Use the constructor that takes DbContextOptions<AppDbContext> instead. This constructor is deprecated.");
         }
 
-        // Simple IDbContextFactory wrapper for tests
+        // Convenience constructor for unit tests that supply DbContextOptions
+        public MunicipalAccountRepository(DbContextOptions<AppDbContext> options)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+
+            // Create a factory that creates new contexts with the same options
+            _contextFactory = new TestDbContextFactory(options);
+            _cache = new MemoryCache(new MemoryCacheOptions());
+        }
+
         private class TestDbContextFactory : IDbContextFactory<AppDbContext>
         {
-            private readonly AppDbContext _context;
-            public TestDbContextFactory(AppDbContext context) => _context = context;
-            public AppDbContext CreateDbContext() => _context;
-            public System.Threading.Tasks.Task<AppDbContext> CreateDbContextAsync(System.Threading.CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.FromResult(_context);
+            private readonly DbContextOptions<AppDbContext> _options;
+
+            public TestDbContextFactory(DbContextOptions<AppDbContext> options)
+            {
+                _options = options;
+            }
+
+            public AppDbContext CreateDbContext()
+            {
+                return new AppDbContext(_options);
+            }
+
+            public Task<AppDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(new AppDbContext(_options));
+            }
+        }        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
+        {
+            const string cacheKey = "MunicipalAccounts_All";
+
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<MunicipalAccount>? accounts))
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+                accounts = await context.MunicipalAccounts
+                    .OrderBy(ma => ma.AccountNumber!.Value)
+                    .ToListAsync();
+
+                _cache.Set(cacheKey, accounts, TimeSpan.FromMinutes(5));
+            }
+
+            return accounts!;
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
+        /// <summary>
+        /// Gets paged municipal accounts with sorting support
+        /// </summary>
+        public async Task<(IEnumerable<MunicipalAccount> Items, int TotalCount)> GetPagedAsync(
+            int pageNumber = 1,
+            int pageSize = 50,
+            string? sortBy = null,
+            bool sortDescending = false)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-            var list = await context.MunicipalAccounts
+
+            var query = context.MunicipalAccounts.AsQueryable();
+
+            // Apply sorting
+            query = ApplySorting(query, sortBy, sortDescending);
+
+            // Get total count
+            var totalCount = await query.CountAsync();
+
+            // Apply paging
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
+        /// <summary>
+        /// Gets an IQueryable for flexible querying and paging
+        /// </summary>
+        public async Task<IQueryable<MunicipalAccount>> GetQueryableAsync()
+        {
+            var context = await _contextFactory.CreateDbContextAsync();
+            return context.MunicipalAccounts.AsQueryable();
+        }
+
+        public async Task<IEnumerable<MunicipalAccount>> GetAllWithRelatedAsync()
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.MunicipalAccounts
+                .Include(ma => ma.Department)
+                .Include(ma => ma.BudgetEntries)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
-            Console.WriteLine($"DEBUG: MunicipalAccountRepository.GetAllAsync loaded {list.Count} accounts. Distinct TypeDescriptions: {string.Join(",", list.Select(a => a.TypeDescription).Distinct())}");
-            return list;
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(string typeFilter)
@@ -255,9 +331,73 @@ namespace WileyWidget.Data
             await Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Imports chart of accounts data from QuickBooks for production use
+        /// </summary>
+        /// <param name="chartAccounts">List of QuickBooks accounts to import</param>
+        /// <exception cref="ArgumentException">Thrown when chartAccounts is null or empty</exception>
+        /// <exception cref="InvalidOperationException">Thrown when import validation fails</exception>
+        public async Task ImportChartOfAccountsAsync(List<Intuit.Ipp.Data.Account> chartAccounts)
+        {
+            if (chartAccounts == null || chartAccounts.Count == 0)
+            {
+                throw new ArgumentException("Chart accounts list cannot be null or empty", nameof(chartAccounts));
+            }
+
+            using var context = await _contextFactory.CreateDbContextAsync();
+            using var transaction = await context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Validate chart structure before import
+                var validationResult = await ValidateChartStructureAsync(chartAccounts);
+                if (!validationResult.IsValid)
+                {
+                    throw new InvalidOperationException($"Chart validation failed: {string.Join(", ", validationResult.Errors)}");
+                }
+
+                // Clear existing cache for accounts
+                _cache.Remove("municipal_accounts_all");
+
+                // Process accounts in hierarchical order (parents first)
+                var processedAccounts = new Dictionary<string, MunicipalAccount>();
+                var accountsToProcess = chartAccounts.OrderBy(a => (a.AcctNum ?? "").Split('.').Length).ToList();
+
+                foreach (var qbAccount in accountsToProcess)
+                {
+                    var municipalAccount = await ProcessQuickBooksAccountAsync(qbAccount, processedAccounts, context);
+                    if (municipalAccount != null)
+                    {
+                        processedAccounts[municipalAccount.AccountNumber!.Value] = municipalAccount;
+                    }
+                }
+
+                // Update account hierarchies
+                await UpdateAccountHierarchiesAsync(processedAccounts, context);
+
+                // Validate final structure
+                await ValidateImportedStructureAsync(processedAccounts.Values, context);
+
+                await transaction.CommitAsync();
+
+                // Clear all related caches
+                await ClearAccountCachesAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
         public async Task SyncFromQuickBooksAsync(List<Intuit.Ipp.Data.Account> qbAccounts)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            if (qbAccounts == null)
+    {
+        throw new ArgumentNullException(nameof(qbAccounts));
+    }
+
+    using var context = await _contextFactory.CreateDbContextAsync();
             foreach (var qbAccount in qbAccounts)
             {
                 var existingAccount = await context.MunicipalAccounts
@@ -366,19 +506,232 @@ namespace WileyWidget.Data
             var accountNumber = qbAccount.AcctNum?.ToLower(System.Globalization.CultureInfo.InvariantCulture) ?? "";
             var accountName = qbAccount.Name?.ToLower(System.Globalization.CultureInfo.InvariantCulture) ?? "";
 
-            if (accountNumber.Contains("water") || accountName.Contains("water"))
+            if (accountNumber.Contains("water", StringComparison.Ordinal) || accountName.Contains("water", StringComparison.Ordinal))
                 return MunicipalFundType.Utility;
-            if (accountNumber.Contains("sewer") || accountName.Contains("sewer"))
+            if (accountNumber.Contains("sewer", StringComparison.Ordinal) || accountName.Contains("sewer", StringComparison.Ordinal))
                 return MunicipalFundType.Utility;
-            if (accountNumber.Contains("trash") || accountName.Contains("trash") || accountName.Contains("garbage"))
+            if (accountNumber.Contains("trash", StringComparison.Ordinal) || accountName.Contains("trash", StringComparison.Ordinal) || accountName.Contains("garbage", StringComparison.Ordinal))
                 return MunicipalFundType.Utility;
 
             // Check for enterprise fund indicators
-            if (accountNumber.StartsWith("4") || accountNumber.StartsWith("5") ||
-                accountName.Contains("enterprise") || accountName.Contains("utility"))
+            if (accountNumber.StartsWith("4", StringComparison.Ordinal) || accountNumber.StartsWith("5", StringComparison.Ordinal) ||
+                accountName.Contains("enterprise", StringComparison.Ordinal) || accountName.Contains("utility", StringComparison.Ordinal))
                 return MunicipalFundType.Enterprise;
 
             return MunicipalFundType.General;
+        }
+
+        private IQueryable<MunicipalAccount> ApplySorting(IQueryable<MunicipalAccount> query, string? sortBy, bool sortDescending)
+        {
+            if (string.IsNullOrEmpty(sortBy))
+            {
+                return sortDescending
+                    ? query.OrderByDescending(ma => ma.AccountNumber!.Value)
+                    : query.OrderBy(ma => ma.AccountNumber!.Value);
+            }
+
+            return sortBy.ToLowerInvariant() switch
+            {
+                "name" => sortDescending
+                    ? query.OrderByDescending(ma => ma.Name)
+                    : query.OrderBy(ma => ma.Name),
+                "balance" => sortDescending
+                    ? query.OrderByDescending(ma => ma.Balance)
+                    : query.OrderBy(ma => ma.Balance),
+                "type" => sortDescending
+                    ? query.OrderByDescending(ma => ma.Type)
+                    : query.OrderBy(ma => ma.Type),
+                "fund" => sortDescending
+                    ? query.OrderByDescending(ma => ma.Fund)
+                    : query.OrderBy(ma => ma.Fund),
+                _ => sortDescending
+                    ? query.OrderByDescending(ma => ma.AccountNumber!.Value)
+                    : query.OrderBy(ma => ma.AccountNumber!.Value)
+            };
+        }
+
+        /// <summary>
+        /// Validates the chart of accounts structure before import
+        /// </summary>
+        private async Task<ChartValidationResult> ValidateChartStructureAsync(List<Intuit.Ipp.Data.Account> chartAccounts)
+        {
+            var errors = new List<string>();
+            var accountNumbers = new HashSet<string>();
+
+            foreach (var account in chartAccounts)
+            {
+                // Validate account number format
+                var accountNumber = account.AcctNum ?? "";
+                if (string.IsNullOrEmpty(accountNumber))
+                {
+                    errors.Add($"Account '{account.Name}' has no account number");
+                    continue;
+                }
+
+                // Check for duplicates
+                if (!accountNumbers.Add(accountNumber))
+                {
+                    errors.Add($"Duplicate account number: {accountNumber}");
+                }
+
+                // Validate account number format (should be numeric with optional dots/hyphens)
+                if (!System.Text.RegularExpressions.Regex.IsMatch(accountNumber, @"^\d+([.-]\d+)*$"))
+                {
+                    errors.Add($"Invalid account number format: {accountNumber}");
+                }
+            }
+
+            await Task.CompletedTask; // Make method properly async
+            return new ChartValidationResult
+            {
+                IsValid = errors.Count == 0,
+                Errors = errors
+            };
+        }
+
+        /// <summary>
+        /// Processes a single QuickBooks account into a MunicipalAccount
+        /// </summary>
+        private async Task<MunicipalAccount?> ProcessQuickBooksAccountAsync(
+            Intuit.Ipp.Data.Account qbAccount,
+            Dictionary<string, MunicipalAccount> processedAccounts,
+            AppDbContext context)
+        {
+            var accountNumber = qbAccount.AcctNum ?? "";
+            if (string.IsNullOrEmpty(accountNumber))
+                return null;
+
+            // Check if account already exists
+            var existingAccount = await context.MunicipalAccounts
+                .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber);
+
+            if (existingAccount != null)
+            {
+                // Update existing account
+                existingAccount.Name = qbAccount.Name ?? existingAccount.Name;
+                existingAccount.Type = MapQuickBooksAccountType(qbAccount.AccountType);
+                existingAccount.Fund = DetermineFundFromAccount(qbAccount);
+                existingAccount.Balance = qbAccount.CurrentBalance;
+                existingAccount.LastSyncDate = DateTime.UtcNow;
+                existingAccount.IsActive = qbAccount.Active;
+                existingAccount.QuickBooksId = qbAccount.Id;
+
+                return existingAccount;
+            }
+            else
+            {
+                // Create new account
+                var newAccount = new MunicipalAccount
+                {
+                    AccountNumber = new AccountNumber(accountNumber),
+                    Name = qbAccount.Name ?? $"QB Account {accountNumber}",
+                    Type = MapQuickBooksAccountType(qbAccount.AccountType),
+                    Fund = DetermineFundFromAccount(qbAccount),
+                    Balance = qbAccount.CurrentBalance,
+                    QuickBooksId = qbAccount.Id,
+                    LastSyncDate = DateTime.UtcNow,
+                    IsActive = qbAccount.Active,
+                    DepartmentId = 1, // Default department, should be configurable
+                    BudgetPeriodId = 1 // Default budget period, should be configurable
+                };
+
+                // Set type description
+                newAccount.TypeDescription = newAccount.Type.ToString();
+                newAccount.FundDescription = newAccount.Fund.ToString();
+
+                context.MunicipalAccounts.Add(newAccount);
+                await context.SaveChangesAsync();
+
+                return newAccount;
+            }
+        }
+
+        /// <summary>
+        /// Updates account hierarchies after all accounts are processed
+        /// </summary>
+        private async Task UpdateAccountHierarchiesAsync(
+            Dictionary<string, MunicipalAccount> processedAccounts,
+            AppDbContext context)
+        {
+            foreach (var account in processedAccounts.Values)
+            {
+                var parentNumber = account.AccountNumber!.GetParentNumber();
+                if (!string.IsNullOrEmpty(parentNumber) && processedAccounts.TryGetValue(parentNumber, out var parentAccount))
+                {
+                    account.ParentAccountId = parentAccount.Id;
+                    account.ParentAccount = parentAccount;
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Validates the imported account structure
+        /// </summary>
+        private async Task ValidateImportedStructureAsync(
+            IEnumerable<MunicipalAccount> accounts,
+            AppDbContext context)
+        {
+            // Validate that all parent accounts exist
+            var accountNumbers = accounts.Select(a => a.AccountNumber!.Value).ToHashSet();
+            var orphanedAccounts = accounts.Where(a =>
+                a.ParentAccountId.HasValue &&
+                !accountNumbers.Contains(a.AccountNumber!.GetParentNumber() ?? "")).ToList();
+
+            if (orphanedAccounts.Any())
+            {
+                throw new InvalidOperationException(
+                    $"Orphaned accounts found: {string.Join(", ", orphanedAccounts.Select(a => a.AccountNumber!.Value))}");
+            }
+
+            // Additional validations can be added here
+            await Task.CompletedTask; // Make method properly async
+        }
+
+        /// <summary>
+        /// Clears all account-related caches
+        /// </summary>
+        private async Task ClearAccountCachesAsync()
+        {
+            _cache.Remove("municipal_accounts_all");
+            // Add other cache keys as needed
+            await Task.CompletedTask; // Make method properly async
+        }
+
+        /// <summary>
+        /// Result of chart validation
+        /// </summary>
+        private class ChartValidationResult
+        {
+            public bool IsValid { get; set; }
+            public List<string> Errors { get; set; } = new List<string>();
+        }
+
+        /// <summary>
+        /// Disposes the repository and its resources
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected implementation of Dispose pattern
+        /// </summary>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    (_cache as IDisposable)?.Dispose();
+                }
+
+                _disposed = true;
+            }
         }
     }
 }

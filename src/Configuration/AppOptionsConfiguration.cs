@@ -27,6 +27,9 @@ public class AppOptionsConfigurator : IConfigureOptions<AppOptions>
 
     public void Configure(AppOptions options)
     {
+        if (options == null)
+            throw new ArgumentNullException(nameof(options));
+
         try
         {
             _logger.LogInformation("Configuring AppOptions from database and secrets");
@@ -88,6 +91,9 @@ public class AppOptionsValidator : IValidateOptions<AppOptions>
 {
     public ValidateOptionsResult Validate(string? name, AppOptions options)
     {
+        if (options == null)
+            throw new ArgumentNullException(nameof(options));
+
         var failures = new List<string>();
 
         // Validate window dimensions

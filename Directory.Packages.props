@@ -4,7 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Core Microsoft + EF -->
-    <PackageVersion Include="BoldReports.WPF" Version="11.1.15" />
+    <PackageVersion Include="BoldReports.WPF" Version="11.1.16" />
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
@@ -13,7 +13,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.8.0" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.2" />
-  <!-- MSAL packages removed from central package versions (archived) -->
+    <!-- MSAL packages removed from central package versions (archived) -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageVersion Include="Microsoft.DotNet.Interactive" Version="1.0.0-beta.23506.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
@@ -28,7 +28,7 @@
     <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.10" />
     <!-- Identity -->
-  <!-- Identity/MSAL entries removed from central package versions (archived) -->
+    <!-- Identity/MSAL entries removed from central package versions (archived) -->
     <PackageVersion Include="Microsoft.Graph" Version="5.67.0" />
     <PackageVersion Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
     <!-- Serilog (Aligned with Intuit SDK 14.x expectations) -->
@@ -42,25 +42,25 @@
     <PackageVersion Include="Serilog.Sinks.Email" Version="4.1.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="4.1.0" />
     <!-- Syncfusion WPF -->
-  <PackageVersion Include="Syncfusion.Licensing" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfBusyIndicator.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfChart.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfChat.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfGauge.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfInput.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfRichTextBoxAdv.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfSpreadsheet.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfTreeView.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.SfGridCommon.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.Shared.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.Tools.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.XlsIO.WPF" Version="31.1.17" />
-  <PackageVersion Include="Syncfusion.Pdf.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfBusyIndicator.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfChart.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfChat.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfGauge.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfInput.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfRichTextBoxAdv.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfSpreadsheet.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfTreeView.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.SfGridCommon.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.Shared.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.Tools.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.XlsIO.WPF" Version="31.1.17" />
+    <PackageVersion Include="Syncfusion.Pdf.WPF" Version="31.1.17" />
     <!-- QuickBooks -->
     <PackageVersion Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.1" />
@@ -113,9 +113,9 @@
     <PackageVersion Include="Prism.Core" Version="9.0.537" />
     <PackageVersion Include="Prism.Wpf" Version="9.0.537" />
     <PackageVersion Include="Prism.Container.DryIoc" Version="9.0.107" />
-  <!-- Pin DryIoc to the version expected by Prism.Container.DryIoc to avoid duplicate/ambiguous references -->
-  <PackageVersion Include="DryIoc" Version="5.4.3" />
+    <!-- Pin DryIoc to the version expected by Prism.Container.DryIoc to avoid duplicate/ambiguous references -->
+    <PackageVersion Include="DryIoc" Version="5.4.3" />
     <!-- Prism.DryIoc removed: replaced with Prism.Container.DryIoc for .NET 9 compatibility -->
-  <!-- Azure configuration and identity packages removed to clean Azure traces -->
+    <!-- Azure configuration and identity packages removed to clean Azure traces -->
   </ItemGroup>
 </Project>

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using WileyWidget.Models;
 // Clean Architecture: Interfaces defined in Business layer, implemented in Data layer
 using WileyWidget.Business.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace WileyWidget.Data;
 
@@ -13,13 +14,15 @@ namespace WileyWidget.Data;
 public class DepartmentRepository : IDepartmentRepository
 {
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly IMemoryCache _cache;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public DepartmentRepository(IDbContextFactory<AppDbContext> contextFactory)
+    public DepartmentRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
 
     /// <summary>
@@ -27,11 +30,58 @@ public class DepartmentRepository : IDepartmentRepository
     /// </summary>
     public async Task<IEnumerable<Department>> GetAllAsync()
     {
+        const string cacheKey = "Departments_All";
+
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<Department>? departments))
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            departments = await context.Departments
+                .AsNoTracking()
+                .OrderBy(d => d.Name)
+                .ToListAsync();
+
+            _cache.Set(cacheKey, departments, TimeSpan.FromMinutes(15));
+        }
+
+        return departments!;
+    }
+
+    /// <summary>
+    /// Gets paged departments with sorting support
+    /// </summary>
+    public async Task<(IEnumerable<Department> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber = 1,
+        int pageSize = 50,
+        string? sortBy = null,
+        bool sortDescending = false)
+    {
         await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Departments
+
+        var query = context.Departments.AsQueryable();
+
+        // Apply sorting
+        query = ApplySorting(query, sortBy, sortDescending);
+
+        // Get total count
+        var totalCount = await query.CountAsync();
+
+        // Apply paging
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .AsNoTracking()
-            .OrderBy(d => d.Name)
             .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    /// <summary>
+    /// Gets an IQueryable for flexible querying and paging
+    /// </summary>
+    public async Task<IQueryable<Department>> GetQueryableAsync()
+    {
+        var context = await _contextFactory.CreateDbContextAsync();
+        return context.Departments.AsQueryable();
     }
 
     /// <summary>
@@ -97,5 +147,28 @@ public class DepartmentRepository : IDepartmentRepository
             context.Departments.Remove(department);
             await context.SaveChangesAsync();
         }
+    }
+
+    private IQueryable<Department> ApplySorting(IQueryable<Department> query, string? sortBy, bool sortDescending)
+    {
+        if (string.IsNullOrEmpty(sortBy))
+        {
+            return sortDescending
+                ? query.OrderByDescending(d => d.Name)
+                : query.OrderBy(d => d.Name);
+        }
+
+        return sortBy.ToLowerInvariant() switch
+        {
+            "name" => sortDescending
+                ? query.OrderByDescending(d => d.Name)
+                : query.OrderBy(d => d.Name),
+            "departmentcode" => sortDescending
+                ? query.OrderByDescending(d => d.DepartmentCode)
+                : query.OrderBy(d => d.DepartmentCode),
+            _ => sortDescending
+                ? query.OrderByDescending(d => d.Name)
+                : query.OrderBy(d => d.Name)
+        };
     }
 }

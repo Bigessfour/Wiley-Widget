@@ -81,7 +81,7 @@ namespace WileyWidget.Services
         /// </summary>
         public async Task<IDialogResult?> ShowDialogAsync<TViewModel>(string title, IDialogParameters parameters) where TViewModel : IDialogAware
         {
-            var dialogName = typeof(TViewModel).Name.Replace("ViewModel", "View");
+            var dialogName = typeof(TViewModel).Name.Replace("ViewModel", "View", StringComparison.Ordinal);
             var result = await ShowDialogAsync(dialogName, title, parameters);
             return result;
         }
@@ -91,6 +91,11 @@ namespace WileyWidget.Services
         /// </summary>
         public async Task<IDialogResult?> ShowDialogAsync(string dialogName, string title, IDialogParameters parameters)
         {
+            if (parameters is null)
+            {
+                throw new ArgumentNullException(nameof(parameters));
+            }
+
             var tcs = new TaskCompletionSource<IDialogResult?>();
 
             var dialogParams = new DialogParameters

@@ -368,9 +368,9 @@ public class ReportExportService : IReportExportService
     /// </summary>
     private static string EscapeCsvValue(string value)
     {
-        if (value.Contains(",") || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
+        if (value.Contains(",", StringComparison.Ordinal) || value.Contains("\"", StringComparison.Ordinal) || value.Contains("\n", StringComparison.Ordinal) || value.Contains("\r", StringComparison.Ordinal))
         {
-            return "\"" + value.Replace("\"", "\"\"") + "\"";
+            return "\"" + value.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
         }
         return value;
     }

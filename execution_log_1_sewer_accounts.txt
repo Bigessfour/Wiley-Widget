@@ -1,0 +1,8 @@
+Msg 207, Level 16, State 1, Server MCKITRICK\SQLEXPRESS, Line 7
+Invalid column name 'CreatedAt'.
+Msg 207, Level 16, State 1, Server MCKITRICK\SQLEXPRESS, Line 7
+Invalid column name 'UpdatedAt'.
+Msg 207, Level 16, State 1, Server MCKITRICK\SQLEXPRESS, Line 7
+Invalid column name 'CreatedAt'.
+Msg 207, Level 16, State 1, Server MCKITRICK\SQLEXPRESS, Line 7
+Invalid column name 'UpdatedAt'.

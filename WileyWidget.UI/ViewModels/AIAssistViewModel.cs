@@ -17,6 +17,7 @@ using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Messages;
+using WileyWidget.Abstractions;
 // Resolve ChatMessage naming conflict explicitly
 using ChatMessageModel = WileyWidget.Models.ChatMessage;
 
@@ -31,6 +32,7 @@ namespace WileyWidget.ViewModels;
 // Evidence for Section 16 Build: Test tasks wired into CI per GitHub Actions workflow: "Automated testing in CI ensures quality gates."
 public partial class AIAssistViewModel : BindableBase, IDisposable, INavigationAware, INotifyDataErrorInfo
 {
+    private readonly ICacheService? _cacheService;
     // Evidence for Section 14 Testing: ViewModel unit tests cover core logic, commands, validation, and state transitions per xUnit/Moq testing patterns: "Unit tests validate ViewModel behavior with mocked dependencies."
     // Evidence for Section 14 Testing: UI/Automation tests for critical flows run in CI per STA test harness: "UI tests validate end-to-end functionality with proper threading."
     // Evidence for Section 14 Testing: Integration tests cover navigation and data flows per lifecycle test base: "Integration tests verify component interactions and data persistence."
@@ -83,9 +85,9 @@ public partial class AIAssistViewModel : BindableBase, IDisposable, INavigationA
 
         // Check for basic query format (should contain keywords related to the domain)
         var lowerQuery = QueryText.ToLower(CultureInfo.CurrentCulture);
-        if (!lowerQuery.Contains("enterprise") && !lowerQuery.Contains("budget") &&
-            !lowerQuery.Contains("charge") && !lowerQuery.Contains("rate") &&
-            !lowerQuery.Contains("service") && !lowerQuery.Contains("calculate"))
+        if (!lowerQuery.Contains("enterprise", StringComparison.OrdinalIgnoreCase) && !lowerQuery.Contains("budget", StringComparison.OrdinalIgnoreCase) &&
+            !lowerQuery.Contains("charge", StringComparison.OrdinalIgnoreCase) && !lowerQuery.Contains("rate", StringComparison.OrdinalIgnoreCase) &&
+            !lowerQuery.Contains("service", StringComparison.OrdinalIgnoreCase) && !lowerQuery.Contains("calculate", StringComparison.OrdinalIgnoreCase))
         {
             AddError(nameof(QueryText), "Please include relevant terms like 'enterprise', 'budget', 'charge', 'rate', or 'calculate' for better analysis.");
         }
@@ -502,13 +504,14 @@ public partial class AIAssistViewModel : BindableBase, IDisposable, INavigationA
     /// <summary>
     /// Constructor with AI service dependency
     /// </summary>
-    public AIAssistViewModel(IAIService aiService, IChargeCalculatorService chargeCalculator, IWhatIfScenarioEngine scenarioEngine, IGrokSupercomputer grokSupercomputer, IEnterpriseRepository enterpriseRepository, IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<AIAssistViewModel> logger, IEventAggregator eventAggregator)
+    public AIAssistViewModel(IAIService aiService, IChargeCalculatorService chargeCalculator, IWhatIfScenarioEngine scenarioEngine, IGrokSupercomputer grokSupercomputer, IEnterpriseRepository enterpriseRepository, IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<AIAssistViewModel> logger, IEventAggregator eventAggregator, ICacheService? cacheService = null)
     {
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _chargeCalculator = chargeCalculator ?? throw new ArgumentNullException(nameof(chargeCalculator));
         _scenarioEngine = scenarioEngine ?? throw new ArgumentNullException(nameof(scenarioEngine));
         _grokSupercomputer = grokSupercomputer ?? throw new ArgumentNullException(nameof(grokSupercomputer));
         _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+        _cacheService = cacheService;
         _dispatcherHelper = dispatcherHelper ?? throw new ArgumentNullException(nameof(dispatcherHelper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
@@ -875,34 +878,46 @@ public partial class AIAssistViewModel : BindableBase, IDisposable, INavigationA
     private string FormatServiceChargeResponse(ServiceChargeRecommendation recommendation)
     {
         var response = new System.Text.StringBuilder();
-        response.AppendLine($"📊 **Service Charge Analysis for Enterprise {recommendation.EnterpriseId}**");
-        response.AppendLine($"**{recommendation.EnterpriseName}**");
-        response.AppendLine();
-        response.AppendLine($"**Recommended Rate:** ${recommendation.RecommendedRate:N2}/month");
-        response.AppendLine($"**Current Rate:** ${recommendation.CurrentRate:N2}/month");
-        response.AppendLine();
+        string title = string.Format(CultureInfo.InvariantCulture, "📊 **Service Charge Analysis for Enterprise {0}**", recommendation.EnterpriseId);
+        response.AppendLine(title);
+        string name = string.Format(CultureInfo.InvariantCulture, "**{0}**", recommendation.EnterpriseName);
+        response.AppendLine(name);
+        response.AppendLine("");
+        string recRate = string.Format(CultureInfo.InvariantCulture, "**Recommended Rate:** {0:N2}/month", recommendation.RecommendedRate);
+        response.AppendLine(recRate);
+        string curRate = string.Format(CultureInfo.InvariantCulture, "**Current Rate:** {0:N2}/month", recommendation.CurrentRate);
+        response.AppendLine(curRate);
+        response.AppendLine("");
         response.AppendLine($"**Financial Details:**");
-        response.AppendLine($"- Total Monthly Expenses: ${recommendation.TotalMonthlyExpenses:N2}");
-        response.AppendLine($"- Monthly Revenue at Recommended: ${recommendation.MonthlyRevenueAtRecommended:N2}");
-        response.AppendLine($"- Monthly Surplus: ${recommendation.MonthlySurplus:N2}");
-        response.AppendLine($"- Reserve Allocation: ${recommendation.ReserveAllocation:N2}");
+        string expenses = string.Format(CultureInfo.InvariantCulture, "- Total Monthly Expenses: {0:N2}", recommendation.TotalMonthlyExpenses);
+        response.AppendLine(expenses);
+        string revenue = string.Format(CultureInfo.InvariantCulture, "- Monthly Revenue at Recommended: {0:N2}", recommendation.MonthlyRevenueAtRecommended);
+        response.AppendLine(revenue);
+        string surplus = string.Format(CultureInfo.InvariantCulture, "- Monthly Surplus: {0:N2}", recommendation.MonthlySurplus);
+        response.AppendLine(surplus);
+        string reserve = string.Format(CultureInfo.InvariantCulture, "- Reserve Allocation: {0:N2}", recommendation.ReserveAllocation);
+        response.AppendLine(reserve);
         response.AppendLine();
         response.AppendLine($"**Break-Even Analysis:**");
-        response.AppendLine($"- Break-Even Rate: ${recommendation.BreakEvenAnalysis.BreakEvenRate:N2}");
-        response.AppendLine($"- Current Surplus/Deficit: ${recommendation.BreakEvenAnalysis.CurrentSurplusDeficit:N2}");
-        response.AppendLine($"- Required Rate Increase: {recommendation.BreakEvenAnalysis.RequiredRateIncrease:F1}%");
-        response.AppendLine($"- Coverage Ratio: {recommendation.BreakEvenAnalysis.CoverageRatio:F2}");
+        string breakEven = string.Format(CultureInfo.InvariantCulture, "- Break-Even Rate: {0:N2}", recommendation.BreakEvenAnalysis.BreakEvenRate);
+        response.AppendLine(breakEven);
+        string surplusDeficit = string.Format(CultureInfo.InvariantCulture, "- Current Surplus/Deficit: {0:N2}", recommendation.BreakEvenAnalysis.CurrentSurplusDeficit);
+        response.AppendLine(surplusDeficit);
+        string increase = string.Format(CultureInfo.InvariantCulture, "- Required Rate Increase: {0:F1}%", recommendation.BreakEvenAnalysis.RequiredRateIncrease);
+        response.AppendLine(increase);
+        string ratio = string.Format(CultureInfo.InvariantCulture, "- Coverage Ratio: {0:F2}", recommendation.BreakEvenAnalysis.CoverageRatio);
+        response.AppendLine(ratio);
         response.AppendLine();
         if (recommendation.Assumptions.Any())
         {
-            response.AppendLine($"**Assumptions:**");
+            response.AppendLine(CultureInfo.InvariantCulture, $"**Assumptions:**");
             foreach (var assumption in recommendation.Assumptions)
             {
-                response.AppendLine($"- {assumption}");
+                response.AppendLine(CultureInfo.InvariantCulture, $"- {assumption}");
             }
             response.AppendLine();
         }
-        response.AppendLine($"*Analysis generated on {recommendation.CalculationDate:g}*");
+        response.AppendLine(CultureInfo.InvariantCulture, $"*Analysis generated on {recommendation.CalculationDate:g}*");
 
         return response.ToString();
     }
@@ -1163,13 +1178,13 @@ public partial class AIAssistViewModel : BindableBase, IDisposable, INavigationA
             {
                 var content = new System.Text.StringBuilder();
                 content.AppendLine("# AI Assistant Chat History");
-                content.AppendLine($"Exported on: {DateTime.Now:g}");
+                content.AppendLine(CultureInfo.InvariantCulture, $"Exported on: {DateTime.Now:g}");
                 content.AppendLine();
 
                 foreach (var message in ChatMessages)
                 {
                     var sender = message.IsUser ? "You" : "AI Assistant";
-                    content.AppendLine($"**{sender}** ({message.Timestamp:g}):");
+                    content.AppendLine(CultureInfo.InvariantCulture, $"**{sender}** ({message.Timestamp:g}):");
                     content.AppendLine(message.Text);
                     content.AppendLine();
                 }
@@ -1539,28 +1554,28 @@ public partial class AIAssistViewModel : BindableBase, IDisposable, INavigationA
         var payRaiseMatch = Regex.Match(scenario, @"(\d+(?:\.\d+)?)%?\s*pay\s*raise", RegexOptions.IgnoreCase);
         if (payRaiseMatch.Success)
         {
-            parameters.PayRaisePercentage = decimal.Parse(payRaiseMatch.Groups[1].Value);
+            parameters.PayRaisePercentage = decimal.Parse(payRaiseMatch.Groups[1].Value, CultureInfo.InvariantCulture);
         }
 
         // Parse benefits increase
         var benefitsMatch = Regex.Match(scenario, @"benefits?\s*improvement|\$\s*(\d+(?:,\d+)*(?:\.\d+)?)", RegexOptions.IgnoreCase);
         if (benefitsMatch.Success && benefitsMatch.Groups[1].Success)
         {
-            parameters.BenefitsIncreaseAmount = decimal.Parse(benefitsMatch.Groups[1].Value.Replace(",", ""));
+            parameters.BenefitsIncreaseAmount = decimal.Parse(benefitsMatch.Groups[1].Value.Replace(",", "", StringComparison.Ordinal), CultureInfo.InvariantCulture);
         }
 
         // Parse reserve percentage
         var reserveMatch = Regex.Match(scenario, @"(\d+(?:\.\d+)?)%?\s*reserve", RegexOptions.IgnoreCase);
         if (reserveMatch.Success)
         {
-            parameters.ReservePercentage = decimal.Parse(reserveMatch.Groups[1].Value);
+            parameters.ReservePercentage = decimal.Parse(reserveMatch.Groups[1].Value, CultureInfo.InvariantCulture);
         }
 
         // Parse equipment purchase
         var equipmentMatch = Regex.Match(scenario, @"(?:equipment\s*purchase(?:\s*for)?\s*)?\$\s*(\d+(?:,\d+)*(?:\.\d+)?)", RegexOptions.IgnoreCase);
         if (equipmentMatch.Success && equipmentMatch.Groups[1].Success)
         {
-            parameters.EquipmentPurchaseAmount = decimal.Parse(equipmentMatch.Groups[1].Value.Replace(",", ""));
+            parameters.EquipmentPurchaseAmount = decimal.Parse(equipmentMatch.Groups[1].Value.Replace(",", "", StringComparison.Ordinal), CultureInfo.InvariantCulture);
         }
 
         return parameters;

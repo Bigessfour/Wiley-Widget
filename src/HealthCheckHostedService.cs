@@ -539,7 +539,6 @@ public class HealthCheckHostedService : IHostedService, IDisposable
             using var activeClient = clientFactory?.CreateClient("AIHealthCheck") ?? new System.Net.Http.HttpClient();
             activeClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "WileyWidget-AIHealthCheck/1.0");
             System.Net.Http.HttpResponseMessage? response = null;
-            string? target = null;
             string serviceType = "Unknown";
 
             try
@@ -549,15 +548,15 @@ public class HealthCheckHostedService : IHostedService, IDisposable
                     serviceType = "xAI";
                     activeClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", xaiApiKey);
                     var baseUrl = _configuration["XAI:BaseUrl"] ?? "https://api.x.ai/v1/";
-                    target = baseUrl.TrimEnd('/') + "/models";
-                    response = activeClient.GetAsync(target, cts.Token).GetAwaiter().GetResult();
+                    var targetUri = new Uri(baseUrl.TrimEnd('/') + "/models");
+                    response = activeClient.GetAsync(targetUri, cts.Token).GetAwaiter().GetResult();
                 }
                 else if (!string.IsNullOrWhiteSpace(openAiKey))
                 {
                     serviceType = "OpenAI";
                     activeClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", openAiKey);
-                    target = "https://api.openai.com/v1/models";
-                    response = activeClient.GetAsync(target, cts.Token).GetAwaiter().GetResult();
+                    var targetUri = new Uri("https://api.openai.com/v1/models");
+                    response = activeClient.GetAsync(targetUri, cts.Token).GetAwaiter().GetResult();
                 }
             }
             catch (OperationCanceledException)
@@ -626,12 +625,12 @@ public class HealthCheckHostedService : IHostedService, IDisposable
                     if (client != null)
                     {
                         client.Timeout = TimeSpan.FromSeconds(5);
-                        response = await client.GetAsync("https://www.microsoft.com");
+                        response = await client.GetAsync(new Uri("https://www.microsoft.com"));
                     }
                     else
                     {
                         using var tmpClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-                        response = await tmpClient.GetAsync("https://www.microsoft.com");
+                        response = await tmpClient.GetAsync(new Uri("https://www.microsoft.com"));
                     }
                 }
 

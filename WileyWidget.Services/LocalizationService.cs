@@ -134,7 +134,7 @@ public class LocalizationService : INotifyPropertyChanged, IDisposable
     public string GetString(string key, string fallback)
     {
         var localized = GetString(key);
-        return localized.StartsWith("[") && localized.EndsWith("]") ? fallback : localized;
+        return localized.StartsWith("[", StringComparison.Ordinal) && localized.EndsWith("]", StringComparison.Ordinal) ? fallback : localized;
     }
 
     /// <summary>

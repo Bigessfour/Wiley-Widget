@@ -12,7 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
-using WileyWidget.Configuration.Resilience;
+using System.Reflection;
 using Serilog;
 using Serilog.Debugging;
 using WileyWidget.Business.Interfaces;
@@ -222,7 +222,7 @@ public static class WpfHostingExtensions
         else
         {
             // Log sanitized version (hide credentials)
-            var sanitized = connectionString.Contains("Password=")
+            var sanitized = connectionString.Contains("Password=", StringComparison.Ordinal)
                 ? connectionString.Substring(0, Math.Min(50, connectionString.Length)) + "..."
                 : connectionString.Substring(0, Math.Min(100, connectionString.Length));
             Log.Debug("Connection string preview: {Preview}", sanitized);
@@ -341,8 +341,10 @@ public static class WpfHostingExtensions
             client.Timeout = TimeSpan.FromSeconds(60);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-AI/1.0");
         });
-        // Use project's PolicyFactory (Polly v8 pipeline) to attach resilience
-        PolicyFactory.AddStandardResilienceHandler(aiBuilder);
+    // Use project's PolicyFactory (Polly v8 pipeline) to attach resilience if available.
+    // Use reflection so design-time / wpftmp temporary projects that do not include
+    // the Resilience implementation still compile during XAML markup compilation.
+    TryInvokePolicyFactoryAddStandardResilienceHandler(aiBuilder);
 
         // External APIs with standard resilience
         var externalBuilder = services.AddHttpClient("ExternalAPIs", client =>
@@ -350,7 +352,38 @@ public static class WpfHostingExtensions
             client.Timeout = TimeSpan.FromSeconds(45);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget-API/1.0");
         });
-        PolicyFactory.AddStandardResilienceHandler(externalBuilder);
+        TryInvokePolicyFactoryAddStandardResilienceHandler(externalBuilder);
+
+    }
+
+    private static void TryInvokePolicyFactoryAddStandardResilienceHandler(IHttpClientBuilder builder)
+    {
+        try
+        {
+            // Look for the PolicyFactory type in the current assembly first, then by full name.
+            var asm = Assembly.GetExecutingAssembly();
+            var type = asm.GetType("WileyWidget.Configuration.Resilience.PolicyFactory")
+                       ?? Type.GetType("WileyWidget.Configuration.Resilience.PolicyFactory, " + asm.GetName().Name);
+
+            if (type is null)
+            {
+                // Not present in this compilation (e.g., wpftmp temporary project). Skip.
+                return;
+            }
+
+            var method = type.GetMethod("AddStandardResilienceHandler", BindingFlags.Public | BindingFlags.Static);
+            if (method is null)
+            {
+                return;
+            }
+
+            // Signature: void AddStandardResilienceHandler(IHttpClientBuilder, ILogger? logger = null)
+            method.Invoke(null, new object?[] { builder, null });
+        }
+        catch
+        {
+            // Swallow any reflection errors to avoid breaking design-time compilation or markup compile.
+        }
 
     // Typed client for QuickBooks OAuth operations is registered below (QuickBooksService)
     }

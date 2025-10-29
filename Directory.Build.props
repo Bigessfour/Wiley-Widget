@@ -24,6 +24,10 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <RestoreUseStaticGraphEvaluation>true</RestoreUseStaticGraphEvaluation>
 
+    <!-- Enable parallel builds for faster compilation -->
+    <BuildInParallel>true</BuildInParallel>
+    <MaxCpuCount>$(NUMBER_OF_PROCESSORS)</MaxCpuCount>
+
     <!-- Ensure nested build outputs are never re-included in compilation -->
     <DefaultItemExcludes>$(DefaultItemExcludes);**\bin\**;**\obj\**</DefaultItemExcludes>
 

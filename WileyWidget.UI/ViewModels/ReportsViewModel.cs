@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -11,6 +12,7 @@ using Prism.Mvvm;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services;
+using WileyWidget.Abstractions;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Base;
 
@@ -37,7 +39,8 @@ namespace WileyWidget.ViewModels
         private readonly IAuditRepository _auditRepository;
         private readonly Microsoft.Extensions.Logging.ILogger<ReportsViewModel> _logger;
         private readonly IDispatcherHelper _dispatcherHelper;
-        private readonly IReportExportService _reportExportService;
+    private readonly IReportExportService _reportExportService;
+    private readonly ICacheService? _cacheService;
         private ReportData? _currentReportData;
         private bool _isBusy;
 
@@ -212,7 +215,7 @@ namespace WileyWidget.ViewModels
         /// <param name="settingsService">The settings service for persisting user preferences</param>
         /// <param name="budgetRepository">The budget repository for data access</param>
         /// <param name="auditRepository">The audit repository for audit trail data</param>
-        public ReportsViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<ReportsViewModel> logger, ISettingsService settingsService, IBudgetRepository budgetRepository, IAuditRepository auditRepository, IReportExportService reportExportService)
+    public ReportsViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<ReportsViewModel> logger, ISettingsService settingsService, IBudgetRepository budgetRepository, IAuditRepository auditRepository, IReportExportService reportExportService, ICacheService? cacheService = null)
         {
             _dispatcherHelper = dispatcherHelper;
             _logger = logger;
@@ -220,6 +223,7 @@ namespace WileyWidget.ViewModels
             _budgetRepository = budgetRepository;
             _auditRepository = auditRepository;
             _reportExportService = reportExportService;
+            _cacheService = cacheService;
 
             // Load saved settings
             LoadSavedSettings();
@@ -231,6 +235,42 @@ namespace WileyWidget.ViewModels
                 EndDate = DateTime.Today;
 
             InitializeCommands();
+
+            // Preload department summaries into cache/local memory for faster report generation in E2E
+            try
+            {
+                if (_cacheService != null)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var cached = await _cacheService.GetAsync<System.Collections.Generic.List<DepartmentSummary>>("departments_summary");
+                            if (cached != null && cached.Any())
+                            {
+                                // Keep cached for report generation; no UI collection to update here
+                                return;
+                            }
+
+                            // Use a conservative date range (last 1 year) to build department summary cache
+                            var start = DateTime.Today.AddYears(-1);
+                            var end = DateTime.Today;
+                            var depts = await _budgetRepository.GetDepartmentBreakdownAsync(start, end);
+                            var list = depts?.ToList() ?? new System.Collections.Generic.List<DepartmentSummary>();
+                            if (list.Any())
+                                await _cacheService.SetAsync("departments_summary", list, TimeSpan.FromHours(6));
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to preload department summaries");
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Scheduling preload of department summaries failed");
+            }
         }
 
         private void InitializeCommands()
@@ -668,18 +708,18 @@ namespace WileyWidget.ViewModels
         {
             var builder = new System.Text.StringBuilder();
 
-            builder.AppendLine($"Report: {reportData.Title}");
-            builder.AppendLine($"Generated: {reportData.GeneratedAt:O}");
+            builder.AppendLine(CultureInfo.InvariantCulture, $"Report: {reportData.Title}");
+            builder.AppendLine(CultureInfo.InvariantCulture, $"Generated: {reportData.GeneratedAt:O}");
             builder.AppendLine(new string('=', 50));
             builder.AppendLine();
 
             if (reportData.BudgetSummary != null)
             {
                 builder.AppendLine("BUDGET SUMMARY");
-                builder.AppendLine($"Period: {reportData.BudgetSummary.BudgetPeriod}");
-                builder.AppendLine($"Total Budgeted: {reportData.BudgetSummary.TotalBudgeted:C}");
-                builder.AppendLine($"Total Actual: {reportData.BudgetSummary.TotalActual:C}");
-                builder.AppendLine($"Total Variance: {reportData.BudgetSummary.TotalVariance:C} ({reportData.BudgetSummary.TotalVariancePercentage:F2}%)");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Period: {reportData.BudgetSummary.BudgetPeriod}");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Total Budgeted: {reportData.BudgetSummary.TotalBudgeted:C}");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Total Actual: {reportData.BudgetSummary.TotalActual:C}");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Total Variance: {reportData.BudgetSummary.TotalVariance:C} ({reportData.BudgetSummary.TotalVariancePercentage:F2}%)");
                 builder.AppendLine();
 
                 if (reportData.BudgetSummary.FundSummaries.Any())
@@ -687,7 +727,7 @@ namespace WileyWidget.ViewModels
                     builder.AppendLine("FUND BREAKDOWN:");
                     foreach (var fund in reportData.BudgetSummary.FundSummaries)
                     {
-                        builder.AppendLine($"  {fund.FundName}: Budgeted {fund.TotalBudgeted:C}, Actual {fund.TotalActual:C}, Variance {fund.Variance:C}");
+                        builder.AppendLine(CultureInfo.InvariantCulture, $"  {fund.FundName}: Budgeted {fund.TotalBudgeted:C}, Actual {fund.TotalActual:C}, Variance {fund.Variance:C}");
                     }
                     builder.AppendLine();
                 }
@@ -696,8 +736,8 @@ namespace WileyWidget.ViewModels
             if (reportData.VarianceAnalysis != null)
             {
                 builder.AppendLine("VARIANCE ANALYSIS");
-                builder.AppendLine($"Total Variance: {reportData.VarianceAnalysis.TotalVariance:C}");
-                builder.AppendLine($"Variance Percentage: {reportData.VarianceAnalysis.TotalVariancePercentage:F2}%");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Total Variance: {reportData.VarianceAnalysis.TotalVariance:C}");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Variance Percentage: {reportData.VarianceAnalysis.TotalVariancePercentage:F2}%");
                 builder.AppendLine();
             }
 
@@ -706,7 +746,7 @@ namespace WileyWidget.ViewModels
                 builder.AppendLine("DEPARTMENT BREAKDOWN:");
                 foreach (var dept in reportData.Departments)
                 {
-                    builder.AppendLine($"  {dept.DepartmentName}: Budgeted {dept.TotalBudgeted:C}, Actual {dept.TotalActual:C}");
+                    builder.AppendLine(CultureInfo.InvariantCulture, $"  {dept.DepartmentName}: Budgeted {dept.TotalBudgeted:C}, Actual {dept.TotalActual:C}");
                 }
                 builder.AppendLine();
             }
@@ -716,7 +756,7 @@ namespace WileyWidget.ViewModels
                 builder.AppendLine("FUND ALLOCATIONS:");
                 foreach (var fund in reportData.Funds)
                 {
-                    builder.AppendLine($"  {fund.FundName}: Budgeted {fund.TotalBudgeted:C}, Actual {fund.TotalActual:C}");
+                    builder.AppendLine(CultureInfo.InvariantCulture, $"  {fund.FundName}: Budgeted {fund.TotalBudgeted:C}, Actual {fund.TotalActual:C}");
                 }
                 builder.AppendLine();
             }
@@ -726,10 +766,10 @@ namespace WileyWidget.ViewModels
                 builder.AppendLine("AUDIT TRAIL:");
                 foreach (var entry in reportData.AuditEntries.Take(20)) // Limit to first 20 entries
                 {
-                    builder.AppendLine($"  {entry.Timestamp:yyyy-MM-dd HH:mm:ss} - {entry.Action} on {entry.EntityType} by {entry.User}");
+                    builder.AppendLine(CultureInfo.InvariantCulture, $"  {entry.Timestamp:yyyy-MM-dd HH:mm:ss} - {entry.Action} on {entry.EntityType} by {entry.User}");
                     if (!string.IsNullOrEmpty(entry.Changes))
                     {
-                        builder.AppendLine($"    Changes: {entry.Changes}");
+                        builder.AppendLine(CultureInfo.InvariantCulture, $"    Changes: {entry.Changes}");
                     }
                 }
                 builder.AppendLine();
@@ -738,9 +778,9 @@ namespace WileyWidget.ViewModels
             if (reportData.YearEndSummary != null)
             {
                 builder.AppendLine("YEAR-END SUMMARY");
-                builder.AppendLine($"Total Budgeted: {reportData.YearEndSummary.TotalBudgeted:C}");
-                builder.AppendLine($"Total Actual: {reportData.YearEndSummary.TotalActual:C}");
-                builder.AppendLine($"Year-End Variance: {reportData.YearEndSummary.TotalVariance:C}");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Total Budgeted: {reportData.YearEndSummary.TotalBudgeted:C}");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Total Actual: {reportData.YearEndSummary.TotalActual:C}");
+                builder.AppendLine(CultureInfo.InvariantCulture, $"Year-End Variance: {reportData.YearEndSummary.TotalVariance:C}");
                 builder.AppendLine();
             }
 

@@ -32,6 +32,11 @@ namespace WileyWidget.ViewModels
 
         public override void OnDialogOpened(IDialogParameters parameters)
         {
+            if (parameters is null)
+            {
+                throw new ArgumentNullException(nameof(parameters));
+            }
+
             base.OnDialogOpened(parameters);
 
             if (parameters.TryGetValue("Message", out string message))

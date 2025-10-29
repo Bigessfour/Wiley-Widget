@@ -13,6 +13,9 @@ public class ConnectionStringsOptionsValidator : IValidateOptions<ConnectionStri
 {
     public ValidateOptionsResult Validate(string? name, ConnectionStringsOptions options)
     {
+        if (options == null)
+            throw new ArgumentNullException(nameof(options));
+
         var failures = new List<string>();
 
         if (string.IsNullOrWhiteSpace(options.DefaultConnection))
@@ -33,6 +36,9 @@ public class QuickBooksOptionsValidator : IValidateOptions<QuickBooksOptions>
 {
     public ValidateOptionsResult Validate(string? name, QuickBooksOptions options)
     {
+        if (options == null)
+            throw new ArgumentNullException(nameof(options));
+
         var failures = new List<string>();
 
         // If any QuickBooks setting is configured, require all required settings
@@ -75,6 +81,9 @@ public class SyncfusionOptionsValidator : IValidateOptions<SyncfusionOptions>
 {
     public ValidateOptionsResult Validate(string? name, SyncfusionOptions options)
     {
+        if (options == null)
+            throw new ArgumentNullException(nameof(options));
+
         var failures = new List<string>();
 
         // License key is always required for Syncfusion controls
@@ -85,7 +94,7 @@ public class SyncfusionOptionsValidator : IValidateOptions<SyncfusionOptions>
         else
         {
             // Basic validation that license key looks like a Syncfusion license
-            if (!options.LicenseKey.Contains("@") || options.LicenseKey.Length < 50)
+            if (!options.LicenseKey.Contains("@", StringComparison.Ordinal) || options.LicenseKey.Length < 50)
             {
                 failures.Add("LicenseKey appears to be invalid. Please verify it's a valid Syncfusion license key");
             }
@@ -96,4 +105,3 @@ public class SyncfusionOptionsValidator : IValidateOptions<SyncfusionOptions>
             : ValidateOptionsResult.Success;
     }
 }
-

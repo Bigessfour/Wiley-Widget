@@ -86,9 +86,11 @@
                     </StackPanel>
                 </Border>
 
-                <syncfusion:SfDataGrid Grid.Row="1" Margin="12"
+                <syncfusion:SfDataGrid x:Name="AccountsDataGrid" Grid.Row="1" Margin="12"
                                        ItemsSource="{Binding MunicipalAccounts}"
                                        SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
+                                       SortColumnDescriptions="{Binding SortDescriptions}"
+                                       GroupColumnDescriptions="{Binding GroupDescriptions}"
                                        AutoGenerateColumns="False"
                                        AllowSorting="True"
                                        AllowFiltering="True"
@@ -122,4 +124,3 @@
         </DockPanel>
     </Grid>
 </UserControl>
-

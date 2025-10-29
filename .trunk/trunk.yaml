@@ -94,6 +94,10 @@ lint:
       paths:
         - .github/**/*.yml
         - .github/**/*.yaml
+    # Skip security scanning on test fixtures with mock credentials
+    - linters: [gitleaks]
+      paths:
+        - tests/SettingsViewModelTests/SettingsViewModelTests.cs
     # Skip shell script checking for certain directories
     - linters: [shellcheck, shfmt]
       paths:

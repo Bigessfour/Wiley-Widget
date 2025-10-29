@@ -1598,7 +1598,13 @@ BEGIN
     IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'DepartmentCode', N'Name', N'ParentId') AND [object_id] = OBJECT_ID(N'[Departments]'))
         SET IDENTITY_INSERT [Departments] ON;
     EXEC(N'INSERT INTO [Departments] ([Id], [DepartmentCode], [Name], [ParentId])
-    VALUES (1, N''DPW'', N''Public Works'', NULL)');
+    VALUES (1, N''DPW'', N''Public Works'', NULL),
+    (2, N''SAN'', N''Sanitation'', 1),
+    (3, N''GG'', N''General Government'', NULL),
+    (4, N''CUL'', N''Culture & Recreation'', NULL),
+    (5, N''CC'', N''Community Center'', NULL),
+    (6, N''CT'', N''Conservation Trust'', NULL),
+    (7, N''REC'', N''Recreation'', NULL)');
     IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'DepartmentCode', N'Name', N'ParentId') AND [object_id] = OBJECT_ID(N'[Departments]'))
         SET IDENTITY_INSERT [Departments] OFF;
 END;
@@ -1612,7 +1618,10 @@ BEGIN
         SET IDENTITY_INSERT [Funds] ON;
     EXEC(N'INSERT INTO [Funds] ([Id], [FundCode], [Name], [Type])
     VALUES (1, N''100'', N''General Fund'', 1),
-    (2, N''200'', N''Utility Fund'', 2)');
+    (2, N''200'', N''Utility Fund'', 2),
+    (3, N''300'', N''Community Center Fund'', 3),
+    (4, N''400'', N''Conservation Trust Fund'', 4),
+    (5, N''500'', N''Recreation Fund'', 5)');
     IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'FundCode', N'Name', N'Type') AND [object_id] = OBJECT_ID(N'[Funds]'))
         SET IDENTITY_INSERT [Funds] OFF;
 END;

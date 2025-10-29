@@ -13,6 +13,8 @@ namespace WileyWidget.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             // BudgetPeriod with Id=1 is expected to already exist in most environments.
             // If not, create it separately or switch to UseSeeding for runtime-safe insertion.
 
@@ -52,6 +54,8 @@ namespace WileyWidget.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.DeleteData(
                 table: "MunicipalAccounts",
                 keyColumn: "Id",

@@ -25,6 +25,7 @@ namespace WileyWidget.Startup
     /// Owns configuration, logging, HttpClient infrastructure, database setup, and core service registration.
     /// Expanded from minimal stub to full startup orchestrator per architectural guidance.
     /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.19041.0")]
     public class Bootstrapper
     {
         private readonly string _startupId;
@@ -84,12 +85,20 @@ namespace WileyWidget.Startup
 #pragma warning disable CA2000
             SerilogLoggerFactory loggerFactory = new SerilogLoggerFactory(Log.Logger, dispose: false);
 #pragma warning restore CA2000
-            // Register the ILoggerFactory instance (Serilog integration). Do NOT register
-            // the open-generic ILogger<> here: DryIoc / Prism may already add a default
-            // open-generic ILogger<> factory when ILoggerFactory is present which can
-            // result in multiple default factories and cause resolution failures.
+            // Register the ILoggerFactory instance (Serilog integration)
             containerRegistry.RegisterInstance<ILoggerFactory>(loggerFactory);
-            Log.Information("Bootstrapper: ILoggerFactory registered (Serilog). Open-generic ILogger<> registration skipped to avoid duplicate registrations.");
+            Log.Information("Bootstrapper: ILoggerFactory registered (Serilog)");
+
+            // Register open-generic ILogger<> using delegate factory
+            containerRegistry.Register(typeof(Microsoft.Extensions.Logging.ILogger<>),
+                reuse: Prism.Ioc.Reuse.Transient,
+                factory: (c, t) =>
+                {
+                    var loggerFactory = c.Resolve<ILoggerFactory>();
+                    var loggerType = t.GenericTypeArguments[0];
+                    return loggerFactory.CreateLogger(loggerType);
+                });
+            Log.Information("Bootstrapper: Open-generic ILogger<> registered using delegate factory");
 
             // Register a configurable MemoryCache instance for early consumers
             var memoryCacheOptions = new MemoryCacheOptions();

@@ -281,7 +281,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         foreach (var (key, defaultValue) in productionSecrets)
         {
             var existing = await GetSecretAsync(key);
-            if (string.IsNullOrEmpty(existing) && !string.IsNullOrEmpty(defaultValue) && !defaultValue.Contains("YOUR_"))
+            if (string.IsNullOrEmpty(existing) && !string.IsNullOrEmpty(defaultValue) && !defaultValue.Contains("YOUR_", StringComparison.Ordinal))
             {
                 await SetSecretAsync(key, defaultValue);
                 _logger.LogInformation("Set production secret: {SecretKey}", key);

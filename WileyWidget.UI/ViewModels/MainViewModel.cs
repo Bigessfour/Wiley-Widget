@@ -22,6 +22,7 @@ using WileyWidget.Services.Logging;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Base;
 using WileyWidget.Views;
+using WileyWidget.Abstractions;
 
 namespace WileyWidget.ViewModels
 {
@@ -29,19 +30,24 @@ namespace WileyWidget.ViewModels
     {
         private readonly IDialogService dialogService;
         private readonly IRegionManager _regionManager;
-        private readonly IEnterpriseRepository _enterpriseRepository;
+    private readonly IEnterpriseRepository _enterpriseRepository;
+    private readonly ICacheService? _cacheService;
         private readonly IExcelReaderService _excelReaderService;
         private readonly IReportExportService _reportExportService;
         private readonly IBudgetRepository _budgetRepository;
+#pragma warning disable CS0169 // Field is never used - kept for future budget import functionality
+        private readonly IBudgetImporter _budgetImporter;
+#pragma warning restore CS0169
         private readonly IAIService? _aiService;
 
-        public MainViewModel(IDialogService dialogService, IRegionManager regionManager, IDispatcherHelper dispatcherHelper, ILogger<MainViewModel> logger, IEnterpriseRepository enterpriseRepository, IExcelReaderService excelReaderService, IReportExportService reportExportService, IBudgetRepository budgetRepository, IAIService? aiService = null)
+        public MainViewModel(IDialogService dialogService, IRegionManager regionManager, IDispatcherHelper dispatcherHelper, ILogger<MainViewModel> logger, IEnterpriseRepository enterpriseRepository, IExcelReaderService excelReaderService, IReportExportService reportExportService, IBudgetRepository budgetRepository, IBudgetImporter budgetImporter, IAIService? aiService = null, ICacheService? cacheService = null)
             : base(dispatcherHelper, logger)
         {
             // this.regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager)); // Disabled
             this.dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
             _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+            _cacheService = cacheService;
             _excelReaderService = excelReaderService ?? throw new ArgumentNullException(nameof(excelReaderService));
             _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
@@ -50,8 +56,43 @@ namespace WileyWidget.ViewModels
             // Subscribe to collection change events for detailed logging
             Enterprises.CollectionChanged += Enterprises_CollectionChanged;
 
-            // Load initial data from database
-            _ = LoadEnterprisesAsync();
+            // Load initial data from cache or database
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    if (_cacheService != null)
+                    {
+                        var cached = await _cacheService.GetAsync<System.Collections.Generic.List<Enterprise>>("enterprises");
+                        if (cached != null && cached.Any())
+                        {
+                            DispatcherHelper.Invoke(() =>
+                            {
+                                foreach (var e in cached) Enterprises.Add(e);
+                            });
+                            return;
+                        }
+                    }
+
+                    var all = await _enterpriseRepository.GetAllAsync();
+                    if (all != null)
+                    {
+                        var list = all.ToList();
+                        if (_cacheService != null && list.Any())
+                        {
+                            await _cacheService.SetAsync("enterprises", list, TimeSpan.FromHours(6));
+                        }
+                        DispatcherHelper.Invoke(() =>
+                        {
+                            foreach (var e in list) Enterprises.Add(e);
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Failed to auto-load enterprises in MainViewModel");
+                }
+            });
 
             // Initialize navigation commands
             NavigateToDashboardCommand = new DelegateCommand(async () => await NavigateToDashboardAsync());
@@ -1064,22 +1105,22 @@ namespace WileyWidget.ViewModels
                     .ToList();
 
                 var contextBuilder = new System.Text.StringBuilder();
-                contextBuilder.AppendLine($"Enterprise Context for {DateTime.UtcNow:MMMM yyyy}:");
-                contextBuilder.AppendLine($"- Total Enterprises: {enterpriseCount} ({activeCount} active)");
-                contextBuilder.AppendLine($"- Combined Annual Budget: ${totalBudget:N0}");
-                contextBuilder.AppendLine($"- Total Citizens Served: {totalCitizens:N0}");
-                contextBuilder.AppendLine($"- Average Rate: ${avgRate:N2}");
-                contextBuilder.AppendLine($"- Total Monthly Expenses: ${totalMonthlyExpenses:N0}");
-                contextBuilder.AppendLine($"- Enterprise Distribution: {typeDistribution}");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"Enterprise Context for {DateTime.UtcNow:MMMM yyyy}:");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Total Enterprises: {enterpriseCount} ({activeCount} active)");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Combined Annual Budget: ${totalBudget:N0}");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Total Citizens Served: {totalCitizens:N0}");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Average Rate: ${avgRate:N2}");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Total Monthly Expenses: ${totalMonthlyExpenses:N0}");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Enterprise Distribution: {typeDistribution}");
 
                 if (topPerformers.Any())
                 {
-                    contextBuilder.AppendLine($"- Top Performers (by per-citizen cost): {string.Join(", ", topPerformers)}");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Top Performers (by per-citizen cost): {string.Join(", ", topPerformers)}");
                 }
 
                 if (concernEntries.Any())
                 {
-                    contextBuilder.AppendLine($"- High Burn Rate Concerns: {string.Join(", ", concernEntries)}");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- High Burn Rate Concerns: {string.Join(", ", concernEntries)}");
                 }
 
                 contextBuilder.AppendLine("Focus: Enterprise optimization, rate calculations, performance insights, and cost efficiency recommendations.");
@@ -1112,7 +1153,7 @@ namespace WileyWidget.ViewModels
                 }
 
                 var contextBuilder = new System.Text.StringBuilder();
-                contextBuilder.AppendLine($"Analytics Context for {DateTime.UtcNow:MMMM yyyy}:");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"Analytics Context for {DateTime.UtcNow:MMMM yyyy}:");
 
                 // Enterprise Analytics
                 if (enterpriseList.Any())
@@ -1125,18 +1166,18 @@ namespace WileyWidget.ViewModels
                         ? ((totalRevenuePotential - totalExpenses) / totalRevenuePotential * 100)
                         : 0;
 
-                    contextBuilder.AppendLine($"Enterprise Analytics:");
-                    contextBuilder.AppendLine($"- Data Points: {dataPoints} enterprises");
-                    contextBuilder.AppendLine($"- Date Range: {dateRange}");
-                    contextBuilder.AppendLine($"- Projected Annual Revenue: ${totalRevenuePotential:N0}");
-                    contextBuilder.AppendLine($"- Projected Annual Expenses: ${totalExpenses:N0}");
-                    contextBuilder.AppendLine($"- Profit Margin: {profitMargin:N2}%");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"Enterprise Analytics:");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Data Points: {dataPoints} enterprises");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Date Range: {dateRange}");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Projected Annual Revenue: ${totalRevenuePotential:N0}");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Projected Annual Expenses: ${totalExpenses:N0}");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Profit Margin: {profitMargin:N2}%");
 
                     // Calculate trends (growth over time)
                     var recentEntities = enterpriseList.Where(e => e.CreatedDate > DateTime.UtcNow.AddMonths(-6)).Count();
                     var olderEntities = enterpriseList.Count - recentEntities;
                     var growthRate = olderEntities > 0 ? (recentEntities / (double)olderEntities * 100) : 0;
-                    contextBuilder.AppendLine($"- 6-Month Growth: {recentEntities} new enterprises ({growthRate:N1}% growth)");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- 6-Month Growth: {recentEntities} new enterprises ({growthRate:N1}% growth)");
 
                     // Type distribution analysis
                     var typeAnalysis = enterpriseList.GroupBy(e => e.Type)
@@ -1152,7 +1193,7 @@ namespace WileyWidget.ViewModels
                     contextBuilder.AppendLine("- Type Performance:");
                     foreach (var type in typeAnalysis)
                     {
-                        contextBuilder.AppendLine($"  • {type.Type}: {type.Count} enterprises, Avg Budget: ${type.AvgBudget:N0}, Avg Rate: ${type.AvgRate:N2}");
+                        contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"  • {type.Type}: {type.Count} enterprises, Avg Budget: ${type.AvgBudget:N0}, Avg Rate: ${type.AvgRate:N2}");
                     }
                 }
 
@@ -1166,12 +1207,12 @@ namespace WileyWidget.ViewModels
                     var overBudgetCount = budgetList.Count(b => b.ActualAmount > b.BudgetedAmount);
                     var underBudgetCount = budgetList.Count(b => b.ActualAmount < b.BudgetedAmount);
 
-                    contextBuilder.AppendLine($"\nBudget Analytics for FY {currentYear}:");
-                    contextBuilder.AppendLine($"- Total Budgeted: ${totalBudgeted:N0}");
-                    contextBuilder.AppendLine($"- Total Actual: ${totalActual:N0}");
-                    contextBuilder.AppendLine($"- Variance: ${totalVariance:N0} ({variancePercent:N2}%)");
-                    contextBuilder.AppendLine($"- Over Budget: {overBudgetCount} accounts");
-                    contextBuilder.AppendLine($"- Under Budget: {underBudgetCount} accounts");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"\nBudget Analytics for FY {currentYear}:");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Total Budgeted: ${totalBudgeted:N0}");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Total Actual: ${totalActual:N0}");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Variance: ${totalVariance:N0} ({variancePercent:N2}%)");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Over Budget: {overBudgetCount} accounts");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Under Budget: {underBudgetCount} accounts");
 
                     // Department analysis
                     var deptAnalysis = budgetList.GroupBy(b => b.DepartmentId)
@@ -1190,7 +1231,7 @@ namespace WileyWidget.ViewModels
                     foreach (var dept in deptAnalysis)
                     {
                         var status = dept.Variance >= 0 ? "under" : "over";
-                        contextBuilder.AppendLine($"  • Dept {dept.DeptId}: ${Math.Abs(dept.Variance):N0} {status} budget");
+                        contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"  • Dept {dept.DeptId}: ${Math.Abs(dept.Variance):N0} {status} budget");
                     }
                 }
 
@@ -1218,7 +1259,7 @@ namespace WileyWidget.ViewModels
 
                 var contextBuilder = new System.Text.StringBuilder();
                 contextBuilder.AppendLine($"Wiley Widget Municipal Utility Management System");
-                contextBuilder.AppendLine($"System Status as of {DateTime.UtcNow:f}");
+                contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"System Status as of {DateTime.UtcNow:f}");
                 contextBuilder.AppendLine();
                 contextBuilder.AppendLine("Available Modules:");
                 contextBuilder.AppendLine("- Enterprise Management: Municipal enterprise tracking and optimization");
@@ -1230,24 +1271,24 @@ namespace WileyWidget.ViewModels
 
                 if (enterpriseList.Any())
                 {
-                    contextBuilder.AppendLine($"Current System Data:");
-                    contextBuilder.AppendLine($"- {enterpriseList.Count} enterprises managing ${enterpriseList.Sum(e => e.TotalBudget):N0} in budgets");
-                    contextBuilder.AppendLine($"- Serving {enterpriseList.Sum(e => e.CitizenCount):N0} citizens");
+                    contextBuilder.AppendLine("Current System Data:");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- {enterpriseList.Count} enterprises managing ${enterpriseList.Sum(e => e.TotalBudget):N0} in budgets");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- Serving {enterpriseList.Sum(e => e.CitizenCount):N0} citizens");
                 }
 
                 if (budgetList.Any())
                 {
-                    contextBuilder.AppendLine($"- {budgetList.Count} budget accounts totaling ${budgetList.Sum(b => b.BudgetedAmount):N0} for FY {currentYear}");
+                    contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- {budgetList.Count} budget accounts totaling ${budgetList.Sum(b => b.BudgetedAmount):N0} for FY {currentYear}");
                 }
 
                 if (AIInsights.Any())
                 {
                     var recentInsights = AIInsights.Take(5);
                     contextBuilder.AppendLine();
-                    contextBuilder.AppendLine($"Recent AI Conversation History ({AIInsights.Count} total insights):");
+                    contextBuilder.AppendLine("Recent AI Conversation History ({AIInsights.Count} total insights):");
                     foreach (var insight in recentInsights)
                     {
-                        contextBuilder.AppendLine($"- [{insight.Mode}] {insight.Query.Substring(0, Math.Min(50, insight.Query.Length))}...");
+                        contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"- [{insight.Mode}] {insight.Query.Substring(0, Math.Min(50, insight.Query.Length))}...");
                     }
                 }
 
@@ -1290,7 +1331,7 @@ namespace WileyWidget.ViewModels
                 "emergency", "failure", "error", "security", "breach"
             };
 
-            var highPriorityCount = highPriorityKeywords.Count(keyword => lowerResponse.Contains(keyword));
+            var highPriorityCount = highPriorityKeywords.Count(keyword => lowerResponse.Contains(keyword, StringComparison.OrdinalIgnoreCase));
             if (highPriorityCount >= 2) // Multiple high priority keywords
                 return "High";
 
@@ -1301,17 +1342,17 @@ namespace WileyWidget.ViewModels
                 "important", "significant", "notable"
             };
 
-            var mediumPriorityCount = mediumPriorityKeywords.Count(keyword => lowerResponse.Contains(keyword));
+            var mediumPriorityCount = mediumPriorityKeywords.Count(keyword => lowerResponse.Contains(keyword, StringComparison.OrdinalIgnoreCase));
             if (mediumPriorityCount >= 2 || highPriorityCount == 1)
                 return "Medium";
 
             // Check for numerical thresholds that might indicate priority
-            if (lowerResponse.Contains("over budget") || lowerResponse.Contains("exceeded") ||
-                lowerResponse.Contains("deficit") || lowerResponse.Contains("overspending"))
+            if (lowerResponse.Contains("over budget", StringComparison.OrdinalIgnoreCase) || lowerResponse.Contains("exceeded", StringComparison.OrdinalIgnoreCase) ||
+                lowerResponse.Contains("deficit", StringComparison.OrdinalIgnoreCase) || lowerResponse.Contains("overspending", StringComparison.OrdinalIgnoreCase))
                 return "High";
 
-            if (lowerResponse.Contains("variance") || lowerResponse.Contains("difference") ||
-                lowerResponse.Contains("deviation"))
+            if (lowerResponse.Contains("variance", StringComparison.OrdinalIgnoreCase) || lowerResponse.Contains("difference", StringComparison.OrdinalIgnoreCase) ||
+                lowerResponse.Contains("deviation", StringComparison.OrdinalIgnoreCase))
                 return "Medium";
 
             return "Low";

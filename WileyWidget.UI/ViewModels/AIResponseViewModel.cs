@@ -302,7 +302,7 @@ namespace WileyWidget.ViewModels
                 foreach (Match match in actionMatches)
                 {
                     var actionText = match.Value.Trim();
-                    if (actionText.Length > 30 && !Recommendations.Any(r => r.Description.Contains(actionText)))
+                    if (actionText.Length > 30 && !Recommendations.Any(r => r.Description.Contains(actionText, StringComparison.OrdinalIgnoreCase)))
                     {
                         Recommendations.Add(new AIRecommendation
                         {

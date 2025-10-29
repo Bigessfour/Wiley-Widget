@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -232,11 +233,11 @@ namespace WileyWidget.Services.Export
                             }
                             else if (value is decimal || value is double || value is float)
                             {
-                                worksheet[row, col + 1].Number = Convert.ToDouble(value);
+                                worksheet[row, col + 1].Number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
                             }
                             else if (value is int || value is long)
                             {
-                                worksheet[row, col + 1].Number = Convert.ToDouble(value);
+                                worksheet[row, col + 1].Number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
                             }
                             else
                             {

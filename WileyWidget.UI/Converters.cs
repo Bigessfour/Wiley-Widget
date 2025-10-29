@@ -97,11 +97,11 @@ public class StatusToColorConverter : IValueConverter
     {
         if (value is string message)
         {
-            if (message.Contains("Error") || message.Contains("Failed") || message.Contains("failed"))
+            if (message.Contains("Error", StringComparison.OrdinalIgnoreCase) || message.Contains("Failed", StringComparison.OrdinalIgnoreCase) || message.Contains("failed", StringComparison.OrdinalIgnoreCase))
                 return Brushes.Red;
-            if (message.Contains("Warning") || message.Contains("warning"))
+            if (message.Contains("Warning", StringComparison.OrdinalIgnoreCase) || message.Contains("warning", StringComparison.OrdinalIgnoreCase))
                 return Brushes.Orange;
-            if (message.Contains("Success") || message.Contains("completed successfully"))
+            if (message.Contains("Success", StringComparison.OrdinalIgnoreCase) || message.Contains("completed successfully", StringComparison.OrdinalIgnoreCase))
                 return Brushes.Green;
         }
 

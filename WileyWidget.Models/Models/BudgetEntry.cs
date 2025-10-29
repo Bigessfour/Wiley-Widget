@@ -52,6 +52,9 @@ public class BudgetEntry : IAuditable
     public int? FundId { get; set; }
     [ForeignKey("FundId")]
     public Fund? Fund { get; set; }
+    public int MunicipalAccountId { get; set; }
+    [ForeignKey("MunicipalAccountId")]
+    public MunicipalAccount MunicipalAccount { get; set; } = null!;
 
     // Local Excel import tracking
     [MaxLength(500)]

@@ -110,7 +110,7 @@ public class ThemeService : IThemeService
 
     public string CurrentTheme => _settingsService.Current.Theme ?? DefaultTheme;
 
-    public bool IsDarkTheme => CurrentTheme.Contains("Dark");
+    public bool IsDarkTheme => CurrentTheme.Contains("Dark", StringComparison.OrdinalIgnoreCase);
 
     public VisualStyles CurrentVisualStyle => ToVisualStyle(CurrentTheme);
 
@@ -246,7 +246,7 @@ public class ThemeService : IThemeService
         if (string.IsNullOrWhiteSpace(themeName)) return DefaultTheme;
 
         // Handle legacy theme names
-        return themeName.Replace(" ", string.Empty) switch
+        return themeName.Replace(" ", string.Empty, StringComparison.OrdinalIgnoreCase) switch
         {
             "Light" => "FluentLight",
             "Dark" => "FluentDark",

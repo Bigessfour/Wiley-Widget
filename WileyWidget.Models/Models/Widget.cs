@@ -29,6 +29,8 @@ public class Widget : INotifyPropertyChanged
     /// </summary>
     protected void OnPropertyChanged(params string[] propertyNames)
     {
+        if (propertyNames == null) throw new ArgumentNullException(nameof(propertyNames));
+
         foreach (var propertyName in propertyNames)
         {
             OnPropertyChanged(propertyName);

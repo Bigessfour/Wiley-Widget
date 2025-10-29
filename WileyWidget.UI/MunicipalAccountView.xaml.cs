@@ -19,6 +19,15 @@ namespace WileyWidget.Views
         public MunicipalAccountView()
         {
             InitializeComponent();
+            Loaded += MunicipalAccountView_Loaded;
+        }
+
+        private void MunicipalAccountView_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MunicipalAccountViewModel viewModel)
+            {
+                viewModel.AccountsDataGrid = AccountsGrid;
+            }
         }
 
         // Test hooks were removed from the view to enforce MVVM.

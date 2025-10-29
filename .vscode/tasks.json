@@ -8,6 +8,7 @@
       "args": [
         "build",
         "${workspaceFolder}/WileyWidget.csproj",
+        "-m",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary",
         "/flp:LogFile=build-errors.log;errorsonly"
@@ -19,6 +20,78 @@
       }
     },
     {
+      "label": "build-fast",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "-m",
+        "--no-restore",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary",
+        "/flp:LogFile=build-errors.log;errorsonly"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build-incremental",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "-m",
+        "--no-restore",
+        "/property:BuildIncremental=true",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary",
+        "/flp:LogFile=build-errors.log;errorsonly"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+      // Use this task for fast incremental rebuilds during development
+      // Ensures only changed files are recompiled
+    },
+    {
+      "label": "build-parallel",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "-m:$(NUMBER_OF_PROCESSORS)",
+        "--no-restore",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary",
+        "/flp:LogFile=build-errors.log;errorsonly"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+      // Use this task for maximum parallel processing using all CPU cores
+      // Ideal for large builds or CI/CD pipelines
+    },
+    {
+      "label": "build-graph",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "-m",
+        "--graphBuild",
+        "--no-restore",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary",
+        "/flp:LogFile=build-errors.log;errorsonly"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+      // Use this task for solutions with complex project dependencies
+      // Graph build optimizes the build order for better performance
+    },
+    {
       "label": "build-clean",
       "dependsOn": ["kill-dotnet", "build"],
       "group": "build",
@@ -26,6 +99,18 @@
         "echo": true,
         "reveal": "silent",
         "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "dotnet-tool-restore",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["tool", "restore"],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "silent",
         "panel": "shared"
       }
     },
@@ -45,6 +130,12 @@
         "--startup-project",
         "${workspaceFolder}/WileyWidget.csproj"
       ],
+      "dependsOn": ["dotnet-tool-restore"],
+      "options": {
+        "env": {
+          "PATH": "${env:PATH};%USERPROFILE%\\.dotnet\\tools"
+        }
+      },
       "problemMatcher": [],
       "group": "build",
       "presentation": {
@@ -65,11 +156,46 @@
         "--startup-project",
         "${workspaceFolder}/WileyWidget.csproj"
       ],
+      "dependsOn": ["dotnet-tool-restore"],
+      "options": {
+        "env": {
+          "PATH": "${env:PATH};%USERPROFILE%\\.dotnet\\tools"
+        }
+      },
       "problemMatcher": [],
       "group": "build",
       "presentation": {
         "reveal": "always",
         "panel": "shared"
+      }
+    },
+    {
+      "label": "ef-update-data",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef",
+        "database",
+        "update",
+        "--project",
+        "${workspaceFolder}/WileyWidget.Data/WileyWidget.Data.csproj",
+        "--startup-project",
+        "${workspaceFolder}/WileyWidget.csproj",
+        "--verbose"
+      ],
+      "dependsOn": ["dotnet-tool-restore"],
+      "options": {
+        "env": {
+          "PATH": "${env:PATH};%USERPROFILE%\\.dotnet\\tools"
+        }
+      },
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
       }
     },
     {
@@ -86,6 +212,12 @@
         "--startup-project",
         "${workspaceFolder}/WileyWidget.csproj"
       ],
+      "dependsOn": ["dotnet-tool-restore"],
+      "options": {
+        "env": {
+          "PATH": "${env:PATH};%USERPROFILE%\\.dotnet\\tools"
+        }
+      },
       "problemMatcher": [],
       "group": "build",
       "presentation": {
@@ -510,7 +642,7 @@
         "-Verbosity",
         "normal",
         "-Filter",
-        "FullyQualifiedName=WileyWidget.UiTests.EndToEndStartupTests.E2E_01_FullApplicationStartup_WithTiming"
+        "FullyQualifiedName=MunicipalAccountFilterTests.LoadMunicipalView_ApplyCashFilter_AssertViewModelAndUiCounts"
       ],
       "options": {
         "env": {

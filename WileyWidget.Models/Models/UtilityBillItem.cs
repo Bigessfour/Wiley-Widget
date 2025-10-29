@@ -3,6 +3,7 @@ using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace WileyWidget.Models;
@@ -205,13 +206,13 @@ public class UtilityBillItem : INotifyPropertyChanged
     /// Formatted unit price for display
     /// </summary>
     [NotMapped]
-    public string FormattedUnitPrice => UnitPrice.ToString("C2");
+    public string FormattedUnitPrice => UnitPrice.ToString("C2", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Formatted total for display
     /// </summary>
     [NotMapped]
-    public string FormattedTotal => TotalAmount.ToString("C2");
+    public string FormattedTotal => TotalAmount.ToString("C2", CultureInfo.InvariantCulture);
 }
 
 /// <summary>

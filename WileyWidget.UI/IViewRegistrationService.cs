@@ -82,7 +82,7 @@ namespace WileyWidget.Services
                 foreach (var viewType in regionViews)
                 {
                     if (viewType.Name.Equals(viewName, StringComparison.OrdinalIgnoreCase) ||
-                        viewType.Name.Replace("View", "").Equals(viewName, StringComparison.OrdinalIgnoreCase))
+                        viewType.Name.Replace("View", "", StringComparison.Ordinal).Equals(viewName, StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }

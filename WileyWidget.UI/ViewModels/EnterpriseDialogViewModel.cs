@@ -52,6 +52,11 @@ public partial class EnterpriseDialogViewModel : BindableBase, IDialogAware
     /// </summary>
     public void OnDialogOpened(IDialogParameters parameters)
     {
+        if (parameters is null)
+        {
+            throw new ArgumentNullException(nameof(parameters));
+        }
+
         // Get the enterprise from dialog parameters if provided
         if (parameters.TryGetValue("Enterprise", out Enterprise enterprise))
         {

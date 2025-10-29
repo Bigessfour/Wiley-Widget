@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace WileyWidget.Data;
 
@@ -12,14 +13,16 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
 {
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly Microsoft.Extensions.Logging.ILogger<UtilityCustomerRepository> _logger;
+    private readonly IMemoryCache _cache;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public UtilityCustomerRepository(IDbContextFactory<AppDbContext> contextFactory, Microsoft.Extensions.Logging.ILogger<UtilityCustomerRepository> logger)
+    public UtilityCustomerRepository(IDbContextFactory<AppDbContext> contextFactory, Microsoft.Extensions.Logging.ILogger<UtilityCustomerRepository> logger, IMemoryCache cache)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _logger.LogInformation("UtilityCustomerRepository constructed and DB factory injected");
     }
 
@@ -28,12 +31,58 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// </summary>
     public async Task<IEnumerable<UtilityCustomer>> GetAllAsync()
     {
+        const string cacheKey = "UtilityCustomers_All";
+
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<UtilityCustomer>? customers))
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            customers = await context.UtilityCustomers
+                .AsNoTracking()
+                .OrderBy(c => c.AccountNumber)
+                .ToListAsync();
+
+            _cache.Set(cacheKey, customers, TimeSpan.FromMinutes(10));
+        }
+
+        return customers!;
+    }
+
+    /// <summary>
+    /// Gets paged utility customers with sorting support
+    /// </summary>
+    public async Task<(IEnumerable<UtilityCustomer> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber = 1,
+        int pageSize = 50,
+        string? sortBy = null,
+        bool sortDescending = false)
+    {
         await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.UtilityCustomers
+
+        var query = context.UtilityCustomers.AsQueryable();
+
+        // Apply sorting
+        query = ApplySorting(query, sortBy, sortDescending);
+
+        // Get total count
+        var totalCount = await query.CountAsync();
+
+        // Apply paging
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .AsNoTracking()
-            .OrderBy(c => c.LastName)
-            .ThenBy(c => c.FirstName)
             .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    /// <summary>
+    /// Gets an IQueryable for flexible querying and paging
+    /// </summary>
+    public async Task<IQueryable<UtilityCustomer>> GetQueryableAsync()
+    {
+        var context = await _contextFactory.CreateDbContextAsync();
+        return context.UtilityCustomers.AsQueryable();
     }
 
     /// <summary>
@@ -112,7 +161,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     public async Task<IEnumerable<UtilityCustomer>> SearchAsync(string searchTerm)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
-        
+
         // If search term is empty or null, return all customers
         if (string.IsNullOrEmpty(searchTerm))
         {
@@ -120,10 +169,10 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
                 .AsNoTracking()
                 .ToListAsync();
         }
-        
+
         return await context.UtilityCustomers
-            .Where(c => (c.CompanyName != null && c.CompanyName.Contains(searchTerm)) || 
-                       ((c.FirstName + " " + c.LastName).Contains(searchTerm)) || 
+            .Where(c => (c.CompanyName != null && c.CompanyName.Contains(searchTerm)) ||
+                       ((c.FirstName + " " + c.LastName).Contains(searchTerm)) ||
                        c.AccountNumber.Contains(searchTerm))
             .AsNoTracking()
             .ToListAsync();
@@ -134,6 +183,8 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// </summary>
     public async Task<UtilityCustomer> AddAsync(UtilityCustomer customer)
     {
+        ArgumentNullException.ThrowIfNull(customer);
+
         await using var context = await _contextFactory.CreateDbContextAsync();
         var now = DateTime.Now;
         customer.CreatedDate = now;
@@ -148,6 +199,8 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// </summary>
     public async Task<UtilityCustomer> UpdateAsync(UtilityCustomer customer)
     {
+        ArgumentNullException.ThrowIfNull(customer);
+
         await using var context = await _contextFactory.CreateDbContextAsync();
         customer.LastModifiedDate = DateTime.Now;
         context.UtilityCustomers.Update(customer);
@@ -202,5 +255,37 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
             .Where(c => c.ServiceLocation == ServiceLocation.OutsideCityLimits)
             .AsNoTracking()
             .ToListAsync();
+    }
+
+    private IQueryable<UtilityCustomer> ApplySorting(IQueryable<UtilityCustomer> query, string? sortBy, bool sortDescending)
+    {
+        if (string.IsNullOrEmpty(sortBy))
+        {
+            return sortDescending
+                ? query.OrderByDescending(c => c.AccountNumber)
+                : query.OrderBy(c => c.AccountNumber);
+        }
+
+        return sortBy.ToLowerInvariant() switch
+        {
+            "accountnumber" => sortDescending
+                ? query.OrderByDescending(c => c.AccountNumber)
+                : query.OrderBy(c => c.AccountNumber),
+            "name" => sortDescending
+                ? query.OrderByDescending(c => c.FirstName + " " + c.LastName)
+                : query.OrderBy(c => c.FirstName + " " + c.LastName),
+            "currentbalance" => sortDescending
+                ? query.OrderByDescending(c => c.CurrentBalance)
+                : query.OrderBy(c => c.CurrentBalance),
+            "customertype" => sortDescending
+                ? query.OrderByDescending(c => c.CustomerType)
+                : query.OrderBy(c => c.CustomerType),
+            "servicelocation" => sortDescending
+                ? query.OrderByDescending(c => c.ServiceLocation)
+                : query.OrderBy(c => c.ServiceLocation),
+            _ => sortDescending
+                ? query.OrderByDescending(c => c.AccountNumber)
+                : query.OrderBy(c => c.AccountNumber)
+        };
     }
 }

@@ -2,6 +2,17 @@
 # Practical code analysis rules for WileyWidget - HOBBY PROJECT CONFIGURATION
 # Goal: Catch real bugs and learn best practices without breaking the flow
 # Tuned for: Learning, experimentation, and having fun coding
+#
+# NULLABILITY GUIDELINES:
+# - Nullable reference types are DISABLED by default (build_property.Nullable = disable)
+# - Use explicit null checks for method parameters and return values
+# - Prefer ArgumentNullException for required parameters
+# - Use Guard Clauses (if (param == null) throw new ArgumentNullException(nameof(param)))
+# - Return default values or throw for null inputs where appropriate
+# - Document null behavior in XML comments
+# - Use string.IsNullOrEmpty() and string.IsNullOrWhiteSpace() for string validation
+# - Avoid returning null from public methods when possible
+# - Use Optional<T> or similar patterns for truly optional return values
 root = true
 
 # All files
@@ -106,12 +117,74 @@ dotnet_diagnostic.CA1064.severity = warning    # Exceptions should be public
 
 # MAINTAINABILITY RULES - Reasonable limits
 dotnet_diagnostic.CA1507.severity = suggestion # Use nameof to express symbol names
-dotnet_diagnostic.CA1508.severity = warning    # Avoid dead conditional code
+
+# NULLABILITY AND SAFETY RULES - Critical for preventing null reference exceptions
+dotnet_diagnostic.CA1062.severity = warning    # Validate arguments of public methods (re-enabled for null checks)
+dotnet_diagnostic.CA2208.severity = error      # Instantiate argument exceptions correctly
+dotnet_diagnostic.CA1801.severity = warning    # Review unused parameters (may indicate null checks missing)
+dotnet_diagnostic.CA1804.severity = warning    # Remove unused locals (may indicate incomplete null handling)
+dotnet_diagnostic.CA2201.severity = error      # Do not raise reserved exception types
+dotnet_diagnostic.CA2207.severity = warning    # Initialize value type static fields inline
+dotnet_diagnostic.CA2234.severity = warning    # Pass system uri objects instead of strings
+dotnet_diagnostic.CA1303.severity = warning    # Do not pass literals as localized parameters
+dotnet_diagnostic.CA1305.severity = warning    # Specify IFormatProvider
+dotnet_diagnostic.CA1307.severity = warning    # Specify StringComparison for clarity
+dotnet_diagnostic.CA1310.severity = warning    # Specify StringComparison for correctness
+dotnet_diagnostic.CA1401.severity = warning    # P/Invokes should not be visible
+dotnet_diagnostic.CA1416.severity = warning    # Validate platform compatibility
+dotnet_diagnostic.CA1417.severity = warning    # Do not use OutAttribute on string parameters for P/Invokes
+dotnet_diagnostic.CA1418.severity = warning    # Use valid platform string
+dotnet_diagnostic.CA1419.severity = warning    # Provide a parameterless constructor that is as visible as the containing type for concrete types derived from 'System.Runtime.InteropServices.SafeHandle'
+dotnet_diagnostic.CA1420.severity = warning    # Using 'RuntimeHelpers.RunClassConstructor' will cause static initialization to occur
+dotnet_diagnostic.CA1421.severity = warning    # This method uses runtime platform checking but doesn't specify all platforms it supports
+dotnet_diagnostic.CA1422.severity = warning    # Validate platform compatibility
+
+# ADDITIONAL NULL-SAFETY RULES
+dotnet_diagnostic.CA1508.severity = error      # Avoid dead conditional code (often null checks)
+dotnet_diagnostic.CA1806.severity = warning    # Do not ignore method results (may be null checks)
+dotnet_diagnostic.CA1825.severity = warning    # Avoid zero-length array allocations
+dotnet_diagnostic.CA1835.severity = suggestion # Prefer 'ReadAsync'/'WriteAsync' overloads for 'Stream' based types
+dotnet_diagnostic.CA1836.severity = suggestion # Prefer 'IsEmpty' over 'Count' when available
+dotnet_diagnostic.CA1837.severity = suggestion # Use 'Environment.ProcessId'
+dotnet_diagnostic.CA1838.severity = suggestion # Avoid 'StringBuilder' parameters for P/Invokes
+dotnet_diagnostic.CA1839.severity = suggestion # Use 'Environment.ProcessPath'
+dotnet_diagnostic.CA1840.severity = suggestion # Use 'Environment.CurrentManagedThreadId'
+dotnet_diagnostic.CA1841.severity = suggestion # Prefer 'Dictionary.ContainsKey' over 'Keys.Contains'
+dotnet_diagnostic.CA1842.severity = suggestion # Do not use 'WhenAll' with a single task
+dotnet_diagnostic.CA1843.severity = suggestion # Do not use 'WaitAll' with a single task
+dotnet_diagnostic.CA1844.severity = suggestion # Provide memory-based overrides of async methods when subclassing 'Stream'
+dotnet_diagnostic.CA1845.severity = suggestion # Use span-based 'string.Concat'
+dotnet_diagnostic.CA1846.severity = suggestion # Prefer 'AsSpan' over 'Substring' when splitting a string
+dotnet_diagnostic.CA1847.severity = suggestion # Use string.Contains(char) instead of string.Contains(string) with single characters
+dotnet_diagnostic.CA1848.severity = suggestion # Use the logger message generator
+dotnet_diagnostic.CA1849.severity = suggestion # Call async methods when in an async method
+dotnet_diagnostic.CA1850.severity = suggestion # Prefer static 'HashData' method over 'ComputeHash'
+dotnet_diagnostic.CA1851.severity = suggestion # Possible multiple enumerations of 'IEnumerable' collection
+dotnet_diagnostic.CA1852.severity = suggestion # Seal internal types
+dotnet_diagnostic.CA1853.severity = suggestion # Do not use 'File.ReadAllText', 'File.ReadAllLines', or 'File.WriteAllLines' with 'Encoding.GetEncoding(int)'
+dotnet_diagnostic.CA1854.severity = suggestion # Prefer the 'IDictionary.TryGetValue(TKey, out TValue)' method
+dotnet_diagnostic.CA1855.severity = suggestion # Use 'Span<T>.Clear()' instead of 'Span<T>.Fill(default)'
+dotnet_diagnostic.CA1856.severity = suggestion # Incorrect usage of 'ConstantExpectedAttribute'
+dotnet_diagnostic.CA1857.severity = suggestion # A constant is expected for the parameter
+dotnet_diagnostic.CA1858.severity = suggestion # Use 'StartsWith' instead of 'IndexOf' for string checks
+dotnet_diagnostic.CA1859.severity = suggestion # Use concrete types when possible for improved performance
+dotnet_diagnostic.CA1860.severity = suggestion # Avoid using 'Enumerable.Any()' extension method
+dotnet_diagnostic.CA1861.severity = suggestion # Avoid constant arrays as arguments
+dotnet_diagnostic.CA1862.severity = suggestion # Use the 'StringComparison' overload to perform case-insensitive string comparisons
+dotnet_diagnostic.CA1863.severity = suggestion # Use 'CompositeFormat' for string formatting
+dotnet_diagnostic.CA1864.severity = suggestion # Prefer the 'IDictionary.TryAdd(TKey, TValue)' method
+dotnet_diagnostic.CA1865.severity = suggestion # Use 'string.Method(char)' instead of 'string.Method(string)' for single characters
+dotnet_diagnostic.CA1866.severity = suggestion # Use 'string.Contains(char)' instead of 'string.Contains(string)' with single characters
+dotnet_diagnostic.CA1867.severity = suggestion # Use 'char.IsAsciiLetter(char)' instead of 'char.IsLetter(char)' for performance
+dotnet_diagnostic.CA1868.severity = suggestion # Unnecessary call to 'Contains' for sets
+dotnet_diagnostic.CA1869.severity = suggestion # Cache and reuse 'JsonSerializerOptions' instances
+dotnet_diagnostic.CA1870.severity = suggestion # Use a cached 'SearchValues' instance
+dotnet_diagnostic.CA1871.severity = suggestion # Do not use 'Enumerable.OrderBy' followed by 'First' or 'FirstOrDefault'
+dotnet_diagnostic.CA1872.severity = suggestion # Prefer 'Convert.ToHexString' and 'Convert.ToHexStringLower' over custom implementation
 
 # DISABLE OVERLY STRICT/NOISY RULES - Focus on practical development
 dotnet_diagnostic.CA1014.severity = none       # Mark assemblies with CLSCompliant
 dotnet_diagnostic.CA1016.severity = none       # Mark assemblies with assembly version
-dotnet_diagnostic.CA1062.severity = none       # Validate arguments (use nullable reference types instead)
 dotnet_diagnostic.CA1707.severity = none       # Identifiers should not contain underscores (too strict)
 dotnet_diagnostic.CA1710.severity = none       # Identifiers should have correct suffix (often wrong)
 dotnet_diagnostic.CA1711.severity = none       # Identifiers should not have incorrect suffix (often wrong)
@@ -165,9 +238,10 @@ csharp_style_expression_bodied_accessors = true:suggestion
 csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
 csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
 
-# Null-checking preferences - Be safe
+# Null-checking preferences - Be safe and explicit
 csharp_style_throw_expression = true:suggestion
 csharp_style_conditional_delegate_call = true:suggestion
+csharp_style_prefer_null_check_over_type_check = true:suggestion
 
 # Code block preferences - Always use braces for safety
 csharp_prefer_braces = true:suggestion
@@ -275,6 +349,11 @@ insert_final_newline = true
 indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
+# PowerShell style hints (PSScriptAnalyzer will enforce rules in PSScriptAnalyzerSettings.psd1)
+powershell_brace_style = next_line:suggestion
+powershell_indent_braces = true:suggestion
+powershell_space_around_operator = true:suggestion
+powershell_avoid_trailing_whitespace = true:warning
 
 # JSON files
 [*.json]
@@ -324,6 +403,29 @@ dotnet_style_qualification_for_event = false:suggestion
 dotnet_style_predefined_type_for_locals_parameters_members = true:suggestion
 dotnet_style_predefined_type_for_member_access = true:suggestion
 dotnet_style_object_initializer = true:suggestion
+
+##########################
+# Nullability diagnostic hints (enable selectively; recommended to migrate gradually)
+##########################
+# Treat common nullability compiler diagnostics as warnings to help migration
+dotnet_diagnostic.CS8600.severity = warning
+dotnet_diagnostic.CS8601.severity = warning
+dotnet_diagnostic.CS8602.severity = warning
+dotnet_diagnostic.CS8603.severity = warning
+dotnet_diagnostic.CS8604.severity = warning
+dotnet_diagnostic.CS8605.severity = warning
+dotnet_diagnostic.CS8618.severity = warning
+dotnet_diagnostic.CS8625.severity = warning
+dotnet_diagnostic.CS8629.severity = warning
+dotnet_diagnostic.CS8632.severity = warning
+dotnet_diagnostic.CS8762.severity = warning
+dotnet_diagnostic.CS8764.severity = warning
+dotnet_diagnostic.CS8765.severity = warning
+dotnet_diagnostic.CS8766.severity = warning
+dotnet_diagnostic.CS8767.severity = warning
+dotnet_diagnostic.CS8768.severity = warning
+dotnet_diagnostic.CS8769.severity = warning
+dotnet_diagnostic.CS8770.severity = warning
 dotnet_style_collection_initializer = true:suggestion
 dotnet_style_explicit_tuple_names = true:suggestion
 dotnet_style_null_propagation = true:suggestion

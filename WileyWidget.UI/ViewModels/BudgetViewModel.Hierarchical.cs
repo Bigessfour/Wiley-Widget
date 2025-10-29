@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;  // Added for CultureInfo.InvariantCulture
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -525,7 +526,7 @@ public partial class BudgetViewModel
 
                 // Report info
                 worksheet.Range["A3"].Text = "Generated:";
-                worksheet.Range["B3"].Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Range["B3"].Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);  // Fixed: Use InvariantCulture for consistent formatting
                 worksheet.Range["A4"].Text = "Fiscal Year:";
                 worksheet.Range["B4"].Text = SelectedFiscalYear;
 
@@ -630,7 +631,7 @@ public partial class BudgetViewModel
             for (int col = 1; col <= Math.Min(10, worksheet.Columns.Length); col++)
             {
                 var cellValue = worksheet.Range[row, col].Text?.ToLowerInvariant();
-                if (cellValue?.Contains("account") == true && cellValue.Contains("number"))
+                if (cellValue?.Contains("account", StringComparison.OrdinalIgnoreCase) == true && cellValue.Contains("number", StringComparison.OrdinalIgnoreCase))
                 {
                     return row;
                 }
@@ -663,7 +664,7 @@ public partial class BudgetViewModel
 
             foreach (var kvp in columnNames)
             {
-                if (kvp.Value.Any(alias => headerText.Contains(alias)))
+                if (kvp.Value.Any(alias => headerText.Contains(alias, StringComparison.Ordinal)))
                 {
                     map[kvp.Key] = col;
                     break;
@@ -695,11 +696,11 @@ public partial class BudgetViewModel
 
         return typeText.ToLowerInvariant() switch
         {
-            var t when t.Contains("asset") || t.Contains("cash") || t.Contains("investment") => WileyWidget.Models.AccountType.Asset,
-            var t when t.Contains("liability") || t.Contains("payable") || t.Contains("debt") => WileyWidget.Models.AccountType.Payables,
-            var t when t.Contains("equity") || t.Contains("retained") || t.Contains("balance") => WileyWidget.Models.AccountType.RetainedEarnings,
-            var t when t.Contains("revenue") || t.Contains("tax") || t.Contains("fee") || t.Contains("grant") => WileyWidget.Models.AccountType.Revenue,
-            var t when t.Contains("expense") || t.Contains("salary") || t.Contains("supply") || t.Contains("utility") => WileyWidget.Models.AccountType.Expense,
+            var t when t.Contains("asset", StringComparison.Ordinal) || t.Contains("cash", StringComparison.Ordinal) || t.Contains("investment", StringComparison.Ordinal) => WileyWidget.Models.AccountType.Asset,
+            var t when t.Contains("liability", StringComparison.Ordinal) || t.Contains("payable", StringComparison.Ordinal) || t.Contains("debt", StringComparison.Ordinal) => WileyWidget.Models.AccountType.Payables,
+            var t when t.Contains("equity", StringComparison.Ordinal) || t.Contains("retained", StringComparison.Ordinal) || t.Contains("balance", StringComparison.Ordinal) => WileyWidget.Models.AccountType.RetainedEarnings,
+            var t when t.Contains("revenue", StringComparison.Ordinal) || t.Contains("tax", StringComparison.Ordinal) || t.Contains("fee", StringComparison.Ordinal) || t.Contains("grant", StringComparison.Ordinal) => WileyWidget.Models.AccountType.Revenue,
+            var t when t.Contains("expense", StringComparison.Ordinal) || t.Contains("salary", StringComparison.Ordinal) || t.Contains("supply", StringComparison.Ordinal) || t.Contains("utility", StringComparison.Ordinal) => WileyWidget.Models.AccountType.Expense,
             _ => WileyWidget.Models.AccountType.Asset
         };
     }
@@ -723,10 +724,10 @@ public partial class BudgetViewModel
 
         return fundClassText.ToLowerInvariant() switch
         {
-            var t when t.Contains("governmental") => WileyWidget.Models.FundClass.Governmental,
-            var t when t.Contains("proprietary") => WileyWidget.Models.FundClass.Proprietary,
-            var t when t.Contains("fiduciary") => WileyWidget.Models.FundClass.Fiduciary,
-            var t when t.Contains("memo") => WileyWidget.Models.FundClass.Memo,
+            var t when t.Contains("governmental", StringComparison.Ordinal) => WileyWidget.Models.FundClass.Governmental,
+            var t when t.Contains("proprietary", StringComparison.Ordinal) => WileyWidget.Models.FundClass.Proprietary,
+            var t when t.Contains("fiduciary", StringComparison.Ordinal) => WileyWidget.Models.FundClass.Fiduciary,
+            var t when t.Contains("memo", StringComparison.Ordinal) => WileyWidget.Models.FundClass.Memo,
             _ => null
         };
     }

@@ -160,7 +160,7 @@ public class ExcelReaderService : IExcelReaderService
             for (int col = 1; col <= Math.Min(10, worksheet.Columns.Length); col++)
             {
                 var cellValue = GetCellValue(worksheet, row, col)?.ToLowerInvariant();
-                if (cellValue != null && (cellValue.Contains("account") || cellValue.Contains("number") || cellValue.Contains("description")))
+                if (cellValue != null && (cellValue.Contains("account", StringComparison.OrdinalIgnoreCase) || cellValue.Contains("number", StringComparison.OrdinalIgnoreCase) || cellValue.Contains("description", StringComparison.OrdinalIgnoreCase)))
                 {
                     return row;
                 }
@@ -184,16 +184,16 @@ public class ExcelReaderService : IExcelReaderService
                 // Map common variations to standard names
                 var standardName = headerValue.ToLowerInvariant() switch
                 {
-                    var h when h.Contains("account") && h.Contains("number") => "AccountNumber",
-                    var h when h.Contains("account") => "AccountNumber",
-                    var h when h.Contains("description") => "Description",
-                    var h when h.Contains("budget") => "BudgetedAmount",
-                    var h when h.Contains("actual") => "ActualAmount",
-                    var h when h.Contains("fiscal") && h.Contains("year") => "FiscalYear",
-                    var h when h.Contains("fund") && h.Contains("type") => "FundType",
-                    var h when h.Contains("department") => "DepartmentId",
-                    var h when h.Contains("start") && h.Contains("period") => "StartPeriod",
-                    var h when h.Contains("end") && h.Contains("period") => "EndPeriod",
+                    var h when h.Contains("account", StringComparison.OrdinalIgnoreCase) && h.Contains("number", StringComparison.OrdinalIgnoreCase) => "AccountNumber",
+                    var h when h.Contains("account", StringComparison.OrdinalIgnoreCase) => "AccountNumber",
+                    var h when h.Contains("description", StringComparison.OrdinalIgnoreCase) => "Description",
+                    var h when h.Contains("budget", StringComparison.OrdinalIgnoreCase) => "BudgetedAmount",
+                    var h when h.Contains("actual", StringComparison.OrdinalIgnoreCase) => "ActualAmount",
+                    var h when h.Contains("fiscal", StringComparison.OrdinalIgnoreCase) && h.Contains("year", StringComparison.OrdinalIgnoreCase) => "FiscalYear",
+                    var h when h.Contains("fund", StringComparison.OrdinalIgnoreCase) && h.Contains("type", StringComparison.OrdinalIgnoreCase) => "FundType",
+                    var h when h.Contains("department", StringComparison.OrdinalIgnoreCase) => "DepartmentId",
+                    var h when h.Contains("start", StringComparison.OrdinalIgnoreCase) && h.Contains("period", StringComparison.OrdinalIgnoreCase) => "StartPeriod",
+                    var h when h.Contains("end", StringComparison.OrdinalIgnoreCase) && h.Contains("period", StringComparison.OrdinalIgnoreCase) => "EndPeriod",
                     _ => headerValue
                 };
 

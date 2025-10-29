@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Reflection;
+using System.Globalization;
 using Prism.Ioc;
 using Prism.Modularity;
 using PrismIoc = Prism.Ioc;
@@ -50,7 +51,6 @@ using WileyWidget.ViewModels.Messages;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Threading.Tasks;
-using Prism;
 // using Microsoft.ApplicationInsights;
 // using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
@@ -144,7 +144,7 @@ namespace WileyWidget
                 .Enrich.WithMachineName()
                 .Enrich.WithProcessId()
                 .Enrich.WithThreadId()
-                .WriteTo.File("logs/startup-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
+                .WriteTo.File("logs/startup-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7, formatProvider: CultureInfo.InvariantCulture)
                 .CreateLogger();
 
             Log.Information("WileyWidget bootstrap starting - Session: {StartupId}", _startupId);
@@ -184,7 +184,7 @@ namespace WileyWidget
                 try
                 {
                     // Log and swallow (mark handled) to avoid abrupt crashes in production UIs
-                    var ex = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(args.Exception);
+                    var ex = TryUnwrapTargetInvocationException(args.Exception);
                     Log.Error(ex, "Unhandled UI dispatcher exception caught in OnStartup hook");
                     args.Handled = true;
                 }
@@ -231,8 +231,9 @@ namespace WileyWidget
         // startup task or hosted service to perform DB migrations/preflight outside the UI bootstrap path.
 
         // Configure custom region adapters for third-party controls (e.g., Syncfusion)
-    protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
+        protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
         {
+            ArgumentNullException.ThrowIfNull(regionAdapterMappings);
             base.ConfigureRegionAdapterMappings(regionAdapterMappings);
             try
             {
@@ -253,8 +254,9 @@ namespace WileyWidget
         }
 
         // Configure default region behaviors, including diagnostics and context sync
-    protected override void ConfigureDefaultRegionBehaviors(IRegionBehaviorFactory regionBehaviors)
+        protected override void ConfigureDefaultRegionBehaviors(IRegionBehaviorFactory regionBehaviors)
         {
+            ArgumentNullException.ThrowIfNull(regionBehaviors);
             base.ConfigureDefaultRegionBehaviors(regionBehaviors);
             try
             {
@@ -283,7 +285,7 @@ namespace WileyWidget
             Application.Current.DispatcherUnhandledException += (sender, e) =>
             {
                 // First, try to unwrap TargetInvocationException from DI container issues
-                Exception processedException = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(e.Exception);
+                Exception processedException = TryUnwrapTargetInvocationException(e.Exception);
 
                 if (TryHandleDryIocContainerException(processedException))
                 {
@@ -308,17 +310,17 @@ namespace WileyWidget
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 Exception? exception = e.ExceptionObject as Exception;
-                Exception? processedException = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(exception);
+                Exception? processedException = TryUnwrapTargetInvocationException(exception);
                 Log.Fatal(processedException, "Unhandled background thread exception occurred");
                 // Also log full inner exception chain to help diagnose reflection-wrapped errors
-                WileyWidget.Startup.BootstrapHelpers.LogExceptionDetails(processedException);
+                TryLogExceptionDetails(processedException);
                 // Application will terminate after this
             };
 
             // Handle unobserved task exceptions
             System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
-                Exception processedException = WileyWidget.Startup.BootstrapHelpers.UnwrapTargetInvocationException(e.Exception);
+                Exception processedException = TryUnwrapTargetInvocationException(e.Exception);
                 Log.Error(processedException, "Unobserved task exception occurred");
                 e.SetObserved(); // Prevent it from crashing the finalizer thread
             };
@@ -361,26 +363,26 @@ namespace WileyWidget
             return false;
         }
 
-    /// <summary>
-    /// Attempts to handle and recover from DI container exceptions
-    /// </summary>
+        /// <summary>
+        /// Attempts to handle and recover from DI container exceptions
+        /// </summary>
         private bool TryHandleDryIocContainerException(Exception exception)
         {
             string message = exception.Message.ToLowerInvariant();
 
             // Check for DryIoc container resolution failures
-            if (message.Contains("dryioc") || message.Contains("container") || message.Contains("resolution"))
+            if (message.Contains("dryioc", StringComparison.OrdinalIgnoreCase) || message.Contains("container", StringComparison.OrdinalIgnoreCase) || message.Contains("resolution", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Error(exception, "DryIoc container exception detected: {Message}", exception.Message);
 
                 // Try to provide specific guidance based on the error
-                if (message.Contains("not registered") || message.Contains("could not resolve"))
+                if (message.Contains("not registered", StringComparison.OrdinalIgnoreCase) || message.Contains("could not resolve", StringComparison.OrdinalIgnoreCase))
                 {
                     Log.Warning("Service registration issue detected. Check that all required services are registered in RegisterTypes().");
                     Log.Warning("Common missing registrations: ILogger<>, IOptions<>, or module-specific services.");
                 }
 
-                if (message.Contains("circular") || message.Contains("dependency"))
+                if (message.Contains("circular", StringComparison.OrdinalIgnoreCase) || message.Contains("dependency", StringComparison.OrdinalIgnoreCase))
                 {
                     Log.Warning("Circular dependency detected in DI container. Check for circular references in constructor parameters.");
                 }
@@ -391,7 +393,7 @@ namespace WileyWidget
             }
 
             // Check for module initialization failures
-            if (message.Contains("module") && (message.Contains("initialize") || message.Contains("load")))
+            if (message.Contains("module", StringComparison.OrdinalIgnoreCase) && (message.Contains("initialize", StringComparison.OrdinalIgnoreCase) || message.Contains("load", StringComparison.OrdinalIgnoreCase)))
             {
                 Log.Error(exception, "Prism module initialization failure: {Message}", exception.Message);
                 Log.Warning("Module failed to initialize. Check module dependencies and registrations.");
@@ -399,6 +401,109 @@ namespace WileyWidget
             }
 
             return false;
+        }
+
+        // Reflection-safe shims for WileyWidget.Startup.BootstrapHelpers so
+        // wpftmp/design-time projects that omit Startup sources still compile.
+        private static Exception TryUnwrapTargetInvocationException(Exception? exception)
+        {
+            try
+            {
+                var t = Type.GetType("WileyWidget.Startup.BootstrapHelpers") ?? Assembly.GetExecutingAssembly().GetType("WileyWidget.Startup.BootstrapHelpers");
+                if (t != null)
+                {
+                    var m = t.GetMethod("UnwrapTargetInvocationException", BindingFlags.Public | BindingFlags.Static);
+                    if (m != null)
+                    {
+                        var res = m.Invoke(null, new object?[] { exception });
+                        return res as Exception ?? new InvalidOperationException("UnwrapTargetInvocationException returned null");
+                    }
+                }
+            }
+            catch
+            {
+                // swallow - fall through to default
+            }
+
+            return exception ?? new InvalidOperationException("Exception was null");
+        }
+
+        private static void TryLogExceptionDetails(Exception? ex, bool includeStackTrace = true)
+        {
+            try
+            {
+                var t = Type.GetType("WileyWidget.Startup.BootstrapHelpers") ?? Assembly.GetExecutingAssembly().GetType("WileyWidget.Startup.BootstrapHelpers");
+                if (t != null)
+                {
+                    var m = t.GetMethod("LogExceptionDetails", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(Exception), typeof(bool) }, null);
+                    if (m != null)
+                    {
+                        m.Invoke(null, new object?[] { ex, includeStackTrace });
+                        return;
+                    }
+                }
+            }
+            catch
+            {
+                // swallow
+            }
+
+            if (ex != null)
+            {
+                Log.Error(ex, "Exception: {Message}", ex.Message);
+                if (includeStackTrace && !string.IsNullOrWhiteSpace(ex.StackTrace))
+                {
+                    Log.Error("Stack trace: {Stack}", ex.StackTrace);
+                }
+            }
+        }
+
+        private static T TryRetryOnException<T>(Func<T> operation, int maxAttempts = 3, int initialDelayMs = 200)
+        {
+            try
+            {
+                var t = Type.GetType("WileyWidget.Startup.BootstrapHelpers") ?? Assembly.GetExecutingAssembly().GetType("WileyWidget.Startup.BootstrapHelpers");
+                if (t != null)
+                {
+                    var methods = t.GetMethods(BindingFlags.Public | BindingFlags.Static).Where(m => m.Name == "RetryOnException").ToArray();
+                    foreach (var m in methods)
+                    {
+                        if (m.IsGenericMethodDefinition)
+                        {
+                            var gm = m.MakeGenericMethod(typeof(T));
+                            var parameters = gm.GetParameters();
+                            if (parameters.Length >= 1)
+                            {
+                                var res = gm.Invoke(null, new object?[] { operation, maxAttempts, initialDelayMs });
+                                if (res is T tRes) return tRes;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // ignore and fallback
+            }
+
+            // Fallback - simple retry implementation
+            int attempts = 0;
+            int delay = initialDelayMs;
+            while (true)
+            {
+                try
+                {
+                    return operation();
+                }
+                catch (Exception ex)
+                {
+                    attempts++;
+                    Log.Warning(ex, "Attempt {Attempt}/{Max} failed; retrying in {Delay}ms", attempts, maxAttempts, delay);
+                    if (attempts >= maxAttempts) throw;
+                    System.Threading.Tasks.Task.Delay(delay).Wait();
+                    delay = Math.Min(delay * 2, 5000);
+                }
+            }
         }
 
         /// <summary>
@@ -414,7 +519,7 @@ namespace WileyWidget
             // from within itself.
             bool activatorFallbackUsed = false;
 
-            var result = WileyWidget.Startup.BootstrapHelpers.RetryOnException(() =>
+            var result = TryRetryOnException(() =>
             {
                 // 1) Try resolve directly from Prism's container
                 try
@@ -472,7 +577,7 @@ namespace WileyWidget
             string message = ex.Message.ToLowerInvariant();
 
             // Check for common recoverable issues
-            if (message.Contains("syncfusion") && message.Contains("license"))
+            if (message.Contains("syncfusion", StringComparison.OrdinalIgnoreCase) && message.Contains("license", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Warning("Syncfusion license issue detected - attempting recovery");
                 try
@@ -487,20 +592,20 @@ namespace WileyWidget
                 }
             }
 
-            if (message.Contains("viewmodellocator") || message.Contains("autowire"))
+            if (message.Contains("viewmodellocator", StringComparison.OrdinalIgnoreCase) || message.Contains("autowire", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Warning("ViewModelLocator issue detected - check ViewModel registrations");
                 // This typically requires code fixes, not runtime recovery
                 return false;
             }
 
-            if (message.Contains("assembly") && message.Contains("not found"))
+            if (message.Contains("assembly", StringComparison.OrdinalIgnoreCase) && message.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Warning("Missing assembly reference detected - check NuGet packages");
                 return false;
             }
 
-            if (message.Contains("xmlns") || message.Contains("namespace"))
+            if (message.Contains("xmlns", StringComparison.OrdinalIgnoreCase) || message.Contains("namespace", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Warning("XML namespace issue detected - check xmlns declarations");
                 return false;
@@ -532,14 +637,14 @@ namespace WileyWidget
             string message = ex.Message.ToLowerInvariant();
 
             // Check for property binding issues
-            if (message.Contains("property") && message.Contains("not found"))
+            if (message.Contains("property", StringComparison.OrdinalIgnoreCase) && message.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Warning("Property binding issue detected - check property names and types");
                 return false; // Requires code fix
             }
 
             // Check for type resolution issues
-            if (message.Contains("type") && message.Contains("not found"))
+            if (message.Contains("type", StringComparison.OrdinalIgnoreCase) && message.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Warning("Type resolution issue detected - check assembly references and using statements");
                 return false; // Requires code fix
@@ -567,7 +672,7 @@ namespace WileyWidget
             return false;
         }
 
-    protected override Window CreateShell()
+        protected override Window CreateShell()
         {
             try
             {
@@ -580,8 +685,9 @@ namespace WileyWidget
             }
         }
 
-    protected override void InitializeShell(Window shell)
+        protected override void InitializeShell(Window shell)
         {
+            ArgumentNullException.ThrowIfNull(shell);
             // With SfSkinManager.ApplicationTheme set in OnStartup, all windows inherit the theme automatically
             Application.Current.MainWindow = shell;
             shell.Show();
@@ -765,7 +871,7 @@ namespace WileyWidget
             }
         }
 
-    protected override void RegisterTypes(Prism.Ioc.IContainerRegistry containerRegistry)
+        protected override void RegisterTypes(Prism.Ioc.IContainerRegistry containerRegistry)
         {
             Log.Information("=== Starting DI Container Registration ===");
             Log.Debug("RegisterTypes called with containerRegistry: {Type}", containerRegistry?.GetType().Name);
@@ -777,11 +883,10 @@ namespace WileyWidget
             bool enableExtendedDiagnostics = extendedDiagEnv == "1" || string.Equals(extendedDiagEnv, "true", StringComparison.OrdinalIgnoreCase);
             try
             {
-                // Use expanded Bootstrapper.Run() for centralized startup orchestration
-                // Handles: Configuration, Logging, HttpClient (with Polly), DbContext (with retries)
-                var bootstrapper = new WileyWidget.Startup.Bootstrapper();
-                configuration = bootstrapper.Run(containerRegistry);
-                Log.Debug("Configuration, logging, HttpClient, and database services registered via Bootstrapper.Run()");
+                // Prefer calling the centralized Bootstrapper when available. Use reflection
+                // so design-time/wpftmp compilations that omit the Startup sources still succeed.
+                configuration = TryRunBootstrapper(containerRegistry);
+                Log.Debug("Configuration, logging, HttpClient, and database services registered via Bootstrapper.Run() (or fallback)");
             }
             catch (Exception ex)
             {
@@ -825,7 +930,7 @@ namespace WileyWidget
             {
                 try
                 {
-                    var secretVault = ResolveWithRetry<ISecretVaultService>();
+                    var secretVault = this.Container.Resolve<ISecretVaultService>();
                     await secretVault.MigrateSecretsFromEnvironmentAsync().ConfigureAwait(false);
                     Log.Information("✓ (Deferred) Environment secrets migrated to local vault");
 
@@ -857,12 +962,6 @@ namespace WileyWidget
                     memoryCacheOptions.SizeLimit = sizeLimit;
                 }
 
-#pragma warning disable CA2000 // DI container will dispose the registered singleton when the container is disposed
-                MemoryCache memoryCache = new MemoryCache(memoryCacheOptions);
-#pragma warning restore CA2000
-                containerRegistry.RegisterInstance<IMemoryCache>(memoryCache);
-                Log.Information("✓ Registered IMemoryCache using Prism-managed MemoryCache instance");
-
                 // Register configuration options infrastructure (bridging Microsoft.Extensions.Options into container)
                 RegisterAppOptions(containerRegistry, configuration);
             }
@@ -877,7 +976,6 @@ namespace WileyWidget
                 // Register data repositories required during startup validation to prevent DI container resolution failures
                 // Enterprise repository is registered by EnterpriseModule; remove duplicate central registration to
                 // avoid multiple registrations and maintain module ownership of its services.
-                // containerRegistry.Register<IEnterpriseRepository, WileyWidget.Data.EnterpriseRepository>();
                 containerRegistry.Register<IBudgetRepository, WileyWidget.Data.BudgetRepository>();
                 containerRegistry.Register<IAuditRepository, WileyWidget.Data.AuditRepository>();
                 containerRegistry.Register<IMunicipalAccountRepository, WileyWidget.Data.MunicipalAccountRepository>();
@@ -922,9 +1020,7 @@ namespace WileyWidget
                     RegisterAIIntegrationServices(containerRegistry);
 
                     // Register QuickBooks service
-                    // Use non-generic Type-based registration to avoid temporary wpftmp generic constraint issues
-                    // (wpftmp can produce duplicate-type/assembly identity problems during XAML compile).
-                    containerRegistry.RegisterSingleton(typeof(IQuickBooksService), typeof(QuickBooksService));
+                    containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
                     Log.Information("✓ Registered IQuickBooksService as singleton");
                 }
             }
@@ -944,6 +1040,10 @@ namespace WileyWidget
                 containerRegistry.RegisterSingleton<WileyWidget.Services.Export.IExcelExportService, WileyWidget.Services.Export.ExcelExportService>();
                 Log.Information("✓ Registered IExcelExportService as singleton");
 
+                // Register Budget Importer service
+                containerRegistry.RegisterSingleton<IBudgetImporter, BudgetImporter>();
+                Log.Information("✓ Registered IBudgetImporter (Excel/CSV Budget Importer) as singleton");
+
                 // Register Theme service (NEW)
                 containerRegistry.RegisterSingleton<IThemeService, ThemeService>();
                 Log.Information("✓ Registered IThemeService as singleton");
@@ -951,6 +1051,10 @@ namespace WileyWidget
                 // Register report export service
                 containerRegistry.RegisterSingleton<IReportExportService, ReportExportService>();
                 Log.Information("✓ Registered IReportExportService as singleton");
+
+                // Register Bold Reports service
+                containerRegistry.RegisterSingleton<IBoldReportService, BoldReportService>();
+                Log.Information("✓ Registered IBoldReportService as singleton");
 
                 // Register Module Health Service
                 containerRegistry.RegisterSingleton<IModuleHealthService, ModuleHealthService>();
@@ -1046,6 +1150,7 @@ namespace WileyWidget
                         var excelReader = provider.Resolve<IExcelReaderService>();
                         var reportExport = provider.Resolve<IReportExportService>();
                         var budgetRepo = provider.Resolve<IBudgetRepository>();
+                        var budgetImporter = provider.Resolve<IBudgetImporter>();
                         var aiService = provider.IsRegistered<IAIService>() ? provider.Resolve<IAIService>() : null;
 
                         return new MainViewModel(
@@ -1057,6 +1162,7 @@ namespace WileyWidget
                             excelReader,
                             reportExport,
                             budgetRepo,
+                            budgetImporter,
                             aiService);
                     }
                     catch (Exception ex)
@@ -1082,7 +1188,6 @@ namespace WileyWidget
                 containerRegistry.Register<AboutViewModel>();
                 containerRegistry.Register<ExcelImportViewModel>();
                 containerRegistry.Register<ProgressViewModel>();
-                containerRegistry.Register<EnterpriseViewModel>();
 
                 // Register Region Adapters
                 // REMOVED: DockingManagerRegionAdapter is disabled (#if false)
@@ -1096,7 +1201,7 @@ namespace WileyWidget
 
             // Navigation registrations are now handled by individual modules
 
-                // Convention-based registrations: attempt to auto-register remaining services, repositories, and ViewModels
+            // Convention-based registrations: attempt to auto-register remaining services, repositories, and ViewModels
             try
             {
                 RegisterConventions(containerRegistry);
@@ -1190,7 +1295,7 @@ namespace WileyWidget
             ValidatePublicAccessibility();
         }
 
-    private void TryRegisterImplementationByName(PrismIoc.IContainerRegistry containerRegistry, Type interfaceType, string implementationFullName)
+        private void TryRegisterImplementationByName(PrismIoc.IContainerRegistry containerRegistry, Type interfaceType, string implementationFullName)
         {
             try
             {
@@ -1238,7 +1343,7 @@ namespace WileyWidget
         /// This prevents runtime errors due to missing DI registrations.
         /// </summary>
         /// <param name="containerRegistry">The container registry to validate</param>
-    private void ValidateCriticalServices(PrismIoc.IContainerRegistry containerRegistry, bool testMode)
+        private void ValidateCriticalServices(PrismIoc.IContainerRegistry containerRegistry, bool testMode)
         {
             Log.Information("Validating critical service registrations...");
 
@@ -1302,10 +1407,10 @@ namespace WileyWidget
         }
 
         /// <summary>
-    /// Ensures Prism and the DI container remain the single composition root by validating container state and legacy configuration.
+        /// Ensures Prism and the DI container remain the single composition root by validating container state and legacy configuration.
         /// </summary>
         /// <param name="containerRegistry">The active Prism container registry</param>
-    private void ValidatePrismInfrastructure(PrismIoc.IContainerRegistry containerRegistry)
+        private void ValidatePrismInfrastructure(PrismIoc.IContainerRegistry containerRegistry)
         {
             if (containerRegistry == null)
             {
@@ -1351,10 +1456,10 @@ namespace WileyWidget
                 Log.Debug(ex, "Failed to introspect container registrations via reflection");
             }
 
-            Log.Information("Container registration count: {RegistrationCount}", registrationCount >= 0 ? registrationCount.ToString() : "unknown");
+            Log.Information("Container registration count: {RegistrationCount}", registrationCount >= 0 ? registrationCount.ToString(CultureInfo.InvariantCulture) : "unknown");
         }
 
-    private void RegisterAppOptions(PrismIoc.IContainerRegistry containerRegistry, IConfiguration configuration)
+        private void RegisterAppOptions(PrismIoc.IContainerRegistry containerRegistry, IConfiguration configuration)
         {
             if (containerRegistry == null)
             {
@@ -1376,7 +1481,7 @@ namespace WileyWidget
                     // Try to obtain AppOptionsConfigurator from the Prism container provider; avoid depending on DryIoc directly
                     try
                     {
-                        var configurator = ResolveWithRetry<AppOptionsConfigurator>();
+                        var configurator = this.Container.Resolve<AppOptionsConfigurator>();
                         configurator.Configure(appOptions);
                     }
                     catch (Exception)
@@ -1443,7 +1548,7 @@ namespace WileyWidget
         /// - ViewModels are registered as transient types so Prism can resolve them via ViewModelLocator.
         /// This helper is best-effort and will not overwrite existing registrations.
         /// </summary>
-    private static void RegisterConventions(PrismIoc.IContainerRegistry containerRegistry)
+        private static void RegisterConventions(PrismIoc.IContainerRegistry containerRegistry)
         {
             if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
 
@@ -1473,7 +1578,7 @@ namespace WileyWidget
                 {
                     if (t == null) continue;
                     if (!t.IsClass || t.IsAbstract) continue;
-                    if (t.Namespace == null || !t.Namespace.StartsWith("WileyWidget")) continue;
+                    if (t.Namespace == null || !t.Namespace.StartsWith("WileyWidget", StringComparison.Ordinal)) continue;
 
                     var name = t.Name;
 
@@ -1482,7 +1587,7 @@ namespace WileyWidget
                         // Services / repositories / providers -> prefer to register against I{TypeName} when available
                         if (suffixesForSingleton.Any(s => name.EndsWith(s, StringComparison.Ordinal)))
                         {
-                            var interfaces = t.GetInterfaces().Where(i => i != null && i.Namespace != null && i.Namespace.StartsWith("WileyWidget")).ToArray();
+                            var interfaces = t.GetInterfaces().Where(i => i != null && i.Namespace != null && i.Namespace.StartsWith("WileyWidget", StringComparison.Ordinal)).ToArray();
                             var preferred = interfaces.FirstOrDefault(i => string.Equals(i.Name, "I" + name, StringComparison.Ordinal));
                             if (preferred != null)
                             {
@@ -1574,7 +1679,7 @@ namespace WileyWidget
         /// Validates that Views have an associated ViewModel type available and auto-registers missing ViewModels.
         /// Logs warnings for Views that have no corresponding ViewModel discovered.
         /// </summary>
-    private static void ValidateAndRegisterViewModels(PrismIoc.IContainerRegistry containerRegistry)
+        private static void ValidateAndRegisterViewModels(PrismIoc.IContainerRegistry containerRegistry)
         {
             if (containerRegistry == null) throw new ArgumentNullException(nameof(containerRegistry));
 
@@ -1605,9 +1710,9 @@ namespace WileyWidget
                 try
                 {
                     // Candidate VM name: prefer WileyWidget.ViewModels.{ViewName}Model
-                    var vmName = (view.Namespace != null && view.Namespace.Contains("Views"))
-                        ? view.Namespace.Replace(".Views", ".ViewModels") + "." + view.Name.Replace("View", "ViewModel")
-                        : "WileyWidget.ViewModels." + view.Name.Replace("View", "ViewModel");
+                    var vmName = (view.Namespace != null && view.Namespace.Contains("Views", StringComparison.OrdinalIgnoreCase))
+                        ? view.Namespace.Replace(".Views", ".ViewModels", StringComparison.OrdinalIgnoreCase) + "." + view.Name.Replace("View", "ViewModel", StringComparison.OrdinalIgnoreCase)
+                        : "WileyWidget.ViewModels." + view.Name.Replace("View", "ViewModel", StringComparison.OrdinalIgnoreCase);
 
                     Type? vmType = null;
                     foreach (var asm in assemblies)
@@ -1684,7 +1789,7 @@ namespace WileyWidget
         /// Registers HttpClient infrastructure for AI services with retry policies and timeout configuration.
         /// Production-ready implementation with comprehensive error handling and logging.
         /// </summary>
-    /// <param name="containerRegistry">The DI container registry for DI registration</param>
+        /// <param name="containerRegistry">The DI container registry for DI registration</param>
         /// <param name="configuration">Application configuration for HttpClient settings</param>
 
         /// <summary>
@@ -1692,8 +1797,8 @@ namespace WileyWidget
         /// Includes GrokSupercomputer, WileyWidgetContextService, and enhanced XAIService.
         /// All services are registered as singletons for optimal performance and resource management.
         /// </summary>
-    /// <param name="containerRegistry">The DI container registry for DI registration</param>
-    private void RegisterAIIntegrationServices(PrismIoc.IContainerRegistry containerRegistry)
+        /// <param name="containerRegistry">The DI container registry for DI registration</param>
+        private void RegisterAIIntegrationServices(PrismIoc.IContainerRegistry containerRegistry)
         {
             Log.Information("=== Registering AI Integration Services (Phase 1 - Production) ===");
 
@@ -1795,14 +1900,18 @@ namespace WileyWidget
                 var validationErrors = new List<string>();
 
                 // Validate XAI configuration
-                var apiKey = config["XAI:ApiKey"];
+                var apiKey = Environment.GetEnvironmentVariable("XAI_API_KEY");
                 if (string.IsNullOrWhiteSpace(apiKey))
                 {
-                    apiKey = Environment.GetEnvironmentVariable("XAI_API_KEY") ?? string.Empty;
-                    if (!string.IsNullOrEmpty(apiKey))
+                    apiKey = config["XAI:ApiKey"];
+                    if (!string.IsNullOrWhiteSpace(apiKey))
                     {
-                        Log.Information("XAI:ApiKey pulled from environment variable XAI_API_KEY");
+                        Log.Information("XAI:ApiKey pulled from configuration XAI:ApiKey");
                     }
+                }
+                else
+                {
+                    Log.Information("XAI:ApiKey pulled from environment variable XAI_API_KEY");
                 }
                 Log.Information("XAI:ApiKey resolved to: {ApiKeyMasked} (length: {Length})",
                     string.IsNullOrEmpty(apiKey) ? "null/empty" : $"{apiKey.Substring(0, Math.Min(10, apiKey.Length))}...",
@@ -1865,9 +1974,9 @@ namespace WileyWidget
 
 
         // Cache configuration to avoid redundant loading
-        private IConfiguration? _cachedConfiguration;
+        private static IConfiguration? _cachedConfiguration;
 
-    protected override void ConfigureModuleCatalog(Prism.Modularity.IModuleCatalog moduleCatalog)
+        protected override void ConfigureModuleCatalog(Prism.Modularity.IModuleCatalog moduleCatalog)
         {
             Log.Information("=== Configuring Prism Module Catalog (explicit registration) ===");
             try
@@ -1882,7 +1991,7 @@ namespace WileyWidget
             }
         }
 
-    protected override void InitializeModules()
+        protected override void InitializeModules()
         {
             Log.Information("Modules initializing...");
 
@@ -2098,11 +2207,11 @@ namespace WileyWidget
             // Log validation results
             foreach (var result in validationResults)
             {
-                if (result.StartsWith("✓"))
+                if (result.StartsWith("✓", StringComparison.OrdinalIgnoreCase))
                     Log.Information(result);
-                else if (result.StartsWith("✗"))
+                else if (result.StartsWith("✗", StringComparison.OrdinalIgnoreCase))
                     Log.Error(result);
-                else if (result.StartsWith("WARNING"))
+                else if (result.StartsWith("WARNING", StringComparison.OrdinalIgnoreCase))
                     Log.Warning(result);
                 else
                     Log.Information(result);
@@ -2124,7 +2233,7 @@ namespace WileyWidget
             }
         }
 
-    protected override void OnInitialized()
+        protected override void OnInitialized()
         {
             try
             {
@@ -2214,7 +2323,7 @@ namespace WileyWidget
         /// <param name="healthService">The health service to track the module</param>
         /// <param name="moduleName">The name of the module for tracking</param>
         /// <param name="registerAction">The action to perform the module registration</param>
-    private void RegisterModuleWithHealthTracking(PrismModularity.IModuleCatalog moduleCatalog, IModuleHealthService healthService, string moduleName, Action registerAction)
+        private void RegisterModuleWithHealthTracking(PrismModularity.IModuleCatalog moduleCatalog, IModuleHealthService healthService, string moduleName, Action registerAction)
         {
             try
             {
@@ -2231,7 +2340,7 @@ namespace WileyWidget
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Prism's DryIocContainerExtension takes ownership of the DryIoc Container and will dispose it when appropriate.")]
-    protected override Prism.Ioc.IContainerExtension CreateContainerExtension()
+        protected override Prism.Ioc.IContainerExtension CreateContainerExtension()
         {
             return new DryIocContainerExtension();
         }
@@ -2243,11 +2352,12 @@ namespace WileyWidget
                 .Enrich.WithMachineName()
                 .Enrich.WithProcessId()
                 .Enrich.WithThreadId()
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] {Message:lj}{NewLine}{Exception}", formatProvider: CultureInfo.InvariantCulture)
                 .WriteTo.File("logs/wiley-widget-.log",
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 7,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                    formatProvider: CultureInfo.InvariantCulture)
                 .CreateLogger();
 
             // Add WPF binding error tracing to Serilog
@@ -2260,13 +2370,129 @@ namespace WileyWidget
             Log.Information("✓ WPF binding error tracing enabled");
         }
 
-        private IConfiguration BuildConfiguration()
+        private static IConfiguration TryRunBootstrapper(Prism.Ioc.IContainerRegistry containerRegistry)
         {
-            // Load .env file from project directory
+            try
+            {
+                var t = Type.GetType("WileyWidget.Startup.BootstrapHelpers") ?? Assembly.GetExecutingAssembly().GetType("WileyWidget.Startup.BootstrapHelpers");
+                if (t != null)
+                {
+                    var m = t.GetMethod("TryRunBootstrapper", BindingFlags.Public | BindingFlags.Static);
+                    if (m != null)
+                    {
+                        var res = m.Invoke(null, new object?[] { containerRegistry });
+                        return res as IConfiguration ?? throw new InvalidOperationException("TryRunBootstrapper returned null");
+                    }
+                }
+            }
+            catch
+            {
+                // swallow - fall through to default
+            }
+
+            // Fallback: build configuration directly
+            return BuildConfiguration();
+        }
+
+        private static void TryResolvePlaceholders(IConfiguration configuration)
+        {
+            try
+            {
+                var t = Type.GetType("WileyWidget.Startup.BootstrapHelpers") ?? Assembly.GetExecutingAssembly().GetType("WileyWidget.Startup.BootstrapHelpers");
+                if (t != null)
+                {
+                    var m = t.GetMethod("TryResolvePlaceholders", BindingFlags.Public | BindingFlags.Static);
+                    if (m != null)
+                    {
+                        m.Invoke(null, new object?[] { configuration });
+                        return;
+                    }
+                }
+            }
+            catch
+            {
+                // swallow - fall through to default
+            }
+
+            // Fallback: Basic placeholder resolution using environment variables
+            // This handles cases where BootstrapHelpers is not available
+            if (configuration is IConfigurationRoot configurationRoot)
+            {
+                ResolveConfigurationPlaceholders(configurationRoot);
+            }
+        }
+
+        private static void ResolveConfigurationPlaceholders(IConfigurationRoot configurationRoot)
+        {
+            // Simple placeholder resolution for ${ENV_VAR_NAME} patterns
+            var data = new Dictionary<string, string>();
+            VisitConfiguration("", configurationRoot, data);
+
+            foreach (var kvp in data)
+            {
+                var trimmedValue = kvp.Value?.Trim();
+                if (trimmedValue != null &&
+                    trimmedValue.StartsWith("${", StringComparison.Ordinal) &&
+                    trimmedValue.EndsWith('}'))
+                {
+                    var envVarName = trimmedValue.Substring(2, trimmedValue.Length - 3);
+                    var envValue = Environment.GetEnvironmentVariable(envVarName);
+                    if (!string.IsNullOrEmpty(envValue))
+                        // NOTE: Direct assignment to configurationRoot[kvp.Key] only updates the in-memory provider and may not affect values from other providers.
+                        // For robust placeholder resolution across all providers, consider using an in-memory provider for overrides or a custom configuration source.
+                        configurationRoot[kvp.Key] = envValue;
+                    // Update the configuration value
+                    // Note: This is a simplified approach - in production you'd want more robust placeholder resolution
+                    configurationRoot[kvp.Key] = envValue;
+                }
+            }
+        }
+
+        private static void VisitConfiguration(string path, IConfiguration configuration, Dictionary<string, string> data)
+        {
+            foreach (var child in configuration.GetChildren())
+            {
+                var childPath = string.IsNullOrEmpty(path) ? child.Key : $"{path}:{child.Key}";
+                if (child.Value != null)
+                {
+                    data[childPath] = child.Value;
+                }
+                VisitConfiguration(childPath, child, data);
+            }
+        }
+
+        private static IConfiguration BuildConfiguration()
+        {
+            // Get project directory for .env file
             var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
             var assemblyDir = System.IO.Path.GetDirectoryName(assemblyLocation);
             var projectDir = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(assemblyDir)); // bin\Debug\net9.0-windows -> project root
             var envPath = System.IO.Path.Combine(projectDir, ".env");
+
+            // Check for XAI_API_KEY environment variable and write to .env if needed
+            var xaiApiKey = Environment.GetEnvironmentVariable("XAI_API_KEY");
+            if (!string.IsNullOrEmpty(xaiApiKey))
+            {
+                bool needsXaiKey = true;
+                if (System.IO.File.Exists(envPath))
+                {
+                    // Check if .env already contains XAI_API_KEY
+                    var envContent = System.IO.File.ReadAllText(envPath);
+                    if (envContent.Contains("XAI_API_KEY=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        needsXaiKey = false;
+                    }
+                }
+
+                if (needsXaiKey)
+                {
+                    // Append XAI_API_KEY to .env file
+                    System.IO.File.AppendAllText(envPath, $"{Environment.NewLine}XAI_API_KEY={xaiApiKey}{Environment.NewLine}");
+                    Log.Information("XAI_API_KEY from environment variable written to .env file");
+                }
+            }
+
+            // Load .env file from project directory
             if (System.IO.File.Exists(envPath))
             {
                 DotNetEnv.Env.Load(envPath);
@@ -2280,7 +2506,9 @@ namespace WileyWidget
                 .AddUserSecrets<App>(optional: true);
 
             var configurationRoot = builder.Build();
-            configurationRoot.ResolvePlaceholders();
+            // Call ResolvePlaceholders extension if available (defined in BootstrapHelpers),
+            // otherwise perform a local fallback resolution to support wpftmp/design-time builds.
+            TryResolvePlaceholders(configurationRoot);
 
             return configurationRoot;
         }
@@ -2293,6 +2521,7 @@ namespace WileyWidget
         /// <param name="e">Exit event args</param>
         protected override void OnExit(ExitEventArgs e)
         {
+            ArgumentNullException.ThrowIfNull(e);
             Log.Information("Application shutdown initiated - Session: {StartupId}", _startupId);
 
             try
@@ -2420,5 +2649,4 @@ namespace WileyWidget
             Log.Information("✓ Public accessibility validation passed for {Count} types", typesToValidate.Length);
         }
     }
-
 }

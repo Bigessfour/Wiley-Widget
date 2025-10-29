@@ -45,6 +45,7 @@ public class ErrorReportingService
     public void ReportError(Exception exception, string context = null, bool showToUser = true,
                            LogEventLevel level = LogEventLevel.Error, string correlationId = null)
     {
+        if (exception is null) throw new ArgumentNullException(nameof(exception));
         correlationId ??= Guid.NewGuid().ToString();
 
         // Structured logging with context
@@ -74,6 +75,7 @@ public class ErrorReportingService
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(eventName)) throw new ArgumentException("Event name is required", nameof(eventName));
             var logger = Log.ForContext("TelemetryEvent", eventName);
             if (properties != null)
             {
@@ -95,6 +97,7 @@ public class ErrorReportingService
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Counter name is required", nameof(name));
             var current = _counters.AddOrUpdate(name, value, (_, existing) => existing + value);
             // Periodically emit snapshot (every ~100 increments)
             if (current % 100 == 0)
@@ -116,11 +119,12 @@ public class ErrorReportingService
     /// </summary>
     public void ReportWarning(string message, string context = null, string correlationId = null)
     {
-        correlationId ??= Guid.NewGuid().ToString();
+          if (message is null) throw new ArgumentNullException(nameof(message));
+          correlationId ??= Guid.NewGuid().ToString();
 
-        Log.ForContext("CorrelationId", correlationId)
-           .ForContext("Context", context ?? "Unknown")
-           .Warning("Warning in {Context}: {Message}", context, message);
+          Log.ForContext("CorrelationId", correlationId)
+              .ForContext("Context", context ?? "Unknown")
+              .Warning("Warning in {Context}: {Message}", context, message);
     }
 
     /// <summary>
@@ -133,6 +137,8 @@ public class ErrorReportingService
         Log.ForContext("CorrelationId", correlationId)
            .ForContext("Context", context)
            .Information("Attempting error recovery for {Context}", context);
+
+        if (recoveryAction is null) throw new ArgumentNullException(nameof(recoveryAction));
 
         if (_recoveryStrategies.TryGetValue(context, out var strategy))
         {
@@ -163,6 +169,9 @@ public class ErrorReportingService
     /// </summary>
     public void RegisterRecoveryStrategy(string context, ErrorRecoveryStrategy strategy)
     {
+        if (string.IsNullOrWhiteSpace(context)) throw new ArgumentException("Context is required", nameof(context));
+        if (strategy is null) throw new ArgumentNullException(nameof(strategy));
+
         _recoveryStrategies[context] = strategy;
     }
 
@@ -174,6 +183,9 @@ public class ErrorReportingService
                                                    string context = null,
                                                    T defaultValue = default)
     {
+        if (primaryAction is null) throw new ArgumentNullException(nameof(primaryAction));
+        if (fallbackAction is null) throw new ArgumentNullException(nameof(fallbackAction));
+
         try
         {
             return await primaryAction();
@@ -200,6 +212,8 @@ public class ErrorReportingService
     /// </summary>
     public void SafeExecute(Action action, string context = null, bool logErrors = true)
     {
+        if (action is null) throw new ArgumentNullException(nameof(action));
+
         try
         {
             action();
@@ -218,6 +232,8 @@ public class ErrorReportingService
     /// </summary>
     public async Task SafeExecuteAsync(Func<Task> action, string context = null, bool logErrors = true)
     {
+        if (action is null) throw new ArgumentNullException(nameof(action));
+
         try
         {
             await action();
@@ -235,6 +251,7 @@ public class ErrorReportingService
     {
         try
         {
+            if (exception is null) throw new ArgumentNullException(nameof(exception));
             if (SuppressUserDialogs)
             {
                 // Respect suppression setting
@@ -290,6 +307,8 @@ public class RetryWithDelayStrategy : ErrorRecoveryStrategy
 
     public override async Task<bool> ExecuteAsync(Func<Task<bool>> action)
     {
+        if (action == null) throw new ArgumentNullException(nameof(action));
+
         var delay = _initialDelayMs;
 
         for (int attempt = 1; attempt <= _maxRetries; attempt++)

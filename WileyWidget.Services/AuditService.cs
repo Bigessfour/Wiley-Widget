@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -74,7 +75,7 @@ namespace WileyWidget.Services
                 var fi = new FileInfo(_auditPath);
                 if (fi.Length < maxBytes) return;
 
-                var rotated = _auditPath + "." + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".log";
+                var rotated = _auditPath + "." + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture) + ".log";
                 // Move current audit file to rotated name
                 File.Move(_auditPath, rotated);
                 _logger.LogInformation("Rotated audit log to {Rotated}", rotated);

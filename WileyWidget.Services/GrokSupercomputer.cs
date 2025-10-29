@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -97,7 +98,7 @@ public class GrokSupercomputer : IGrokSupercomputer
             // Log operation metrics
             _aiLoggingService.LogMetric("GrokSupercomputer.FetchEnterpriseData", 1, new Dictionary<string, object>
             {
-                ["EnterpriseId"] = enterpriseId?.ToString() ?? "All",
+                ["EnterpriseId"] = enterpriseId?.ToString(CultureInfo.InvariantCulture) ?? "All",
                 ["HasDateFilter"] = startDate.HasValue || endDate.HasValue,
                 ["HasTextFilter"] = !string.IsNullOrEmpty(filter)
             });
@@ -120,7 +121,7 @@ public class GrokSupercomputer : IGrokSupercomputer
             }
 
             // Cache key includes enterpriseId/start/end/filter minimal
-            var cacheKey = $"Grok.FetchEnterpriseData:{enterpriseId?.ToString() ?? "all"}:{effectiveStartDate:yyyyMMdd}:{effectiveEndDate:yyyyMMdd}:{filter?.Trim().ToLowerInvariant()}";
+            var cacheKey = $"Grok.FetchEnterpriseData:{enterpriseId?.ToString(CultureInfo.InvariantCulture) ?? "all"}:{effectiveStartDate:yyyyMMdd}:{effectiveEndDate:yyyyMMdd}:{filter?.Trim().ToLowerInvariant()}";
             if (_appOptions.Value.EnableDataCaching && _cache.TryGetValue(cacheKey, out object? cachedObj) && cachedObj is ReportData cached)
             {
                 _logger.LogInformation("Cache hit for FetchEnterpriseData: {Key}", cacheKey);

@@ -81,6 +81,9 @@ public sealed class StartupPerformanceMonitor : IDisposable
     /// </summary>
     public TimeSpan Measure(string phaseName, Action action)
     {
+        if (action == null)
+            throw new ArgumentNullException(nameof(action));
+
         BeginPhase(phaseName);
         try
         {
@@ -100,6 +103,9 @@ public sealed class StartupPerformanceMonitor : IDisposable
     /// </summary>
     public async Task<TimeSpan> MeasureAsync(string phaseName, Func<Task> action)
     {
+        if (action == null)
+            throw new ArgumentNullException(nameof(action));
+
         BeginPhase(phaseName);
         try
         {
@@ -166,7 +172,7 @@ public sealed class StartupPerformanceReport
     /// Calculates percentage of time spent in I/O-related phases
     /// </summary>
     public double IoPercentage => Phases
-        .Where(p => p.Name.Contains("Database") || p.Name.Contains("Config") || p.Name.Contains("KeyVault"))
+        .Where(p => p.Name.Contains("Database", StringComparison.OrdinalIgnoreCase) || p.Name.Contains("Config", StringComparison.OrdinalIgnoreCase) || p.Name.Contains("KeyVault", StringComparison.OrdinalIgnoreCase))
         .Sum(p => p.PercentageOfTotal);
 
     public override string ToString()

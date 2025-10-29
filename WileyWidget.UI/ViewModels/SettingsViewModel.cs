@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Prism.Dialogs;
 using Prism.Mvvm;
+using Prism.Navigation.Regions;
 using Syncfusion.SfSkinManager;
 using Syncfusion.Windows.Shared;
 using WileyWidget.Business.Interfaces;
@@ -1200,7 +1202,7 @@ namespace WileyWidget.ViewModels
 
                 SettingsStatus = "Settings loaded successfully";
                 HasUnsavedChanges = false;
-                LastSaved = DateTime.Now.ToString("g");
+                LastSaved = DateTime.Now.ToString("g", CultureInfo.InvariantCulture);
 
                 _logger.LogInformation("Settings loaded successfully");
             }
@@ -1490,7 +1492,7 @@ namespace WileyWidget.ViewModels
 
                 SettingsStatus = "Settings saved successfully";
                 HasUnsavedChanges = false;
-                LastSaved = DateTime.Now.ToString("g");
+                LastSaved = DateTime.Now.ToString("g", CultureInfo.InvariantCulture);
 
                 _logger.LogInformation("Settings saved successfully");
             }
@@ -1668,14 +1670,14 @@ namespace WileyWidget.ViewModels
 
             await _secretVaultService.SetSecretAsync("XAI-BaseUrl", XaiBaseUrl);
             await _secretVaultService.SetSecretAsync("XAI-Model", XaiModel);
-            await _secretVaultService.SetSecretAsync("XAI-TimeoutSeconds", XaiTimeoutSeconds.ToString());
+            await _secretVaultService.SetSecretAsync("XAI-TimeoutSeconds", XaiTimeoutSeconds.ToString(CultureInfo.InvariantCulture));
             await _secretVaultService.SetSecretAsync("XAI-ResponseStyle", ResponseStyle);
             await _secretVaultService.SetSecretAsync("XAI-Personality", Personality);
-            await _secretVaultService.SetSecretAsync("XAI-ContextWindowSize", ContextWindowSize.ToString());
-            await _secretVaultService.SetSecretAsync("XAI-EnableSafetyFilters", EnableSafetyFilters.ToString());
-            await _secretVaultService.SetSecretAsync("XAI-Temperature", Temperature.ToString());
-            await _secretVaultService.SetSecretAsync("XAI-MaxTokens", MaxTokens.ToString());
-            await _secretVaultService.SetSecretAsync("XAI-EnableStreaming", EnableStreaming.ToString());
+            await _secretVaultService.SetSecretAsync("XAI-ContextWindowSize", ContextWindowSize.ToString(CultureInfo.InvariantCulture));
+            await _secretVaultService.SetSecretAsync("XAI-EnableSafetyFilters", EnableSafetyFilters.ToString(CultureInfo.InvariantCulture));
+            await _secretVaultService.SetSecretAsync("XAI-Temperature", Temperature.ToString(CultureInfo.InvariantCulture));
+            await _secretVaultService.SetSecretAsync("XAI-MaxTokens", MaxTokens.ToString(CultureInfo.InvariantCulture));
+            await _secretVaultService.SetSecretAsync("XAI-EnableStreaming", EnableStreaming.ToString(CultureInfo.InvariantCulture));
         }
 
         private async Task SaveAdvancedSettingsAsync()
@@ -1939,7 +1941,7 @@ namespace WileyWidget.ViewModels
                     IsXaiKeyValidated = false;
                     XaiValidationMessage = validationResult.Content ?? "Validation failed";
                     AddError(nameof(XaiApiKey), XaiValidationMessage);
-                    _logger.LogInformation("XAI key validation failed (code={Code})", validationResult.ErrorCode ?? validationResult.HttpStatusCode.ToString());
+                    _logger.LogInformation("XAI key validation failed (code={Code})", validationResult.ErrorCode ?? validationResult.HttpStatusCode.ToString(CultureInfo.InvariantCulture));
                     return;
                 }
 
@@ -2067,7 +2069,7 @@ namespace WileyWidget.ViewModels
                 using var sha = System.Security.Cryptography.SHA256.Create();
                 var bytes = System.Text.Encoding.UTF8.GetBytes(key);
                 var hash = sha.ComputeHash(bytes);
-                return BitConverter.ToString(hash).Replace("-", string.Empty).Substring(0, 8).ToLowerInvariant();
+                return BitConverter.ToString(hash).Replace("-", string.Empty, StringComparison.OrdinalIgnoreCase).Substring(0, 8).ToLowerInvariant();
             }
             catch
             {
@@ -2142,7 +2144,7 @@ namespace WileyWidget.ViewModels
                 await LoadFiscalYearDisplayAsync();
 
                 SettingsStatus = "Fiscal year settings saved successfully";
-                LastSaved = DateTime.Now.ToString("g");
+                LastSaved = DateTime.Now.ToString("g", CultureInfo.InvariantCulture);
 
                 await ShowInformationAsync(
                     "Settings Saved",
@@ -2308,7 +2310,7 @@ namespace WileyWidget.ViewModels
             {
                 XaiApiKeyValidation = "API key appears to be too short";
             }
-            else if (!value.StartsWith("xai-"))
+            else if (!value.StartsWith("xai-", StringComparison.Ordinal))
             {
                 XaiApiKeyValidation = "API key should start with 'xai-'";
             }

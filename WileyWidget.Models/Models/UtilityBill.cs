@@ -3,6 +3,7 @@ using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace WileyWidget.Models;
@@ -336,7 +337,7 @@ public class UtilityBill : INotifyPropertyChanged
     /// Total amount charged on the bill
     /// </summary>
     [NotMapped]
-    public decimal TotalAmount => WaterCharges + SewerCharges + GarbageCharges + 
+    public decimal TotalAmount => WaterCharges + SewerCharges + GarbageCharges +
                                   StormwaterCharges + LateFees + OtherCharges;
 
     /// <summary>
@@ -382,13 +383,13 @@ public class UtilityBill : INotifyPropertyChanged
     /// Formatted total amount for display
     /// </summary>
     [NotMapped]
-    public string FormattedTotal => TotalAmount.ToString("C2");
+    public string FormattedTotal => TotalAmount.ToString("C2", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Formatted amount due for display
     /// </summary>
     [NotMapped]
-    public string FormattedAmountDue => AmountDue.ToString("C2");
+    public string FormattedAmountDue => AmountDue.ToString("C2", CultureInfo.InvariantCulture);
 }
 
 /// <summary>

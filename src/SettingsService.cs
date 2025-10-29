@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
@@ -155,7 +156,7 @@ public sealed class SettingsService : ISettingsService
             {
                 if (File.Exists(_file))
                 {
-                    var bad = _file + ".bad_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+                    var bad = _file + ".bad_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
                     File.Move(_file, bad);
                     _logger.LogWarning(ex, "Settings file corrupt; moved to {BackupFile} and regenerating defaults.", bad);
                 }

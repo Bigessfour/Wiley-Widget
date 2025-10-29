@@ -293,6 +293,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
     /// </summary>
     public void UpdateProgress(double progress, string statusText)
     {
+        ArgumentNullException.ThrowIfNull(statusText);
         // Use smart progress estimation
         UpdateProgress(progress);
 
@@ -324,7 +325,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
         };
 
         // Add some variety to status messages
-        if (baseText.Contains("Loading") || baseText.Contains("Initializing"))
+        if (baseText.Contains("Loading", StringComparison.OrdinalIgnoreCase) || baseText.Contains("Initializing", StringComparison.OrdinalIgnoreCase))
         {
             var random = new Random();
             return enhancements[random.Next(enhancements.Length)];
@@ -531,6 +532,7 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
     /// </summary>
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnKeyDown(e);
 
         if (e.Key == Key.Escape)

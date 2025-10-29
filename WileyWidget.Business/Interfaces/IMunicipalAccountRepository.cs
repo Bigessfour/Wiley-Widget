@@ -53,6 +53,12 @@ public interface IMunicipalAccountRepository
     System.Threading.Tasks.Task SyncFromQuickBooksAsync(List<Account> qbAccounts);
 
     /// <summary>
+    /// Imports chart of accounts data from QuickBooks for production use.
+    /// </summary>
+    /// <param name="chartAccounts">List of QuickBooks accounts to import</param>
+    System.Threading.Tasks.Task ImportChartOfAccountsAsync(List<Account> chartAccounts);
+
+    /// <summary>
     /// Gets a budget analysis for a specific period.
     /// </summary>
     System.Threading.Tasks.Task<object> GetBudgetAnalysisAsync(int periodId);
@@ -66,5 +72,9 @@ public interface IMunicipalAccountRepository
     /// Gets accounts filtered by account type.
     /// </summary>
     System.Threading.Tasks.Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type);
-}
 
+    /// <summary>
+    /// Gets all municipal accounts with related entities eagerly loaded.
+    /// </summary>
+    System.Threading.Tasks.Task<IEnumerable<MunicipalAccount>> GetAllWithRelatedAsync();
+}

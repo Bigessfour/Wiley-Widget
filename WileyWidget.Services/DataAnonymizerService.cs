@@ -348,7 +348,7 @@ namespace WileyWidget.Services
                 var hash = sha256.ComputeHash(bytes);
 
                 // Take first 8 bytes and convert to hex
-                var shortHash = BitConverter.ToString(hash, 0, 8).Replace("-", "");
+                var shortHash = BitConverter.ToString(hash, 0, 8).Replace("-", "", StringComparison.Ordinal);
 
                 return shortHash;
             }

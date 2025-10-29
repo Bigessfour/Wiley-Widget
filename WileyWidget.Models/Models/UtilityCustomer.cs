@@ -3,6 +3,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -32,6 +33,8 @@ public class UtilityCustomer : INotifyPropertyChanged, IValidatableObject
     /// </summary>
     protected void OnPropertyChanged(params string[] propertyNames)
     {
+        if (propertyNames == null) throw new ArgumentNullException(nameof(propertyNames));
+
         foreach (var propertyName in propertyNames)
         {
             OnPropertyChanged(propertyName);
@@ -592,7 +595,7 @@ public class UtilityCustomer : INotifyPropertyChanged, IValidatableObject
     /// Formatted balance for display
     /// </summary>
     [NotMapped]
-    public string FormattedBalance => CurrentBalance.ToString("C");
+    public string FormattedBalance => CurrentBalance.ToString("C", CultureInfo.InvariantCulture);
 
     private string? _taxId;
 

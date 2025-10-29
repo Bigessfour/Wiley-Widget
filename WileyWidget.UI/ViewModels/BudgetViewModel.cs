@@ -1,6 +1,9 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -8,7 +11,9 @@ using System.Windows.Threading;
 using Prism.Commands;
 using Prism.Events;
 using Prism.Mvvm;
+using Prism.Navigation.Regions;
 using Serilog;
+using WileyWidget.Abstractions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services;
@@ -26,6 +31,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
     private readonly IEnterpriseRepository _enterpriseRepository;
     private readonly IBudgetRepository _budgetRepository;
     private readonly IEventAggregator? _eventAggregator;
+    private readonly ICacheService? _cacheService;
     // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles theming globally
     private readonly DispatcherTimer _refreshTimer;
     private bool _disposed;
@@ -372,11 +378,12 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
     /// Constructor with dependency injection
     /// Subscribes to enterprise change messages for automatic refresh
     /// </summary>
-    public BudgetViewModel(IEnterpriseRepository enterpriseRepository, IBudgetRepository budgetRepository, IEventAggregator eventAggregator)
+    public BudgetViewModel(IEnterpriseRepository enterpriseRepository, IBudgetRepository budgetRepository, IEventAggregator eventAggregator, ICacheService? cacheService = null)
     {
         _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
         _budgetRepository = budgetRepository;
         _eventAggregator = eventAggregator;
+        _cacheService = cacheService;
         // NOTE: ThemeManager removed - SfSkinManager.ApplicationTheme handles all theming globally
         Log.Debug("BudgetViewModel initialized");
 
@@ -394,6 +401,24 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
         BudgetAccounts.CollectionChanged += OnBudgetAccountsChanged;
 
         InitializeCommands();
+
+        // Auto-load enterprises into cache for faster access
+        Task.Run(async () =>
+        {
+            try
+            {
+                if (_cacheService != null)
+                {
+                    var enterprises = await _enterpriseRepository.GetAllAsync();
+                    await _cacheService.SetAsync("enterprises", enterprises, TimeSpan.FromHours(6));
+                    Log.Debug("Auto-loaded {Count} enterprises into cache", enterprises.Count());
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to auto-load enterprises into cache");
+            }
+        });
     }
 
     // Prism navigation lifecycle
@@ -510,7 +535,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
             ProgressText = $"Loading budgets for {SelectedFiscalYear}...";
 
             // Extract year from "FY 2025" format
-            var yearStr = SelectedFiscalYear.Replace("FY", "").Trim();
+            var yearStr = SelectedFiscalYear.Replace("FY", "", StringComparison.OrdinalIgnoreCase).Trim();
             if (!int.TryParse(yearStr, out var fiscalYear))
             {
                 throw new InvalidOperationException($"Invalid fiscal year format: {SelectedFiscalYear}");
@@ -739,7 +764,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
     /// Constructor with dependency injection (original signature for backward compatibility)
     /// </summary>
     public BudgetViewModel(IEnterpriseRepository enterpriseRepository)
-        : this(enterpriseRepository, null!, null!)
+        : this(enterpriseRepository, null!, null!, null)
     {
         // Fallback constructor - budget repository and event aggregator will be null
         // This maintains compatibility with existing tests
@@ -762,7 +787,15 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
             HasError = false;
             ErrorMessage = string.Empty;
 
-            var enterprises = await _enterpriseRepository.GetAllAsync();
+            var enterprises = _cacheService != null
+                ? await _cacheService.GetAsync<List<Enterprise>>("enterprises") ?? await _enterpriseRepository.GetAllAsync()
+                : await _enterpriseRepository.GetAllAsync();
+
+            // Cache the enterprises if not already cached
+            if (_cacheService != null && enterprises != null)
+            {
+                await _cacheService.SetAsync("enterprises", enterprises, TimeSpan.FromHours(6));
+            }
 
             BudgetDetails.Clear();
 
@@ -789,7 +822,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
             NetBalance = TotalRevenue - TotalExpenses;
             TotalCitizens = BudgetDetails.Sum(b => b.CitizenCount);
 
-            LastUpdated = DateTime.Now.ToString("g");
+            LastUpdated = DateTime.Now.ToString("g", CultureInfo.InvariantCulture);
             ProgressText = "Data loaded successfully";
             AnalysisStatus = "Data loaded successfully";
 
@@ -837,18 +870,18 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
 
         foreach (var detail in BudgetDetails.OrderByDescending(b => b.MonthlyBalance))
         {
-            analysis.AppendLine($"Enterprise: {detail.EnterpriseName}");
-            analysis.AppendLine($"  Current Rate: ${detail.CurrentRate:F2}");
-            analysis.AppendLine($"  Break-even Rate: ${detail.BreakEvenRate:F2}");
-            analysis.AppendLine($"  Current Balance: ${detail.MonthlyBalance:F2}");
+            analysis.AppendLine(CultureInfo.InvariantCulture, $"Enterprise: {detail.EnterpriseName}");
+            analysis.AppendLine(CultureInfo.InvariantCulture, $"  Current Rate: ${detail.CurrentRate:F2}");
+            analysis.AppendLine(CultureInfo.InvariantCulture, $"  Break-even Rate: ${detail.BreakEvenRate:F2}");
+            analysis.AppendLine(CultureInfo.InvariantCulture, $"  Current Balance: ${detail.MonthlyBalance:F2}");
 
             if (detail.CurrentRate > detail.BreakEvenRate)
             {
-                analysis.AppendLine($"  Status: PROFITABLE (Rate exceeds break-even by ${(detail.CurrentRate - detail.BreakEvenRate):F2})");
+                analysis.AppendLine(CultureInfo.InvariantCulture, $"  Status: PROFITABLE (Rate exceeds break-even by ${(detail.CurrentRate - detail.BreakEvenRate):F2})");
             }
             else if (detail.CurrentRate < detail.BreakEvenRate)
             {
-                analysis.AppendLine($"  Status: LOSS (Need ${(detail.BreakEvenRate - detail.CurrentRate):F2} increase to break-even)");
+                analysis.AppendLine(CultureInfo.InvariantCulture, $"  Status: LOSS (Need ${(detail.BreakEvenRate - detail.CurrentRate):F2} increase to break-even)");
             }
             else
             {
@@ -881,9 +914,9 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
         var breakEvenEnterprises = BudgetDetails.Count(b => b.MonthlyBalance == 0);
 
         analysis.AppendLine($"Portfolio Overview:");
-        analysis.AppendLine($"  Profitable Enterprises: {profitableEnterprises}");
-        analysis.AppendLine($"  Deficit Enterprises: {deficitEnterprises}");
-        analysis.AppendLine($"  Break-even Enterprises: {breakEvenEnterprises}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Profitable Enterprises: {profitableEnterprises}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Deficit Enterprises: {deficitEnterprises}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Break-even Enterprises: {breakEvenEnterprises}");
         analysis.AppendLine();
 
         analysis.AppendLine($"Revenue Distribution:");
@@ -891,9 +924,9 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
         var maxRevenue = BudgetDetails.Max(b => b.MonthlyRevenue);
         var minRevenue = BudgetDetails.Min(b => b.MonthlyRevenue);
 
-        analysis.AppendLine($"  Average Revenue: ${avgRevenue:F2}");
-        analysis.AppendLine($"  Highest Revenue: ${maxRevenue:F2}");
-        analysis.AppendLine($"  Lowest Revenue: ${minRevenue:F2}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Average Revenue: ${avgRevenue:F2}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Highest Revenue: ${maxRevenue:F2}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Lowest Revenue: ${minRevenue:F2}");
         analysis.AppendLine();
 
         analysis.AppendLine($"Expense Analysis:");
@@ -901,9 +934,9 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
         var maxExpense = BudgetDetails.Max(b => b.MonthlyExpenses);
         var minExpense = BudgetDetails.Min(b => b.MonthlyExpenses);
 
-        analysis.AppendLine($"  Average Expenses: ${avgExpense:F2}");
-        analysis.AppendLine($"  Highest Expenses: ${maxExpense:F2}");
-        analysis.AppendLine($"  Lowest Expenses: ${minExpense:F2}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Average Expenses: ${avgExpense:F2}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Highest Expenses: ${maxExpense:F2}");
+        analysis.AppendLine(CultureInfo.InvariantCulture, $"  Lowest Expenses: ${minExpense:F2}");
 
         TrendAnalysisText = analysis.ToString();
     }
@@ -952,8 +985,8 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
             recommendations.AppendLine("Enterprises requiring attention:");
             foreach (var enterprise in deficitEnterprises.OrderBy(b => b.MonthlyBalance))
             {
-                recommendations.AppendLine($"  • {enterprise.EnterpriseName}: Loss of ${Math.Abs(enterprise.MonthlyBalance):F2}");
-                recommendations.AppendLine($"    Suggested rate increase: ${(enterprise.BreakEvenRate - enterprise.CurrentRate):F2}");
+                recommendations.AppendLine(CultureInfo.InvariantCulture, $"  • {enterprise.EnterpriseName}: Loss of ${Math.Abs(enterprise.MonthlyBalance):F2}");
+                recommendations.AppendLine(CultureInfo.InvariantCulture, $"    Suggested rate increase: ${(enterprise.BreakEvenRate - enterprise.CurrentRate):F2}");
             }
             recommendations.AppendLine();
         }
@@ -965,7 +998,7 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
             recommendations.AppendLine("High-performing enterprises:");
             foreach (var enterprise in highPerformers.OrderByDescending(b => b.MonthlyBalance))
             {
-                recommendations.AppendLine($"  • {enterprise.EnterpriseName}: Profit of ${enterprise.MonthlyBalance:F2}");
+                recommendations.AppendLine(CultureInfo.InvariantCulture, $"  • {enterprise.EnterpriseName}: Profit of ${enterprise.MonthlyBalance:F2}");
             }
             recommendations.AppendLine();
         }

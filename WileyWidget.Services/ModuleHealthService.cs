@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Prism.Modularity;
@@ -134,7 +135,7 @@ namespace WileyWidget.Services
             foreach (var healthInfo in GetAllModuleStatuses())
             {
                 var status = healthInfo.Status.ToString().ToUpper(System.Globalization.CultureInfo.InvariantCulture);
-                var duration = healthInfo.InitializationDuration?.TotalMilliseconds.ToString("F2") ?? "N/A";
+                var duration = healthInfo.InitializationDuration?.TotalMilliseconds.ToString("F2", CultureInfo.InvariantCulture) ?? "N/A";
 
                 if (healthInfo.Status == ModuleHealthStatus.Failed)
                 {

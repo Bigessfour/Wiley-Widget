@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
+using WileyWidget.ViewModels;
 
 namespace WileyWidget;
 

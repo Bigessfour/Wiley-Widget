@@ -55,9 +55,6 @@ namespace WileyWidget.Startup.Modules
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            // Register theme service for centralized theme management
-            // containerRegistry.RegisterSingleton<IThemeService, ThemeService>();
-
             // Register DashboardViewModel as transient to avoid unintended shared state
             containerRegistry.Register<DashboardViewModel>();
 

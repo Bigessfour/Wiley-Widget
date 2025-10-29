@@ -13,6 +13,8 @@ namespace WileyWidget.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.DropForeignKey(
                 name: "FK_BudgetEntries_BudgetPeriods_BudgetPeriodId",
                 table: "BudgetEntries");
@@ -766,6 +768,8 @@ namespace WileyWidget.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.DropForeignKey(
                 name: "FK_BudgetEntries_BudgetEntries_ParentId",
                 table: "BudgetEntries");

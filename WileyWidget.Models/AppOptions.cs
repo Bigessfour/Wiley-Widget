@@ -62,6 +62,8 @@ public class ConnectionStringValidationAttribute : ValidationAttribute
 
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
+        if (validationContext == null) throw new ArgumentNullException(nameof(validationContext));
+
         var connectionString = value as string;
 
         if (string.IsNullOrWhiteSpace(connectionString))

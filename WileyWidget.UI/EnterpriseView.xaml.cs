@@ -187,7 +187,7 @@ public partial class EnterpriseView : UserControl
         {
             var values = item.GetType().GetProperties()
                 .Where(p => p.CanRead)
-                .Select(p => (p.GetValue(item)?.ToString() ?? string.Empty).Replace("\"", "\"\""));
+                .Select(p => (p.GetValue(item)?.ToString() ?? string.Empty).Replace("\"", "\"\"", StringComparison.Ordinal));
             writer.WriteLine(string.Join(",", values));
         }
     }

@@ -18,7 +18,7 @@ public static class ThemeUtility
     public static string NormalizeTheme(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return "FluentDark";
-        raw = raw.Replace(" ", string.Empty); // allow "Fluent Dark" legacy
+        raw = raw.Replace(" ", string.Empty, StringComparison.Ordinal); // allow "Fluent Dark" legacy
         return raw switch
         {
             "FluentDark" => "FluentDark",
@@ -48,6 +48,11 @@ public static class ThemeUtility
     /// </summary>
     public static void TryApplyTheme(System.Windows.Window window, string themeName)
     {
+        if (window is null)
+        {
+            throw new ArgumentNullException(nameof(window));
+        }
+
         try
         {
             var canonical = NormalizeTheme(themeName);

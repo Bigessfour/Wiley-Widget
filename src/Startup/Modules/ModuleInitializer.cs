@@ -35,6 +35,11 @@ namespace WileyWidget.Startup.Modules
         /// <param name="containerProvider">The container provider for service resolution</param>
         public void OnInitialized(IContainerProvider containerProvider)
         {
+            if (containerProvider is null)
+            {
+                throw new ArgumentNullException(nameof(containerProvider));
+            }
+
             var moduleName = GetModuleName();
             Log.Information("Initializing module: {ModuleName}", moduleName);
 

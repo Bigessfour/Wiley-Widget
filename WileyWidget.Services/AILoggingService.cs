@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -47,7 +48,8 @@ namespace WileyWidget.Services
                     Path.Combine(logsDirectory, "ai-usage.log"),
                     rollingInterval: RollingInterval.Day,
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
-                    retainedFileCountLimit: 30)
+                    retainedFileCountLimit: 30,
+                    formatProvider: CultureInfo.InvariantCulture)
                 .CreateLogger();
 
             _logger.LogInformation("AILoggingService initialized with dedicated Serilog file sink at {LogPath}",

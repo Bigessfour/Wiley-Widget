@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -90,7 +91,7 @@ public partial class ExcelImportViewModel : AsyncViewModelBase
     /// <summary>
     /// Budget year
     /// </summary>
-    private string _budgetYear = DateTime.Now.Year.ToString();
+    private string _budgetYear = DateTime.Now.Year.ToString(CultureInfo.InvariantCulture);
     public string BudgetYear
     {
         get => _budgetYear;

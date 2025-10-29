@@ -1,17 +1,20 @@
 using System;
+using System.Windows;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Mvvm;
+using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
+using WileyWidget.Abstractions;
 using WileyWidget.Models;
 using WileyWidget.Services;
-using PrismDialog = Prism.Dialogs;
 
 namespace WileyWidget.ViewModels;
 
@@ -23,7 +26,8 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
 {
     private readonly IUtilityCustomerRepository _customerRepository;
     private readonly IGrokSupercomputer _grokSupercomputer;
-    private readonly Prism.Dialogs.IDialogService? _dialogService;
+    private readonly IDialogService? _dialogService;
+    private readonly ICacheService? _cacheService;
     private CancellationTokenSource? _cancellationTokenSource;
 
     /// <summary>
@@ -213,7 +217,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public UtilityCustomerViewModel(IUnitOfWork unitOfWork, IGrokSupercomputer grokSupercomputer, Prism.Dialogs.IDialogService? dialogService = null)
+    public UtilityCustomerViewModel(IUnitOfWork unitOfWork, IGrokSupercomputer grokSupercomputer, Prism.Dialogs.IDialogService? dialogService = null, ICacheService? cacheService = null)
     {
         if (unitOfWork is null)
         {
@@ -221,11 +225,46 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
         }
 
         _customerRepository = unitOfWork.UtilityCustomers
-            ?? throw new ArgumentNullException(nameof(IUnitOfWork.UtilityCustomers));
+            ?? throw new ArgumentNullException(nameof(unitOfWork));
         _grokSupercomputer = grokSupercomputer ?? throw new ArgumentNullException(nameof(grokSupercomputer));
-        _dialogService = dialogService;
+    _dialogService = dialogService;
+    _cacheService = cacheService;
 
         InitializeCommands();
+
+        // Auto-load customers for E2E (cache-first)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (_cacheService != null)
+                {
+                    var cached = await _cacheService.GetAsync<System.Collections.Generic.List<UtilityCustomer>>("customers");
+                    if (cached != null && cached.Any())
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            foreach (var c in cached) Customers.Add(c);
+                        });
+                        return;
+                    }
+                }
+
+                var all = await _customerRepository.GetAllAsync();
+                var list = all?.ToList() ?? new System.Collections.Generic.List<UtilityCustomer>();
+                if (_cacheService != null && list.Any())
+                    await _cacheService.SetAsync("customers", list, TimeSpan.FromHours(6));
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    foreach (var c in list) Customers.Add(c);
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to auto-load customers in UtilityCustomerViewModel");
+            }
+        });
     }
 
     private void InitializeCommands()
@@ -497,7 +536,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
         if (_dialogService != null)
         {
             var temp = new UtilityCustomer { AccountNumber = await GenerateNextAccountNumberAsync() };
-            var parameters = new Prism.Dialogs.DialogParameters { { "customer", temp } };
+            var parameters = new DialogParameters { { "customer", temp } };
             // use a string key instead of nameof(...) to avoid compile-time dependency on a missing View type
             _dialogService.ShowDialog("CustomerEditDialogView", parameters, r =>
             {
@@ -574,7 +613,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     {
         if (_dialogService == null || SelectedCustomer == null) return;
 
-        var parameters = new Prism.Dialogs.DialogParameters { { "customer", SelectedCustomer } };
+        var parameters = new DialogParameters { { "customer", SelectedCustomer } };
         // use the same string key here as well
         _dialogService.ShowDialog("CustomerEditDialogView", parameters, r =>
         {
@@ -1138,7 +1177,7 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     /// </summary>
     private void ClearCustomerErrors()
     {
-        var customerErrorKeys = _errors.Keys.Where(key => key.StartsWith("SelectedCustomer.")).ToList();
+        var customerErrorKeys = _errors.Keys.Where(key => key.StartsWith("SelectedCustomer.", StringComparison.Ordinal)).ToList();
         foreach (var key in customerErrorKeys)
         {
             _errors.Remove(key);

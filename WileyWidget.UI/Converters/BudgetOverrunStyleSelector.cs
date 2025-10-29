@@ -26,8 +26,8 @@ public class BudgetOverrunStyleSelector : StyleSelector
         {
             // Check if this is a budget-related column
             if (cell.Column is DataGridTextColumn column &&
-                (column.Header?.ToString()?.Contains("Budget") == true ||
-                 column.Header?.ToString()?.Contains("Expenses") == true))
+                (column.Header?.ToString()?.Contains("Budget", StringComparison.OrdinalIgnoreCase) == true ||
+                 column.Header?.ToString()?.Contains("Expenses", StringComparison.OrdinalIgnoreCase) == true))
             {
                 // Simple logic: if expenses > budget, mark as over budget
                 // In a real app, this would be more sophisticated

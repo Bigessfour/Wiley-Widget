@@ -94,6 +94,7 @@ public abstract class AsyncViewModelBase : BindableBase, INotifyPropertyChanged
     /// <returns>A task representing the async operation</returns>
     protected async Task ExecuteAsync(Func<Task> operation, string? busyMessage = null)
     {
+        ArgumentNullException.ThrowIfNull(operation);
         try
         {
             IsBusy = true;
@@ -117,6 +118,7 @@ public abstract class AsyncViewModelBase : BindableBase, INotifyPropertyChanged
     /// <returns>A task representing the async operation with result</returns>
     protected async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, string? busyMessage = null)
     {
+        ArgumentNullException.ThrowIfNull(operation);
         try
         {
             IsBusy = true;
@@ -139,6 +141,7 @@ public abstract class AsyncViewModelBase : BindableBase, INotifyPropertyChanged
     /// <returns>A task representing the async operation</returns>
     protected async Task ExecuteAsyncOperation(Func<CancellationToken, Task> operation, string? statusMessage = null)
     {
+        ArgumentNullException.ThrowIfNull(operation);
         try
         {
             IsBusy = true;

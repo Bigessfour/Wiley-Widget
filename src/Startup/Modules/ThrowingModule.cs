@@ -1,4 +1,5 @@
 using System;
+using Prism.Ioc;
 using Prism.Modularity;
 using Serilog;
 

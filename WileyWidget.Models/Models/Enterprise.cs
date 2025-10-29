@@ -40,6 +40,8 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// </summary>
     protected void OnPropertyChanged(params string[] propertyNames)
     {
+        if (propertyNames == null) throw new ArgumentNullException(nameof(propertyNames));
+
         foreach (var propertyName in propertyNames)
         {
             OnPropertyChanged(propertyName);
@@ -547,7 +549,7 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     public string GetRateRecommendation()
     {
         var variance = CalculateBreakEvenVariance();
-        
+
         if (variance >= 1.0m)
             return $"Current rate is ${variance:F2} above break-even. Consider rate reduction or reserve building.";
         else if (variance >= 0)

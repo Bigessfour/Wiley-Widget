@@ -1,7 +1,7 @@
 using System;
 using Prism.Ioc;
 using Prism.Modularity;
-// using Prism.Regions; // Removed to eliminate dependency
+using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
@@ -36,8 +36,8 @@ namespace WileyWidget.Startup.Modules
             // Register views for navigation
             containerRegistry.RegisterForNavigation<UtilityCustomerView, UtilityCustomerViewModel>();
 
-            // Register dialog for editing/creating customers (Prism Dialog)
-            containerRegistry.RegisterDialog<CustomerEditDialogView, CustomerEditDialogViewModel>();
+            // Note: CustomerEditDialogView registration moved to DialogsModule
+            // to avoid assembly reference issues
 
             Log.Debug("Utility customer types registered");
         }

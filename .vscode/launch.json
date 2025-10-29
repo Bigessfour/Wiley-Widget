@@ -10,6 +10,7 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
+      "postDebugTask": "kill-dotnet",
       "stopAtEntry": false,
       "symbolOptions": {
         "searchMicrosoftSymbolServer": false,
@@ -42,6 +43,7 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
+      "postDebugTask": "kill-dotnet",
       "justMyCode": false,
       "stopAtEntry": false,
       "symbolOptions": {
@@ -78,6 +80,7 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
+      "postDebugTask": "kill-dotnet",
       "stopAtEntry": false,
       "symbolOptions": {
         "searchMicrosoftSymbolServer": false,
@@ -121,6 +124,7 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
+      "postDebugTask": "kill-dotnet",
       "stopAtEntry": false,
       "justMyCode": false,
       "symbolOptions": {
@@ -162,6 +166,7 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
+      "postDebugTask": "kill-dotnet",
       "stopAtEntry": false,
       "justMyCode": false,
       "symbolOptions": {
@@ -206,6 +211,7 @@
       "args": [],
       "cwd": "${workspaceFolder}/publish",
       "console": "internalConsole",
+      "postDebugTask": "kill-dotnet",
       "stopAtEntry": false,
       "justMyCode": false,
       "symbolOptions": {

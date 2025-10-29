@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,6 +21,7 @@ using Syncfusion.SfSkinManager;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services;
+using WileyWidget.Abstractions;
 using WileyWidget.Services.Logging;
 using WileyWidget.ViewModels.Messages;
 using PrismDelegateCommand = Prism.Commands.DelegateCommand;
@@ -35,7 +37,8 @@ namespace WileyWidget.ViewModels
         private readonly IMunicipalAccountRepository _municipalAccountRepository;
         private readonly FiscalYearSettings _fiscalYearSettings;
         private readonly IEventAggregator _eventAggregator;
-        private readonly IRegionManager _regionManager;
+    private readonly IRegionManager _regionManager;
+    private readonly ICacheService? _cacheService;
         // private readonly IThemeService _themeService;
 
         private DispatcherTimer _refreshTimer;
@@ -451,7 +454,8 @@ namespace WileyWidget.ViewModels
             IMunicipalAccountRepository municipalAccountRepository,
             FiscalYearSettings fiscalYearSettings,
             IEventAggregator eventAggregator,
-            IRegionManager regionManager)
+            IRegionManager regionManager,
+            ICacheService? cacheService = null)
         {
             _logger = logger;
             _enterpriseRepository = enterpriseRepository;
@@ -461,6 +465,7 @@ namespace WileyWidget.ViewModels
             _fiscalYearSettings = fiscalYearSettings;
             _eventAggregator = eventAggregator;
             _regionManager = regionManager;
+            _cacheService = cacheService;
             // _themeService = themeService;
 
             // Subscribe to collection change events for detailed logging
@@ -481,6 +486,29 @@ namespace WileyWidget.ViewModels
 
             // Load initial data
             _ = LoadDashboardDataAsync();
+
+            // Preload enterprises into cache for E2E scenarios (cache-first)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    if (_cacheService != null)
+                    {
+                        var cached = await _cacheService.GetAsync<System.Collections.Generic.List<Enterprise>>("enterprises");
+                        if (cached != null && cached.Any())
+                            return;
+                    }
+
+                    var all = await enterpriseRepository.GetAllAsync();
+                    var list = all?.ToList() ?? new System.Collections.Generic.List<Enterprise>();
+                    if (_cacheService != null && list.Any())
+                        await _cacheService.SetAsync("enterprises", list, TimeSpan.FromHours(6));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to preload enterprises in DashboardViewModel");
+                }
+            });
         }
 
         private void InitializeCommands()
@@ -499,7 +527,7 @@ namespace WileyWidget.ViewModels
             NavigateBackCommand = new DelegateCommand(ExecuteNavigateBack, () => CanNavigateBack);
             NavigateForwardCommand = new DelegateCommand(ExecuteNavigateForward, () => CanNavigateForward);
             OpenEnterpriseManagementCommand = new DelegateCommand(ExecuteOpenEnterpriseManagement);
-            RunGrowthScenarioCommand = new DelegateCommand<object>(async (param) => await ExecuteRunGrowthScenarioAsync(Convert.ToInt32(param)), (param) => !IsScenarioRunning);
+            RunGrowthScenarioCommand = new DelegateCommand<object>(async (param) => await ExecuteRunGrowthScenarioAsync(Convert.ToInt32(param, CultureInfo.InvariantCulture)), (param) => !IsScenarioRunning);
         }
 
         private bool CanNavigateBack => _regionManager.Regions.ContainsRegionWithName("MainRegion") && _regionManager.Regions["MainRegion"].NavigationService.Journal.CanGoBack;
@@ -566,7 +594,7 @@ namespace WileyWidget.ViewModels
 
                 overallStopwatch.Stop();
                 DashboardStatus = "Dashboard loaded successfully";
-                LastUpdated = DateTime.Now.ToString("g");
+                LastUpdated = DateTime.Now.ToString("g", CultureInfo.InvariantCulture);
                 UpdateNextRefreshTime();
 
                 _logger.LogInformation("Dashboard data loaded successfully in {ElapsedMs}ms - {TotalEnterprises} enterprises, ${TotalBudget} total budget - {LogContext}",
@@ -737,7 +765,7 @@ namespace WileyWidget.ViewModels
                     var date = DateTime.Now.AddMonths(-i);
                     var trendItem = new BudgetTrendItem
                     {
-                        Period = date.ToString("MMM yyyy"),
+                        Period = date.ToString("MMM yyyy", CultureInfo.InvariantCulture),
                         Amount = TotalBudget * (decimal)(0.8 + (i * 0.04)) // Simulated growth
                     };
 
@@ -747,7 +775,7 @@ namespace WileyWidget.ViewModels
                     // Add rate trend data using the suggested rate
                     var rateItem = new RateTrendItem
                     {
-                        Period = date.ToString("MMM yyyy"),
+                        Period = date.ToString("MMM yyyy", CultureInfo.InvariantCulture),
                         Rate = SuggestedRate
                     };
                     RateTrendData.Add(rateItem);
@@ -877,7 +905,7 @@ namespace WileyWidget.ViewModels
         {
             if (AutoRefreshEnabled)
             {
-                NextRefreshTime = DateTime.Now.AddMinutes(RefreshIntervalMinutes).ToString("HH:mm");
+                NextRefreshTime = DateTime.Now.AddMinutes(RefreshIntervalMinutes).ToString("HH:mm", CultureInfo.InvariantCulture);
             }
             else
             {

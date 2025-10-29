@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
@@ -58,14 +59,14 @@ namespace WileyWidget.Services
 
             var sb = new StringBuilder();
             sb.AppendLine("=== WileyWidget Municipal Finance System Context ===");
-            sb.AppendLine($"System Name: WileyWidget Municipal Finance System");
-            sb.AppendLine($"Version: 1.0.0");
-            sb.AppendLine($"Environment: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}");
-            sb.AppendLine($"Machine Name: {Environment.MachineName}");
-            sb.AppendLine($"OS Version: {Environment.OSVersion}");
-            sb.AppendLine($"Processor Count: {Environment.ProcessorCount}");
-            sb.AppendLine($"Current Time: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-            sb.AppendLine($"Time Zone: {TimeZoneInfo.Local.DisplayName}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"System Name: WileyWidget Municipal Finance System");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Version: 1.0.0");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Environment: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Machine Name: {Environment.MachineName}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"OS Version: {Environment.OSVersion}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Processor Count: {Environment.ProcessorCount}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Current Time: {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)} UTC");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Time Zone: {TimeZoneInfo.Local.DisplayName}");
             sb.AppendLine();
 
             // Aggregate active enterprises (with anonymization for privacy)
@@ -78,21 +79,21 @@ namespace WileyWidget.Services
             sb.AppendLine("Active Enterprises (Anonymized for Privacy):");
             foreach (var ent in anonymizedEnterprises)
             {
-                sb.AppendLine($"- {ent.Name} (ID: {ent.Id}, Type: {ent.Type})");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"- {ent.Name} (ID: {ent.Id}, Type: {ent.Type})");
             }
-            sb.AppendLine($"Total Active Enterprises: {anonymizedEnterprises.Count}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Total Active Enterprises: {anonymizedEnterprises.Count}");
             sb.AppendLine();
 
             // Aggregate budgets for current fiscal year
             var currentYear = DateTime.Now.Year;
             var budgets = await _budgetRepository.GetByFiscalYearAsync(currentYear);
-            sb.AppendLine($"Budgets for Fiscal Year {currentYear}:");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Budgets for Fiscal Year {currentYear}:");
             var totalBudget = budgets.Sum(b => b.TotalBudget);
             var totalSpent = budgets.Sum(b => b.ActualSpent);
-            sb.AppendLine($"- Total Budget: ${totalBudget:N2}");
-            sb.AppendLine($"- Total Spent: ${totalSpent:N2}");
-            sb.AppendLine($"- Remaining: ${(totalBudget - totalSpent):N2}");
-            sb.AppendLine($"Budget Entries: {budgets.Count()}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- Total Budget: ${totalBudget.ToString("N2", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- Total Spent: ${totalSpent.ToString("N2", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- Remaining: ${(totalBudget - totalSpent).ToString("N2", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Budget Entries: {budgets.Count()}");
             sb.AppendLine();
 
             _logger.LogInformation("System context built successfully.");
@@ -120,17 +121,17 @@ namespace WileyWidget.Services
             _logger.LogInformation("Enterprise data anonymized for AI context: {EnterpriseId}", enterpriseId);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"=== Enterprise Context (Anonymized): {anonymizedEnterprise.Name} ===");
-            sb.AppendLine($"ID: {anonymizedEnterprise.Id}");
-            sb.AppendLine($"Name: {anonymizedEnterprise.Name}");
-            sb.AppendLine($"Type: {anonymizedEnterprise.Type}");
-            sb.AppendLine($"Description: {anonymizedEnterprise.Description ?? "N/A"}");
-            sb.AppendLine($"Current Rate: ${enterprise.CurrentRate:N2}");
-            sb.AppendLine($"Monthly Expenses: ${enterprise.MonthlyExpenses:N2}");
-            sb.AppendLine($"Monthly Revenue: ${enterprise.MonthlyRevenue:N2}");
-            sb.AppendLine($"Status: {anonymizedEnterprise.Status}");
-            sb.AppendLine($"Created: {anonymizedEnterprise.CreatedDate:yyyy-MM-dd HH:mm:ss}");
-            sb.AppendLine($"Last Modified: {anonymizedEnterprise.ModifiedDate:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"=== Enterprise Context (Anonymized): {anonymizedEnterprise.Name} ===");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"ID: {anonymizedEnterprise.Id}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Name: {anonymizedEnterprise.Name}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Type: {anonymizedEnterprise.Type}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Description: {anonymizedEnterprise.Description ?? "N/A"}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Current Rate: ${enterprise.CurrentRate.ToString("N2", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Monthly Expenses: ${enterprise.MonthlyExpenses.ToString("N2", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Monthly Revenue: ${enterprise.MonthlyRevenue.ToString("N2", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Status: {anonymizedEnterprise.Status}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Created: {anonymizedEnterprise.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Last Modified: {(anonymizedEnterprise.ModifiedDate.HasValue ? anonymizedEnterprise.ModifiedDate.Value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture) : "N/A")}");
 
             _logger.LogInformation("Enterprise context retrieved for ID: {EnterpriseId}", enterpriseId);
             return sb.ToString();
@@ -154,25 +155,25 @@ namespace WileyWidget.Services
             var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(start, end);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"=== Budget Context (Anonymized): {start:yyyy-MM-dd} to {end:yyyy-MM-dd} ===");
-            sb.AppendLine($"Analysis Date: {budgetSummary.AnalysisDate:yyyy-MM-dd HH:mm:ss}");
-            sb.AppendLine($"Budget Period: {budgetSummary.BudgetPeriod ?? "N/A"}");
-            sb.AppendLine($"Total Budgeted: ${budgetSummary.TotalBudgeted:N2}");
-            sb.AppendLine($"Total Actual: ${budgetSummary.TotalActual:N2}");
-            sb.AppendLine($"Total Variance: ${budgetSummary.TotalVariance:N2} ({budgetSummary.TotalVariancePercentage:N2}%)");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"=== Budget Context (Anonymized): {start.ToString("yyyy-MM-dd", CultureInfo.CurrentCulture)} to {end.ToString("yyyy-MM-dd", CultureInfo.CurrentCulture)} ===");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Analysis Date: {budgetSummary.AnalysisDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Budget Period: {budgetSummary.BudgetPeriod ?? "N/A"}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Total Budgeted: ${budgetSummary.TotalBudgeted.ToString("N2", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Total Actual: ${budgetSummary.TotalActual.ToString("N2", CultureInfo.CurrentCulture)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Total Variance: ${budgetSummary.TotalVariance.ToString("N2", CultureInfo.CurrentCulture)} ({budgetSummary.TotalVariancePercentage.ToString("N2", CultureInfo.CurrentCulture)}%)");
             sb.AppendLine();
             sb.AppendLine("Fund Summaries (Anonymized):");
             foreach (var fund in budgetSummary.FundSummaries)
             {
                 var anonymizedFundName = Anonymize(fund.FundName ?? "Unknown");
-                sb.AppendLine($"- {anonymizedFundName}: Budgeted ${fund.Budgeted:N2}, Actual ${fund.Actual:N2}, Variance ${fund.Variance:N2}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"- {anonymizedFundName}: Budgeted ${fund.Budgeted.ToString("N2", CultureInfo.CurrentCulture)}, Actual ${fund.Actual.ToString("N2", CultureInfo.CurrentCulture)}, Variance ${fund.Variance.ToString("N2", CultureInfo.CurrentCulture)}");
             }
             sb.AppendLine();
             sb.AppendLine("Department Summaries (Anonymized):");
             foreach (var dept in budgetSummary.DepartmentSummaries)
             {
                 var anonymizedDeptName = Anonymize(dept.DepartmentName ?? "Unknown");
-                sb.AppendLine($"- {anonymizedDeptName}: Budgeted ${dept.Budgeted:N2}, Actual ${dept.Actual:N2}, Variance ${dept.Variance:N2}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"- {anonymizedDeptName}: Budgeted ${dept.Budgeted.ToString("N2", CultureInfo.CurrentCulture)}, Actual ${dept.Actual.ToString("N2", CultureInfo.CurrentCulture)}, Variance ${dept.Variance.ToString("N2", CultureInfo.CurrentCulture)}");
             }
 
             _logger.LogInformation("Budget context retrieved and anonymized for period: {StartDate} to {EndDate}", start, end);
@@ -196,8 +197,8 @@ namespace WileyWidget.Services
 
             var sb = new StringBuilder();
             sb.AppendLine("=== Operational Context ===");
-            sb.AppendLine($"Period: {startDate:yyyy-MM-dd HH:mm:ss} to {endDate:yyyy-MM-dd HH:mm:ss} UTC");
-            sb.AppendLine($"Total Audit Entries (24h): {auditList.Count}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Period: {startDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)} to {endDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)} UTC");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Total Audit Entries (24h): {auditList.Count}");
             sb.AppendLine();
 
             // Group by entity type
@@ -208,7 +209,7 @@ namespace WileyWidget.Services
             sb.AppendLine("Activity by Entity Type:");
             foreach (var type in entityTypes)
             {
-                sb.AppendLine($"- {type.EntityType}: {type.Count} operations");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"- {type.EntityType}: {type.Count} operations");
             }
             sb.AppendLine();
 
@@ -220,16 +221,16 @@ namespace WileyWidget.Services
             sb.AppendLine("Activity by Action:");
             foreach (var action in actions)
             {
-                sb.AppendLine($"- {action.Action}: {action.Count} operations");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"- {action.Action}: {action.Count} operations");
             }
             sb.AppendLine();
 
             // System metrics
             sb.AppendLine("System Metrics:");
-            sb.AppendLine($"- Processor Count: {Environment.ProcessorCount}");
-            sb.AppendLine($"- OS Version: {Environment.OSVersion}");
-            sb.AppendLine($"- Machine Name: {Environment.MachineName}");
-            sb.AppendLine($"- Current Time: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- Processor Count: {Environment.ProcessorCount}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- OS Version: {Environment.OSVersion}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- Machine Name: {Environment.MachineName}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- Current Time: {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)} UTC");
 
             _logger.LogInformation("Operational context retrieved.");
             return sb.ToString();

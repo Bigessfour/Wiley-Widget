@@ -12,7 +12,7 @@
     <!-- Disable CPM for consistency with other WPF projects -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>  <ItemGroup>
-    <PackageReference Include="BoldReports.WPF" Version="11.1.15" />
+    <PackageReference Include="BoldReports.WPF" Version="11.1.16" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
   <!-- MSAL extensions removed (archived). -->
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />

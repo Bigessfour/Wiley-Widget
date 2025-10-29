@@ -40,7 +40,7 @@ public class AccountNumber
     /// Whether this account number represents a parent account (has child accounts)
     /// </summary>
     [NotMapped]
-    public bool IsParent => Value.Contains('.') && Value.Split('.').Length < 3; // Parent accounts typically have 1-2 levels
+    public bool IsParent => Value.Contains('.', StringComparison.Ordinal) && Value.Split('.').Length < 3; // Parent accounts typically have 1-2 levels
 
     /// <summary>
     /// Gets the parent account number string.
@@ -70,7 +70,7 @@ public class AccountNumber
     public override bool Equals(object? obj) =>
         obj is AccountNumber other && Value == other.Value;
 
-    public override int GetHashCode() => Value.GetHashCode();
+    public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
 }
 
 /// <summary>
@@ -96,6 +96,8 @@ public partial class MunicipalAccount : INotifyPropertyChanged
     /// </summary>
     protected void OnPropertyChanged(params string[] propertyNames)
     {
+        if (propertyNames == null) throw new ArgumentNullException(nameof(propertyNames));
+
         foreach (var propertyName in propertyNames)
         {
             OnPropertyChanged(propertyName);

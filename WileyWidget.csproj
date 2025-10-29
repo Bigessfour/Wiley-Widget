@@ -156,13 +156,13 @@
     <Compile Include="src\Configuration\OptionsValidators.cs" />
     <Compile Include="src\Configuration\StaticOptionsMonitor.cs" />
     <Compile Include="src\Configuration\AccountTypeValidator.cs" />
+  <Compile Include="src\Configuration\Resilience\PolicyFactory.cs" />
     <!-- Include Diagnostics sources needed by App.xaml.cs -->
     <Compile Include="src\Diagnostics\StartupPerformanceMonitor.cs" />
     <Compile Include="src\Diagnostics\BindingErrorTraceListener.cs" />
     <Compile Include="src\Diagnostics\XamlDiagnosticsService.cs" />
     <Compile Include="src\HealthCheckHostedService.cs" />
-    <!-- NOTE: Bootstrapper and BootstrapHelpers are compiled into WileyWidget.Startup.csproj
-         Do NOT include them here to avoid CS0436 duplicate type conflicts -->
+    <Compile Include="src\QuickBooksService.cs" />
   </ItemGroup>
 
   <!-- Exclude legacy container-specific diagnostics from main build to avoid optional container dependency -->
@@ -176,7 +176,6 @@
     <ProjectReference Include="WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="WileyWidget.UI\WileyWidget.UI.csproj" />
     <ProjectReference Include="WileyWidget.Services\WileyWidget.Services.csproj" />
-    <ProjectReference Include="WileyWidget.Startup\WileyWidget.Startup.csproj" Condition="Exists('$(MSBuildProjectDirectory)\WileyWidget.Startup\WileyWidget.Startup.csproj')" />
   </ItemGroup>
 
   <!-- Design-time noise suppression: exclude Region-heavy sources from the

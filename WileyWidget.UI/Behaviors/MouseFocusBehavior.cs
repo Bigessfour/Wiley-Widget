@@ -18,8 +18,22 @@ namespace WileyWidget.UI.Behaviors
             typeof(MouseFocusBehavior),
             new PropertyMetadata(false, OnEnableOnClickChanged));
 
-        public static void SetEnableOnClick(DependencyObject element, bool value) => element.SetValue(EnableOnClickProperty, value);
-        public static bool GetEnableOnClick(DependencyObject element) => (bool)element.GetValue(EnableOnClickProperty);
+        public static void SetEnableOnClick(DependencyObject element, bool value)
+        {
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            element.SetValue(EnableOnClickProperty, value);
+        }
+        public static bool GetEnableOnClick(DependencyObject element)
+        {
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            return (bool)element.GetValue(EnableOnClickProperty);
+        }
 
         public static readonly DependencyProperty EnableOnFirstMoveProperty = DependencyProperty.RegisterAttached(
             "EnableOnFirstMove",
@@ -27,8 +41,22 @@ namespace WileyWidget.UI.Behaviors
             typeof(MouseFocusBehavior),
             new PropertyMetadata(false, OnEnableOnFirstMoveChanged));
 
-        public static void SetEnableOnFirstMove(DependencyObject element, bool value) => element.SetValue(EnableOnFirstMoveProperty, value);
-        public static bool GetEnableOnFirstMove(DependencyObject element) => (bool)element.GetValue(EnableOnFirstMoveProperty);
+        public static void SetEnableOnFirstMove(DependencyObject element, bool value)
+        {
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            element.SetValue(EnableOnFirstMoveProperty, value);
+        }
+        public static bool GetEnableOnFirstMove(DependencyObject element)
+        {
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            return (bool)element.GetValue(EnableOnFirstMoveProperty);
+        }
 
         private static void OnEnableOnClickChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {

@@ -36,6 +36,8 @@ public class WhatIfScenarioEngine : IWhatIfScenarioEngine
         int enterpriseId,
         ScenarioParameters parameters)
     {
+        if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+
         var enterprise = await _enterpriseRepository.GetByIdAsync(enterpriseId);
         if (enterprise == null)
             throw new ArgumentException($"Enterprise with ID {enterpriseId} not found");
