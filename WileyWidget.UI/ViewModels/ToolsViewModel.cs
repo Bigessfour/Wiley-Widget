@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
+using Prism.Navigation.Regions;
 using WileyWidget.ViewModels.Base;
 
 namespace WileyWidget.ViewModels;
@@ -16,7 +17,7 @@ namespace WileyWidget.ViewModels;
 /// <summary>
 /// ViewModel for the Tools section of the application
 /// </summary>
-public class ToolsViewModel : AsyncViewModelBase
+public class ToolsViewModel : AsyncViewModelBase, INavigationAware
 {
     private const string DefaultCalculatorDisplay = "0";
 
@@ -991,6 +992,41 @@ public class ToolsViewModel : AsyncViewModelBase
     {
         Logger.LogInformation("Notes saved at {Timestamp}", DateTimeOffset.Now);
     }
+
+    #region INavigationAware Implementation
+
+    /// <summary>
+    /// Called when the view is navigated to
+    /// </summary>
+    public void OnNavigatedTo(NavigationContext navigationContext)
+    {
+        Logger.LogInformation("ToolsViewModel navigated to");
+
+        // Initialize default tool selection if not set
+        if (string.IsNullOrEmpty(SelectedTool) && AvailableTools.Any())
+        {
+            SelectedTool = AvailableTools.First();
+        }
+    }
+
+    /// <summary>
+    /// Called when the view is navigated from
+    /// </summary>
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        Logger.LogInformation("ToolsViewModel navigated from");
+        // Cleanup if needed
+    }
+
+    /// <summary>
+    /// Determines if this view model is the target for navigation
+    /// </summary>
+    public bool IsNavigationTarget(NavigationContext navigationContext)
+    {
+        return true;
+    }
+
+    #endregion
 
     private sealed record UnitConversionDefinition(string Name, Func<double, double> ToBase, Func<double, double> FromBase);
 }

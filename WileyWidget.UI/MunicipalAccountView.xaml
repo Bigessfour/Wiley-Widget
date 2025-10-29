@@ -349,7 +349,7 @@
 
                     <syncfusion:SfDataGrid Grid.Row="1"
                                           x:Name="AccountsGrid"
-                                          ItemsSource="{Binding PagedAccounts, FallbackValue=Empty}"
+                                          ItemsSource="{Binding Accounts, FallbackValue=Empty}"
                                           SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
                                           AutoGenerateColumns="False"
                                           AllowEditing="True"
@@ -367,6 +367,7 @@
                                           LiveDataUpdateMode="AllowDataShaping"
                                           EnableDataVirtualization="True"
                                           VirtualizingStackPanel.IsVirtualizing="True"
+                                          UseLayoutRounding="True"
                                           AutomationProperties.AutomationId="AccountsGrid"
                                           AutomationProperties.Name="{DynamicResource AccountsGrid_AccessibleName}"
                                           AutomationProperties.HelpText="{DynamicResource AccountsGrid_AccessibleHelp}">

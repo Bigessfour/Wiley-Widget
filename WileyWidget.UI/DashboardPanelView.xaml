@@ -190,9 +190,10 @@
                         <syncfusion:SfDataGrid x:Name="RecentActivityGrid"
                                              ItemsSource="{Binding RecentActivities}"
                                              AllowSorting="True"
-                                             AllowFiltering="False"
+                                             AllowFiltering="True"
                                              AutoGenerateColumns="False"
-                                             Height="200">
+                                             Height="200"
+                                             UseLayoutRounding="True">
                             <syncfusion:SfDataGrid.Columns>
                                 <syncfusion:GridTextColumn MappingName="Timestamp"
                                                           HeaderText="Time"
@@ -213,9 +214,10 @@
                         <syncfusion:SfDataGrid x:Name="SystemAlertsGrid"
                                              ItemsSource="{Binding SystemAlerts}"
                                              AllowSorting="True"
-                                             AllowFiltering="False"
+                                             AllowFiltering="True"
                                              AutoGenerateColumns="False"
-                                             Height="200">
+                                             Height="200"
+                                             UseLayoutRounding="True">
                             <syncfusion:SfDataGrid.Columns>
                                 <syncfusion:GridTextColumn MappingName="Priority"
                                                           HeaderText="Priority"
@@ -295,4 +297,3 @@
     </DockPanel>
     </Grid>
 </UserControl>
-

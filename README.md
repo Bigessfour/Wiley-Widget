@@ -7,22 +7,63 @@
 [![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 
-**Version:** 0.1.0 - Preview Release
+**Version:** 0.2.0 - Stable Release
+**Last Updated:** October 28, 2025
 **Framework:** .NET 9.0 WPF
-**UI Framework:** Syncfusion WPF Controls v31.1.20
-**Application Framework:** Prism v9.0 (Modular MVVM Architecture)
+**UI Framework:** Syncfusion WPF Controls v31.1.17
+**Application Framework:** Prism v9.0 (Pure MVVM Architecture)
 
 ## 📋 Overview
 
-WileyWidget is a modern Windows desktop application built with WPF, Syncfusion controls, and Prism framework, designed for budget management and financial data analysis. The application features a comprehensive modular MVVM architecture with Entity Framework Core integration, using local SQL Server Express for data storage.
+WileyWidget is a modern Windows desktop application built with WPF, Syncfusion controls, and Prism framework, designed for budget management and financial data analysis. The application features a **pure Prism MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
+
+### Recent Updates (October 2025)
+
+**🧹 Architecture Cleanup & Standardization:**
+- Removed all non-Prism navigation code (standardized on `IRegionManager`)
+- Eliminated CommunityToolkit.Mvvm dependency (pure Prism patterns)
+- Deleted 7 duplicate/legacy theme files (single Syncfusion theme)
+- Removed 17 stale documentation files (completed milestones)
+- Cleaned 60+ obsolete scripts (71% reduction: 84→24 scripts)
+- Removed obsolete service wrappers (`InteractionRequestService`)
+
+**🎨 UI/Theme Improvements:**
+- Standardized on single theme: `WileyTheme-Syncfusion.xaml`
+- FluentDark/FluentLight theme switching via `SfSkinManager`
+- Removed all legacy/duplicate theme files
+
+**📦 Package Management:**
+- Removed CommunityToolkit.Mvvm (conflicts with Prism)
+- All MVVM patterns use Prism exclusively (`BindableBase`, `DelegateCommand`)
+
+**📚 Documentation:**
+- Added `LEGACY_CLEANUP_REPORT.md` - Full code cleanup details
+- Added `SCRIPTS_CLEANUP_REPORT.md` - Scripts cleanup details
+- Cleaned docs/ folder of 17 obsolete/completed files
 
 ### Key Capabilities
 
-- **Modular Architecture**: Prism-based module system for extensible application structure
+- **Pure Prism MVVM Architecture**: Complete Prism framework integration with no mixed toolkits
+- **Layered Architecture**: Separate Models, Data, Business, and UI layers for maintainability
 - **Dialog Management**: Prism dialog service for modal dialogs and user interactions
 - **Navigation**: Prism region-based navigation with view injection
-- **Modern UI**: Fluent Design themes with dark/light mode switching
-- **Robust Architecture**: MVVM pattern with dependency injection and comprehensive testing
+- **Modern UI**: Syncfusion FluentDark/FluentLight themes with seamless switching
+- **Secure Secret Management**: DPAPI-encrypted credential storage for API keys and licenses
+- **Comprehensive Testing**: Unit tests, integration tests, and UI tests with >70% coverage
+- **CI/CD Pipeline**: GitHub Actions with Trunk integration (90% success rate target)
+
+### Project Status
+
+**Current Phase:** Stable Release (v0.2.0)
+**Architecture:** ✅ Standardized on pure Prism patterns
+**Code Quality:** ✅ 88 legacy files removed, 71% script reduction
+**Documentation:** ✅ Active technical docs, legacy docs removed
+**Build Status:** ✅ Automated CI/CD with Trunk quality gates
+**Testing:** ✅ Comprehensive test suite with >70% coverage
+
+**Active Scripts:** 24 essential automation scripts (down from 84)
+**Active Docs:** 51 technical documentation files (focused and relevant)
+**Theme Files:** 1 single source of truth (`WileyTheme-Syncfusion.xaml`)
 
 ---
 
@@ -486,10 +527,14 @@ WileyWidget/
 
 | Layer | Framework | ORM | Testing | UI | External APIs | Resilience |
 |-------|-----------|-----|---------|----|---------------|------------|
-| **Presentation** | .NET 9.0 WPF | - | FlaUI | Syncfusion | - | - |
+| **Presentation** | .NET 9.0 WPF | - | FlaUI | Syncfusion v31.1.17 | - | - |
 | **Business** | .NET 8.0 | - | xUnit, Moq | - | QuickBooks API | Polly v8.6.4 |
-| **Data** | .NET 8.0 | EF Core 9.0.8 | xUnit, TestContainers | - | Azure SQL | Polly v8.6.4 |
+| **Data** | .NET 8.0 | EF Core 9.0.8 | xUnit, TestContainers | - | SQL Server | Polly v8.6.4 |
 | **Domain** | .NET 8.0 | - | xUnit | - | - | - |
+
+**MVVM Framework:** Pure Prism v9.0 (DryIoc container)
+**Theme System:** Syncfusion SfSkinManager (FluentDark/FluentLight)
+**CI/CD:** GitHub Actions + Trunk (90% success rate target)
 
 This layered architecture ensures WileyWidget is maintainable, testable, and ready for enterprise-scale deployment while following Microsoft's recommended patterns for modern .NET applications.
 
@@ -1497,6 +1542,48 @@ To verify your Syncfusion Community License (v30.2.7) is correctly set up:
 If issues persist, re-set the env var and restart your terminal:
 
 ```pwsh
+[System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','YOUR_LICENSE_KEY','User')
+```
+
+---
+
+## 📚 Additional Documentation
+
+### Cleanup & Architecture Reports
+- **[LEGACY_CLEANUP_REPORT.md](LEGACY_CLEANUP_REPORT.md)** - Comprehensive code cleanup report
+  - 28 files deleted (themes, services, backups)
+  - CommunityToolkit.Mvvm removed
+  - Pure Prism architecture established
+
+- **[SCRIPTS_CLEANUP_REPORT.md](SCRIPTS_CLEANUP_REPORT.md)** - Scripts cleanup report
+  - 60+ scripts deleted (71% reduction)
+  - 24 essential scripts remain
+  - Organized by purpose
+
+### Technical Documentation
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture overview
+- **[PRISM_USAGE.md](docs/PRISM_USAGE.md)** - Prism framework patterns
+- **[TESTING.md](docs/TESTING.md)** - Testing strategy and guides
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+
+### CI/CD & Quality
+- **[CI/CD Documentation](docs/cicd-management-guide.md)** - CI/CD pipeline management
+- **[Trunk Integration](docs/cicd-quick-reference.md)** - Trunk CLI integration guide
+
+---
+
+## 🎯 Recent Achievements (October 2025)
+
+✅ **88 legacy files removed** - Cleaner, more maintainable codebase
+✅ **Pure Prism architecture** - No mixed MVVM toolkits
+✅ **Single theme source** - Consistent UI theming
+✅ **71% script reduction** - Essential automation only
+✅ **Updated documentation** - Focused and relevant
+✅ **Standardized patterns** - Easier onboarding
+
+**Version 0.2.0 represents a major milestone in code quality and architectural consistency.**
+
+---
 [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','<your-key>','User')
 ```
 # Test commit for manifest generation

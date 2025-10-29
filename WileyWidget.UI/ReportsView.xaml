@@ -150,6 +150,7 @@
                                                AllowSorting="True"
                                                AllowFiltering="True"
                                                ShowGroupDropArea="True"
+                                               UseLayoutRounding="True"
                                                ColumnSizer="AutoWithLastColumnFill" />
                     </Grid>
                 </TabItem>

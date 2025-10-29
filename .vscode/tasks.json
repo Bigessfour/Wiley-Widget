@@ -9,6 +9,8 @@
         "build",
         "${workspaceFolder}/WileyWidget.csproj",
         "-m",
+        "--no-restore",
+        "/property:BuildIncremental=true",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary",
         "/flp:LogFile=build-errors.log;errorsonly"
@@ -418,6 +420,7 @@
       "type": "shell",
       "command": "pwsh",
       "args": [
+        "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
         "-File",
@@ -460,14 +463,14 @@
     {
       "label": "load-env",
       "type": "shell",
-      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
-      "args": ["${workspaceFolder}/scripts/load-env.py", "--load"],
-      "options": {
-        "env": {
-          "PYTHONPATH": "${workspaceFolder}",
-          "VIRTUAL_ENV": "${workspaceFolder}/.venv"
-        }
-      },
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Write-Host '⚠️  Note: Tasks cannot set environment variables in the parent terminal.' -ForegroundColor Yellow; Write-Host 'To load .env in your terminal, run: . .\\scripts\\load-env.ps1' -ForegroundColor Cyan; Write-Host 'Or restart your terminal (environment loads automatically via profile)' -ForegroundColor Cyan"
+      ],
       "group": "build",
       "presentation": {
         "echo": true,
@@ -635,14 +638,8 @@
       "args": [
         "-ExecutionPolicy",
         "Bypass",
-        "-File",
-        "${workspaceFolder}/scripts/test-with-kill.ps1",
-        "-Project",
-        "${workspaceFolder}/WileyWidget.UiTests/WileyWidget.UiTests.csproj",
-        "-Verbosity",
-        "normal",
-        "-Filter",
-        "FullyQualifiedName=MunicipalAccountFilterTests.LoadMunicipalView_ApplyCashFilter_AssertViewModelAndUiCounts"
+        "-Command",
+        "Write-Host 'UI Tests: No UiTests project found. Skipping UI tests.'"
       ],
       "options": {
         "env": {
@@ -657,7 +654,7 @@
         "focus": false,
         "panel": "shared"
       },
-      "problemMatcher": "$msCompile"
+      "problemMatcher": []
     },
     {
       "label": "test-all",

@@ -23,6 +23,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$InformationPreference = "Continue"  # Make Write-Information visible
 
 class DotNetProcessManager {
     [string]$ProcessName

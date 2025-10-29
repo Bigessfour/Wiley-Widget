@@ -220,6 +220,7 @@
                                               AllowSorting="True"
                                               AllowFiltering="True"
                                               ShowRowHeader="True"
+                                              UseLayoutRounding="True"
                                               Visibility="{Binding HasDrillDownData, Converter={StaticResource BooleanToVisibilityConverter}}"
                                               AutomationProperties.Name="Drill down data grid"
                                               AutomationProperties.HelpText="Detailed data for drill down analysis. Select rows to further analyze." />
@@ -244,6 +245,7 @@
                                               AllowSorting="True"
                                               AllowFiltering="True"
                                               ShowRowHeader="True"
+                                              UseLayoutRounding="True"
                                               AutomationProperties.Name="Current analytics data grid"
                                               AutomationProperties.HelpText="Current analytics data for export and analysis." />
                     </Grid>

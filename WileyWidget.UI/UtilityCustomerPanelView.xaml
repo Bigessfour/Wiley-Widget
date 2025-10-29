@@ -58,6 +58,7 @@
                         RowHeight="32"
                         AlternationCount="2"
                         ShowGroupDropArea="True"
+                        UseLayoutRounding="True"
                         GroupDropAreaText="Drag a column header here to group customers"
                         Margin="8,0,8,8">
 
@@ -240,4 +241,3 @@
         </DockPanel>
     </Grid>
 </UserControl>
-

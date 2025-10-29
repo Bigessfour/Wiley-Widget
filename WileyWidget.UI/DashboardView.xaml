@@ -532,6 +532,7 @@
                                                  AutoGenerateColumns="False"
                                                  SelectionMode="Single"
                                                  Height="250"
+                                                 UseLayoutRounding="True"
                                                  ToolTipService.ToolTip="Sort by clicking column headers. Filter using the filter icon.">
                                 <syncfusion:SfDataGrid.Columns>
                                     <syncfusion:GridTextColumn MappingName="Priority"
@@ -559,10 +560,11 @@
                             <syncfusion:SfDataGrid x:Name="RecentActivityGrid"
                                                  ItemsSource="{Binding RecentActivities}"
                                                  AllowSorting="True"
-                                                 AllowFiltering="False"
+                                                 AllowFiltering="True"
                                                  AutoGenerateColumns="False"
                                                  SelectionMode="Single"
                                                  Height="250"
+                                                 UseLayoutRounding="True"
                                                  ToolTipService.ToolTip="Recent activity feed showing latest transactions and changes">
                                 <syncfusion:SfDataGrid.Columns>
                                     <syncfusion:GridTextColumn MappingName="Timestamp"
@@ -616,6 +618,7 @@
                                              SelectionMode="Single"
                                              Height="350"
                                              ColumnSizer="Star"
+                                             UseLayoutRounding="True"
                                              ToolTipService.ToolTip="Click column headers to sort. Use filter icon for filtering.">
 
                             <!-- Define explicit columns as per Syncfusion WPF DataGrid documentation -->
@@ -771,4 +774,3 @@
     </DockPanel>
     </Grid>
 </UserControl>
-

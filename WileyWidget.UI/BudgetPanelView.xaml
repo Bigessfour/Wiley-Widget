@@ -158,7 +158,7 @@
 
         <!-- Budget Data Grid -->
         <syncfusion:SfDataGrid Grid.Row="1" Margin="8,0,8,8"
-                               ItemsSource="{Binding BudgetItems}"
+                               ItemsSource="{Binding BudgetEntries}"
                                AutoGenerateColumns="False"
                                AllowSorting="True"
                                AllowFiltering="True"
@@ -174,6 +174,7 @@
                                ShowRowHeader="True"
                                EnableDataVirtualization="True"
                                UsePLINQ="True"
+                               UseLayoutRounding="True"
                                Background="{DynamicResource PanelBackgroundBrush}"
                                BorderBrush="{DynamicResource PanelBorderBrush}">
 
@@ -337,4 +338,3 @@
         </Grid>
     </notification:SfBusyIndicator>
 </UserControl>
-

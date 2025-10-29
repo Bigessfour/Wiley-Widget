@@ -26,12 +26,12 @@ using WileyWidget.Abstractions;
 
 namespace WileyWidget.ViewModels
 {
-    public partial class MainViewModel : AsyncViewModelBase
+    public partial class MainViewModel : AsyncViewModelBase, INavigationAware
     {
         private readonly IDialogService dialogService;
         private readonly IRegionManager _regionManager;
-    private readonly IEnterpriseRepository _enterpriseRepository;
-    private readonly ICacheService? _cacheService;
+        private readonly IEnterpriseRepository _enterpriseRepository;
+        private readonly ICacheService? _cacheService;
         private readonly IExcelReaderService _excelReaderService;
         private readonly IReportExportService _reportExportService;
         private readonly IBudgetRepository _budgetRepository;
@@ -99,6 +99,7 @@ namespace WileyWidget.ViewModels
             NavigateToEnterprisesCommand = new DelegateCommand(async () => await NavigateToEnterprisesAsync());
             NavigateToAccountsCommand = new DelegateCommand(async () => await NavigateToAccountsAsync());
             NavigateToBudgetCommand = new DelegateCommand(async () => await NavigateToBudgetAsync());
+            NavigateToDepartmentsCommand = new DelegateCommand(async () => await NavigateToDepartmentsAsync());
             NavigateToAIAssistCommand = new DelegateCommand(async () => await NavigateToAIAssistAsync());
             NavigateToAnalyticsCommand = new DelegateCommand(async () => await NavigateToAnalyticsAsync());
 
@@ -500,6 +501,7 @@ namespace WileyWidget.ViewModels
         public DelegateCommand NavigateToEnterpriseCommand => NavigateToEnterprisesCommand; // Alias for tests
         public DelegateCommand NavigateToAccountsCommand { get; }
         public DelegateCommand NavigateToBudgetCommand { get; }
+        public DelegateCommand NavigateToDepartmentsCommand { get; }
         public DelegateCommand NavigateToAIAssistCommand { get; }
         public DelegateCommand NavigateToAnalyticsCommand { get; }
 
@@ -639,6 +641,26 @@ namespace WileyWidget.ViewModels
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Navigation to Budget failed");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private async Task NavigateToDepartmentsAsync()
+        {
+            Logger.LogInformation("MainViewModel: NavigateToDepartments command invoked");
+            try
+            {
+                IsBusy = true;
+                await Task.Delay(50);
+                await NavigateToRegionSafelyAsync("MainRegion", "DepartmentView", "Departments");
+                Logger.LogInformation("Navigated to Departments");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Navigation to Departments failed");
             }
             finally
             {
@@ -810,8 +832,8 @@ namespace WileyWidget.ViewModels
                     {
                         if (result.Success)
                         {
-                        Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
-                            displayName, regionName);
+                            Logger.LogInformation("Successfully navigated to {DisplayName} in region {RegionName}",
+                                displayName, regionName);
                         }
                         else
                         {
@@ -2508,5 +2530,40 @@ namespace WileyWidget.ViewModels
 
             Logger.LogDebug("MainViewModel Enterprises collection now has {Count} items", Enterprises.Count);
         }
+
+        #region INavigationAware Implementation
+
+        /// <summary>
+        /// Called when the view is navigated to
+        /// </summary>
+        public void OnNavigatedTo(NavigationContext navigationContext)
+        {
+            Logger.LogInformation("MainViewModel navigated to");
+
+            // Initialize default state if needed
+            if (!Enterprises.Any() && !IsBusy)
+            {
+                LoadDataCommand.Execute();
+            }
+        }
+
+        /// <summary>
+        /// Called when the view is navigated from
+        /// </summary>
+        public void OnNavigatedFrom(NavigationContext navigationContext)
+        {
+            Logger.LogInformation("MainViewModel navigated from");
+            // Cleanup if needed
+        }
+
+        /// <summary>
+        /// Determines if this view model is the target for navigation
+        /// </summary>
+        public bool IsNavigationTarget(NavigationContext navigationContext)
+        {
+            return true;
+        }
+
+        #endregion
     }
 }

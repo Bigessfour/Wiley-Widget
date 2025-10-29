@@ -639,9 +639,9 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
                     Id = account.Id,
                     AccountNumber = account.AccountNumber,
                     Description = account.Description,
-                    FundType = Enum.TryParse<WileyWidget.Models.Entities.FundType>(account.FundType, out var fundType)
+                    FundType = Enum.TryParse<FundType>(account.FundType, out var fundType)
                         ? fundType
-                        : WileyWidget.Models.Entities.FundType.GeneralFund,
+                        : FundType.GeneralFund,
                     BudgetedAmount = account.BudgetAmount,
                     ActualAmount = account.ActualAmount,
                     ParentId = account.ParentId == -1 ? null : account.ParentId

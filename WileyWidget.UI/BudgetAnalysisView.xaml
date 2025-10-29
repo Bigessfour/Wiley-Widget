@@ -228,7 +228,8 @@
                                        AllowSorting="True"
                                        AllowFiltering="True"
                                        AllowGrouping="True"
-                                       ShowGroupDropArea="True">
+                                       ShowGroupDropArea="True"
+                                       UseLayoutRounding="True">
                         <sfgrid:SfDataGrid.Columns>
                             <sfgrid:GridTextColumn MappingName="Fund" HeaderText="Fund" Width="120"/>
                             <sfgrid:GridNumericColumn MappingName="AccountCount" HeaderText="Accounts" Width="80" TextAlignment="Center"/>
@@ -273,7 +274,8 @@
                                        AllowSorting="True"
                                        AllowFiltering="True"
                                        AllowGrouping="True"
-                                       ShowGroupDropArea="True">
+                                       ShowGroupDropArea="True"
+                                       UseLayoutRounding="True">
                         <sfgrid:SfDataGrid.Columns>
                             <sfgrid:GridTextColumn MappingName="Department" HeaderText="Department" Width="150"/>
                             <sfgrid:GridTextColumn MappingName="Code" HeaderText="Code" Width="80"/>

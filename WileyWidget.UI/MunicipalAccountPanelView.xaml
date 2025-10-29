@@ -7,24 +7,12 @@
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
-             xmlns:sys="clr-namespace:System;assembly=mscorlib"
-             xmlns:models="clr-namespace:WileyWidget.Models;assembly=WileyWidget.Models"
              xmlns:converters="clr-namespace:WileyWidget.Converters"
              mc:Ignorable="d"
              d:DesignHeight="800"
              d:DesignWidth="1400" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <ObjectDataProvider x:Key="FundTypeValues" MethodName="GetValues" ObjectType="{x:Type sys:Enum}">
-            <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="models:FundType" />
-            </ObjectDataProvider.MethodParameters>
-        </ObjectDataProvider>
-        <ObjectDataProvider x:Key="AccountTypeValues" MethodName="GetValues" ObjectType="{x:Type sys:Enum}">
-            <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="models:AccountType" />
-            </ObjectDataProvider.MethodParameters>
-        </ObjectDataProvider>
     </UserControl.Resources>
 
     <Grid Background="#FF0F1724" syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
@@ -47,7 +35,7 @@
                     <syncfusion:RibbonBar Header="Filters">
                         <StackPanel Orientation="Vertical" Margin="4,4,8,0">
                             <TextBlock Text="Fund" Margin="0,0,0,4" />
-                            <ComboBox ItemsSource="{Binding Source={StaticResource FundTypeValues}}"
+                            <ComboBox ItemsSource="{Binding FundTypeValues}"
                                       SelectedItem="{Binding SelectedFundFilter, Mode=TwoWay}"
                                       Width="160" />
                             <syncfusion:RibbonButton Label="Apply Fund Filter"
@@ -56,7 +44,7 @@
                         </StackPanel>
                         <StackPanel Orientation="Vertical" Margin="8,4,4,0">
                             <TextBlock Text="Account Type" Margin="0,0,0,4" />
-                            <ComboBox ItemsSource="{Binding Source={StaticResource AccountTypeValues}}"
+                            <ComboBox ItemsSource="{Binding AccountTypeValues}"
                                       SelectedItem="{Binding SelectedTypeFilter, Mode=TwoWay}"
                                       Width="160"
                                       AutomationProperties.AutomationId="AccountTypeComboBox" />
@@ -87,7 +75,7 @@
                 </Border>
 
                 <syncfusion:SfDataGrid x:Name="AccountsDataGrid" Grid.Row="1" Margin="12"
-                                       ItemsSource="{Binding MunicipalAccounts}"
+                                       ItemsSource="{Binding Accounts}"
                                        SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
                                        SortColumnDescriptions="{Binding SortDescriptions}"
                                        GroupColumnDescriptions="{Binding GroupDescriptions}"
@@ -96,7 +84,8 @@
                                        AllowFiltering="True"
                                        AllowGrouping="True"
                                        ColumnSizer="AutoWithLastColumnFill"
-                                       RowHeight="30">
+                                       RowHeight="30"
+                                       UseLayoutRounding="True">
                     <syncfusion:SfDataGrid.Columns>
                         <syncfusion:GridTextColumn HeaderText="Account #" MappingName="AccountNumber" Width="140" />
                         <syncfusion:GridTextColumn HeaderText="Name" MappingName="DisplayName" Width="240" />

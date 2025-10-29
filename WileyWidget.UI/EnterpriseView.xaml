@@ -236,6 +236,7 @@
                     SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}"
                     AllowGrouping="True"
                     AllowSorting="True"
+                    AllowFiltering="True"
                     AllowEditing="True"
                     AllowResizingColumns="True"
                     AllowResizingHiddenColumns="True"
@@ -245,6 +246,7 @@
                     SelectionMode="Single"
                     Margin="8,0,8,8"
                     EnableDataVirtualization="True"
+                    UseLayoutRounding="True"
                     VirtualizingPanel.ScrollUnit="Pixel"
                     VirtualizingPanel.VirtualizationMode="Recycling"
                     VirtualizingPanel.CacheLength="5,5"
@@ -558,4 +560,3 @@
     </Grid>
     </darkTheme:SfAcrylicPanel>
 </UserControl>
-

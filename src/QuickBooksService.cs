@@ -197,12 +197,26 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         var s = EnsureSettingsLoaded();
-        var result = await RefreshAccessTokenAsync(s.QboRefreshToken!).ConfigureAwait(false);
-        s.QboAccessToken = result.AccessToken;
-        s.QboRefreshToken = result.RefreshToken;
-        s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
-        _settings.Save();
-        Serilog.Log.Information("QBO token refreshed (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
+
+        try
+        {
+            var result = await RefreshAccessTokenAsync(s.QboRefreshToken!).ConfigureAwait(false);
+            s.QboAccessToken = result.AccessToken;
+            s.QboRefreshToken = result.RefreshToken;
+            s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
+            _settings.Save();
+            Serilog.Log.Information("QBO token refreshed successfully (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to refresh QBO access token");
+            // Clear invalid tokens to force re-authorization
+            s.QboAccessToken = null;
+            s.QboRefreshToken = null;
+            s.QboTokenExpiry = default;
+            _settings.Save();
+            throw new InvalidOperationException("QuickBooks token refresh failed. Please re-authorize the application.", ex);
+        }
     }
 
     private (ServiceContext Ctx, DataService Ds) GetDataService()
@@ -365,13 +379,58 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         {
             await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
-            var p = GetDataService();
-            // Fetch all active accounts from QuickBooks
-            return p.Ds.FindAll(new Account(), 1, 500).ToList();
+
+            var allAccounts = new List<Account>();
+            const int pageSize = 500; // QuickBooks recommended page size
+            int startPosition = 1;
+            int maxPages = 10; // Safety limit to prevent infinite loops
+            int pageCount = 0;
+
+            _logger.LogInformation("Starting batch fetch of chart of accounts");
+
+            while (pageCount < maxPages)
+            {
+                var p = GetDataService();
+                var pageAccounts = p.Ds.FindAll(new Account(), startPosition, pageSize).ToList();
+
+                if (pageAccounts == null || pageAccounts.Count == 0)
+                {
+                    _logger.LogInformation("No more accounts found at position {Position}, ending fetch", startPosition);
+                    break;
+                }
+
+                allAccounts.AddRange(pageAccounts);
+                _logger.LogInformation("Fetched page {Page} with {Count} accounts (total: {Total})",
+                    pageCount + 1, pageAccounts.Count, allAccounts.Count);
+
+                // If we got fewer than pageSize, we've reached the end
+                if (pageAccounts.Count < pageSize)
+                {
+                    break;
+                }
+
+                startPosition += pageSize;
+                pageCount++;
+
+                // Small delay between pages to be respectful to the API
+                if (pageCount < maxPages)
+                {
+                    await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(false);
+                }
+            }
+
+            if (pageCount >= maxPages)
+            {
+                _logger.LogWarning("Reached maximum page limit ({MaxPages}) for chart of accounts fetch. Total accounts: {Total}",
+                    maxPages, allAccounts.Count);
+            }
+
+            _logger.LogInformation("Chart of accounts fetch completed. Total accounts: {Total}", allAccounts.Count);
+            return allAccounts;
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO chart of accounts fetch failed");
+            _logger.LogError(ex, "QBO chart of accounts batch fetch failed");
             throw;
         }
     }
@@ -642,29 +701,96 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     private async Task<TokenResult> RefreshAccessTokenAsync(string refreshToken)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
-        var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
-        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
-        req.Headers.Accept.ParseAdd("application/json");
-        var form = new List<KeyValuePair<string, string>>
+        const int maxRetries = 3;
+        var lastException = (Exception?)null;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            new("grant_type", "refresh_token"),
-            new("refresh_token", refreshToken)
-        };
-        req.Content = new FormUrlEncodedContent(form);
-        using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
-        var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
-        if (!resp.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException($"Intuit token refresh failed ({(int)resp.StatusCode}): {json}");
+            var json = string.Empty;
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
+                var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
+                req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
+                req.Headers.Accept.ParseAdd("application/json");
+
+                var form = new List<KeyValuePair<string, string>>
+                {
+                    new("grant_type", "refresh_token"),
+                    new("refresh_token", refreshToken)
+                };
+                req.Content = new FormUrlEncodedContent(form);
+
+                using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
+                json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var error = $"Intuit token refresh failed ({(int)resp.StatusCode}): {json}";
+                    _logger.LogWarning("Token refresh attempt {Attempt}/{MaxRetries} failed: {Error}", attempt, maxRetries, error);
+
+                    // Check if it's a permanent failure (400 Bad Request usually means invalid refresh token)
+                    if (resp.StatusCode == HttpStatusCode.BadRequest)
+                    {
+                        throw new InvalidOperationException($"Refresh token is invalid or expired: {json}");
+                    }
+
+                    lastException = new HttpRequestException(error);
+                    if (attempt < maxRetries)
+                    {
+                        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))).ConfigureAwait(false);
+                        continue;
+                    }
+                    throw lastException;
+                }
+
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                if (!root.TryGetProperty("access_token", out var accessTokenProp) || accessTokenProp.GetString() is not string access)
+                {
+                    throw new InvalidOperationException("Invalid token response: missing access_token");
+                }
+
+                var refresh = root.TryGetProperty("refresh_token", out var refreshTokenProp)
+                    ? refreshTokenProp.GetString() ?? refreshToken
+                    : refreshToken;
+
+                if (!root.TryGetProperty("expires_in", out var expiresProp) || !expiresProp.TryGetInt32(out var expires))
+                {
+                    throw new InvalidOperationException("Invalid token response: missing or invalid expires_in");
+                }
+
+                var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) && x.TryGetInt32(out var xVal) ? xVal : 0;
+
+                _logger.LogInformation("Token refresh successful on attempt {Attempt}", attempt);
+                return new TokenResult(access, refresh, expires, refreshExpires);
+            }
+            catch (JsonException ex)
+            {
+                lastException = new InvalidOperationException($"Invalid JSON response from token endpoint: {json}", ex);
+                _logger.LogWarning(ex, "JSON parsing failed on attempt {Attempt}", attempt);
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "HTTP request failed on attempt {Attempt}", attempt);
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                _logger.LogError(ex, "Unexpected error during token refresh on attempt {Attempt}", attempt);
+            }
+
+            if (attempt < maxRetries)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                _logger.LogInformation("Retrying token refresh in {Delay}", delay);
+                await System.Threading.Tasks.Task.Delay(delay).ConfigureAwait(false);
+            }
         }
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
-        var access = root.GetProperty("access_token").GetString()!;
-        var refresh = root.TryGetProperty("refresh_token", out var r) ? r.GetString()! : refreshToken; // may rotate
-        var expires = root.GetProperty("expires_in").GetInt32();
-        var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) ? x.GetInt32() : 0;
-        return new TokenResult(access, refresh, expires, refreshExpires);
+
+        throw new InvalidOperationException($"Token refresh failed after {maxRetries} attempts", lastException);
     }
 
     private static async System.Threading.Tasks.Task WriteCallbackResponseAsync(HttpListenerResponse response, string message)
@@ -1013,9 +1139,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
             _logger.LogInformation("Starting chart of accounts import from QuickBooks");
 
-            // Fetch chart of accounts from QuickBooks
-            var dataService = GetDataService();
-            var qbAccounts = dataService.Ds.FindAll(new Account(), 1, 500).ToList();
+            // Fetch chart of accounts from QuickBooks using paginated batch fetch
+            var qbAccounts = await GetChartOfAccountsAsync().ConfigureAwait(false);
 
             if (qbAccounts == null || qbAccounts.Count == 0)
             {

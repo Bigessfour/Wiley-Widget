@@ -244,6 +244,8 @@ public static class WpfHostingExtensions
     services.AddSingleton(typeof(ISettingsService), sp => sp.GetRequiredService<SettingsService>());
         // Audit service: structured, append-only, no secrets
         services.AddSingleton<IAuditService, AuditService>();
+        // User context service for audit tracking
+        services.AddSingleton<IUserContext, UserContext>();
         services.AddSingleton(ErrorReportingService.Instance);
         services.AddSingleton<LocalizationService>();
         services.AddSingleton<SyncfusionLicenseState>();

@@ -1016,12 +1016,13 @@ namespace WileyWidget
                 }
                 else
                 {
-                    // Register AI services for production
-                    RegisterAIIntegrationServices(containerRegistry);
+                    // Register AI services for production - USING LAZY LOADING for better startup performance
+                    RegisterLazyAIServices(containerRegistry);
+                    Log.Information("✓ AI services registered with lazy loading for faster startup");
 
-                    // Register QuickBooks service
-                    containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
-                    Log.Information("✓ Registered IQuickBooksService as singleton");
+                    // QuickBooks service moved to QuickBooksModule for on-demand loading
+                    // containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
+                    Log.Information("✓ QuickBooks service deferred to QuickBooksModule");
                 }
             }
             catch (Exception ex)
@@ -1032,29 +1033,75 @@ namespace WileyWidget
 
             try
             {
-                // Register Excel services
-                containerRegistry.RegisterSingleton<IExcelReaderService, ExcelReaderService>();
-                Log.Information("✓ Registered IExcelReaderService as singleton");
+                // Register Excel services with lazy loading for better startup performance
+                containerRegistry.RegisterSingleton<IExcelReaderService>(provider =>
+                {
+                    var lazyService = new Lazy<ExcelReaderService>(() =>
+                    {
+                        Log.Information("Initializing ExcelReaderService on first access...");
+                        return new ExcelReaderService(provider.Resolve<ILogger<ExcelReaderService>>());
+                    });
+                    return lazyService.Value;
+                });
+                Log.Information("✓ Registered IExcelReaderService as lazy singleton");
 
-                // Register Excel Export service (NEW)
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Export.IExcelExportService, WileyWidget.Services.Export.ExcelExportService>();
-                Log.Information("✓ Registered IExcelExportService as singleton");
+                // Register Excel Export service (NEW) with lazy loading
+                containerRegistry.RegisterSingleton<WileyWidget.Services.Export.IExcelExportService>(provider =>
+                {
+                    var lazyService = new Lazy<WileyWidget.Services.Export.ExcelExportService>(() =>
+                    {
+                        Log.Information("Initializing ExcelExportService on first access...");
+                        return new WileyWidget.Services.Export.ExcelExportService(provider.Resolve<ILogger<WileyWidget.Services.Export.ExcelExportService>>());
+                    });
+                    return lazyService.Value;
+                });
+                Log.Information("✓ Registered IExcelExportService as lazy singleton");
 
-                // Register Budget Importer service
-                containerRegistry.RegisterSingleton<IBudgetImporter, BudgetImporter>();
-                Log.Information("✓ Registered IBudgetImporter (Excel/CSV Budget Importer) as singleton");
+                // Register Budget Importer service with lazy loading
+                containerRegistry.RegisterSingleton<IBudgetImporter>(provider =>
+                {
+                    var lazyService = new Lazy<BudgetImporter>(() =>
+                    {
+                        Log.Information("Initializing BudgetImporter on first access...");
+                        return new BudgetImporter(
+                            provider.Resolve<ILogger<BudgetImporter>>(),
+                            provider.Resolve<IExcelReaderService>(),
+                            provider.Resolve<IBudgetRepository>(),
+                            provider.Resolve<IEnterpriseRepository>(),
+                            provider.Resolve<IMunicipalAccountRepository>(),
+                            provider.Resolve<IAuditRepository>());
+                    });
+                    return lazyService.Value;
+                });
+                Log.Information("✓ Registered IBudgetImporter (Excel/CSV Budget Importer) as lazy singleton");
 
-                // Register Theme service (NEW)
+                // Register Theme service (Singleton - keep eager as it's needed early)
                 containerRegistry.RegisterSingleton<IThemeService, ThemeService>();
                 Log.Information("✓ Registered IThemeService as singleton");
 
-                // Register report export service
-                containerRegistry.RegisterSingleton<IReportExportService, ReportExportService>();
-                Log.Information("✓ Registered IReportExportService as singleton");
+                // Register report export service with lazy loading
+                containerRegistry.RegisterSingleton<IReportExportService>(provider =>
+                {
+                    var lazyService = new Lazy<ReportExportService>(() =>
+                    {
+                        Log.Information("Initializing ReportExportService on first access...");
+                        return new ReportExportService(provider.Resolve<ILogger<ReportExportService>>());
+                    });
+                    return lazyService.Value;
+                });
+                Log.Information("✓ Registered IReportExportService as lazy singleton");
 
-                // Register Bold Reports service
-                containerRegistry.RegisterSingleton<IBoldReportService, BoldReportService>();
-                Log.Information("✓ Registered IBoldReportService as singleton");
+                // Register Bold Reports service with lazy loading
+                containerRegistry.RegisterSingleton<IBoldReportService>(provider =>
+                {
+                    var lazyService = new Lazy<BoldReportService>(() =>
+                    {
+                        Log.Information("Initializing BoldReportService on first access...");
+                        return new BoldReportService(provider.Resolve<ILogger<BoldReportService>>());
+                    });
+                    return lazyService.Value;
+                });
+                Log.Information("✓ Registered IBoldReportService as lazy singleton");
 
                 // Register Module Health Service
                 containerRegistry.RegisterSingleton<IModuleHealthService, ModuleHealthService>();
@@ -1882,6 +1929,108 @@ namespace WileyWidget
                 Log.Error("Application may not function correctly without AI services");
                 Log.Error("Please check configuration (appsettings.json) and ensure all dependencies are available");
                 throw new InvalidOperationException("Failed to register AI Integration Services. Application cannot continue.", ex);
+            }
+        }
+
+
+        /// <summary>
+        /// Registers AI Integration Services using lazy loading for better startup performance.
+        /// Expensive services are only instantiated when first accessed.
+        /// </summary>
+        /// <param name="containerRegistry">The DI container registry for DI registration</param>
+        private void RegisterLazyAIServices(PrismIoc.IContainerRegistry containerRegistry)
+        {
+            Log.Information("=== Registering AI Integration Services with Lazy Loading ===");
+
+            try
+            {
+                // 0. Register IDataAnonymizerService -> DataAnonymizerService (Singleton)
+                // Provides privacy-compliant data anonymization for AI operations
+                containerRegistry.RegisterSingleton<IDataAnonymizerService, DataAnonymizerService>();
+                Log.Information("✓ Registered IDataAnonymizerService -> DataAnonymizerService (Singleton)");
+                Log.Information("  - Provides GDPR-compliant data anonymization");
+                Log.Information("  - Features: Enterprise anonymization, budget data masking, deterministic hashing");
+                Log.Information("  - Dependencies: ILogger<DataAnonymizerService>");
+
+                // 1. Register IWileyWidgetContextService -> WileyWidgetContextService (Singleton)
+                // Provides dynamic context building for AI operations including system state, enterprises, budgets, and operations
+                containerRegistry.RegisterSingleton<IWileyWidgetContextService, WileyWidgetContextService>();
+                Log.Information("✓ Registered IWileyWidgetContextService -> WileyWidgetContextService (Singleton)");
+                Log.Information("  - Provides dynamic context for AI operations with anonymization support");
+                Log.Information("  - Dependencies: ILogger<WileyWidgetContextService>, IEnterpriseRepository, IBudgetRepository, IAuditRepository, IDataAnonymizerService");
+
+                // 1.5. Register IAILoggingService -> AILoggingService (Singleton)
+                // AI usage tracking and logging service for monitoring XAI operations
+                containerRegistry.RegisterSingleton<IAILoggingService, AILoggingService>();
+                Log.Information("✓ Registered IAILoggingService -> AILoggingService (Singleton)");
+                Log.Information("  - AI usage tracking and monitoring service");
+                Log.Information("  - Features: Query/response logging, error tracking, usage metrics, statistics");
+                Log.Information("  - Logging: Dedicated Serilog file sink at logs/ai-usage.log");
+                Log.Information("  - Dependencies: ILogger<AILoggingService>");
+
+                // 2. Register IAIService -> Lazy<XAIService> (Lazy Singleton)
+                // xAI service implementation for AI-powered insights and analysis with Grok integration
+                // Using lazy loading to defer expensive HTTP client and API initialization
+                containerRegistry.RegisterSingleton<IAIService>(provider =>
+                {
+                    var lazyService = new Lazy<XAIService>(() =>
+                    {
+                        Log.Information("Initializing XAIService on first access...");
+                        return new XAIService(
+                            provider.Resolve<IHttpClientFactory>(),
+                            provider.Resolve<IConfiguration>(),
+                            provider.Resolve<ILogger<XAIService>>(),
+                            provider.Resolve<IWileyWidgetContextService>(),
+                            provider.Resolve<IAILoggingService>(),
+                            provider.Resolve<IMemoryCache>());
+                    });
+                    return lazyService.Value;
+                });
+                Log.Information("✓ Registered IAIService -> Lazy<XAIService> (Lazy Singleton)");
+                Log.Information("  - xAI/Grok integration for AI-powered insights (lazy loaded)");
+                Log.Information("  - Features: Insights, data analysis, area review, mock data generation");
+                Log.Information("  - Dependencies: IHttpClientFactory, IConfiguration, ILogger<XAIService>, IWileyWidgetContextService, IAILoggingService, IMemoryCache");
+                Log.Information("  - Performance: Service initialized only on first access");
+
+                // 3. Register IGrokSupercomputer -> Lazy<GrokSupercomputer> (Lazy Singleton)
+                // AI-powered municipal utility analytics and compliance reporting engine
+                // Using lazy loading to defer expensive repository initialization and AI service dependencies
+                containerRegistry.RegisterSingleton<IGrokSupercomputer>(provider =>
+                {
+                    var lazyService = new Lazy<GrokSupercomputer>(() =>
+                    {
+                        Log.Information("Initializing GrokSupercomputer on first access...");
+                        return new GrokSupercomputer(
+                            provider.Resolve<ILogger<GrokSupercomputer>>(),
+                            provider.Resolve<IEnterpriseRepository>(),
+                            provider.Resolve<IBudgetRepository>(),
+                            provider.Resolve<IAuditRepository>(),
+                            provider.Resolve<IAILoggingService>(),
+                            provider.Resolve<IAIService>(),
+                            provider.Resolve<IMemoryCache>(),
+                            provider.Resolve<IOptions<AppOptions>>());
+                    });
+                    return lazyService.Value;
+                });
+                Log.Information("✓ Registered IGrokSupercomputer -> Lazy<GrokSupercomputer> (Lazy Singleton)");
+                Log.Information("  - AI-powered municipal utility analytics engine (lazy loaded)");
+                Log.Information("  - Capabilities: Enterprise data fetching, report calculations, budget analysis, compliance reporting, AI data analysis");
+                Log.Information("  - Dependencies: ILogger<GrokSupercomputer>, IEnterpriseRepository, IBudgetRepository, IAuditRepository, IAILoggingService, IAIService");
+                Log.Information("  - Performance: Service initialized only on first access");
+
+                // 4. Validate AI service configuration
+                ValidateAIServiceConfiguration();
+
+                Log.Information("=== AI Integration Services Registration Complete (Lazy Loading) ===");
+                Log.Information("AI services registered with lazy loading for improved startup performance");
+                Log.Information("Services will be initialized on first access rather than at application startup");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "CRITICAL: Failed to register AI Integration Services with lazy loading");
+                Log.Error("Application may not function correctly without AI services");
+                Log.Error("Please check configuration (appsettings.json) and ensure all dependencies are available");
+                throw new InvalidOperationException("Failed to register AI Integration Services with lazy loading. Application cannot continue.", ex);
             }
         }
 

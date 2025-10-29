@@ -16,6 +16,13 @@ namespace WileyWidget.Startup.Modules
     [Module(ModuleName = "QuickBooksModule")]
     public class QuickBooksModule : IModule
     {
+        public void RegisterTypes(IContainerRegistry containerRegistry)
+        {
+            // Register QuickBooks service when module loads (on-demand)
+            containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
+            Log.Information("✓ Registered IQuickBooksService in QuickBooksModule (on-demand loading)");
+        }
+
         public void OnInitialized(IContainerProvider containerProvider)
         {
             Log.Information("Initializing QuickBooksModule");
@@ -125,12 +132,6 @@ namespace WileyWidget.Startup.Modules
             }
 
             Log.Information("QuickBooksModule initialization completed (QB init disabled)");
-        }
-
-        public void RegisterTypes(IContainerRegistry containerRegistry)
-        {
-            // QuickBooks services are registered in the main bootstrapper or service registrations
-            // This module only initializes the service
         }
 
         /// <summary>

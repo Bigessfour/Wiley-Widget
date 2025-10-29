@@ -13,6 +13,7 @@ using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Abstractions;
 using WileyWidget.Services.Threading;
+using Prism.Navigation.Regions;
 using WileyWidget.ViewModels.Base;
 using WileyWidget.ViewModels.Messages;
 
@@ -21,7 +22,7 @@ namespace WileyWidget.ViewModels;
 /// <summary>
 /// ViewModel for the Analytics section of the application
 /// </summary>
-public partial class AnalyticsViewModel : AsyncViewModelBase
+public partial class AnalyticsViewModel : AsyncViewModelBase, INavigationAware
 {
     private string? _selectedChartType;
     private string? _selectedTimePeriod;
@@ -169,6 +170,11 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
     public DelegateCommand RefreshAnalyticsCommand { get; private set; } = null!;
 
     /// <summary>
+    /// Gets the command to generate AI-powered insights
+    /// </summary>
+    public DelegateCommand GenerateInsightsCommand { get; private set; } = null!;
+
+    /// <summary>
     /// Event raised when analytics data has been loaded
     /// </summary>
     public event EventHandler? DataLoaded;
@@ -261,6 +267,11 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
     private readonly IEnterpriseRepository _enterpriseRepository;
 
     /// <summary>
+    /// Grok supercomputer for AI-powered analytics
+    /// </summary>
+    private readonly IGrokSupercomputer _grokSupercomputer;
+
+    /// <summary>
     /// Initializes a new instance of the AnalyticsViewModel class
     /// </summary>
     /// <param name="dispatcherHelper">The dispatcher helper for UI thread operations</param>
@@ -269,7 +280,8 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
     /// <param name="municipalAccountRepository">The municipal account repository for data access</param>
     /// <param name="reportExportService">The report export service for exporting data</param>
     /// <param name="enterpriseRepository">The enterprise repository for data access</param>
-    public AnalyticsViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<AnalyticsViewModel> logger, IBudgetRepository budgetRepository, IMunicipalAccountRepository municipalAccountRepository, IReportExportService reportExportService, IEnterpriseRepository enterpriseRepository, IEventAggregator eventAggregator, ICacheService? cacheService = null)
+    /// <param name="grokSupercomputer">The Grok supercomputer for AI analytics</param>
+    public AnalyticsViewModel(IDispatcherHelper dispatcherHelper, Microsoft.Extensions.Logging.ILogger<AnalyticsViewModel> logger, IBudgetRepository budgetRepository, IMunicipalAccountRepository municipalAccountRepository, IReportExportService reportExportService, IEnterpriseRepository enterpriseRepository, IEventAggregator eventAggregator, IGrokSupercomputer grokSupercomputer, ICacheService? cacheService = null)
         : base(dispatcherHelper, logger)
     {
         _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
@@ -277,6 +289,7 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
         _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
     _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
     _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+    _grokSupercomputer = grokSupercomputer ?? throw new ArgumentNullException(nameof(grokSupercomputer));
     _cacheService = cacheService;
 
         Enterprises = new ObservableCollection<Enterprise>();
@@ -374,6 +387,7 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
         SelectDrillDownItemCommand = new DelegateCommand<object>(ExecuteSelectDrillDownItem);
         BackFromDrillDownCommand = new DelegateCommand(ExecuteBackFromDrillDown, () => HasDrillDownData);
         RefreshAnalyticsCommand = new DelegateCommand(async () => await ExecuteRefreshAnalyticsDataAsync(), () => CanRefreshData());
+        GenerateInsightsCommand = new DelegateCommand(async () => await ExecuteGenerateInsightsAsync(), () => CanGenerateInsights());
     }
 
     private bool CanLoadData()
@@ -485,6 +499,78 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
     private bool CanDrillDown()
     {
         return IsDataLoaded && !IsBusy;
+    }
+
+    private bool CanGenerateInsights()
+    {
+        return IsDataLoaded && !IsBusy && _grokSupercomputer != null;
+    }
+
+    private async Task ExecuteGenerateInsightsAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            try
+            {
+                // Get current budget summary for analysis
+                var (startDate, endDate) = GetDateRangeForPeriod(SelectedTimePeriod);
+                var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(startDate, endDate);
+
+                if (budgetSummary == null)
+                {
+                    Logger.LogWarning("No budget summary available for AI insights generation");
+                    return;
+                }
+
+                // Create BudgetData from summary for analysis
+                var budgetData = new BudgetData
+                {
+                    EnterpriseId = 1, // Default enterprise - you might want to make this configurable
+                    FiscalYear = startDate.Year,
+                    TotalBudget = budgetSummary.TotalBudgeted,
+                    TotalExpenditures = budgetSummary.TotalActual,
+                    RemainingBudget = budgetSummary.TotalBudgeted - budgetSummary.TotalActual
+                };
+
+                // Use GrokSupercomputer to analyze budget data
+                var insights = new System.Collections.ObjectModel.ObservableCollection<string>();
+
+                var budgetInsights = await _grokSupercomputer.AnalyzeBudgetDataAsync(budgetData);
+                if (budgetInsights?.Recommendations != null)
+                {
+                    foreach (var recommendation in budgetInsights.Recommendations)
+                    {
+                        insights.Add($"Budget Analysis: {recommendation}");
+                    }
+                }
+
+                // Get municipal accounts for additional analysis
+                var municipalAccounts = await _municipalAccountRepository.GetAllAsync();
+                if (municipalAccounts != null && municipalAccounts.Any())
+                {
+                    var accountAnalysis = await _grokSupercomputer.AnalyzeMunicipalAccountsWithAIAsync(municipalAccounts, budgetData);
+                    if (!string.IsNullOrEmpty(accountAnalysis))
+                    {
+                        insights.Add($"Account Analysis: {accountAnalysis}");
+                    }
+                }
+
+                // Store insights for display (you might want to add a property to display these)
+                Logger.LogInformation("Generated {Count} AI-powered insights", insights.Count);
+
+                // For now, just log the insights. In a real implementation, you'd bind these to the UI
+                foreach (var insight in insights)
+                {
+                    Logger.LogInformation("AI Insight: {Insight}", insight);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error generating AI insights");
+                throw;
+            }
+        }, "Generating AI-powered insights...");
     }
 
     private async Task ExecuteDrillDownAsync()
@@ -1016,6 +1102,52 @@ public partial class AnalyticsViewModel : AsyncViewModelBase
             Logger.LogError(ex, "Failed to load enterprises for analytics");
         }
     }
+
+    #region INavigationAware Implementation
+
+    /// <summary>
+    /// Called when the view is navigated to
+    /// </summary>
+    public void OnNavigatedTo(NavigationContext navigationContext)
+    {
+        Logger.LogInformation("AnalyticsViewModel navigated to");
+
+        // Initialize default selections if not already set
+        if (string.IsNullOrEmpty(SelectedChartType))
+        {
+            SelectedChartType = ChartTypes.FirstOrDefault();
+        }
+
+        if (string.IsNullOrEmpty(SelectedTimePeriod))
+        {
+            SelectedTimePeriod = TimePeriods.FirstOrDefault();
+        }
+
+        // Auto-load data if not already loaded
+        if (!IsDataLoaded && CanLoadData())
+        {
+            LoadDataCommand.Execute();
+        }
+    }
+
+    /// <summary>
+    /// Called when the view is navigated from
+    /// </summary>
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        Logger.LogInformation("AnalyticsViewModel navigated from");
+        // Cleanup if needed
+    }
+
+    /// <summary>
+    /// Determines if this view model is the target for navigation
+    /// </summary>
+    public bool IsNavigationTarget(NavigationContext navigationContext)
+    {
+        return true;
+    }
+
+    #endregion
 
     /// <summary>
     /// Event arguments for analytics data loaded events

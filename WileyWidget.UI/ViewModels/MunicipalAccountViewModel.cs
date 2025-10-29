@@ -4,9 +4,11 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Data;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Events;
 using Prism.Mvvm;
 using Prism.Navigation.Regions;
@@ -102,6 +104,7 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
         MunicipalAccounts = new ObservableCollection<MunicipalAccount>();
         BudgetAnalysis = new ObservableCollection<MunicipalAccount>();
         PagedAccounts = new ObservableCollection<MunicipalAccount>();
+        ChartAccounts = new ObservableCollection<MunicipalAccount>();
     Departments = new ObservableCollection<Department>();
 
         _accountsView = CollectionViewSource.GetDefaultView(MunicipalAccounts);
@@ -271,6 +274,11 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
     /// Paged collection of accounts for UI binding (supports pagination)
     /// </summary>
     public ObservableCollection<MunicipalAccount> PagedAccounts { get; }
+
+    /// <summary>
+    /// Collection of accounts for chart seeding (31 rows)
+    /// </summary>
+    public ObservableCollection<MunicipalAccount> ChartAccounts { get; }
 
     /// <summary>
     /// Departments used to populate department dropdowns/filters
@@ -861,6 +869,13 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
                 MunicipalAccounts.Add(account);
             }
 
+            // Populate chart accounts with first 31 rows
+            ChartAccounts.Clear();
+            foreach (var account in accounts.Take(31))
+            {
+                ChartAccounts.Add(account);
+            }
+
             // Apply pagination if specified
             if (page.HasValue && pageSize.HasValue)
             {
@@ -1017,7 +1032,7 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
     /// <param name="fundType">The fund type for seeded accounts</param>
     /// <param name="accountType">The account type for seeded accounts</param>
     /// <param name="count">Number of accounts to seed</param>
-    private async Task LoadSeededAccountsAsync(MunicipalFundType fundType = MunicipalFundType.ConservationTrust, AccountType accountType = AccountType.Expense, int count = 25)
+    private async Task LoadSeededAccountsAsync(MunicipalFundType fundType = MunicipalFundType.ConservationTrust, AccountType accountType = AccountType.Expense, int count = 31)
     {
         try
         {
@@ -2990,11 +3005,18 @@ public partial class MunicipalAccountViewModel : BindableBase, IDataErrorInfo, I
     /// <summary>
     /// Shows a confirmation dialog - abstracted for testability
     /// </summary>
-    protected virtual async Task<ButtonResult> ShowConfirmationDialogAsync(string dialogName, Prism.Dialogs.DialogParameters parameters)
+    protected virtual async Task<ButtonResult> ShowConfirmationDialogAsync(string dialogName,
+                                                                           Prism.Dialogs.DialogParameters parameters)
     {
+        if (_dialogService == null)
+        {
+            Log.Warning("IDialogService is not available in ShowConfirmationDialogAsync, returning ButtonResult.None");
+            return ButtonResult.None;
+        }
+
         var tcs = new TaskCompletionSource<ButtonResult>();
 
-        _dialogService?.ShowDialog(dialogName, parameters, result => tcs.SetResult(result?.Result ?? ButtonResult.None));
+        _dialogService.ShowDialog(dialogName, parameters, result => tcs.SetResult(result?.Result ?? ButtonResult.None));
 
         return await tcs.Task;
     }

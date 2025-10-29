@@ -61,25 +61,64 @@ namespace WileyWidget.Startup.Modules
 
             try
             {
-                // Core modules (load at startup)
+                // Core modules (load at startup for immediate availability)
                 catalog.AddModule<CoreModule>();
                 catalog.AddModule<DashboardModule>();
                 catalog.AddModule<AIAssistModule>();
-                catalog.AddModule<BudgetModule>();
-                catalog.AddModule<EnterpriseModule>();
-                catalog.AddModule<MunicipalAccountModule>();
                 catalog.AddModule<PanelModule>();
+                catalog.AddModule<SettingsModule>();
+
                 // Test module used to intentionally throw during Initialize for verifying global error handling.
                 // It will only throw when the environment variable THROW_MODULE_INIT_EXCEPTION is set to '1'.
                 catalog.AddModule<ThrowingModule>();
-                catalog.AddModule<SettingsModule>();
-                // ToolsModule is deprecated and consolidated into SettingsModule.
-                // It does not implement IModule and is kept for source/history only,
-                // so do not attempt to register it into the Prism module catalog.
-                catalog.AddModule<UtilityCustomerModule>();
 
                 // Reports module is medium-weight; register normally but could be switched to OnDemand if desired
                 catalog.AddModule<ReportsModule>();
+
+                // Feature modules - load on demand to improve startup performance
+                var enterpriseInfo = new ModuleInfo
+                {
+                    ModuleName = nameof(EnterpriseModule),
+                    ModuleType = typeof(EnterpriseModule).AssemblyQualifiedName,
+                    InitializationMode = InitializationMode.OnDemand
+                };
+                if (!catalog.Modules.Any(m => m.ModuleName == enterpriseInfo.ModuleName))
+                {
+                    catalog.AddModule(enterpriseInfo);
+                }
+
+                var budgetInfo = new ModuleInfo
+                {
+                    ModuleName = nameof(BudgetModule),
+                    ModuleType = typeof(BudgetModule).AssemblyQualifiedName,
+                    InitializationMode = InitializationMode.OnDemand
+                };
+                if (!catalog.Modules.Any(m => m.ModuleName == budgetInfo.ModuleName))
+                {
+                    catalog.AddModule(budgetInfo);
+                }
+
+                var municipalAccountInfo = new ModuleInfo
+                {
+                    ModuleName = nameof(MunicipalAccountModule),
+                    ModuleType = typeof(MunicipalAccountModule).AssemblyQualifiedName,
+                    InitializationMode = InitializationMode.OnDemand
+                };
+                if (!catalog.Modules.Any(m => m.ModuleName == municipalAccountInfo.ModuleName))
+                {
+                    catalog.AddModule(municipalAccountInfo);
+                }
+
+                var utilityCustomerInfo = new ModuleInfo
+                {
+                    ModuleName = nameof(UtilityCustomerModule),
+                    ModuleType = typeof(UtilityCustomerModule).AssemblyQualifiedName,
+                    InitializationMode = InitializationMode.OnDemand
+                };
+                if (!catalog.Modules.Any(m => m.ModuleName == utilityCustomerInfo.ModuleName))
+                {
+                    catalog.AddModule(utilityCustomerInfo);
+                }
 
                 // QuickBooks integration is heavier and optional in some environments - register as OnDemand
                 var qbInfo = new ModuleInfo
@@ -94,7 +133,7 @@ namespace WileyWidget.Startup.Modules
                     catalog.AddModule(qbInfo);
                 }
 
-                Log.Information("CustomModuleManager: Registered modules into module catalog");
+                Log.Information("CustomModuleManager: Registered modules into module catalog (4 OnDemand modules for improved startup performance)");
             }
             catch (Exception ex)
             {

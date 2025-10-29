@@ -67,7 +67,13 @@ public static class DatabaseConfiguration
             var auditInterceptorType = Type.GetType("WileyWidget.Data.Interceptors.AuditInterceptor, WileyWidget.Data");
             if (auditInterceptorType != null)
             {
-                services.AddSingleton(auditInterceptorType);
+                services.AddSingleton(auditInterceptorType, sp =>
+                {
+                    var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("AuditInterceptor");
+                    var userContext = sp.GetRequiredService<IUserContext>();
+                    var auditService = sp.GetRequiredService<IAuditService>();
+                    return Activator.CreateInstance(auditInterceptorType, logger, userContext, auditService);
+                });
             }
 
         // EF Core DI Lifetime Fix: Use AddDbContextFactory with Singleton lifetime for factory

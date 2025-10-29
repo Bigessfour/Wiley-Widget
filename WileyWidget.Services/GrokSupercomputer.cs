@@ -372,69 +372,80 @@ public class GrokSupercomputer : IGrokSupercomputer
     {
         if (budget == null) throw new ArgumentNullException(nameof(budget));
 
-        return await Task.Run(() =>
+        try
         {
+            _logger.LogInformation("Analyzing budget data for enterprise {EnterpriseId}, fiscal year {FiscalYear}",
+                budget.EnterpriseId, budget.FiscalYear);
+
+            var insights = new BudgetInsights();
+
+            // Calculate variance
+            var variance = budget.TotalExpenditures - budget.TotalBudget;
+            var variancePercent = budget.TotalBudget != 0 ? (variance / budget.TotalBudget) * 100 : 0;
+
+            insights.Variances.Add(new WileyWidget.Models.BudgetVariance
+            {
+                Category = "Overall Budget",
+                Budgeted = budget.TotalBudget,
+                Actual = budget.TotalExpenditures,
+                Variance = variance
+            });
+
+            // Calculate projections (simple trend analysis)
+            var remainingMonths = Math.Max(0, 12 - DateTime.Now.Month + 1);
+            var monthsElapsed = Math.Max(1, 12 - remainingMonths + 1);
+            var monthlyBurnRate = monthsElapsed > 0 ? budget.TotalExpenditures / monthsElapsed : 0;
+            var projectedEndOfYear = budget.TotalExpenditures + (monthlyBurnRate * remainingMonths);
+
+            insights.Projections.Add(new WileyWidget.Models.BudgetProjection
+            {
+                Period = "End of Year",
+                ProjectedAmount = projectedEndOfYear,
+                ConfidenceLevel = variancePercent < VarianceHighThresholdPercent ? HighConfidence : LowConfidence
+            });
+
+            // Generate recommendations based on variance
+            if (variancePercent > VarianceHighThresholdPercent)
+            {
+                insights.Recommendations.Add("Budget variance exceeds 10%. Review expense controls.");
+                insights.Recommendations.Add("Consider cost reduction measures to align with budget.");
+            }
+            else if (variancePercent < VarianceLowThresholdPercent)
+            {
+                insights.Recommendations.Add("Budget performance is better than expected. Consider reallocating surplus funds.");
+            }
+            else
+            {
+                insights.Recommendations.Add("Budget performance is within acceptable range. Continue monitoring.");
+            }
+
+            // Calculate health score based on variance
+            insights.HealthScore = Math.Max(0, Math.Min(100, 100 - (int)Math.Abs(variancePercent)));
+
+            // Enhance with AI-powered insights
             try
             {
-                _logger.LogInformation("Analyzing budget data for enterprise {EnterpriseId}, fiscal year {FiscalYear}",
-                    budget.EnterpriseId, budget.FiscalYear);
-
-                var insights = new BudgetInsights();
-
-                // Calculate variance
-                var variance = budget.TotalExpenditures - budget.TotalBudget;
-                var variancePercent = budget.TotalBudget != 0 ? (variance / budget.TotalBudget) * 100 : 0;
-
-                insights.Variances.Add(new WileyWidget.Models.BudgetVariance
+                var aiInsights = await GenerateBudgetInsightsWithAIAsync(budget, variancePercent);
+                if (!string.IsNullOrEmpty(aiInsights))
                 {
-                    Category = "Overall Budget",
-                    Budgeted = budget.TotalBudget,
-                    Actual = budget.TotalExpenditures,
-                    Variance = variance
-                });
-
-                // Calculate projections (simple trend analysis)
-                var remainingMonths = Math.Max(0, 12 - DateTime.Now.Month + 1);
-                var monthsElapsed = Math.Max(1, 12 - remainingMonths + 1);
-                var monthlyBurnRate = monthsElapsed > 0 ? budget.TotalExpenditures / monthsElapsed : 0;
-                var projectedEndOfYear = budget.TotalExpenditures + (monthlyBurnRate * remainingMonths);
-
-                insights.Projections.Add(new WileyWidget.Models.BudgetProjection
-                {
-                    Period = "End of Year",
-                    ProjectedAmount = projectedEndOfYear,
-                    ConfidenceLevel = variancePercent < VarianceHighThresholdPercent ? HighConfidence : LowConfidence
-                });
-
-                // Generate recommendations based on variance
-                if (variancePercent > VarianceHighThresholdPercent)
-                {
-                    insights.Recommendations.Add("Budget variance exceeds 10%. Review expense controls.");
-                    insights.Recommendations.Add("Consider cost reduction measures to align with budget.");
+                    insights.Recommendations.Add($"AI Analysis: {aiInsights}");
                 }
-                else if (variancePercent < VarianceLowThresholdPercent)
-                {
-                    insights.Recommendations.Add("Budget performance is better than expected. Consider reallocating surplus funds.");
-                }
-                else
-                {
-                    insights.Recommendations.Add("Budget performance is within acceptable range. Continue monitoring.");
-                }
-
-                // Calculate health score based on variance
-                insights.HealthScore = Math.Max(0, Math.Min(100, 100 - (int)Math.Abs(variancePercent)));
-
-                _logger.LogInformation("Successfully analyzed budget data with variance {VariancePercent:P2} and health score {HealthScore}",
-                    variancePercent / 100, insights.HealthScore);
-
-                return insights;
             }
-            catch (Exception ex)
+            catch (Exception aiEx)
             {
-                _logger.LogError(ex, "Error analyzing budget data for enterprise {EnterpriseId}", budget.EnterpriseId);
-                throw;
+                _logger.LogWarning(aiEx, "AI budget analysis failed, continuing with basic analysis");
             }
-        });
+
+            _logger.LogInformation("Successfully analyzed budget data with variance {VariancePercent:P2} and health score {HealthScore}",
+                variancePercent / 100, insights.HealthScore);
+
+            return insights;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing budget data for enterprise {EnterpriseId}", budget.EnterpriseId);
+            throw;
+        }
     }    /// <summary>
          /// Generates compliance reports for municipal utility enterprises.
          /// Ensures regulatory compliance and provides documentation for municipal finance auditing and reporting requirements.
@@ -582,6 +593,95 @@ public class GrokSupercomputer : IGrokSupercomputer
             return $"Basic analysis of municipal data indicates potential for optimization in {context}. " +
                    $"Data type: {data?.GetType().Name ?? "Unknown"}. " +
                    $"Note: AI analysis failed due to: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Generates AI-powered budget insights using xAI analysis
+    /// </summary>
+    /// <param name="budget">The budget data to analyze</param>
+    /// <param name="variancePercent">The calculated variance percentage</param>
+    /// <returns>AI-generated insights as a string</returns>
+    private async Task<string> GenerateBudgetInsightsWithAIAsync(BudgetData budget, decimal variancePercent)
+    {
+        try
+        {
+            var context = $"Budget Analysis for Enterprise {budget.EnterpriseId}, Fiscal Year {budget.FiscalYear}";
+            var question = $@"
+Analyze this municipal utility budget data and provide specific insights:
+
+Budget Details:
+- Total Budget: ${budget.TotalBudget:N2}
+- Total Expenditures: ${budget.TotalExpenditures:N2}
+- Remaining Budget: ${budget.RemainingBudget:N2}
+- Variance: {(variancePercent >= 0 ? "Over" : "Under")} by {Math.Abs(variancePercent):N2}%
+
+Please provide:
+1. Analysis of spending patterns and efficiency
+2. Risk assessment for budget overruns
+3. Recommendations for cost optimization
+4. Suggestions for budget reallocation if applicable
+5. Long-term financial planning insights
+
+Focus on municipal utility operations and provide actionable insights.";
+
+            var aiResponse = await _aiService.GetInsightsAsync(context, question);
+            return aiResponse;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "AI budget insights generation failed");
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Analyzes municipal accounts and provides AI-powered insights on account structures and spending patterns
+    /// </summary>
+    /// <param name="municipalAccounts">Collection of municipal accounts to analyze</param>
+    /// <param name="budgetData">Associated budget data for context</param>
+    /// <returns>AI-powered analysis of municipal accounts</returns>
+    public async Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<WileyWidget.Models.MunicipalAccount> municipalAccounts, BudgetData budgetData)
+    {
+        try
+        {
+            _logger.LogInformation("Analyzing municipal accounts with AI for enterprise {EnterpriseId}", budgetData?.EnterpriseId);
+
+            var accountsJson = System.Text.Json.JsonSerializer.Serialize(municipalAccounts, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = false,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+            });
+
+            var context = $"Municipal Account Analysis for Enterprise {budgetData?.EnterpriseId ?? 0}";
+            var question = $@"
+Analyze these municipal accounts for a utility enterprise and provide insights on:
+
+Account Data: {accountsJson}
+
+Budget Context:
+- Total Budget: ${budgetData?.TotalBudget:N2 ?? 0}
+- Total Expenditures: ${budgetData?.TotalExpenditures:N2 ?? 0}
+
+Please provide:
+1. Analysis of account structure and categorization
+2. Identification of high-spending accounts and potential cost centers
+3. Recommendations for account consolidation or restructuring
+4. Insights on spending patterns by account type
+5. Suggestions for budget allocation optimization across accounts
+6. Risk assessment for accounts showing unusual spending patterns
+
+Focus on municipal finance best practices and operational efficiency.";
+
+            var analysis = await _aiService.GetInsightsAsync(context, question);
+            _logger.LogInformation("Municipal account analysis completed with AI insights");
+            return analysis;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing municipal accounts with AI");
+            return $"Basic municipal account analysis indicates {municipalAccounts?.Count() ?? 0} accounts to review. " +
+                   $"AI analysis failed: {ex.Message}";
         }
     }
 

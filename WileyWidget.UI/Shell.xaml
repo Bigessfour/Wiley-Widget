@@ -27,9 +27,6 @@
     prism:ViewModelLocator.AutoWireViewModel="True">    <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- Theme resources -->
-                <!-- <ResourceDictionary Source="../Themes/Generic.xaml"/> -->
-                <!-- <ResourceDictionary Source="../Themes/WileyTheme.xaml"/> -->
                 <!-- Data templates for ViewModels -->
                 <ResourceDictionary Source="../Resources/DataTemplates.xaml"/>
             </ResourceDictionary.MergedDictionaries>
@@ -86,6 +83,10 @@
                                            SizeForm="Large"
                                            Command="{Binding NavigateToBudgetCommand}"
                                            ToolTip="Navigate to Budget Management (Ctrl+4)"/>
+                    <syncfusion:RibbonButton Label="Departments"
+                                           SizeForm="Large"
+                                           Command="{Binding NavigateToDepartmentsCommand}"
+                                           ToolTip="Navigate to Department Management (Ctrl+5)"/>
                 </syncfusion:RibbonBar>
                 <syncfusion:RibbonBar Header="Tools">
                     <syncfusion:RibbonButton Label="Settings"

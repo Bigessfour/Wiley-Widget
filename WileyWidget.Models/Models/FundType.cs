@@ -1,4 +1,4 @@
-namespace WileyWidget.Models.Entities;
+namespace WileyWidget.Models;
 
 /// <summary>
 /// Fund types following GASB 34 standards

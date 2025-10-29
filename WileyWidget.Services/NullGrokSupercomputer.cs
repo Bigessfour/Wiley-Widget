@@ -35,4 +35,7 @@ public class NullGrokSupercomputer : IGrokSupercomputer
 
     public Task<string> GenerateRecommendationsAsync(object data)
         => Task.FromResult("[Dev Stub] Recommendation generation is disabled in development.");
+
+    public Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<MunicipalAccount> accounts, BudgetData budget)
+        => Task.FromResult("[Dev Stub] Municipal accounts analysis is disabled in development. Configure AI services to enable.");
 }

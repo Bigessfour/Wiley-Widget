@@ -139,6 +139,7 @@
                         RowHeight="32"
                         AlternationCount="2"
                         ShowGroupDropArea="True"
+                        UseLayoutRounding="True"
                         GroupDropAreaText="Drag a column header here to group customers"
                         ColumnSizer="AutoWithLastColumnFill"
                         Margin="12,0,12,12"
@@ -219,6 +220,7 @@
                         AllowResizingColumns="True"
                         AllowEditing="False"
                         RowHeight="32"
+                        UseLayoutRounding="True"
                         ColumnSizer="Star"
                         Margin="12,0,12,12"
                         SelectionMode="Single"
@@ -497,4 +499,3 @@
     </DockPanel>
     </Grid>
 </Window>
-

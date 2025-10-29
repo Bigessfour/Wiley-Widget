@@ -60,5 +60,13 @@ namespace WileyWidget.Services
         /// <param name="data">The data to generate recommendations for.</param>
         /// <returns>A Task containing the recommendations as a string.</returns>
         Task<string> GenerateRecommendationsAsync(object data);
+
+        /// <summary>
+        /// Analyzes municipal accounts and provides AI-powered insights on account structures and spending patterns
+        /// </summary>
+        /// <param name="municipalAccounts">Collection of municipal accounts to analyze</param>
+        /// <param name="budgetData">Associated budget data for context</param>
+        /// <returns>AI-powered analysis of municipal accounts</returns>
+        Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<WileyWidget.Models.MunicipalAccount> municipalAccounts, BudgetData budgetData);
     }
 }

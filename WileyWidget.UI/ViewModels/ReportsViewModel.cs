@@ -9,6 +9,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using Prism.Commands;
 using Prism.Mvvm;
+using Prism.Navigation.Regions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services;
@@ -21,7 +22,7 @@ using WileyWidget.ViewModels.Base;
 /// </summary>
 namespace WileyWidget.ViewModels
 {
-    public class ReportsViewModel : BindableBase
+    public class ReportsViewModel : BindableBase, INavigationAware
     {
         private string? _selectedReportType;
         private string? _selectedFormat;
@@ -786,6 +787,46 @@ namespace WileyWidget.ViewModels
 
             return builder.ToString();
         }
+
+        #region INavigationAware Implementation
+
+        /// <summary>
+        /// Called when the view is navigated to
+        /// </summary>
+        public void OnNavigatedTo(NavigationContext navigationContext)
+        {
+            _logger.LogInformation("ReportsViewModel navigated to");
+
+            // Initialize default selections if not set
+            if (string.IsNullOrEmpty(SelectedReportType) && ReportTypes.Any())
+            {
+                SelectedReportType = ReportTypes.First();
+            }
+
+            if (string.IsNullOrEmpty(SelectedFormat) && ExportFormats.Any())
+            {
+                SelectedFormat = ExportFormats.First();
+            }
+        }
+
+        /// <summary>
+        /// Called when the view is navigated from
+        /// </summary>
+        public void OnNavigatedFrom(NavigationContext navigationContext)
+        {
+            _logger.LogInformation("ReportsViewModel navigated from");
+            // Cleanup if needed
+        }
+
+        /// <summary>
+        /// Determines if this view model is the target for navigation
+        /// </summary>
+        public bool IsNavigationTarget(NavigationContext navigationContext)
+        {
+            return true;
+        }
+
+        #endregion
 
         /// <summary>
         /// Event arguments for report data loaded events
