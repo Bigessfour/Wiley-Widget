@@ -139,6 +139,24 @@ public class ServiceChargeCalculatorService : IChargeCalculatorService
     }
 
     /// <summary>
+    /// Calculates the service charge for a given amount.
+    /// </summary>
+    /// <param name="amount">The amount to calculate charge for</param>
+    /// <returns>The calculated charge</returns>
+    public decimal CalculateCharge(decimal amount)
+    {
+        // Simple calculation: assume 1% of the amount as charge
+        // This is a basic implementation - in practice this would be more complex
+        var charge = amount * 0.01m;
+
+        // Ensure charge is within valid range
+        charge = Math.Max(MIN_RATE_PER_CUSTOMER, Math.Min(MAX_RATE_PER_CUSTOMER, charge));
+
+        Log.Information("Calculated service charge of {Charge} for amount {Amount}", charge, amount);
+        return charge;
+    }
+
+    /// <summary>
     /// Validate a proposed rate against budget constraints and business rules
     /// </summary>
     private FundType MapMunicipalFundTypeToFundType(MunicipalFundType municipalFundType)
@@ -406,67 +424,6 @@ public class ServiceChargeCalculatorService : IChargeCalculatorService
     }
 }
 
-/// <summary>
-/// Service charge recommendation result with rate validation
-/// </summary>
-public class ServiceChargeRecommendation
-{
-    public int EnterpriseId { get; set; }
-    public string EnterpriseName { get; set; } = string.Empty;
-    public decimal CurrentRate { get; set; }
-    public decimal RecommendedRate { get; set; }
-    public decimal TotalMonthlyExpenses { get; set; }
-    public decimal MonthlyRevenueAtRecommended { get; set; }
-    public decimal MonthlySurplus { get; set; }
-    public decimal ReserveAllocation { get; set; }
-    public BreakEvenAnalysis BreakEvenAnalysis { get; set; } = new();
-    public RateValidationResult RateValidation { get; set; } = new();
-    public DateTime CalculationDate { get; set; }
-    public List<string> Assumptions { get; set; } = new();
-}
-
-/// <summary>
-/// Rate validation result
-/// </summary>
-/// <remarks>
-/// This class is not thread-safe. If accessed concurrently, especially the Warnings list,
-/// consider using a thread-safe collection or implement appropriate synchronization.
-/// </remarks>
-public class RateValidationResult
-{
-    public bool IsValid { get; set; }
-    public string Reason { get; set; } = string.Empty;
-    public decimal? SuggestedRate { get; set; }
-    public decimal CoverageRatio { get; set; }
-    public decimal DebtServiceRatio { get; set; }
-    public List<string> Warnings { get; set; } = new();
-}
-
-/// <summary>
-/// Break-even analysis result
-/// </summary>
-public class BreakEvenAnalysis
-{
-    public decimal BreakEvenRate { get; set; }
-    public decimal CurrentSurplusDeficit { get; set; }
-    public decimal RequiredRateIncrease { get; set; }
-    public decimal CoverageRatio { get; set; }
-}
-
-/// <summary>
-/// What-if scenario result
-/// </summary>
-public class WhatIfScenario
-{
-    public string ScenarioName { get; set; } = string.Empty;
-    public decimal CurrentRate { get; set; }
-    public decimal ProposedRate { get; set; }
-    public decimal CurrentMonthlyExpenses { get; set; }
-    public decimal ProposedMonthlyExpenses { get; set; }
-    public decimal CurrentMonthlyRevenue { get; set; }
-    public decimal ProposedMonthlyRevenue { get; set; }
-    public decimal CurrentMonthlyBalance { get; set; }
-    public decimal ProposedMonthlyBalance { get; set; }
-    public string ImpactAnalysis { get; set; } = string.Empty;
-    public List<string> Recommendations { get; set; } = new();
-}
+// DTO types for service charge recommendation and scenarios were moved to
+// the WileyWidget.Models project so they can be shared by abstractions and
+// other consumers. The service implementation now uses the model types.

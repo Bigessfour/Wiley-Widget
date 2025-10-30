@@ -185,4 +185,16 @@ public sealed class SettingsService : ISettingsService
             _logger.LogWarning(ex, "Failed to persist settings to {SettingsFile}.", _file);
         }
     }
+
+    public string Get(string key)
+    {
+        // Not implemented for AppSettings based service
+        throw new NotImplementedException();
+    }
+
+    public void Set(string key, string value)
+    {
+        // Not implemented for AppSettings based service
+        throw new NotImplementedException();
+    }
 }

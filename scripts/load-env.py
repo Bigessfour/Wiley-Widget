@@ -46,45 +46,8 @@ def load_environment_variables(env_file: Path | None = None):
                     ):
                         value = value[1:-1]
 
-                    # Handle Azure Key Vault references
-                    if value.startswith("@AzureKeyVault(") and value.endswith(")"):
-                        kv_reference = value[15:-1]  # Remove @AzureKeyVault( and )
-                        print(f"  🔑 Resolving Key Vault reference: {kv_reference}")
-
-                        try:
-                            import azure.identity  # type: ignore
-                            import azure.keyvault.secrets  # type: ignore
-
-                            # Extract vault URL and secret name from reference
-                            # Format: https://vault-name.vault.azure.net/secrets/secret-name
-                            if "/secrets/" in kv_reference:
-                                vault_url = kv_reference.split("/secrets/")[0]
-                                secret_name = kv_reference.split("/secrets/")[1]
-
-                                credential = azure.identity.DefaultAzureCredential()
-                                client = azure.keyvault.secrets.SecretClient(
-                                    vault_url=vault_url, credential=credential
-                                )
-
-                                secret = client.get_secret(secret_name)
-                                if secret and secret.value:
-                                    os.environ[key] = secret.value
-                                    loaded_count += 1
-                                    print(f"  ✅ {key} (from Key Vault)")
-                                else:
-                                    error_count += 1
-                                    print(f"  ❌ {key}: Empty secret from Key Vault")
-                            else:
-                                error_count += 1
-                                print(f"  ❌ {key}: Invalid Key Vault reference format")
-                        except ImportError:
-                            error_count += 1
-                            print(
-                                f"  ❌ {key}: Azure SDK not available for Key Vault resolution"
-                            )
-                        except Exception as e:
-                            error_count += 1
-                            print(f"  ❌ {key}: Key Vault resolution failed: {str(e)}")
+                    # Azure Key Vault resolution disabled — project no longer uses Azure services
+                    # If you need Key Vault resolution again, reintroduce @AzureKeyVault(...) handling here.
                     else:
                         # Regular environment variable
                         try:
@@ -161,13 +124,9 @@ def show_status():
 
     print(f"📄 .env file: {env_file}")
 
-    # Check key environment variables
+    # Check key environment variables (Azure-related variables removed; add back if re-enabling Azure)
     key_vars = [
-        "AZURE_KEY_VAULT_URL",
-        "AZURE_KEY_VAULT_NAME",
         "SYNCFUSION_LICENSE_KEY",
-        "AZURE_SUBSCRIPTION_ID",
-        "AZURE_TENANT_ID",
     ]
 
     loaded_count = 0
@@ -189,62 +148,13 @@ def show_status():
 
 
 def test_connections():
-    """Test Azure connections"""
-    print("=== Testing Azure Connections ===")
+    """Azure connection tests disabled.
 
-    # Check if required environment variables are set
-    kv_url = os.environ.get("AZURE_KEY_VAULT_URL")
-    if not kv_url:
-        print("❌ AZURE_KEY_VAULT_URL not set")
-        return False
-
-    print(f"🔗 Testing connection to: {kv_url}")
-
-    # This would require azure-identity and azure-keyvault-secrets packages
-    try:
-        import azure.identity  # type: ignore
-        import azure.keyvault.secrets  # type: ignore
-
-        credential = azure.identity.DefaultAzureCredential()
-        client = azure.keyvault.secrets.SecretClient(
-            vault_url=kv_url, credential=credential
-        )
-
-        # Try to get a specific secret instead of listing all
-        try:
-            secret = client.get_secret("SyncfusionLicenseKey")
-            if secret and secret.value:
-                print("✅ Successfully connected to Key Vault")
-                print("✅ Syncfusion license key found and accessible")
-                return True
-            else:
-                print("⚠️  Syncfusion license key is empty")
-                return False
-        except Exception as e:
-            print(f"❌ Could not retrieve Syncfusion license: {str(e)}")
-            # Try to at least test connectivity by getting vault properties
-            try:
-                # This is a lighter operation than listing secrets
-                vault_props = client.list_properties_of_secrets()  # type: ignore
-                print(
-                    "✅ Key Vault connection successful (but Syncfusion secret not found)"
-                )
-                return True
-            except Exception as e2:
-                print(f"❌ Key Vault connection failed: {str(e2)}")
-                return False
-
-    except ImportError as ie:
-        print(f"❌ Azure SDK not installed: {ie}")
-        print("Install with: pip install azure-identity azure-keyvault-secrets")
-        return False
-    except Exception as e:
-        print(f"❌ Connection test failed: {str(e)}")
-        # Don't crash - just report the error
-        import traceback
-
-        print(f"Stack trace: {traceback.format_exc()}")
-        return False
+    This project no longer uses Azure services. If you need to re-enable
+    Key Vault or Azure SQL tests, reintroduce appropriate logic here.
+    """
+    print("⚠️  Azure connection tests are disabled for this workspace")
+    return False
 
 
 def main():

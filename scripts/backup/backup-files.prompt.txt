@@ -1,0 +1,26 @@
+Create a PowerShell backup script (UTF-8 without BOM) to copy files from a source directory to a destination directory,
+preserving directory structure, supporting -WhatIf/-Confirm, providing verbose and progress output, and optionally
+removing destination files older than N days.
+
+Usage examples:
+
+1) Do a real backup with verbose output:
+   pwsh -NoProfile -File .\scripts\backup\Backup-Files.ps1 -SourcePath 'C:\Data' -DestinationPath 'D:\Backups\Data' -Verbose
+
+2) Preview the backup (no changes):
+   pwsh -NoProfile -File .\scripts\backup\Backup-Files.ps1 -SourcePath 'C:\Data' -DestinationPath 'D:\Backups\Data' -WhatIf
+
+3) Run and keep only 7 days of backups in the destination:
+   pwsh -NoProfile -File .\scripts\backup\Backup-Files.ps1 -SourcePath 'C:\Data' -DestinationPath 'D:\Backups\Data' -DaysToKeep 7 -Verbose
+
+PSScriptAnalyzer / validation:
+  # Install if needed
+  Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
+
+  # Lint the script locally
+  Invoke-ScriptAnalyzer -Path .\scripts\backup\Backup-Files.ps1 -Recurse
+
+Notes:
+  - Script is written to be compatible with PowerShell 7.5.4.
+  - Use -WhatIf to verify actions before running for real.
+  - The script uses approved verbs (Backup-*), CmdletBinding, parameter validation, and avoids aliases to meet best practices.

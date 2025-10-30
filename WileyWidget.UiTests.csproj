@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.19041</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="WileyWidget.UI/WileyWidget.UI.csproj" />
+    <ProjectReference Include="WileyWidget.Abstractions/WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="WileyWidget.Models/WileyWidget.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- UI dependent converter and visibility tests -->
+    <Compile Include="WileyWidget.Tests/WileyWidget.ViewModels.Tests/BalanceColorConverterTests.cs" />
+    <Compile Include="WileyWidget.Tests/WileyWidget.ViewModels.Tests/BooleanToBrushConverterTests.cs" />
+    <Compile Include="WileyWidget.Tests/WileyWidget.ViewModels.Tests/BooleanToVisibilityConverterTests.cs" />
+    <Compile Include="WileyWidget.Tests/WileyWidget.ViewModels.Tests/NullToVisibilityConverterTests.cs" />
+    <Compile Include="WileyWidget.Tests/WileyWidget.ViewModels.Tests/StringToVisibilityConverterTests.cs" />
+    <Compile Include="WileyWidget.Tests/WileyWidget.ViewModels.Tests/ChatConvertersTests.cs" />
+  </ItemGroup>
+
+</Project>

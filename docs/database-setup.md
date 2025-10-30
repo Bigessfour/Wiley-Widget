@@ -97,116 +97,21 @@ sqllocaldb start MSSQLLocalDB
 # Stop LocalDB instance
 sqllocaldb stop MSSQLLocalDB
 
-# Delete and recreate database (for testing)
-sqllocaldb delete MSSQLLocalDB
-sqllocaldb create MSSQLLocalDB
+## ☁️ Azure (deprecated)
 
-# Check database files location
-sqllocaldb info MSSQLLocalDB
-```
+This project no longer uses Azure services by default. The previous Azure SQL / Key Vault
+instructions are retained in the repository history but have been removed from the
+main documentation to avoid confusion. If you need to integrate with Azure again,
+please open an issue or add Azure configuration in your environment (do not store
+secrets in repository files).
 
-### LocalDB Database Location
+Recommended alternatives for local development:
 
-LocalDB databases are stored in: `%USERPROFILE%\AppData\Local\Microsoft\Microsoft SQL Server Local DB\Instances\MSSQLLocalDB`
+- Use LocalDB / SQL Express (see Method 1 above)
+- Use a Dockerized SQL Server instance for CI or local testing
 
----
-
-## ☁️ **Method 2: Azure SQL Database Setup (Production)**
-
-### Prerequisites
-
-- Azure subscription
-- Azure CLI installed
-- Appropriate permissions
-
-### Automated Setup (Recommended)
-
-```powershell
-# Navigate to scripts directory
-cd scripts
-
-# Complete Azure setup with SQL database
-.\setup-azure.ps1 -AzureSubscriptionId "your-subscription-id"
-
-# Setup with custom parameters
-.\setup-azure.ps1 -AzureResourceGroup "wileywidget-prod-rg" -AzureLocation "East US"
-```
-
-### Manual Setup
-
-#### 1. Azure CLI Login
-
-```powershell
-# Login to Azure
-az login
-
-# Set active subscription
-az account set --subscription "your-subscription-id"
-```
-
-#### 2. Create Resource Group
-
-```powershell
-az group create --name "wileywidget-rg" --location "East US"
-```
-
-#### 3. Create SQL Server
-
-```powershell
-az sql server create `
-    --name "wileywidget-sql" `
-    --resource-group "wileywidget-rg" `
-    --location "East US" `
-    --admin-user "wileyadmin" `
-    --admin-password "SecurePassword123!"
-```
-
-#### 4. Create Database
-
-```powershell
-az sql db create `
-    --resource-group "wileywidget-rg" `
-    --server "wileywidget-sql" `
-    --name "WileyWidgetDb" `
-    --service-objective "Basic"
-```
-
-#### 5. Configure Firewall
-
-```powershell
-# Allow Azure services
-az sql server firewall-rule create `
-    --resource-group "wileywidget-rg" `
-    --server "wileywidget-sql" `
-    --name "AllowAzureServices" `
-    --start-ip-address "0.0.0.0" `
-    --end-ip-address "0.0.0.0"
-
-# Add specific IP (recommended for security)
-az sql server firewall-rule create `
-    --resource-group "wileywidget-rg" `
-    --server "wileywidget-sql" `
-    --name "MyIP" `
-    --start-ip-address "your-ip-address" `
-    --end-ip-address "your-ip-address"
-```
-
-### Azure SQL Configuration
-
-#### Environment Variables (.env)
-
-```env
-# Azure SQL Database Configuration
-AZURE_SQL_SERVER=wileywidget-sql.database.windows.net
-AZURE_SQL_DATABASE=WileyWidgetDb
-AZURE_SQL_USER=wileyadmin
-AZURE_SQL_PASSWORD=SecurePassword123!
-AZURE_SQL_RETRY_ATTEMPTS=3
-
-# Azure Subscription Information
-AZURE_SUBSCRIPTION_ID=your-subscription-id
-AZURE_TENANT_ID=your-tenant-id
-```
+If you still require help re-adding Azure deployment instructions, I can reintroduce
+them in a dedicated `docs/azure-setup.md` file (kept out of the primary user guide).
 
 #### App Settings Configuration
 

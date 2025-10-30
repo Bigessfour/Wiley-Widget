@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- This test project needs the Windows-specific TFM so it can reference WPF/Windows-targeted projects
+         (WileyWidget.UI and WileyWidget.Services target net9.0-windows10.0.19041). -->
+    <TargetFramework>net9.0-windows10.0.19041</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Polly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Only reference WPF/UI and Services projects when building on Windows to avoid Linux container build failures -->
+    <ProjectReference Include="WileyWidget.UI/WileyWidget.UI.csproj" Condition=" '$(OS)' == 'Windows_NT' " />
+    <ProjectReference Include="WileyWidget.Business/WileyWidget.Business.csproj" />
+    <ProjectReference Include="WileyWidget.Services/WileyWidget.Services.csproj" Condition=" '$(OS)' == 'Windows_NT' " />
+    <ProjectReference Include="WileyWidget.Models/WileyWidget.Models.csproj" />
+    <ProjectReference Include="WileyWidget.Abstractions/WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="WileyWidget.Data/WileyWidget.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="WileyWidget.ViewModels.Tests/**/*.cs" />
+    <!-- Include existing viewmodel tests moved under WileyWidget.Tests, excluding UI-specific tests that run on Windows only -->
+    <Compile Include="WileyWidget.Tests/ModuleInitTest/**\*.cs" Condition="Exists('WileyWidget.Tests/ModuleInitTest')" />
+    <Compile Include="WileyWidget.Tests/RepositoryTests/**\*.cs" />
+    <!-- Remove UI tests from the Linux/container build; they are included in WileyWidget.UiTests.csproj -->
+    <Compile Remove="WileyWidget.ViewModels.Tests/BalanceColorConverterTests.cs" />
+    <Compile Remove="WileyWidget.ViewModels.Tests/BooleanToBrushConverterTests.cs" />
+    <Compile Remove="WileyWidget.ViewModels.Tests/BooleanToVisibilityConverterTests.cs" />
+    <Compile Remove="WileyWidget.ViewModels.Tests/NullToVisibilityConverterTests.cs" />
+    <Compile Remove="WileyWidget.ViewModels.Tests/StringToVisibilityConverterTests.cs" />
+    <Compile Remove="WileyWidget.ViewModels.Tests/ChatConvertersTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Keep a TestsSupport folder for helpers, templates and fixtures -->
+    <None Include="TestsSupport/**" />
+  </ItemGroup>
+
+</Project>

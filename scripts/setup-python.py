@@ -38,7 +38,7 @@ def check_python_setup():
         print("❌ pip not found")
 
     # Check key packages
-    required_packages = ["debugpy", "azure-identity", "azure-keyvault-secrets"]
+    required_packages = ["debugpy", "azure-identity"]
     missing_packages = []
     for package in required_packages:
         try:

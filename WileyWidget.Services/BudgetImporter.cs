@@ -172,4 +172,31 @@ public class BudgetImporter : IBudgetImporter
         _logger.LogInformation("Validated and enriched {Count} budget entries", validatedEntries.Count);
         return Task.FromResult<IEnumerable<BudgetEntry>>(validatedEntries);
     }
+
+    /// <inheritdoc/>
+    public async void Import(string sourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath))
+            throw new ArgumentException("Source path cannot be null or empty", nameof(sourcePath));
+
+        _logger.LogInformation("Importing budget data from: {SourcePath}", sourcePath);
+
+        try
+        {
+            var entries = await ImportBudgetAsync(sourcePath);
+
+            // Save the imported entries to the repository
+            foreach (var entry in entries)
+            {
+                await _budgetRepository.AddAsync(entry);
+            }
+
+            _logger.LogInformation("Successfully imported {Count} budget entries from {SourcePath}", entries.Count(), sourcePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to import budget data from {SourcePath}", sourcePath);
+            throw;
+        }
+    }
 }

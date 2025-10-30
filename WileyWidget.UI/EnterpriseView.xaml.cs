@@ -60,9 +60,10 @@ public partial class EnterpriseView : UserControl
                 }
                 else
                 {
-                    // Fallback to new instance if ViewModel not available (shouldn't happen in normal operation)
-                    var exporter = new WileyWidget.Services.ReportExportService();
-                    await exporter.ExportToCsvAsync(items.Cast<object>(), csvFileName).ConfigureAwait(false);
+                    // Fallback: Log error - this should not happen in normal operation
+                    // ReportExportService requires ILogger injection, so we can't create it directly
+                    Serilog.Log.Error("EnterpriseViewModel not available in DataContext for CSV export");
+                    return;
                 }
 
                 // Ensure MessageBox (UI interaction) runs on the UI thread.

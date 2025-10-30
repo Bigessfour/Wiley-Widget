@@ -385,5 +385,27 @@ namespace WileyWidget.Services
                 return stats;
             }
         }
+
+        /// <summary>
+        /// Anonymizes a string input by replacing sensitive information with generic placeholders.
+        /// </summary>
+        /// <param name="input">The string to anonymize</param>
+        /// <returns>The anonymized string</returns>
+        public string Anonymize(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+            {
+                _logger.LogDebug("Anonymize called with null or empty input");
+                return input;
+            }
+
+            _logger.LogDebug("Anonymizing input of length {Length}", input.Length);
+
+            // Use existing anonymization logic for names, addresses, etc.
+            var anonymized = AnonymizeName(input, "Text");
+
+            _logger.LogDebug("Anonymization completed for input");
+            return anonymized;
+        }
     }
 }

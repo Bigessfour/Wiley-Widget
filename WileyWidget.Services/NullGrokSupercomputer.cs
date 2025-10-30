@@ -38,4 +38,7 @@ public class NullGrokSupercomputer : IGrokSupercomputer
 
     public Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<MunicipalAccount> accounts, BudgetData budget)
         => Task.FromResult("[Dev Stub] Municipal accounts analysis is disabled in development. Configure AI services to enable.");
+
+    public Task<string> QueryAsync(string prompt)
+        => Task.FromResult("[Dev Stub] AI query is disabled in development. Configure AI services to enable.");
 }

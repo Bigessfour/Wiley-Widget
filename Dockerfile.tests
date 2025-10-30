@@ -1,0 +1,36 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+
+WORKDIR /src
+
+# Copy solution and project files first for better layer caching
+COPY *.sln ./
+COPY WileyWidget.ViewModels.Tests.csproj ./
+# Copy optional Directory.Build.* if present
+COPY Directory.Build.props ./
+COPY Directory.Build.targets ./
+
+# Restore packages
+RUN dotnet restore --disable-parallel
+
+# Copy the rest of the repo into the image
+COPY . .
+
+WORKDIR /src
+
+# Ensure TestResults dir exists
+RUN mkdir -p /workspace/TestResults
+
+# Run tests, output trx into /workspace/TestResults
+RUN dotnet test WileyWidget.ViewModels.Tests.csproj \
+    /property:BuildIncremental=true \
+    /property:GenerateFullPaths=true \
+    --logger "trx;LogFileName=/workspace/TestResults/test-results.trx" \
+    --results-directory /workspace/TestResults \
+    -v minimal
+
+# Keep TestResults available in a slim runtime image
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS runtime
+WORKDIR /app
+COPY --from=build /workspace/TestResults /workspace/TestResults
+
+CMD ["/bin/bash", "-c", "ls -la /workspace/TestResults || true; exit 0"]

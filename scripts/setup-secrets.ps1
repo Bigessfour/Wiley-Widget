@@ -57,17 +57,8 @@ QBO_ENVIRONMENT=Sandbox
 # Syncfusion License (get from https://www.syncfusion.com/account/manage-license)
 SYNCFUSION_LICENSE_KEY=your-syncfusion-license-key-here
 
-# Azure Configuration (if using Azure services)
-AZURE_SUBSCRIPTION_ID=your-subscription-id-here
-AZURE_TENANT_ID=your-tenant-id-here
-AZURE_CLIENT_ID=your-client-id-here
-AZURE_CLIENT_SECRET=your-client-secret-here
-AZURE_SQL_SERVER=your-server.database.windows.net
-AZURE_SQL_DATABASE=your-database-name
-AZURE_SQL_RETRY_ATTEMPTS=3
-
-# Key Vault (if using)
-AZURE_KEY_VAULT_URL=https://your-keyvault.vault.azure.net/
+# Azure configuration removed - project no longer uses Azure services.
+# If you later re-enable Azure, add the necessary AZURE_* variables here or set them in your system environment.
 "@
 
     $envTemplate | Out-File -FilePath $envFile -Encoding UTF8

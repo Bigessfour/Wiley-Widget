@@ -1159,6 +1159,11 @@ internal sealed class DevNullAIService : WileyWidget.Services.IAIService
         // No-op for dev stub
         return Task.CompletedTask;
     }
+
+    public Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(new AIResponseResult("[Dev Stub] Prompt disabled.", 200));
+    }
 }
 
 /// <summary>

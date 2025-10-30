@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 using Syncfusion.XlsIO;
 using WileyWidget.Models.Entities;
@@ -14,6 +15,13 @@ namespace WileyWidget.Services.Excel;
 /// </summary>
 public class ExcelReaderService : IExcelReaderService
 {
+    private readonly ILogger<ExcelReaderService> _logger;
+
+    public ExcelReaderService(ILogger<ExcelReaderService> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc/>
     public async Task<IEnumerable<BudgetEntry>> ReadBudgetDataAsync(string filePath)
     {

@@ -475,8 +475,8 @@ namespace WileyWidget.ViewModels
             // Subscribe to events
             _refreshDataSubscription = _eventAggregator.GetEvent<RefreshDataMessage>().Subscribe(OnRefreshDataRequested);
             _enterpriseChangedSubscription = _eventAggregator.GetEvent<EnterpriseChangedMessage>().Subscribe(OnEnterpriseChanged);
-            _budgetUpdatedSubscription = _eventAggregator.GetEvent<BudgetUpdatedMessage>().Subscribe(OnBudgetUpdated, ThreadOption.UIThread);
-            _accountsLoadedSubscription = _eventAggregator.GetEvent<AccountsLoadedEvent>().Subscribe(OnAccountsLoaded, ThreadOption.UIThread);
+            _budgetUpdatedSubscription = _eventAggregator.GetEvent<BudgetUpdatedMessage>().Subscribe(OnBudgetUpdated, ThreadOption.PublisherThread);
+            _accountsLoadedSubscription = _eventAggregator.GetEvent<AccountsLoadedEvent>().Subscribe(OnAccountsLoaded, ThreadOption.PublisherThread);
 
             // Initialize commands
             InitializeCommands();

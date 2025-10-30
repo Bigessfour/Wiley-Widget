@@ -79,6 +79,29 @@
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Remove interface source files since they are now in the Abstractions project -->
+    <Compile Remove="IAILoggingService.cs" />
+    <Compile Remove="IAIService.cs" />
+    <Compile Remove="IAuditService.cs" />
+    <Compile Remove="IBoldReportService.cs" />
+    <Compile Remove="IBudgetImporter.cs" />
+    <Compile Remove="IChargeCalculatorService.cs" />
+    <Compile Remove="IDataAnonymizerService.cs" />
+    <Compile Remove="IDispatcherHelper.cs" />
+    <Compile Remove="IGrokSupercomputer.cs" />
+    <Compile Remove="IMemoryProfiler.cs" />
+    <Compile Remove="Interfaces\IQuickBooksService.cs" />
+    <Compile Remove="Interfaces\IReportExportService.cs" />
+    <Compile Remove="Interfaces\ISecretVaultService.cs" />
+    <Compile Remove="Interfaces\ISettingsService.cs" />
+    <Compile Remove="Interfaces\ISyncfusionLicenseService.cs" />
+    <Compile Remove="Interfaces\IUserContext.cs" />
+    <Compile Remove="Interfaces\IWhatIfScenarioEngine.cs" />
+    <Compile Remove="Interfaces\IWileyWidgetContextService.cs" />
   </ItemGroup>
 
   <ItemGroup>

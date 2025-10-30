@@ -92,12 +92,7 @@ namespace WileyWidget.Startup
             // Register open-generic ILogger<> using delegate factory
             containerRegistry.Register(typeof(Microsoft.Extensions.Logging.ILogger<>),
                 reuse: Prism.Ioc.Reuse.Transient,
-                factory: (c, t) =>
-                {
-                    var loggerFactory = c.Resolve<ILoggerFactory>();
-                    var loggerType = t.GenericTypeArguments[0];
-                    return loggerFactory.CreateLogger(loggerType);
-                });
+                factory: (c, t) => loggerFactory.CreateLogger(t.GenericTypeArguments[0]));
             Log.Information("Bootstrapper: Open-generic ILogger<> registered using delegate factory");
 
             // Register a configurable MemoryCache instance for early consumers

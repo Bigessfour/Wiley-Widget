@@ -671,6 +671,11 @@ public class XAIService : IAIService, IDisposable
         }
     }
 
+    // Adapter overload to satisfy the Abstractions interface which declares
+    // ValidateApiKeyAsync(string) without a CancellationToken parameter.
+    public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey)
+        => ValidateApiKeyAsync(apiKey, CancellationToken.None);
+
     /// <summary>
     /// Review application areas and provide recommendations
     /// </summary>
@@ -764,5 +769,54 @@ public class XAIService : IAIService, IDisposable
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Sends a prompt to the xAI service and returns the response
+    /// </summary>
+    /// <param name="prompt">The prompt to send</param>
+    /// <returns>The AI response result</returns>
+    public async Task<AIResponseResult> SendPromptAsync(string prompt, System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            throw new ArgumentException("Prompt cannot be null or empty", nameof(prompt));
+
+        try
+        {
+            _logger.LogInformation("Sending prompt to xAI service, length: {Length}", prompt.Length);
+
+            var request = new
+            {
+                messages = new[]
+                {
+                    new { role = "user", content = prompt }
+                },
+                model = "grok-beta",
+                stream = false,
+                temperature = 0.7
+            };
+
+            var response = await _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken: cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<XAIResponse>();
+                var message = result?.choices?.FirstOrDefault()?.message?.content ?? "No response content";
+
+                _logger.LogInformation("Successfully received response from xAI");
+                return new AIResponseResult(message, (int)response.StatusCode);
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("xAI API returned error status {StatusCode}: {Error}", response.StatusCode, errorContent);
+                return new AIResponseResult($"xAI API error: {errorContent}", (int)response.StatusCode, "APIError", errorContent);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending prompt to xAI service");
+            return new AIResponseResult($"Error: {ex.Message}", 500, "InternalError", ex.Message);
+        }
     }
 }

@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services", "Wil
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Abstractions", "WileyWidget.Abstractions\WileyWidget.Abstractions.csproj", "{E8ED5FBD-A352-47BA-A642-811FC7BB53E7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Tests", "WileyWidget.ViewModels.Tests.csproj", "{D1F3A1B2-3C4D-4E5F-8123-ABCDEF123456}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.UiTests", "WileyWidget.UiTests.csproj", "{8B9C2A44-1234-4B2A-9F3A-CAFED00D1234}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

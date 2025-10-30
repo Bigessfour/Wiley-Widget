@@ -1,4 +1,8 @@
 {
+  "mcp.preferredTool": "./tools/mcp-csharp.exe",
+  "mcp.wrapperScript": "${workspaceFolder}/scripts/run-mcp.ps1",
+  "tasks.defaultBuildTask": "mcp: analyze",
+  "mcp.autoRunOnSave": false,
   "dotnet-test-explorer.testFramework": "xunit",
   "test-explorer.codeLensEnabled": true,
   "test-explorer.showInlineError": true,
@@ -90,7 +94,7 @@
     "Xfinity"
   ],
   // PowerShell Extension v2025.4.0 configuration (per https://learn.microsoft.com/en-us/powershell/scripting/dev-cross-plat/vscode/using-vscode)
-  "powershell.powerShellDefaultVersion": "PowerShell (x64)",
+  "powershell.powerShellDefaultVersion": "PowerShell 7.5.4 (MSI)",
   "powershell.powerShellExePath": "C:/Program Files/PowerShell/7/pwsh.exe",
   "powershell.powerShellAdditionalExePaths": {
     "PowerShell 7.5.4 (MSI)": "C:/Program Files/PowerShell/7/pwsh.exe"
@@ -198,6 +202,9 @@
   "dotnet.testsCodeLens.enable": true,
   "dotnet.server.startTimeout": 30000,
   // Disable OmniSharp entirely since we're using C# Dev Kit
+  // The following settings help ensure OmniSharp does not start or provide diagnostics
+  "omnisharp.enable": false,
+  "omnisharp.autoStart": false,
   "omnisharp.enableEditorConfigSupport": false,
   "omnisharp.enableRoslynAnalyzers": false,
   "omnisharp.enableLspDriver": false,

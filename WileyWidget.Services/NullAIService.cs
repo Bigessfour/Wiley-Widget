@@ -27,9 +27,17 @@ public class NullAIService : IAIService
     public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey, CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("Dev stub: validation not available in development.", 403, "AuthFailure", null));
 
+    // Adapter overload to satisfy the Abstractions interface which declares
+    // ValidateApiKeyAsync(string) without a CancellationToken parameter.
+    public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey)
+        => ValidateApiKeyAsync(apiKey, CancellationToken.None);
+
     public Task UpdateApiKeyAsync(string newApiKey)
     {
         // No-op in dev stub
         return Task.CompletedTask;
     }
+
+    public Task<AIResponseResult> SendPromptAsync(string prompt, System.Threading.CancellationToken cancellationToken = default)
+        => Task.FromResult(new AIResponseResult("[Dev Stub] AI prompt sending is disabled in development. Configure XAI_API_KEY to enable.", 403, "AuthFailure", null));
 }

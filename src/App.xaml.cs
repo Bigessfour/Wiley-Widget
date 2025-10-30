@@ -15,6 +15,7 @@ using PrismIoc = Prism.Ioc;
 using PrismModularity = Prism.Modularity;
 using Prism;
 using Prism.Mvvm;
+using Prism.Dialogs;
 using Prism.Container.DryIoc;
 using Prism.Navigation.Regions;
 using DryIoc;
@@ -28,6 +29,7 @@ using WileyWidget.Services;
 using Serilog;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 // Removed duplicate using System.Diagnostics (already included above)
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -513,11 +515,11 @@ namespace WileyWidget
         /// </summary>
         private T ResolveWithRetry<T>(int maxAttempts = 3) where T : class
         {
-            // IMPORTANT: Avoid self-recursion when attempting to resolve IServiceScopeFactory.
-            // We first try the root Prism container, and only if a scope factory is ALREADY available
-            // do we create a scope to resolve the requested service. We never call ResolveWithRetry
-            // from within itself.
-            bool activatorFallbackUsed = false;
+            // IMPORTANT: Avoid attempting to instantiate interfaces or abstract types with Activator.
+            // Preferred resolution order:
+            //  1) Resolve from Prism container
+            //  2) Resolve from an IServiceScopeFactory-created scope (if available)
+            //  If both fail, throw a clear InvalidOperationException explaining missing registration.
 
             var result = TryRetryOnException(() =>
             {
@@ -528,9 +530,10 @@ namespace WileyWidget
                     if (instance != null)
                         return instance;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignore and try via scope below
+                    // capture for diagnostics via logs but continue to attempt scope-based resolution
+                    Log.Debug(ex, "Direct container Resolve<{Type}> failed; will attempt scoped resolution if available", typeof(T).FullName);
                 }
 
                 // 2) If an IServiceScopeFactory has been registered, attempt to resolve via a scope
@@ -545,22 +548,31 @@ namespace WileyWidget
                             return svc;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignore and fall back to Activator
+                    Log.Debug(ex, "Scoped resolution for {Type} failed or IServiceScopeFactory is not available", typeof(T).FullName);
                 }
 
-                // 3) Last resort
-                activatorFallbackUsed = true;
-                return Activator.CreateInstance<T>();
-            }, maxAttempts);
+                // 3) Do NOT attempt Activator.CreateInstance for interfaces/abstract types.
+                if (typeof(T).IsInterface || typeof(T).IsAbstract)
+                {
+                    // Provide a clear, actionable error message so callers can fix DI registration.
+                    throw new InvalidOperationException($"Failed to resolve service type '{typeof(T).FullName}' from the DI container. The type is an interface or abstract; register a concrete implementation in RegisterTypes() or ensure Bootstrapper configures it.");
+                }
 
-            if (activatorFallbackUsed)
-            {
-                // Warn when we had to fallback to Activator. This indicates a missing or misconfigured
-                // registration in the DI container and should be investigated (but is tolerated at runtime).
-                Log.Warning("ResolveWithRetry used Activator.CreateInstance fallback for type {Type}. This may indicate a missing DI registration.", typeof(T).FullName);
-            }
+                // At this point the type is concrete. Try Activator as a last resort but provide
+                // explicit diagnostics on failure (no parameterless ctor etc.).
+                try
+                {
+                    var created = Activator.CreateInstance<T>();
+                    Log.Warning("ResolveWithRetry used Activator.CreateInstance fallback for concrete type {Type}. Consider registering it with the DI container instead.", typeof(T).FullName);
+                    return created!;
+                }
+                catch (MissingMethodException mex)
+                {
+                    throw new InvalidOperationException($"Failed to create instance of concrete type '{typeof(T).FullName}' via Activator.CreateInstance - no parameterless constructor. Register the type with the DI container instead.", mex);
+                }
+            }, maxAttempts);
 
             return result;
         }
@@ -737,10 +749,10 @@ namespace WileyWidget
                         }
                         else
                         {
-                            // Check for license key in local secure storage (Azure Key Vault local cache or similar)
-                            // This could be implemented as needed based on the specific key vault solution being used
-                            Log.Debug("Checking for Syncfusion license in local key vault...");
-                            // TODO: Implement specific key vault access if needed
+                            // Check for license key in local secure storage
+                            // This could be implemented as needed based on the specific storage solution being used
+                            Log.Debug("Checking for Syncfusion license in local secret vault...");
+                            // TODO: Implement specific secret vault access if needed
                         }
                     }
                 }
@@ -754,7 +766,7 @@ namespace WileyWidget
                     }
                     else
                     {
-                        Log.Warning("Syncfusion license key not configured. Set Syncfusion:LicenseKey in appsettings.json, SYNCFUSION_LICENSE_KEY environment variable (user or machine scope), or ensure it's available in your local key vault to suppress runtime license dialogs.");
+                        Log.Warning("Syncfusion license key not configured. Set Syncfusion:LicenseKey in appsettings.json or the SYNCFUSION_LICENSE_KEY environment variable (user or machine scope) to suppress runtime license dialogs.");
                     }
                     return;
                 }
@@ -826,10 +838,10 @@ namespace WileyWidget
                         }
                         else
                         {
-                            // Check for license key in local secure storage (Azure Key Vault local cache or similar)
-                            // This could be implemented as needed based on the specific key vault solution being used
-                            Log.Debug("Checking for Bold Reports license in local key vault...");
-                            // TODO: Implement specific key vault access if needed
+                            // Check for license key in local secure storage
+                            // This could be implemented as needed based on the specific storage solution being used
+                            Log.Debug("Checking for Bold Reports license in local secret vault...");
+                            // TODO: Implement specific secret vault access if needed
                         }
                     }
                 }
@@ -837,15 +849,49 @@ namespace WileyWidget
                 if (string.IsNullOrWhiteSpace(licenseKey)
                     || licenseKey.Contains("YOUR_BOLDREPORTS_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (forceRefresh)
+                    // Try additional secure local locations for the license key before warning
+                    var possiblePaths = new[]
                     {
-                        Log.Debug("Bold Reports license key not configured; skipping re-registration");
-                    }
-                    else
+                        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "WileyWidget", "boldreports_license.txt"),
+                        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WileyWidget", "boldreports_license.txt"),
+                        System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? string.Empty, "secrets", "boldreports_license.txt"),
+                        System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? string.Empty, "boldreports_license.txt")
+                    };
+
+                    foreach (var p in possiblePaths)
                     {
-                        Log.Warning("Bold Reports license key not configured. Set BoldReports:LicenseKey in appsettings.json, BOLDREPORTS_LICENSE_KEY environment variable (user or machine scope), or ensure it's available in your local key vault to suppress runtime license dialogs.");
+                        try
+                        {
+                            if (!string.IsNullOrWhiteSpace(p) && System.IO.File.Exists(p))
+                            {
+                                var fileKey = System.IO.File.ReadAllText(p).Trim();
+                                if (!string.IsNullOrWhiteSpace(fileKey) && !fileKey.Contains("YOUR_BOLDREPORTS_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    licenseKey = fileKey;
+                                    licenseSource = p;
+                                    Log.Information("Bold Reports license key loaded from file: {Path}", p);
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Debug(ex, "Failed to read Bold Reports license from {Path}", p);
+                        }
                     }
-                    return;
+
+                    if (string.IsNullOrWhiteSpace(licenseKey) || licenseKey.Contains("YOUR_BOLDREPORTS_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (forceRefresh)
+                        {
+                            Log.Debug("Bold Reports license key not configured; skipping re-registration");
+                        }
+                        else
+                        {
+                            Log.Warning("Bold Reports license key not configured. Set BoldReports:LicenseKey in appsettings.json, BOLDREPORTS_LICENSE_KEY environment variable (user or machine scope), or place the license in a file at %ProgramData%\\WileyWidget\\boldreports_license.txt or %AppData%\\WileyWidget\\boldreports_license.txt to suppress runtime license dialogs.");
+                        }
+                        return;
+                    }
                 }
 
                 string masked = licenseKey.Length > 8 ? string.Concat(licenseKey.AsSpan(0, 8), "...") : "(masked)";
@@ -873,6 +919,8 @@ namespace WileyWidget
 
         protected override void RegisterTypes(Prism.Ioc.IContainerRegistry containerRegistry)
         {
+            ArgumentNullException.ThrowIfNull(containerRegistry);
+#pragma warning disable CS8604 // Possible null reference argument
             Log.Information("=== Starting DI Container Registration ===");
             Log.Debug("RegisterTypes called with containerRegistry: {Type}", containerRegistry?.GetType().Name);
 
@@ -885,7 +933,17 @@ namespace WileyWidget
             {
                 // Prefer calling the centralized Bootstrapper when available. Use reflection
                 // so design-time/wpftmp compilations that omit the Startup sources still succeed.
-                configuration = TryRunBootstrapper(containerRegistry);
+                configuration = TryRunBootstrapper(containerRegistry!);
+                // Ensure IConfiguration is available from the DI container for ResolveWithRetry callers
+                try
+                {
+                    containerRegistry.RegisterInstance<IConfiguration>(configuration);
+                    Log.Debug("Registered IConfiguration instance into DI container");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to register IConfiguration into DI container (continuing)");
+                }
                 Log.Debug("Configuration, logging, HttpClient, and database services registered via Bootstrapper.Run() (or fallback)");
             }
             catch (Exception ex)
@@ -912,6 +970,47 @@ namespace WileyWidget
                 // NOTE: ThemeManager removed - SfSkinManager handles all theming globally per Syncfusion documentation
                 // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
                 containerRegistry.RegisterSingleton<IDispatcherHelper>(provider => new DispatcherHelper());
+                // Register logging infrastructure before AppOptionsConfigurator is resolved
+                try
+                {
+                    containerRegistry.RegisterSingleton<ILoggerFactory>(provider =>
+                    {
+                        var serviceCollection = new ServiceCollection();
+                        // Integrate Serilog as the primary provider and keep console for diagnostics
+                        serviceCollection.AddLogging(builder =>
+                        {
+                            // If IConfiguration is available, apply the Logging section so providers and levels can be configured
+                            try
+                            {
+                                if (configuration is IConfiguration cfg)
+                                {
+                                    builder.AddConfiguration(cfg.GetSection("Logging"));
+                                }
+                            }
+                            catch
+                            {
+                                // Swallow configuration integration failures to avoid breaking startup
+                            }
+
+                            builder.ClearProviders();
+                            // Use the existing Serilog static logger as the primary provider
+                            builder.AddSerilog(Log.Logger, dispose: false);
+                            builder.AddConsole();
+                        });
+
+                        var sp = serviceCollection.BuildServiceProvider();
+                        return sp.GetRequiredService<ILoggerFactory>();
+                    });
+
+                    // Register generic ILogger<T> so consumers can depend on ILogger<T>
+                    containerRegistry.Register(typeof(ILogger<>), typeof(Logger<>));
+                    Log.Debug("Registered ILoggerFactory singleton and generic ILogger<> resolver (with IConfiguration integration)");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to register Microsoft.Extensions.Logging services into Prism container");
+                }
+
                 containerRegistry.RegisterSingleton<AppOptionsConfigurator>();
 
                 // Do NOT expose the concrete DryIoc container here. Depend on Prism's IContainerRegistry/IContainerProvider
@@ -925,32 +1024,16 @@ namespace WileyWidget
                 throw;
             }
 
-            // Defer secrets initialization to a background task to avoid blocking startup
-            _ = System.Threading.Tasks.Task.Run(async () =>
+            // Register AppOptions after core infrastructure (including ISecretVaultService) is available
+            try
             {
-                try
-                {
-                    var secretVault = this.Container.Resolve<ISecretVaultService>();
-                    await secretVault.MigrateSecretsFromEnvironmentAsync().ConfigureAwait(false);
-                    Log.Information("✓ (Deferred) Environment secrets migrated to local vault");
-
-                    var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
-                    if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
-                    {
-                        await secretVault.PopulateProductionSecretsAsync().ConfigureAwait(false);
-                        Log.Information("✓ (Deferred) Production secrets initialized");
-                    }
-
-                    // Signal successful completion of deferred secret initialization
-                    _secretsInitializationTcs.TrySetResult(true);
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Deferred production secrets initialization failed");
-                    // Surface failure to any awaiters so readiness checks can act accordingly
-                    _secretsInitializationTcs.TrySetException(ex);
-                }
-            });
+                RegisterAppOptions(containerRegistry, configuration);
+                Log.Debug("AppOptions registration completed after core infrastructure registration");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "RegisterAppOptions failed when invoked after core infrastructure registration; continuing without AppOptions configurator");
+            }
 
             try
             {
@@ -963,7 +1046,8 @@ namespace WileyWidget
                 }
 
                 // Register configuration options infrastructure (bridging Microsoft.Extensions.Options into container)
-                RegisterAppOptions(containerRegistry, configuration);
+                // NOTE: AppOptionsConfigurator depends on ISecretVaultService; ensure secret vault is registered before resolving the configurator.
+                // Registration will be invoked after core infrastructure & secret vault registration to avoid resolution order issues.
             }
             catch (Exception ex)
             {
@@ -1064,12 +1148,9 @@ namespace WileyWidget
                     {
                         Log.Information("Initializing BudgetImporter on first access...");
                         return new BudgetImporter(
-                            provider.Resolve<ILogger<BudgetImporter>>(),
                             provider.Resolve<IExcelReaderService>(),
-                            provider.Resolve<IBudgetRepository>(),
-                            provider.Resolve<IEnterpriseRepository>(),
-                            provider.Resolve<IMunicipalAccountRepository>(),
-                            provider.Resolve<IAuditRepository>());
+                            provider.Resolve<ILogger<BudgetImporter>>(),
+                            provider.Resolve<IBudgetRepository>());
                     });
                     return lazyService.Value;
                 });
@@ -1276,7 +1357,7 @@ namespace WileyWidget
                     catch (Exception)
                     {
                         // Fallback: allow Activator to create the ViewModel if it's not registered in the container
-                        return Activator.CreateInstance(viewModelType);
+                        return Activator.CreateInstance(viewModelType)!;
                     }
                 });
                 Log.Information("✓ Configured Prism ViewModelLocationProvider to resolve ViewModels from DI container");
@@ -1294,7 +1375,7 @@ namespace WileyWidget
                     Log.Debug("Running focused container resolution checks (extended diagnostics)...");
                     var diagContainer = containerRegistry.GetContainer();
 
-                    void TryResolve(Type t, string name = null)
+                    void TryResolve(Type t, string? name = null)
                     {
                         try
                         {
@@ -1340,6 +1421,7 @@ namespace WileyWidget
 
             // Validate public accessibility to prevent InvalidRegistrationException
             ValidatePublicAccessibility();
+#pragma warning restore CS8604 // Possible null reference argument
         }
 
         private void TryRegisterImplementationByName(PrismIoc.IContainerRegistry containerRegistry, Type interfaceType, string implementationFullName)
@@ -1528,7 +1610,27 @@ namespace WileyWidget
                     // Try to obtain AppOptionsConfigurator from the Prism container provider; avoid depending on DryIoc directly
                     try
                     {
-                        var configurator = this.Container.Resolve<AppOptionsConfigurator>();
+                        AppOptionsConfigurator configurator;
+                        try
+                        {
+                            // First attempt to resolve - this will succeed if the type was registered earlier
+                            configurator = this.Container.Resolve<AppOptionsConfigurator>();
+                        }
+                        catch (Exception)
+                        {
+                            // Not registered yet - register as a singleton so subsequent resolves will work
+                            try
+                            {
+                                containerRegistry.RegisterSingleton<AppOptionsConfigurator>();
+                                configurator = this.Container.Resolve<AppOptionsConfigurator>();
+                            }
+                            catch (Exception innerEx)
+                            {
+                                // If registering or resolving fails, rethrow to be handled by outer catch
+                                throw new InvalidOperationException("Failed to register or resolve AppOptionsConfigurator", innerEx);
+                            }
+                        }
+
                         configurator.Configure(appOptions);
                     }
                     catch (Exception)
@@ -1853,27 +1955,7 @@ namespace WileyWidget
             {
                 // 0. Register Application Insights Telemetry (Singleton)
                 // Production telemetry for AI service monitoring and performance tracking
-                // NOTE: Commented out until Azure/Application Insights is configured
-                /*
-                var config = ResolveWithRetry<IConfiguration>();
-                var instrumentationKey = config["ApplicationInsights:InstrumentationKey"];
-                if (!string.IsNullOrEmpty(instrumentationKey))
-                {
-                    var telemetryConfiguration = new Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration();
-                    telemetryConfiguration.ConnectionString = config["ApplicationInsights:ConnectionString"] ?? $"InstrumentationKey={instrumentationKey}";
-
-                    var telemetryClient = new Microsoft.ApplicationInsights.TelemetryClient(telemetryConfiguration);
-                    containerRegistry.RegisterInstance(telemetryClient);
-                    Log.Information("✓ Registered Application Insights TelemetryClient (Singleton)");
-                    Log.Information("  - Production telemetry for AI service monitoring");
-                    Log.Information("  - Features: Request tracking, dependency monitoring, custom events, metrics");
-                    Log.Information("  - Configuration: InstrumentationKey, ConnectionString from appsettings.json");
-                }
-                else
-                {
-                    Log.Warning("Application Insights not configured - set ApplicationInsights:InstrumentationKey in appsettings.json for production telemetry");
-                }
-                */
+                // Application Insights integration deferred (not configured).
 
                 // 0. Register IDataAnonymizerService -> DataAnonymizerService (Singleton)
                 // Provides privacy-compliant data anonymization for AI operations
@@ -2432,6 +2514,33 @@ namespace WileyWidget
 
                 Application.Current.MainWindow?.Show();
 
+                // Defer secrets initialization to a background task to avoid blocking startup
+                _ = System.Threading.Tasks.Task.Run(async () =>
+                {
+                    try
+                    {
+                        var secretVault = this.Container.Resolve<ISecretVaultService>();
+                        await secretVault.MigrateSecretsFromEnvironmentAsync().ConfigureAwait(false);
+                        Log.Information("✓ (Deferred) Environment secrets migrated to local vault");
+
+                        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+                        if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await secretVault.PopulateProductionSecretsAsync().ConfigureAwait(false);
+                            Log.Information("✓ (Deferred) Production secrets initialized");
+                        }
+
+                        // Signal successful completion of deferred secret initialization
+                        _secretsInitializationTcs.TrySetResult(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Deferred production secrets initialization failed");
+                        // Surface failure to any awaiters so readiness checks can act accordingly
+                        _secretsInitializationTcs.TrySetException(ex);
+                    }
+                });
+
                 // Log module health report after initialization
                 try
                 {
@@ -2614,8 +2723,8 @@ namespace WileyWidget
         {
             // Get project directory for .env file
             var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            var assemblyDir = System.IO.Path.GetDirectoryName(assemblyLocation);
-            var projectDir = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(assemblyDir)); // bin\Debug\net9.0-windows -> project root
+            var assemblyDir = System.IO.Path.GetDirectoryName(assemblyLocation) ?? AppDomain.CurrentDomain.BaseDirectory;
+            var projectDir = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(assemblyDir)) ?? AppDomain.CurrentDomain.BaseDirectory; // bin\Debug\net9.0-windows -> project root
             var envPath = System.IO.Path.Combine(projectDir, ".env");
 
             // Check for XAI_API_KEY environment variable and write to .env if needed

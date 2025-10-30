@@ -133,6 +133,32 @@ namespace WileyWidget.Services
         }
 
         /// <summary>
+        /// Logs informational messages about AI operations.
+        /// </summary>
+        public void LogInformation(string message)
+        {
+            try
+            {
+                var entry = new AILogEntry
+                {
+                    Timestamp = DateTime.UtcNow,
+                    EntryType = "Information",
+                    Query = message
+                };
+
+                _logEntries.Add(entry);
+
+                _aiUsageLogger.Information("AI Info | Message: {Message}", TruncateForLog(message, 500));
+
+                _logger.LogInformation("Logged AI information: {Message}", message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error logging AI information");
+            }
+        }
+
+        /// <summary>
         /// Logs an error that occurred during AI processing.
         /// </summary>
         public void LogError(string query, string error, string errorType)
@@ -170,7 +196,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Logs an error with exception details.
         /// </summary>
-        public void LogError(string query, Exception exception)
+        public void LogError(string query, Exception? exception)
         {
             try
             {

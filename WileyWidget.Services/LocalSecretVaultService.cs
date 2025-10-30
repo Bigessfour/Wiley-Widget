@@ -13,6 +13,7 @@ namespace WileyWidget.Services;
 /// Provides a secure, file-based alternative to environment variables for sensitive configuration.
 /// Includes migration utilities for production deployment.
 /// </summary>
+[Obsolete("LocalSecretVaultService is deprecated. Use EncryptedLocalSecretVaultService for secure encrypted storage instead.")]
 public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
 {
     private readonly string _secretsPath;
@@ -22,6 +23,8 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
     public LocalSecretVaultService(ILogger<LocalSecretVaultService> logger)
     {
         _logger = logger;
+
+        _logger.LogWarning("⚠️ LocalSecretVaultService is deprecated and stores secrets in plaintext. Consider migrating to EncryptedLocalSecretVaultService for secure encrypted storage.");
 
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var baseDirectory = Path.Combine(appData, "WileyWidget", "Secrets");
@@ -70,6 +73,32 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         {
             _logger.LogWarning(ex, "Failed to read secret {SecretName} from local vault", secretName);
             return null;
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
+    public void StoreSecret(string key, string value)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentException("Secret key is required", nameof(key));
+        }
+
+        _fileLock.Wait();
+        try
+        {
+            var secrets = LoadSecrets();
+            secrets[key] = value;
+            SaveSecretsAsync(secrets).Wait();
+            _logger.LogInformation("Secret {SecretKey} stored in local vault", key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist secret {SecretKey} to local vault", key);
+            throw;
         }
         finally
         {
@@ -272,10 +301,6 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
 
             // Database connection (if using external database)
             ["Database-ConnectionString"] = "",
-
-            // Azure services (if re-enabled in future)
-            ["Azure-StorageConnectionString"] = "",
-            ["Azure-KeyVaultUrl"] = "",
         };
 
         foreach (var (key, defaultValue) in productionSecrets)

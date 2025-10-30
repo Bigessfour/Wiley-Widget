@@ -187,6 +187,36 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
+    public void StoreSecret(string key, string value)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
+        if (string.IsNullOrEmpty(key)) throw new ArgumentNullException(nameof(key));
+        if (value == null) throw new ArgumentNullException(nameof(value));
+
+        _semaphore.Wait();
+        try
+        {
+            var filePath = GetSecretFilePath(key);
+            var secretBytes = Encoding.UTF8.GetBytes(value);
+            var encryptedBytes = ProtectedData.Protect(
+                secretBytes,
+                _entropy,
+                DataProtectionScope.CurrentUser);
+            var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
+            File.WriteAllText(filePath, encryptedBase64);
+            _logger.LogDebug("Stored secret '{SecretName}' in encrypted vault (sync)", key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to store secret '{SecretName}' (sync)", key);
+            throw;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
     public async Task SetSecretAsync(string secretName, string value)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));

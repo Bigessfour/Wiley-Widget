@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Syncfusion.Pdf;
 using Syncfusion.Pdf.Graphics;
 using Syncfusion.XlsIO;
@@ -16,6 +17,13 @@ namespace WileyWidget.Services;
 /// </summary>
 public class ReportExportService : IReportExportService
 {
+    private readonly ILogger<ReportExportService> _logger;
+
+    public ReportExportService(ILogger<ReportExportService> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <summary>
     /// Exports data to PDF format
     /// </summary>

@@ -722,4 +722,38 @@ Focus on municipal finance best practices and operational efficiency.";
                    $"Note: AI recommendations failed due to: {ex.Message}";
         }
     }
+
+    /// <summary>
+    /// Executes a direct AI query using the configured AI service
+    /// </summary>
+    /// <param name="prompt">The query prompt to send to the AI service</param>
+    /// <returns>The AI response as a string</returns>
+    public async Task<string> QueryAsync(string prompt)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            throw new ArgumentException("Prompt cannot be null or empty", nameof(prompt));
+
+        try
+        {
+            _logger.LogInformation("Executing AI query with prompt length: {Length}", prompt.Length);
+
+            var response = await _aiService.SendPromptAsync(prompt);
+
+            _aiLoggingService.LogMetric("GrokSupercomputer.QueryAsync.ResponseTime", 0, new Dictionary<string, object>
+            {
+                ["PromptLength"] = prompt.Length,
+                ["ResponseLength"] = response?.Content?.Length ?? 0,
+                ["Success"] = true
+            });
+
+            _logger.LogInformation("AI query completed successfully");
+            return response.Content;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing AI query");
+            _aiLoggingService.LogError("QueryAsync", ex);
+            throw;
+        }
+    }
 }

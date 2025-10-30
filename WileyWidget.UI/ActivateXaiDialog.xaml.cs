@@ -8,16 +8,28 @@ namespace WileyWidget.Views
     public partial class ActivateXaiDialog : Window
     {
         public System.Windows.Input.ICommand CloseCommand { get; private set; }
+
+        // ApiKeyBox is defined in XAML
+
         public ActivateXaiDialog()
         {
             InitializeComponent();
 
-            Loaded += (_, __) => ApiKeyBox.Focus();
+            if (ValidateBtn != null)
+                ValidateBtn.Click += async (_, __) => await ValidateAsync();
 
-            OpenConsoleBtn.Click += (_, __) => (DataContext as SettingsViewModel)?.OpenXaiConsolePublic();
+            Loaded += (_, __) =>
+            {
+                if (ApiKeyBox is { } box)
+                {
+                    box.Focus();
+                }
+            };
             ValidateBtn.Click += async (_, __) => await ValidateAsync();
-            SaveBtn.Click += async (_, __) => await SaveAsync();
+            if (SaveBtn != null)
+                SaveBtn.Click += async (_, __) => await SaveAsync();
             // Provide a window-local CloseCommand for binding
+            CloseCommand = new Prism.Commands.DelegateCommand(() => Close());
             CloseCommand = new Prism.Commands.DelegateCommand(() => Close());
         }
 

@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Controls;
+using Microsoft.Extensions.Logging;
 using Serilog;
 
 namespace WileyWidget.Services
@@ -15,10 +16,17 @@ namespace WileyWidget.Services
     /// </summary>
     public class BoldReportService : IBoldReportService
     {
+        private readonly ILogger<BoldReportService> _logger;
+
+        public BoldReportService(ILogger<BoldReportService> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         /// <summary>
         /// Loads an RDL report into the report viewer.
         /// </summary>
-        public async Task LoadReportAsync(Control reportViewer, string reportPath, Dictionary<string, object>? dataSources = null)
+        public async Task LoadReportAsync(object reportViewer, string reportPath, Dictionary<string, object>? dataSources = null)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
             if (string.IsNullOrWhiteSpace(reportPath)) throw new ArgumentNullException(nameof(reportPath));
@@ -70,7 +78,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Exports the current report to PDF.
         /// </summary>
-        public async Task ExportToPdfAsync(Control reportViewer, string filePath)
+        public async Task ExportToPdfAsync(object reportViewer, string filePath)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
             if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
@@ -101,7 +109,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Exports the current report to Excel.
         /// </summary>
-        public async Task ExportToExcelAsync(Control reportViewer, string filePath)
+        public async Task ExportToExcelAsync(object reportViewer, string filePath)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
             if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
@@ -132,7 +140,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Refreshes the report data.
         /// </summary>
-        public async Task RefreshReportAsync(Control reportViewer)
+        public async Task RefreshReportAsync(object reportViewer)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
 
@@ -162,7 +170,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Sets report parameters.
         /// </summary>
-        public async Task SetReportParametersAsync(Control reportViewer, Dictionary<string, object> parameters)
+        public async Task SetReportParametersAsync(object reportViewer, Dictionary<string, object> parameters)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
             if (parameters == null) throw new ArgumentNullException(nameof(parameters));

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 
-namespace WileyWidget.Models
+namespace WileyWidget.Models.Legacy
 {
     /// <summary>
     /// Represents a projection with date and projected value.

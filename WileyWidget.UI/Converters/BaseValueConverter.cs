@@ -10,7 +10,7 @@ namespace WileyWidget.Converters;
 /// - Default ConvertBack returns DependencyProperty.UnsetValue.
 /// - Helper to detect "Inverse" parameters.
 /// </summary>
-public abstract class ValueConverterBase : IValueConverter
+public abstract class BaseValueConverter : IValueConverter
 {
     public abstract object Convert(object value, Type targetType, object parameter, CultureInfo culture);
 
@@ -28,7 +28,7 @@ public abstract class ValueConverterBase : IValueConverter
 /// <summary>
 /// Base class for multi value converters with safe ConvertBack default.
 /// </summary>
-public abstract class MultiValueConverterBase : IMultiValueConverter
+public abstract class BaseMultiValueConverter : IMultiValueConverter
 {
     public abstract object Convert(object[] values, Type targetType, object parameter, CultureInfo culture);
 

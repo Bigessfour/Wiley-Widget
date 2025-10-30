@@ -1,4 +1,4 @@
-# Trunk Environment Setup Script for Wiley Widget
+# Trunk Environment Setup Script for Wiley Widget
 # This script configures trunk to work properly with the Wiley Widget development environment
 
 param(
@@ -11,17 +11,17 @@ $ErrorActionPreference = "Stop"
 
 # Load environment variables from .env file
 function Load-Environment {
-    Write-Host "🔧 Loading Wiley Widget environment configuration..." -ForegroundColor Cyan
+    Write-Information "🔧 Loading Wiley Widget environment configuration..." -InformationAction Continue
 
     if (Test-Path ".env") {
-        Write-Host "📄 Found .env file, loading environment variables..." -ForegroundColor Green
+        Write-Information "📄 Found .env file, loading environment variables..." -InformationAction Continue
         Get-Content ".env" | Where-Object { $_ -match '^[^#].*=' } | ForEach-Object {
             $key, $value = $_ -split '=', 2
             $key = $key.Trim()
             $value = $value.Trim()
             [Environment]::SetEnvironmentVariable($key, $value, "Process")
         }
-        Write-Host "✅ Environment variables loaded from .env" -ForegroundColor Green
+        Write-Information "✅ Environment variables loaded from .env" -InformationAction Continue
     }
     else {
         Write-Warning "⚠️  .env file not found. Some features may not work correctly."
@@ -30,12 +30,12 @@ function Load-Environment {
 
 # Diagnose trunk configuration
 function Test-TrunkConfiguration {
-    Write-Host "🔍 Diagnosing trunk configuration..." -ForegroundColor Yellow
+    Write-Information "🔍 Diagnosing trunk configuration..." -InformationAction Continue
 
     # Check if trunk is installed
     try {
         $trunkVersion = & trunk --version 2>$null
-        Write-Host "✅ Trunk is installed: $trunkVersion" -ForegroundColor Green
+        Write-Information "✅ Trunk is installed: $trunkVersion" -InformationAction Continue
     }
     catch {
         Write-Error "❌ Trunk is not installed or not in PATH"
@@ -44,14 +44,14 @@ function Test-TrunkConfiguration {
 
     # Check trunk.yaml configuration
     if (Test-Path ".trunk\trunk.yaml") {
-        Write-Host "✅ Trunk configuration file found" -ForegroundColor Green
+        Write-Information "✅ Trunk configuration file found" -InformationAction Continue
 
         # Validate YAML syntax
         try {
             $yamlContent = Get-Content ".trunk\trunk.yaml" -Raw
             # Basic YAML validation (this is a simple check)
             if ($yamlContent -match 'version:\s*0\.1') {
-                Write-Host "✅ Trunk YAML configuration appears valid" -ForegroundColor Green
+                Write-Information "✅ Trunk YAML configuration appears valid" -InformationAction Continue
             }
             else {
                 Write-Warning "⚠️  Trunk YAML version may be incorrect"
@@ -76,34 +76,34 @@ function Test-TrunkConfiguration {
 
     foreach ($envVar in $requiredEnvVars) {
         if ([Environment]::GetEnvironmentVariable($envVar)) {
-            Write-Host "✅ Environment variable $envVar is set" -ForegroundColor Green
+            Write-Information "✅ Environment variable $envVar is set" -InformationAction Continue
         }
         else {
             Write-Warning "⚠️  Environment variable $envVar is not set"
         }
     }
 
-    Write-Host "🔍 Trunk configuration diagnosis complete" -ForegroundColor Cyan
+    Write-Information "🔍 Trunk configuration diagnosis complete" -InformationAction Continue
     return $true
 }
 
 # Fix trunk configuration issues
 function Repair-TrunkConfiguration {
-    Write-Host "🔧 Attempting to fix trunk configuration issues..." -ForegroundColor Yellow
+    Write-Information "🔧 Attempting to fix trunk configuration issues..." -InformationAction Continue
 
     # Ensure trunk daemon is not running (to avoid conflicts)
     try {
         & trunk daemon shutdown 2>$null
-        Write-Host "✅ Trunk daemon shut down" -ForegroundColor Green
+        Write-Information "✅ Trunk daemon shut down" -InformationAction Continue
     }
     catch {
-        Write-Host "ℹ️  Trunk daemon was not running" -ForegroundColor Blue
+        Write-Information "ℹ️  Trunk daemon was not running" -InformationAction Continue
     }
 
     # Clear trunk cache
     try {
         & trunk cache clean 2>$null
-        Write-Host "✅ Trunk cache cleared" -ForegroundColor Green
+        Write-Information "✅ Trunk cache cleared" -InformationAction Continue
     }
     catch {
         Write-Warning "⚠️  Could not clear trunk cache: $_"
@@ -112,7 +112,7 @@ function Repair-TrunkConfiguration {
     # Reinitialize trunk
     try {
         & trunk init --force 2>$null
-        Write-Host "✅ Trunk reinitialized" -ForegroundColor Green
+        Write-Information "✅ Trunk reinitialized" -InformationAction Continue
     }
     catch {
         Write-Error "❌ Failed to reinitialize trunk: $_"
@@ -122,23 +122,23 @@ function Repair-TrunkConfiguration {
     # Test trunk functionality
     try {
         & trunk check --ci 2>$null
-        Write-Host "✅ Trunk check passed" -ForegroundColor Green
+        Write-Information "✅ Trunk check passed" -InformationAction Continue
     }
     catch {
         Write-Warning "⚠️  Trunk check failed, but this may be expected on first run"
     }
 
-    Write-Host "🔧 Trunk configuration repair complete" -ForegroundColor Cyan
+    Write-Information "🔧 Trunk configuration repair complete" -InformationAction Continue
     return $true
 }
 
 # Reset trunk to clean state
 function Reset-TrunkConfiguration {
-    Write-Host "🔄 Resetting trunk to clean state..." -ForegroundColor Red
+    Write-Information "🔄 Resetting trunk to clean state..." -InformationAction Continue
 
     # Stop all trunk processes
     Get-Process -Name "trunk" -ErrorAction SilentlyContinue | Stop-Process -Force
-    Write-Host "✅ All trunk processes stopped" -ForegroundColor Green
+    Write-Information "✅ All trunk processes stopped" -InformationAction Continue
 
     # Remove trunk cache and data
     $trunkPaths = @(
@@ -150,27 +150,27 @@ function Reset-TrunkConfiguration {
     foreach ($path in $trunkPaths) {
         if (Test-Path $path) {
             Remove-Item -Path $path -Recurse -Force
-            Write-Host "✅ Removed $path" -ForegroundColor Green
+            Write-Information "✅ Removed $path" -InformationAction Continue
         }
     }
 
     # Reinitialize trunk
     try {
         & trunk init 2>$null
-        Write-Host "✅ Trunk reinitialized from clean state" -ForegroundColor Green
+        Write-Information "✅ Trunk reinitialized from clean state" -InformationAction Continue
     }
     catch {
         Write-Error "❌ Failed to reinitialize trunk: $_"
         return $false
     }
 
-    Write-Host "🔄 Trunk reset complete" -ForegroundColor Cyan
+    Write-Information "🔄 Trunk reset complete" -InformationAction Continue
     return $true
 }
 
 # Main execution
-Write-Host "🚀 Wiley Widget Trunk Environment Setup" -ForegroundColor Magenta
-Write-Host "==========================================" -ForegroundColor Magenta
+Write-Information "🚀 Wiley Widget Trunk Environment Setup" -InformationAction Continue
+Write-Information "==========================================" -InformationAction Continue
 
 # Load environment
 Load-Environment
@@ -192,26 +192,25 @@ if ($Reset) {
 
 # If no specific operation requested, do a full setup
 if (-not ($Diagnose -or $Fix -or $Reset)) {
-    Write-Host "📋 Performing full trunk environment setup..." -ForegroundColor Cyan
+    Write-Information "📋 Performing full trunk environment setup..." -InformationAction Continue
 
     if (Test-TrunkConfiguration) {
-        Write-Host "✅ Trunk configuration is healthy" -ForegroundColor Green
+        Write-Information "✅ Trunk configuration is healthy" -InformationAction Continue
     }
     else {
-        Write-Host "🔧 Configuration issues detected, attempting repair..." -ForegroundColor Yellow
+        Write-Information "🔧 Configuration issues detected, attempting repair..." -InformationAction Continue
         $success = Repair-TrunkConfiguration
     }
 }
 
 # Final status
 if ($success) {
-    Write-Host "" -ForegroundColor White
-    Write-Host "🎉 Trunk environment setup completed successfully!" -ForegroundColor Green
-    Write-Host "💡 You can now use trunk commands in this environment" -ForegroundColor Cyan
-    Write-Host "   Example: trunk check, trunk fmt, trunk daemon launch" -ForegroundColor Gray
+    Write-Information "" -InformationAction Continue
+    Write-Information "🎉 Trunk environment setup completed successfully!" -InformationAction Continue
+    Write-Information "💡 You can now use trunk commands in this environment" -InformationAction Continue
+    Write-Information "   Example: trunk check, trunk fmt, trunk daemon launch" -InformationAction Continue
 }
 else {
-    Write-Host "" -ForegroundColor White
-    Write-Host "❌ Trunk environment setup failed. Please check the errors above." -ForegroundColor Red
+    Write-Error "❌ Trunk environment setup failed. Please check the errors above." 
     exit 1
 }

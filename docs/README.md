@@ -132,33 +132,12 @@ sqllocaldb start MSSQLLocalDB
 sqllocaldb info MSSQLLocalDB
 ```
 
-#### ☁️ **Azure SQL Database (Production)**
+#### ☁️ Azure (deprecated)
 
-**Cloud-hosted database with enterprise features**
-
-```json
-// appsettings.json - Azure SQL Configuration
-{
-  "ConnectionStrings": {
-    "AzureConnection": "Server=tcp:${AZURE_SQL_SERVER},1433;Initial Catalog=${AZURE_SQL_DATABASE};Persist Security Info=False;User ID=${AZURE_SQL_USER};Password=${AZURE_SQL_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-  }
-}
-```
-
-**Environment Variables (.env file):**
-
-```env
-# Azure SQL Database Configuration
-AZURE_SQL_SERVER=your-server.database.windows.net
-AZURE_SQL_DATABASE=WileyWidgetDb
-AZURE_SQL_USER=your-admin-user
-AZURE_SQL_PASSWORD=your-secure-password
-AZURE_SQL_RETRY_ATTEMPTS=3
-
-# Azure Subscription Information
-AZURE_SUBSCRIPTION_ID=your-subscription-id
-AZURE_TENANT_ID=your-tenant-id
-```
+The project no longer uses Azure services by default. Azure configuration examples
+have been removed from the main README to avoid leaking or reintroducing secrets.
+If you need Azure integration again, please request it and we'll add a separate
+`docs/azure-setup.md` with careful guidance.
 
 #### 🔐 **Azure Managed Identity (Recommended for Production)**
 

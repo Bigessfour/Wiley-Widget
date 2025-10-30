@@ -9,22 +9,25 @@ namespace WileyWidget.Services
     {
         private static readonly AsyncLocal<string?> _currentUserId = new();
         private static readonly AsyncLocal<string?> _currentUserName = new();
-
         /// <summary>
         /// Gets the current user ID from the async local storage
         /// </summary>
-        public string? GetCurrentUserId()
-        {
-            return _currentUserId.Value;
-        }
+        public string? UserId => _currentUserId.Value;
 
         /// <summary>
-        /// Gets the current user name from the async local storage
+        /// Gets the display name of the current user from the async local storage
         /// </summary>
-        public string? GetCurrentUserName()
-        {
-            return _currentUserName.Value;
-        }
+        public string? DisplayName => _currentUserName.Value;
+
+        /// <summary>
+        /// Backwards-compatible: gets the current user ID
+        /// </summary>
+        public string? GetCurrentUserId() => UserId;
+
+        /// <summary>
+        /// Backwards-compatible: gets the current user name
+        /// </summary>
+        public string? GetCurrentUserName() => DisplayName;
 
         /// <summary>
         /// Sets the current user context in async local storage
