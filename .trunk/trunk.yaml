@@ -28,8 +28,9 @@ lint:
     - bandit
     - checkov  # Disabled due to argument compatibility issues
   enabled:
-    # .NET code formatting and style (optimized for .NET 8+)
+    # .NET code formatting and style (optimized for .NET 9.0)
     - black@25.9.0
+    # - dotnet-format  # Disabled due to PATH issues with trunk
     - git-diff-check
     - hadolint@2.14.0
     - isort@7.0.0
@@ -39,7 +40,6 @@ lint:
     - shellcheck@0.11.0
     - shfmt@3.6.0
     - pyright@1.1.406
-    # - dotnet-format@8.0.0  # Disabled due to version availability issues
     # Comprehensive Python linting (replaces black, isort, bandit)
     - ruff@0.14.1
     # PowerShell script analysis
@@ -89,23 +89,21 @@ lint:
         - CHANGELOG.md
         - CONTRIBUTING.md
         - RELEASE_NOTES.md
-    # Skip YAML formatting for GitHub workflows (preserve structure)
-    - linters: [prettier]
-      paths:
-        - .github/**/*.yml
-        - .github/**/*.yaml
-    # Skip security scanning on test fixtures with mock credentials
-    - linters: [gitleaks]
-      paths:
-        - tests/SettingsViewModelTests/SettingsViewModelTests.cs
-    # Skip shell script checking for certain directories
-    - linters: [shellcheck, shfmt]
-      paths:
-        - scripts/regionviewregistry/
-        - scripts/quickbooks/
-    # Skip binary and generated files (performance and correctness)
-    - linters: [ALL]
-      paths:
+        - WileyWidget.Tests/**/*.md
+        - .mypy_cache/
+        - .mypy_cache/**
+        - .mypy_cache/**/*
+        - .pytest_cache/
+        - .pytest_cache/**
+        - .pytest_cache/**/*
+        - .ruff_cache/
+        - .ruff_cache/**
+        - .ruff_cache/**/*
+        - __pycache__/
+        - __pycache__/**
+        - __pycache__/**/*
+        - .prettierrc
+        - .prettierignore
         - bin/
         - obj/
         - TestResults/
@@ -127,9 +125,6 @@ lint:
         - WileyWidgetDev.db
         - WileyWidgetDev.db-shm
         - WileyWidgetDev.db-wal
-    # Skip virtual environments, node modules, and third-party packages
-    - linters: [ALL]
-      paths:
         - .venv/
         - venv/
         - '%APPDATA%/npm/**'
@@ -145,6 +140,28 @@ lint:
         - data/
         - tools/
         - licenses/
+    # Skip YAML formatting for GitHub workflows (preserve structure)
+    - linters: [prettier]
+      paths:
+        - .github/**/*.yml
+        - .github/**/*.yaml
+    # Suppress PSScriptAnalyzer trailing whitespace warnings (already handled by trunk formatting)
+    - linters: [psscriptanalyzer]
+      paths:
+        - scripts/**/*.ps1
+    # Suppress PSScriptAnalyzer verb warnings for internal scripts
+    - linters: [psscriptanalyzer]
+      paths:
+        - scripts/trunk-*.ps1
+    # Skip security scanning on test fixtures with mock credentials
+    - linters: [gitleaks]
+      paths:
+        - tests/SettingsViewModelTests/SettingsViewModelTests.cs
+    # Skip shell script checking for certain directories
+    - linters: [shellcheck, shfmt]
+      paths:
+        - scripts/regionviewregistry/
+        - scripts/quickbooks/
 actions:
   enabled:
     - trunk-check-pre-push

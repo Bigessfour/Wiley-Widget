@@ -2,7 +2,6 @@
 
 using System;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -113,17 +112,10 @@ public static class DatabaseConfiguration
 
         var connectionString = BuildEnterpriseConnectionString(config, logger, environmentName);
 
-        logger.LogInformation("🔍 DEBUG: Connection string detection - '{ConnectionString}', IsSqlite: {IsSqlite}",
-            connectionString, IsSqliteConnection(connectionString));
+        logger.LogInformation("🔍 DEBUG: SQL Server connection string configured for {Environment}",
+            environmentName);
 
-        if (IsSqliteConnection(connectionString))
-        {
-            ConfigureSqlite(options, connectionString, logger);
-        }
-        else
-        {
-            ConfigureSqlServer(options, connectionString, logger, environmentName);
-        }
+        ConfigureSqlServer(options, connectionString, logger, environmentName);
         ConfigureEnterpriseDbContextOptions(options, logger);
 
         // Add registered interceptors (AuditInterceptor) into DbContext options
@@ -161,33 +153,6 @@ public static class DatabaseConfiguration
     }
 
     /// <summary>
-    /// Determines if connection string is for SQLite
-    /// </summary>
-    internal static bool IsSqliteConnection(string connectionString)
-    {
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return false;
-        }
-
-        var normalized = connectionString.Trim();
-
-        if (normalized.Contains("Data Source=file:", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (normalized.Contains("mode=memory", StringComparison.OrdinalIgnoreCase) ||
-            normalized.Contains(":memory:", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return normalized.EndsWith(".db", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Contains("Filename=", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
     /// Configures local SQL Server connection for development
     /// </summary>
     private static void ConfigureSqlServer(DbContextOptionsBuilder options, string connectionString, ILogger logger, string environmentName)
@@ -208,20 +173,6 @@ public static class DatabaseConfiguration
         });
 
         logger.LogInformation("✅ Configured SQL Server connection for {Environment} environment", environmentName);
-    }
-
-    /// <summary>
-    /// Configures SQLite connection for development
-    /// </summary>
-    private static void ConfigureSqlite(DbContextOptionsBuilder options, string connectionString, ILogger logger)
-    {
-        options.UseSqlite(connectionString, sqliteOptions =>
-        {
-            // Connection timeout
-            sqliteOptions.CommandTimeout(30);
-        });
-
-        logger.LogInformation("✅ Configured SQLite connection for development environment");
     }
 
     /// <summary>
@@ -919,12 +870,10 @@ public static class DatabaseConfiguration
 
             // Get local connection string and log the server for diagnostics
             var connectionString = BuildEnterpriseConnectionString(config, logger, environmentName);
-            var isSqlite = IsSqliteConnection(connectionString);
-            var databaseType = isSqlite ? "SQLite" : "SQL Server";
-            logger.LogInformation("{DatabaseType} target: {Server}", databaseType, ExtractServerFromConnectionString(connectionString));
+            logger.LogInformation("SQL Server target: {Server}", ExtractServerFromConnectionString(connectionString));
 
-            // Apply appropriate retry policy based on database type
-            IAsyncPolicy policy = isSqlite ? Policy.NoOpAsync() : DevelopmentRetryPolicy;
+            // Apply SQL Server retry policy
+            IAsyncPolicy policy = DevelopmentRetryPolicy;
 
             await policy.ExecuteAsync(async () =>
             {
@@ -932,18 +881,18 @@ public static class DatabaseConfiguration
                 var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
                 await using var context = await contextFactory.CreateDbContextAsync();
 
-                logger.LogInformation("Initializing {DatabaseType} database", databaseType);
+                logger.LogInformation("Initializing SQL Server database");
 
                 // Check if database connection is available
                 var canConnect = await context.Database.CanConnectAsync();
                 logger.LogInformation("Database.CanConnectAsync() returned: {CanConnect}", canConnect);
                 if (!canConnect)
                 {
-                    logger.LogError("Cannot connect to {DatabaseType} database - check connection string and server availability", databaseType);
-                    throw new InvalidOperationException($"{databaseType} database connection failed. Check the configured connection string and ensure the database is accessible.");
+                    logger.LogError("Cannot connect to SQL Server database - check connection string and server availability");
+                    throw new InvalidOperationException("SQL Server database connection failed. Check the configured connection string and ensure the database is accessible.");
                 }
 
-                logger.LogInformation("{DatabaseType} database connection verified - applying migrations", databaseType);
+                logger.LogInformation("SQL Server database connection verified - applying migrations");
 
                 // Check for pending model changes (EF Core 8.0+)
                 // This helps detect when migrations are needed but not yet created

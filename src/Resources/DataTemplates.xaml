@@ -3,8 +3,9 @@
                     xmlns:prism="http://prismlibrary.com/"
                     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
                     xmlns:vm="clr-namespace:WileyWidget.ViewModels;assembly=WileyWidget.UI"
-                    xmlns:views="clr-namespace:WileyWidget"
-                    xmlns:panels="clr-namespace:WileyWidget.Views">
+                    xmlns:vmMain="clr-namespace:WileyWidget.ViewModels.Main;assembly=WileyWidget.UI"
+                    xmlns:views="clr-namespace:WileyWidget.Views.Main;assembly=WileyWidget.UI"
+                    xmlns:panels="clr-namespace:WileyWidget.Views.Main;assembly=WileyWidget.UI">
 
     <!--
     DataTemplates for Prism Navigation
@@ -13,52 +14,52 @@
     -->
 
     <!-- DashboardViewModel → DashboardView -->
-    <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:DashboardViewModel}">
         <views:DashboardView />
     </DataTemplate>
 
     <!-- MunicipalAccountViewModel → MunicipalAccountView -->
-    <DataTemplate DataType="{x:Type vm:MunicipalAccountViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:MunicipalAccountViewModel}">
         <panels:MunicipalAccountView />
     </DataTemplate>
 
     <!-- BudgetViewModel → BudgetView -->
-    <DataTemplate DataType="{x:Type vm:BudgetViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:BudgetViewModel}">
         <views:BudgetView />
     </DataTemplate>
 
     <!-- EnterpriseViewModel → EnterpriseView -->
-    <DataTemplate DataType="{x:Type vm:EnterpriseViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:EnterpriseViewModel}">
         <views:EnterpriseView />
     </DataTemplate>
 
     <!-- SettingsViewModel → SettingsView -->
-    <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:SettingsViewModel}">
         <views:SettingsView />
     </DataTemplate>
 
     <!-- AnalyticsViewModel → AnalyticsView -->
-    <DataTemplate DataType="{x:Type vm:AnalyticsViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:AnalyticsViewModel}">
         <views:AnalyticsView />
     </DataTemplate>
 
     <!-- AIAssistViewModel → AIAssistView -->
-    <DataTemplate DataType="{x:Type vm:AIAssistViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:AIAssistViewModel}">
         <views:AIAssistView />
     </DataTemplate>
 
     <!-- QuickBooksViewModel → QuickBooksView -->
-    <DataTemplate DataType="{x:Type vm:QuickBooksViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:QuickBooksViewModel}">
         <views:QuickBooksView />
     </DataTemplate>
 
     <!-- ReportsViewModel → ReportsView -->
-    <DataTemplate DataType="{x:Type vm:ReportsViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:ReportsViewModel}">
         <views:ReportsView />
     </DataTemplate>
 
     <!-- UtilityCustomerViewModel → UtilityCustomerView -->
-    <DataTemplate DataType="{x:Type vm:UtilityCustomerViewModel}">
+    <DataTemplate DataType="{x:Type vmMain:UtilityCustomerViewModel}">
         <views:UtilityCustomerView />
     </DataTemplate>
 

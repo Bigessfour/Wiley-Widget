@@ -4,6 +4,7 @@ using Microsoft.Xaml.Behaviors;
 using Serilog;
 using Syncfusion.Windows.Tools.Controls;
 using WileyWidget.ViewModels;
+using WileyWidget.ViewModels.Main;
 
 namespace Prism.Behaviors
 {

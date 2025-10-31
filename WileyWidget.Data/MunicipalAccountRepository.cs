@@ -172,10 +172,8 @@ namespace WileyWidget.Data
         public async Task<MunicipalAccount?> GetByAccountNumberAsync(string accountNumber)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-            // SQLite can't translate AccountNumber.Value in LINQ
-            // Load all accounts and filter in memory (acceptable for unit tests with small datasets)
-            var accounts = await context.MunicipalAccounts.ToListAsync();
-            return accounts.FirstOrDefault(ma => ma.AccountNumber!.Value == accountNumber);
+            return await context.MunicipalAccounts
+                .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber);
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetByDepartmentAsync(int departmentId)

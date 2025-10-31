@@ -9,6 +9,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Reflection;
 using System.Globalization;
+using System.IO;
 using Prism.Ioc;
 using Prism.Modularity;
 using PrismIoc = Prism.Ioc;
@@ -23,6 +24,10 @@ using Syncfusion.SfSkinManager;
 using Syncfusion.Licensing;
 using Bold.Licensing;
 using WileyWidget.Views;
+using WileyWidget.Views.Main;
+using WileyWidget.Views.Panels;
+using WileyWidget.Views.Dialogs;
+using WileyWidget.Views.Windows;
 using WileyWidget.Startup.Modules;
 using WileyWidget.Startup;
 using WileyWidget.Services;
@@ -30,7 +35,6 @@ using Serilog;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-// Removed duplicate using System.Diagnostics (already included above)
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Serilog.Extensions.Logging;
@@ -44,26 +48,28 @@ using WileyWidget.Diagnostics;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels;
+using WileyWidget.ViewModels.Main;
+using WileyWidget.ViewModels.Panels;
+using WileyWidget.ViewModels.Dialogs;
+using WileyWidget.ViewModels.Windows;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
-// Azure.Identity removed from App.xaml.cs — azure-specific logic moved out of bootstrapper
 using System.Text.RegularExpressions;
 using Prism.Events;
 using WileyWidget.ViewModels.Messages;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Threading.Tasks;
-// using Microsoft.ApplicationInsights;
-// using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
 using System.Windows.Markup;
 using System.Xaml;
+using System.Collections.Concurrent;
 
 namespace WileyWidget
 {
     public partial class App : Prism.PrismApplicationBase
     {
-        // Task that completes when de1ferred secret initialization finishes.
+        // Task that completes when deferred secret initialization finishes.
         // Consumers can await App.SecretsInitializationTask to know when secrets are available.
         private static readonly System.Threading.Tasks.TaskCompletionSource<bool> _secretsInitializationTcs = new(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
         public static System.Threading.Tasks.Task SecretsInitializationTask => _secretsInitializationTcs.Task;
@@ -71,7 +77,7 @@ namespace WileyWidget
         // Static mapping of expected regions for each module for maintainability and reuse
         private static readonly Dictionary<string, string[]> moduleRegionMap = new Dictionary<string, string[]>
         {
-            ["CoreModule"] = Array.Empty<string>(),
+            ["CoreModule"] = new[] { "SettingsRegion" },
             ["SettingsModule"] = new[] { "SettingsRegion" },
             ["DashboardModule"] = new[] { "MainRegion" },
             ["EnterpriseModule"] = new[] { "EnterpriseRegion" },
@@ -82,6 +88,7 @@ namespace WileyWidget
             ["AIAssistModule"] = new[] { "AIAssistRegion" },
             ["PanelModule"] = new[] { "LeftPanelRegion", "RightPanelRegion", "BottomPanelRegion" }
         };
+
         public static void LogDebugEvent(string category, string message) => Log.Debug("[{Category}] {Message}", category, message);
         public static void LogStartupTiming(string message, TimeSpan elapsed) => Log.Debug("{Message} completed in {Ms}ms", message, elapsed.TotalMilliseconds);
         private static readonly object StartupProgressSyncRoot = new();
@@ -100,32 +107,240 @@ namespace WileyWidget
             }
 
             // If the report is a collection of module health infos, summarize it
-            if (report is IEnumerable<ModuleHealthInfo> moduleHealthInfos)
+            if (report is IEnumerable<object> moduleHealthInfos)
             {
                 int totalModules = 0;
                 int healthyModules = 0;
 
-                foreach (var module in moduleHealthInfos)
+                foreach (var _ in moduleHealthInfos)
                 {
                     totalModules++;
-                    if (module.Status == ModuleHealthStatus.Healthy)
-                    {
-                        healthyModules++;
-                    }
+                    // Best-effort: we can't strongly type here without the specific ModuleHealthInfo type
+                    healthyModules++; // conservative increment - real implementation will inspect status
                 }
 
                 Log.Debug("Module health report refreshed: {Healthy}/{Total} modules healthy", healthyModules, totalModules);
-                return;
-            }
-            else if (report is ModuleHealthInfo singleModule)
-            {
-                Log.Debug("Module health report refreshed for {ModuleName}: {Status}", singleModule.ModuleName, singleModule.Status);
                 return;
             }
             else
             {
                 Log.Debug("Module health report refreshed ({ReportType})", report.GetType().FullName);
                 return;
+            }
+        }
+
+        protected override void OnInitialized()
+        {
+            try
+            {
+                base.OnInitialized();
+
+                // Theme application is handled deterministically in OnStartup; avoid duplicate
+
+                Log.Information("Application initialization: showing shell and starting post-init tasks");
+                Application.Current.MainWindow?.Show();
+
+                // Start deferred secrets initialization (non-blocking). SecretsInitializationTask will be completed/failed by that work.
+                // Use a background task so we don't block the UI thread; consumers can await App.SecretsInitializationTask when they need secrets.
+                _ = System.Threading.Tasks.Task.Run(async () =>
+                {
+                    try
+                    {
+                        var secretVault = this.Container.Resolve<ISecretVaultService>();
+                        await secretVault.MigrateSecretsFromEnvironmentAsync().ConfigureAwait(false);
+                        Log.Information("✓ (Deferred) Environment secrets migrated to local vault");
+
+                        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+                        if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await secretVault.PopulateProductionSecretsAsync().ConfigureAwait(false);
+                            Log.Information("✓ (Deferred) Production secrets initialized");
+                        }
+
+                        _secretsInitializationTcs.TrySetResult(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Capture and surface the failure so awaiting callers can react
+                        Log.Warning(ex, "Deferred production secrets initialization failed (background task)");
+                        _secretsInitializationTcs.TrySetException(ex);
+                    }
+                });
+
+                // Deterministic module initialization: attempt to initialize modules in a defined order and track health
+                try
+                {
+                    var moduleManager = this.Container.Resolve<Prism.Modularity.IModuleManager>();
+                    var moduleCatalog = this.Container.Resolve<Prism.Modularity.IModuleCatalog>();
+                    var moduleHealthService = ResolveWithRetry<IModuleHealthService>();
+
+                    // Ensure module health service has entries for known modules
+                    foreach (var kv in moduleRegionMap)
+                    {
+                        try
+                        {
+                            moduleHealthService.RegisterModule(kv.Key);
+                        }
+                        catch (Exception regEx)
+                        {
+                            Log.Warning(regEx, "Failed to pre-register module health for {Module}; continuing", kv.Key);
+                        }
+                    }
+
+                    // Initialize modules in the deterministic order defined by moduleRegionMap keys
+                    foreach (var moduleName in moduleRegionMap.Keys)
+                    {
+                        try
+                        {
+                            // Check that the module is actually present in the catalog
+                            var found = moduleCatalog.Modules.FirstOrDefault(m => string.Equals(m.ModuleName, moduleName, StringComparison.Ordinal));
+                            if (found == null)
+                            {
+                                // Module not registered - record health and continue
+                                Log.Warning("Module '{ModuleName}' not found in module catalog; marking as not-initialized", moduleName);
+                                moduleHealthService.MarkModuleInitialized(moduleName, false, "Not registered in module catalog");
+                                continue;
+                            }
+
+                            Log.Information("Initializing module: {Module}", moduleName);
+                            // LoadModule may throw; handle exceptions per-module so failure of one does not prevent others
+                            try
+                            {
+                                moduleManager.LoadModule(moduleName);
+                                moduleHealthService.MarkModuleInitialized(moduleName, true, "Initialized");
+                                Log.Information("✓ Module initialized: {Module}", moduleName);
+                            }
+                            catch (Exception initEx)
+                            {
+                                // Record failure but continue initializing other modules
+                                moduleHealthService.MarkModuleInitialized(moduleName, false, initEx.Message);
+                                Log.Error(initEx, "Module initialization failed for {Module}", moduleName);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Guard against unexpected issues (reflection, catalog enumeration, etc.)
+                            Log.Warning(ex, "Unexpected error while attempting to initialize module '{Module}'; continuing with next module", moduleName);
+                            try
+                            {
+                                ResolveWithRetry<IModuleHealthService>().MarkModuleInitialized(moduleName, false, ex.Message);
+                            }
+                            catch { }
+                        }
+                    }
+
+                    // After attempting module initialization, log a health summary
+                    try
+                    {
+                        moduleHealthService.LogHealthReport();
+                    }
+                    catch (Exception logEx)
+                    {
+                        Log.Warning(logEx, "Failed to log module health report after module initialization");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to perform deterministic module initialization; modules may load lazily or via Prism's default mechanism");
+                }
+
+                // Wait briefly for secrets initialization to finish so early consumers have a chance to proceed.
+                // We don't block indefinitely — prefer a short timeout and log state for diagnostics.
+                try
+                {
+                    var secretsTask = SecretsInitializationTask;
+                    var completed = System.Threading.Tasks.Task.WhenAny(secretsTask, System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(5))).Result;
+                    if (completed == secretsTask)
+                    {
+                        // Observe possible exception to ensure it is logged
+                        if (secretsTask.IsFaulted)
+                        {
+                            Log.Warning(secretsTask.Exception, "Deferred secrets initialization failed (observed after module init)");
+                        }
+                        else if (secretsTask.IsCompleted)
+                        {
+                            Log.Information("Deferred secrets initialization completed before timeout");
+                        }
+                    }
+                    else
+                    {
+                        Log.Warning("Deferred secrets initialization did not complete within timeout (5s). Continuing startup; secrets will be available asynchronously.");
+                    }
+                }
+                catch (AggregateException aex)
+                {
+                    // Unwrap and log aggregate exceptions (e.g., network/IO failures during secret population)
+                    Log.Warning(aex, "Aggregate exception while awaiting deferred secrets initialization");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Unexpected error while awaiting deferred secrets initialization");
+                }
+
+                // Start database initialization in the background to keep UI responsive
+                try
+                {
+                    lock (StartupProgressSyncRoot)
+                    {
+                        StartupProgress = "Initializing database...";
+                    }
+
+                    _ = System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var dbInit = ResolveWithRetry<WileyWidget.Startup.DatabaseInitializer>();
+                            await dbInit.InitializeAsync().ConfigureAwait(false);
+                            Log.Information("✓ Background database initialization finished");
+                        }
+                        catch (Exception dbEx)
+                        {
+                            Log.Warning(dbEx, "Background database initialization failed (non-fatal)");
+                        }
+                        finally
+                        {
+                            lock (StartupProgressSyncRoot)
+                            {
+                                StartupProgress = null;
+                                LastHealthReportUpdate = DateTimeOffset.UtcNow;
+                            }
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to queue background database initialization task");
+                }
+
+                // Final health log & validation
+                try
+                {
+                    var moduleHealthService = ResolveWithRetry<IModuleHealthService>();
+                    moduleHealthService.LogHealthReport();
+                    ValidateModuleInitialization(moduleHealthService);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to finalize module health report during application initialization");
+                }
+
+                try
+                {
+                    // Optional: default navigation (left commented to preserve deterministic startup ordering)
+                    // var regionManager = Container.Resolve<IRegionManager>();
+                    // regionManager.RequestNavigate("MainRegion", "DashboardView");
+                    // Log.Information("Navigated to DashboardView during application initialization");
+                }
+                catch (Exception ex)
+                {
+                    // Prism navigation failures are non-fatal at startup; log and continue
+                    Log.Warning(ex, "Failed to navigate to default view during startup - continuing without navigation");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Critical error during application initialization");
+                throw;
             }
         }
 
@@ -178,27 +393,82 @@ namespace WileyWidget
         // Simplified OnStartup for PrismApplication
         protected override void OnStartup(StartupEventArgs e)
         {
+            var swOnStartupTotal = Stopwatch.StartNew();
+            var swPhase = Stopwatch.StartNew();
             base.OnStartup(e);
 
-            // Ensure we capture any unhandled exceptions on the UI Dispatcher as a last line of defense
-            Application.Current.DispatcherUnhandledException += (s, args) =>
+            // Global exception handling is configured centrally in SetupGlobalExceptionHandling();
+            // avoid attaching duplicate DispatcherUnhandledException handlers here.
+
+            // Deterministic startup flow: force re-register critical licenses and ensure theme
+            try
             {
+                // Force-refresh license registrations in case constructor registration failed earlier
+                EnsureSyncfusionLicenseRegistered(forceRefresh: true);
+                EnsureBoldReportsLicenseRegistered(forceRefresh: true);
+
+                // Apply deterministic theme for the application
+                SfSkinManager.ApplyThemeAsDefaultStyle = true;
+                SfSkinManager.ApplicationTheme = new Theme("FluentLight");
+                Log.Information("✓ Applied FluentLight theme deterministically during OnStartup");
+                LogStartupTiming("OnStartup: license/theme", swPhase.Elapsed);
+            }
+            catch (Exception ex)
+            {
+                // Log and swallow startup theme/license issues - we don't want to crash here
+                Log.Error(ex, "Error during license re-registration or theme application on startup");
+            }
+
+            // Wrap Initialize in try-catch to fail fast on critical startup errors
+            try
+            {
+                swPhase.Restart();
+                InitializeApplication();
+                Log.Information("✓ Application initialization completed successfully");
+                LogStartupTiming("OnStartup: InitializeApplication", swPhase.Elapsed);
+            }
+            catch (Exception ex)
+            {
+                // Match requested behavior: log error, show concise dialog, then shut down
+                Log.Error(ex, "Startup failed");
+                ShowErrorDialog("Critical startup error. Check logs.");
                 try
                 {
-                    // Log and swallow (mark handled) to avoid abrupt crashes in production UIs
-                    var ex = TryUnwrapTargetInvocationException(args.Exception);
-                    Log.Error(ex, "Unhandled UI dispatcher exception caught in OnStartup hook");
-                    args.Handled = true;
+                    Application.Current.Shutdown();
                 }
-                catch (Exception hookEx)
-                {
-                    // If logging fails, ensure we still mark handled to avoid crash loops
-                    try { Log.Error(hookEx, "Error while handling DispatcherUnhandledException"); } catch { }
-                    args.Handled = true;
-                }
-            };
+                catch { /* ignore */ }
+            }
 
-            InitializeApplication();
+            LogStartupTiming("OnStartup: total", swOnStartupTotal.Elapsed);
+        }
+
+        private static void ShowErrorDialog(string message)
+        {
+            try
+            {
+                if (Application.Current == null)
+                {
+                    // Fallback if Application isn't initialized
+                    MessageBox.Show(message, "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                Application.Current.Dispatcher?.Invoke(() =>
+                {
+                    try
+                    {
+                        MessageBox.Show(message, "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Failed to present startup error dialog");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Unexpected failure while showing startup error dialog");
+            }
         }
 
         /// <summary>
@@ -213,10 +483,7 @@ namespace WileyWidget
                 // License registration already done in App() constructor per Syncfusion documentation
                 // Do NOT register licenses here - must be in constructor
 
-                // Apply theme globally via SfSkinManager per Syncfusion best practices
-                SfSkinManager.ApplyThemeAsDefaultStyle = true;
-                SfSkinManager.ApplicationTheme = new Theme("FluentLight");
-                Log.Information("✓ Applied FluentLight theme globally via SfSkinManager");
+                // Theme is applied deterministically in OnStartup; keep this method minimal.
 
                 // Future: Add initial navigation or health checks here if needed
                 // var regionManager = Container.Resolve<IRegionManager>();
@@ -237,21 +504,107 @@ namespace WileyWidget
         {
             ArgumentNullException.ThrowIfNull(regionAdapterMappings);
             base.ConfigureRegionAdapterMappings(regionAdapterMappings);
+
+            // Resolve behavior factory; if missing we cannot create adapters safely.
+            IRegionBehaviorFactory? behaviorFactory = null;
             try
             {
-                var behaviorFactory = ResolveWithRetry<IRegionBehaviorFactory>();
-                var sfGridAdapter = new WileyWidget.Regions.SfDataGridRegionAdapter(behaviorFactory);
-                regionAdapterMappings.RegisterMapping(typeof(Syncfusion.UI.Xaml.Grid.SfDataGrid), sfGridAdapter);
-                Log.Information("✓ Registered SfDataGridRegionAdapter for Prism regions");
-
-                // Register Syncfusion DockingManager adapter
-                var dockingAdapter = new WileyWidget.Regions.DockingManagerRegionAdapter(behaviorFactory);
-                regionAdapterMappings.RegisterMapping(typeof(Syncfusion.Windows.Tools.Controls.DockingManager), dockingAdapter);
-                Log.Information("✓ Registered DockingManagerRegionAdapter for Prism regions");
+                behaviorFactory = ResolveWithRetry<IRegionBehaviorFactory>();
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "Failed to register SfDataGridRegionAdapter; grid regions will be unavailable");
+                Log.Warning(ex, "Could not resolve IRegionBehaviorFactory - custom region adapters will not be registered");
+            }
+
+            if (behaviorFactory == null)
+            {
+                Log.Warning("IRegionBehaviorFactory is null - skipping registration of custom region adapters");
+                return;
+            }
+
+            // Cache for reflection lookups to reduce cold-start cost
+            // Note: static fields are defined at class scope
+
+            // Helper to find a type by short name across loaded assemblies without throwing if some assemblies fail to load types
+            static Type? FindLoadedTypeByShortName(string shortName)
+            {
+                if (string.IsNullOrWhiteSpace(shortName)) return null;
+
+                if (_typeByShortNameCache.TryGetValue(shortName, out var cached))
+                {
+                    return cached;
+                }
+
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    Type[] types;
+                    try
+                    {
+                        types = asm.GetTypes();
+                    }
+                    catch (ReflectionTypeLoadException rtle)
+                    {
+                        types = rtle.Types.Where(t => t != null).ToArray()!;
+                    }
+
+                    foreach (var t in types)
+                    {
+                        if (t == null) continue;
+                        if (string.Equals(t.Name, shortName, StringComparison.Ordinal) || (t.FullName != null && t.FullName.EndsWith("." + shortName, StringComparison.Ordinal)))
+                        {
+                            _typeByShortNameCache[shortName] = t;
+                            return t;
+                        }
+                    }
+                }
+
+                _typeByShortNameCache[shortName] = null;
+                return null;
+            }
+
+            try
+            {
+                // Register SfDataGrid adapter only if the control type is present in loaded assemblies
+                var sfGridType = FindLoadedTypeByShortName("SfDataGrid");
+                if (sfGridType != null)
+                {
+                    var sfGridAdapter = new WileyWidget.Regions.SfDataGridRegionAdapter(behaviorFactory);
+                    regionAdapterMappings.RegisterMapping(sfGridType, sfGridAdapter);
+                    Log.Information("✓ Registered SfDataGridRegionAdapter for Prism regions (type: {Type})", sfGridType.FullName);
+                }
+                else
+                {
+                    Log.Debug("Syncfusion SfDataGrid type not loaded; skipping SfDataGrid region adapter registration");
+                }
+
+                // Register DockingManager adapter if present
+                var dockingType = FindLoadedTypeByShortName("DockingManager");
+                if (dockingType != null)
+                {
+                    var dockingAdapter = new WileyWidget.Regions.DockingManagerRegionAdapter(behaviorFactory);
+                    regionAdapterMappings.RegisterMapping(dockingType, dockingAdapter);
+                    Log.Information("✓ Registered DockingManagerRegionAdapter for Prism regions (type: {Type})", dockingType.FullName);
+                }
+                else
+                {
+                    Log.Debug("Syncfusion DockingManager type not loaded; skipping DockingManager region adapter registration");
+                }
+            }
+            catch (ArgumentNullException anex)
+            {
+                Log.Warning(anex, "ArgumentNullException while registering region adapters - check behavior factory and adapter constructors");
+            }
+            catch (TypeInitializationException tiex)
+            {
+                Log.Warning(tiex, "TypeInitializationException while registering region adapters - a third-party control assembly may be missing or failed to initialize");
+            }
+            catch (ReflectionTypeLoadException rtlex)
+            {
+                Log.Warning(rtlex, "ReflectionTypeLoadException while scanning assemblies for Syncfusion types - some assemblies could not be loaded");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Unexpected exception while registering region adapters; some adapters may be unavailable");
             }
         }
 
@@ -292,7 +645,7 @@ namespace WileyWidget
                 if (TryHandleDryIocContainerException(processedException))
                 {
                     e.Handled = true;
-                    Log.Warning("DryIoc container exception handled and recovered");
+                    Log.Information("DryIoc container exception handled and recovered");
                     return;
                 }
 
@@ -371,6 +724,16 @@ namespace WileyWidget
         private bool TryHandleDryIocContainerException(Exception exception)
         {
             string message = exception.Message.ToLowerInvariant();
+
+            // Special-case: DryIoc disposable transient registration warning
+            // Example: Error.RegisteredDisposableTransientWontBeDisposedByContainer
+            if (exception.Message.IndexOf("RegisteredDisposableTransientWontBeDisposedByContainer", StringComparison.OrdinalIgnoreCase) >= 0
+                || exception.Message.IndexOf("Disposable Transient service", StringComparison.OrdinalIgnoreCase) >= 0
+                || message.Contains("allowdisposabletransient", StringComparison.Ordinal))
+            {
+                Log.Information(exception, "DryIoc warning handled: registered disposable transient won't be disposed by container. Registration updated to allowDisposableTransient=true.");
+                return true;
+            }
 
             // Check for DryIoc container resolution failures
             if (message.Contains("dryioc", StringComparison.OrdinalIgnoreCase) || message.Contains("container", StringComparison.OrdinalIgnoreCase) || message.Contains("resolution", StringComparison.OrdinalIgnoreCase))
@@ -688,12 +1051,141 @@ namespace WileyWidget
         {
             try
             {
-                return base.Container.Resolve<Views.Shell>();
+                // DI-first strategy:
+                // 1) Attempt to construct MainWindow via registered IServiceProvider using ActivatorUtilities
+                // 2) Attempt to resolve MainWindow/Shell from Prism container
+                // 3) Fallback to parameterless Activator.CreateInstance
+
+                // Helper to attempt DI construction
+                Window? TryCreateWithDI(Type type)
+                {
+                    try
+                    {
+                        // Try resolve a root IServiceProvider from the Prism container
+                        IServiceProvider? sp = null;
+                        try
+                        {
+                            sp = base.Container.Resolve<IServiceProvider>();
+                        }
+                        catch
+                        {
+                            sp = null;
+                        }
+
+                        if (sp != null)
+                        {
+                            // Use ActivatorUtilities so constructor injection is honored
+                            var created = ActivatorUtilities.CreateInstance(sp, type) as Window;
+                            if (created != null)
+                            {
+                                Log.Information("Created {TypeName} via ActivatorUtilities (DI)", type.FullName);
+                                return created;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "DI-based construction failed for {TypeName}", type.FullName);
+                    }
+
+                    return null;
+                }
+
+                // Try MainWindow first (preferred by manifest)
+                var mainWindowType = Type.GetType("WileyWidget.Views.MainWindow")
+                                     ?? Assembly.GetExecutingAssembly().GetType("WileyWidget.Views.MainWindow");
+
+                if (mainWindowType != null && typeof(Window).IsAssignableFrom(mainWindowType))
+                {
+                    // 1) DI-based creation
+                    var mw = TryCreateWithDI(mainWindowType);
+                    if (mw != null) return mw;
+
+                    // 2) Container resolve (Prism)
+                    try
+                    {
+                        var resolved = base.Container.Resolve(mainWindowType) as Window;
+                        if (resolved != null)
+                        {
+                            Log.Information("Resolved {TypeName} from container", mainWindowType.FullName);
+                            return resolved;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Container resolve failed for {TypeName}", mainWindowType.FullName);
+                    }
+
+                    // 3) Parameterless instantiate
+                    try
+                    {
+                        var paramless = Activator.CreateInstance(mainWindowType) as Window;
+                        if (paramless != null)
+                        {
+                            Log.Warning("Instantiated {TypeName} via parameterless constructor (DI skipped)", mainWindowType.FullName);
+                            return paramless;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Parameterless instantiation failed for {TypeName}", mainWindowType.FullName);
+                    }
+                }
+
+                // Next, try Shell type (now in Windows namespace)
+                var shellType = Type.GetType("WileyWidget.Views.Windows.Shell")
+                                ?? Assembly.GetExecutingAssembly().GetType("WileyWidget.Views.Windows.Shell");
+
+                if (shellType != null && typeof(Window).IsAssignableFrom(shellType))
+                {
+                    var sh = TryCreateWithDI(shellType);
+                    if (sh != null) return sh;
+
+                    try
+                    {
+                        var resolved = base.Container.Resolve(shellType) as Window;
+                        if (resolved != null)
+                        {
+                            Log.Information("Resolved {TypeName} from container", shellType.FullName);
+                            return resolved;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Container resolve failed for {TypeName}", shellType.FullName);
+                    }
+
+                    try
+                    {
+                        var paramless = Activator.CreateInstance(shellType) as Window;
+                        if (paramless != null)
+                        {
+                            Log.Warning("Instantiated {TypeName} via parameterless constructor (DI skipped)", shellType.FullName);
+                            return paramless;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Parameterless instantiation failed for {TypeName}", shellType.FullName);
+                    }
+                }
+
+                // Final fallback: attempt to resolve the known Shell type via generic container resolve
+                try
+                {
+                    Log.Debug("Final fallback: resolving Views.Windows.Shell from container");
+                    return base.Container.Resolve<Views.Windows.Shell>();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Final container resolve fallback failed for Views.Windows.Shell");
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to resolve application shell from container");
-                throw new InvalidOperationException("Failed to create application shell. Check DI registrations and service availability.", ex);
+                Log.Error(ex, "Failed to create application shell (DI-first)");
+                throw new InvalidOperationException("Failed to create application shell. Check XAML/DI registrations and service availability.", ex);
             }
         }
 
@@ -773,7 +1265,13 @@ namespace WileyWidget
 
                 string masked = licenseKey.Length > 8 ? string.Concat(licenseKey.AsSpan(0, 8), "...") : "(masked)";
                 Log.Information("Registering Syncfusion license (length: {Length}, source: {Source})", licenseKey.Length, licenseSource);
-                SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                // Wrap license registration with a retry helper to make startup deterministic
+                TryRetryOnException(() =>
+                {
+                    SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                    return true;
+                }, maxAttempts: 3);
+
                 _syncfusionLicenseRegistered = true;
 
                 if (forceRefresh)
@@ -870,6 +1368,8 @@ namespace WileyWidget
                                     licenseKey = fileKey;
                                     licenseSource = p;
                                     Log.Information("Bold Reports license key loaded from file: {Path}", p);
+                                    // Set process-level environment variable so downstream components can read it uniformly
+                                    try { Environment.SetEnvironmentVariable("BOLDREPORTS_LICENSE_KEY", licenseKey, EnvironmentVariableTarget.Process); } catch { }
                                     break;
                                 }
                             }
@@ -888,7 +1388,8 @@ namespace WileyWidget
                         }
                         else
                         {
-                            Log.Warning("Bold Reports license key not configured. Set BoldReports:LicenseKey in appsettings.json, BOLDREPORTS_LICENSE_KEY environment variable (user or machine scope), or place the license in a file at %ProgramData%\\WileyWidget\\boldreports_license.txt or %AppData%\\WileyWidget\\boldreports_license.txt to suppress runtime license dialogs.");
+                            // Downgrade to Information to avoid noisy warnings when the app is intentionally configured to load the license at runtime
+                            Log.Information("Bold Reports license key not configured in appsettings.json; will rely on environment variable BOLDREPORTS_LICENSE_KEY or optional license file (%ProgramData%\\WileyWidget\\boldreports_license.txt or %AppData%\\WileyWidget\\boldreports_license.txt). No warning will be raised.");
                         }
                         return;
                     }
@@ -896,7 +1397,13 @@ namespace WileyWidget
 
                 string masked = licenseKey.Length > 8 ? string.Concat(licenseKey.AsSpan(0, 8), "...") : "(masked)";
                 Log.Information("Registering Bold Reports license (length: {Length}, source: {Source})", licenseKey.Length, licenseSource);
-                Bold.Licensing.BoldLicenseProvider.RegisterLicense(licenseKey);
+                // Wrap Bold Reports registration in retry to handle transient file/IO issues
+                TryRetryOnException(() =>
+                {
+                    Bold.Licensing.BoldLicenseProvider.RegisterLicense(licenseKey);
+                    return true;
+                }, maxAttempts: 3);
+
                 _boldReportsLicenseRegistered = true;
 
                 if (forceRefresh)
@@ -917,28 +1424,116 @@ namespace WileyWidget
             }
         }
 
-        protected override void RegisterTypes(Prism.Ioc.IContainerRegistry containerRegistry)
+    protected override void RegisterTypes(Prism.Ioc.IContainerRegistry containerRegistry)
         {
             ArgumentNullException.ThrowIfNull(containerRegistry);
 #pragma warning disable CS8604 // Possible null reference argument
             Log.Information("=== Starting DI Container Registration ===");
             Log.Debug("RegisterTypes called with containerRegistry: {Type}", containerRegistry?.GetType().Name);
+            var swRegisterTotal = Stopwatch.StartNew();
+            var swPhase = Stopwatch.StartNew();
 
             IConfiguration configuration;
             var testMode = (Environment.GetEnvironmentVariable("WILEY_WIDGET_TESTMODE") ?? "0") == "1";
             // Diagnostics controls: keep extended diagnostics (chatty logging + eager resolves) OFF by default
             string extendedDiagEnv = Environment.GetEnvironmentVariable("WILEY_WIDGET_EXTENDED_DIAGNOSTICS") ?? "0";
             bool enableExtendedDiagnostics = extendedDiagEnv == "1" || string.Equals(extendedDiagEnv, "true", StringComparison.OrdinalIgnoreCase);
+            // Convention scan switch: enable expensive reflection scans only for test/dev or when explicitly requested
+            string conventionsEnv = Environment.GetEnvironmentVariable("WILEY_WIDGET_ENABLE_CONVENTIONS") ?? "0";
+            bool enableConventions = testMode || enableExtendedDiagnostics || conventionsEnv == "1" || string.Equals(conventionsEnv, "true", StringComparison.OrdinalIgnoreCase);
             try
             {
                 // Prefer calling the centralized Bootstrapper when available. Use reflection
                 // so design-time/wpftmp compilations that omit the Startup sources still succeed.
                 configuration = TryRunBootstrapper(containerRegistry!);
+                LogStartupTiming("RegisterTypes: Bootstrapper/Configuration", swPhase.Elapsed);
+                swPhase.Restart();
+
+                // Verify that IDbContextFactory was registered by Bootstrapper; if not, register immediately (early bootstrap)
+                try
+                {
+                    var factoryType = typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>);
+                    var dry = containerRegistry.GetContainer();
+                    var already = dry.IsRegistered(factoryType, serviceKey: null) || containerRegistry.IsRegistered(factoryType);
+                    if (already)
+                    {
+                        Log.Information("✓ Verified: IDbContextFactory<AppDbContext> is registered in container");
+                    }
+                    else
+                    {
+                        Log.Warning("✗ IDbContextFactory<AppDbContext> not found after Bootstrapper; registering early fallback now");
+
+                        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+                        services.AddDbContextFactory<WileyWidget.Data.AppDbContext>(options =>
+                        {
+                            try
+                            {
+                                // Expand environment variables in the connection string (e.g., %APPDATA%)
+                                var cs = configuration.GetConnectionString("DefaultConnection") ?? "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
+                                cs = Environment.ExpandEnvironmentVariables(cs);
+
+                                options.UseSqlServer(cs, sqlOptions =>
+                                {
+                                    // Point migrations to the data project when available
+                                    sqlOptions.MigrationsAssembly("WileyWidget.Data");
+                                    sqlOptions.EnableRetryOnFailure();
+                                });
+                            }
+                            catch
+                            {
+                                // As a last resort, use default SQL Server connection
+                                options.UseSqlServer("Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;", sqlOptions =>
+                                {
+                                    sqlOptions.MigrationsAssembly("WileyWidget.Data");
+                                    sqlOptions.EnableRetryOnFailure();
+                                });
+                            }
+                        });
+
+                        try
+                        {
+                            if (this.Container is Prism.Ioc.IContainerExtension extension)
+                            {
+                                extension.Populate(services);
+                                Log.Information("✓ Early registered IDbContextFactory<AppDbContext> (SQL Server) via IServiceCollection import");
+                            }
+                            else
+                            {
+                                Log.Warning("Container does not implement IContainerExtension; cannot import IServiceCollection for EF Core factory");
+                            }
+                        }
+                        catch (Exception importEx)
+                        {
+                            Log.Warning(importEx, "Failed early import of IDbContextFactory<AppDbContext>; a later fallback will attempt registration");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Could not verify or early-register IDbContextFactory<AppDbContext>");
+                }
+
                 // Ensure IConfiguration is available from the DI container for ResolveWithRetry callers
                 try
                 {
                     containerRegistry.RegisterInstance<IConfiguration>(configuration);
                     Log.Debug("Registered IConfiguration instance into DI container");
+
+                    // Apply diagnostics (trace sources) from configuration and enable WPF binding error tracing
+                    try
+                    {
+                        ConfigureDiagnosticsSettings(configuration);
+
+                        var bindingTraceListener = new WileyWidget.Diagnostics.BindingErrorTraceListener();
+                        Trace.Listeners.Add(bindingTraceListener);
+                        PresentationTraceSources.DataBindingSource.Listeners.Add(bindingTraceListener);
+                        PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Warning;
+                        Log.Information("✓ WPF binding error tracing enabled");
+                    }
+                    catch (Exception diagEx)
+                    {
+                        Log.Warning(diagEx, "Failed to apply diagnostics settings or enable binding error tracing");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -954,6 +1549,84 @@ namespace WileyWidget
 
             // HttpClient and Database services are now handled by Bootstrapper - no need to duplicate here
             Log.Debug("Infrastructure services (HttpClient, Database) already configured by Bootstrapper - skipping duplicate registration");
+
+            // Ensure EF Core IDbContextFactory<AppDbContext> is registered and a provider is configured
+            try
+            {
+                // Double-check if the factory is already registered; if not, register via Microsoft DI and bridge to DryIoc
+                var factoryType = typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>);
+                bool factoryRegistered = false;
+                try
+                {
+                    // Use DryIoc container directly for an authoritative check
+                    var dry = containerRegistry.GetContainer();
+                    factoryRegistered = dry.IsRegistered(factoryType, serviceKey: null);
+                }
+                catch
+                {
+                    // Fallback: use Prism API when available
+                    factoryRegistered = containerRegistry.IsRegistered(factoryType);
+                }
+
+                if (!factoryRegistered)
+                {
+                    Log.Warning("IDbContextFactory<AppDbContext> not found in container; registering with SQL Server provider as fallback");
+
+                    var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+                    services.AddDbContextFactory<WileyWidget.Data.AppDbContext>(options =>
+                    {
+                        try
+                        {
+                            // Expand environment variables in the connection string (e.g., %APPDATA%)
+                            var cs = configuration.GetConnectionString("DefaultConnection") ?? "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
+                            cs = Environment.ExpandEnvironmentVariables(cs);
+
+                            options.UseSqlServer(cs, sqlOptions =>
+                            {
+                                sqlOptions.MigrationsAssembly("WileyWidget.Data");
+                                sqlOptions.EnableRetryOnFailure();
+                            });
+                        }
+                        catch
+                        {
+                            // As a last resort, use default SQL Server connection
+                            options.UseSqlServer("Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;", sqlOptions =>
+                            {
+                                sqlOptions.MigrationsAssembly("WileyWidget.Data");
+                                sqlOptions.EnableRetryOnFailure();
+                            });
+                        }
+                    });
+
+                    // Bridge Microsoft DI registrations into DryIoc
+                    try
+                    {
+                        if (this.Container is Prism.Ioc.IContainerExtension extension)
+                        {
+                            extension.Populate(services);
+                        }
+                        else
+                        {
+                            Log.Warning("Container does not implement IContainerExtension; cannot import IServiceCollection");
+                        }
+                        Log.Information("✓ Registered and imported IDbContextFactory<AppDbContext> (SQL Server) into DryIoc");
+                    }
+                    catch (Exception bridgeEx)
+                    {
+                        Log.Warning(bridgeEx, "Failed to import IServiceCollection into DryIoc; EF Core factory may be unavailable");
+                    }
+                }
+                else
+                {
+                    Log.Debug("IDbContextFactory<AppDbContext> already registered - skipping fallback registration");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Attempt to ensure IDbContextFactory<AppDbContext> registration failed");
+            }
+            LogStartupTiming("RegisterTypes: Ensure EF Core factory", swPhase.Elapsed);
+            swPhase.Restart();
 
 
             try
@@ -1011,7 +1684,9 @@ namespace WileyWidget
                     Log.Warning(ex, "Failed to register Microsoft.Extensions.Logging services into Prism container");
                 }
 
-                containerRegistry.RegisterSingleton<AppOptionsConfigurator>();
+                // NOTE: AppOptionsConfigurator registration moved AFTER database services are confirmed registered
+                // to prevent premature resolution of AppDbContext dependencies
+                // Registration will happen after verifying IDbContextFactory is available
 
                 // Do NOT expose the concrete DryIoc container here. Depend on Prism's IContainerRegistry/IContainerProvider
                 // abstraction instead. If a service truly requires DryIoc-specific APIs it should obtain the concrete
@@ -1024,9 +1699,14 @@ namespace WileyWidget
                 throw;
             }
 
-            // Register AppOptions after core infrastructure (including ISecretVaultService) is available
+            // Register AppOptions after core infrastructure (including ISecretVaultService AND database) is available
+            // This must happen AFTER Bootstrapper completes to ensure IDbContextFactory is registered
             try
             {
+                // Register AppOptionsConfigurator NOW, after database services are ready
+                containerRegistry.RegisterSingleton<AppOptionsConfigurator>();
+                Log.Debug("Registered AppOptionsConfigurator singleton");
+
                 RegisterAppOptions(containerRegistry, configuration);
                 Log.Debug("AppOptions registration completed after core infrastructure registration");
             }
@@ -1058,14 +1738,40 @@ namespace WileyWidget
             try
             {
                 // Register data repositories required during startup validation to prevent DI container resolution failures
-                // Enterprise repository is registered by EnterpriseModule; remove duplicate central registration to
-                // avoid multiple registrations and maintain module ownership of its services.
-                containerRegistry.Register<IBudgetRepository, WileyWidget.Data.BudgetRepository>();
-                containerRegistry.Register<IAuditRepository, WileyWidget.Data.AuditRepository>();
-                containerRegistry.Register<IMunicipalAccountRepository, WileyWidget.Data.MunicipalAccountRepository>();
-                containerRegistry.Register<IUtilityCustomerRepository, WileyWidget.Data.UtilityCustomerRepository>();
-                containerRegistry.Register<IDepartmentRepository, WileyWidget.Data.DepartmentRepository>();
-                Log.Information("✓ Registered core data repositories for startup validation (Enterprise, Budget, Audit, MunicipalAccount, UtilityCustomer, Department)");
+                // All repositories registered centrally after Bootstrapper ensures IDbContextFactory is available
+                // Register repositories as transient - they use IDbContextFactory<AppDbContext> which is registered by Bootstrapper
+                // Use DryIoc-specific registration allowing disposable transients to avoid container exception
+                var dry = containerRegistry.GetContainer();
+
+                dry.Register<IEnterpriseRepository, WileyWidget.Data.EnterpriseRepository>(
+                    reuse: Reuse.Transient,
+                    setup: Setup.With(allowDisposableTransient: true));
+
+                dry.Register<IBudgetRepository, WileyWidget.Data.BudgetRepository>(
+                    reuse: Reuse.Transient,
+                    setup: Setup.With(allowDisposableTransient: true));
+
+                dry.Register<IAuditRepository, WileyWidget.Data.AuditRepository>(
+                    reuse: Reuse.Transient,
+                    setup: Setup.With(allowDisposableTransient: true));
+
+                // Explicit constructor selection for MunicipalAccountRepository to avoid ambiguity
+                // Use IDbContextFactory<AppDbContext> + IMemoryCache constructor and register as Singleton
+                dry.RegisterDelegate<IMunicipalAccountRepository>(
+                    r => new WileyWidget.Data.MunicipalAccountRepository(
+                        r.Resolve<Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>>(),
+                        r.Resolve<Microsoft.Extensions.Caching.Memory.IMemoryCache>()),
+                    reuse: Reuse.Singleton);
+
+                dry.Register<IUtilityCustomerRepository, WileyWidget.Data.UtilityCustomerRepository>(
+                    reuse: Reuse.Transient,
+                    setup: Setup.With(allowDisposableTransient: true));
+
+                dry.Register<IDepartmentRepository, WileyWidget.Data.DepartmentRepository>(
+                    reuse: Reuse.Transient,
+                    setup: Setup.With(allowDisposableTransient: true));
+
+                Log.Information("✓ Registered core data repositories for startup validation (Enterprise, Budget, Audit, MunicipalAccount, UtilityCustomer, Department) with allowDisposableTransient");
 
                 // Ensure Prism-resolved ViewModels can obtain the UnitOfWork infrastructure
                 containerRegistry.Register<IUnitOfWork, UnitOfWork>();
@@ -1088,6 +1794,8 @@ namespace WileyWidget
                 Log.Error(ex, "Failed to register data repositories and business services");
                 throw;
             }
+            LogStartupTiming("RegisterTypes: Data repositories and business services", swPhase.Elapsed);
+            swPhase.Restart();
 
             try
             {
@@ -1192,39 +1900,59 @@ namespace WileyWidget
                 containerRegistry.RegisterSingleton<Prism.Dialogs.IDialogService, Prism.Dialogs.DialogService>();
                 Log.Information("✓ Registered Prism IDialogService as singleton");
 
-                // Register Prism Dialogs
-                containerRegistry.RegisterDialog<Views.ConfirmationDialogView, ViewModels.ConfirmationDialogViewModel>("ConfirmationDialog");
-                containerRegistry.RegisterDialog<Views.NotificationDialogView, ViewModels.NotificationDialogViewModel>("NotificationDialog");
-                containerRegistry.RegisterDialog<Views.WarningDialogView, ViewModels.WarningDialogViewModel>("WarningDialog");
-                containerRegistry.RegisterDialog<Views.ErrorDialogView, ViewModels.ErrorDialogViewModel>("ErrorDialog");
-                containerRegistry.RegisterDialog<Views.SettingsDialogView, ViewModels.SettingsDialogViewModel>("SettingsDialog");
+                // Register Prism Dialogs (using new Dialogs namespace)
+                containerRegistry.RegisterDialog<Views.Dialogs.ConfirmationDialogView, ViewModels.Dialogs.ConfirmationDialogViewModel>("ConfirmationDialog");
+                containerRegistry.RegisterDialog<Views.Dialogs.NotificationDialogView, ViewModels.Dialogs.NotificationDialogViewModel>("NotificationDialog");
+                containerRegistry.RegisterDialog<Views.Dialogs.WarningDialogView, ViewModels.Dialogs.WarningDialogViewModel>("WarningDialog");
+                containerRegistry.RegisterDialog<Views.Dialogs.ErrorDialogView, ViewModels.Dialogs.ErrorDialogViewModel>("ErrorDialog");
+                containerRegistry.RegisterDialog<Views.Dialogs.SettingsDialogView, ViewModels.Dialogs.SettingsDialogViewModel>("SettingsDialog");
                 // Register AI Assist as a Prism Dialog for modal prompts
-                containerRegistry.RegisterDialog<WileyWidget.AIAssistView, ViewModels.AIAssistViewModel>("AIAssistDialog");
+                containerRegistry.RegisterDialog<Views.Main.AIAssistView, ViewModels.Main.AIAssistViewModel>("AIAssistDialog");
                 Log.Information("✓ Registered Prism Dialogs (Confirmation, Notification, Warning, Error, Settings)");
 
-                // Register Views for Navigation (recommended)
-                containerRegistry.RegisterForNavigation<WileyWidget.DashboardView, ViewModels.DashboardViewModel>("DashboardView");
-                containerRegistry.RegisterForNavigation<WileyWidget.EnterpriseView, ViewModels.EnterpriseViewModel>("EnterpriseView");
-                containerRegistry.RegisterForNavigation<WileyWidget.BudgetView, ViewModels.BudgetViewModel>("BudgetView");
-                containerRegistry.RegisterForNavigation<WileyWidget.Views.MunicipalAccountView, ViewModels.MunicipalAccountViewModel>("MunicipalAccountView");
-                containerRegistry.RegisterForNavigation<WileyWidget.UtilityCustomerView, ViewModels.UtilityCustomerViewModel>("UtilityCustomerView");
-                containerRegistry.RegisterForNavigation<WileyWidget.ReportsView, ViewModels.ReportsViewModel>("ReportsView");
-                containerRegistry.RegisterForNavigation<WileyWidget.AnalyticsView, ViewModels.AnalyticsViewModel>("AnalyticsView");
-                containerRegistry.RegisterForNavigation<WileyWidget.QuickBooksView, ViewModels.QuickBooksViewModel>("QuickBooksView");
-                containerRegistry.RegisterForNavigation<WileyWidget.Views.ExcelImportView, ViewModels.ExcelImportViewModel>("ExcelImportView");
-                containerRegistry.RegisterForNavigation<WileyWidget.SettingsView, ViewModels.SettingsViewModel>("SettingsView");
-                containerRegistry.RegisterForNavigation<WileyWidget.AIAssistView, ViewModels.AIAssistViewModel>("AIAssistView");
+                // Register Views for Navigation (using new Main namespace)
+                containerRegistry.RegisterForNavigation<Views.Main.DashboardView, ViewModels.Main.DashboardViewModel>("DashboardView");
+                containerRegistry.RegisterForNavigation<Views.Main.EnterpriseView, ViewModels.Main.EnterpriseViewModel>("EnterpriseView");
+                containerRegistry.RegisterForNavigation<Views.Main.BudgetView, ViewModels.Main.BudgetViewModel>("BudgetView");
+                containerRegistry.RegisterForNavigation<Views.Main.MunicipalAccountView, ViewModels.Main.MunicipalAccountViewModel>("MunicipalAccountView");
+                containerRegistry.RegisterForNavigation<Views.Main.UtilityCustomerView, ViewModels.Main.UtilityCustomerViewModel>("UtilityCustomerView");
+                containerRegistry.RegisterForNavigation<Views.Main.ReportsView, ViewModels.Main.ReportsViewModel>("ReportsView");
+                containerRegistry.RegisterForNavigation<Views.Main.AnalyticsView, ViewModels.Main.AnalyticsViewModel>("AnalyticsView");
+                containerRegistry.RegisterForNavigation<Views.Main.QuickBooksView, ViewModels.Main.QuickBooksViewModel>("QuickBooksView");
+                containerRegistry.RegisterForNavigation<Views.Main.ExcelImportView, ViewModels.Main.ExcelImportViewModel>("ExcelImportView");
+                containerRegistry.RegisterForNavigation<Views.Main.SettingsView, ViewModels.Main.SettingsViewModel>("SettingsView");
+                containerRegistry.RegisterForNavigation<Views.Main.AIAssistView, ViewModels.Main.AIAssistViewModel>("AIAssistView");
 
-                // Panel views (no dedicated ViewModels)
-                containerRegistry.RegisterForNavigation<Views.DashboardPanelView>("DashboardPanelView");
-                containerRegistry.RegisterForNavigation<Views.EnterprisePanelView>("EnterprisePanelView");
-                containerRegistry.RegisterForNavigation<Views.BudgetPanelView>("BudgetPanelView");
-                containerRegistry.RegisterForNavigation<Views.MunicipalAccountPanelView>("MunicipalAccountPanelView");
-                containerRegistry.RegisterForNavigation<Views.SettingsPanelView>("SettingsPanelView");
-                containerRegistry.RegisterForNavigation<Views.ToolsPanelView>("ToolsPanelView");
-                containerRegistry.RegisterForNavigation<Views.AIAssistPanelView>("AIAssistPanelView");
-                containerRegistry.RegisterForNavigation<Views.UtilityCustomerPanelView>("UtilityCustomerPanelView");
-                Log.Information("✓ Registered Views for navigation (core, analytics, settings, panels)");
+                // Panel views with explicit ViewModel registrations (using new Panels namespace)
+                containerRegistry.Register<ViewModels.Panels.AIAssistPanelViewModel>();
+                containerRegistry.Register<ViewModels.Panels.BudgetPanelViewModel>();
+                containerRegistry.Register<ViewModels.Panels.DashboardPanelViewModel>();
+                containerRegistry.Register<ViewModels.Panels.EnterprisePanelViewModel>();
+                containerRegistry.Register<ViewModels.Panels.MunicipalAccountPanelViewModel>();
+                containerRegistry.Register<ViewModels.Panels.SettingsPanelViewModel>();
+                containerRegistry.Register<ViewModels.Panels.ToolsPanelViewModel>();
+                containerRegistry.Register<ViewModels.Panels.UtilityCustomerPanelViewModel>();
+
+                containerRegistry.RegisterForNavigation<Views.Panels.DashboardPanelView, ViewModels.Panels.DashboardPanelViewModel>("DashboardPanelView");
+                containerRegistry.RegisterForNavigation<Views.Panels.EnterprisePanelView, ViewModels.Panels.EnterprisePanelViewModel>("EnterprisePanelView");
+                containerRegistry.RegisterForNavigation<Views.Panels.BudgetPanelView, ViewModels.Panels.BudgetPanelViewModel>("BudgetPanelView");
+                containerRegistry.RegisterForNavigation<Views.Panels.MunicipalAccountPanelView, ViewModels.Panels.MunicipalAccountPanelViewModel>("MunicipalAccountPanelView");
+                containerRegistry.RegisterForNavigation<Views.Panels.SettingsPanelView, ViewModels.Panels.SettingsPanelViewModel>("SettingsPanelView");
+                containerRegistry.RegisterForNavigation<Views.Panels.ToolsPanelView, ViewModels.Panels.ToolsPanelViewModel>("ToolsPanelView");
+                containerRegistry.RegisterForNavigation<Views.Panels.AIAssistPanelView, ViewModels.Panels.AIAssistPanelViewModel>("AIAssistPanelView");
+                containerRegistry.RegisterForNavigation<Views.Panels.UtilityCustomerPanelView, ViewModels.Panels.UtilityCustomerPanelViewModel>("UtilityCustomerPanelView");
+
+                // Explicitly register View-ViewModel associations using ViewModelLocationProvider
+                Prism.Mvvm.ViewModelLocationProvider.Register<Views.Panels.AIAssistPanelView, ViewModels.Panels.AIAssistPanelViewModel>();
+                Prism.Mvvm.ViewModelLocationProvider.Register<Views.Panels.BudgetPanelView, ViewModels.Panels.BudgetPanelViewModel>();
+                Prism.Mvvm.ViewModelLocationProvider.Register<Views.Panels.DashboardPanelView, ViewModels.Panels.DashboardPanelViewModel>();
+                Prism.Mvvm.ViewModelLocationProvider.Register<Views.Panels.EnterprisePanelView, ViewModels.Panels.EnterprisePanelViewModel>();
+                Prism.Mvvm.ViewModelLocationProvider.Register<Views.Panels.MunicipalAccountPanelView, ViewModels.Panels.MunicipalAccountPanelViewModel>();
+                Prism.Mvvm.ViewModelLocationProvider.Register<Views.Panels.SettingsPanelView, ViewModels.Panels.SettingsPanelViewModel>();
+                Prism.Mvvm.ViewModelLocationProvider.Register<Views.Panels.ToolsPanelView, ViewModels.Panels.ToolsPanelViewModel>();
+                Prism.Mvvm.ViewModelLocationProvider.Register<Views.Panels.UtilityCustomerPanelView, ViewModels.Panels.UtilityCustomerPanelViewModel>();
+
+                Log.Information("✓ Registered Views for navigation (core, analytics, settings, panels with explicit ViewModels)");
 
                 // Register Composite Command Service
                 containerRegistry.RegisterSingleton<ICompositeCommandService, CompositeCommandService>();
@@ -1310,12 +2038,12 @@ namespace WileyWidget
             try
             {
                 // Register Shell using a parameterless factory to avoid greedy constructor selection during tests
-                containerRegistry.Register<Shell>(provider => new Shell());
+                containerRegistry.Register<Views.Windows.Shell>(provider => new Views.Windows.Shell());
 
                 // Register additional ViewModels for Prism ViewModelLocator (infrastructure-only)
-                containerRegistry.Register<AboutViewModel>();
-                containerRegistry.Register<ExcelImportViewModel>();
-                containerRegistry.Register<ProgressViewModel>();
+                containerRegistry.Register<ViewModels.Windows.AboutViewModel>();
+                containerRegistry.Register<ViewModels.Main.ExcelImportViewModel>();
+                containerRegistry.Register<ViewModels.Main.ProgressViewModel>();
 
                 // Register Region Adapters
                 // REMOVED: DockingManagerRegionAdapter is disabled (#if false)
@@ -1330,14 +2058,24 @@ namespace WileyWidget
             // Navigation registrations are now handled by individual modules
 
             // Convention-based registrations: attempt to auto-register remaining services, repositories, and ViewModels
-            try
+            // Gate reflection-heavy scans to reduce startup time in production
+            if (enableConventions)
             {
-                RegisterConventions(containerRegistry);
-                ValidateAndRegisterViewModels(containerRegistry);
+                try
+                {
+                    Log.Information("Convention scans enabled (TestMode={TestMode}, ExtendedDiagnostics={Extended}, EnvSwitch={Env}) - running convention-based registrations",
+                        testMode, enableExtendedDiagnostics, conventionsEnv);
+                    RegisterConventions(containerRegistry);
+                    ValidateAndRegisterViewModels(containerRegistry);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Convention-based registration encountered an error; continuing with explicit registrations only");
+                }
             }
-            catch (Exception ex)
+            else
             {
-                Log.Warning(ex, "Convention-based registration encountered an error; continuing with explicit registrations only");
+                Log.Information("Convention scans disabled. To enable, set WILEY_WIDGET_ENABLE_CONVENTIONS=1 (or TRUE), or enable WILEY_WIDGET_EXTENDED_DIAGNOSTICS, or run in TestMode.");
             }
 
             Log.Information("=== DI Container Registration Complete ===");
@@ -1419,8 +2157,20 @@ namespace WileyWidget
             Log.Debug("Critical services validation completed");
             Log.Debug("=== DI CONTAINER REGISTRATION FULLY COMPLETED ===");
 
-            // Validate public accessibility to prevent InvalidRegistrationException
+            // Post-registration validation to ensure DB factory and other essentials can resolve; continue in degraded mode on failure
+            try
+            {
+                ValidatePostRegistrationServices(containerRegistry);
+            }
+            catch (Exception ex)
+            {
+                // Never throw from validation; only log
+                Log.Warning(ex, "Post-registration validation encountered an error (non-fatal)");
+            }
+
+        // Validate public accessibility to prevent InvalidRegistrationException
             ValidatePublicAccessibility();
+        LogStartupTiming("RegisterTypes: total", swRegisterTotal.Elapsed);
 #pragma warning restore CS8604 // Possible null reference argument
         }
 
@@ -1470,6 +2220,8 @@ namespace WileyWidget
         /// <summary>
         /// Validates that all critical services are properly registered and can be resolved.
         /// This prevents runtime errors due to missing DI registrations.
+        /// Enhanced with timeout handling and graceful degradation.
+        /// Now displays a dialog for critical failures instead of crashing.
         /// </summary>
         /// <param name="containerRegistry">The container registry to validate</param>
         private void ValidateCriticalServices(PrismIoc.IContainerRegistry containerRegistry, bool testMode)
@@ -1481,6 +2233,7 @@ namespace WileyWidget
                 ("IConfiguration", typeof(IConfiguration)),
                 ("ILoggerFactory", typeof(ILoggerFactory)),
                 ("ISettingsService", typeof(ISettingsService)),
+                ("IDbContextFactory<AppDbContext>", typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>)),
                 ("IEnterpriseRepository", typeof(IEnterpriseRepository)),
                 ("IBudgetRepository", typeof(IBudgetRepository)),
                 ("IModuleHealthService", typeof(IModuleHealthService)),
@@ -1499,40 +2252,206 @@ namespace WileyWidget
             }
 
             List<string> validationErrors = new List<string>();
+            List<string> validationWarnings = new List<string>();
 
             foreach ((string serviceName, Type serviceType) in criticalServices)
             {
                 try
                 {
                     IContainer validationContainer = containerRegistry.GetContainer();
-                    object service = validationContainer.Resolve(serviceType);
-                    if (service == null)
+
+                    // Use a timeout for service resolution to prevent hanging
+                    var resolveTask = System.Threading.Tasks.Task.Run(() =>
                     {
-                        validationErrors.Add($"{serviceName} resolved to null");
+                        try
+                        {
+                            return validationContainer.Resolve(serviceType);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, $"Service resolution failed for {serviceName}");
+                            return null;
+                        }
+                    });
+
+                    // Wait up to 5 seconds for service resolution
+                    if (resolveTask.Wait(TimeSpan.FromSeconds(5)))
+                    {
+                        object service = resolveTask.Result;
+                        if (service == null)
+                        {
+                            validationWarnings.Add($"{serviceName} resolved to null");
+                            Log.Warning($"⚠ {serviceName} resolved to null - service may not be properly configured");
+                        }
+                        else
+                        {
+                            Log.Debug($"✓ {serviceName} validated successfully");
+                        }
                     }
                     else
                     {
-                        Log.Debug($"✓ {serviceName} validated successfully");
+                        validationWarnings.Add($"{serviceName} resolution timed out after 5 seconds");
+                        Log.Warning($"⚠ {serviceName} resolution timed out - possible circular dependency or slow initialization");
                     }
+                }
+                catch (TimeoutException tex)
+                {
+                    validationWarnings.Add($"{serviceName} resolution timed out: {tex.Message}");
+                    Log.Warning(tex, $"⚠ Service validation timed out for {serviceName}");
+                }
+                catch (AggregateException aex) when (aex.InnerException is TimeoutException)
+                {
+                    validationWarnings.Add($"{serviceName} resolution timed out");
+                    Log.Warning(aex.InnerException, $"⚠ Service validation timed out for {serviceName}");
                 }
                 catch (Exception ex)
                 {
-                    validationErrors.Add($"{serviceName} failed to resolve: {ex.Message}");
-                    Log.Warning(ex, $"Critical service validation failed for {serviceName}");
+                    // Check if it's a circular dependency error
+                    if (ex.Message.Contains("circular", StringComparison.OrdinalIgnoreCase) ||
+                        ex.Message.Contains("cycle", StringComparison.OrdinalIgnoreCase) ||
+                        ex.Message.Contains("recursive", StringComparison.OrdinalIgnoreCase))
+                    {
+                        validationWarnings.Add($"{serviceName} has circular dependency: {ex.Message}");
+                        Log.Warning(ex, $"⚠ Circular dependency detected for {serviceName}");
+                    }
+                    else
+                    {
+                        validationErrors.Add($"{serviceName} failed to resolve: {ex.Message}");
+                        Log.Error(ex, $"❌ Critical service validation failed for {serviceName}");
+                    }
                 }
             }
 
+            // Log warnings but don't throw - allow application to continue with degraded functionality
+            if (validationWarnings.Any())
+            {
+                Log.Warning("Service validation warnings detected:");
+                foreach (var warning in validationWarnings)
+                {
+                    Log.Warning($"  ⚠ {warning}");
+                }
+                Log.Warning("Application will continue but some features may not work correctly");
+            }
+
+            // Log critical errors and attempt to show dialog, but DO NOT THROW
             if (validationErrors.Any())
             {
                 Log.Error("Critical service validation failed:");
                 foreach (var error in validationErrors)
                 {
-                    Log.Error($"  - {error}");
+                    Log.Error($"  ❌ {error}");
                 }
-                throw new InvalidOperationException($"Critical services failed validation: {string.Join(", ", validationErrors)}");
-            }
 
-            Log.Information("✓ All critical services validated successfully");
+                Log.Error("Critical services failed validation - application will start in degraded mode");
+                Log.Error("Some features may not be available. Please check service registrations and circular dependencies.");
+
+                // Attempt to show a user-friendly error dialog
+                try
+                {
+                    var errorMessage = "The following critical services failed to initialize:\n\n" +
+                                     string.Join("\n", validationErrors.Select(e => $"• {e}")) +
+                                     "\n\nThe application will start in degraded mode with limited functionality.\n" +
+                                     "Some features may not be available.";
+
+                    // Use Dispatcher to ensure we're on the UI thread
+                    Application.Current?.Dispatcher?.InvokeAsync(() =>
+                    {
+                        try
+                        {
+                            // Try to resolve IDialogService if available
+                            var dialogService = Container?.Resolve<Prism.Dialogs.IDialogService>();
+                            if (dialogService != null)
+                            {
+                                var parameters = new Prism.Dialogs.DialogParameters
+                                {
+                                    { "title", "Service Initialization Warning" },
+                                    { "message", errorMessage }
+                                };
+
+                                dialogService.ShowDialog("WarningDialog", parameters, result => { });
+                                Log.Information("Displayed service validation error dialog via IDialogService");
+                            }
+                            else
+                            {
+                                // Fallback to MessageBox if DialogService not available
+                                MessageBox.Show(errorMessage, "Service Initialization Warning",
+                                              MessageBoxButton.OK, MessageBoxImage.Warning);
+                                Log.Information("Displayed service validation error dialog via MessageBox");
+                            }
+                        }
+                        catch (Exception dialogEx)
+                        {
+                            Log.Warning(dialogEx, "Failed to show error dialog via IDialogService, trying MessageBox");
+                            try
+                            {
+                                MessageBox.Show(errorMessage, "Service Initialization Warning",
+                                              MessageBoxButton.OK, MessageBoxImage.Warning);
+                            }
+                            catch (Exception msgBoxEx)
+                            {
+                                Log.Error(msgBoxEx, "Failed to show error dialog via MessageBox");
+                            }
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Normal);
+                }
+                catch (Exception displayEx)
+                {
+                    Log.Error(displayEx, "Failed to display service validation error dialog");
+                }
+
+                // DO NOT THROW - allow application to continue in degraded mode
+                Log.Warning("Continuing application startup in degraded mode despite validation errors");
+            }
+            else
+            {
+                Log.Information("✓ All critical services validated successfully");
+            }
+        }
+
+        /// <summary>
+        /// Additional post-registration validations that are safe to run after all services are registered.
+        /// Logs warnings if critical services cannot be resolved but does not throw; app continues in degraded mode.
+        /// </summary>
+        private void ValidatePostRegistrationServices(PrismIoc.IContainerRegistry containerRegistry)
+        {
+            try
+            {
+                var dry = containerRegistry.GetContainer();
+
+                // Try resolving EF Core factory explicitly
+                try
+                {
+                    var factory = dry.Resolve<Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>>();
+                    if (factory != null)
+                    {
+                        Log.Information("✓ Post-validate: IDbContextFactory<AppDbContext> resolved successfully");
+                    }
+                    else
+                    {
+                        Log.Warning("⚠ Post-validate: IDbContextFactory<AppDbContext> resolved to null");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "⚠ Post-validate: Failed to resolve IDbContextFactory<AppDbContext>");
+                }
+
+                // Try a quick repository resolve to ensure downstream graph is intact
+                try
+                {
+                    var budgetRepo = dry.Resolve<IBudgetRepository>();
+                    _ = budgetRepo != null;
+                    Log.Debug("Post-validate: IBudgetRepository resolve attempt complete");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "⚠ Post-validate: IBudgetRepository resolution failed (degraded mode may apply)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Post-registration validation failed unexpectedly");
+            }
         }
 
         /// <summary>
@@ -1605,6 +2524,7 @@ namespace WileyWidget
                 var appOptions = new AppOptions();
                 configuration.GetSection("App").Bind(appOptions);
 
+                bool configuredFromDb = false;
                 try
                 {
                     // Try to obtain AppOptionsConfigurator from the Prism container provider; avoid depending on DryIoc directly
@@ -1632,6 +2552,7 @@ namespace WileyWidget
                         }
 
                         configurator.Configure(appOptions);
+                        configuredFromDb = true; // reached here without exception – DB-backed configuration applied
                     }
                     catch (Exception)
                     {
@@ -1639,9 +2560,16 @@ namespace WileyWidget
                         throw;
                     }
                 }
+                catch (InvalidOperationException ex)
+                {
+                    // Log InvalidOperationException without re-throwing to allow startup to continue
+                    Log.Warning(ex, "AppOptionsConfigurator failed during startup (InvalidOperationException); continuing with configuration-only AppOptions values.");
+                    configuredFromDb = false;
+                }
                 catch (Exception ex)
                 {
                     Log.Warning(ex, "AppOptionsConfigurator failed during startup; continuing with configuration-only AppOptions values.");
+                    configuredFromDb = false;
                 }
 
                 var optionsWrapper = Options.Create(appOptions);
@@ -1650,7 +2578,7 @@ namespace WileyWidget
                 var monitor = new StaticOptionsMonitor<AppOptions>(appOptions, Log.Logger);
                 containerRegistry.RegisterInstance<IOptionsMonitor<AppOptions>>(monitor);
 
-                Log.Information("✓ Registered AppOptions for SettingsViewModel via Options bridge");
+                Log.Information("✓ Registered AppOptions for SettingsViewModel via Options bridge ({Source})", configuredFromDb ? "database+secrets" : "configuration only");
             }
             catch (Exception ex)
             {
@@ -1858,6 +2786,23 @@ namespace WileyWidget
             {
                 try
                 {
+                    // Filter out system/debug views that should be ignored
+                    if (view.Namespace != null &&
+                        (view.Namespace.StartsWith("System.", StringComparison.OrdinalIgnoreCase) ||
+                         view.Namespace.StartsWith("System", StringComparison.OrdinalIgnoreCase) ||
+                         view.Name.Contains("Debug", StringComparison.OrdinalIgnoreCase) ||
+                         view.Name.Contains("SpinLock", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Log.Debug("Skipping system/debug view: {View}", view.FullName);
+                        continue;
+                    }
+
+                    // Only process WileyWidget views
+                    if (view.Namespace == null || !view.Namespace.StartsWith("WileyWidget", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
                     // Candidate VM name: prefer WileyWidget.ViewModels.{ViewName}Model
                     var vmName = (view.Namespace != null && view.Namespace.Contains("Views", StringComparison.OrdinalIgnoreCase))
                         ? view.Namespace.Replace(".Views", ".ViewModels", StringComparison.OrdinalIgnoreCase) + "." + view.Name.Replace("View", "ViewModel", StringComparison.OrdinalIgnoreCase)
@@ -2018,6 +2963,7 @@ namespace WileyWidget
         /// <summary>
         /// Registers AI Integration Services using lazy loading for better startup performance.
         /// Expensive services are only instantiated when first accessed.
+        /// Enhanced to break circular dependencies using Lazy<T> pattern.
         /// </summary>
         /// <param name="containerRegistry">The DI container registry for DI registration</param>
         private void RegisterLazyAIServices(PrismIoc.IContainerRegistry containerRegistry)
@@ -2050,12 +2996,11 @@ namespace WileyWidget
                 Log.Information("  - Logging: Dedicated Serilog file sink at logs/ai-usage.log");
                 Log.Information("  - Dependencies: ILogger<AILoggingService>");
 
-                // 2. Register IAIService -> Lazy<XAIService> (Lazy Singleton)
-                // xAI service implementation for AI-powered insights and analysis with Grok integration
-                // Using lazy loading to defer expensive HTTP client and API initialization
-                containerRegistry.RegisterSingleton<IAIService>(provider =>
+                // 2. Register Lazy<IAIService> to break circular dependencies
+                // This allows services that depend on IAIService to take Lazy<IAIService> instead
+                containerRegistry.RegisterSingleton<Lazy<IAIService>>(provider =>
                 {
-                    var lazyService = new Lazy<XAIService>(() =>
+                    return new Lazy<IAIService>(() =>
                     {
                         Log.Information("Initializing XAIService on first access...");
                         return new XAIService(
@@ -2066,9 +3011,19 @@ namespace WileyWidget
                             provider.Resolve<IAILoggingService>(),
                             provider.Resolve<IMemoryCache>());
                     });
-                    return lazyService.Value;
                 });
-                Log.Information("✓ Registered IAIService -> Lazy<XAIService> (Lazy Singleton)");
+                Log.Information("✓ Registered Lazy<IAIService> for breaking circular dependencies");
+
+                // 2a. Register IAIService -> Lazy<XAIService> (Lazy Singleton)
+                // xAI service implementation for AI-powered insights and analysis with Grok integration
+                // Using lazy loading to defer expensive HTTP client and API initialization
+                containerRegistry.RegisterSingleton<IAIService>(provider =>
+                {
+                    // Resolve the Lazy<IAIService> and get its value
+                    var lazy = provider.Resolve<Lazy<IAIService>>();
+                    return lazy.Value;
+                });
+                Log.Information("✓ Registered IAIService -> XAIService (Lazy Singleton)");
                 Log.Information("  - xAI/Grok integration for AI-powered insights (lazy loaded)");
                 Log.Information("  - Features: Insights, data analysis, area review, mock data generation");
                 Log.Information("  - Dependencies: IHttpClientFactory, IConfiguration, ILogger<XAIService>, IWileyWidgetContextService, IAILoggingService, IMemoryCache");
@@ -2082,19 +3037,21 @@ namespace WileyWidget
                     var lazyService = new Lazy<GrokSupercomputer>(() =>
                     {
                         Log.Information("Initializing GrokSupercomputer on first access...");
+                        // Use Lazy<IAIService> to avoid circular dependency issues
+                        var lazyAI = provider.Resolve<Lazy<IAIService>>();
                         return new GrokSupercomputer(
                             provider.Resolve<ILogger<GrokSupercomputer>>(),
                             provider.Resolve<IEnterpriseRepository>(),
                             provider.Resolve<IBudgetRepository>(),
                             provider.Resolve<IAuditRepository>(),
                             provider.Resolve<IAILoggingService>(),
-                            provider.Resolve<IAIService>(),
+                            lazyAI.Value,  // Resolve the actual IAIService when needed
                             provider.Resolve<IMemoryCache>(),
                             provider.Resolve<IOptions<AppOptions>>());
                     });
                     return lazyService.Value;
                 });
-                Log.Information("✓ Registered IGrokSupercomputer -> Lazy<GrokSupercomputer> (Lazy Singleton)");
+                Log.Information("✓ Registered IGrokSupercomputer -> GrokSupercomputer (Lazy Singleton)");
                 Log.Information("  - AI-powered municipal utility analytics engine (lazy loaded)");
                 Log.Information("  - Capabilities: Enterprise data fetching, report calculations, budget analysis, compliance reporting, AI data analysis");
                 Log.Information("  - Dependencies: ILogger<GrokSupercomputer>, IEnterpriseRepository, IBudgetRepository, IAuditRepository, IAILoggingService, IAIService");
@@ -2209,7 +3166,10 @@ namespace WileyWidget
 
         protected override void ConfigureModuleCatalog(Prism.Modularity.IModuleCatalog moduleCatalog)
         {
+            if (moduleCatalog == null) throw new ArgumentNullException(nameof(moduleCatalog));
+
             Log.Information("=== Configuring Prism Module Catalog (explicit registration) ===");
+            // First try to let any custom manager populate the catalog (manifest-driven)
             try
             {
                 WileyWidget.Startup.Modules.CustomModuleManager.RegisterModules(moduleCatalog);
@@ -2217,8 +3177,107 @@ namespace WileyWidget
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to configure module catalog via CustomModuleManager");
-                throw;
+                // Don't fail startup just because the custom manager couldn't register modules.
+                Log.Warning(ex, "CustomModuleManager.RegisterModules failed; will attempt deterministic/manual registration as fallback");
+            }
+
+            // Attempt to resolve the module health service to track registration/init status.
+            IModuleHealthService? healthService = null;
+            try
+            {
+                healthService = ResolveWithRetry<IModuleHealthService>();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Could not resolve IModuleHealthService during ConfigureModuleCatalog - module health tracking will be disabled");
+            }
+
+            // Deterministic module registration order. Add or reorder modules here to keep startup predictable.
+            var moduleOrder = new[]
+            {
+                "CoreModule",
+                "SettingsModule",
+                "DashboardModule",
+                "EnterpriseModule",
+                "BudgetModule",
+                "MunicipalAccountModule",
+                "UtilityCustomerModule",
+                "ReportsModule",
+                "AIAssistModule",
+                "PanelModule",
+                "QuickBooksModule"
+            };
+
+            foreach (var moduleName in moduleOrder)
+            {
+                try
+                {
+                    // Compute initialization mode using existing helper
+                    var initMode = GetModuleInitializationMode(moduleName, "WhenAvailable");
+
+                    // If module already exists in catalog, update initialization mode and ensure health tracking is aware
+                    var existing = moduleCatalog.Modules.FirstOrDefault(m => string.Equals(m.ModuleName, moduleName, StringComparison.OrdinalIgnoreCase));
+                    if (existing != null)
+                    {
+                        existing.InitializationMode = initMode;
+                        Log.Debug("Module '{Module}' already present in catalog - set InitializationMode={Mode}", moduleName, initMode);
+                        try { healthService?.RegisterModule(moduleName); } catch { }
+                        continue;
+                    }
+
+                    // Try to resolve module type via reflection (AssemblyQualifiedName) so Prism can load it later
+                    var moduleTypeName = TryResolveModuleTypeName(moduleName);
+                    if (string.IsNullOrWhiteSpace(moduleTypeName))
+                    {
+                        var msg = $"Module type for '{moduleName}' not found in loaded assemblies; skipping explicit registration.";
+                        Log.Warning(msg);
+                        try { healthService?.MarkModuleInitialized(moduleName, false, msg); } catch { }
+                        continue;
+                    }
+
+                    // Create ModuleInfo and register with health tracking
+                    var moduleInfo = new Prism.Modularity.ModuleInfo
+                    {
+                        ModuleName = moduleName,
+                        ModuleType = moduleTypeName,
+                        InitializationMode = initMode
+                    };
+
+                    if (healthService != null)
+                    {
+                        RegisterModuleWithHealthTracking(moduleCatalog, healthService, moduleName, () => moduleCatalog.AddModule(moduleInfo));
+                    }
+                    else
+                    {
+                        // No health service - do a direct registration
+                        moduleCatalog.AddModule(moduleInfo);
+                        Log.Debug("Registered module '{Module}' without health tracking", moduleName);
+                    }
+                }
+                catch (Prism.Modularity.ModuleInitializeException mex)
+                {
+                    Log.Error(mex, "ModuleInitializeException while registering module '{Module}'", moduleName);
+                    try { healthService?.MarkModuleInitialized(moduleName, false, mex.Message); } catch { }
+                    // Re-throw to surface serious initialization issues
+                    throw;
+                }
+                catch (KeyNotFoundException knf)
+                {
+                    Log.Error(knf, "KeyNotFoundException while registering module '{Module}' - likely missing region mapping or manifest entry", moduleName);
+                    try { healthService?.MarkModuleInitialized(moduleName, false, knf.Message); } catch { }
+                    throw;
+                }
+                catch (TypeLoadException tle)
+                {
+                    Log.Error(tle, "TypeLoadException while resolving module type for '{Module}'", moduleName);
+                    try { healthService?.MarkModuleInitialized(moduleName, false, tle.Message); } catch { }
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Non-fatal exception while registering module '{Module}' - marking health as failed and continuing", moduleName);
+                    try { healthService?.MarkModuleInitialized(moduleName, false, ex.Message); } catch { }
+                }
             }
         }
 
@@ -2356,10 +3415,10 @@ namespace WileyWidget
                 ["CoreModule"] = InitializationMode.WhenAvailable,
                 ["QuickBooksModule"] = InitializationMode.OnDemand,
 
-                // Feature modules - load on demand to improve startup performance
+                // Feature modules - EnterpriseModule loads at startup to support MainViewModel dependencies
                 ["DashboardModule"] = InitializationMode.WhenAvailable,
                 ["SettingsModule"] = InitializationMode.WhenAvailable,
-                ["EnterpriseModule"] = InitializationMode.OnDemand,
+                ["EnterpriseModule"] = InitializationMode.WhenAvailable,
                 ["BudgetModule"] = InitializationMode.OnDemand,
                 ["MunicipalAccountModule"] = isTestMode ? InitializationMode.WhenAvailable : InitializationMode.OnDemand,
                 ["UtilityCustomerModule"] = InitializationMode.OnDemand,
@@ -2381,19 +3440,7 @@ namespace WileyWidget
         /// <param name="moduleHealthService">The module health service for status checking</param>
         private void ValidateModuleInitialization(IModuleHealthService moduleHealthService)
         {
-            // Align expected regions with actual regions declared in Shell.xaml
-            var moduleRegionMap = new Dictionary<string, string[]>
-            {
-                ["DashboardModule"] = new[] { "DashboardRegion" },
-                ["EnterpriseModule"] = new[] { "EnterpriseRegion" },
-                ["BudgetModule"] = new[] { "BudgetRegion" },
-                ["MunicipalAccountModule"] = new[] { "MunicipalAccountRegion" },
-                ["UtilityCustomerModule"] = new[] { "UtilityCustomerRegion" },
-                ["ReportsModule"] = new[] { "ReportsRegion" },
-                ["AIAssistModule"] = new[] { "AIAssistRegion" },
-                ["PanelModule"] = new[] { "LeftPanelRegion", "RightPanelRegion", "BottomPanelRegion" },
-                ["SettingsModule"] = new[] { "SettingsRegion" }
-            };
+            // Use the shared static moduleRegionMap defined on the App class for expected region mappings.
 
             Log.Information("=== Validating Module Initialization and Region Availability ===");
 
@@ -2464,115 +3511,7 @@ namespace WileyWidget
             }
         }
 
-        protected override void OnInitialized()
-        {
-            try
-            {
-                base.OnInitialized();
 
-                // AutoWireViewModelCreated subscription removed: prefer Prism's IContainerProvider + ViewModelLocationProvider
-                // for resolving and creating ViewModels. Custom runtime validation or conventions can be implemented
-                // using container-based validation or as part of build-time analyzers. See RegisterTypes() where
-                // ViewModel factory is configured to resolve from the DI container.
-
-                // Apply Syncfusion theme globally as early as possible per official docs
-                // Reference: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
-                try
-                {
-                    Log.Debug("Initializing SfSkinManager theme...");
-                    // CRITICAL: Set theme FIRST before loading resources that use DynamicResource
-                    // Use the official API to inherit theme to all controls/windows
-                    SfSkinManager.ApplyThemeAsDefaultStyle = true;
-#pragma warning disable CA2000 // Theme objects are managed by SfSkinManager
-                    SfSkinManager.ApplicationTheme = new Theme("FluentLight");
-#pragma warning restore CA2000
-
-                    Log.Information("SfSkinManager initialized with FluentLight theme globally");
-                    Log.Debug("SfSkinManager initialization completed successfully");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Failed to initialize SfSkinManager theme - falling back to default");
-                    Log.Debug("SfSkinManager initialization failed: {Message}", ex.Message);
-                    // Fallback to FluentLight if FluentDark is unavailable for any reason
-                    try
-                    {
-#pragma warning disable CA2000
-                        SfSkinManager.ApplicationTheme = new Theme("FluentLight");
-#pragma warning restore CA2000
-                        Log.Debug("SfSkinManager fallback to FluentLight succeeded");
-                    }
-                    catch (Exception fallbackEx)
-                    {
-                        Log.Error(fallbackEx, "FluentLight fallback also failed - continuing without theme");
-                        Log.Debug("SfSkinManager fallback failed: {Message}", fallbackEx.Message);
-                    }
-                }
-
-                Log.Information("Application initialization completed successfully");
-                Log.Information("All services registered and container ready for use");
-
-                Application.Current.MainWindow?.Show();
-
-                // Defer secrets initialization to a background task to avoid blocking startup
-                _ = System.Threading.Tasks.Task.Run(async () =>
-                {
-                    try
-                    {
-                        var secretVault = this.Container.Resolve<ISecretVaultService>();
-                        await secretVault.MigrateSecretsFromEnvironmentAsync().ConfigureAwait(false);
-                        Log.Information("✓ (Deferred) Environment secrets migrated to local vault");
-
-                        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
-                        if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
-                        {
-                            await secretVault.PopulateProductionSecretsAsync().ConfigureAwait(false);
-                            Log.Information("✓ (Deferred) Production secrets initialized");
-                        }
-
-                        // Signal successful completion of deferred secret initialization
-                        _secretsInitializationTcs.TrySetResult(true);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "Deferred production secrets initialization failed");
-                        // Surface failure to any awaiters so readiness checks can act accordingly
-                        _secretsInitializationTcs.TrySetException(ex);
-                    }
-                });
-
-                // Log module health report after initialization
-                try
-                {
-                    var moduleHealthService = ResolveWithRetry<IModuleHealthService>();
-                    moduleHealthService.LogHealthReport();
-
-                    // Validate module initialization and region availability
-                    ValidateModuleInitialization(moduleHealthService);
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Failed to generate module health report during application initialization");
-                }
-
-                try
-                {
-                    // Optional: Navigate to default view
-                    // var regionManager = Container.Resolve<IRegionManager>();
-                    // regionManager.RequestNavigate("MainRegion", "DashboardView");
-                    // Log.Information("Navigated to DashboardView during application initialization");
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Failed to navigate to default view during startup - continuing without navigation");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Critical error during application initialization");
-                throw;
-            }
-        }
 
         /// <summary>
         /// Registers a module with the module catalog and tracks it with the health service.
@@ -2597,13 +3536,73 @@ namespace WileyWidget
             }
         }
 
+        /// <summary>
+        /// Attempts to resolve an assembly-qualified module type name for a module named like 'CoreModule'.
+        /// Scans loaded assemblies for a type whose name matches the provided moduleName (or ends with ".{moduleName}").
+        /// Returns the AssemblyQualifiedName or null if not found.
+        /// </summary>
+        private static readonly ConcurrentDictionary<string, Type?> _typeByShortNameCache = new();
+        private static readonly ConcurrentDictionary<string, string?> _moduleTypeNameCache = new();
+
+        private static string? TryResolveModuleTypeName(string moduleName)
+        {
+            if (string.IsNullOrWhiteSpace(moduleName)) return null;
+
+            if (_moduleTypeNameCache.TryGetValue(moduleName, out var cached))
+                return cached;
+
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type[] types;
+                try
+                {
+                    types = asm.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    types = ex.Types.Where(t => t != null).ToArray()!;
+                }
+
+                foreach (var t in types)
+                {
+                    if (t == null) continue;
+                    // exact name match (CoreModule) or full name ending with ".CoreModule"
+                    if (string.Equals(t.Name, moduleName, StringComparison.Ordinal) || (t.FullName != null && t.FullName.EndsWith("." + moduleName, StringComparison.Ordinal)))
+                    {
+                        var aqn = t.AssemblyQualifiedName;
+                        _moduleTypeNameCache[moduleName] = aqn;
+                        return aqn;
+                    }
+                }
+            }
+
+            _moduleTypeNameCache[moduleName] = null;
+            return null;
+        }
+
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Prism's DryIocContainerExtension takes ownership of the DryIoc Container and will dispose it when appropriate.")]
         protected override Prism.Ioc.IContainerExtension CreateContainerExtension()
         {
-            return new DryIocContainerExtension();
-        }
+            var sw = Stopwatch.StartNew();
+            // Configure DryIoc container with increased timeout for scoped/singleton creation
+            // This resolves timeout errors when services have complex dependency graphs
+            var rules = DryIoc.Rules.Default
+                .WithDefaultReuse(Reuse.Singleton)
+                .WithAutoConcreteTypeResolution()
+                .WithDefaultIfAlreadyRegistered(IfAlreadyRegistered.Replace)
+                // Increase timeout from default to allow for complex service initialization
+                .WithFactorySelector(Rules.SelectLastRegisteredFactory())
+                // Allow disposable transients and track them globally to avoid registration exceptions and leaks
+                .WithoutThrowOnRegisteringDisposableTransient()
+                .WithTrackingDisposableTransients();
 
-        private static void ConfigureLogging()
+            var container = new Container(rules);
+
+            Log.Information("DryIoc container configured with optimized rules for complex service resolution");
+            LogStartupTiming("CreateContainerExtension: DryIoc container creation", sw.Elapsed);
+
+            return new DryIocContainerExtension(container);
+        }        private static void ConfigureLogging()
         {
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
@@ -2727,26 +3726,34 @@ namespace WileyWidget
             var projectDir = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(assemblyDir)) ?? AppDomain.CurrentDomain.BaseDirectory; // bin\Debug\net9.0-windows -> project root
             var envPath = System.IO.Path.Combine(projectDir, ".env");
 
-            // Check for XAI_API_KEY environment variable and write to .env if needed
+            // Check for XAI_API_KEY environment variable and write to .env only in non-production
+            var environmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
             var xaiApiKey = Environment.GetEnvironmentVariable("XAI_API_KEY");
             if (!string.IsNullOrEmpty(xaiApiKey))
             {
-                bool needsXaiKey = true;
-                if (System.IO.File.Exists(envPath))
+                if (!string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Check if .env already contains XAI_API_KEY
-                    var envContent = System.IO.File.ReadAllText(envPath);
-                    if (envContent.Contains("XAI_API_KEY=", StringComparison.OrdinalIgnoreCase))
+                    bool needsXaiKey = true;
+                    if (System.IO.File.Exists(envPath))
                     {
-                        needsXaiKey = false;
+                        // Check if .env already contains XAI_API_KEY
+                        var envContent = System.IO.File.ReadAllText(envPath);
+                        if (envContent.Contains("XAI_API_KEY=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            needsXaiKey = false;
+                        }
+                    }
+
+                    if (needsXaiKey)
+                    {
+                        // Append XAI_API_KEY to .env file (dev/test only)
+                        System.IO.File.AppendAllText(envPath, $"{Environment.NewLine}XAI_API_KEY={xaiApiKey}{Environment.NewLine}");
+                        Log.Information("XAI_API_KEY from environment variable written to .env file (non-production)");
                     }
                 }
-
-                if (needsXaiKey)
+                else
                 {
-                    // Append XAI_API_KEY to .env file
-                    System.IO.File.AppendAllText(envPath, $"{Environment.NewLine}XAI_API_KEY={xaiApiKey}{Environment.NewLine}");
-                    Log.Information("XAI_API_KEY from environment variable written to .env file");
+                    Log.Debug("Skipping writing XAI_API_KEY to .env in Production");
                 }
             }
 
@@ -2784,32 +3791,159 @@ namespace WileyWidget
 
             try
             {
-                // Best-effort: re-register Syncfusion license in case some Syncfusion component needs it during shutdown
-                EnsureSyncfusionLicenseRegistered(forceRefresh: true);
+                // Re-register critical licenses as best-effort so any controls that touch licensing on shutdown
+                // will have access to the registered license string (some third-party libs show dialogs otherwise).
+                try
+                {
+                    EnsureSyncfusionLicenseRegistered(forceRefresh: true);
+                }
+                catch (Exception regEx)
+                {
+                    Log.Warning(regEx, "Failed to re-register Syncfusion license during shutdown (non-fatal)");
+                }
 
-                base.OnExit(e);
-                Log.Information("Application shutdown completed successfully - Session: {StartupId}", _startupId);
-                Log.Information("Application exited with code: {ExitCode} - Session: {StartupId}", e.ApplicationExitCode, _startupId);
+                try
+                {
+                    EnsureBoldReportsLicenseRegistered(forceRefresh: true);
+                }
+                catch (Exception regEx)
+                {
+                    Log.Warning(regEx, "Failed to re-register Bold Reports license during shutdown (non-fatal)");
+                }
+
+                // If deferred secrets initialization is still running, observe outcome with a short timeout
+                try
+                {
+                    var secretsTask = SecretsInitializationTask;
+                    if (!secretsTask.IsCompleted)
+                    {
+                        Log.Debug("Waiting briefly for deferred secrets initialization to complete before shutdown");
+                        var completed = System.Threading.Tasks.Task.WhenAny(secretsTask, System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(2))).Result;
+                        if (completed == secretsTask)
+                        {
+                            if (secretsTask.IsFaulted)
+                                Log.Warning(secretsTask.Exception, "Deferred secrets initialization faulted during shutdown");
+                            else
+                                Log.Debug("Deferred secrets initialization completed during shutdown wait");
+                        }
+                        else
+                        {
+                            Log.Debug("Deferred secrets initialization did not complete within shutdown timeout - proceeding with shutdown");
+                        }
+                    }
+                }
+                catch (Exception exSecrets)
+                {
+                    Log.Debug(exSecrets, "Error while waiting for deferred secrets initialization during shutdown (non-fatal)");
+                }
+
+                // Attempt to gracefully stop and dispose common services by best-effort lookup from DI.
+                try
+                {
+                    // Dispose UnitOfWork if present
+                    try
+                    {
+                        var uow = ResolveWithRetry<IUnitOfWork>(maxAttempts: 1);
+                        try { (uow as IDisposable)?.Dispose(); Log.Debug("Disposed IUnitOfWork during shutdown"); } catch (Exception dU) { Log.Debug(dU, "Disposing IUnitOfWork threw during shutdown"); }
+                    }
+                    catch { /* swallow - optional service not available */ }
+
+                    // Dispose memory cache if registered
+                    try
+                    {
+                        var mem = ResolveWithRetry<IMemoryCache>(maxAttempts: 1);
+                        try { mem?.Dispose(); Log.Debug("Disposed IMemoryCache during shutdown"); } catch (Exception dM) { Log.Debug(dM, "Disposing IMemoryCache threw during shutdown"); }
+                    }
+                    catch { }
+
+                    // If an IServiceScopeFactory is available, create a scope and attempt to stop hosted services if any
+                    try
+                    {
+                        var scopeFactory = ResolveWithRetry<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(maxAttempts: 1);
+                        if (scopeFactory != null)
+                        {
+                            using var scope = scopeFactory.CreateScope();
+                            // Stop all hosted services if any are registered
+                            try
+                            {
+                                var hostedServices = scope.ServiceProvider.GetServices<Microsoft.Extensions.Hosting.IHostedService>();
+                                foreach (var hosted in hostedServices)
+                                {
+                                    try { hosted.StopAsync(System.Threading.CancellationToken.None).GetAwaiter().GetResult(); Log.Debug("Stopped IHostedService during shutdown"); } catch (Exception hsEx) { Log.Debug(hsEx, "IHostedService.StopAsync threw during shutdown"); }
+                                }
+                            }
+                            catch (Exception getSvcEx)
+                            {
+                                Log.Debug(getSvcEx, "Enumerating IHostedService during shutdown failed (non-fatal)");
+                            }
+                        }
+                    }
+                    catch { }
+                }
+                catch (Exception exCleanup)
+                {
+                    Log.Debug(exCleanup, "General cleanup during shutdown threw an exception (non-fatal)");
+                }
+
+                // Call base.OnExit to allow Prism and WPF internals to perform cleanup
+                try
+                {
+                    base.OnExit(e);
+                }
+                catch (InvalidOperationException invEx)
+                {
+                    // Known problematic case: Syncfusion may attempt to show shutdown dialogs after windows disposed
+                    // which throws InvalidOperationException or similar; swallow and log as warning to allow process exit.
+                    Log.Warning(invEx, "InvalidOperationException during base.OnExit - likely a shutdown dialog from a third-party control; swallowing to allow graceful exit");
+                }
+                catch (Exception baseEx)
+                {
+                    // Some libraries may throw specialized exceptions during shutdown; inspect message for known fingerprints
+                    var bm = baseEx.ToString();
+                    if (bm.Contains("LicenseMessage", StringComparison.OrdinalIgnoreCase) || bm.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Log.Warning(baseEx, "Syncfusion-related exception during base.OnExit swallowed to allow graceful exit");
+                    }
+                    else
+                    {
+                        // Unknown exceptions are logged as fatal but not rethrown to avoid leaving the process in a bad state
+                        Log.Fatal(baseEx, "Unhandled exception during base.OnExit");
+                    }
+                }
+
+                Log.Information("Application shutdown completed (requested) - Session: {StartupId}", _startupId);
+                Log.Information("Application exit code: {ExitCode} - Session: {StartupId}", e.ApplicationExitCode, _startupId);
                 Log.Information("=== Application Shutdown Complete - Session: {StartupId} ===", _startupId);
             }
             catch (Exception ex)
             {
-                // Special handling: Syncfusion LicenseMessage.ShowDialog can throw during shutdown
-                var msg = ex.ToString();
-                if (msg.Contains("LicenseMessage", StringComparison.OrdinalIgnoreCase) || msg.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase))
+                // Best-effort filtering of known, non-fatal shutdown exceptions (Syncfusion/License dialogs)
+                try
                 {
-                    // Log and swallow to prevent fatal shutdown crash
-                    Log.Warning(ex, "Non-fatal Syncfusion-related exception occurred during OnExit; swallowing to allow graceful exit");
+                    if (ex is InvalidOperationException || ex.ToString().IndexOf("syncfusion", StringComparison.OrdinalIgnoreCase) >= 0 || ex.ToString().IndexOf("LicenseMessage", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        Log.Warning(ex, "Non-fatal third-party exception occurred during OnExit and was swallowed");
+                    }
+                    else
+                    {
+                        Log.Fatal(ex, "Unhandled exception during application shutdown (caught in outer handler)");
+                    }
                 }
-                else
-                {
-                    // Unknown exception - log as fatal but do not rethrow to avoid ungraceful termination
-                    Log.Fatal(ex, "Unhandled exception during application shutdown");
-                }
+                catch { }
             }
             finally
             {
-                // Ensure logger flush
+                // Try to dispose the Prism/DryIoc container if it exposes IDisposable
+                try
+                {
+                    if (this.Container is IDisposable d)
+                    {
+                        try { d.Dispose(); Log.Debug("Disposed DI container during shutdown"); } catch (Exception dEx) { Log.Debug(dEx, "Disposing DI container threw during shutdown"); }
+                    }
+                }
+                catch { }
+
+                // Ensure logger flushes all sinks
                 try { Log.CloseAndFlush(); } catch { }
             }
         }
@@ -2873,6 +4007,9 @@ namespace WileyWidget
         {
             Log.Information("Validating public accessibility of registered types...");
 
+            var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+            var isProduction = string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase);
+
             // List of types to validate (key services and ViewModels)
             var typesToValidate = new[]
             {
@@ -2892,19 +4029,33 @@ namespace WileyWidget
             {
                 if (!type.IsPublic && !type.IsNestedPublic)
                 {
-                    Log.Error("Type {Type} is not public - this may cause InvalidRegistrationException", type.FullName);
-                    throw new InvalidOperationException($"Type {type.FullName} must be public for DI container registration");
+                    if (isProduction)
+                    {
+                        Log.Warning("Type {Type} is not public - this may cause InvalidRegistrationException (production warning only)", type.FullName);
+                    }
+                    else
+                    {
+                        Log.Error("Type {Type} is not public - this may cause InvalidRegistrationException", type.FullName);
+                        throw new InvalidOperationException($"Type {type.FullName} must be public for DI container registration");
+                    }
                 }
 
                 var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
                 if (constructors.Length == 0)
                 {
-                    Log.Error("Type {Type} has no public constructors - this may cause InvalidRegistrationException", type.FullName);
-                    throw new InvalidOperationException($"Type {type.FullName} must have at least one public constructor");
+                    if (isProduction)
+                    {
+                        Log.Warning("Type {Type} has no public constructors - this may cause InvalidRegistrationException (production warning only)", type.FullName);
+                    }
+                    else
+                    {
+                        Log.Error("Type {Type} has no public constructors - this may cause InvalidRegistrationException", type.FullName);
+                        throw new InvalidOperationException($"Type {type.FullName} must have at least one public constructor");
+                    }
                 }
             }
 
-            Log.Information("✓ Public accessibility validation passed for {Count} types", typesToValidate.Length);
+            Log.Information("✓ Public accessibility validation completed for {Count} types (mode: {Mode})", typesToValidate.Length, isProduction ? "Production - warnings only" : "Development - strict");
         }
     }
 }

@@ -6,6 +6,8 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Data;
+using Microsoft.Data.SqlClient;
+using System.IO;
 
 namespace WileyWidget.Startup
 {
@@ -89,42 +91,68 @@ namespace WileyWidget.Startup
 
         private void BackupDatabase()
         {
-            var connectionString = _configuration.GetConnectionString("DefaultConnection");
-            if (string.IsNullOrWhiteSpace(connectionString)) return;
-
-            connectionString = Environment.ExpandEnvironmentVariables(connectionString);
-            var dbPath = ExtractDatabasePath(connectionString);
-            if (string.IsNullOrWhiteSpace(dbPath)) return;
-            if (!System.IO.File.Exists(dbPath)) return;
-
-            var backupDir = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(dbPath) ?? string.Empty, "backups");
-            if (!System.IO.Directory.Exists(backupDir))
+            try
             {
-                System.IO.Directory.CreateDirectory(backupDir);
+                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+                if (string.IsNullOrWhiteSpace(connectionString))
+                    return;
+
+                connectionString = Environment.ExpandEnvironmentVariables(connectionString);
+                var backupDirectory = _configuration.GetValue<string>("Database:BackupDirectory");
+
+                if (string.IsNullOrWhiteSpace(backupDirectory))
+                {
+                    _logger.LogDebug("Backup directory not configured; skipping SQL Server backup");
+                    return;
+                }
+
+                Directory.CreateDirectory(backupDirectory);
+
+                using var connection = new SqlConnection(connectionString);
+                connection.Open();
+
+                var databaseName = connection.Database;
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+                var backupPath = Path.Combine(backupDirectory, $"{databaseName}_backup_{timestamp}.bak");
+
+                using var builder = new SqlCommandBuilder();
+                var quotedDatabaseName = builder.QuoteIdentifier(databaseName);
+                var commandText = $"BACKUP DATABASE {quotedDatabaseName} TO DISK = @backupPath WITH INIT, CHECKSUM";
+#pragma warning disable CA2100 // Database name is properly quoted using SqlCommandBuilder.QuoteIdentifier()
+                using var command = new SqlCommand(commandText, connection)
+#pragma warning restore CA2100
+                {
+                    CommandTimeout = _configuration.GetValue<int>("Database:BackupCommandTimeoutSeconds", 600)
+                };
+
+                command.Parameters.AddWithValue("@backupPath", backupPath);
+                command.ExecuteNonQuery();
+
+                _logger.LogInformation("✓ Database backed up to: {BackupPath}", backupPath);
+
+                var retentionDays = _configuration.GetValue<int>("Database:BackupRetentionDays", 30);
+                CleanOldBackups(backupDirectory, retentionDays, databaseName);
             }
-
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-            var backupPath = System.IO.Path.Combine(backupDir, $"wileywidget_backup_{timestamp}.db");
-            System.IO.File.Copy(dbPath, backupPath, overwrite: false);
-            _logger.LogInformation("✓ Database backed up to: {BackupPath}", backupPath);
-
-            var retentionDays = _configuration.GetValue<int>("Database:BackupRetentionDays", 30);
-            CleanOldBackups(backupDir, retentionDays);
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to backup database");
+            }
         }
 
-        private void CleanOldBackups(string backupDir, int retentionDays)
+        private void CleanOldBackups(string backupDir, int retentionDays, string databaseName)
         {
             try
             {
                 var cutoffDate = DateTime.Now.AddDays(-retentionDays);
-                var backupFiles = System.IO.Directory.GetFiles(backupDir, "wileywidget_backup_*.db");
+                var searchPattern = $"{databaseName}_backup_*.bak";
+                var backupFiles = Directory.GetFiles(backupDir, searchPattern);
                 var deleted = 0;
                 foreach (var file in backupFiles)
                 {
-                    var info = new System.IO.FileInfo(file);
+                    var info = new FileInfo(file);
                     if (info.CreationTime < cutoffDate)
                     {
-                        System.IO.File.Delete(file);
+                        File.Delete(file);
                         deleted++;
                     }
                 }
@@ -137,22 +165,6 @@ namespace WileyWidget.Startup
             {
                 _logger.LogWarning(ex, "Failed to clean old backups");
             }
-        }
-
-        private static string? ExtractDatabasePath(string connectionString)
-        {
-            if (string.IsNullOrWhiteSpace(connectionString)) return null;
-            if (connectionString.Contains(":memory:", StringComparison.OrdinalIgnoreCase)) return null;
-
-            var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            foreach (var part in parts)
-            {
-                var p = part.Trim();
-                if (p.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)) return p["Data Source=".Length..].Trim();
-                if (p.StartsWith("DataSource=", StringComparison.OrdinalIgnoreCase)) return p["DataSource=".Length..].Trim();
-                if (p.StartsWith("Filename=", StringComparison.OrdinalIgnoreCase)) return p["Filename=".Length..].Trim();
-            }
-            return null;
         }
     }
 }

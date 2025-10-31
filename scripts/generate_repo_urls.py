@@ -16,6 +16,7 @@ import json
 import mimetypes
 import os
 import re
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -89,6 +90,12 @@ DEFAULT_EXCLUDE_PATTERNS = [
     r"\.idea/",
     r"coverage/",
     r"htmlcov/",
+    r"\.tmp\.driveupload/",  # Exclude temp drive upload directory
+    r"\.mypy_cache/",  # Exclude mypy cache
+    r"\.ruff_cache/",  # Exclude ruff cache
+    r"test-logs/",  # Exclude test logs
+    r"logs/",  # Exclude logs directory
+    r"ai-fetchable-manifest\.json$",  # Exclude the manifest itself
     r"\.dll$",
     r"\.exe$",
     r"\.pdb$",
@@ -135,6 +142,54 @@ class RepositoryAnalyzer:
             if pattern.search(normalized):
                 return True
         return False
+
+    def _cleanup_temp_files(self) -> None:
+        """Delete temporary files and directories before generating manifest."""
+        temp_dirs = [
+            ".tmp.driveupload",
+            ".mypy_cache",
+            ".ruff_cache",
+            "test-logs",
+            "__pycache__",
+            ".pytest_cache",
+            "htmlcov",
+        ]
+
+        temp_files = [
+            "ai-fetchable-manifest.json",  # Old manifest
+        ]
+
+        deleted_dirs = []
+        deleted_files = []
+
+        # Delete temporary directories
+        for temp_dir in temp_dirs:
+            dir_path = self.root_path / temp_dir
+            if dir_path.exists() and dir_path.is_dir():
+                try:
+                    shutil.rmtree(dir_path)
+                    deleted_dirs.append(temp_dir)
+                    print(f"  Deleted temp directory: {temp_dir}")
+                except Exception as e:
+                    print(f"  Warning: Could not delete {temp_dir}: {e}")
+
+        # Delete temporary files
+        for temp_file in temp_files:
+            file_path = self.root_path / temp_file
+            if file_path.exists() and file_path.is_file():
+                try:
+                    file_path.unlink()
+                    deleted_files.append(temp_file)
+                    print(f"  Deleted temp file: {temp_file}")
+                except Exception as e:
+                    print(f"  Warning: Could not delete {temp_file}: {e}")
+
+        if deleted_dirs or deleted_files:
+            print(
+                f"✓ Cleanup complete: {len(deleted_dirs)} directories, {len(deleted_files)} files removed"
+            )
+        else:
+            print("✓ No temp files to clean up")
 
     def _get_git_info(self) -> Dict:
         """Get git repository information."""
@@ -582,6 +637,10 @@ class RepositoryAnalyzer:
         self, output_path: str, filter_categories: Optional[List[str]] = None
     ) -> Dict:
         """Generate complete manifest."""
+        print("Cleaning up temporary files...")
+        self._cleanup_temp_files()
+        print()
+
         print("Collecting files...")
         files = self._collect_files()
         print(f"Found {len(files)} files to process")

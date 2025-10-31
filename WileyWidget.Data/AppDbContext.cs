@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using Microsoft.EntityFrameworkCore;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
@@ -8,44 +9,44 @@ namespace WileyWidget.Data
 {
     public class AppDbContext : DbContext
     {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
-    {
-        // Initialize DbSets to satisfy nullable reference types
-        MunicipalAccounts = Set<MunicipalAccount>();
-        Departments = Set<Department>();
-        BudgetEntries = Set<BudgetEntry>();
-        Funds = Set<Fund>();
-        Transactions = Set<Transaction>();
-        Enterprises = Set<Enterprise>();
-        AppSettings = Set<AppSettings>();
-        FiscalYearSettings = Set<FiscalYearSettings>();
-        UtilityCustomers = Set<UtilityCustomer>();
-        BudgetPeriods = Set<BudgetPeriod>();
-        Invoices = Set<Invoice>();
-        Vendors = Set<Vendor>();
-        AuditEntries = Set<AuditEntry>();
-        TaxRevenueSummaries = Set<TaxRevenueSummary>();
-    }
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
+            // DbSets are now auto-initialized properties - no manual initialization needed
+        }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        base.OnConfiguring(optionsBuilder);
-    }
+        // Fallback provider configuration to avoid "No database provider configured" errors
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (optionsBuilder is null)
+                throw new ArgumentNullException(nameof(optionsBuilder));
 
-    public DbSet<MunicipalAccount> MunicipalAccounts { get; set; }
-    public DbSet<Department> Departments { get; set; }
-    public DbSet<BudgetEntry> BudgetEntries { get; set; }
-    public DbSet<Fund> Funds { get; set; }
-    public DbSet<Transaction> Transactions { get; set; } // New
-    public DbSet<Enterprise> Enterprises { get; set; } // New
-    public DbSet<AppSettings> AppSettings { get; set; } // New
-    public DbSet<FiscalYearSettings> FiscalYearSettings { get; set; } // New
-    public DbSet<UtilityCustomer> UtilityCustomers { get; set; } // New
-    public DbSet<BudgetPeriod> BudgetPeriods { get; set; } // New
-    public DbSet<Invoice> Invoices { get; set; } // New
-    public DbSet<Vendor> Vendors { get; set; } // New
-    public DbSet<AuditEntry> AuditEntries { get; set; } // New
-    public DbSet<TaxRevenueSummary> TaxRevenueSummaries { get; set; } // New
+            if (!optionsBuilder.IsConfigured)
+            {
+                var connectionString = Environment.GetEnvironmentVariable("WILEY_WIDGET_SQLSERVER_CONNECTION")
+                    ?? "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
+
+                optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
+                {
+                    sqlOptions.MigrationsAssembly("WileyWidget.Data");
+                    sqlOptions.EnableRetryOnFailure();
+                });
+            }
+        }
+
+        public DbSet<MunicipalAccount> MunicipalAccounts { get; set; } = null!;
+        public DbSet<Department> Departments { get; set; } = null!;
+        public DbSet<BudgetEntry> BudgetEntries { get; set; } = null!;
+        public DbSet<Fund> Funds { get; set; } = null!;
+        public DbSet<Transaction> Transactions { get; set; } = null!;
+        public DbSet<Enterprise> Enterprises { get; set; } = null!;
+        public DbSet<AppSettings> AppSettings { get; set; } = null!;
+        public DbSet<FiscalYearSettings> FiscalYearSettings { get; set; } = null!;
+        public DbSet<UtilityCustomer> UtilityCustomers { get; set; } = null!;
+        public DbSet<BudgetPeriod> BudgetPeriods { get; set; } = null!;
+        public DbSet<Invoice> Invoices { get; set; } = null!;
+        public DbSet<Vendor> Vendors { get; set; } = null!;
+        public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
+        public DbSet<TaxRevenueSummary> TaxRevenueSummaries { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -93,8 +94,8 @@ namespace WileyWidget.Data
             entity.HasIndex(e => new { e.Year, e.Status });
         });
 
-    // MunicipalAccount configuration
-    modelBuilder.Entity<MunicipalAccount>(entity =>
+        // MunicipalAccount configuration
+        modelBuilder.Entity<MunicipalAccount>(entity =>
         {
             entity.OwnsOne(e => e.AccountNumber, owned =>
             {
@@ -120,17 +121,8 @@ namespace WileyWidget.Data
             entity.HasIndex(e => new { e.Fund, e.Type });
             entity.Property(e => e.Balance).HasColumnType("decimal(18,2)");
             entity.Property(e => e.BudgetAmount).HasColumnType("decimal(18,2)");
-            entity.Property(e => e.RowVersion).IsConcurrencyToken();
-
-            // In test mode (SQLite in-memory), ensure a default RowVersion value is generated
-            // to satisfy NOT NULL constraints when seeding with EnsureCreated.
-            // SQLite lacks true rowversion/timestamp; randomblob(8) is a practical stand-in.
-            if ((Environment.GetEnvironmentVariable("WILEY_WIDGET_TESTMODE") ?? "0") == "1")
-            {
-                entity.Property(e => e.RowVersion)
-                      .ValueGeneratedOnAddOrUpdate()
-                      .HasDefaultValueSql("randomblob(8)");
-            }
+            entity.Property(e => e.RowVersion)
+                  .IsRowVersion();
         });
 
         // Fund relations

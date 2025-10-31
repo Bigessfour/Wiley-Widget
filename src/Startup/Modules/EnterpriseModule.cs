@@ -5,7 +5,11 @@ using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.ViewModels;
+using WileyWidget.ViewModels.Dialogs;
+using WileyWidget.ViewModels.Main;
 using WileyWidget.Views;
+using WileyWidget.Views.Dialogs;
+using WileyWidget.Views.Main;
 
 namespace WileyWidget.Startup.Modules
 {
@@ -37,8 +41,9 @@ namespace WileyWidget.Startup.Modules
             // Register EnterpriseDialogViewModel
             containerRegistry.Register<EnterpriseDialogViewModel>();
 
-            // Register Enterprise repository
-            containerRegistry.Register<IEnterpriseRepository, WileyWidget.Data.EnterpriseRepository>();
+            // Note: IEnterpriseRepository is registered centrally in App.xaml.cs after Bootstrapper
+            // ensures IDbContextFactory is available. Modules can't register repositories that depend
+            // on database infrastructure since module RegisterTypes may run before/during App.RegisterTypes.
 
             // Register views for navigation
             containerRegistry.RegisterForNavigation<EnterpriseView, EnterpriseViewModel>();

@@ -76,7 +76,6 @@
     <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
     <!-- Prism.DryIoc.Wpf is not a published NuGet package; do not reference it. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -161,6 +160,8 @@
     <Compile Include="src\Diagnostics\StartupPerformanceMonitor.cs" />
     <Compile Include="src\Diagnostics\BindingErrorTraceListener.cs" />
     <Compile Include="src\Diagnostics\XamlDiagnosticsService.cs" />
+    <!-- Include background database initializer used by App.xaml.cs during startup -->
+    <Compile Include="src\Startup\DatabaseInitializer.cs" />
     <Compile Include="src\HealthCheckHostedService.cs" />
     <Compile Include="src\QuickBooksService.cs" />
   </ItemGroup>

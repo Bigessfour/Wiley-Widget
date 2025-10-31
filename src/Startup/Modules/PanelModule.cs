@@ -5,6 +5,7 @@ using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
+using WileyWidget.Views.Panels;
 
 namespace WileyWidget.Startup.Modules
 {

@@ -1,0 +1,321 @@
+<Window x:Class="WileyWidget.Views.Windows.Shell"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:prism="http://prismlibrary.com/"
+    xmlns:prismRegions="clr-namespace:Prism.Navigation.Regions;assembly=Prism.Wpf"
+        xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+        xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+    xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+    xmlns:vm="clr-namespace:WileyWidget.ViewModels;assembly=WileyWidget.UI"
+    xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
+    xmlns:converters="clr-namespace:WileyWidget.Converters"
+        Title="{Binding CurrentViewTitle, FallbackValue='Wiley Widget - Municipal Enterprise Management'}"
+        AutomationProperties.Name="Main Application Window"
+        xml:lang="en-US"
+        FocusVisualStyle="{DynamicResource {x:Static SystemParameters.FocusVisualStyleKey}}"
+        KeyboardNavigation.TabNavigation="Cycle"
+        KeyboardNavigation.ControlTabNavigation="Cycle"
+        KeyboardNavigation.DirectionalNavigation="Cycle"
+        Height="768" Width="1280"
+        MinHeight="600" MinWidth="1024"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True"
+    Visibility="Hidden"
+    syncfusionskin:SfSkinManager.VisualStyle="FluentDark"
+    prism:ViewModelLocator.AutoWireViewModel="True">    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Data templates for ViewModels -->
+                <ResourceDictionary Source="../Resources/DataTemplates.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Converters -->
+            <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <!-- Apply Syncfusion theme globally via SfSkinManager.ApplicationTheme -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Main Ribbon in Row 0 -->
+        <syncfusion:Ribbon x:Name="MainRibbon"
+                          Grid.Row="0"
+                          AutomationProperties.Name="Main Application Ribbon"
+                          AutomationProperties.HelpText="Main navigation and command ribbon">
+
+            <!-- Quick Access Toolbar -->
+            <syncfusion:Ribbon.QuickAccessToolBar>
+                <syncfusion:QuickAccessToolBar>
+                    <syncfusion:RibbonButton Label="Save"
+                                           SizeForm="ExtraSmall"
+                                           ToolTip="Save current work (Ctrl+S)"/>
+                    <syncfusion:RibbonButton Label="Refresh"
+                                           SizeForm="ExtraSmall"
+                                           Command="{Binding RefreshAllCommand}"
+                                           ToolTip="Refresh all data (F5)"/>
+                </syncfusion:QuickAccessToolBar>
+            </syncfusion:Ribbon.QuickAccessToolBar>
+
+            <syncfusion:RibbonTab Caption="Home" IsChecked="True">
+                <syncfusion:RibbonBar Header="Navigation">
+                    <syncfusion:RibbonButton Label="Dashboard"
+                                           SizeForm="Large"
+                                           Command="{Binding NavigateToDashboardCommand}"
+                                           ToolTip="Navigate to Dashboard (Ctrl+1)"/>
+                    <syncfusion:RibbonButton Label="Enterprises"
+                                           SizeForm="Large"
+                                           Command="{Binding NavigateToEnterprisesCommand}"
+                                           ToolTip="Navigate to Enterprises (Ctrl+2)"/>
+                    <syncfusion:RibbonButton Label="Accounts"
+                                           SizeForm="Large"
+                                           Command="{Binding NavigateToAccountsCommand}"
+                                           ToolTip="Navigate to Municipal Accounts (Ctrl+3)"/>
+                    <syncfusion:RibbonButton Label="Budget"
+                                           SizeForm="Large"
+                                           Command="{Binding NavigateToBudgetCommand}"
+                                           ToolTip="Navigate to Budget Management (Ctrl+4)"/>
+                    <syncfusion:RibbonButton Label="Departments"
+                                           SizeForm="Large"
+                                           Command="{Binding NavigateToDepartmentsCommand}"
+                                           ToolTip="Navigate to Department Management (Ctrl+5)"/>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Tools">
+                    <syncfusion:RibbonButton Label="Settings"
+                                           SizeForm="Small"
+                                           Command="{Binding OpenSettingsCommand}"
+                                           ToolTip="Open application settings"/>
+                    <syncfusion:RibbonButton Label="Reports"
+                                           SizeForm="Small"
+                                           Command="{Binding OpenReportsCommand}"
+                                           ToolTip="View and generate reports"/>
+                    <syncfusion:RibbonButton Label="AI Assist"
+                                           SizeForm="Small"
+                                           Command="{Binding OpenAIAssistCommand}"
+                                           ToolTip="Open AI Assistant"/>
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+            <syncfusion:RibbonTab Caption="Data">
+                <syncfusion:RibbonBar Header="Import/Export">
+                    <syncfusion:RibbonButton Label="Import Excel"
+                                           SizeForm="Large"
+                                           Command="{Binding ImportExcelCommand}"
+                                           ToolTip="Import data from Excel files"/>
+                    <syncfusion:RibbonButton Label="Export Data"
+                                           SizeForm="Large"
+                                           Command="{Binding ExportDataCommand}"
+                                           ToolTip="Export data to various formats"/>
+                    <syncfusion:RibbonButton Label="Sync QuickBooks"
+                                           SizeForm="Large"
+                                           Command="{Binding SyncQuickBooksCommand}"
+                                           ToolTip="Synchronize with QuickBooks Online"/>
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+            <syncfusion:RibbonTab Caption="Dashboard">
+                <syncfusion:RibbonBar Header="Views">
+                    <syncfusion:RibbonButton Label="Show Dashboard"
+                                           SizeForm="Large"
+                                           Command="{Binding ShowDashboardCommand}"
+                                           ToolTip="Display main dashboard"/>
+                    <syncfusion:RibbonButton Label="Analytics"
+                                           SizeForm="Large"
+                                           Command="{Binding ShowAnalyticsCommand}"
+                                           ToolTip="View advanced analytics"/>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Refresh">
+                    <syncfusion:RibbonButton Label="Refresh All"
+                                           SizeForm="Large"
+                                           Command="{Binding RefreshAllCommand}"
+                                           ToolTip="Refresh all data sources (F5)"/>
+                    <syncfusion:RibbonButton Label="Refresh View"
+                                           SizeForm="Small"
+                                           Command="{Binding RefreshCommand}"
+                                           ToolTip="Refresh current view"/>
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+            <syncfusion:RibbonTab Caption="Budget">
+                <syncfusion:RibbonBar Header="Management">
+                    <syncfusion:RibbonButton Label="New Budget"
+                                           SizeForm="Large"
+                                           Command="{Binding CreateNewBudgetCommand}"
+                                           ToolTip="Create a new fiscal year budget"/>
+                    <syncfusion:RibbonButton Label="Import Budget"
+                                           SizeForm="Small"
+                                           Command="{Binding ImportBudgetCommand}"
+                                           ToolTip="Import budget from file"/>
+                    <syncfusion:RibbonButton Label="Export Budget"
+                                           SizeForm="Small"
+                                           Command="{Binding ExportBudgetCommand}"
+                                           ToolTip="Export budget to file"/>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Analysis">
+                    <syncfusion:RibbonButton Label="Budget Analysis"
+                                           SizeForm="Large"
+                                           Command="{Binding ShowBudgetAnalysisCommand}"
+                                           ToolTip="View budget vs actual analysis"/>
+                    <syncfusion:RibbonButton Label="Rate Calculator"
+                                           SizeForm="Large"
+                                           Command="{Binding ShowRateCalculatorCommand}"
+                                           ToolTip="Calculate utility rates"/>
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+            <syncfusion:RibbonTab Caption="Enterprise">
+                <syncfusion:RibbonBar Header="Management">
+                    <syncfusion:RibbonButton Label="Add Enterprise"
+                                           SizeForm="Large"
+                                           Command="{Binding AddEnterpriseCommand}"
+                                           ToolTip="Add new enterprise (Ctrl+N)"/>
+                    <syncfusion:RibbonButton Label="Edit Enterprise"
+                                           SizeForm="Small"
+                                           Command="{Binding EditEnterpriseCommand}"
+                                           ToolTip="Edit selected enterprise (Ctrl+E)"/>
+                    <syncfusion:RibbonButton Label="Delete Enterprise"
+                                           SizeForm="Small"
+                                           Command="{Binding DeleteEnterpriseCommand}"
+                                           ToolTip="Delete selected enterprise (Delete)"/>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Operations">
+                    <syncfusion:RibbonButton Label="Service Charges"
+                                           SizeForm="Large"
+                                           Command="{Binding ManageServiceChargesCommand}"
+                                           ToolTip="Manage enterprise service charges"/>
+                    <syncfusion:RibbonButton Label="Utility Bills"
+                                           SizeForm="Large"
+                                           Command="{Binding ManageUtilityBillsCommand}"
+                                           ToolTip="Manage utility billing"/>
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+            <syncfusion:RibbonTab Caption="Reports">
+                <syncfusion:RibbonBar Header="Standard Reports">
+                    <syncfusion:RibbonButton Label="Financial Summary"
+                                           SizeForm="Large"
+                                           Command="{Binding GenerateFinancialSummaryCommand}"
+                                           ToolTip="Generate financial summary report"/>
+                    <syncfusion:RibbonButton Label="Budget vs Actual"
+                                           SizeForm="Large"
+                                           Command="{Binding GenerateBudgetVsActualCommand}"
+                                           ToolTip="Generate budget comparison report"/>
+                    <syncfusion:RibbonButton Label="Enterprise Performance"
+                                           SizeForm="Large"
+                                           Command="{Binding GenerateEnterprisePerformanceCommand}"
+                                           ToolTip="Generate enterprise performance report"/>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Custom Reports">
+                    <syncfusion:RibbonButton Label="Create Report"
+                                           SizeForm="Large"
+                                           Command="{Binding CreateCustomReportCommand}"
+                                           ToolTip="Build custom report"/>
+                    <syncfusion:RibbonButton Label="Saved Reports"
+                                           SizeForm="Large"
+                                           Command="{Binding ShowSavedReportsCommand}"
+                                           ToolTip="View saved reports"/>
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+        </syncfusion:Ribbon>
+
+    <!-- DockingManager main host (acrylic wrapper removed to prevent XAML load issues) -->
+    <!-- Main Content Area with Prism Regions -->
+    <Grid Grid.Row="1">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Panel Region -->
+        <ContentControl x:Name="LeftPanelRegionControl"
+                       Grid.Row="0" Grid.RowSpan="3" Grid.Column="0"
+                       prism:RegionManager.RegionName="LeftPanelRegion"
+                       AutomationProperties.Name="Left Panel Region"
+                       AutomationProperties.HelpText="Left panel for dashboard and navigation controls"/>
+
+        <!-- Main Region for primary content -->
+        <ContentControl x:Name="MainRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="MainRegion"
+                       AutomationProperties.Name="Main Content Region"
+                       AutomationProperties.HelpText="Primary content area for dynamic view injection"/>
+
+        <!-- Municipal Account Region -->
+        <ContentControl x:Name="MunicipalAccountRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="MunicipalAccountRegion"
+                       AutomationProperties.Name="Municipal Account Region"
+                       AutomationProperties.HelpText="Region for municipal account views"
+                       Visibility="Collapsed"/>
+
+        <!-- Utility Customer Region -->
+        <ContentControl x:Name="UtilityCustomerRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="UtilityCustomerRegion"
+                       AutomationProperties.Name="Utility Customer Region"
+                       AutomationProperties.HelpText="Region for utility customer views"
+                       Visibility="Collapsed"/>
+
+        <!-- Reports Region -->
+        <ContentControl x:Name="ReportsRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="ReportsRegion"
+                       AutomationProperties.Name="Reports Region"
+                       AutomationProperties.HelpText="Region for reports views"
+                       Visibility="Collapsed"/>
+
+        <!-- Settings Region -->
+        <ContentControl x:Name="SettingsRegionControl"
+                       Grid.Row="1" Grid.Column="1"
+                       prism:RegionManager.RegionName="SettingsRegion"
+                       AutomationProperties.Name="Settings Region"
+                       AutomationProperties.HelpText="Region for settings views"
+                       Visibility="Collapsed"/>
+
+        <!-- Right Panel Region -->
+        <ContentControl x:Name="RightPanelRegionControl"
+                       Grid.Row="0" Grid.RowSpan="3" Grid.Column="2"
+                       prism:RegionManager.RegionName="RightPanelRegion"
+                       AutomationProperties.Name="Right Panel Region"
+                       AutomationProperties.HelpText="Right panel for settings and tools"/>
+
+        <!-- Bottom Panel Region -->
+        <ContentControl x:Name="BottomPanelRegionControl"
+                       Grid.Row="2" Grid.Column="1"
+                       prism:RegionManager.RegionName="BottomPanelRegion"
+                       AutomationProperties.Name="Bottom Panel Region"
+                       AutomationProperties.HelpText="Bottom panel for tools and status"/>
+
+        <!-- Tab Region for tabbed content -->
+        <TabControl x:Name="TabRegionControl"
+                   Grid.Row="1" Grid.Column="1"
+                   prism:RegionManager.RegionName="TabRegion"
+                   AutomationProperties.Name="Tab Content Region"
+                   AutomationProperties.HelpText="Tabbed content area for dynamic view injection"
+                   Visibility="Collapsed"/>
+    </Grid>
+
+        <!-- Status Bar in Row 2 -->
+        <StatusBar Grid.Row="2"
+                   AutomationProperties.Name="Application Status Bar"
+                   AutomationProperties.HelpText="Application status and current view information">
+            <StatusBarItem>
+                <TextBlock Text="{Binding CurrentViewTitle, StringFormat='Current View: {0}'}"
+                          AutomationProperties.Name="Current View Display"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Text="{Binding CurrentTheme, StringFormat='Theme: {0}'}"
+                          AutomationProperties.Name="Current Theme Display"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

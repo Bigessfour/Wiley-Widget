@@ -6,6 +6,7 @@ using Serilog;
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
 using WileyWidget.Views;
+using WileyWidget.Views.Main;
 
 namespace WileyWidget.Startup.Modules
 {

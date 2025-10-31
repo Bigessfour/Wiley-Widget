@@ -3,6 +3,7 @@ using WileyWidget.Data;
 using WileyWidget.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace WileyWidget.Models;
 
@@ -14,15 +15,18 @@ public class AppOptionsConfigurator : IConfigureOptions<AppOptions>
     private readonly AppDbContext _dbContext;
     private readonly ISecretVaultService _secretVaultService;
     private readonly ILogger<AppOptionsConfigurator> _logger;
+    private readonly IConfiguration _configuration;
 
     public AppOptionsConfigurator(
         AppDbContext dbContext,
         ISecretVaultService secretVaultService,
-        ILogger<AppOptionsConfigurator> logger)
+        ILogger<AppOptionsConfigurator> logger,
+        IConfiguration configuration)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _secretVaultService = secretVaultService ?? throw new ArgumentNullException(nameof(secretVaultService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
     public void Configure(AppOptions options)
@@ -34,21 +38,51 @@ public class AppOptionsConfigurator : IConfigureOptions<AppOptions>
         {
             _logger.LogInformation("Configuring AppOptions from database and secrets");
 
-            // Load from database settings
-            // IMPORTANT: use projection to select only needed columns so queries succeed even if
-            // additive columns (e.g., QboClientId/QboClientSecret) are not yet present.
-            var s = _dbContext.AppSettings
-                .Where(s => s.Id == 1)
-                .Select(s => new { s.Theme, s.WindowWidth, s.WindowHeight, s.WindowMaximized })
-                .AsNoTracking()
-                .FirstOrDefault();
-
-            if (s != null)
+            // Load from database settings (tolerate DB unavailability)
+            try
             {
-                options.Theme = s.Theme ?? options.Theme;
-                options.WindowWidth = (int)(s.WindowWidth ?? options.WindowWidth);
-                options.WindowHeight = (int)(s.WindowHeight ?? options.WindowHeight);
-                options.MaximizeOnStartup = s.WindowMaximized ?? options.MaximizeOnStartup;
+                // IMPORTANT: use projection to select only needed columns so queries succeed even if
+                // additive columns (e.g., QboClientId/QboClientSecret) are not yet present.
+                var s = _dbContext.AppSettings
+                    .Where(s => s.Id == 1)
+                    .Select(s => new { s.Theme, s.WindowWidth, s.WindowHeight, s.WindowMaximized })
+                    .AsNoTracking()
+                    .FirstOrDefault();
+
+                if (s != null)
+                {
+                    options.Theme = s.Theme ?? options.Theme;
+                    options.WindowWidth = (int)(s.WindowWidth ?? options.WindowWidth);
+                    options.WindowHeight = (int)(s.WindowHeight ?? options.WindowHeight);
+                    options.MaximizeOnStartup = s.WindowMaximized ?? options.MaximizeOnStartup;
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                // EF Core/DbContext not ready or misconfigured – fall back to configuration-based options
+                _logger.LogWarning("Failed to load AppOptions from DB: {Message}. Using defaults.", ex.Message);
+                // Populate from configuration as a safe fallback
+                try
+                {
+                    _configuration.GetSection("App").Bind(options);
+                }
+                catch (Exception bindEx)
+                {
+                    _logger.LogWarning(bindEx, "Failed to bind AppOptions from configuration during DB fallback");
+                }
+            }
+            catch (Exception dbEx)
+            {
+                // Any other DB/query issue – warn and fall back to configuration values to keep app running
+                _logger.LogWarning(dbEx, "Failed to load AppSettings from database; using configuration-backed AppOptions");
+                try
+                {
+                    _configuration.GetSection("App").Bind(options);
+                }
+                catch (Exception bindEx)
+                {
+                    _logger.LogWarning(bindEx, "Failed to bind AppOptions from configuration during DB fallback");
+                }
             }
 
             // Load secrets deterministically (synchronously) to avoid timing races and unobserved exceptions

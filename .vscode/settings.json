@@ -136,7 +136,9 @@
   "files.associations": {
     "*.ps1": "powershell",
     "*.psm1": "powershell",
-    "*.psd1": "powershell"
+    "*.psd1": "powershell",
+    "*.yml": "yaml",
+    "*.yaml": "yaml"
   },
   // PowerShell-specific settings
   "[powershell]": {
@@ -170,8 +172,8 @@
   // C# Dev Kit Configuration - Comprehensive Setup
   "dotnet.server.useOmnisharp": false,
   "dotnet.enableXamlTools": true,
-  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "fullSolution",
-  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "fullSolution",
+  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
   "dotnet.backgroundAnalysis.enable": true,
   "dotnet.backgroundAnalysis.maxFileSize": 8192,
   "dotnet.backgroundAnalysis.analyzerMaxFileSize": 8192,
@@ -200,7 +202,10 @@
   "dotnet.rename.enable": true,
   "dotnet.referencesCodeLens.enable": true,
   "dotnet.testsCodeLens.enable": true,
-  "dotnet.server.startTimeout": 30000,
+  "dotnet.server.startTimeout": 60000,
+  "dotnet.server.trace": "Information",
+  "dotnet.server.crashDumpPath": "${workspaceFolder}/logs",
+  "dotnet.server.suppressLspErrorToasts": false,
   // Disable OmniSharp entirely since we're using C# Dev Kit
   // The following settings help ensure OmniSharp does not start or provide diagnostics
   "omnisharp.enable": false,
@@ -302,19 +307,48 @@
   // Ensure indentation preferences are applied per-language where useful
   "[json]": {
     "editor.insertSpaces": true,
-    "editor.tabSize": 2
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
   },
   "[yaml]": {
     "editor.insertSpaces": true,
-    "editor.tabSize": 2
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
   },
   "[xml]": {
     "editor.insertSpaces": true,
-    "editor.tabSize": 2
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "redhat.vscode-xml",
+    "editor.formatOnSave": true
   },
   "[csharp]": {
     "editor.insertSpaces": true,
-    "editor.tabSize": 4
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
   },
   "terminal.integrated.cursorStyle": "line",
 
@@ -452,6 +486,30 @@
   "trunk.showSidebar": true,
   "trunk.formatOnSave": false,
   "trunk.lintOnSave": true,
+
+  // Prettier Configuration
+  "prettier.enable": true,
+  "prettier.requireConfig": false,
+  "prettier.useEditorConfig": true,
+  "prettier.tabWidth": 2,
+  "prettier.useTabs": false,
+  "prettier.singleQuote": false,
+  "prettier.trailingComma": "es5",
+  "prettier.bracketSpacing": true,
+  "prettier.arrowParens": "always",
+  "prettier.proseWrap": "preserve",
+  "prettier.endOfLine": "lf",
+
+  // Markdown linting and formatting configuration
+  "[markdown]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.wordWrap": "on"
+  },
+  "markdownlint.config": {
+    "MD040": false,
+    "MD034": false
+  },
 
   // Reduce console noise from Insiders CDN 404s and extension chatter
   "workbench.logging.level": "Error",

@@ -8,10 +8,29 @@
 [![Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 
 **Version:** 0.2.0 - Stable Release
-**Last Updated:** October 28, 2025
+**Last Updated:** October 30, 2025
 **Framework:** .NET 9.0 WPF
 **UI Framework:** Syncfusion WPF Controls v31.1.17
 **Application Framework:** Prism v9.0 (Pure MVVM Architecture)
+
+---
+
+## 📑 Table of Contents
+
+- [Overview](#-overview)
+- [Project Structure](#-project-structure)
+- [Quick Start](#-quick-start)
+- [QuickBooks Integration](#-quickbooks-sandbox-integration-new)
+- [Configuration & Secrets](#-configuration--secret-management)
+- [Architecture](#-architecture)
+- [Development](#-development)
+- [Testing](#-testing)
+- [CI/CD](#-cicd)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
 
 ## 📋 Overview
 
@@ -60,6 +79,175 @@ WileyWidget is a modern Windows desktop application built with WPF, Syncfusion c
 **Documentation:** ✅ Active technical docs, legacy docs removed
 **Build Status:** ✅ Automated CI/CD with Trunk quality gates
 **Testing:** ✅ Comprehensive test suite with >70% coverage
+
+**Active Scripts:** 24 essential automation scripts (down from 84)
+**Active Docs:** 51 technical documentation files (focused and relevant)
+**Theme Files:** 1 single source of truth (`WileyTheme-Syncfusion.xaml`)
+
+---
+
+## 📁 Project Structure
+
+WileyWidget follows a clean, layered architecture with organized file structure for maintainability and scalability.
+
+### Solution Organization
+
+```
+WileyWidget/
+├── src/                          # Application entry point & startup
+│   ├── App.xaml.cs              # Prism application bootstrap
+│   ├── Program.cs               # Entry point
+│   ├── Configuration/           # App configuration & options
+│   ├── Diagnostics/             # Diagnostics & monitoring
+│   ├── Startup/                 # Startup logic & modules
+│   └── Services/                # Core application services
+│
+├── WileyWidget.UI/              # User Interface Layer (Organized)
+│   ├── Views/
+│   │   ├── Main/               # Main feature views (14 views)
+│   │   │   ├── AIAssistView.xaml
+│   │   │   ├── AnalyticsView.xaml
+│   │   │   ├── BudgetView.xaml
+│   │   │   ├── DashboardView.xaml
+│   │   │   ├── EnterpriseView.xaml
+│   │   │   ├── ExcelImportView.xaml
+│   │   │   ├── MunicipalAccountView.xaml
+│   │   │   ├── ProgressView.xaml
+│   │   │   ├── QuickBooksView.xaml
+│   │   │   ├── ReportsView.xaml
+│   │   │   ├── SettingsView.xaml
+│   │   │   ├── UtilityCustomerView.xaml
+│   │   │   ├── BudgetAnalysisView.xaml
+│   │   │   └── DepartmentView.xaml
+│   │   ├── Panels/             # Panel views (8 views)
+│   │   │   ├── AIAssistPanelView.xaml
+│   │   │   ├── BudgetPanelView.xaml
+│   │   │   ├── DashboardPanelView.xaml
+│   │   │   ├── EnterprisePanelView.xaml
+│   │   │   ├── MunicipalAccountPanelView.xaml
+│   │   │   ├── SettingsPanelView.xaml
+│   │   │   ├── ToolsPanelView.xaml
+│   │   │   └── UtilityCustomerPanelView.xaml
+│   │   ├── Dialogs/            # Dialog views (8 views)
+│   │   │   ├── ActivateXaiDialog.xaml
+│   │   │   ├── ConfirmationDialogView.xaml
+│   │   │   ├── CustomerEditDialogView.xaml
+│   │   │   ├── EnterpriseDialogView.xaml
+│   │   │   ├── ErrorDialogView.xaml
+│   │   │   ├── NotificationDialogView.xaml
+│   │   │   ├── SettingsDialogView.xaml
+│   │   │   └── WarningDialogView.xaml
+│   │   └── Windows/            # Window views (3 views)
+│   │       ├── AboutWindow.xaml
+│   │       ├── Shell.xaml
+│   │       └── SplashScreenWindow.xaml
+│   ├── ViewModels/
+│   │   ├── Main/               # Main ViewModels (20 files)
+│   │   │   ├── AIAssistViewModel.cs (+ .Dialog.cs, .Dialogs.cs)
+│   │   │   ├── AnalyticsViewModel.cs
+│   │   │   ├── BudgetViewModel.cs (+ .Hierarchical.cs)
+│   │   │   ├── DashboardViewModel.cs
+│   │   │   ├── EnterpriseViewModel.cs
+│   │   │   ├── ExcelImportViewModel.cs
+│   │   │   ├── MainViewModel.cs
+│   │   │   ├── MunicipalAccountViewModel.cs
+│   │   │   ├── ProgressViewModel.cs
+│   │   │   ├── QuickBooksViewModel.cs
+│   │   │   ├── ReportsViewModel.cs
+│   │   │   ├── SettingsViewModel.cs
+│   │   │   ├── ToolsViewModel.cs
+│   │   │   ├── UtilityCustomerViewModel.cs
+│   │   │   ├── AIResponseViewModel.cs
+│   │   │   ├── BudgetAnalysisViewModel.cs
+│   │   │   └── DepartmentViewModel.cs
+│   │   ├── Panels/             # Panel ViewModels (8 files)
+│   │   │   ├── AIAssistPanelViewModel.cs
+│   │   │   ├── BudgetPanelViewModel.cs
+│   │   │   ├── DashboardPanelViewModel.cs
+│   │   │   ├── EnterprisePanelViewModel.cs
+│   │   │   ├── MunicipalAccountPanelViewModel.cs
+│   │   │   ├── SettingsPanelViewModel.cs
+│   │   │   ├── ToolsPanelViewModel.cs
+│   │   │   └── UtilityCustomerPanelViewModel.cs
+│   │   ├── Dialogs/            # Dialog ViewModels (7 files)
+│   │   │   ├── ConfirmationDialogViewModel.cs
+│   │   │   ├── CustomerEditDialogViewModel.cs
+│   │   │   ├── EnterpriseDialogViewModel.cs
+│   │   │   ├── ErrorDialogViewModel.cs
+│   │   │   ├── NotificationDialogViewModel.cs
+│   │   │   ├── SettingsDialogViewModel.cs
+│   │   │   └── WarningDialogViewModel.cs
+│   │   ├── Windows/            # Window ViewModels (2 files)
+│   │   │   ├── AboutViewModel.cs
+│   │   │   └── SplashScreenWindowViewModel.cs
+│   │   ├── Base/               # Base ViewModel classes
+│   │   ├── Messages/           # Prism event messages
+│   │   └── Shell/              # Shell-related ViewModels
+│   ├── Controls/               # Custom WPF controls
+│   ├── Converters/             # Value converters
+│   ├── Behaviors/              # Attached behaviors
+│   ├── Regions/                # Prism region adapters
+│   └── Resources/              # XAML resources & themes
+│
+├── WileyWidget.Models/         # Domain Models
+│   ├── Budget.cs
+│   ├── Enterprise.cs
+│   ├── MunicipalAccount.cs
+│   ├── UtilityCustomer.cs
+│   └── ...
+│
+├── WileyWidget.Data/           # Data Access Layer
+│   ├── AppDbContext.cs
+│   ├── Repositories/
+│   └── Migrations/
+│
+├── WileyWidget.Business/       # Business Logic Layer
+│   ├── Interfaces/
+│   └── Services/
+│
+├── WileyWidget.Services/       # Application Services
+│   ├── AI/                     # AI integration services
+│   ├── Excel/                  # Excel import/export
+│   ├── Export/                 # Data export services
+│   └── Threading/              # Threading utilities
+│
+├── WileyWidget.Tests/          # Unit & Integration Tests
+├── WileyWidget.UI.Tests/       # UI Tests (Appium)
+├── scripts/                    # Automation scripts (24 files)
+├── docs/                       # Documentation (51 files)
+└── .github/workflows/          # CI/CD pipelines
+```
+
+### Namespace Organization
+
+All Views and ViewModels follow consistent namespace patterns:
+
+**Views:**
+- `WileyWidget.Views.Main` - Main feature views
+- `WileyWidget.Views.Panels` - Panel/sidebar views
+- `WileyWidget.Views.Dialogs` - Modal dialog views
+- `WileyWidget.Views.Windows` - Window/shell views
+
+**ViewModels:**
+- `WileyWidget.ViewModels.Main` - Main feature ViewModels
+- `WileyWidget.ViewModels.Panels` - Panel ViewModels
+- `WileyWidget.ViewModels.Dialogs` - Dialog ViewModels
+- `WileyWidget.ViewModels.Windows` - Window ViewModels
+- `WileyWidget.ViewModels.Base` - Base classes
+- `WileyWidget.ViewModels.Messages` - Event messages
+
+### Benefits of This Structure
+
+✅ **Logical Grouping**: Related files are together
+✅ **Easy Navigation**: Find files quickly by feature
+✅ **Scalability**: Easy to add new views/viewmodels
+✅ **Maintainability**: Clear separation of concerns
+✅ **Discoverability**: New developers understand structure immediately
+✅ **Best Practices**: Follows WPF/Prism community standards
+
+**Note:** For detailed reorganization history, see [`docs/FILE_ORGANIZATION_SUMMARY.md`](docs/FILE_ORGANIZATION_SUMMARY.md)
+
+---
 
 **Active Scripts:** 24 essential automation scripts (down from 84)
 **Active Docs:** 51 technical documentation files (focused and relevant)

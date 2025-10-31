@@ -1,104 +1,125 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "mcp: analyze",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceFolder}/scripts/run-mcp.ps1",
-        "-Project",
-        "${workspaceFolder}/WileyWidget.csproj"
-      ],
-      "dependsOn": [ "psscriptanalyze: workspace" ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-
-    {
-      "label": "psscriptanalyze: workspace",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceFolder}/scripts/ps-safe-run.ps1",
-        "-ScriptPath",
-        "${workspaceFolder}/scripts"
-      ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": [],
-      "group": "build"
-    },
-
-    {
-      "label": "pwsh: safe-run",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceFolder}/scripts/ps-safe-run.ps1",
-        "-ScriptPath",
-        "${input:scriptPath}"
-      ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": [],
-      "group": "none",
-      "dependsOn": [ "psscriptanalyze: workspace" ]
-    },
-
-    {
-      "label": "build",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "build",
-        "${workspaceFolder}/WileyWidget.csproj",
-        "-m",
-        "--no-restore",
-        "/property:BuildIncremental=true",
-        "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary",
-        "/flp:LogFile=build-errors.log;errorsonly"
-      ],
-      "problemMatcher": "$msCompile",
-      "group": {
-        "kind": "build",
-        "isDefault": false
-      }
-    }
-  ],
-  "inputs": [
-    {
-      "id": "scriptPath",
-      "type": "promptString",
-      "description": "Path to the script to run (absolute or relative). Example: ${workspaceFolder}/scripts/deploy.ps1",
-      "default": "${workspaceFolder}/scripts"
-    }
-  ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "mcp: analyze",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/run-mcp.ps1",
+				"-Project",
+				"${workspaceFolder}/WileyWidget.csproj"
+			],
+			"dependsOn": [
+				"psscriptanalyze: workspace"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "psscriptanalyze: workspace",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/ps-safe-run.ps1",
+				"-ScriptPath",
+				"${workspaceFolder}/scripts"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "pwsh: safe-run",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/ps-safe-run.ps1",
+				"-ScriptPath",
+				"${input:scriptPath}"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "none",
+			"dependsOn": [
+				"psscriptanalyze: workspace"
+			]
+		},
+		{
+			"label": "build",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.csproj",
+				"-m",
+				"--no-restore",
+				"/property:BuildIncremental=true",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary",
+				"/flp:LogFile=build-errors.log;errorsonly"
+			],
+			"problemMatcher": "$msCompile",
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			}
+		},
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.csproj",
+				"-m",
+				"--no-restore",
+				"/property:BuildIncremental=true",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary",
+				"/flp:LogFile=build-errors.log;errorsonly"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		}
+	],
+	"inputs": [
+		{
+			"id": "scriptPath",
+			"type": "promptString",
+			"description": "Path to the script to run (absolute or relative). Example: ${workspaceFolder}/scripts/deploy.ps1",
+			"default": "${workspaceFolder}/scripts"
+		}
+	]
 }

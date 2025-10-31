@@ -11,12 +11,16 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net;
 using Prism.Ioc;
+using Prism.DryIoc;
 using System.IO;
+using System.Globalization;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using WileyWidget.Data;
 using WileyWidget.Services;
 using DryIoc;
+using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Data.SqlClient;
 
 namespace WileyWidget.Startup
 {
@@ -45,18 +49,19 @@ namespace WileyWidget.Startup
 
             // 1. Register configuration and logging foundation
             var config = RegisterTypes(containerRegistry);
-            Log.Debug("Configuration and logging foundation registered");
+            Log.Information("✓ Bootstrapper: Configuration and logging foundation registered");
 
             // 2. Register hardened HttpClient infrastructure with Polly resilience
             RegisterHttpClients(containerRegistry, config);
-            Log.Debug("HttpClient infrastructure registered with resilience policies");
+            Log.Information("✓ Bootstrapper: HttpClient infrastructure registered with resilience policies");
 
             // 3. Register database services with connection pooling and fault tolerance
             var testMode = (Environment.GetEnvironmentVariable("WILEY_WIDGET_TESTMODE") ?? "0") == "1";
+            Log.Information("Bootstrapper: About to register database services (TestMode: {TestMode})", testMode);
             RegisterDbContext(containerRegistry, config, testMode);
-            Log.Debug("Database services registered (TestMode: {TestMode})", testMode);
+            Log.Information("✓ Bootstrapper: Database services registration complete (TestMode: {TestMode})", testMode);
 
-            Log.Information("Bootstrapper.Run complete - All infrastructure services registered");
+            Log.Information("✓✓✓ Bootstrapper.Run COMPLETE - All infrastructure services registered ✓✓✓");
             return config;
         }
 
@@ -222,8 +227,8 @@ namespace WileyWidget.Startup
         }
 
     /// <summary>
-    /// Registers hardened HttpClient infrastructure with Polly 8.x standard resilience handler.
-    /// Provides retry, circuit breaker, timeout, and rate limiting policies for all HTTP operations.
+    /// Registers hardened HttpClient infrastructure using .NET standard resilience handler.
+    /// Provides retry, circuit breaker, timeouts, and rate limiting via Microsoft.Extensions.Http.Resilience.
     /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.19041.0")]
     private void RegisterHttpClients(IContainerRegistry containerRegistry, IConfiguration configuration)
@@ -251,50 +256,79 @@ namespace WileyWidget.Startup
                 var aiTimeout = TimeSpan.FromSeconds(aiTimeoutSeconds);
                 var defaultTimeout = TimeSpan.FromSeconds(timeoutSeconds);
 
-                // Build HttpClient factory with named clients and resilience policies
-                Func<string, HttpClient> clientBuilder = name =>
+                // Build Microsoft DI HttpClientFactory with standard resilience handler
+                var services = new ServiceCollection();
+
+                // Default client
+                services.AddHttpClient("Default", client =>
                 {
-                    var normalized = string.IsNullOrWhiteSpace(name) ? "Default" : name;
-
-                    var handler = new SocketsHttpHandler
-                    {
-                        AllowAutoRedirect = true,
-                        MaxAutomaticRedirections = 3,
-                        AutomaticDecompression = DecompressionMethods.All,
-                        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-                        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
-                    };
-
-                    var client = new HttpClient(handler, disposeHandler: true)
-                    {
-                        Timeout = defaultTimeout
-                    };
-
+                    client.Timeout = defaultTimeout;
                     client.DefaultRequestHeaders.UserAgent.Clear();
                     client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget/1.0");
                     client.DefaultRequestHeaders.Accept.Clear();
                     client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                })
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
+                    AllowAutoRedirect = true,
+                    MaxAutomaticRedirections = 3,
+                    AutomaticDecompression = DecompressionMethods.All,
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
+                })
+                .AddStandardResilienceHandler(options =>
+                {
+                    options.TotalRequestTimeout.Timeout = defaultTimeout;
+                    options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(Math.Max(5, timeoutSeconds / Math.Max(1, retryCount)));
+                    options.Retry.MaxRetryAttempts = retryCount;
+                    // Keep circuit breaker conservative unless overridden in config
+                    options.CircuitBreaker.FailureRatio = 0.2;
+                    options.CircuitBreaker.MinimumThroughput = Math.Max(10, circuitBreakerThreshold * 2);
+                    options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(15);
+                });
 
-                    if (string.Equals(normalized, "AIServices", StringComparison.OrdinalIgnoreCase))
-                    {
-                        client.BaseAddress = new Uri(xaiBaseUrl);
-                        client.Timeout = aiTimeout;
-                        Log.Debug("Configured HttpClient '{ClientName}' with BaseAddress {BaseAddress} and Timeout {TimeoutSeconds}s", normalized, client.BaseAddress, aiTimeout.TotalSeconds);
-                    }
-                    else
-                    {
-                        Log.Debug("Configured HttpClient '{ClientName}' with default timeout {TimeoutSeconds}s", normalized, defaultTimeout.TotalSeconds);
-                    }
+                // AI services client
+                services.AddHttpClient("AIServices", client =>
+                {
+                    client.BaseAddress = new Uri(xaiBaseUrl);
+                    client.Timeout = aiTimeout;
+                    client.DefaultRequestHeaders.UserAgent.Clear();
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("WileyWidget/1.0");
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                })
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
+                    AllowAutoRedirect = true,
+                    MaxAutomaticRedirections = 3,
+                    AutomaticDecompression = DecompressionMethods.All,
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
+                })
+                .AddStandardResilienceHandler(options =>
+                {
+                    options.TotalRequestTimeout.Timeout = aiTimeout;
+                    options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(Math.Max(5, aiTimeoutSeconds / Math.Max(1, retryCount)));
+                    options.Retry.MaxRetryAttempts = retryCount;
+                    options.CircuitBreaker.FailureRatio = 0.2;
+                    options.CircuitBreaker.MinimumThroughput = Math.Max(10, circuitBreakerThreshold * 2);
+                    options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(15);
+                });
 
-                    return client;
-                };
+                // Import Microsoft DI registrations into DryIoc/Prism
+                if (containerRegistry is IContainerExtension extension)
+                {
+                    extension.Populate(services);
+                    Log.Information("✓ Registered IHttpClientFactory via Microsoft DI with standard resilience handler");
+                }
+                else
+                {
+                    using var sp = services.BuildServiceProvider();
+                    var factory = sp.GetRequiredService<IHttpClientFactory>();
+                    containerRegistry.RegisterInstance<IHttpClientFactory>(factory);
+                    Log.Information("✓ Registered IHttpClientFactory instance via fallback ServiceProvider (consider using IContainerExtension.Populate)");
+                }
 
-#pragma warning disable CA2000 // Prism container manages the lifetime of the registered factory singleton
-                var httpClientFactory = new PrismHttpClientFactory(clientBuilder);
-#pragma warning restore CA2000
-                containerRegistry.RegisterInstance<IHttpClientFactory>(httpClientFactory);
-
-                Log.Information("✓ Registered PrismHttpClientFactory for IHttpClientFactory");
                 Log.Information("  - Named client 'AIServices' => Base URL: {BaseUrl}, Timeout: {Timeout}s", xaiBaseUrl, aiTimeout.TotalSeconds);
                 Log.Information("  - Default timeout for unnamed clients: {DefaultTimeout}s", defaultTimeout.TotalSeconds);
                 Log.Information("  - Resilience: Retry={RetryCount}, Timeout={TimeoutSeconds}s, CircuitBreaker={CircuitBreakerThreshold}",
@@ -309,7 +343,7 @@ namespace WileyWidget.Startup
 
         /// <summary>
         /// Registers database services with connection pooling, retry logic, and audit interception.
-        /// Supports both production SQL Server and in-memory SQLite for testing.
+        /// Configures SQL Server for production scenarios and an in-memory provider for test mode.
         /// </summary>
         private void RegisterDbContext(IContainerRegistry containerRegistry, IConfiguration configuration, bool testMode)
         {
@@ -321,56 +355,63 @@ namespace WileyWidget.Startup
 
                 if (testMode)
                 {
-                    // In-memory SQLite for test mode - fast, deterministic, no external dependencies
                     var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-                    optionsBuilder.UseSqlite("DataSource=:memory:");
+                    optionsBuilder.UseInMemoryDatabase("WileyWidget_TestDb");
                     optionsBuilder.EnableSensitiveDataLogging();
                     optionsBuilder.EnableDetailedErrors();
                     options = optionsBuilder.Options;
 
-                    Log.Information("✓ Registered in-memory SQLite database for test mode");
+                    Log.Information("✓ Registered in-memory database for test mode");
                 }
                 else
                 {
-                    // Production SQL Server with connection pooling and retry logic
-                    var connectionString = configuration.GetConnectionString("DefaultConnection")
-                                           ?? "Server=(localdb)\\mssqllocaldb;Database=WileyWidgetDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=true";
+                    var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+                    if (!string.IsNullOrWhiteSpace(connectionString))
+                    {
+                        connectionString = Environment.ExpandEnvironmentVariables(connectionString);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(connectionString))
+                    {
+                        connectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
+                        Log.Warning("DefaultConnection missing; using fallback SQL Server connection string to .\\SQLEXPRESS");
+                    }
 
                     var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
                     optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
                     {
                         sqlOptions.MigrationsAssembly("WileyWidget.Data");
+                        sqlOptions.CommandTimeout(configuration.GetValue<int>("Database:CommandTimeoutSeconds", 30));
                         sqlOptions.EnableRetryOnFailure(
                             maxRetryCount: configuration.GetValue<int>("Database:MaxRetryCount", 3),
                             maxRetryDelay: TimeSpan.FromSeconds(configuration.GetValue<int>("Database:MaxRetryDelaySeconds", 10)),
                             errorNumbersToAdd: null);
-                        sqlOptions.CommandTimeout(configuration.GetValue<int>("Database:CommandTimeoutSeconds", 30));
                     });
 
                     optionsBuilder.EnableDetailedErrors();
+                    optionsBuilder.EnableSensitiveDataLogging(configuration.GetValue<bool>("Database:EnableSensitiveDataLogging", false));
                     optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.TrackAll);
                     options = optionsBuilder.Options;
 
                     Log.Information("✓ Registered SQL Server database for production");
-                    Log.Information("  - Connection pooling enabled");
-                    Log.Information("  - Retry on failure: {RetryCount} attempts, {RetryDelay}s delay",
-                        configuration.GetValue<int>("Database:MaxRetryCount", 3),
-                        configuration.GetValue<int>("Database:MaxRetryDelaySeconds", 10));
+                    Log.Information("  - Connection string: {ConnectionString}", MaskSensitiveConnectionString(connectionString));
                 }
 
                 // Register core EF services using centralized helper
                 RegisterDbContextCore(containerRegistry, options, testMode);
 
-                // Apply additive schema hotfixes for production environments
+                // Defer database initialization to a background initializer to keep UI responsive
                 if (!testMode)
                 {
                     try
                     {
-                        ApplyAdditiveSchemaHotfixes(containerRegistry, options);
+                        containerRegistry.RegisterSingleton<WileyWidget.Startup.DatabaseInitializer>();
+                        Log.Information("✓ Registered DatabaseInitializer for background database migration");
                     }
-                    catch (Exception ex)
+                    catch (Exception regEx)
                     {
-                        Log.Warning(ex, "Schema hotfixes failed to apply; continuing without hotfixes");
+                        Log.Warning(regEx, "Failed to register DatabaseInitializer (non-fatal)");
                     }
                 }
             }
@@ -382,6 +423,159 @@ namespace WileyWidget.Startup
         }
 
         /// <summary>
+        /// Initializes the database: ensures it's created, applies migrations, and runs hotfixes.
+        /// </summary>
+        private void InitializeDatabase(IContainerRegistry containerRegistry, DbContextOptions<AppDbContext> options, IConfiguration configuration)
+        {
+            Log.Information("Initializing database...");
+
+            try
+            {
+                using var context = new AppDbContext(options);
+
+                // Backup database if configured
+                var backupOnStartup = configuration.GetValue<bool>("Database:BackupOnStartup", false);
+                if (backupOnStartup)
+                {
+                    try
+                    {
+                        BackupDatabase(configuration);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Database backup failed (non-fatal)");
+                    }
+                }
+
+                // Auto-migrate if configured
+                var autoMigrate = configuration.GetValue<bool>("Database:AutoMigrate", true);
+                if (autoMigrate)
+                {
+                    try
+                    {
+                        Log.Debug("Applying pending migrations...");
+                        context.Database.Migrate();
+                        Log.Information("✓ Database migrations applied successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        // If migrations are unavailable (e.g., first run), fall back to EnsureCreated
+                        Log.Debug(ex, "Migration failed, attempting EnsureCreated instead");
+                        context.Database.EnsureCreated();
+                        Log.Information("✓ Database created successfully");
+                    }
+                }
+                else
+                {
+                    // Just ensure the database exists
+                    context.Database.EnsureCreated();
+                    Log.Information("✓ Database existence verified");
+                }
+
+                // Test connection
+                var canConnect = context.Database.CanConnect();
+                if (canConnect)
+                {
+                    Log.Information("✓ Database connection verified");
+                }
+                else
+                {
+                    Log.Warning("Database connection test failed");
+                }
+
+                // Apply schema hotfixes
+                ApplyAdditiveSchemaHotfixes(options);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Database initialization failed");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Creates a backup of the SQL Server database if a backup directory is configured.
+        /// </summary>
+        private void BackupDatabase(IConfiguration configuration)
+        {
+            try
+            {
+                var connectionString = configuration.GetConnectionString("DefaultConnection");
+                if (string.IsNullOrWhiteSpace(connectionString))
+                    return;
+
+                connectionString = Environment.ExpandEnvironmentVariables(connectionString);
+                var backupDirectory = configuration.GetValue<string>("Database:BackupDirectory");
+
+                if (string.IsNullOrWhiteSpace(backupDirectory))
+                {
+                    Log.Debug("Backup directory not configured; skipping SQL Server backup");
+                    return;
+                }
+
+                Directory.CreateDirectory(backupDirectory);
+
+                using var connection = new SqlConnection(connectionString);
+                connection.Open();
+
+                var databaseName = connection.Database;
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+                var backupPath = Path.Combine(backupDirectory, $"{databaseName}_backup_{timestamp}.bak");
+
+                var commandText = $"BACKUP DATABASE [{databaseName}] TO DISK = @backupPath WITH INIT, CHECKSUM";
+                using var command = new SqlCommand(commandText, connection)
+                {
+                    CommandTimeout = configuration.GetValue<int>("Database:BackupCommandTimeoutSeconds", 600)
+                };
+
+                command.Parameters.AddWithValue("@backupPath", backupPath);
+                command.ExecuteNonQuery();
+
+                Log.Information("✓ Database backed up to: {BackupPath}", backupPath);
+
+                var retentionDays = configuration.GetValue<int>("Database:BackupRetentionDays", 30);
+                CleanOldBackups(backupDirectory, retentionDays, databaseName);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to backup database");
+            }
+        }
+
+        /// <summary>
+        /// Removes backup files older than the specified retention period.
+        /// </summary>
+        private void CleanOldBackups(string backupDir, int retentionDays, string databaseName)
+        {
+            try
+            {
+                var cutoffDate = DateTime.Now.AddDays(-retentionDays);
+                var searchPattern = $"{databaseName}_backup_*.bak";
+                var backupFiles = Directory.GetFiles(backupDir, searchPattern);
+
+                var deletedCount = 0;
+                foreach (var file in backupFiles)
+                {
+                    var fileInfo = new FileInfo(file);
+                    if (fileInfo.CreationTime < cutoffDate)
+                    {
+                        File.Delete(file);
+                        deletedCount++;
+                    }
+                }
+
+                if (deletedCount > 0)
+                {
+                    Log.Information("✓ Cleaned {Count} old backup(s) (older than {Days} days)", deletedCount, retentionDays);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to clean old backups");
+            }
+        }
+
+        /// <summary>
         /// Central helper to register EF Core DbContext options, factory and DbContext
         /// to avoid duplicated registration logic across production and test paths.
         /// </summary>
@@ -389,34 +583,28 @@ namespace WileyWidget.Startup
         {
             Log.Debug("Centralizing EF Core registrations (options, factory, AppDbContext)");
 
-            // Register the options instance
-            containerRegistry.RegisterInstance<DbContextOptions<AppDbContext>>(options);
+            // Capture options for downstream consumers (DatabaseInitializer, context factory, migrations)
+            containerRegistry.RegisterInstance(options);
 
-            // Register a factory implementation used by the app
-            containerRegistry.RegisterSingleton<IDbContextFactory<AppDbContext>, WileyWidget.Data.AppDbContextFactory>();
+            // Register the canonical IDbContextFactory implementation backed by the configured options
+            var factory = new WileyWidget.Data.AppDbContextFactory(options);
+            containerRegistry.RegisterInstance<IDbContextFactory<AppDbContext>>(factory);
 
-            // Register AppDbContext via factory to ensure proper creation per scope
-            // Use DryIoc registration that tracks disposable transients so DbContext instances
-            // created by the factory are disposed when the container scope ends.
-            // Cast to access DryIoc-specific container methods
-            if (containerRegistry is IContainerProvider)
+            try
             {
-                // Use the non-generic IContainerProvider abstraction (Prism) and
-                // the GetContainer() extension (available when Prism.Container.DryIoc
-                // is referenced) to obtain the underlying DryIoc container.
-                var prismContainer = containerRegistry.GetContainer();
-                prismContainer.RegisterDelegate<AppDbContext>(
+                // Use DryIoc delegate registration so DbContext instances created via Prism resolve
+                // respect disposal semantics. Track disposable transients to avoid DryIoc warnings while
+                // still flowing factory-created contexts to consumers that request AppDbContext directly.
+                var dryContainer = containerRegistry.GetContainer();
+                dryContainer.RegisterDelegate<AppDbContext>(
                     r => r.Resolve<IDbContextFactory<AppDbContext>>().CreateDbContext(),
-                    setup: Setup.With(trackDisposableTransient: true));
+                    reuse: testMode ? Reuse.Singleton : Reuse.Transient,
+                    setup: Setup.With(trackDisposableTransient: true, allowDisposableTransient: true));
             }
-            else
+            catch (Exception ex)
             {
-                // Fallback: register without DryIoc-specific options
-                containerRegistry.Register<AppDbContext>(provider =>
-                {
-                    var factory = provider.Resolve<IDbContextFactory<AppDbContext>>();
-                    return factory.CreateDbContext();
-                });
+                // Non-fatal: applications can still resolve IDbContextFactory directly if delegate registration fails
+                Log.Warning(ex, "Unable to register AppDbContext delegate with DryIoc; IDbContextFactory<AppDbContext> remains available");
             }
 
             Log.Information("✓ Central EF Core registrations complete (DbContextOptions, IDbContextFactory, AppDbContext)");
@@ -425,33 +613,106 @@ namespace WileyWidget.Startup
         /// <summary>
         /// Applies additive schema hotfixes to handle minor schema drift without full migrations.
         /// Safe to run multiple times. Adds missing columns used by runtime queries.
+        /// SQL Server implementation.
         /// </summary>
-        private void ApplyAdditiveSchemaHotfixes(IContainerRegistry containerRegistry, DbContextOptions<AppDbContext> options)
+    private void ApplyAdditiveSchemaHotfixes(DbContextOptions<AppDbContext> options)
         {
-            Log.Debug("Applying additive schema hotfixes...");
+            Log.Debug("Applying additive schema hotfixes for SQL Server...");
 
             try
             {
                 using var context = new AppDbContext(options);
 
-                const string addQboClientId = @"IF COL_LENGTH('dbo.AppSettings','QboClientId') IS NULL
-                                    ALTER TABLE dbo.AppSettings ADD QboClientId NVARCHAR(MAX) NULL;";
-                const string addQboClientSecret = @"IF COL_LENGTH('dbo.AppSettings','QboClientSecret') IS NULL
-                                       ALTER TABLE dbo.AppSettings ADD QboClientSecret NVARCHAR(MAX) NULL;";
-                const string addAccountNumberValue = @"IF COL_LENGTH('dbo.MunicipalAccounts','AccountNumber_Value') IS NULL
-                                          ALTER TABLE dbo.MunicipalAccounts ADD [AccountNumber_Value] AS ([AccountNumber]);";
+                bool ColumnExists(string tableName, string columnName)
+                {
+                    var sql = "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table AND COLUMN_NAME = @column";
+                    var connection = context.Database.GetDbConnection();
+                    if (connection.State != System.Data.ConnectionState.Open)
+                    {
+                        connection.Open();
+                    }
 
-                context.Database.ExecuteSqlRaw(addQboClientId);
-                context.Database.ExecuteSqlRaw(addQboClientSecret);
-                context.Database.ExecuteSqlRaw(addAccountNumberValue);
+                    using var command = connection.CreateCommand();
+                    command.CommandText = sql;
 
-                Log.Information("Schema hotfixes applied if needed: QboClientId, QboClientSecret, AccountNumber_Value");
+                    var tableParam = command.CreateParameter();
+                    tableParam.ParameterName = "@table";
+                    tableParam.Value = tableName;
+                    command.Parameters.Add(tableParam);
+
+                    var columnParam = command.CreateParameter();
+                    columnParam.ParameterName = "@column";
+                    columnParam.Value = columnName;
+                    command.Parameters.Add(columnParam);
+
+                    var result = command.ExecuteScalar();
+                    return Convert.ToInt32(result, CultureInfo.InvariantCulture) > 0;
+                }
+
+                // Add QboClientId if not exists
+                if (!ColumnExists("AppSettings", "QboClientId"))
+                {
+                    try
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE AppSettings ADD QboClientId NVARCHAR(450) NULL");
+                        Log.Debug("Added QboClientId column to AppSettings");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "QboClientId column may already exist");
+                    }
+                }
+
+                // Add QboClientSecret if not exists
+                if (!ColumnExists("AppSettings", "QboClientSecret"))
+                {
+                    try
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE AppSettings ADD QboClientSecret NVARCHAR(450) NULL");
+                        Log.Debug("Added QboClientSecret column to AppSettings");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "QboClientSecret column may already exist");
+                    }
+                }
+
+                Log.Information("✓ SQL Server schema hotfixes applied successfully");
             }
             catch (Exception ex)
             {
-                Log.Debug(ex, "Failed to apply additive schema hotfixes");
-                throw;
+                Log.Warning(ex, "Failed to apply additive schema hotfixes (non-fatal, continuing)");
             }
+        }
+
+        /// <summary>
+        /// Masks sensitive information in connection strings for logging purposes.
+        /// </summary>
+        private static string MaskSensitiveConnectionString(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+                return "[empty]";
+
+            // Mask sensitive information such as passwords or access tokens before logging
+            var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            var maskedParts = new System.Text.StringBuilder();
+
+            foreach (var part in parts)
+            {
+                var trimmedPart = part.Trim();
+                if (trimmedPart.StartsWith("Password=", StringComparison.OrdinalIgnoreCase) ||
+                    trimmedPart.StartsWith("Pwd=", StringComparison.OrdinalIgnoreCase))
+                {
+                    maskedParts.Append("Password=****");
+                }
+                else
+                {
+                    maskedParts.Append(trimmedPart);
+                }
+                maskedParts.Append("; ");
+            }
+
+            return maskedParts.ToString().TrimEnd(';', ' ');
         }
     }
 }
