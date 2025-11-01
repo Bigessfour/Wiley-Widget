@@ -4,30 +4,80 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Prism.Ioc;
 using Prism.Modularity;
+using Prism.Events;
 using Serilog;
 using WileyWidget.Services;
+using WileyWidget.Services.Events;
 
 namespace WileyWidget.Startup.Modules
 {
     /// <summary>
     /// Prism module responsible for QuickBooks Online initialization.
     /// Replaces QuickBooksStartupTask in the new bootstrapper-based architecture.
+    ///
+    /// Registers IQuickBooksService as singleton (real implementation with QBO API) in RegisterTypes().
+    /// On module initialization, publishes QuickBooksServiceReadyEvent to trigger lazy swap.
+    /// This allows LazyQuickBooksService to swap from stub to real implementation without re-resolving.
+    ///
+    /// Pattern based on Prism-Samples-Wpf EventAggregator and module communication patterns:
+    /// https://github.com/PrismLibrary/Prism-Samples-Wpf
     /// </summary>
     [Module(ModuleName = "QuickBooksModule")]
     public class QuickBooksModule : IModule
     {
+        private IContainerProvider? _containerProvider;
+
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            // Register QuickBooks service when module loads (on-demand)
+            // Register real QuickBooksService implementation with QBO API
             containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
-            Log.Information("✓ Registered IQuickBooksService in QuickBooksModule (on-demand loading)");
+
+            Log.Information("QuickBooksModule.RegisterTypes() - Registered real QuickBooksService as singleton");
+            Log.Debug("QuickBooksServiceReadyEvent will be published in OnInitialized()");
         }
 
         public void OnInitialized(IContainerProvider containerProvider)
         {
+            _containerProvider = containerProvider;
             Log.Information("Initializing QuickBooksModule");
 
-            // TODO: QuickBooks initialization temporarily disabled until views are working
+            // Publish ModuleLoadedEvent to signal module is loading
+            try
+            {
+                var eventAggregator = containerProvider.Resolve<IEventAggregator>();
+                eventAggregator.GetEvent<ModuleLoadedEvent>().Publish(new ModuleLoadedEventPayload
+                {
+                    ModuleName = "QuickBooksModule",
+                    ModuleInstance = this,
+                    Timestamp = DateTime.UtcNow
+                });
+                Log.Debug("Published ModuleLoadedEvent for QuickBooksModule");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to publish ModuleLoadedEvent");
+            }
+
+            // Trigger lazy swap via event - publish the resolved QuickBooksService
+            try
+            {
+                var eventAggregator = containerProvider.Resolve<IEventAggregator>();
+                var realQuickBooksService = containerProvider.Resolve<IQuickBooksService>();
+
+                // Publish the service ready event for LazyQuickBooksService to swap
+                eventAggregator.GetEvent<QuickBooksServiceReadyEvent>().Publish(realQuickBooksService);
+
+                Log.Information("✓ Published QuickBooksServiceReadyEvent with resolved IQuickBooksService");
+                Log.Debug("LazyQuickBooksService should now swap to real implementation");
+
+                // Publish QuickBooksModuleLoadedEvent as alternate trigger
+                eventAggregator.GetEvent<QuickBooksModuleLoadedEvent>().Publish(this);
+                Log.Debug("✓ Published QuickBooksModuleLoadedEvent");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to resolve and publish QuickBooksService - LazyQuickBooksService will remain as stub");
+            }            // TODO: QuickBooks initialization temporarily disabled until views are working
             // The QB OAuth2 library has Serilog version conflicts that need to be resolved
             // Enable this after views are rendering and we can access the authentication controls
 

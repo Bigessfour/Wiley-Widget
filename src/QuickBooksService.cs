@@ -18,6 +18,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
+using WileyWidget.Services.Events;
 
 namespace WileyWidget.Services;
 
@@ -468,6 +469,138 @@ public async System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync()
     {
         Serilog.Log.Error(ex, "QBO budgets fetch failed");
         throw;
+    }
+}
+
+/// <summary>
+/// Syncs budgets to QuickBooks Online via REST API.
+/// Uses IHttpClientFactory to create named 'QBO' client with proper authentication.
+/// On success, publishes Prism event to refresh UI (e.g., SfDataGrid in SettingsView).
+/// </summary>
+public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default)
+{
+    if (budgets == null)
+    {
+        throw new ArgumentNullException(nameof(budgets));
+    }
+
+    var stopwatch = Stopwatch.StartNew();
+    try
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        await RefreshTokenIfNeededAsync();
+
+        if (string.IsNullOrWhiteSpace(_realmId))
+        {
+            return new SyncResult
+            {
+                Success = false,
+                ErrorMessage = "QuickBooks company (realmId) is not set. Connect to QuickBooks first.",
+                Duration = stopwatch.Elapsed
+            };
+        }
+
+        var s = EnsureSettingsLoaded();
+        if (!HasValidAccessToken())
+        {
+            return new SyncResult
+            {
+                Success = false,
+                ErrorMessage = "Access token invalid – refresh required.",
+                Duration = stopwatch.Elapsed
+            };
+        }
+
+        // Use IHttpClientFactory to get named 'QBO' client
+        var httpClientFactory = _serviceProvider.GetService<IHttpClientFactory>();
+        if (httpClientFactory == null)
+        {
+            _logger.LogError("IHttpClientFactory not available - cannot sync budgets to QBO");
+            return new SyncResult
+            {
+                Success = false,
+                ErrorMessage = "IHttpClientFactory not registered in DI container",
+                Duration = stopwatch.Elapsed
+            };
+        }
+
+        var client = httpClientFactory.CreateClient("QBO");
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", s.QboAccessToken);
+        client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+        int syncedCount = 0;
+        foreach (var budget in budgets)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // QBO API: POST /v3/company/{realmId}/budget
+            var endpoint = $"v3/company/{_realmId}/budget";
+            var json = System.Text.Json.JsonSerializer.Serialize(budget);
+
+            using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
+            {
+                var endpointUri = new Uri(endpoint, UriKind.Relative);
+                var response = await client.PostAsync(endpointUri, content, cancellationToken).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    syncedCount++;
+                    _logger.LogInformation("Successfully synced budget {BudgetId} to QBO", budget.Id);
+                }
+                else
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    _logger.LogWarning("Failed to sync budget {BudgetId} to QBO: {StatusCode} - {Error}",
+                        budget.Id, response.StatusCode, errorBody);
+                }
+            }
+        }
+
+        stopwatch.Stop();
+
+        // On success: Publish Prism event to refresh UI
+        try
+        {
+            var eventAggregator = _serviceProvider.GetService<Prism.Events.IEventAggregator>();
+            if (eventAggregator != null)
+            {
+                // Publish event to refresh SfDataGrid in SettingsView or other subscribers
+                eventAggregator.GetEvent<WileyWidget.Services.Events.BudgetsSyncedEvent>()?.Publish(syncedCount);
+                _logger.LogDebug("Published BudgetsSyncedEvent with count: {Count}", syncedCount);
+            }
+        }
+        catch (Exception eventEx)
+        {
+            _logger.LogWarning(eventEx, "Failed to publish BudgetsSyncedEvent after sync");
+        }
+
+        return new SyncResult
+        {
+            Success = true,
+            RecordsSynced = syncedCount,
+            Duration = stopwatch.Elapsed
+        };
+    }
+    catch (OperationCanceledException)
+    {
+        stopwatch.Stop();
+        _logger.LogInformation("Budget sync to QBO was cancelled");
+        return new SyncResult
+        {
+            Success = false,
+            ErrorMessage = "Operation cancelled",
+            Duration = stopwatch.Elapsed
+        };
+    }
+    catch (Exception ex)
+    {
+        stopwatch.Stop();
+        Serilog.Log.Error(ex, "QBO budget sync failed");
+        return new SyncResult
+        {
+            Success = false,
+            ErrorMessage = ex.Message,
+            Duration = stopwatch.Elapsed
+        };
     }
 }
 

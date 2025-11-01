@@ -17,6 +17,7 @@ namespace WileyWidget.Services
         System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync();
         System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate);
         System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync();
+        System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<bool> ConnectAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default);
