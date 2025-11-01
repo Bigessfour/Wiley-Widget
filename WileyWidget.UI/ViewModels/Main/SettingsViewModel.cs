@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Media;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 using Prism.Dialogs;
 using Prism.Mvvm;
 using Prism.Navigation.Regions;
@@ -94,7 +95,7 @@ namespace WileyWidget.ViewModels.Main {
         private readonly IUnitOfWork _unitOfWork;
         private readonly AppDbContext _dbContext;
         private readonly ISecretVaultService _secretVaultService;
-        private readonly IQuickBooksService _quickBooksService;
+        private readonly IQuickBooksService? _quickBooksService;
         private readonly ISyncfusionLicenseService _syncfusionLicenseService;
         private readonly IAIService _aiService;
         private readonly IAuditService _auditService;
@@ -1018,12 +1019,12 @@ namespace WileyWidget.ViewModels.Main {
             IUnitOfWork unitOfWork,
             AppDbContext dbContext,
             ISecretVaultService secretVaultService,
-            IQuickBooksService quickBooksService,
-            ISyncfusionLicenseService syncfusionLicenseService,
-            IAIService aiService,
-            IAuditService auditService,
-            ISettingsService settingsService,
-            Prism.Dialogs.IDialogService dialogService)
+            IQuickBooksService? quickBooksService = null,
+            ISyncfusionLicenseService syncfusionLicenseService = null!,
+            IAIService aiService = null!,
+            IAuditService auditService = null!,
+            ISettingsService settingsService = null!,
+            Prism.Dialogs.IDialogService dialogService = null!)
         {
             // Validate required dependencies
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -1032,7 +1033,7 @@ namespace WileyWidget.ViewModels.Main {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _secretVaultService = secretVaultService ?? throw new ArgumentNullException(nameof(secretVaultService));
-            _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
+            _quickBooksService = quickBooksService; // Null OK; check in methods
             _syncfusionLicenseService = syncfusionLicenseService ?? throw new ArgumentNullException(nameof(syncfusionLicenseService));
             _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
             _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
@@ -1065,6 +1066,7 @@ namespace WileyWidget.ViewModels.Main {
             OpenActivateXaiDialogCommand = new Prism.Commands.DelegateCommand(async () => await ExecuteOpenActivateXaiDialogAsync(), () => !IsBusy);
             OpenXaiConsoleCommand = new Prism.Commands.DelegateCommand(() => OpenXaiConsolePublic());
             SaveFiscalYearSettingsCommand = new Prism.Commands.DelegateCommand(async () => await SaveFiscalYearSettingsAsync(), () => !IsBusy);
+            ImportBudgetsCommand = new Prism.Commands.DelegateCommand(async () => await ImportBudgetsAsync(), () => !IsBusy);
         }
 
         // Validation rules (simple length checks). Update as APIs require.
@@ -1231,7 +1233,7 @@ namespace WileyWidget.ViewModels.Main {
                 IsDarkMode = options.IsDarkMode;
 
                 // Also load from database for any additional settings not in options
-                var settings = await _dbContext.AppSettings.FindAsync(1);
+                var settings = await _dbContext.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
                 if (settings != null)
                 {
                     // Override with database values if they exist
@@ -1426,7 +1428,7 @@ namespace WileyWidget.ViewModels.Main {
             try
             {
                 // Load advanced settings from database
-                var settings = await _dbContext.AppSettings.FindAsync(1);
+                var settings = await _dbContext.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
                 if (settings != null)
                 {
                     EnableDynamicColumns = settings.UseDynamicColumns;
@@ -1472,6 +1474,7 @@ namespace WileyWidget.ViewModels.Main {
         public Prism.Commands.DelegateCommand OpenActivateXaiDialogCommand { get; private set; }
         public Prism.Commands.DelegateCommand SaveFiscalYearSettingsCommand { get; private set; }
         public Prism.Commands.DelegateCommand CheckQuickBooksUrlAclCommand { get; private set; }
+        public Prism.Commands.DelegateCommand ImportBudgetsCommand { get; private set; }
         private async Task ExecuteSaveSettingsAsync()
         {
             try
@@ -1531,13 +1534,12 @@ namespace WileyWidget.ViewModels.Main {
             try
             {
                 // Save general settings to database using async EF operations
-                var settings = await _dbContext.AppSettings.FindAsync(1);
+                var settings = await _dbContext.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
 
                 if (settings == null)
                 {
                     settings = new Models.AppSettings
                     {
-                        Id = 1,
                         Theme = SelectedTheme,
                         WindowWidth = WindowWidth,
                         WindowHeight = WindowHeight,
@@ -1685,13 +1687,11 @@ namespace WileyWidget.ViewModels.Main {
             try
             {
                 // Save advanced settings to database using async EF operations
-                var settings = await _dbContext.AppSettings.FindAsync(1);
-
+                var settings = await _dbContext.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
                 if (settings == null)
                 {
                     settings = new Models.AppSettings
                     {
-                        Id = 1,
                         UseDynamicColumns = EnableDynamicColumns,
                         EnableDataCaching = EnableDataCaching,
                         CacheExpirationMinutes = CacheExpirationMinutes,
@@ -1753,6 +1753,14 @@ namespace WileyWidget.ViewModels.Main {
 
         private async Task ExecuteTestQuickBooksConnectionAsync()
         {
+            if (_quickBooksService == null)
+            {
+                QuickBooksConnectionStatus = "QuickBooks service not available";
+                QuickBooksStatusColor = Brushes.Orange;
+                _logger?.LogWarning("TestQuickBooksConnection called but IQuickBooksService is null");
+                return;
+            }
+
             try
             {
                 QuickBooksConnectionStatus = "Testing...";
@@ -1771,6 +1779,14 @@ namespace WileyWidget.ViewModels.Main {
 
         private async Task ExecuteConnectQuickBooksAsync()
         {
+            if (_quickBooksService == null)
+            {
+                QuickBooksConnectionStatus = "QuickBooks service not available";
+                QuickBooksStatusColor = Brushes.Orange;
+                _logger?.LogWarning("ConnectQuickBooks called but IQuickBooksService is null");
+                return;
+            }
+
             try
             {
                 QuickBooksConnectionStatus = "Authorizing...";
@@ -1797,8 +1813,89 @@ namespace WileyWidget.ViewModels.Main {
             }
         }
 
+        /// <summary>
+        /// Imports budgets from QuickBooks Online.
+        /// Uses SfDataGrid.RefreshDataSource() post-import for Syncfusion tie-in.
+        /// Reference: https://help.syncfusion.com/wpf/datagrid/data-binding
+        /// </summary>
+        public async Task ImportBudgetsAsync()
+        {
+            if (_quickBooksService == null)
+            {
+                // Fallback UI: "Load QuickBooks module first" (nav command)
+                QuickBooksConnectionStatus = "QuickBooks service not available. Load QuickBooks module first.";
+                QuickBooksStatusColor = Brushes.Orange;
+                _logger?.LogWarning("ImportBudgetsAsync called but IQuickBooksService is null");
+
+                // TODO: Add navigation command to load QuickBooks module
+                // Example: _regionManager.RequestNavigate("ContentRegion", "QuickBooksView");
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                QuickBooksConnectionStatus = "Importing budgets...";
+                QuickBooksStatusColor = Brushes.Orange;
+
+                // First, get budgets from QuickBooks
+                var budgets = await _quickBooksService.GetBudgetsAsync();
+
+                if (budgets != null && budgets.Count > 0)
+                {
+                    // Sync budgets to the app
+                    var syncResult = await _quickBooksService.SyncBudgetsToAppAsync(budgets);
+
+                    if (syncResult.Success)
+                    {
+                        QuickBooksConnectionStatus = $"Budgets imported successfully ({syncResult.RecordsSynced} records)";
+                        QuickBooksStatusColor = Brushes.Green;
+                        _logger?.LogInformation("Budgets imported successfully from QuickBooks: {Count} records", syncResult.RecordsSynced);
+                    }
+                    else
+                    {
+                        QuickBooksConnectionStatus = $"Import partially failed: {syncResult.ErrorMessage}";
+                        QuickBooksStatusColor = Brushes.Orange;
+                        _logger?.LogWarning("Budget import had errors: {Error}", syncResult.ErrorMessage);
+                    }
+                }
+                else
+                {
+                    QuickBooksConnectionStatus = "No budgets found in QuickBooks";
+                    QuickBooksStatusColor = Brushes.Orange;
+                    _logger?.LogInformation("No budgets found in QuickBooks to import");
+                }
+
+                // Syncfusion Tie-In: Refresh the data grid
+                // Note: The actual SfDataGrid instance should call RefreshDataSource()
+                // This would typically be done in the View's code-behind or via a message/event
+                // Example in View: BudgetsDataGrid?.RefreshDataSource();
+
+                // Notify property changes to refresh any bound collections
+                RaisePropertyChanged(string.Empty); // Refresh all bindings
+            }
+            catch (Exception ex)
+            {
+                QuickBooksConnectionStatus = $"Import failed: {ex.Message}";
+                QuickBooksStatusColor = Brushes.Red;
+                _logger?.LogError(ex, "Failed to import budgets from QuickBooks");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
         private async Task ExecuteCheckQuickBooksUrlAclAsync()
         {
+            if (_quickBooksService == null)
+            {
+                QuickBooksUrlAclStatus = "QuickBooks service not available";
+                QuickBooksUrlAclStatusColor = Brushes.Orange;
+                _logger?.LogWarning("CheckQuickBooksUrlAcl called but IQuickBooksService is null");
+                return;
+            }
+
             try
             {
                 QuickBooksUrlAclStatus = "Checking...";
