@@ -26,12 +26,13 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          dotnet build .\WileyWidget.csproj --nologo
+          dotnet build .\WileyWidget.csproj --nologo /property:BuildIncremental=true
 
       - name: Test
         shell: pwsh
         run: |
-          dotnet test .\WileyWidget.Tests\WileyWidget.Tests.csproj --logger "trx;LogFileName=test-results.trx" --results-directory .\TestResults
+          dotnet test .\WileyWidget.ViewModels.Tests.csproj --logger "trx;LogFileName=viewmodels-test-results.trx" --results-directory .\TestResults --no-build
+          dotnet test .\WileyWidget.Services.Tests\WileyWidget.Services.Tests.csproj --logger "trx;LogFileName=services-test-results.trx" --results-directory .\TestResults --no-build
 
       - name: Upload Cloudflare logs
         if: always()
