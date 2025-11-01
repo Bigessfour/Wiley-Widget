@@ -35,13 +35,26 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing AIAssistModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            try
+            {
+                // Safely resolve ViewModel to validate DI container registration
+                var vm = containerProvider.Resolve<AIAssistViewModel>();
+                Log.Debug("Successfully resolved AIAssistViewModel from container");
 
-            // Register AIAssistPanelView with AIAssistRegion (SfAIAssistView-based UI)
-            regionManager.RegisterViewWithRegion("AIAssistRegion", typeof(AIAssistPanelView));
-            Log.Information("AIAssistPanelView registered with AIAssistRegion");
+                var regionManager = containerProvider.Resolve<IRegionManager>();
 
-            Log.Information("AIAssistModule initialization completed");
+                // Register AIAssistPanelView with AIAssistRegion (SfAIAssistView-based UI)
+                regionManager.RegisterViewWithRegion("AIAssistRegion", typeof(AIAssistPanelView));
+                Log.Information("AIAssistPanelView registered with AIAssistRegion");
+
+                Log.Information("AIAssistModule initialization completed");
+            }
+            catch (Exception ex)
+            {
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in AIAssistModule.OnInitialized");
+                // Don't rethrow - allow application to continue with degraded functionality
+            }
         }
     }
 }

@@ -218,7 +218,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Logs usage metrics for AI operations.
         /// </summary>
-        public void LogMetric(string metricName, double metricValue, Dictionary<string, object> metadata = null)
+        public void LogMetric(string metricName, double metricValue, Dictionary<string, object>? metadata = null)
         {
             try
             {

@@ -25,15 +25,27 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing PanelModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            try
+            {
+                // Panel views typically don't have ViewModels to resolve early,
+                // but we validate region manager availability
+                var regionManager = containerProvider.Resolve<IRegionManager>();
+                Log.Debug("Successfully resolved IRegionManager from container");
 
-            // Register panel views with their regions
-            regionManager.RegisterViewWithRegion("LeftPanelRegion", typeof(DashboardPanelView));
-            regionManager.RegisterViewWithRegion("RightPanelRegion", typeof(SettingsPanelView));
-            regionManager.RegisterViewWithRegion("BottomPanelRegion", typeof(ToolsPanelView));
+                // Register panel views with their regions
+                regionManager.RegisterViewWithRegion("LeftPanelRegion", typeof(DashboardPanelView));
+                regionManager.RegisterViewWithRegion("RightPanelRegion", typeof(SettingsPanelView));
+                regionManager.RegisterViewWithRegion("BottomPanelRegion", typeof(ToolsPanelView));
 
-            Log.Information("Successfully registered panel views");
-            Log.Information("PanelModule initialization completed");
+                Log.Information("Successfully registered panel views");
+                Log.Information("PanelModule initialization completed");
+            }
+            catch (Exception ex)
+            {
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in PanelModule.OnInitialized");
+                // Don't rethrow - allow application to continue with degraded functionality
+            }
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)

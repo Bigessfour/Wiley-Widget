@@ -37,6 +37,10 @@ namespace WileyWidget.Startup.Modules
                     throw new ArgumentNullException(nameof(containerProvider));
                 }
 
+                // Safely resolve ViewModel to validate DI container registration
+                var vm = containerProvider.Resolve<DashboardViewModel>();
+                Log.Debug("Successfully resolved DashboardViewModel from container");
+
                 var regionManager = containerProvider.Resolve<IRegionManager>();
                 Log.Information("Successfully resolved IRegionManager from container");
 
@@ -49,9 +53,10 @@ namespace WileyWidget.Startup.Modules
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Critical error during DashboardModule initialization");
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in DashboardModule.OnInitialized");
                 moduleHealthService.MarkModuleInitialized("DashboardModule", false, ex.Message);
-                throw;
+                // Don't rethrow - allow application to continue with degraded functionality
             }
         }
 

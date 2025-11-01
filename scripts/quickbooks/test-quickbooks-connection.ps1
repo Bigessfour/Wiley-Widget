@@ -34,7 +34,7 @@ Write-Output ""
 
 # Build the project
 Write-Output "Building project..."
-dotnet build "WileyWidget.csproj" --verbosity quiet
+dotnet build "WileyWidget.csproj" --verbosity quiet /property:BuildIncremental=true
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Build failed. Cannot test QuickBooks integration."
     exit 1

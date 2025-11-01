@@ -15,14 +15,6 @@ namespace WileyWidget.Views.Main;
 public partial class ReportsView : UserControl
 {
     /// <summary>
-    /// Prism-aware constructor - prefer this so the container can inject dependencies.
-    /// </summary>
-    public ReportsView(IContainerProvider containerProvider)
-    {
-        InitializeComponent();
-    }
-
-    /// <summary>
     /// Parameterless constructor remains for XAML designer compatibility and for
     /// any code paths that instantiate the view without DI. It attempts to use
     /// the application container as a fallback but does not throw if unavailable.

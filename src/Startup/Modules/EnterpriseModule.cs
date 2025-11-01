@@ -24,13 +24,26 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing EnterpriseModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            try
+            {
+                // Safely resolve ViewModel to validate DI container registration
+                var vm = containerProvider.Resolve<EnterpriseViewModel>();
+                Log.Debug("Successfully resolved EnterpriseViewModel from container");
 
-            // Register EnterpriseView with EnterpriseRegion
-            regionManager.RegisterViewWithRegion("EnterpriseRegion", typeof(EnterpriseView));
-            Log.Information("Successfully registered EnterpriseView with EnterpriseRegion");
+                var regionManager = containerProvider.Resolve<IRegionManager>();
 
-            Log.Information("EnterpriseModule initialization completed");
+                // Register EnterpriseView with EnterpriseRegion
+                regionManager.RegisterViewWithRegion("EnterpriseRegion", typeof(EnterpriseView));
+                Log.Information("Successfully registered EnterpriseView with EnterpriseRegion");
+
+                Log.Information("EnterpriseModule initialization completed");
+            }
+            catch (Exception ex)
+            {
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in EnterpriseModule.OnInitialized");
+                // Don't rethrow - allow application to continue with degraded functionality
+            }
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)

@@ -28,6 +28,10 @@ namespace WileyWidget.Startup.Modules
 
             try
             {
+                // Safely resolve ViewModel to validate DI container registration
+                var vm = containerProvider.Resolve<MunicipalAccountViewModel>();
+                Log.Debug("Successfully resolved MunicipalAccountViewModel from container");
+
                 var regionManager = containerProvider.Resolve<IRegionManager>();
                 Log.Information("Successfully resolved IRegionManager from container");
 
@@ -39,10 +43,10 @@ namespace WileyWidget.Startup.Modules
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Critical error during MunicipalAccountModule initialization");
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in MunicipalAccountModule.OnInitialized");
                 moduleHealthService.MarkModuleInitialized("MunicipalAccountModule", false, ex.Message);
-                // Don't rethrow - allow application to continue with other modules
-                // The module will be marked as failed but won't crash the entire application
+                // Don't rethrow - allow application to continue with degraded functionality
             }
         }
 

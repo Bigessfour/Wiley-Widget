@@ -1,0 +1,20 @@
+# docker/Dockerfile.csx-tests
+# Match repo global.json (requires .NET SDK 9.x)
+FROM mcr.microsoft.com/dotnet/sdk:9.0
+
+ARG DOTNET_CLI_TELEMETRY_OPTOUT=1
+ARG DOTNET_NOLOGO=1
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=${DOTNET_CLI_TELEMETRY_OPTOUT}
+ENV DOTNET_NOLOGO=${DOTNET_NOLOGO}
+
+WORKDIR /app
+
+# Install dotnet-script for .csx execution
+RUN dotnet tool install -g dotnet-script \
+ && echo 'export PATH="$PATH:/root/.dotnet/tools"' >> /etc/profile \
+ && echo 'PATH="$PATH:/root/.dotnet/tools"' >> /etc/environment \
+ && dotnet workload update
+
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+ENTRYPOINT ["dotnet", "script"]

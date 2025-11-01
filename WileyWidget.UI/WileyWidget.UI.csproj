@@ -156,8 +156,8 @@
   <Compile Include="..\src\ThemeUtility.cs" />
     <!-- Converters now live in WileyWidget.UI\Converters\ and are auto-included by SDK -->
   <!-- Bootstrapper moved to dedicated WileyWidget.Startup project to avoid duplicate-type compilation -->
-    <!-- Prism modules remain owned by the UI project (they reference views/viewmodels) -->
-    <Compile Include="..\src\Startup\Modules\**\*.cs" />
+    <!-- Prism modules moved to WileyWidget.csproj (main application) to avoid duplicate compilation -->
+
   </ItemGroup>
   <!-- Clear VS designer cache after Clean to avoid stale designer/layout state -->
   <Target Name="ClearDesignerCache" AfterTargets="Clean">

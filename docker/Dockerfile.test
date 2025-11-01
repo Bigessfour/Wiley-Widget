@@ -22,7 +22,7 @@ RUN dotnet restore "WileyWidget.sln"
 COPY . .
 
 # Build the solution in Release mode
-RUN dotnet build "WileyWidget.sln" --configuration Release --no-restore
+RUN dotnet build "WileyWidget.sln" --configuration Release --no-restore /property:BuildIncremental=true
 
 # Run the xUnit tests
 ENTRYPOINT ["dotnet", "test", "WileyWidget.Tests/WileyWidget.Tests.csproj", "--configuration", "Release", "--logger", "trx", "--results-directory", "/test-results", "--no-build", "--verbosity", "normal"]

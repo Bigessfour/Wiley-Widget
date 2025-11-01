@@ -18,7 +18,7 @@ jobs:
       - name: Restore
         run: dotnet restore WileyWidget.sln
       - name: Build
-        run: dotnet build WileyWidget.sln -c Release --no-restore
+        run: dotnet build WileyWidget.sln -c Release --no-restore /property:BuildIncremental=true
       - name: Test
         run: dotnet test tests/PrismUnityIntegrationTests/PrismUnityIntegrationTests.csproj -c Release --no-build --logger "trx;LogFileName=test-results.trx"
       - name: Upload Test Results

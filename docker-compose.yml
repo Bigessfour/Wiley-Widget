@@ -15,6 +15,7 @@ services:
       - github_token
     environment:
       GITHUB_PERSONAL_ACCESS_TOKEN_FILE: /run/secrets/github_token
+
   filesystem-mcp:
     image: mcp/filesystem:latest
     command: ["--transport=sse", "/workspace"]
@@ -28,9 +29,38 @@ services:
     pids_limit: 128
     volumes:
       - .:/workspace:rw # Mount Wiley-Widget repo
+
+  csharp-mcp:
+    image: ghcr.io/infinityflowapp/csharp-mcp:latest
+    stdin_open: true # Enable stdin for stdio communication
+    tty: false # No TTY for MCP protocol
+    networks: ["mcp_net"]
+    ports: ["8002:5000"] # Optional HTTP port for testing
+    mem_limit: 1g
+    cpus: 2
+    pids_limit: 256
+    volumes:
+      - ./scripts:/scripts:ro # Read-only access to scripts
+      - ./logs:/logs:rw # Write access for logs
+      - ./scripts/examples/csharp:/app/tests:ro # Prism E2E tests
+    environment:
+      CSX_ALLOWED_PATH: "/scripts"
+      WW_REPO_ROOT: "/scripts"
+      WW_LOGS_DIR: "/logs"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    healthcheck:
+      test: ["CMD", "echo", "MCP stdio server - no HTTP health check"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
 networks:
   mcp_net:
     driver: bridge
+
 secrets:
   github_token:
     file: ./secrets/github_token

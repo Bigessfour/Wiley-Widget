@@ -1,6 +1,8 @@
 {
   "mcp.preferredTool": "./tools/mcp-csharp.exe",
   "mcp.wrapperScript": "${workspaceFolder}/scripts/run-mcp.ps1",
+  // Prefer workspace csharp-mcp server (used by VS Code MCP extension)
+  "mcp.defaultServer": "csharp-mcp",
   "tasks.defaultBuildTask": "mcp: analyze",
   "mcp.autoRunOnSave": false,
   "dotnet-test-explorer.testFramework": "xunit",
@@ -162,6 +164,24 @@
         "command": "docker",
         "args": ["mcp", "gateway", "run"],
         "type": "stdio"
+      },
+      "csharp-mcp": {
+        "type": "stdio",
+        "command": "docker",
+        "args": [
+          "run",
+          "-i",
+          "--rm",
+          "-v",
+          "${workspaceFolder}:/scripts:ro",
+          "-e",
+          "CSX_ALLOWED_PATH=/scripts",
+          "-e",
+          "WW_REPO_ROOT=/scripts",
+          "-e",
+          "WW_LOGS_DIR=/scripts/logs",
+          "ghcr.io/infinityflowapp/csharp-mcp:latest"
+        ]
       }
     }
   },

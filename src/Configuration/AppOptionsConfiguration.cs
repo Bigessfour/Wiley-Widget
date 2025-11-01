@@ -44,7 +44,8 @@ public class AppOptionsConfigurator : IConfigureOptions<AppOptions>
                 // IMPORTANT: use projection to select only needed columns so queries succeed even if
                 // additive columns (e.g., QboClientId/QboClientSecret) are not yet present.
                 var s = _dbContext.AppSettings
-                    .Where(s => s.Id == 1)
+                    // Do not assume Id = 1; pick the earliest row if present
+                    .OrderBy(s => s.Id)
                     .Select(s => new { s.Theme, s.WindowWidth, s.WindowHeight, s.WindowMaximized })
                     .AsNoTracking()
                     .FirstOrDefault();

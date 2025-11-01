@@ -28,7 +28,8 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <!-- Data templates for ViewModels -->
-                <ResourceDictionary Source="../Resources/DataTemplates.xaml"/>
+                <!-- Reference DataTemplates from the main application assembly -->
+                <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/src/Resources/DataTemplates.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Converters -->
@@ -233,6 +234,7 @@
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <!-- Left Panel Region -->
@@ -302,6 +304,14 @@
                    AutomationProperties.Name="Tab Content Region"
                    AutomationProperties.HelpText="Tabbed content area for dynamic view injection"
                    Visibility="Collapsed"/>
+
+        <!-- AI Assist Region -->
+        <ContentControl x:Name="AIAssistRegionControl"
+                       Grid.Row="0" Grid.RowSpan="3" Grid.Column="3"
+                       prism:RegionManager.RegionName="AIAssistRegion"
+                       AutomationProperties.Name="AI Assistant Region"
+                       AutomationProperties.HelpText="AI assistant panel for municipal utility management"
+                       Visibility="Collapsed"/>
     </Grid>
 
         <!-- Status Bar in Row 2 -->

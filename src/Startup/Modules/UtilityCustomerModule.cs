@@ -21,13 +21,26 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing UtilityCustomerModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
+            try
+            {
+                // Safely resolve ViewModel to validate DI container registration
+                var vm = containerProvider.Resolve<UtilityCustomerViewModel>();
+                Log.Debug("Successfully resolved UtilityCustomerViewModel from container");
 
-            // Register UtilityCustomerView with UtilityCustomerRegion
-            regionManager.RegisterViewWithRegion("UtilityCustomerRegion", typeof(UtilityCustomerView));
-            Log.Information("Successfully registered UtilityCustomerView with UtilityCustomerRegion");
+                var regionManager = containerProvider.Resolve<IRegionManager>();
 
-            Log.Information("UtilityCustomerModule initialization completed");
+                // Register UtilityCustomerView with UtilityCustomerRegion
+                regionManager.RegisterViewWithRegion("UtilityCustomerRegion", typeof(UtilityCustomerView));
+                Log.Information("Successfully registered UtilityCustomerView with UtilityCustomerRegion");
+
+                Log.Information("UtilityCustomerModule initialization completed");
+            }
+            catch (Exception ex)
+            {
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in UtilityCustomerModule.OnInitialized");
+                // Don't rethrow - allow application to continue with degraded functionality
+            }
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)

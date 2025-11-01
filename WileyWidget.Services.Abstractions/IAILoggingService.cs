@@ -48,7 +48,7 @@ namespace WileyWidget.Services
         /// <param name="metricName">Name of the metric (e.g., DailyQueries, AverageResponseTime)</param>
         /// <param name="metricValue">Value of the metric</param>
         /// <param name="metadata">Additional metadata for the metric</param>
-        void LogMetric(string metricName, double metricValue, Dictionary<string, object> metadata = null);
+        void LogMetric(string metricName, double metricValue, Dictionary<string, object>? metadata = null);
 
         /// <summary>
         /// Gets usage statistics for a specified time period.

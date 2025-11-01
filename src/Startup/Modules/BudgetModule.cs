@@ -25,6 +25,11 @@ namespace WileyWidget.Startup.Modules
 
             try
             {
+                // Safely resolve ViewModels to validate DI container registration
+                var budgetVm = containerProvider.Resolve<BudgetViewModel>();
+                var analyticsVm = containerProvider.Resolve<AnalyticsViewModel>();
+                Log.Debug("Successfully resolved BudgetViewModel and AnalyticsViewModel from container");
+
                 var regionManager = containerProvider.Resolve<IRegionManager>();
 
                 // Register BudgetView with BudgetRegion
@@ -39,8 +44,9 @@ namespace WileyWidget.Startup.Modules
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to initialize BudgetModule - region registration failed");
-                throw;
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in BudgetModule.OnInitialized");
+                // Don't rethrow - allow application to continue with degraded functionality
             }
         }
 

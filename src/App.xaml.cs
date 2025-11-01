@@ -1820,16 +1820,22 @@ namespace WileyWidget
             //
             // The stub provides no-op implementations until QuickBooksModule publishes QuickBooksServiceReadyEvent,
             // at which point it swaps to the real implementation.
+            Log.Information("========== REGISTERING LAZY QUICKBOOKS SERVICE ==========");
             try
             {
                 containerRegistry.RegisterSingleton<IQuickBooksService, WileyWidget.Services.Infrastructure.LazyQuickBooksService>();
                 Log.Information("✓ Registered IQuickBooksService as LazyQuickBooksService (stub, will swap on module load)");
+                Log.Information("  Registration type: Singleton");
+                Log.Information("  Implementation: WileyWidget.Services.Infrastructure.LazyQuickBooksService");
                 Log.Debug("LazyQuickBooksService will subscribe to ModuleLoadedEvent and QuickBooksServiceReadyEvent");
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "Failed to register LazyQuickBooksService - QuickBooks features may fail");
+                Log.Error(ex, "FATAL: Failed to register LazyQuickBooksService - QuickBooks features WILL fail");
+                Log.Error("Exception details: {Message}", ex.Message);
+                Log.Error("Stack trace: {StackTrace}", ex.StackTrace);
             }
+            Log.Information("========== LAZY QUICKBOOKS SERVICE REGISTRATION COMPLETE ==========");
 
             // Register AppOptions after core infrastructure (including ISecretVaultService AND database) is available
             // This must happen AFTER Bootstrapper completes to ensure IDbContextFactory is registered
@@ -2122,7 +2128,6 @@ namespace WileyWidget
                 containerRegistry.RegisterForNavigation<AIAssistView, AIAssistViewModel>("AIAssistView");
 
                 // Panel views with explicit ViewModel registrations (using new Panels namespace)
-                containerRegistry.Register<AIAssistPanelViewModel>();
                 containerRegistry.Register<BudgetPanelViewModel>();
                 containerRegistry.Register<DashboardPanelViewModel>();
                 containerRegistry.Register<EnterprisePanelViewModel>();
@@ -2137,11 +2142,9 @@ namespace WileyWidget
                 containerRegistry.RegisterForNavigation<MunicipalAccountPanelView, MunicipalAccountPanelViewModel>("MunicipalAccountPanelView");
                 containerRegistry.RegisterForNavigation<SettingsPanelView, SettingsPanelViewModel>("SettingsPanelView");
                 containerRegistry.RegisterForNavigation<ToolsPanelView, ToolsPanelViewModel>("ToolsPanelView");
-                containerRegistry.RegisterForNavigation<AIAssistPanelView, AIAssistPanelViewModel>("AIAssistPanelView");
                 containerRegistry.RegisterForNavigation<UtilityCustomerPanelView, UtilityCustomerPanelViewModel>("UtilityCustomerPanelView");
 
                 // Explicitly register View-ViewModel associations using ViewModelLocationProvider
-                Prism.Mvvm.ViewModelLocationProvider.Register<AIAssistPanelView, AIAssistPanelViewModel>();
                 Prism.Mvvm.ViewModelLocationProvider.Register<BudgetPanelView, BudgetPanelViewModel>();
                 Prism.Mvvm.ViewModelLocationProvider.Register<DashboardPanelView, DashboardPanelViewModel>();
                 Prism.Mvvm.ViewModelLocationProvider.Register<EnterprisePanelView, EnterprisePanelViewModel>();

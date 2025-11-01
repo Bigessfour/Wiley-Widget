@@ -48,7 +48,7 @@ jobs:
               run: dotnet restore
 
             - name: Build Release
-              run: dotnet build -c Release --no-restore /bl:msbuild.binlog
+              run: dotnet build -c Release --no-restore /property:BuildIncremental=true /bl:msbuild.binlog
 
             - name: Run Tests (Release)
               run: dotnet test -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage"

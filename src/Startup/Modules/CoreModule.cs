@@ -5,6 +5,7 @@ using Prism.Navigation.Regions;
 using Serilog;
 using WileyWidget.Services;
 using WileyWidget.ViewModels;
+using WileyWidget.ViewModels.Main;
 using WileyWidget.Views;
 using WileyWidget.Views.Main;
 
@@ -25,14 +26,27 @@ namespace WileyWidget.Startup.Modules
 
         public void OnInitialized(IContainerProvider containerProvider)
         {
-            var moduleHealthService = containerProvider.Resolve<IModuleHealthService>();
-            moduleHealthService.RegisterModule("CoreModule");
+            try
+            {
+                var moduleHealthService = containerProvider.Resolve<IModuleHealthService>();
+                moduleHealthService.RegisterModule("CoreModule");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
-            regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
+                // Safely resolve ViewModel to validate DI container registration
+                var vm = containerProvider.Resolve<SettingsViewModel>();
+                Log.Debug("Successfully resolved SettingsViewModel from container");
 
-            moduleHealthService.MarkModuleInitialized("CoreModule", success: true);
-            Log.Information("CoreModule initialization completed");
+                var regionManager = containerProvider.Resolve<IRegionManager>();
+                regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
+
+                moduleHealthService.MarkModuleInitialized("CoreModule", success: true);
+                Log.Information("CoreModule initialization completed");
+            }
+            catch (Exception ex)
+            {
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in CoreModule.OnInitialized");
+                // Don't rethrow - allow application to continue with degraded functionality
+            }
         }
     }
 }

@@ -61,11 +61,11 @@ COPY ["config/", "./config/"]
 
 # ===== LAYER 5: Build applications (Debug for better test debugging) =====
 RUN Write-Host 'Building WileyWidget application...'; \
-    dotnet build 'WileyWidget.csproj' --configuration Debug --no-restore --verbosity minimal; \
+    dotnet build 'WileyWidget.csproj' --configuration Debug --no-restore --verbosity minimal /property:BuildIncremental=true; \
     Write-Host 'Application build complete.'
 
 RUN Write-Host 'Building UI test project...'; \
-    dotnet build 'WileyWidget.UiTests/WileyWidget.UiTests.csproj' --configuration Debug --no-restore --verbosity minimal; \
+    dotnet build 'WileyWidget.UiTests/WileyWidget.UiTests.csproj' --configuration Debug --no-restore --verbosity minimal /property:BuildIncremental=true; \
     Write-Host 'Test project build complete.'
 
 # ===== LAYER 6: Runtime configuration =====

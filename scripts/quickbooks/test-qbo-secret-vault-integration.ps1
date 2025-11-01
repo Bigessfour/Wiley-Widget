@@ -50,7 +50,7 @@ if (Test-Path $vaultPath) {
 # Build and test the application
 Write-Output ""
 Write-Output "Building and testing application..."
-dotnet build "WileyWidget.csproj" --verbosity quiet
+dotnet build "WileyWidget.csproj" --verbosity quiet /property:BuildIncremental=true
 if ($LASTEXITCODE -ne 0) {
     Write-Error "❌ Build failed"
     exit 1

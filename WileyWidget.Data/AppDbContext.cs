@@ -14,6 +14,16 @@ namespace WileyWidget.Data
             // DbSets are now auto-initialized properties - no manual initialization needed
         }
 
+        // Global conventions
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            if (configurationBuilder is null)
+                throw new ArgumentNullException(nameof(configurationBuilder));
+
+            // Apply a global precision for decimal columns unless explicitly overridden
+            configurationBuilder.Properties<decimal>().HavePrecision(19, 4);
+        }
+
         // Fallback provider configuration to avoid "No database provider configured" errors
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -175,6 +185,19 @@ namespace WileyWidget.Data
             entity.HasIndex(v => v.IsActive);
             entity.Property(v => v.Name).HasMaxLength(100).IsRequired();
             entity.Property(v => v.ContactInfo).HasMaxLength(200);
+        });
+
+        // Precision for TaxRevenueSummary decimal columns to prevent truncation/rounding issues
+        modelBuilder.Entity<TaxRevenueSummary>(entity =>
+        {
+            entity.Property(e => e.PriorYearLevy).HasPrecision(19, 4);
+            entity.Property(e => e.PriorYearAmount).HasPrecision(19, 4);
+            entity.Property(e => e.CurrentYearLevy).HasPrecision(19, 4);
+            entity.Property(e => e.CurrentYearAmount).HasPrecision(19, 4);
+            entity.Property(e => e.BudgetYearLevy).HasPrecision(19, 4);
+            entity.Property(e => e.BudgetYearAmount).HasPrecision(19, 4);
+            entity.Property(e => e.IncDecLevy).HasPrecision(19, 4);
+            entity.Property(e => e.IncDecAmount).HasPrecision(19, 4);
         });
 
         // New: BudgetInteraction relationships

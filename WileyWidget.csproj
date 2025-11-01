@@ -164,6 +164,8 @@
     <Compile Include="src\Startup\DatabaseInitializer.cs" />
     <Compile Include="src\HealthCheckHostedService.cs" />
     <Compile Include="src\QuickBooksService.cs" />
+    <!-- Include Prism modules from Startup\Modules directory -->
+    <Compile Include="src\Startup\Modules\**\*.cs" />
   </ItemGroup>
 
   <!-- Exclude legacy container-specific diagnostics from main build to avoid optional container dependency -->
@@ -181,6 +183,9 @@
 
   <!-- Design-time noise suppression: exclude Region-heavy sources from the
        temporary wpftmp project only. This does NOT affect normal builds. -->
+  <PropertyGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
+    <DefineConstants>$(DefineConstants);WPFTMP</DefineConstants>
+  </PropertyGroup>
   <ItemGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
     <Compile Remove="src\Regions\**\*.cs" />
     <Compile Remove="src\Behaviors\**\*.cs" />
@@ -217,6 +222,8 @@
   <Compile Remove="WileyWidget.Tests\**" />
   <Compile Remove="WileyWidget.UiTests\**" />
   <Compile Remove="WileyWidget.TestModels\**" />
+  <Compile Remove="WileyWidget.ContainerTests\**" />
+  <Compile Remove="WileyWidget.Services.Tests\**" />
   <Compile Remove="tests\**" />
   <Compile Remove="samples\LicenseKey.Private.sample.cs" />
     <Compile Remove="Services\GrokAIService.cs" />
@@ -231,6 +238,8 @@
   <Compile Remove="WileyWidget.Tests\**" />
   <Compile Remove="WileyWidget.UiTests\**" />
   <Compile Remove="WileyWidget.TestModels\**" />
+  <Compile Remove="WileyWidget.ContainerTests\**" />
+  <Compile Remove="WileyWidget.Services.Tests\**" />
   <Compile Remove="tests\**" />
   <Compile Remove="DatabaseTest\**" />
     <Compile Remove="DatabaseSeederRunner\**" />
@@ -247,6 +256,8 @@
   <EmbeddedResource Remove="WileyWidget.Tests\**" />
   <EmbeddedResource Remove="WileyWidget.UiTests\**" />
   <EmbeddedResource Remove="WileyWidget.TestModels\**" />
+  <EmbeddedResource Remove="WileyWidget.ContainerTests\**" />
+  <EmbeddedResource Remove="WileyWidget.Services.Tests\**" />
   <EmbeddedResource Remove="tests\**" />
   <None Remove="WileyWidget.Business\**" />
   <None Remove="WileyWidget.Data\**" />
@@ -257,6 +268,8 @@
   <None Remove="WileyWidget.Tests\**" />
   <None Remove="WileyWidget.UiTests\**" />
   <None Remove="WileyWidget.TestModels\**" />
+  <None Remove="WileyWidget.ContainerTests\**" />
+  <None Remove="WileyWidget.Services.Tests\**" />
   <None Remove="tests\**" />
   <None Remove="temp-grant\**" />
   </ItemGroup>
@@ -265,6 +278,12 @@
     <Content Include="src\Resources\SplashScreen.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <!-- Ensure developer scripts are never compiled into the application -->
+  <ItemGroup>
+    <Compile Remove="scripts\**\*.cs" />
+    <None Include="scripts\**\*.cs" />
   </ItemGroup>
 
   <!-- Report Resources -->

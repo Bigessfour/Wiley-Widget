@@ -34,11 +34,24 @@ namespace WileyWidget.Startup.Modules
         {
             Log.Information("Initializing SettingsModule (consolidated settings and tools)");
 
-            var regionManager = containerProvider.Resolve<IRegionManager>();
-            regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
-            Log.Information("SettingsView registered with SettingsRegion");
+            try
+            {
+                // Safely resolve ViewModel to validate DI container registration
+                var vm = containerProvider.Resolve<SettingsViewModel>();
+                Log.Debug("Successfully resolved SettingsViewModel from container");
 
-            Log.Information("SettingsModule initialization completed");
+                var regionManager = containerProvider.Resolve<IRegionManager>();
+                regionManager.RegisterViewWithRegion("SettingsRegion", typeof(SettingsView));
+                Log.Information("SettingsView registered with SettingsRegion");
+
+                Log.Information("SettingsModule initialization completed");
+            }
+            catch (Exception ex)
+            {
+                // Log & fallback (per Prism samples) - handles ContainerResolutionException and other DI failures
+                Log.Error(ex, "DI container resolution or region registration failed in SettingsModule.OnInitialized");
+                // Don't rethrow - allow application to continue with degraded functionality
+            }
         }
     }
 }

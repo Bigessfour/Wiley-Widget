@@ -23,24 +23,24 @@ jobs:
   test-regionviewregistry:
     name: Run RegionViewRegistry Tests
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
-    
+
     - name: Restore dependencies
       run: dotnet restore WileyWidget.Tests/WileyWidget.Tests.csproj
-    
+
     - name: Build test project
-      run: dotnet build WileyWidget.Tests/WileyWidget.Tests.csproj --configuration Release --no-restore
-    
+      run: dotnet build WileyWidget.Tests/WileyWidget.Tests.csproj --configuration Release --no-restore /property:BuildIncremental=true
+
     - name: Note C# tests deprecated
       shell: pwsh
       run: |
@@ -50,11 +50,11 @@ jobs:
   test-regionviewregistry-docker:
     name: Run RegionViewRegistry Tests (Docker)
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -62,7 +62,7 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    
+
     - name: Build MCP CI image
       run: docker build -f docker/Dockerfile.mcp-ci -t wiley-mcp-ci .
 
@@ -73,32 +73,32 @@ jobs:
           --target test \
           -t wiley-regionviewregistry-tests:${{ github.sha }} \
           .
-    
+
     - name: Run tests in Docker
       run: |
         docker run --rm \
           -v $(pwd)/${{ env.TEST_RESULTS_PATH }}:/testresults \
           wiley-regionviewregistry-tests:${{ github.sha }}
-    
+
     - name: Start MCP Server
       run: docker run -d -p 8080:8080 --name wiley-mcp-ci wiley-mcp-ci
-    
+
     - name: Register MCP Tools
       run: |
         sleep 5
         node scripts/mcp-client.js client register-tool --url http://localhost:8080/ --manifest ci-tools.json
-    
+
     - name: Run .NET Tests
       run: dotnet test WileyWidget.sln
-    
+
     - name: Run Python Tests
       run: cd tools/python/tests && pytest
-    
+
     - name: AI Diagnostic with MCP
       run: |
         node scripts/mcp-client.js client call --url http://localhost:8080/ --tool-id get_build_logs --params '{"sha": "${{ github.sha }}"}'
         node scripts/mcp-client.js client call --url http://localhost:8080/ --tool-id analyze_xaml --params '{"path": "."}'
-    
+
     - name: Upload Docker test results
       uses: actions/upload-artifact@v4
       if: always()
@@ -110,4 +110,3 @@ jobs:
     - name: Stop MCP Server
       if: always()
       run: docker rm -f wiley-mcp-ci
-

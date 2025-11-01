@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Diagnostics;
 using Prism.Ioc;
 
 namespace WileyWidget.Services
@@ -32,9 +33,12 @@ namespace WileyWidget.Services
                     // return null to match IServiceProvider semantics.
                     return containerProvider.Resolve(type);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Swallow resolution exceptions and return null to match IServiceProvider semantics
+                    // Swallow resolution exceptions but emit lightweight diagnostics for troubleshooting.
+                    // We use Trace to avoid adding runtime logging dependencies; these messages will
+                    // appear in VS Output or any Trace listeners configured during tests (e.g., CSX harness).
+                    try { Trace.WriteLine($"DryIocServiceProviderAdapter: Resolve via IContainerProvider failed for type {type?.FullName}: {ex}"); } catch { }
                 }
 
                 return null;
@@ -53,15 +57,27 @@ namespace WileyWidget.Services
 
             var resolverType = resolverContext.GetType();
 
-            // Try to find a Resolve(Type) or Resolve(Type, ...) method. We accept any method
-            // named "Resolve" whose first parameter is System.Type.
+
+            // If the provided resolverContext is already an IServiceProvider, prefer that
+            // so we don't invoke container-specific Resolve overloads via reflection.
+            if (resolverContext is IServiceProvider spFallback)
+            {
+                _resolver = spFallback.GetService;
+                return;
+            }
+
+            // Try to find a Resolve(Type) or Resolve(Type, ...) method. Prefer an exact
+            // Resolve(Type) overload (single parameter) when available to avoid supplying
+            // accidental extra arguments to container implementations.
             MethodInfo? resolveMethod = null;
+
+            // First pass: find an overload with exactly one parameter of type System.Type
             foreach (var m in resolverType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
-                if (string.Equals(m.Name, "Resolve", StringComparison.Ordinal) && m.GetParameters().Length >= 1)
+                if (string.Equals(m.Name, "Resolve", StringComparison.Ordinal))
                 {
-                    var p0 = m.GetParameters()[0];
-                    if (p0.ParameterType == typeof(Type))
+                    var ps = m.GetParameters();
+                    if (ps.Length == 1 && ps[0].ParameterType == typeof(Type))
                     {
                         resolveMethod = m;
                         break;
@@ -69,15 +85,25 @@ namespace WileyWidget.Services
                 }
             }
 
+            // Second pass: accept any Resolve where the first parameter is System.Type
             if (resolveMethod == null)
             {
-                // Fallback: if the object implements IServiceProvider, use that
-                if (resolverContext is IServiceProvider sp)
+                foreach (var m in resolverType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
                 {
-                    _resolver = sp.GetService;
-                    return;
+                    if (string.Equals(m.Name, "Resolve", StringComparison.Ordinal) && m.GetParameters().Length >= 1)
+                    {
+                        var p0 = m.GetParameters()[0];
+                        if (p0.ParameterType == typeof(Type))
+                        {
+                            resolveMethod = m;
+                            break;
+                        }
+                    }
                 }
+            }
 
+            if (resolveMethod == null)
+            {
                 throw new InvalidOperationException("Provided resolver does not expose a Resolve(Type, ...) method and is not an IServiceProvider.");
             }
 
@@ -129,12 +155,35 @@ namespace WileyWidget.Services
                         args[i] = pType.IsValueType ? Activator.CreateInstance(pType) : null;
                     }
 
+                    // Try the simplest invocation first: pass only the Type argument.
+                    // This avoids supplying accidental extra arguments that some container
+                    // implementations (or caller adapters) might interpret incorrectly
+                    // (e.g., Prism's DryIoc container extension). If the method requires
+                    // more parameters and will not accept a single-arg call, fall back
+                    // to building a full args array as before.
+                    try
+                    {
+                        var invokeResult = resolveMethod.Invoke(resolverContext, new object?[] { type });
+                        return invokeResult;
+                    }
+                    catch (TargetParameterCountException)
+                    {
+                        // Fall through to legacy behavior: construct defaults for remaining params
+                    }
+                    catch (TargetInvocationException tie)
+                    {
+                        // If the target threw, surface a diagnostic but do not rethrow (IServiceProvider contract)
+                        try { Trace.WriteLine($"DryIocServiceProviderAdapter: Resolve(Type) invocation threw for {type?.FullName}: {tie.InnerException ?? tie}"); } catch { }
+                        return null;
+                    }
+
                     var result = resolveMethod.Invoke(resolverContext, args);
                     return result;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // On any failure, return null to match IServiceProvider semantics
+                    // On any failure, return null to match IServiceProvider semantics, but emit diagnostics
+                    try { Trace.WriteLine($"DryIocServiceProviderAdapter: Resolve via resolverContext failed for type {type?.FullName}: {ex}"); } catch { }
                     return null;
                 }
             };
