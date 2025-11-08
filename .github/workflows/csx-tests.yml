@@ -3,8 +3,8 @@ name: CSX Exploratory Tests
 on:
   push:
     paths:
-      - 'tools/explore/*.csx'
-      - 'src/**/*.cs'
+      - "tools/explore/*.csx"
+      - "src/**/*.cs"
   workflow_dispatch:
 
 jobs:
