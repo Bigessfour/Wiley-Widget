@@ -114,6 +114,33 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Retrieve an environment variable from any reasonable scope.
+    /// Prefer process-level variables (container-friendly). If not present, attempt
+    /// to read user-level variables (Windows) but swallow any platform-specific
+    /// exceptions so callers remain cross-platform friendly.
+    /// </summary>
+    private static string? GetEnvironmentVariableAnyScope(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        try
+        {
+            var v = Environment.GetEnvironmentVariable(name);
+            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable('{name}') => { (v == null ? "<null>" : "<redacted>") }");
+            if (!string.IsNullOrWhiteSpace(v)) return v;
+        }
+        catch { /* ignore */ }
+
+        try
+        {
+            // Some callers on Windows may have user-scoped variables set; try that as a fallback.
+            var uv = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable(User,'{name}') => {(uv == null ? "<null>" : "<redacted>")}");
+            return uv;
+        }
+        catch { return null; }
+    }
+
     private async System.Threading.Tasks.Task EnsureInitializedAsync()
 {
     if (_initialized) return;
@@ -160,35 +187,61 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
 
         // Load QBO credentials from secret vault with fallback to environment variables
+        // Prefer secrets from vault, then check process-level env vars (container-friendly),
+        // then fall back to user-level environment variables on Windows if present.
+        var envClientCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_ID");
+        if (!string.IsNullOrWhiteSpace(envClientCandidate))
+        {
+            _logger.LogInformation("QBO_CLIENT_ID found in environment (process/user). Using env value for initialization.");
+        }
+        else
+        {
+            _logger.LogDebug("QBO_CLIENT_ID not set in environment");
+        }
+
         _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _logger).ConfigureAwait(false)
                     ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientId", _logger).ConfigureAwait(false)
-                    ?? Environment.GetEnvironmentVariable("QBO_CLIENT_ID", EnvironmentVariableTarget.User)
+                    ?? envClientCandidate
+                    ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_ID")
                     ?? throw new InvalidOperationException("QBO_CLIENT_ID not found in the secret vault or environment variables.");
+
+        var envSecretCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_SECRET");
+        if (!string.IsNullOrWhiteSpace(envSecretCandidate))
+        {
+            _logger.LogInformation("QBO_CLIENT_SECRET found in environment (process/user). Using env value for initialization.");
+        }
 
         _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
                         ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientSecret", _logger).ConfigureAwait(false)
-                        ?? Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET", EnvironmentVariableTarget.User)
+                        ?? envSecretCandidate
+                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_SECRET")
                         ?? string.Empty;
+
+        var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID") ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REALM_ID");
+        if (!string.IsNullOrWhiteSpace(envRealmCandidate))
+        {
+            _logger.LogInformation("QBO_REALM_ID found in environment (process/user). Using env value for initialization.");
+        }
 
         _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)
                    ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
-                   ?? Environment.GetEnvironmentVariable("QBO_REALM_ID", EnvironmentVariableTarget.User);
+                   ?? envRealmCandidate;
 
         // Redirect URI is configurable; fall back to default local listener
-        var redirectFromVault = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
-                                ?? Environment.GetEnvironmentVariable("QBO_REDIRECT_URI", EnvironmentVariableTarget.User);
+    var redirectFromVault = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
+                ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI");
         if (!string.IsNullOrWhiteSpace(redirectFromVault))
         {
             _redirectUri = redirectFromVault!;
         }
 
-        _environment = await TryGetFromSecretVaultAsync(_secretVault, "QBO-ENVIRONMENT", _logger).ConfigureAwait(false)
-                       ?? Environment.GetEnvironmentVariable("QBO_ENVIRONMENT", EnvironmentVariableTarget.User)
-                       ?? _environment;
+    _environment = await TryGetFromSecretVaultAsync(_secretVault, "QBO-ENVIRONMENT", _logger).ConfigureAwait(false)
+               ?? GetEnvironmentVariableAnyScope("QBO_ENVIRONMENT")
+               ?? _environment;
 
         // Optional pre-login URL to smooth user sign-in; can be provided via secret or env var
-        _intuitPreLoginUrl = await TryGetFromSecretVaultAsync(_secretVault, "QBO-PRELOGIN-URL", _logger).ConfigureAwait(false)
-                             ?? Environment.GetEnvironmentVariable("QBO_PRELOGIN_URL", EnvironmentVariableTarget.User);
+    _intuitPreLoginUrl = await TryGetFromSecretVaultAsync(_secretVault, "QBO-PRELOGIN-URL", _logger).ConfigureAwait(false)
+                 ?? GetEnvironmentVariableAnyScope("QBO_PRELOGIN_URL");
 
         _logger.LogInformation("QuickBooks service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}",
             _clientId.Substring(0, Math.Min(8, _clientId.Length)), _realmId, _environment);
@@ -660,6 +713,20 @@ private WileyWidget.Models.AppSettings EnsureSettingsLoaded()
 private async Task<bool> AcquireTokensInteractiveAsync()
 {
     await EnsureInitializedAsync().ConfigureAwait(false);
+    // Test harness / CI: support two related environment flags:
+    // - WW_SKIP_INTERACTIVE: skip launching a browser / interactive flow (used by automated tests)
+    // - WW_PRINT_AUTH_URL: print the exact authorization URL to the console so a developer can
+    //   copy/paste it into Intuit's developer portal for Redirect URI verification. When both
+    //   are set, we will print the URL and then skip launching the browser (return true for tests).
+    var skipInteractive = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WW_SKIP_INTERACTIVE"));
+    var printAuthUrl = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WW_PRINT_AUTH_URL"));
+
+    // If tests request skip interactive and do not need the printed auth URL, return early.
+    if (skipInteractive && !printAuthUrl)
+    {
+        _logger.LogInformation("WW_SKIP_INTERACTIVE set - skipping interactive OAuth flow for tests/CI");
+        return true;
+    }
     if (!HttpListener.IsSupported)
     {
         _logger.LogError("HttpListener is not supported on this platform; cannot perform QuickBooks OAuth authorization.");
@@ -720,6 +787,25 @@ private async Task<bool> AcquireTokensInteractiveAsync()
     // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
     var state = Guid.NewGuid().ToString("N");
     var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
+    // If requested, print the exact authorization URL so it can be copied into the Intuit
+    // developer app Redirect URI list for diagnosis or portal registration.
+    if (printAuthUrl)
+    {
+        _logger.LogInformation("WW_PRINT_AUTH_URL set - printing QuickBooks authorization URL to console");
+        try
+        {
+            Console.WriteLine(authUrl);
+        }
+        catch
+        {
+            // best-effort printing; do not fail if console isn't available
+        }
+        if (skipInteractive)
+        {
+            _logger.LogInformation("WW_SKIP_INTERACTIVE also set - printed auth URL and skipping browser launch.");
+            return true;
+        }
+    }
     _logger.LogWarning("Launching QuickBooks OAuth flow. Complete sign-in for realm {RealmId}.", _realmId);
     // If provided, launch pre-login URL to ensure correct account context, then launch OAuth
     if (!string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
