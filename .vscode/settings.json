@@ -1,0 +1,551 @@
+{
+  "mcp.preferredTool": "./tools/mcp-csharp.exe",
+  "mcp.wrapperScript": "${workspaceFolder}/scripts/tools/run-mcp.ps1",
+  "mcp.defaultServer": "csharp-mcp",
+  "tasks.defaultBuildTask": "mcp: analyze",
+  "mcp.autoRunOnSave": false,
+  "dotnet-test-explorer.testFramework": "xunit",
+  "test-explorer.codeLensEnabled": true,
+  "test-explorer.showInlineError": true,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["scripts"],
+  "workbench.panel.defaultLocation": "right",
+  "testExplorer.activityBarIcon": "test-explorer-icon",
+
+  // Editor whitespace/indentation handling (explicit workspace rules)
+  "editor.detectIndentation": false,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "editor.renderWhitespace": "all",
+  "files.trimTrailingWhitespace": true,
+
+  // Database Development Theme Configuration
+  "workbench.colorTheme": "Default Dark Modern",
+  "[Default Dark Modern]": {
+    "editor.background": "#0f0f23",
+    "editor.lineHighlightBackground": "#1e1e2e",
+    "editor.selectionBackground": "#264f78",
+    "editor.inactiveSelectionBackground": "#3a3d4100",
+    "editorSuggestWidget.foreground": "#CCCCCC"
+  },
+  "editor.tokenColorCustomizations": {
+    "[Default Dark Modern]": {
+      "textMateRules": [
+        {
+          "scope": "keyword.control.sql",
+          "settings": {
+            "foreground": "#569cd6"
+          }
+        },
+        {
+          "scope": "string.quoted.single.sql",
+          "settings": {
+            "foreground": "#ce9178"
+          }
+        },
+        {
+          "scope": "constant.numeric.sql",
+          "settings": {
+            "foreground": "#b5cea8"
+          }
+        },
+        {
+          "scope": "entity.name.function.sql",
+          "settings": {
+            "foreground": "#dcdcaa"
+          }
+        }
+      ]
+    }
+  },
+  "workbench.iconTheme": "vs-seti",
+  "workbench.editor.highlightModifiedTabs": true,
+  "workbench.editor.tabCloseButton": "left",
+  "workbench.tree.indent": 20,
+  "editor.fontSize": 16,
+  "window.zoomLevel": 0.5,
+  "cSpell.words": [
+    "BSTR",
+    "CONNECTIONSTRING",
+    "CONNECTIONSTRINGS",
+    "fetchability",
+    "FIOS",
+    "GETUTCDATE",
+    "hyperthreading",
+    "LASTEXITCODE",
+    "localdb",
+    "MSBUILDDEBUGPATH",
+    "mssqllocaldb",
+    "Mvvm",
+    "nameof",
+    "NOLOGO",
+    "NVARCHAR",
+    "OPTOUT",
+    "pwsh",
+    "Serilog",
+    "snupkg",
+    "sonarqube",
+    "sqllocaldb",
+    "userprefs",
+    "Uverse",
+    "wileyadmin",
+    "WILEYWIDGET",
+    "winget",
+    "Xfinity"
+  ],
+  // PowerShell Extension configuration
+  "powershell.powerShellDefaultVersion": "PowerShell 7.5.4 (MSI)",
+  "powershell.powerShellExePath": "C:/Program Files/PowerShell/7/pwsh.exe",
+  "powershell.powerShellAdditionalExePaths": {
+    "PowerShell 7.5.4 (MSI)": "C:/Program Files/PowerShell/7/pwsh.exe"
+  },
+  "powershell.enableProfileLoading": true,
+  "powershell.enableReferencesCodeLens": true,
+  "powershell.enableScriptAnalysis": true,
+  "powershell.enableSignatureHelp": false,
+  "powershell.scriptAnalysis.settingsPath": ".vscode\\PSScriptAnalyzerSettings.psd1",
+  "powershell.codeFormatting.preset": "OTBS",
+  "powershell.codeFormatting.autoCorrectAliases": false,
+  "powershell.codeFormatting.useCorrectCasing": false,
+  "powershell.integratedConsole.showOnStartup": false,
+  "powershell.integratedConsole.focusConsoleOnExecute": false,
+  // GitHub Copilot Configuration (updated for recent versions)
+  "github.copilot.enable": {
+    "*": true,
+    "csharp": true,
+    "xaml": true,
+    "python": true,
+    "powershell": true,
+    "plaintext": false,
+    "markdown": true,
+    "scminput": false
+  },
+  "github.copilot.chat.agent.enabled": true,
+  "chat.tools.autoApprove": "manual",
+  // File Associations for PowerShell
+  "files.associations": {
+    "*.ps1": "powershell",
+    "*.psm1": "powershell",
+    "*.psd1": "powershell",
+    "*.yml": "yaml",
+    "*.yaml": "yaml"
+  },
+  // PowerShell-specific settings
+  "[powershell]": {
+    "editor.defaultFormatter": "ms-vscode.powershell",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  },
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  // MCP (Model Context Protocol) Configuration (preserved, with auto-approve for trusted tools per docs)
+  "mcp": {
+    "servers": {
+      "MCP_DOCKER": {
+        "command": "docker",
+        "args": ["mcp", "gateway", "run"],
+        "type": "stdio"
+      },
+      "csharp-mcp": {
+        "type": "stdio",
+        "command": "docker",
+        "args": [
+          "run",
+          "-i",
+          "--rm",
+          "-v",
+          "${workspaceFolder}:/scripts:ro",
+          "-e",
+          "CSX_ALLOWED_PATH=/scripts",
+          "-e",
+          "WW_REPO_ROOT=/scripts",
+          "-e",
+          "WW_LOGS_DIR=/scripts/logs",
+          "ghcr.io/infinityflowapp/csharp-mcp:latest"
+        ]
+      }
+    }
+  },
+  "mcp.autoApprove": true, // Proactive: Enable for seamless Grok tool use (docs recommend for trusted setups)
+
+  // Enhanced context for C# development
+  "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+  "dotnet.completion.showNameCompletionSuggestions": true,
+  // C# Dev Kit Configuration - Comprehensive Setup
+  "dotnet.server.useOmnisharp": false,
+  "dotnet.enableXamlTools": true,
+  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.enable": true,
+  "dotnet.backgroundAnalysis.maxFileSize": 8192,
+  "dotnet.backgroundAnalysis.analyzerMaxFileSize": 8192,
+  "dotnet.codeLens.enableReferencesCodeLens": true,
+  "dotnet.codeLens.enableTestsCodeLens": true,
+  "dotnet.hover.showHover": true,
+  "dotnet.quickInfo.showRemarksInQuickInfo": true,
+  "dotnet.inlayHints.enableInlayHintsForImplicitObjectCreation": true,
+  "dotnet.inlayHints.enableInlayHintsForImplicitVariableTypes": true,
+  "dotnet.inlayHints.enableInlayHintsForIndexerParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForLambdaParameterTypes": true,
+  "dotnet.inlayHints.enableInlayHintsForLiteralParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForObjectCreationParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForOtherParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForParameters": true,
+  "dotnet.inlayHints.enableInlayHintsForTypes": true,
+  "dotnet.navigation.navigateToDecompiledSources": true,
+  "dotnet.projects.enableAutomaticRestore": true,
+  "dotnet.projects.enableSdkParseEnable": true,
+  "dotnet.symbolSearch.searchReferenceAssemblies": true,
+  "dotnet.codeAction.enableCodeActions": true,
+  "dotnet.codeAction.show": true,
+  "dotnet.diagnostics.enable": true,
+  "dotnet.formatting.enable": true,
+  "dotnet.highlighting.enable": true,
+  "dotnet.rename.enable": true,
+  "dotnet.referencesCodeLens.enable": true,
+  "dotnet.testsCodeLens.enable": true,
+  "dotnet.server.startTimeout": 60000,
+  "dotnet.server.trace": "Verbose",
+  "dotnet.server.crashDumpPath": "${workspaceFolder}/logs",
+  "dotnet.server.suppressLspErrorToasts": false,
+
+  // SQL Server Extension Settings (ms-mssql.mssql) - Local only
+  "mssql.connections": [
+    {
+      "id": "8b8f4b8e-9c92-4e9a-9e3f-5c2a6f0f7f31",
+      "server": "(localdb)\\mssqllocaldb",
+      "database": "WileyWidgetDb",
+      "authenticationType": "Integrated",
+      "groupId": "wiley-widget-group"
+    }
+  ],
+  "mssql.saveAsCsv.includeHeaders": true,
+  "mssql.saveAsCsv.delimiter": ",",
+  "mssql.saveAsCsv.lineSeparator": "\n",
+  "mssql.saveAsCsv.encoding": "utf-8",
+  "mssql.query.displayBitAsNumber": true,
+  "mssql.query.maxXmlCharsToStore": 2097152,
+  "mssql.query.maxCharsToStore": 65535,
+  "mssql.query.rowsToCache": 500,
+  "mssql.intelliSense.enableIntelliSense": true,
+  "mssql.intelliSense.enableErrorChecking": true,
+  "mssql.intelliSense.enableSuggestions": true,
+  "mssql.intelliSense.enableQuickInfo": true,
+  "mssql.intelliSense.lowerCaseSuggestions": false,
+
+  // PowerShell formatting
+  "powershell.codeFormatting.openBraceOnSameLine": true,
+
+  // Terminal Shell Integration (enhanced for Continue.dev/Grok per docs)
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.shellIntegration.decorationsEnabled": "both",
+  "terminal.integrated.shellIntegration.suggestEnabled": true,
+  "terminal.integrated.shellIntegration.history": 100,
+  "terminal.integrated.shellIntegration.showCommandGuide": true,
+  "terminal.integrated.stickyScroll.enabled": true,
+  "terminal.integrated.scrollback": 5000,
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.persistentSessionReviveProcess": "onExit",
+  "terminal.integrated.inheritEnv": true,
+  "github.copilot.chat.experimental.terminalOutputCapture": true,
+  "chat.tools.terminal.autoReplyToPrompts": false,
+  "chat.tools.terminal.terminalProfile.windows": {
+    "path": "C:/Program Files/PowerShell/7/pwsh.exe",
+    "args": ["-NoLogo"],
+    "env": {
+      "COPILOT": "1",
+      "GROK_API": "enabled" // Proactive: Flag for Grok integration
+    }
+  },
+  "problems.decorations.enabled": true,
+  "chat.agentMode": "auto", // Proactive: Enable auto agent mode for Grok
+
+  // XAML/XML formatting configuration (enhanced for vscode-xml 0.29.0+)
+  // Recent updates: Java 11 requirement, hex color picker, autoindent fixes
+  "xml.format.splitAttributes": "splitNewLine",
+  "xml.format.preserveAttributeLineBreaks": true,
+  "xml.format.closingBracketNewLine": false,
+  "xml.format.spaceBeforeEmptyCloseTag": true,
+  "xml.format.joinContentLines": false,
+  "xml.format.preserveEmptyContent": true,
+  "xml.format.enabled": true,
+  "xml.validation.enabled": true,
+  "xml.validation.namespaces.enabled": "always",
+  "xml.validation.schema.enabled": "always",
+  "xml.completion.autoCloseTags": true,
+  "xml.codeLens.enabled": true,
+  "xml.symbols.enabled": true,
+  "xml.symbols.showReferencedGrammars": true,
+  "xml.linkedEditing.enabled": true,
+  "xml.foldings.includeClosingTagInFold": true,
+  // Java 11+ requirement for XML LS (as of v0.28.0)
+  "xml.java.home": null, // Auto-detect Java 11+
+  "xml.server.workDir": "~/.lemminx",
+  "xml.trace.server": "off",
+  "xml.logs.client": false,
+  "xml.preferences.showSchemaDocumentationType": "all",
+  "xml.downloadExternalResources.enabled": true,
+  "xml.validation.disallowDocTypeDecl": false,
+  "xml.validation.resolveExternalEntities": false, // Security: disabled by default
+
+  // Auto-format and code actions on save
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+
+  // Workspace-specific Copilot guidance (updated for Grok integration)
+  "github.copilot.chat.welcomeMessage": "Welcome to WileyWidget! This is a hobby WPF project focused on learning. Using Grok for precise suggestions.",
+
+  // Auto-approval settings for all requests
+  "extensions.autoCheckUpdates": true,
+  "extensions.autoUpdate": true,
+  "git.autofetch": true,
+  "git.confirmSync": true,
+  "git.enableSmartCommit": false,
+  "terminal.integrated.confirmOnExit": "never",
+  "terminal.integrated.confirmOnKill": "never",
+  "terminal.integrated.commandTimeout": 30000,
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "path": "C:/Program Files/PowerShell/7/pwsh.exe",
+      "args": ["-NoLogo"]
+    },
+    "PowerShell (NoProfile)": {
+      "path": "C:/Program Files/PowerShell/7/pwsh.exe",
+      "args": ["-NoLogo", "-NoProfile"]
+    }
+  },
+  "terminal.integrated.fontFamily": "Cascadia Code",
+  "terminal.integrated.fontSize": 14,
+
+  // Ensure indentation preferences are applied per-language where useful
+  "[json]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[xml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "redhat.vscode-xml",
+    "editor.formatOnSave": true
+  },
+  "[csharp]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "terminal.integrated.cursorStyle": "line",
+
+  // JSON Schema Validation for Project Files
+  "json.schemas": [
+    {
+      "fileMatch": ["*.csproj", "*.vbproj", "*.fsproj"],
+      "url": "https://json.schemastore.org/project.json"
+    },
+    {
+      "fileMatch": ["global.json"],
+      "url": "https://json.schemastore.org/global.json"
+    },
+    {
+      "fileMatch": ["launch.json"],
+      "url": "https://json.schemastore.org/launchsettings.json"
+    }
+  ],
+
+  // File Watcher Exclusions - Expanded for better performance (proactive to prevent OOM)
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/bin/**": true,
+    "**/obj/**": true,
+    "**/build/**": true,
+    "**/.venv/**": true,
+    "**/packages/**": true,
+    "**/TestResults/**": true,
+    "**/coverage/**": true,
+    "**/logs/**": true,
+    "**/*.log": true,
+    "**/publish/**": true,
+    "**/.vs/**": true,
+    "**/.trunk/**": true,
+    "**/.pytest_cache/**": true,
+    "**/TestsAndLogs/**": true,
+    "**/*.tmp": true,
+    "**/*.bak": true,
+    "**/*.backup*": true,
+    "**/*_backup*": true,
+    "**/SQL/**": true, // Added: Exclude large SQL dumps if present
+    "**/wwwroot/**": true // Added: For web assets if applicable
+  },
+
+  // Memory optimization settings (enhanced per docs for large codebases)
+  "editor.largeFileOptimizations": true,
+  "files.maxMemoryForLargeFilesMB": 16384, // Increased for .NET/SQL files
+  "search.maxResults": 10000,
+  "search.followSymlinks": false,
+  "git.enabled": true,
+  "git.autorefresh": false,
+  "workbench.editor.wrapWord": "on",
+
+  // Pin SDK and solution for C# Dev Kit
+  "dotnet.defaultSolution": "WileyWidget.sln",
+  "dotnet.defaultSdkVersion": "9.0.305",
+
+  // Python Configuration
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": false,
+  "python.linting.ruffEnabled": true,
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": ["--line-length", "120"],
+  "python.analysis.logLevel": "Error",
+  // Exclude common generated and environment folders from analysis to avoid third-party package lint noise
+  "files.exclude": {
+    "**/.venv/**": true,
+    "**/%APPDATA%/**": true,
+    "**/node_modules/**": true,
+    "**/*_wpftmp.csproj": true
+  },
+  // Hide wpftmp in search
+  "search.exclude": {
+    "**/*_wpftmp.csproj": true
+  },
+
+  // Testing Configuration (applies to Python, C#, and general VS Code test explorer) - Proactive auto-run
+  "testing.autoRun.mode": "rerun",
+  "testing.defaultGutterClickAction": "run",
+  "testing.gutterEnabled": true,
+  "testing.countBadge": "failed",
+  "testing.followRunningTest": true,
+  "testing.saveBeforeTest": true,
+  "testing.automaticallyOpenPeekView": "failureAnywhere", // Added for proactive feedback
+
+  // Test Coverage Configuration
+  "coverage-gutters.showGutterCoverage": true,
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.showRulerCoverage": true,
+  "coverage-gutters.coverageFileNames": [
+    "lcov.info",
+    "cov.xml",
+    "coverage.xml",
+    "jacoco.xml",
+    "coverage.json"
+  ],
+  "coverage-gutters.coverageBaseDir": "${workspaceFolder}",
+  "coverage-gutters.coverageFileExtension": ".xml,.json,.info",
+  "coverage-gutters.partialHighlightBackground": "#FF000055",
+
+  // Python Testing Configuration
+  "python.testing.unittestArgs": ["-v", "-s", "-p", "test_*.py"],
+
+  // C# Testing Configuration
+  "dotnet-test-explorer.testProjectPath": "**/*Test*.csproj",
+  "dotnet-test-explorer.enableTelemetry": false,
+  "dotnet-test-explorer.showCodeCoverage": true,
+  "dotnet-test-explorer.testResultFormat": "detailed",
+
+  // Test Explorer Configuration
+  "testExplorer.addToEditorContextMenu": true,
+  "testExplorer.codeLens": true,
+  "testExplorer.errorDecoration": true,
+  "testExplorer.gutterDecoration": true,
+  "testExplorer.mergeSuites": false,
+  "testExplorer.showCollapseButton": true,
+  "testExplorer.showExpandButton": true,
+  "testExplorer.showOnRunStart": true,
+  "testExplorer.sort": "byLocation",
+  "testExplorer.useNativeTesting": true,
+
+  // unittest Runner Configuration
+  "python.testing.cwd": "${workspaceFolder}",
+  "testing.openTestResultsOnStart": "openOnTestStart",
+  "workbench.editor.tabActionLocation": "left",
+
+  // Trunk Configuration
+  "trunk.enabled": true,
+  "trunk.checkOnSave": true,
+  "trunk.checkOnOpen": true,
+  "trunk.showStatusBarItem": true,
+  "trunk.showSidebar": true,
+  "trunk.formatOnSave": false,
+  "trunk.lintOnSave": true,
+
+  // Prettier Configuration
+  "prettier.enable": true,
+  "prettier.requireConfig": false,
+  "prettier.useEditorConfig": true,
+  "prettier.tabWidth": 2,
+  "prettier.useTabs": false,
+  "prettier.singleQuote": false,
+  "prettier.trailingComma": "es5",
+  "prettier.bracketSpacing": true,
+  "prettier.arrowParens": "always",
+  "prettier.proseWrap": "preserve",
+  "prettier.endOfLine": "lf",
+
+  // Markdown linting and formatting configuration
+  "[markdown]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.wordWrap": "on"
+  },
+  "markdownlint.config": {
+    "MD040": false,
+    "MD034": false
+  },
+
+  // Reduce console noise from Insiders CDN 404s and extension chatter
+  "workbench.logging.level": "Error",
+  // Help Python extension discover local venv folder
+  "python.venvPath": "${workspaceFolder}",
+
+  // Continue.dev Specific Settings (added per docs for full potential)
+  "continue.enableConsole": true, // Enable Continue Console for prompt logs
+  "continue.telemetry.enabled": false, // Privacy: Align with your config.json
+  "continue.agentMode": "auto", // Proactive for Grok agentic use
+  "continue.verboseLogging": true // Temporary for debugging; disable later
+}

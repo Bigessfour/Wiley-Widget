@@ -1,0 +1,577 @@
+<UserControl x:Class="WileyWidget.Views.Main.EnterpriseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:views="clr-namespace:WileyWidget.Views;assembly=WileyWidget.UI"
+             xmlns:converters="clr-namespace:WileyWidget.Converters"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+             xmlns:notification="http://schemas.syncfusion.com/wpf"
+             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+    <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
+    <converters:StatusColorConverter x:Key="StatusColorConverter" />
+        <converters:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
+
+        <!-- Currency Cell Template with Color Indicators -->
+        <DataTemplate x:Key="CurrencyTemplate">
+            <Border Background="{Binding Value, Converter={StaticResource BalanceColorConverter}, ConverterParameter=Light}"
+                    Padding="4,2" CornerRadius="2">
+                <TextBlock Text="{Binding Value, StringFormat=C2}"
+                          FontWeight="SemiBold"
+                          Foreground="{Binding Value, Converter={StaticResource BalanceColorConverter}}"
+                          ToolTip="{Binding Value, StringFormat=Full Value: {0:C2}}"/>
+            </Border>
+        </DataTemplate>
+
+        <!-- Balance Cell Template with Enhanced Visual Indicators -->
+        <DataTemplate x:Key="BalanceCellTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Path Grid.Column="0"
+                      Width="12" Height="12"
+                      Margin="0,0,4,0"
+                      Data="M 0,6 L 6,0 L 12,6 Z"
+                      Fill="Green"
+                      Visibility="{Binding Enterprise.MonthlyBalance, Converter={StaticResource BalanceColorConverter}, ConverterParameter=PositiveVisibility}"
+                      ToolTip="Positive Balance"/>
+                <Path Grid.Column="0"
+                      Width="12" Height="12"
+                      Margin="0,0,4,0"
+                      Data="M 0,0 L 6,6 L 12,0 Z"
+                      Fill="Red"
+                      Visibility="{Binding Enterprise.MonthlyBalance, Converter={StaticResource BalanceColorConverter}, ConverterParameter=NegativeVisibility}"
+                      ToolTip="Negative Balance"/>
+                <TextBlock Grid.Column="1"
+                          Text="{Binding Enterprise.MonthlyBalance, StringFormat=C2}"
+                          FontWeight="Bold"
+                          Foreground="{Binding Enterprise.MonthlyBalance, Converter={StaticResource BalanceColorConverter}}"/>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Status Cell Template with Color Coding -->
+        <DataTemplate x:Key="StatusCellTemplate">
+            <Border Background="{Binding Enterprise.Status, Converter={StaticResource StatusColorConverter}, ConverterParameter=Light}"
+                    Padding="4,2" CornerRadius="2">
+                <TextBlock Text="{Binding Enterprise.Status}"
+                          FontWeight="SemiBold"
+                          Foreground="{Binding Enterprise.Status, Converter={StaticResource StatusColorConverter}}"/>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03">
+    <Grid behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="EnterpriseFocusAnchor">
+        <Border x:Name="EnterpriseFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
+    <DockPanel>
+        <!-- Ribbon Toolbar -->
+        <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="EnterpriseRibbon">
+            <syncfusion:RibbonTab Caption="Enterprise">
+                <syncfusion:RibbonBar Header="Actions">
+                    <syncfusion:RibbonButton Label="Load All"
+                                           SizeForm="Large"
+                                           Command="{Binding LoadEnterprisesAsyncCommand}"
+                                           ToolTip="Load all enterprise records from database"/>
+                    <syncfusion:RibbonButton Label="Load Incremental"
+                                           SizeForm="Large"
+                                           Command="{Binding LoadEnterprisesIncrementalAsyncCommand}"
+                                           ToolTip="Load enterprises in batches for better performance"/>
+                    <syncfusion:RibbonButton Label="Add New"
+                                           SizeForm="Large"
+                                           Command="{Binding AddEnterpriseAsyncCommand}"
+                                           ToolTip="Create a new municipal enterprise record"/>
+                    <syncfusion:RibbonButton Label="Save"
+                                           Command="{Binding SaveEnterpriseAsyncCommand}"
+                                           ToolTip="Save changes to the current enterprise"/>
+                    <syncfusion:RibbonButton Label="Delete"
+                                           Command="{Binding DeleteEnterpriseAsyncCommand}"
+                                           ToolTip="Delete the selected enterprise (requires confirmation)"/>
+                    <syncfusion:RibbonButton Label="Bulk Update"
+                                           Command="{Binding BulkUpdateAsyncCommand}"
+                                           ToolTip="Apply changes to multiple enterprises at once"/>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Reports">
+                    <syncfusion:RibbonButton Label="Generate PDF"
+                                           SizeForm="Large"
+                                           Command="{Binding ExportToPdfReportCommand}"
+                                           ToolTip="Generate comprehensive PDF report (Syncfusion PdfViewer integration)&#x0a;Includes enterprise hierarchy, financials, and analytics"/>
+                    <syncfusion:RibbonButton Label="Export Excel"
+                                           Command="{Binding ExportToExcelAdvancedCommand}"
+                                           ToolTip="Export to Excel with formatting and formulas"/>
+                    <syncfusion:RibbonButton Label="Export CSV"
+                                           Command="{Binding ExportToCsvCommand}"
+                                           ToolTip="Export raw data to CSV format"/>
+                    <syncfusion:RibbonButton Label="Import Data"
+                                           Command="{Binding ImportDataCommand}"
+                                           ToolTip="Import enterprise data from file"/>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="View">
+                    <syncfusion:RibbonButton Label="Tree View"
+                                           Command="{Binding ShowTreeViewCommand}"
+                                           ToolTip="Display hierarchical enterprise structure"/>
+                    <syncfusion:RibbonButton Label="TreeMap View"
+                                           Command="{Binding ShowTreeMapCommand}"
+                                           ToolTip="Visualize enterprise data with TreeMap (size = budget, color = balance)"/>
+                    <syncfusion:RibbonButton Label="Group by Type"
+                                           Command="{Binding GroupByTypeCommand}"
+                                           ToolTip="Group enterprises by type (Water, Electric, Gas, etc.)"/>
+                    <syncfusion:RibbonButton Label="Group by Status"
+                                           Command="{Binding GroupByStatusCommand}"
+                                           ToolTip="Group enterprises by operational status"/>
+                    <syncfusion:RibbonButton Label="Clear Grouping"
+                                           Command="{Binding ClearGroupingCommand}"
+                                           ToolTip="Remove all grouping and show flat list"/>
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Navigation">
+                    <syncfusion:RibbonButton Label="Budget View"
+                                           SizeForm="Large"
+                                           Command="{Binding NavigateToBudgetViewCommand}"
+                                           ToolTip="Navigate to Budget View for financial analysis"/>
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+        </syncfusion:Ribbon>
+
+    <!-- Main Content Area -->
+    <Grid prism:RegionManager.RegionName="EnterpriseRegion">
+        <notification:SfBusyIndicator IsBusy="{Binding IsLoading}"
+                                     AnimationType="SingleCircle"
+                                     ViewboxWidth="80"
+                                     ViewboxHeight="80"
+                                     Header="Loading Enterprise Data...">
+            <notification:SfBusyIndicator.Style>
+                <Style TargetType="notification:SfBusyIndicator">
+                    <Setter Property="Background" Value="#80000000" />
+                    <Setter Property="Foreground" Value="#4CAF50" />
+                </Style>
+            </notification:SfBusyIndicator.Style>
+
+            <DockPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="350" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Enterprise List -->
+                    <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top"
+                          Text="Municipal Enterprises"
+                          FontSize="16"
+                          FontWeight="Bold"
+                          Margin="8"
+                          ToolTip="Hierarchical view of municipal enterprise departments and divisions"/>
+
+                <!-- Enhanced Search and Filter Bar -->
+                <Border DockPanel.Dock="Top"
+                       Background="#F5F5F5"
+                       BorderBrush="#E0E0E0"
+                       BorderThickness="0,0,0,1"
+                       Padding="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Enhanced Search Box with Syncfusion SfTextBoxExt -->
+                        <syncfusion:SfTextBoxExt Grid.Column="0"
+                                               x:Name="SearchTextBox"
+                                               Watermark="Search enterprises by name, type, or status..."
+                                               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                               Margin="0,0,8,0"
+                                               ToolTip="Enter search terms to filter enterprise list&#x0a;Press Enter to search, use Clear button to reset">
+                            <syncfusion:SfTextBoxExt.WatermarkTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="M 15.5,14 L 20.5,19 M 9,3 A 6,6 0 1 1 9,15 A 6,6 0 1 1 9,3"
+                                              Stroke="Gray"
+                                              StrokeThickness="1.5"
+                                              Width="16"
+                                              Height="16"
+                                              Margin="4,0,6,0"
+                                              Stretch="Uniform"/>
+                                        <TextBlock Text="Search enterprises by name, type, or status..."
+                                                  Foreground="Gray"
+                                                  VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </syncfusion:SfTextBoxExt.WatermarkTemplate>
+                        </syncfusion:SfTextBoxExt>
+
+                        <ComboBox Grid.Column="1"
+                                x:Name="StatusFilterCombo"
+                                ItemsSource="{Binding StatusOptions}"
+                                SelectedItem="{Binding SelectedStatusFilter}"
+                                Margin="0,0,8,0"
+                                Width="120"
+                                ToolTip="Filter enterprises by operational status" />
+
+                        <syncfusion:ButtonAdv Grid.Column="2"
+                                            Content="Clear Filters"
+                                            Command="{Binding ClearFiltersCommand}"
+                                            Width="100"
+                                            Margin="0,0,8,0"
+                                            ToolTip="Remove all active filters and display all enterprises"/>
+
+                        <syncfusion:ButtonAdv Grid.Column="3"
+                                            Content="⚙"
+                                            Width="32"
+                                            Command="{Binding ShowAdvancedFilterCommand}"
+                                            ToolTip="Open advanced filter options&#x0a;Filter by budget range, date range, and custom criteria"/>
+                    </Grid>
+                </Border>
+
+                <!-- Empty State Message -->
+                <TextBlock DockPanel.Dock="Top"
+                          Text="No enterprises found. Click 'Load All' or 'Add New' to get started."
+                          FontSize="14"
+                          FontStyle="Italic"
+                          Foreground="Gray"
+                          HorizontalAlignment="Center"
+                          Margin="0,20,0,0"
+                          Visibility="{Binding EnterpriseList.Count, Converter={StaticResource ZeroToVisibleConverter}}"
+                          ToolTip="The enterprise list is currently empty. Use the toolbar buttons to load or create enterprises." />
+
+                <syncfusion:SfDataGrid
+                    x:Name="EnterpriseDataGrid"
+                    ItemsSource="{Binding EnterpriseList}"
+                    SelectedItem="{Binding SelectedEnterprise, Mode=TwoWay}"
+                    AllowGrouping="True"
+                    AllowSorting="True"
+                    AllowFiltering="True"
+                    AllowEditing="True"
+                    AllowResizingColumns="True"
+                    AllowResizingHiddenColumns="True"
+                    AutoGenerateColumns="False"
+                    ColumnSizer="Star"
+                    RowHeight="32"
+                    SelectionMode="Single"
+                    Margin="8,0,8,8"
+                    EnableDataVirtualization="True"
+                    UseLayoutRounding="True"
+                    VirtualizingPanel.ScrollUnit="Pixel"
+                    VirtualizingPanel.VirtualizationMode="Recycling"
+                    VirtualizingPanel.CacheLength="5,5"
+                    VirtualizingPanel.CacheLengthUnit="Page"
+                    ToolTipService.ToolTip="Enterprise data grid with grouping support - Select rows for editing, group by columns">
+
+                    <!-- Syncfusion Excel Exporting Support -->
+                    <syncfusion:SfDataGrid.Resources>
+                        <ResourceDictionary>
+                            <Style TargetType="syncfusion:GridCell">
+                                <Setter Property="BorderThickness" Value="0,0,1,1" />
+                            </Style>
+                        </ResourceDictionary>
+                    </syncfusion:SfDataGrid.Resources>
+
+                    <syncfusion:SfDataGrid.GroupColumnDescriptions>
+                        <syncfusion:GroupColumnDescription ColumnName="Type" />
+                    </syncfusion:SfDataGrid.GroupColumnDescriptions>
+
+                    <!-- Context Menu -->
+                    <syncfusion:SfDataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Add New Enterprise"
+                                     Command="{Binding AddEnterpriseAsyncCommand}"
+                                     ToolTip="Create new enterprise record"/>
+                            <MenuItem Header="Edit Selected"
+                                     Command="{Binding EditEnterpriseCommand}"
+                                     ToolTip="Edit the selected enterprise"/>
+                            <MenuItem Header="Delete Selected"
+                                     Command="{Binding DeleteEnterpriseAsyncCommand}"
+                                     ToolTip="Delete the selected enterprise"/>
+                            <Separator />
+                            <MenuItem Header="Export Selection"
+                                     Command="{Binding ExportSelectionCommand}"
+                                     ToolTip="Export selected items to file"/>
+                            <MenuItem Header="Copy to Clipboard"
+                                     Command="{Binding CopyToClipboardCommand}"
+                                     ToolTip="Copy selected data to clipboard"/>
+                            <Separator />
+                            <MenuItem Header="View Audit History"
+                                     Command="{Binding ViewAuditHistoryAsyncCommand}"
+                                     ToolTip="View change history for this enterprise"/>
+                        </ContextMenu>
+                    </syncfusion:SfDataGrid.ContextMenu>
+
+                    <!-- Enhanced Data Grid Columns with Custom Templates -->
+                    <syncfusion:SfDataGrid.Columns>
+                        <syncfusion:GridCheckBoxColumn HeaderText="Select"
+                                                     MappingName="IsSelected"
+                                                     Width="70"
+                                                     ToolTipService.ToolTip="Select multiple enterprises for bulk operations"/>
+
+                        <syncfusion:GridTextColumn HeaderText="Name"
+                                                 MappingName="Name"
+                                                 MinimumWidth="180"
+                                                 ToolTipService.ToolTip="Enterprise or department name"/>
+
+                        <syncfusion:GridTextColumn HeaderText="Type"
+                                                 MappingName="Type"
+                                                 MinimumWidth="120"
+                                                 ToolTipService.ToolTip="Service type (Water, Electric, Gas, Sewer, etc.)"/>
+
+                        <syncfusion:GridTextColumn HeaderText="Status"
+                                                 MappingName="Status"
+                                                 MinimumWidth="110"
+                                                 CellTemplate="{DynamicResource StatusCellTemplate}"
+                                                 ToolTipService.ToolTip="Operational status (Active, Inactive, Pending)"/>
+
+                        <syncfusion:GridNumericColumn HeaderText="Customer Count"
+                                                    MappingName="CitizenCount"
+                                                    MinimumWidth="100"
+                                                    NumberDecimalDigits="0"
+                                                    ShowToolTip="True">
+                            <syncfusion:GridNumericColumn.ToolTipTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="Number of citizens served" />
+                                </DataTemplate>
+                            </syncfusion:GridNumericColumn.ToolTipTemplate>
+                        </syncfusion:GridNumericColumn>
+
+                        <!-- Enhanced Currency Columns with Custom Formatting -->
+                        <syncfusion:GridCurrencyColumn HeaderText="Rate"
+                                                     MappingName="CurrentRate"
+                                                     MinimumWidth="120"
+                                                     CurrencySymbol="$"
+                                                     CurrencyDecimalDigits="2"
+                                                     ShowToolTip="True">
+                            <syncfusion:GridCurrencyColumn.ToolTipTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="Current billing rate per unit" />
+                                </DataTemplate>
+                            </syncfusion:GridCurrencyColumn.ToolTipTemplate>
+                        </syncfusion:GridCurrencyColumn>
+
+                        <syncfusion:GridCurrencyColumn HeaderText="Revenue"
+                                                     MappingName="MonthlyRevenue"
+                                                     MinimumWidth="140"
+                                                     CurrencySymbol="$"
+                                                     CurrencyDecimalDigits="2"
+                                                     ShowToolTip="True">
+                            <syncfusion:GridCurrencyColumn.ToolTipTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="Monthly revenue (Rate × Citizens × Usage)" />
+                                </DataTemplate>
+                            </syncfusion:GridCurrencyColumn.ToolTipTemplate>
+                        </syncfusion:GridCurrencyColumn>
+
+                        <syncfusion:GridCurrencyColumn HeaderText="Expenses"
+                                                     MappingName="MonthlyExpenses"
+                                                     MinimumWidth="140"
+                                                     CurrencySymbol="$"
+                                                     CurrencyDecimalDigits="2"
+                                                     ShowToolTip="True">
+                            <syncfusion:GridCurrencyColumn.ToolTipTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="Monthly operational expenses" />
+                                </DataTemplate>
+                            </syncfusion:GridCurrencyColumn.ToolTipTemplate>
+                        </syncfusion:GridCurrencyColumn>
+
+                        <!-- Balance column with custom template -->
+                        <syncfusion:GridTemplateColumn HeaderText="Balance"
+                                                     MappingName="MonthlyBalance"
+                                                     MinimumWidth="140"
+                                                     CellTemplate="{DynamicResource BalanceCellTemplate}"
+                                                     ShowToolTip="True">
+                            <syncfusion:GridTemplateColumn.ToolTipTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="Monthly net balance (Revenue - Expenses)&#x0a;Green arrow = profit, Red arrow = loss" />
+                                </DataTemplate>
+                            </syncfusion:GridTemplateColumn.ToolTipTemplate>
+                        </syncfusion:GridTemplateColumn>
+
+                        <syncfusion:GridDateTimeColumn HeaderText="Last Updated"
+                                                     MappingName="LastUpdated"
+                                                     MinimumWidth="160"
+                                                     Pattern="FullDateTime"
+                                                     ShowToolTip="True">
+                            <syncfusion:GridDateTimeColumn.ToolTipTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="Last modification date and time" />
+                                </DataTemplate>
+                            </syncfusion:GridDateTimeColumn.ToolTipTemplate>
+                        </syncfusion:GridDateTimeColumn>
+                    </syncfusion:SfDataGrid.Columns>
+                </syncfusion:SfDataGrid>
+
+                <!-- Data Pager -->
+                <syncfusion:SfDataPager x:Name="dataPager"
+                                      DockPanel.Dock="Bottom"
+                                      Margin="0,8,0,0"
+                                      PageSize="{Binding PageSize, Mode=TwoWay}"
+                                      PageCount="{Binding PageCount, Mode=OneWay}"
+                                      PageIndex="{Binding CurrentPageIndex, Mode=TwoWay}"
+                                      NumericButtonCount="5"
+                                      DisplayMode="FirstLastPreviousNextNumeric" />
+            </DockPanel>
+
+            <!-- Enterprise Details Panel -->
+            <Border Grid.Column="1" BorderBrush="LightGray" BorderThickness="1" Margin="0,8,8,8" CornerRadius="4">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top"
+                              Text="Enterprise Details"
+                              FontSize="14"
+                              FontWeight="Bold"
+                              Margin="8"
+                              ToolTip="Detailed information and editing controls for the selected enterprise"/>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8" Orientation="Vertical">
+                            <!-- Selected Enterprise Info -->
+                            <GroupBox Header="Selected Enterprise" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedEnterprise.Name, StringFormat='Name: {0}'}"
+                                              Margin="0,0,0,4"
+                                              ToolTip="Enterprise full name"/>
+                                    <TextBlock Text="{Binding SelectedEnterprise.Id, StringFormat='ID: {0}'}"
+                                              Margin="0,0,0,4"
+                                              ToolTip="Unique enterprise identifier"/>
+                                    <TextBlock Text="{Binding SelectedEnterprise.CitizenCount, StringFormat='Citizens: {0:N0}'}"
+                                              Margin="0,0,0,4"
+                                              ToolTip="Total number of citizens served"/>
+                                    <TextBlock Text="{Binding SelectedEnterprise.Status, StringFormat='Status: {0}'}"
+                                              Margin="0,0,0,4"
+                                              ToolTip="Current operational status"/>
+                                    <TextBlock Text="{Binding SelectedEnterprise.LastUpdated, StringFormat='Last Updated: {0:g}'}"
+                                              Margin="0,0,0,4"
+                                              ToolTip="Last modification timestamp"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Financial Overview -->
+                            <GroupBox Header="Financial Overview" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedEnterprise.CurrentRate, StringFormat='Current Rate: {0:C2}'}"
+                                              Margin="0,0,0,4"
+                                              ToolTip="Current billing rate per unit of service"/>
+                                    <TextBlock Text="{Binding SelectedEnterprise.MonthlyRevenue, StringFormat='Monthly Revenue: {0:C2}'}"
+                                              Margin="0,0,0,4"
+                                              FontWeight="SemiBold"
+                                              ToolTip="Total revenue collected monthly"/>
+                                    <TextBlock Text="{Binding SelectedEnterprise.MonthlyExpenses, StringFormat='Monthly Expenses: {0:C2}'}"
+                                              Margin="0,0,0,4"
+                                              FontWeight="SemiBold"
+                                              ToolTip="Total operational expenses monthly"/>
+                                    <TextBlock Text="{Binding SelectedEnterprise.MonthlyBalance, StringFormat='Monthly Balance: {0:C2}'}"
+                                              Margin="0,0,0,4"
+                                              FontWeight="Bold"
+                                              FontSize="14"
+                                              Foreground="{Binding SelectedEnterprise.MonthlyBalance, Converter={StaticResource BalanceColorConverter}}"
+                                              ToolTip="Net monthly balance (Revenue - Expenses)&#x0a;Positive = profit, Negative = loss"/>
+                                    <TextBlock Text="{Binding SelectedEnterprise.BreakEvenRate, StringFormat='Break-even Rate: {0:C2}'}"
+                                              Margin="0,0,0,4"
+                                              ToolTip="Minimum rate required to cover expenses"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Edit Form -->
+                            <GroupBox Header="Edit Enterprise" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Label Content="Name:" />
+                                    <TextBox Text="{Binding SelectedEnterprise.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" />
+
+                                    <Label Content="Current Rate ($):" />
+                                    <syncfusion:DoubleTextBox Value="{Binding SelectedEnterprise.CurrentRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            Margin="0,0,0,8" />
+
+                                    <Label Content="Monthly Expenses ($):" />
+                                    <syncfusion:DoubleTextBox Value="{Binding SelectedEnterprise.MonthlyExpenses, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            Margin="0,0,0,8" />
+
+                                    <Label Content="Citizens Served:" />
+                                    <syncfusion:IntegerTextBox Value="{Binding SelectedEnterprise.CitizenCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                             Margin="0,0,0,8" />
+
+                                    <Label Content="Status:" />
+                                    <ComboBox ItemsSource="{Binding StatusOptions}"
+                                            SelectedItem="{Binding SelectedEnterprise.Status, Mode=TwoWay}"
+                                            Margin="0,0,0,8" />
+
+                                    <Label Content="Notes:" />
+                                    <TextBox Text="{Binding SelectedEnterprise.Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Height="60" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,8" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Quick Actions -->
+                            <GroupBox Header="Quick Actions" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <syncfusion:ButtonAdv Content="Save Changes"
+                                                        Command="{Binding SaveEnterpriseAsyncCommand}"
+                                                        Margin="0,0,0,4"
+                                                        IconHeight="16"
+                                                        IconWidth="16"
+                                                        ToolTip="Save all changes to the database&#x0a;Shortcut: Ctrl+S"/>
+
+                                    <syncfusion:ButtonAdv Content="Generate PDF Report"
+                                                        Command="{Binding GenerateEnterpriseReportCommand}"
+                                                        Margin="0,0,0,4"
+                                                        IconHeight="16"
+                                                        IconWidth="16"
+                                                        ToolTip="Generate comprehensive PDF report&#x0a;Includes: Financial summary, trends, analytics&#x0a;Uses Syncfusion PdfViewer for preview"/>
+
+                                    <syncfusion:ButtonAdv Content="View History"
+                                                        Command="{Binding ViewAuditHistoryAsyncCommand}"
+                                                        Margin="0,0,0,4"
+                                                        IconHeight="16"
+                                                        IconWidth="16"
+                                                        ToolTip="View complete audit trail&#x0a;Shows all changes, by whom, and when"/>
+
+                                    <syncfusion:ButtonAdv Content="Export to Excel"
+                                                        Command="{Binding ExportToExcelAdvancedCommand}"
+                                                        Margin="0,0,0,4"
+                                                        IconHeight="16"
+                                                        IconWidth="16"
+                                                        ToolTip="Export this enterprise to Excel&#x0a;Includes formatting and formulas"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Budget Summary -->
+                            <GroupBox Header="Budget Summary" Margin="0,0,0,8">
+                                <TextBlock Text="{Binding BudgetSummaryText}" TextWrapping="Wrap" />
+                            </GroupBox>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+                </Grid>
+
+                <!-- Status Bar -->
+                <StatusBar DockPanel.Dock="Bottom" Background="Transparent">
+                    <StatusBarItem>
+                        <TextBlock>
+                            <Run Text="Enterprises: "/><Run Text="{Binding Enterprises.Count, Mode=OneWay}" />
+                        </TextBlock>
+                    </StatusBarItem>
+                    <StatusBarItem>
+                        <ProgressBar Width="200" Height="16"
+                                   Value="{Binding ProgressPercentage}"
+                                   Maximum="100"
+                                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+                    </StatusBarItem>
+                    <StatusBarItem>
+                        <TextBlock Text="{Binding StatusMessage, FallbackValue='Ready'}" />
+                    </StatusBarItem>
+                </StatusBar>
+            </DockPanel>
+        </notification:SfBusyIndicator>
+    </Grid>
+    </DockPanel>
+    </Grid>
+    </darkTheme:SfAcrylicPanel>
+</UserControl>

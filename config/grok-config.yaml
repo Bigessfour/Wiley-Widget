@@ -1,0 +1,41 @@
+- name: Grok-4 Config
+  version: 1.0.0
+  schema: v1
+  models:
+    - name: Grok-4
+      provider: xAI
+      model: grok-4
+      apiKeyEnv: XAI_API_KEY
+      description: Configuration for accessing the Grok-4 model via xAI's paid API. Ensure you have a valid subscription and comply with xAI's terms of service.
+      usage_instructions: |
+        To use this config:
+        1. Integrate with an API client that supports xAI's endpoint (e.g., similar to OpenAI's API structure).
+        2. Example Python usage:
+           import requests
+           url = "https://api.x.ai/v1/chat/completions"  # Replace with actual xAI API endpoint
+           headers = {"Authorization": f"Bearer {apiKey}"}
+           payload = {"model": "grok-4", "messages": [{"role": "user", "content": "Hello"}]}
+           response = requests.post(url, json=payload, headers=headers)
+        3. Note: API endpoints and availability may vary; check xAI documentation for the latest details. Grok-4 may not be publicly available yet—verify with xAI.
+      license: Proprietary (xAI Paid Access)
+      repository: https://x.ai/ # Official xAI site for more info
+- name: Open Source Grok Config
+  version: 1.0.0
+  schema: v1
+  models:
+    - name: Grok-1
+      provider: xAI (Open Source)
+      model: grok-1
+      description: Open-sourced by xAI under Apache 2.0 license. This is the base 314B parameter Mixture-of-Experts model. Not fine-tuned for dialogue like the hosted Grok versions.
+      setup_instructions: |
+        To use this open-source model:
+        1. Download the model weights from the xAI GitHub repository or Hugging Face (search for xai-org/grok-1).
+        2. Install dependencies: pip install torch transformers
+        3. Load in Python:
+           from transformers import AutoModelForCausalLM, AutoTokenizer
+           model = AutoModelForCausalLM.from_pretrained("path/to/grok-1")
+           tokenizer = AutoTokenizer.from_pretrained("path/to/grok-1")
+        4. For inference, you'll need significant GPU resources (e.g., multiple A100 GPUs).
+        Note: This is not 'Grok-4' as no such version is publicly available or open-sourced. If you meant a different model, clarify.
+      license: Apache 2.0
+      repository: https://github.com/xai-org/grok-1

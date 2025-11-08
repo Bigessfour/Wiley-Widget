@@ -1,0 +1,12 @@
+<Project>
+  <Target
+      Name="CleanBuildCache"
+      BeforeTargets="Clean">
+    <Exec
+        Command="if exist $(ProjectDir)\.buildcache rd /s /q $(ProjectDir)\.buildcache"
+        IgnoreExitCode="true" /> <!-- Ignore errors if locked -->
+    <Message
+        Text="Build cache cleaned (or skipped if locked)"
+        Importance="high" />
+  </Target>
+</Project>

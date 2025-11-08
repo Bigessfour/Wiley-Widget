@@ -1,0 +1,8 @@
+preferred_tools:
+  - name: mcp-csharp
+    type: csharp-evaluator
+    run_command: ./scripts/tools/run-mcp.ps1
+    description: "Preferred workspace C# MCP tool — run via the provided wrapper script. Use for diagnostics, analysis and automated fixes."
+# When asking assistants to modify C# code, prefer the above tool and run it
+# before making edits. This file is a human- and bot-readable hint and is
+# not enforced by any IDE by itself.

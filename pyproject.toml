@@ -1,0 +1,83 @@
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
+  ".venv",
+  ".buildcache",
+  "bin",
+  "obj",
+  "TestResults",
+  "htmlcov",
+  "__pycache__",
+]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+# Assume Python 3.11+
+target-version = "py311"
+
+fix = true
+
+[tool.ruff.lint]
+# Keep Ruff conservative: only enable Pyflakes errors (real code issues such as
+# undefined names and other errors that can cause runtime failures). This
+# reduces noise from stylistic rules. Add extensions later if desired.
+select = [
+  "F", # Pyflakes: real problems like undefined names, unused imports
+]
+ignore = [
+  "E501", # line too long, handled by black
+  "B008", # do not perform function calls in argument defaults
+  "C901", # too complex
+]
+
+fixable = ["F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use magic values, assertions, and imports
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+# Scripts can use print statements
+"scripts/**/*" = ["T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["wileywidget"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+python_files = "test_*.py"
+addopts = "-v --ignore=tools/python/legacy_tests"
+testpaths = ["tools/python/clr_tests", "tools/python/unittests"]

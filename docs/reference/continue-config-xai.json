@@ -1,0 +1,65 @@
+{
+  "models": [
+    {
+      "title": "Grok-4-0709 (Latest)",
+      "provider": "openai",
+      "model": "grok-4-0709",
+      "apiBase": "https://api.x.ai/v1",
+      "apiKey": "YOUR_XAI_API_KEY_HERE"
+    },
+    {
+      "title": "Grok-2 (Stable)",
+      "provider": "openai",
+      "model": "grok-2-latest",
+      "apiBase": "https://api.x.ai/v1",
+      "apiKey": "YOUR_XAI_API_KEY_HERE"
+    },
+    {
+      "title": "Grok-beta (Fast)",
+      "provider": "openai",
+      "model": "grok-beta",
+      "apiBase": "https://api.x.ai/v1",
+      "apiKey": "YOUR_XAI_API_KEY_HERE"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Grok-beta",
+    "provider": "openai",
+    "model": "grok-beta",
+    "apiBase": "https://api.x.ai/v1",
+    "apiKey": "YOUR_XAI_API_KEY_HERE"
+  },
+  "slashCommands": [
+    {
+      "name": "edit",
+      "description": "Edit selected code"
+    },
+    {
+      "name": "comment",
+      "description": "Write comments for code"
+    },
+    {
+      "name": "test",
+      "description": "Generate unit tests"
+    }
+  ],
+  "contextProviders": [
+    {
+      "name": "diff",
+      "params": {}
+    },
+    {
+      "name": "open",
+      "params": {}
+    },
+    {
+      "name": "terminal",
+      "params": {}
+    },
+    {
+      "name": "codebase",
+      "params": {}
+    }
+  ],
+  "allowAnonymousTelemetry": false
+}

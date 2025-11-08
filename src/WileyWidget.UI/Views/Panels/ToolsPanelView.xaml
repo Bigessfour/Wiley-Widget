@@ -1,0 +1,261 @@
+<UserControl x:Class="WileyWidget.Views.Panels.ToolsPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:WileyWidget"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+             xmlns:notification="http://schemas.syncfusion.com/wpf"
+             xmlns:converters="clr-namespace:WileyWidget.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="500" d:DesignWidth="350"
+             xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid behaviors:MouseFocusBehavior.EnableOnClick="True"
+        behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="🛠️ Tools &amp; Utilities"
+                  FontSize="16" FontWeight="Bold" Margin="0,0,0,15"
+                  HorizontalAlignment="Center" />
+
+        <!-- Toolbar -->
+        <ToolBar Grid.Row="1" ItemsSource="{Binding ToolItems}" Margin="0,0,0,10">
+            <ToolBar.ItemTemplate>
+                <DataTemplate>
+                    <syncfusion:ButtonAdv Content="{Binding Icon}"
+                                        Command="{Binding Command}"
+                                        ToolTip="{Binding ToolTip}"
+                                        IsEnabled="{Binding IsEnabled}"
+                                        Margin="2,0"
+                                        Padding="8,4" />
+                </DataTemplate>
+            </ToolBar.ItemTemplate>
+        </ToolBar>
+
+        <!-- Tools Content -->
+        <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
+            <!-- Calculator Tab -->
+            <TabItem Header="Calculator">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Display -->
+                    <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,0,10">
+                        <TextBox Text="{Binding CalculatorDisplay, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                FontSize="18" FontFamily="Consolas" Padding="5"
+                                IsReadOnly="True" Background="{DynamicResource HeaderBackgroundBrush}" />
+                    </Border>
+
+                    <!-- Memory Display -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Memory:" FontWeight="Bold" Margin="0,0,5,0" />
+                        <TextBlock Text="{Binding CalculatorMemory, StringFormat={}{0:N2}}" />
+                    </StackPanel>
+
+                    <!-- Buttons Grid -->
+                    <UniformGrid Grid.Row="2" Rows="6" Columns="4" Margin="0,10,0,0">
+                        <!-- Row 1 -->
+                        <syncfusion:ButtonAdv Content="MC" Command="{Binding CalculatorMemoryClearCommand}" Margin="2" />
+                        <syncfusion:ButtonAdv Content="MR" Command="{Binding CalculatorMemoryRecallCommand}" Margin="2" />
+                        <syncfusion:ButtonAdv Content="MS" Command="{Binding CalculatorMemoryStoreCommand}" Margin="2" />
+                        <syncfusion:ButtonAdv Content="M+" Command="{Binding CalculatorMemoryAddCommand}" Margin="2" />
+
+                        <!-- Row 2 -->
+                        <syncfusion:ButtonAdv Content="7" Command="{Binding CalculatorNumberCommand}" CommandParameter="7" Margin="2" />
+                        <syncfusion:ButtonAdv Content="8" Command="{Binding CalculatorNumberCommand}" CommandParameter="8" Margin="2" />
+                        <syncfusion:ButtonAdv Content="9" Command="{Binding CalculatorNumberCommand}" CommandParameter="9" Margin="2" />
+                        <syncfusion:ButtonAdv Content="/" Command="{Binding CalculatorOperationCommand}" CommandParameter="/" Margin="2" />
+
+                        <!-- Row 3 -->
+                        <syncfusion:ButtonAdv Content="4" Command="{Binding CalculatorNumberCommand}" CommandParameter="4" Margin="2" />
+                        <syncfusion:ButtonAdv Content="5" Command="{Binding CalculatorNumberCommand}" CommandParameter="5" Margin="2" />
+                        <syncfusion:ButtonAdv Content="6" Command="{Binding CalculatorNumberCommand}" CommandParameter="6" Margin="2" />
+                        <syncfusion:ButtonAdv Content="*" Command="{Binding CalculatorOperationCommand}" CommandParameter="*" Margin="2" />
+
+                        <!-- Row 4 -->
+                        <syncfusion:ButtonAdv Content="1" Command="{Binding CalculatorNumberCommand}" CommandParameter="1" Margin="2" />
+                        <syncfusion:ButtonAdv Content="2" Command="{Binding CalculatorNumberCommand}" CommandParameter="2" Margin="2" />
+                        <syncfusion:ButtonAdv Content="3" Command="{Binding CalculatorNumberCommand}" CommandParameter="3" Margin="2" />
+                        <syncfusion:ButtonAdv Content="-" Command="{Binding CalculatorOperationCommand}" CommandParameter="-" Margin="2" />
+
+                        <!-- Row 5 -->
+                        <syncfusion:ButtonAdv Content="0" Command="{Binding CalculatorNumberCommand}" CommandParameter="0" Margin="2" Grid.ColumnSpan="2" />
+                        <syncfusion:ButtonAdv Content="." Command="{Binding CalculatorDecimalCommand}" Margin="2" />
+                        <syncfusion:ButtonAdv Content="+" Command="{Binding CalculatorOperationCommand}" CommandParameter="+" Margin="2" />
+
+                        <!-- Row 6 - Additional functions -->
+                        <syncfusion:ButtonAdv Content="±" Command="{Binding CalculatorToggleSignCommand}" Margin="2" />
+                        <syncfusion:ButtonAdv Content="⌫" Command="{Binding CalculatorBackspaceCommand}" Margin="2" />
+                        <syncfusion:ButtonAdv Content="C" Command="{Binding CalculatorClearCommand}" Margin="2" />
+                        <syncfusion:ButtonAdv Content="CE" Command="{Binding CalculatorClearEntryCommand}" Margin="2" />
+
+                        <!-- Equals button (below grid) -->
+                        <syncfusion:ButtonAdv Content="=" Command="{Binding CalculatorEqualsCommand}" Margin="2,10,2,2" Grid.ColumnSpan="4" />
+                    </UniformGrid>
+
+                    <!-- History Section -->
+                    <GroupBox Grid.Row="3" Header="History" Margin="0,20,0,0">
+                        <ListBox ItemsSource="{Binding CalculatorHistory}"
+                                Height="100" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                Background="{DynamicResource HeaderBackgroundBrush}" />
+                    </GroupBox>
+
+                    <!-- Clear History Button -->
+                    <syncfusion:ButtonAdv Grid.Row="4" Content="Clear History"
+                                        Command="{Binding CalculatorClearHistoryCommand}"
+                                        HorizontalAlignment="Center" Margin="0,10,0,0" />
+                </Grid>
+            </TabItem>
+
+            <!-- Unit Converter Tab -->
+            <TabItem Header="Unit Converter">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Category Selection -->
+                    <TextBlock Grid.Row="0" Text="Category:" FontWeight="Bold" Margin="0,0,0,5" />
+                    <ComboBox Grid.Row="1" ItemsSource="{Binding UnitCategories}"
+                             SelectedItem="{Binding SelectedUnitCategory, Mode=TwoWay}"
+                             Margin="0,0,0,15" />
+
+                    <!-- From Unit -->
+                    <TextBlock Grid.Row="2" Text="From:" FontWeight="Bold" Margin="0,0,0,5" />
+                    <Grid Grid.Row="3" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <syncfusion:DoubleTextBox Grid.Column="0" Value="{Binding FromValue, Mode=TwoWay}" Margin="0,0,5,0" />
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding FromUnits}"
+                                 SelectedItem="{Binding SelectedFromUnit, Mode=TwoWay}"
+                                 Width="100" />
+                    </Grid>
+
+                    <!-- To Unit -->
+                    <TextBlock Grid.Row="4" Text="To:" FontWeight="Bold" Margin="0,0,0,5" />
+                    <Grid Grid.Row="5" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding ToValue, Mode=OneWay}" IsReadOnly="True"
+                                Background="{DynamicResource HeaderBackgroundBrush}" Margin="0,0,5,0" />
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding ToUnits}"
+                                 SelectedItem="{Binding SelectedToUnit, Mode=TwoWay}"
+                                 Width="100" />
+                    </Grid>
+
+                    <!-- Convert Button -->
+                    <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                        <syncfusion:ButtonAdv Content="Convert" Command="{Binding ConvertUnitsCommand}" Margin="0,0,5,0" />
+                        <syncfusion:ButtonAdv Content="Swap" Command="{Binding SwapUnitsCommand}" Margin="5,0,5,0" />
+                        <syncfusion:ButtonAdv Content="Clear" Command="{Binding ClearConverterCommand}" Margin="5,0,0,0" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Date Calculator Tab -->
+            <TabItem Header="Date Calculator">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Start Date -->
+                    <TextBlock Grid.Row="0" Text="Start Date:" FontWeight="Bold" Margin="0,0,0,5" />
+                    <DatePicker Grid.Row="1" SelectedDate="{Binding StartDate, Mode=TwoWay}"
+                                           Margin="0,0,0,15" />
+
+                    <!-- Operation -->
+                    <TextBlock Grid.Row="2" Text="Operation:" FontWeight="Bold" Margin="0,0,0,5" />
+                    <ComboBox Grid.Row="3" ItemsSource="{Binding DateOperations}"
+                             SelectedItem="{Binding SelectedDateOperation}"
+                             Margin="0,0,0,15" />
+
+                    <!-- Value -->
+                    <TextBlock Grid.Row="4" Text="Value:" FontWeight="Bold" Margin="0,0,0,5" />
+                    <syncfusion:IntegerTextBox Grid.Row="5" Value="{Binding DateValue, Mode=TwoWay, TargetNullValue=0}"
+                                             Margin="0,0,0,15" />
+
+                    <!-- Result -->
+                    <TextBlock Grid.Row="6" Text="Result:" FontWeight="Bold" Margin="0,0,0,5" />
+                    <TextBox Grid.Row="7" Text="{Binding DateResult, Mode=OneWay}" IsReadOnly="True"
+                            Background="{DynamicResource HeaderBackgroundBrush}" Margin="0,0,0,15" />
+
+                    <!-- Calculate Button -->
+                    <syncfusion:ButtonAdv Grid.Row="8" Content="Calculate"
+                                        Command="{Binding CalculateDateCommand}"
+                                        HorizontalAlignment="Center" Margin="0,10,0,0" />
+                </Grid>
+            </TabItem>
+
+            <!-- Notes Tab -->
+            <TabItem Header="Notes">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Notes Header -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Quick Notes" FontWeight="Bold" />
+                        <TextBlock Text="*" Foreground="{StaticResource ErrorBrush}" FontWeight="Bold"
+                                 Visibility="{Binding NotesHasUnsavedChanges, Converter={StaticResource BoolToVis}}"
+                                 Margin="5,0,0,0" />
+                        <TextBlock Text="(unsaved changes)" Foreground="{StaticResource ErrorBrush}"
+                                 Visibility="{Binding NotesHasUnsavedChanges, Converter={StaticResource BoolToVis}}"
+                                 Margin="2,0,0,0" />
+                    </StackPanel>
+
+                    <!-- Notes TextBox -->
+                    <TextBox Grid.Row="1" Text="{Binding NotesText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            AcceptsReturn="True" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                            Margin="0,0,0,10" />
+
+                    <!-- Auto-save indicator -->
+                    <TextBlock Grid.Row="2" Text="Auto-saves after 2 seconds of inactivity"
+                             FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" Margin="0,0,0,10" />
+
+                    <!-- Notes Actions -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center">
+                        <syncfusion:ButtonAdv Content="Save" Command="{Binding SaveNotesCommand}" Margin="0,0,5,0" />
+                        <syncfusion:ButtonAdv Content="Clear" Command="{Binding ClearNotesCommand}" Margin="5,0,0,0" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

@@ -1,0 +1,876 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "csx:build-image",
+			"type": "shell",
+			"command": "docker build -t wiley-widget/csx-mcp:local -f docker/Dockerfile.csx-tests .",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "ensure-logs-dir",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"if (-not (Test-Path -Path \"${workspaceFolder}/logs\")) { New-Item -ItemType Directory -Path \"${workspaceFolder}/logs\" | Out-Null }"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:clean",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"docker system prune -f; Remove-Item -Path \"${workspaceFolder}/logs/*\" -Recurse -Force -ErrorAction SilentlyContinue"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:push-image",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"tag",
+				"wiley-widget/csx-mcp:local",
+				"wiley-widget/csx-mcp:local-stable"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-20",
+			"type": "shell",
+			"command": "docker run --rm -w /app -v \"${workspaceFolder}/scripts/examples/csharp:/app:ro\" -v \"${workspaceFolder}/logs:/logs:ro\" -v \"${workspaceFolder}/test-logs:/test-logs:rw\" -e WW_REPO_ROOT=/app -e WW_LOGS_DIR=/logs wiley-widget/csx-mcp:local 20-prism-container-e2e-test.csx > \"${workspaceFolder}/test-logs/20-prism-container-e2e-test.log\" 2>&1",
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-21",
+			"type": "shell",
+			"command": "docker run --rm -w /app -v \"${workspaceFolder}/scripts/examples/csharp:/app:ro\" -v \"${workspaceFolder}/logs:/logs:ro\" -v \"${workspaceFolder}/test-logs:/test-logs:rw\" -e WW_REPO_ROOT=/app -e WW_LOGS_DIR=/logs wiley-widget/csx-mcp:local 21-prism-modules-e2e-test.csx > \"${workspaceFolder}/test-logs/21-prism-modules-e2e-test.log\" 2>&1",
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-22",
+			"type": "shell",
+			"command": "docker run --rm -w /app -v \"${workspaceFolder}/scripts/examples/csharp:/app:ro\" -v \"${workspaceFolder}/logs:/logs:ro\" -e WW_REPO_ROOT=/app -e WW_LOGS_DIR=/logs wiley-widget/csx-mcp:local 22-prism-di-registration-e2e-test.csx",
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-23",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}/scripts/examples/csharp:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:ro",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"23-prism-module-lifecycle-e2e-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-24",
+			"type": "shell",
+			"command": "docker run --rm -w /app -v \"${workspaceFolder}/scripts/examples/csharp:/app:ro\" -v \"${workspaceFolder}/logs:/logs:ro\" -e WW_REPO_ROOT=/app -e WW_LOGS_DIR=/logs wiley-widget/csx-mcp:local 24-prism-container-resolution-e2e-test.csx",
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-25",
+			"type": "shell",
+			"command": "docker run --rm -w /app -v \"${workspaceFolder}/scripts/examples/csharp:/app:ro\" -v \"${workspaceFolder}/logs:/logs:ro\" -e WW_REPO_ROOT=/app -e WW_LOGS_DIR=/logs wiley-widget/csx-mcp:local 25-prism-region-adapters-e2e-test.csx",
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-both",
+			"dependsOn": [
+				"csx:run-20",
+				"csx:run-21"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "echo CSX tests completed",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-all-prism-tests",
+			"dependsOn": [
+				"csx:run-20",
+				"csx:run-21",
+				"csx:run-22",
+				"csx:run-23",
+				"csx:run-24",
+				"csx:run-25"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "echo All Prism E2E tests completed",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-30",
+			"type": "shell",
+			"command": "docker run --rm -w /app -v \"${workspaceFolder}/scripts/examples/csharp:/app:ro\" -v \"${workspaceFolder}/logs:/logs:rw\" -v \"${workspaceFolder}/test-logs:/test-logs:rw\" -e WW_REPO_ROOT=/app -e WW_LOGS_DIR=/logs wiley-widget/csx-mcp:local 30-enterprise-validation-test.csx > \"${workspaceFolder}/test-logs/30-enterprise-validation-test.log\" 2>&1",
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-31",
+			"type": "shell",
+			"command": "docker run --rm -w /app -v \"${workspaceFolder}/scripts/examples/csharp:/app:ro\" -v \"${workspaceFolder}/logs:/logs:rw\" -v \"${workspaceFolder}/test-logs:/test-logs:rw\" -e WW_REPO_ROOT=/app -e WW_LOGS_DIR=/logs wiley-widget/csx-mcp:local 31-navigation-async-test.csx > \"${workspaceFolder}/test-logs/31-navigation-async-test.log\" 2>&1",
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-critical-tests",
+			"dependsOn": [
+				"csx:run-30",
+				"csx:run-31"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "echo Critical MCP tests completed",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "mcp:start-csharp-mcp",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"-i",
+				"--name",
+				"csharp-mcp",
+				"--rm",
+				"-v",
+				"${workspaceFolder}:/scripts:ro",
+				"-e",
+				"CSX_ALLOWED_PATH=/scripts",
+				"-e",
+				"WW_REPO_ROOT=/scripts",
+				"-e",
+				"WW_LOGS_DIR=/scripts/logs",
+				"ghcr.io/infinityflowapp/csharp-mcp:latest"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "mcp: analyze",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/run-mcp.ps1",
+				"-Project",
+				"${workspaceFolder}/WileyWidget.csproj"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "psscriptanalyze: workspace",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/ps-safe-run.ps1",
+				"-ScriptPath",
+				"${workspaceFolder}/scripts"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "pwsh: safe-run",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/ps-safe-run.ps1",
+				"-ScriptPath",
+				"${input:scriptPath}"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "none",
+			"dependsOn": [
+				"psscriptanalyze: workspace"
+			]
+		},
+		{
+			"label": "dotnet:clean-build-server",
+			"type": "shell",
+			"command": "dotnet",
+			"args": ["build-server", "shutdown"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "dotnet:fast-build",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/fast-build.ps1",
+				"-Configuration",
+				"Debug"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared",
+				"clear": true,
+				"showReuseMessage": false
+			},
+			"problemMatcher": "$msCompile",
+			"dependsOn": [
+				"dotnet:clean-build-server"
+			]
+		},
+		{
+			"label": "dotnet:cleanup-processes",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/cleanup-dotnet-processes.ps1"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--no-restore",
+				"--configuration",
+				"Debug",
+				"--verbosity",
+				"minimal",
+				"/m",
+				"/p:BuildInParallel=true",
+				"/p:UseSharedCompilation=true",
+				"/p:AccelerateBuildsInVisualStudio=true",
+				"/p:ProduceReferenceAssemblyInOutDir=true",
+				"/p:Deterministic=true",
+				"/p:NodeReuse=true",
+				"/p:RunAnalyzers=false",
+				"/p:RunAnalyzersDuringBuild=false",
+				"/p:EnableNETAnalyzers=false",
+				"/p:GenerateDocumentationFile=false",
+				"/p:XamlDebuggingInformation=false"
+			],
+			"dependsOn": [
+				"kill-test-processes",
+				"dotnet:clean-build-server"
+			],
+			"isBackground": false,
+			"problemMatcher": "$msCompile",
+			"group": "build"
+		},
+		{
+			"label": "mcp:build-fix",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/mcp-build-fixer.ps1",
+				"-ProjectPath",
+				"${workspaceFolder}/WileyWidget.Tests.csproj",
+				"-Configuration",
+				"Debug",
+				"-MaxIterations",
+				"3"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			}
+		},
+		{
+			"label": "csx:run-32-analyzer",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/32-dashboard-navigation-analyzer.csx"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "csx:run-44-xaml-binding-analyzer",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/44-xaml-binding-static-analyzer.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "csx:run-44-xaml-binding-analyzer-deep",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"-e",
+				"WW_BINDING_NESTED_DEPTH=3",
+				"-e",
+				"WW_BINDING_TOLERANCE=0.20",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/44-xaml-binding-static-analyzer.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "csx:run-44-xaml-binding-analyzer-fixed",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/44-xaml-binding-static-analyzer-fixed.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "csx:run-44-xaml-binding-analyzer-fixed-deep",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"-e",
+				"WW_BINDING_NESTED_DEPTH=3",
+				"-e",
+				"WW_BINDING_TOLERANCE=0.20",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/44-xaml-binding-static-analyzer-fixed.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "kill-test-processes",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/cleanup-dotnet-processes.ps1"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "test: viewmodels",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--no-build",
+				"--logger",
+				"trx",
+				"--logger",
+				"console;verbosity=detailed",
+				"--results-directory",
+				"${workspaceFolder}/TestResults"
+			],
+			"dependsOn": ["kill-test-processes"],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: viewmodels-verbose-log",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--no-build",
+				"--logger",
+				"trx",
+				"--logger",
+				"console;verbosity=detailed",
+				"--results-directory",
+				"${workspaceFolder}/TestResults"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "csx:run-32-error-coverage",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/32-dashboard-navigation-error-test.csx"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test: run-all-verbose",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/run-tests-verbose.ps1",
+				"-TestType",
+				"all",
+				"-Verbose"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"group": "test"
+		},
+		{
+			"label": "generate-ai-fetchable-manifest",
+			"type": "shell",
+			"command": "C:/Users/biges/AppData/Local/Microsoft/WindowsApps/python3.11.exe",
+			"args": [
+				"${workspaceFolder}/scripts/tools/generate_repo_urls.py",
+				"-o",
+				"${workspaceFolder}/ai-fetchable-manifest.json"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "mcp:init-servers",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/init-mcp-servers.ps1",
+				"-HealthCheck"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git:update",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"& \"${workspaceFolder}/scripts/maintenance/git-update.ps1\""
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
+			"label": "git:update-custom-message",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"& \"${workspaceFolder}/scripts/maintenance/git-update.ps1\" -Message \"${input:commitMessage}\""
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
+			"label": "git:update-force",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/git-update.ps1",
+				"-Message",
+				"${input:commitMessage}",
+				"-Force"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"problemMatcher": [],
+			"group": "none"
+		}
+	],
+	"inputs": [
+		{
+			"id": "commitMessage",
+			"type": "promptString",
+			"description": "Enter commit message",
+			"default": "chore: Update project files"
+		},
+		{
+			"id": "scriptPath",
+			"type": "promptString",
+			"description": "Path to the script to run (absolute or relative). Example: ${workspaceFolder}/scripts/deploy.ps1",
+			"default": "${workspaceFolder}/scripts"
+		}
+	]
+}

@@ -1,0 +1,335 @@
+# .NET / WPF standard ignores
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+*.ide
+.vs/
+TestResults/
+*.cache
+*.log
+*.nupkg
+*.snupkg
+packages/
+**/packages.lock.json
+
+# Logs / diagnostics
+logs/
+*.log
+build-errors.log
+console-output.log
+test-run.log
+build.log
+build-output.txt
+*.binlog
+msbuild.binlog
+
+# Publish artifacts
+publish/
+publish-temp/
+
+# Coverage and test results
+coverage/
+CoverageReport/
+*.cobertura.xml
+TestResults/
+*.trx
+
+# Tool state and caches
+.sonarqube/
+.fleet/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.buildcache/
+.fontcache/
+htmlcov/
+.coverage
+*.pyc
+*.pyo
+*.pyd
+
+# Settings (leave example templates instead)
+*.user.settings
+
+# Secrets and sensitive configuration (NEVER commit)
+license.key
+*.license.key
+WileyWidget/LicenseKey.Private.cs
+LicenseKey.Private.cs
+secrets/
+my.secrets
+
+# Environment variables (NEVER commit)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.production.sample
+
+# Configuration files with secrets
+appsettings.secrets.json
+appsettings.*.secrets.json
+config.secrets.json
+secrets.json
+
+# Azure and cloud credentials
+azure-credentials.json
+aws-credentials.json
+gcp-credentials.json
+
+# API keys and tokens
+*.key
+*.token
+api-keys.txt
+credentials.txt
+
+# Assembly signing keys (SECURITY: NEVER commit private signing keys)
+signing/*.snk
+signing/*.pfx
+signing/*.p12
+!signing/.gitkeep
+!signing/Generate-StrongNameKey.ps1
+
+# Rider / VS Code
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# OS generated files
+Thumbs.db
+Desktop.ini
+*.DS_Store
+
+# Temporary / backup files
+*.tmp
+*.bak
+*.old
+*.backup*
+*_backup*
+*.msi
+temp_file_*.txt
+temp_*.txt
+*_temp.txt
+*_tmp.txt
+cleanup_backup_*/
+config_backup/
+env_backup/
+temp-grant/
+.tmp.driveupload/
+
+# Excel working copies (temporary files)
+*WORKING COPY*.xls
+*WORKING COPY*.xlsx
+
+# Build logs and artifacts
+build.log
+build-output.txt
+*.binlog
+msbuild.binlog
+
+# Development/debug scripts (temporary)
+check_imports.py
+debug_harness.py
+
+# WPF temporary project files
+*_wpftmp.csproj
+*_wpftmp/
+WileyWidget_*_wpftmp.csproj
+WileyWidget_*_wpftmp/
+*.wpftmp
+wpftmp/
+
+# Installers and large binaries
+*.msi
+*.exe
+*.dmg
+*.pkg
+
+# OneDrive temp files
+.tmp.driveupload/
+
+# Virtual environments
+.venv/
+venv/
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Large binary files (>50MB GitHub limit)
+*.pdf
+*.pdb
+*.dll
+*.exe
+!scripts/*.exe
+get-pip.py
+
+# Generated analysis and manifest files
+ai-fetchable-manifest.json
+docs/ai-fetchable-manifest.json
+docs/fetchability-resources.json
+docs/analysis/wiley-widget-llm.txt
+docs/analysis/*.txt
+
+# Database files (local development only)
+*.db
+*.db-shm
+*.db-wal
+WileyWidgetDev.db*
+
+# Performance and diagnostic files
+startup-performance-results.json
+test-error.txt
+test-output.txt
+build-diag.txt
+build-errors.log
+test-logs/
+coverage.xml
+*.cobertura.xml
+
+# Windows system files
+%APPDATA%/
+
+# Additional .NET build artifacts
+*.DotSettings.user
+*.user
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# NuGet cache files
+*.nuget.props
+*.nuget.targets
+project.assets.json
+
+# Python cache and environments
+*.py[cod]
+*$py.class
+__pycache__/
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node modules and package manager files
+node_modules/
+jspm_packages/
+bower_components/
+.npm
+.yarn/
+.pnp.*
+
+# IDE and editor folders
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# Build output directories
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio Code workspace files
+*.code-workspace
+.history/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# Backup files
+*.orig
+*_Original
+*_original
+*.bk
+*.backup
+
+# ==============================================================================
+# REORGANIZATION ADDITIONS - Added 2025-11-08
+# ==============================================================================
+
+# IDE-specific configurations (user-specific)
+.continue/
+.mcp/
+
+# VS Code (keep shareable configs, ignore user-specific)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/*.code-snippets
+!.vscode/settings.json
+.vscode/settings.json.user
+
+# Python development artifacts
+.venv/
+venv/
+__pycache__/
+
+# Node.js artifacts
+node_modules/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# User-specific Windows paths
+%APPDATA%/
+%LOCALAPPDATA%/
+%TEMP%/
+
+# Temporary and download folders
+.tmp/
+.tmp.*/
+*.tmp
+tmp/
+temp/
+
+# Generated manifests (optional - remove comment to ignore)
+# ai-fetchable-manifest.json

@@ -1,0 +1,528 @@
+<UserControl x:Class="WileyWidget.Views.Main.BudgetAnalysisView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:WileyWidget.Views"
+             xmlns:converters="clr-namespace:WileyWidget.Converters"
+             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+             xmlns:sfchart="clr-namespace:Syncfusion.UI.Xaml.Charts;assembly=Syncfusion.SfChart.WPF"
+             xmlns:sfgrid="clr-namespace:Syncfusion.UI.Xaml.Grid;assembly=Syncfusion.SfGrid.WPF"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="900" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+    <UserControl.Resources>
+        <converters:ComparisonConverter x:Key="ComparisonConverter"/>
+        <converters:BalanceColorConverter x:Key="BalanceColorConverter"/>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+
+        <Style x:Key="SubHeaderTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,10,0,5"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+
+        <Style x:Key="MetricTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,2,0,2"/>
+        </Style>
+
+        <Style x:Key="ValueTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+        </Style>
+
+        <Style x:Key="PositiveValueStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Green"/>
+        </Style>
+
+        <Style x:Key="NegativeValueStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Red"/>
+        </Style>
+
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Padding" Value="15,5"/>
+            <Setter Property="Margin" Value="5,0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- Pie Chart Label Template -->
+        <DataTemplate x:Key="PieChartLabelTemplate">
+            <TextBlock Text="{Binding Percentage, StringFormat=P0}"
+                       FontWeight="Bold"
+                       Foreground="White" />
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="20" xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+        behaviors:MouseFocusBehavior.EnableOnClick="True"
+        behaviors:MouseFocusBehavior.EnableOnFirstMove="True"
+        prism:RegionManager.RegionName="AnalyticsRegion">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Municipal Budget Analysis" Style="{DynamicResource HeaderTextBlockStyle}"/>
+            <TextBlock Text="Comprehensive analysis of budget data with fund summaries, department performance, and variance reports"
+                      Foreground="{DynamicResource SecondaryTextBrush}"
+                      FontSize="12"/>
+        </StackPanel>
+
+        <!-- Analysis Controls -->
+        <GroupBox Grid.Row="1" Header="Analysis Options" Margin="0,0,0,15">
+            <Grid Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Budget Period:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="1"
+                         ItemsSource="{Binding AvailableBudgetPeriods}"
+                         SelectedItem="{Binding SelectedBudgetPeriod}"
+                         DisplayMemberPath="Name"
+                         Width="200"
+                         Margin="0,0,20,0"/>
+
+                <TextBlock Grid.Column="2" Text="Analysis Type:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="3"
+                         ItemsSource="{Binding AnalysisTypes}"
+                         SelectedItem="{Binding SelectedAnalysisType}"
+                         Width="150"
+                         Margin="0,0,20,0"/>
+
+                <Button Grid.Column="4"
+                        Content="Generate Analysis"
+                        Command="{Binding GenerateAnalysisCommand}"
+                        IsEnabled="{Binding CanGenerateAnalysis}"
+                        Style="{DynamicResource ActionButtonStyle}"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Analysis Results -->
+        <TabControl Grid.Row="2">
+            <!-- Overview Tab -->
+            <TabItem Header="Overview">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <!-- Summary Cards -->
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5" CornerRadius="5">
+                                <StackPanel Margin="15">
+                                    <TextBlock Text="Total Budget" Style="{DynamicResource SubHeaderTextBlockStyle}"/>
+                                    <TextBlock Text="{Binding Analysis.Overview.TotalBudget, StringFormat=C0}"
+                                              Style="{DynamicResource ValueTextBlockStyle}" FontSize="18"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5" CornerRadius="5">
+                                <StackPanel Margin="15">
+                                    <TextBlock Text="Total Balance" Style="{DynamicResource SubHeaderTextBlockStyle}"/>
+                                    <TextBlock Text="{Binding Analysis.Overview.TotalBalance, StringFormat=C0}"
+                                              Style="{DynamicResource ValueTextBlockStyle}" FontSize="18"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5" CornerRadius="5">
+                                <StackPanel Margin="15">
+                                    <TextBlock Text="Variance" Style="{DynamicResource SubHeaderTextBlockStyle}"/>
+                                    <TextBlock Text="{Binding Analysis.Overview.Variance, StringFormat=C0}"
+                                              FontSize="18">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource ValueTextBlockStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Analysis.Overview.Variance}" Value="0">
+                                                        <Setter Property="Foreground" Value="Black"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Analysis.Overview.Variance, Converter={StaticResource ComparisonConverter}, ConverterParameter=0}" Value="1">
+                                                        <Setter Property="Foreground" Value="Green"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Analysis.Overview.Variance, Converter={StaticResource ComparisonConverter}, ConverterParameter=0}" Value="-1">
+                                                        <Setter Property="Foreground" Value="Red"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5" CornerRadius="5">
+                                <StackPanel Margin="15">
+                                    <TextBlock Text="Accounts" Style="{DynamicResource SubHeaderTextBlockStyle}"/>
+                                    <TextBlock Text="{Binding Analysis.Overview.TotalAccounts}"
+                                              Style="{DynamicResource ValueTextBlockStyle}" FontSize="18"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Key Ratios -->
+                        <GroupBox Header="Key Financial Ratios" Margin="0,0,0,15">
+                            <ItemsControl ItemsSource="{Binding Analysis.Overview.KeyRatios}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Margin="0,5">
+                                            <Grid Margin="10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Key}" Style="{DynamicResource MetricTextBlockStyle}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Value, StringFormat=P2}"
+                                                          Style="{DynamicResource ValueTextBlockStyle}" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </GroupBox>
+
+                        <!-- Budget Distribution Chart -->
+                        <GroupBox Header="Budget Distribution by Fund Type" Margin="0,0,0,15">
+                            <sfchart:SfChart>
+                                <sfchart:SfChart.Legend>
+                                    <sfchart:ChartLegend />
+                                </sfchart:SfChart.Legend>
+                                <sfchart:PieSeries ItemsSource="{Binding BudgetDistributionData}"
+                                                   XBindingPath="FundType"
+                                                   YBindingPath="Amount"
+                                                   EnableAnimation="True"
+                                                   EnableSmartLabels="True"
+                                                   LabelPosition="Inside"
+                                                   Palette="Metro">
+                                    <sfchart:PieSeries.AdornmentsInfo>
+                                        <sfchart:ChartAdornmentInfo
+                                            LabelTemplate="{DynamicResource PieChartLabelTemplate}"
+                                            LabelPosition="Auto" />
+                                    </sfchart:PieSeries.AdornmentsInfo>
+                                </sfchart:PieSeries>
+                            </sfchart:SfChart>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Fund Analysis Tab -->
+            <TabItem Header="Fund Analysis">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Sorting and Filtering Controls -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Sort by:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox ItemsSource="{Binding FundSortOptions}"
+                                 SelectedItem="{Binding SelectedFundSortOption}"
+                                 DisplayMemberPath="DisplayName"
+                                 Width="120" Margin="0,0,15,0"/>
+                        <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox Text="{Binding FundFilterText, UpdateSourceTrigger=PropertyChanged}"
+                                Width="150" Margin="0,0,10,0"/>
+                        <TextBlock Text="({Binding FundGridData.Count} funds)"
+                                  VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <Button Content="Export to Excel"
+                                Command="{Binding ExportFundDataCommand}"
+                                Style="{DynamicResource ActionButtonStyle}"
+                                Margin="20,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Fund DataGrid -->
+                    <sfgrid:SfDataGrid Grid.Row="1"
+                                       ItemsSource="{Binding FundGridData}"
+                                       AutoGenerateColumns="False"
+                                       AllowSorting="True"
+                                       AllowFiltering="True"
+                                       AllowGrouping="True"
+                                       ShowGroupDropArea="True"
+                                       UseLayoutRounding="True">
+                        <sfgrid:SfDataGrid.Columns>
+                            <sfgrid:GridTextColumn MappingName="Fund" HeaderText="Fund" Width="120"/>
+                            <sfgrid:GridNumericColumn MappingName="AccountCount" HeaderText="Accounts" Width="80" TextAlignment="Center"/>
+                            <sfgrid:GridCurrencyColumn MappingName="Budget" HeaderText="Budget" Width="100" TextAlignment="Right"/>
+                            <sfgrid:GridCurrencyColumn MappingName="Actual" HeaderText="Actual" Width="100" TextAlignment="Right"/>
+                            <sfgrid:GridCurrencyColumn MappingName="Variance" HeaderText="Variance" Width="100" TextAlignment="Right"/>
+                        </sfgrid:SfDataGrid.Columns>
+                    </sfgrid:SfDataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- Department Analysis Tab -->
+            <TabItem Header="Department Analysis">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Sorting and Filtering Controls -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Sort by:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox ItemsSource="{Binding DepartmentSortOptions}"
+                                 SelectedItem="{Binding SelectedDepartmentSortOption}"
+                                 DisplayMemberPath="DisplayName"
+                                 Width="120" Margin="0,0,15,0"/>
+                        <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox Text="{Binding DepartmentFilterText, UpdateSourceTrigger=PropertyChanged}"
+                                Width="150" Margin="0,0,10,0"/>
+                        <TextBlock Text="({Binding DepartmentGridData.Count} departments)"
+                                  VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <Button Content="Export to Excel"
+                                Command="{Binding ExportDepartmentDataCommand}"
+                                Style="{DynamicResource ActionButtonStyle}"
+                                Margin="20,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Department DataGrid -->
+                    <sfgrid:SfDataGrid Grid.Row="1"
+                                       ItemsSource="{Binding DepartmentGridData}"
+                                       AutoGenerateColumns="False"
+                                       AllowSorting="True"
+                                       AllowFiltering="True"
+                                       AllowGrouping="True"
+                                       ShowGroupDropArea="True"
+                                       UseLayoutRounding="True">
+                        <sfgrid:SfDataGrid.Columns>
+                            <sfgrid:GridTextColumn MappingName="Department" HeaderText="Department" Width="150"/>
+                            <sfgrid:GridTextColumn MappingName="Code" HeaderText="Code" Width="80"/>
+                            <sfgrid:GridNumericColumn MappingName="AccountCount" HeaderText="Accounts" Width="80" TextAlignment="Center"/>
+                            <sfgrid:GridCurrencyColumn MappingName="Budget" HeaderText="Budget" Width="100" TextAlignment="Right"/>
+                            <sfgrid:GridCurrencyColumn MappingName="Actual" HeaderText="Actual" Width="100" TextAlignment="Right"/>
+                            <sfgrid:GridCurrencyColumn MappingName="Variance" HeaderText="Variance" Width="100" TextAlignment="Right"/>
+                            <sfgrid:GridPercentColumn MappingName="Utilization" HeaderText="Utilization %" Width="100" TextAlignment="Right"/>
+                        </sfgrid:SfDataGrid.Columns>
+                    </sfgrid:SfDataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- Variance Analysis Tab -->
+            <TabItem Header="Variance Analysis">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="300"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Variance Summary -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Threshold:" Style="{DynamicResource SubHeaderTextBlockStyle}" Margin="0,0,10,0"/>
+                        <TextBox Text="{Binding VarianceThreshold, StringFormat=P2, UpdateSourceTrigger=PropertyChanged}"
+                                Width="80" Margin="0,0,20,0"/>
+                        <TextBlock Text="Over Threshold:" Style="{DynamicResource MetricTextBlockStyle}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Analysis.Variance.AccountsOverThreshold}"
+                                  Style="{DynamicResource ValueTextBlockStyle}" VerticalAlignment="Center" Margin="5,0,20,0"/>
+                        <TextBlock Text="Avg Variance:" Style="{DynamicResource MetricTextBlockStyle}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Analysis.Variance.AverageVariancePercent, StringFormat=P2}"
+                                  Style="{DynamicResource ValueTextBlockStyle}" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Sorting and Filtering Controls -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Sort by:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox ItemsSource="{Binding VarianceSortOptions}"
+                                 SelectedItem="{Binding SelectedVarianceSortOption}"
+                                 DisplayMemberPath="DisplayName"
+                                 Width="120" Margin="0,0,15,0"/>
+                        <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox Text="{Binding VarianceFilterText, UpdateSourceTrigger=PropertyChanged}"
+                                Width="150" Margin="0,0,10,0"/>
+                        <TextBlock Text="({Binding VarianceHierarchy.Count} variances)"
+                                  VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                    </StackPanel>
+
+                    <!-- Variance Chart -->
+                    <GroupBox Grid.Row="2" Header="Budget vs Actual Variance Trends" Margin="0,0,0,10">
+                        <sfchart:SfChart>
+                            <sfchart:SfChart.PrimaryAxis>
+                                <sfchart:CategoryAxis Header="Account" />
+                            </sfchart:SfChart.PrimaryAxis>
+                            <sfchart:SfChart.SecondaryAxis>
+                                <sfchart:NumericalAxis Header="Amount" />
+                            </sfchart:SfChart.SecondaryAxis>
+                            <sfchart:ColumnSeries ItemsSource="{Binding BudgetComparisonData}"
+                                                 XBindingPath="Category"
+                                                 YBindingPath="BudgetAmount"
+                                                 Label="Budget" />
+                            <sfchart:ColumnSeries ItemsSource="{Binding BudgetComparisonData}"
+                                                 XBindingPath="Category"
+                                                 YBindingPath="ActualAmount"
+                                                 Label="Actual" />
+                        </sfchart:SfChart>
+                    </GroupBox>
+
+                    <!-- Variance TreeView -->
+                    <TreeView Grid.Row="3"
+                             ItemsSource="{Binding VarianceHierarchy}"
+                             VirtualizingStackPanel.IsVirtualizing="True"
+                             VirtualizingStackPanel.VirtualizationMode="Recycling">
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate>
+                                <Grid Margin="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="100"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Account Number -->
+                                    <TextBlock Grid.Column="0" Text="{Binding AccountVariance.Account.AccountNumber.Value}" FontWeight="SemiBold" Margin="0,0,5,0"/>
+
+                                    <!-- Account Name -->
+                                    <TextBlock Grid.Column="1" Text="{Binding AccountVariance.Account.Name}" Margin="0,0,5,0"/>
+
+                                    <!-- Department -->
+                                    <TextBlock Grid.Column="2" Text="{Binding AccountVariance.Account.Department.Name}" Margin="0,0,5,0"/>
+
+                                    <!-- Fund -->
+                                    <TextBlock Grid.Column="3" Text="{Binding AccountVariance.Account.Fund}" Margin="0,0,5,0"/>
+
+                                    <!-- Budget -->
+                                    <TextBlock Grid.Column="4" Text="{Binding AccountVariance.Account.BudgetAmount, StringFormat=C0}" HorizontalAlignment="Right"
+                                              Foreground="{Binding AccountVariance.Account.BudgetAmount, Converter={StaticResource BalanceColorConverter}}"/>
+
+                                    <!-- Actual -->
+                                    <TextBlock Grid.Column="5" Text="{Binding AccountVariance.Account.Balance, StringFormat=C0}" HorizontalAlignment="Right"
+                                              Foreground="{Binding AccountVariance.Account.Balance, Converter={StaticResource BalanceColorConverter}}"/>
+
+                                    <!-- Variance $ -->
+                                    <TextBlock Grid.Column="6" Text="{Binding AccountVariance.VarianceAmount, StringFormat=C0}" HorizontalAlignment="Right"
+                                              Foreground="{Binding AccountVariance.VarianceAmount, Converter={StaticResource BalanceColorConverter}}"/>
+
+                                    <!-- Variance % -->
+                                    <TextBlock Grid.Column="7" Text="{Binding AccountVariance.VariancePercent, StringFormat=P2}" HorizontalAlignment="Right"
+                                              Foreground="{Binding AccountVariance.VariancePercent, Converter={StaticResource BalanceColorConverter}}"/>
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </Grid>
+            </TabItem>
+
+            <!-- Compliance Tab -->
+            <TabItem Header="Compliance">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <!-- Compliance Check Section -->
+                        <GroupBox Header="GASB Compliance Check" Margin="0,0,0,20">
+                            <StackPanel>
+                                <TextBlock Text="Check budget data against GASB best practices and standards"
+                                          Style="{StaticResource MetricTextBlockStyle}" Margin="0,0,0,10"/>
+
+                                <Button Content="Check Compliance"
+                                        Command="{Binding CheckComplianceCommand}"
+                                        IsEnabled="{Binding CanCheckCompliance}"
+                                        Style="{DynamicResource ActionButtonStyle}"
+                                        HorizontalAlignment="Left"/>
+
+                                <TextBlock Text="{Binding ComplianceSummary}"
+                                          Margin="0,10,0,0"
+                                          FontWeight="SemiBold"
+                                          Foreground="{DynamicResource PrimaryTextBrush}"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Compliance Issues List -->
+                        <GroupBox Header="Compliance Issues" Margin="0,0,0,20">
+                            <ListView ItemsSource="{Binding ComplianceIssues}"
+                                     Height="300"
+                                     BorderThickness="1"
+                                     BorderBrush="{DynamicResource BorderBrush}">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="Rule" Width="100">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Rule}" FontWeight="SemiBold"/>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="Severity" Width="80">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Severity}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Severity}" Value="Error">
+                                                                        <Setter Property="Foreground" Value="Red"/>
+                                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Severity}" Value="Warning">
+                                                                        <Setter Property="Foreground" Value="Orange"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="Description" Width="250">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Description}" TextWrapping="Wrap"/>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="Account" Width="100">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding AccountNumber}"/>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="Recommendation" Width="200">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Recommendation}" TextWrapping="Wrap"/>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="GASB Reference" Width="120">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding GasbReference}" FontStyle="Italic"/>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

@@ -1,0 +1,508 @@
+<Window
+    x:Class="WileyWidget.Views.Windows.Shell"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:prism="http://prismlibrary.com/"
+    xmlns:prismRegions="clr-namespace:Prism.Navigation.Regions;assembly=Prism.Wpf"
+    xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+    xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+    xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+    xmlns:vm="clr-namespace:WileyWidget.ViewModels;assembly=WileyWidget.UI"
+    xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
+    xmlns:converters="clr-namespace:WileyWidget.Converters"
+    xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+    Title="{Binding CurrentViewTitle, FallbackValue='Wiley Widget - Municipal Enterprise Management'}"
+    AutomationProperties.Name="Main Application Window"
+    xml:lang="en-US"
+    FocusVisualStyle="{DynamicResource {x:Static SystemParameters.FocusVisualStyleKey}}"
+    KeyboardNavigation.TabNavigation="Cycle"
+    KeyboardNavigation.ControlTabNavigation="Cycle"
+    KeyboardNavigation.DirectionalNavigation="Cycle"
+    Height="768"
+    Width="1280"
+    MinHeight="600"
+    MinWidth="1024"
+    WindowState="Maximized"
+    WindowStartupLocation="CenterScreen"
+    ShowInTaskbar="True"
+    Visibility="Hidden"
+    prism:ViewModelLocator.AutoWireViewModel="True">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <!-- Data templates for ViewModels -->
+        <!-- Reference DataTemplates from the main application assembly -->
+        <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/src/Resources/DataTemplates.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <!-- Converters -->
+      <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+      <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+      <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+
+      <!-- Icon Templates for RibbonButtons using MahApps.Metro.IconPacks -->
+      <!-- Action Icons (16x16) -->
+      <DataTemplate x:Key="SaveIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="ContentSave"
+            Width="16"
+            Height="16" />
+      </DataTemplate>
+      <DataTemplate x:Key="RefreshIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="Refresh"
+            Width="16"
+            Height="16" />
+      </DataTemplate>
+
+      <!-- Navigation Icons (32x32 for large buttons) -->
+      <DataTemplate x:Key="DashboardIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="ViewDashboard"
+            Width="32"
+            Height="32" />
+      </DataTemplate>
+      <DataTemplate x:Key="EnterprisesIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="Domain"
+            Width="32"
+            Height="32" />
+      </DataTemplate>
+      <DataTemplate x:Key="AccountsIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="AccountMultiple"
+            Width="32"
+            Height="32" />
+      </DataTemplate>
+      <DataTemplate x:Key="BudgetIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="Finance"
+            Width="32"
+            Height="32" />
+      </DataTemplate>
+      <DataTemplate x:Key="DepartmentsIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="OfficeBuildingMarker"
+            Width="32"
+            Height="32" />
+      </DataTemplate>
+
+      <!-- Placeholder Icons (fallback) -->
+      <DataTemplate x:Key="PlaceholderIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="Circle"
+            Width="16"
+            Height="16" />
+      </DataTemplate>
+      <DataTemplate x:Key="LargePlaceholderIconTemplate">
+        <iconPacks:PackIconMaterial
+            Kind="Circle"
+            Width="32"
+            Height="32" />
+      </DataTemplate>
+
+      <!-- Note: Removed Style with Trigger for IconTemplate to prevent WPF circular dependency
+      error.
+           All RibbonButtons use explicit IconTemplate references. -->
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <!-- Keyboard Shortcuts (Issue #12 - P2) -->
+  <Window.InputBindings>
+    <KeyBinding
+        Command="{Binding NavigateToDashboardCommand}"
+        Key="D1"
+        Modifiers="Control" />
+    <KeyBinding
+        Command="{Binding NavigateToEnterprisesCommand}"
+        Key="D2"
+        Modifiers="Control" />
+    <KeyBinding
+        Command="{Binding NavigateToAccountsCommand}"
+        Key="D3"
+        Modifiers="Control" />
+    <KeyBinding
+        Command="{Binding NavigateToBudgetCommand}"
+        Key="D4"
+        Modifiers="Control" />
+    <KeyBinding
+        Command="{Binding NavigateToDepartmentsCommand}"
+        Key="D5"
+        Modifiers="Control" />
+    <KeyBinding
+        Command="{Binding SaveCommand}"
+        Key="S"
+        Modifiers="Control" />
+    <KeyBinding
+        Command="{Binding RefreshAllCommand}"
+        Key="F5" />
+    <KeyBinding
+        Command="{Binding OpenSearchCommand}"
+        Key="F"
+        Modifiers="Control" />
+    <KeyBinding
+        Command="{Binding OpenHelpCommand}"
+        Key="F1" />
+  </Window.InputBindings>
+
+  <!-- Apply Syncfusion theme globally via SfSkinManager.ApplicationTheme -->
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Main Ribbon in Row 0 -->
+    <syncfusion:Ribbon
+        x:Name="MainRibbon"
+        Grid.Row="0"
+        AutomationProperties.Name="Main Application Ribbon"
+        AutomationProperties.HelpText="Main navigation and command ribbon">
+
+      <!-- Quick Access Toolbar -->
+      <syncfusion:Ribbon.QuickAccessToolBar>
+        <syncfusion:QuickAccessToolBar>
+          <syncfusion:RibbonButton
+              Label="Save"
+              SizeForm="ExtraSmall"
+              IconTemplate="{StaticResource SaveIconTemplate}"
+              ToolTip="Save current work (Ctrl+S)" />
+          <syncfusion:RibbonButton
+              Label="Refresh"
+              SizeForm="ExtraSmall"
+              IconTemplate="{StaticResource RefreshIconTemplate}"
+              Command="{Binding RefreshAllCommand}"
+              ToolTip="Refresh all data (F5)" />
+        </syncfusion:QuickAccessToolBar>
+      </syncfusion:Ribbon.QuickAccessToolBar>
+
+      <syncfusion:RibbonTab
+          Caption="Home"
+          IsChecked="True">
+        <syncfusion:RibbonBar Header="Navigation">
+          <syncfusion:RibbonButton
+              Label="Dashboard"
+              SizeForm="Large"
+              IconTemplate="{StaticResource DashboardIconTemplate}"
+              Command="{Binding NavigateToDashboardCommand}"
+              ToolTip="Navigate to Dashboard (Ctrl+1)" />
+          <syncfusion:RibbonButton
+              Label="Enterprises"
+              SizeForm="Large"
+              IconTemplate="{StaticResource EnterprisesIconTemplate}"
+              Command="{Binding NavigateToEnterprisesCommand}"
+              ToolTip="Navigate to Enterprises (Ctrl+2)" />
+          <syncfusion:RibbonButton
+              Label="Accounts"
+              SizeForm="Large"
+              IconTemplate="{StaticResource AccountsIconTemplate}"
+              Command="{Binding NavigateToAccountsCommand}"
+              ToolTip="Navigate to Municipal Accounts (Ctrl+3)" />
+          <syncfusion:RibbonButton
+              Label="Budget"
+              SizeForm="Large"
+              IconTemplate="{StaticResource BudgetIconTemplate}"
+              Command="{Binding NavigateToBudgetCommand}"
+              ToolTip="Navigate to Budget Management (Ctrl+4)" />
+          <syncfusion:RibbonButton
+              Label="Departments"
+              SizeForm="Large"
+              IconTemplate="{StaticResource DepartmentsIconTemplate}"
+              Command="{Binding NavigateToDepartmentsCommand}"
+              ToolTip="Navigate to Department Management (Ctrl+5)" />
+        </syncfusion:RibbonBar>
+        <syncfusion:RibbonBar Header="Tools">
+          <syncfusion:RibbonButton
+              Label="Settings"
+              SizeForm="Small"
+              IconTemplate="{StaticResource PlaceholderIconTemplate}"
+              Command="{Binding OpenSettingsCommand}"
+              ToolTip="Open application settings" />
+          <syncfusion:RibbonButton
+              Label="Reports"
+              SizeForm="Small"
+              IconTemplate="{StaticResource PlaceholderIconTemplate}"
+              Command="{Binding OpenReportsCommand}"
+              ToolTip="View and generate reports" />
+          <syncfusion:RibbonButton
+              Label="AI Assist"
+              SizeForm="Small"
+              IconTemplate="{StaticResource PlaceholderIconTemplate}"
+              Command="{Binding OpenAIAssistCommand}"
+              ToolTip="Open AI Assistant" />
+        </syncfusion:RibbonBar>
+      </syncfusion:RibbonTab>
+      <syncfusion:RibbonTab Caption="Data">
+        <syncfusion:RibbonBar Header="Import/Export">
+          <syncfusion:RibbonButton
+              Label="Import Excel"
+              SizeForm="Large"
+              Command="{Binding ImportExcelCommand}"
+              ToolTip="Import data from Excel files" />
+          <syncfusion:RibbonButton
+              Label="Export Data"
+              SizeForm="Large"
+              Command="{Binding ExportDataCommand}"
+              ToolTip="Export data to various formats" />
+          <syncfusion:RibbonButton
+              Label="Sync QuickBooks"
+              SizeForm="Large"
+              Command="{Binding SyncQuickBooksCommand}"
+              ToolTip="Synchronize with QuickBooks Online" />
+        </syncfusion:RibbonBar>
+      </syncfusion:RibbonTab>
+      <syncfusion:RibbonTab Caption="Dashboard">
+        <syncfusion:RibbonBar Header="Views">
+          <syncfusion:RibbonButton
+              Label="Show Dashboard"
+              SizeForm="Large"
+              Command="{Binding ShowDashboardCommand}"
+              ToolTip="Display main dashboard" />
+          <syncfusion:RibbonButton
+              Label="Analytics"
+              SizeForm="Large"
+              Command="{Binding ShowAnalyticsCommand}"
+              ToolTip="View advanced analytics" />
+        </syncfusion:RibbonBar>
+        <syncfusion:RibbonBar Header="Refresh">
+          <syncfusion:RibbonButton
+              Label="Refresh All"
+              SizeForm="Large"
+              Command="{Binding RefreshAllCommand}"
+              ToolTip="Refresh all data sources (F5)" />
+          <syncfusion:RibbonButton
+              Label="Refresh View"
+              SizeForm="Small"
+              Command="{Binding RefreshCommand}"
+              ToolTip="Refresh current view" />
+        </syncfusion:RibbonBar>
+      </syncfusion:RibbonTab>
+      <syncfusion:RibbonTab Caption="Budget">
+        <syncfusion:RibbonBar Header="Management">
+          <syncfusion:RibbonButton
+              Label="New Budget"
+              SizeForm="Large"
+              Command="{Binding CreateNewBudgetCommand}"
+              ToolTip="Create a new fiscal year budget" />
+          <syncfusion:RibbonButton
+              Label="Import Budget"
+              SizeForm="Small"
+              Command="{Binding ImportBudgetCommand}"
+              ToolTip="Import budget from file" />
+          <syncfusion:RibbonButton
+              Label="Export Budget"
+              SizeForm="Small"
+              Command="{Binding ExportBudgetCommand}"
+              ToolTip="Export budget to file" />
+        </syncfusion:RibbonBar>
+        <syncfusion:RibbonBar Header="Analysis">
+          <syncfusion:RibbonButton
+              Label="Budget Analysis"
+              SizeForm="Large"
+              Command="{Binding ShowBudgetAnalysisCommand}"
+              ToolTip="View budget vs actual analysis" />
+          <syncfusion:RibbonButton
+              Label="Rate Calculator"
+              SizeForm="Large"
+              Command="{Binding ShowRateCalculatorCommand}"
+              ToolTip="Calculate utility rates" />
+        </syncfusion:RibbonBar>
+      </syncfusion:RibbonTab>
+      <syncfusion:RibbonTab Caption="Enterprise">
+        <syncfusion:RibbonBar Header="Management">
+          <syncfusion:RibbonButton
+              Label="Add Enterprise"
+              SizeForm="Large"
+              Command="{Binding AddEnterpriseCommand}"
+              ToolTip="Add new enterprise (Ctrl+N)" />
+          <syncfusion:RibbonButton
+              Label="Edit Enterprise"
+              SizeForm="Small"
+              Command="{Binding EditEnterpriseCommand}"
+              ToolTip="Edit selected enterprise (Ctrl+E)" />
+          <syncfusion:RibbonButton
+              Label="Delete Enterprise"
+              SizeForm="Small"
+              Command="{Binding DeleteEnterpriseCommand}"
+              ToolTip="Delete selected enterprise (Delete)" />
+        </syncfusion:RibbonBar>
+        <syncfusion:RibbonBar Header="Operations">
+          <syncfusion:RibbonButton
+              Label="Service Charges"
+              SizeForm="Large"
+              Command="{Binding ManageServiceChargesCommand}"
+              ToolTip="Manage enterprise service charges" />
+          <syncfusion:RibbonButton
+              Label="Utility Bills"
+              SizeForm="Large"
+              Command="{Binding ManageUtilityBillsCommand}"
+              ToolTip="Manage utility billing" />
+        </syncfusion:RibbonBar>
+      </syncfusion:RibbonTab>
+      <syncfusion:RibbonTab Caption="Reports">
+        <syncfusion:RibbonBar Header="Standard Reports">
+          <syncfusion:RibbonButton
+              Label="Financial Summary"
+              SizeForm="Large"
+              Command="{Binding GenerateFinancialSummaryCommand}"
+              ToolTip="Generate financial summary report" />
+          <syncfusion:RibbonButton
+              Label="Budget vs Actual"
+              SizeForm="Large"
+              Command="{Binding GenerateBudgetVsActualCommand}"
+              ToolTip="Generate budget comparison report" />
+          <syncfusion:RibbonButton
+              Label="Enterprise Performance"
+              SizeForm="Large"
+              Command="{Binding GenerateEnterprisePerformanceCommand}"
+              ToolTip="Generate enterprise performance report" />
+        </syncfusion:RibbonBar>
+        <syncfusion:RibbonBar Header="Custom Reports">
+          <syncfusion:RibbonButton
+              Label="Create Report"
+              SizeForm="Large"
+              Command="{Binding CreateCustomReportCommand}"
+              ToolTip="Build custom report" />
+          <syncfusion:RibbonButton
+              Label="Saved Reports"
+              SizeForm="Large"
+              Command="{Binding ShowSavedReportsCommand}"
+              ToolTip="View saved reports" />
+        </syncfusion:RibbonBar>
+      </syncfusion:RibbonTab>
+    </syncfusion:Ribbon>
+
+    <!-- DockingManager with Prism Region Integration -->
+    <syncfusion:DockingManager
+        x:Name="MainDockingManager"
+        Grid.Row="1"
+        UseDocumentContainer="True"
+        PersistState="True"
+        DockFill="True"
+        ContainerMode="TDI"
+        AutomationProperties.Name="Main Docking Manager"
+        AutomationProperties.HelpText="Main docking layout manager for application windows">
+
+      <i:Interaction.Behaviors>
+        <behaviors:DockingManagerBehavior />
+      </i:Interaction.Behaviors>
+
+      <!-- Left Panel - Docked to Left Side -->
+      <ContentControl
+          x:Name="LeftPanelHost"
+          syncfusion:DockingManager.Header="Navigation"
+          syncfusion:DockingManager.State="Dock"
+          syncfusion:DockingManager.SideInDockedMode="Left"
+          syncfusion:DockingManager.DesiredWidthInDockedMode="250"
+          prism:RegionManager.RegionName="LeftPanelRegion"
+          AutomationProperties.Name="Left Panel Region"
+          AutomationProperties.HelpText="Left panel for dashboard and navigation controls" />
+
+      <!-- Main Content - Document State (Tabbed) -->
+      <ContentControl
+          x:Name="MainContentHost"
+          syncfusion:DockingManager.Header="Main View"
+          syncfusion:DockingManager.State="Document"
+          prism:RegionManager.RegionName="MainRegion"
+          AutomationProperties.Name="Main Content Region"
+          AutomationProperties.HelpText="Primary content area for dynamic view injection" />
+
+      <!-- Municipal Account Region - Document State -->
+      <ContentControl
+          x:Name="MunicipalAccountHost"
+          syncfusion:DockingManager.Header="Municipal Accounts"
+          syncfusion:DockingManager.State="Document"
+          syncfusion:DockingManager.CanSerialize="True"
+          prism:RegionManager.RegionName="MunicipalAccountRegion"
+          AutomationProperties.Name="Municipal Account Region"
+          AutomationProperties.HelpText="Region for municipal account views"
+          Visibility="Collapsed" />
+
+      <!-- Utility Customer Region - Document State -->
+      <ContentControl
+          x:Name="UtilityCustomerHost"
+          syncfusion:DockingManager.Header="Utility Customers"
+          syncfusion:DockingManager.State="Document"
+          syncfusion:DockingManager.CanSerialize="True"
+          prism:RegionManager.RegionName="UtilityCustomerRegion"
+          AutomationProperties.Name="Utility Customer Region"
+          AutomationProperties.HelpText="Region for utility customer views"
+          Visibility="Collapsed" />
+
+      <!-- Reports Region - Document State -->
+      <ContentControl
+          x:Name="ReportsHost"
+          syncfusion:DockingManager.Header="Reports"
+          syncfusion:DockingManager.State="Document"
+          syncfusion:DockingManager.CanSerialize="True"
+          prism:RegionManager.RegionName="ReportsRegion"
+          AutomationProperties.Name="Reports Region"
+          AutomationProperties.HelpText="Region for reports views"
+          Visibility="Collapsed" />
+
+      <!-- Settings Region - Document State -->
+      <ContentControl
+          x:Name="SettingsHost"
+          syncfusion:DockingManager.Header="Settings"
+          syncfusion:DockingManager.State="Document"
+          syncfusion:DockingManager.CanSerialize="True"
+          prism:RegionManager.RegionName="SettingsRegion"
+          AutomationProperties.Name="Settings Region"
+          AutomationProperties.HelpText="Region for settings views"
+          Visibility="Collapsed" />
+
+      <!-- Right Panel - Docked to Right Side -->
+      <ContentControl
+          x:Name="RightPanelHost"
+          syncfusion:DockingManager.Header="Properties"
+          syncfusion:DockingManager.State="Dock"
+          syncfusion:DockingManager.SideInDockedMode="Right"
+          syncfusion:DockingManager.DesiredWidthInDockedMode="300"
+          prism:RegionManager.RegionName="RightPanelRegion"
+          AutomationProperties.Name="Right Panel Region"
+          AutomationProperties.HelpText="Right panel for settings and tools" />
+
+      <!-- Bottom Panel - Docked to Bottom -->
+      <ContentControl
+          x:Name="BottomPanelHost"
+          syncfusion:DockingManager.Header="Output"
+          syncfusion:DockingManager.State="Dock"
+          syncfusion:DockingManager.SideInDockedMode="Bottom"
+          syncfusion:DockingManager.DesiredHeightInDockedMode="150"
+          prism:RegionManager.RegionName="BottomPanelRegion"
+          AutomationProperties.Name="Bottom Panel Region"
+          AutomationProperties.HelpText="Bottom panel for tools and status" />
+
+      <!-- AI Assist Panel - Initially Auto Hidden on Right -->
+      <ContentControl
+          x:Name="AIAssistHost"
+          syncfusion:DockingManager.Header="AI Assistant"
+          syncfusion:DockingManager.State="AutoHidden"
+          syncfusion:DockingManager.SideInDockedMode="Right"
+          syncfusion:DockingManager.DesiredWidthInDockedMode="350"
+          prism:RegionManager.RegionName="AIAssistRegion"
+          AutomationProperties.Name="AI Assistant Region"
+          AutomationProperties.HelpText="AI assistant panel for municipal utility management" />
+
+    </syncfusion:DockingManager>
+
+    <!-- Status Bar in Row 2 -->
+    <StatusBar
+        Grid.Row="2"
+        AutomationProperties.Name="Application Status Bar"
+        AutomationProperties.HelpText="Application status and current view information">
+      <StatusBarItem>
+        <TextBlock
+            Text="{Binding CurrentViewTitle, StringFormat='Current View: {0}'}"
+            AutomationProperties.Name="Current View Display" />
+      </StatusBarItem>
+      <StatusBarItem HorizontalAlignment="Right">
+        <TextBlock
+            Text="{Binding CurrentTheme, StringFormat='Theme: {0}'}"
+            AutomationProperties.Name="Current Theme Display" />
+      </StatusBarItem>
+    </StatusBar>
+  </Grid>
+</Window>

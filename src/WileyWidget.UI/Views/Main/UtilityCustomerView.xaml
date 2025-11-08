@@ -1,0 +1,499 @@
+<UserControl x:Class="WileyWidget.Views.Main.UtilityCustomerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:WileyWidget"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:converters="clr-namespace:WileyWidget.Converters"
+             xmlns:prism="http://prismlibrary.com/"
+             mc:Ignorable="d"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DesignHeight="800"
+             d:DesignWidth="1200"
+             AutomationProperties.Name="Utility Customer Management View"
+             AutomationProperties.HelpText="View for managing municipal utility customers, including customer information, billing history, and account management">
+    <UserControl.InputBindings>
+        <KeyBinding Key="F5" Command="{Binding LoadCustomersCommand}" />
+        <KeyBinding Key="N" Modifiers="Ctrl" Command="{Binding AddCustomerCommand}" />
+        <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding SaveCustomerCommand}" />
+        <KeyBinding Key="Delete" Command="{Binding DeleteCustomerCommand}" />
+        <KeyBinding Key="F" Modifiers="Ctrl" Command="{Binding SearchCustomersCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}" />
+    </UserControl.InputBindings>
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Error Template for validation errors -->
+        <ControlTemplate x:Key="ErrorTemplate">
+            <DockPanel LastChildFill="True">
+                <Border BorderBrush="Red" BorderThickness="1" CornerRadius="2" DockPanel.Dock="Right"
+                        Background="White" Margin="5,0,0,0" Width="20" Height="20">
+                    <TextBlock Text="!" FontWeight="Bold" Foreground="Red"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              ToolTip="{Binding ElementName=adornerPlaceholder, Path=AdornedElement.(Validation.Errors)[0].ErrorContent}" />
+                </Border>
+                <AdornedElementPlaceholder x:Name="adornerPlaceholder" />
+            </DockPanel>
+        </ControlTemplate>
+
+        <!-- Style for overdue bill rows -->
+        <Style x:Key="OverdueCellStyle" TargetType="syncfusion:GridCell">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsOverdue}" Value="True">
+                    <Setter Property="Foreground" Value="#FFF87171" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource ContentBackgroundBrush}" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="CustomerFocusAnchor">
+    <Border x:Name="CustomerFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
+    <DockPanel>
+        <!-- Ribbon Toolbar -->
+        <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="CustomerRibbon">
+            <syncfusion:RibbonTab Caption="Customers">
+                <syncfusion:RibbonBar Header="Actions">
+                    <syncfusion:RibbonButton Label="Load All" SizeForm="Large"
+                                            Command="{Binding LoadCustomersCommand}"
+                                            ToolTip="Load all utility customers" />
+                    <syncfusion:RibbonButton Label="Active Only"
+                                            Command="{Binding LoadActiveCustomersCommand}"
+                                            ToolTip="Load active customers only" />
+                    <syncfusion:RibbonButton Label="Outside City"
+                                            Command="{Binding LoadCustomersOutsideCityLimitsCommand}"
+                                            ToolTip="Load customers outside city limits" />
+                    <syncfusion:RibbonButton Label="Add New" SizeForm="Large"
+                                            Command="{Binding AddCustomerCommand}"
+                                            ToolTip="Add a new customer account" />
+                    <syncfusion:RibbonButton Label="Edit"
+                                            Command="{Binding EditCustomerCommand}"
+                                            ToolTip="Edit the selected customer" />
+                    <syncfusion:RibbonButton Label="Save"
+                                            Command="{Binding SaveCustomerCommand}"
+                                            ToolTip="Save changes to selected customer" />
+                    <syncfusion:RibbonButton Label="Delete"
+                                            Command="{Binding DeleteCustomerCommand}"
+                                            ToolTip="Delete selected customer" />
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Search">
+                    <TextBox Text="{Binding SearchTerm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                           Width="200" Margin="0,0,4,0"
+                           ToolTip="Enter search term (name, account#, address)" />
+                    <syncfusion:RibbonButton Label="Search" Command="{Binding SearchCustomersCommand}" />
+                    <syncfusion:RibbonButton Label="Clear" Command="{Binding ClearSearchCommand}" />
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Bills">
+                    <syncfusion:RibbonButton Label="Load Bills"
+                                            Command="{Binding LoadCustomerBillsCommand}"
+                                            ToolTip="Load billing history for selected customer" />
+                    <syncfusion:RibbonButton Label="Pay Bill"
+                                            Command="{Binding PayBillCommand}"
+                                            ToolTip="Process payment for selected bill" />
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+        </syncfusion:Ribbon>
+
+        <!-- Main Content Area -->
+        <Grid Margin="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" MinHeight="280" />
+            </Grid.RowDefinitions>
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="450" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Customer List Section -->
+            <Border Grid.Row="0" Grid.Column="0"
+                    Background="{DynamicResource ContentBackgroundAlt2Brush}"
+                    BorderBrush="{DynamicResource BorderAltBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Margin="0,0,4,4">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top"
+                              Text="Utility Customers"
+                              FontSize="16"
+                              FontWeight="Bold"
+                              Margin="12,12,12,8"
+                              Foreground="{DynamicResource ContentForegroundBrush}" />
+
+                    <syncfusion:SfDataGrid
+                        x:Name="CustomerGrid"
+                        ItemsSource="{Binding Customers}"
+                        SelectedItem="{Binding SelectedCustomer, Mode=TwoWay}"
+                        AutoGenerateColumns="False"
+                        AllowSorting="True"
+                        AllowGrouping="True"
+                        AllowFiltering="True"
+                        AllowResizingColumns="True"
+                        AllowEditing="False"
+                        RowHeight="32"
+                        AlternationCount="2"
+                        ShowGroupDropArea="True"
+                        UseLayoutRounding="True"
+                        GroupDropAreaText="Drag a column header here to group customers"
+                        ColumnSizer="AutoWithLastColumnFill"
+                        Margin="12,0,12,12"
+                        SelectionMode="Single"
+                        AutomationProperties.Name="Customer List Grid"
+                        AutomationProperties.HelpText="Grid displaying all utility customers with account information, contact details, and service status">
+
+                        <syncfusion:SfDataGrid.Columns>
+                            <syncfusion:GridTextColumn HeaderText="Account #"
+                                                      MappingName="AccountNumber"
+                                                      Width="110" />
+                            <syncfusion:GridTextColumn HeaderText="Name"
+                                                      MappingName="DisplayName"
+                                                      Width="200" />
+                            <syncfusion:GridTextColumn HeaderText="Type"
+                                                      MappingName="CustomerTypeDescription"
+                                                      Width="110" />
+                            <syncfusion:GridTextColumn HeaderText="Location"
+                                                      MappingName="ServiceLocationDescription"
+                                                      Width="130" />
+                            <syncfusion:GridTextColumn HeaderText="Address"
+                                                      MappingName="ServiceAddress"
+                                                      Width="220" />
+                            <syncfusion:GridTextColumn HeaderText="Phone"
+                                                      MappingName="PhoneNumber"
+                                                      Width="120" />
+                            <syncfusion:GridTextColumn HeaderText="Meter #"
+                                                      MappingName="MeterNumber"
+                                                      Width="110" />
+                            <syncfusion:GridTextColumn HeaderText="Status"
+                                                      MappingName="StatusDescription"
+                                                      Width="90" />
+                            <syncfusion:GridNumericColumn HeaderText="Balance"
+                                                         MappingName="CurrentBalance"
+                                                         NumberDecimalDigits="2"
+                                                         Width="110" />
+                        </syncfusion:SfDataGrid.Columns>
+
+                        <syncfusion:SfDataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Load Bills" Command="{Binding PlacementTarget.DataContext.LoadCustomerBillsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Edit Customer" Command="{Binding PlacementTarget.DataContext.EditCustomerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <Separator />
+                                <MenuItem Header="Export to Excel" />
+                            </ContextMenu>
+                        </syncfusion:SfDataGrid.ContextMenu>
+                    </syncfusion:SfDataGrid>
+                </DockPanel>
+            </Border>
+
+            <!-- Bill History Section -->
+            <Border Grid.Row="1" Grid.Column="0"
+                    Background="{DynamicResource ContentBackgroundAlt2Brush}"
+                    BorderBrush="{DynamicResource BorderAltBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Margin="0,4,4,0">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12,12,12,8">
+                        <TextBlock Text="Billing History"
+                                  FontSize="16"
+                                  FontWeight="Bold"
+                                  Foreground="{DynamicResource ContentForegroundBrush}" />
+                        <TextBlock Text="{Binding SelectedCustomer.DisplayName, StringFormat=' - {0}'}"
+                                  FontSize="14"
+                                  Margin="8,2,0,0"
+                                  Foreground="#FFB9C8EC"
+                                  Visibility="{Binding SelectedCustomer, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+
+                    <syncfusion:SfDataGrid
+                        x:Name="BillHistoryGrid"
+                        ItemsSource="{Binding CustomerBills}"
+                        SelectedItem="{Binding SelectedBill, Mode=TwoWay}"
+                        AutoGenerateColumns="False"
+                        AllowSorting="True"
+                        AllowFiltering="True"
+                        AllowResizingColumns="True"
+                        AllowEditing="False"
+                        RowHeight="32"
+                        UseLayoutRounding="True"
+                        ColumnSizer="Star"
+                        Margin="12,0,12,12"
+                        SelectionMode="Single"
+                        AutomationProperties.Name="Billing History Grid"
+                        AutomationProperties.HelpText="Grid showing billing history for the selected customer including bill dates, amounts, and payment status">
+
+                        <syncfusion:SfDataGrid.Columns>
+                            <syncfusion:GridTextColumn HeaderText="Bill #"
+                                                      MappingName="BillNumber"
+                                                      Width="150"
+                                                      ToolTipService.ToolTip="Bill number" />
+                            <syncfusion:GridDateTimeColumn HeaderText="Bill Date"
+                                                          MappingName="BillDate"
+                                                          Pattern="ShortDate"
+                                                          Width="120"
+                                                          ToolTipService.ToolTip="Date bill was generated" />
+                            <syncfusion:GridDateTimeColumn HeaderText="Due Date"
+                                                          MappingName="DueDate"
+                                                          Pattern="ShortDate"
+                                                          Width="120"
+                                                          CellStyle="{DynamicResource OverdueCellStyle}"
+                                                          ToolTipService.ToolTip="Payment due date (red if overdue)" />
+                            <syncfusion:GridCurrencyColumn HeaderText="Amount"
+                                                         MappingName="WaterCharges"
+                                                         CurrencyDecimalDigits="2"
+                                                         Width="100"
+                                                         ToolTipService.ToolTip="Water service charges" />
+                            <syncfusion:GridNumericColumn HeaderText="Sewer"
+                                                         MappingName="SewerCharges"
+                                                         NumberDecimalDigits="2"
+                                                         Width="100"
+                                                         ToolTipService.ToolTip="Sewer service charges" />
+                            <syncfusion:GridNumericColumn HeaderText="Garbage"
+                                                         MappingName="GarbageCharges"
+                                                         NumberDecimalDigits="2"
+                                                         Width="100"
+                                                         ShowToolTip="True">
+                                <syncfusion:GridNumericColumn.ToolTipTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Garbage service charges" />
+                                    </DataTemplate>
+                                </syncfusion:GridNumericColumn.ToolTipTemplate>
+                            </syncfusion:GridNumericColumn>
+                            <syncfusion:GridNumericColumn HeaderText="Total"
+                                                         MappingName="TotalAmount"
+                                                         NumberDecimalDigits="2"
+                                                         Width="110"
+                                                         ShowToolTip="True">
+                                <syncfusion:GridNumericColumn.ToolTipTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Total bill amount" />
+                                    </DataTemplate>
+                                </syncfusion:GridNumericColumn.ToolTipTemplate>
+                            </syncfusion:GridNumericColumn>
+                            <syncfusion:GridNumericColumn HeaderText="Paid"
+                                                         MappingName="AmountPaid"
+                                                         NumberDecimalDigits="2"
+                                                         Width="110"
+                                                         ShowToolTip="True">
+                                <syncfusion:GridNumericColumn.ToolTipTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Amount paid" />
+                                    </DataTemplate>
+                                </syncfusion:GridNumericColumn.ToolTipTemplate>
+                            </syncfusion:GridNumericColumn>
+                            <syncfusion:GridNumericColumn HeaderText="Due"
+                                                         MappingName="AmountDue"
+                                                         NumberDecimalDigits="2"
+                                                         Width="110"
+                                                         CellStyle="{DynamicResource OverdueCellStyle}"
+                                                         ShowToolTip="True">
+                                <syncfusion:GridNumericColumn.ToolTipTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Amount still due" />
+                                    </DataTemplate>
+                                </syncfusion:GridNumericColumn.ToolTipTemplate>
+                            </syncfusion:GridNumericColumn>
+                            <syncfusion:GridTextColumn HeaderText="Status"
+                                                      MappingName="StatusDescription"
+                                                      Width="120"
+                                                      ShowToolTip="True">
+                                <syncfusion:GridTextColumn.ToolTipTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Bill payment status" />
+                                    </DataTemplate>
+                                </syncfusion:GridTextColumn.ToolTipTemplate>
+                            </syncfusion:GridTextColumn>
+                        </syncfusion:SfDataGrid.Columns>
+
+                        <syncfusion:SfDataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="View Bill Details" ToolTip="View detailed bill breakdown" />
+                                <MenuItem Header="Pay Bill" Command="{Binding PayBillCommand}" />
+                                <Separator />
+                                <MenuItem Header="Export Bills to Excel" />
+                                <MenuItem Header="Print Bill" />
+                            </ContextMenu>
+                        </syncfusion:SfDataGrid.ContextMenu>
+                    </syncfusion:SfDataGrid>
+                </DockPanel>
+            </Border>
+            <!-- Customer Details Panel -->
+            <Border Grid.Column="1" BorderBrush="{DynamicResource BorderAltBrush}" BorderThickness="1" Margin="0,8,8,8" CornerRadius="4">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Customer Details" FontSize="14" FontWeight="Bold" Margin="8"
+                              AutomationProperties.Name="Customer Details Section Header" />
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                 AutomationProperties.Name="Customer Details Scroll Viewer"
+                                 AutomationProperties.HelpText="Scrollable area containing customer information form fields">
+                        <StackPanel Margin="8" Orientation="Vertical">
+                            <!-- Selected Customer Info -->
+                            <GroupBox Header="Selected Customer" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedCustomer.DisplayName, StringFormat='Name: {0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedCustomer.AccountNumber, StringFormat='Account: {0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedCustomer.CustomerTypeDescription, StringFormat='Type: {0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedCustomer.ServiceLocationDescription, StringFormat='Location: {0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedCustomer.StatusDescription, StringFormat='Status: {0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedCustomer.FormattedBalance, StringFormat='Balance: {0}'}" Margin="0,0,0,4" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Basic Information -->
+                            <GroupBox Header="Basic Information" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Label Content="Account Number:" />
+                                    <TextBox Text="{Binding SelectedCustomer.AccountNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+
+                                    <Label Content="First Name:" />
+                                    <TextBox Text="{Binding SelectedCustomer.FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+
+                                    <Label Content="Last Name:" />
+                                    <TextBox Text="{Binding SelectedCustomer.LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+
+                                    <Label Content="Company Name:" />
+                                    <TextBox Text="{Binding SelectedCustomer.CompanyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" />
+
+                                    <Label Content="Customer Type:" />
+                                    <ComboBox ItemsSource="{Binding CustomerTypes}"
+                                            SelectedItem="{Binding SelectedCustomer.CustomerType, Mode=TwoWay}"
+                                            Margin="0,0,0,8" />
+
+                                    <Label Content="Account Status:" />
+                                    <ComboBox ItemsSource="{Binding CustomerStatuses}"
+                                            SelectedItem="{Binding SelectedCustomer.Status, Mode=TwoWay}"
+                                            Margin="0,0,0,8" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Service Address -->
+                            <GroupBox Header="Service Address" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Label Content="Service Location:" />
+                                    <ComboBox ItemsSource="{Binding ServiceLocations}"
+                                            SelectedItem="{Binding SelectedCustomer.ServiceLocation, Mode=TwoWay}"
+                                            Margin="0,0,0,8" />
+
+                                    <Label Content="Address:" />
+                                    <TextBox Text="{Binding SelectedCustomer.ServiceAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+
+                                    <Label Content="City:" />
+                                    <TextBox Text="{Binding SelectedCustomer.ServiceCity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+
+                                    <Label Content="State:" />
+                                    <TextBox Text="{Binding SelectedCustomer.ServiceState, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" MaxLength="2"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+
+                                    <Label Content="ZIP Code:" />
+                                    <TextBox Text="{Binding SelectedCustomer.ServiceZipCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8" MaxLength="10"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Mailing Address -->
+                            <GroupBox Header="Mailing Address (if different)" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Label Content="Address:" />
+                                    <TextBox Text="{Binding SelectedCustomer.MailingAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" />
+
+                                    <Label Content="City:" />
+                                    <TextBox Text="{Binding SelectedCustomer.MailingCity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" />
+
+                                    <Label Content="State:" />
+                                    <TextBox Text="{Binding SelectedCustomer.MailingState, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" MaxLength="2" />
+
+                                    <Label Content="ZIP Code:" />
+                                    <TextBox Text="{Binding SelectedCustomer.MailingZipCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" MaxLength="10" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Contact Information -->
+                            <GroupBox Header="Contact Information" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Label Content="Phone Number:" />
+                                    <TextBox Text="{Binding SelectedCustomer.PhoneNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+
+                                    <Label Content="Email Address:" />
+                                    <TextBox Text="{Binding SelectedCustomer.EmailAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                           Margin="0,0,0,8"
+                                           Validation.ErrorTemplate="{StaticResource ErrorTemplate}" />
+
+                                    <Label Content="Meter Number:" />
+                                    <TextBox Text="{Binding SelectedCustomer.MeterNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Business Information -->
+                            <GroupBox Header="Business Information" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Label Content="Tax ID:" />
+                                    <TextBox Text="{Binding SelectedCustomer.TaxId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" />
+
+                                    <Label Content="Business License:" />
+                                    <TextBox Text="{Binding SelectedCustomer.BusinessLicenseNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" />
+
+                                    <Label Content="Current Balance:" />
+                                    <syncfusion:DoubleTextBox Value="{Binding SelectedCustomer.CurrentBalance, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            Margin="0,0,0,8" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Notes -->
+                            <GroupBox Header="Notes" Margin="0,0,0,8">
+                                <TextBox Text="{Binding SelectedCustomer.Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                       Height="80" TextWrapping="Wrap" AcceptsReturn="True" />
+                            </GroupBox>
+
+                            <!-- Account Dates -->
+                            <GroupBox Header="Account Information" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedCustomer.AccountOpenDate, StringFormat='Opened: {0:d}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedCustomer.CreatedDate, StringFormat='Created: {0:g}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedCustomer.LastModifiedDate, StringFormat='Modified: {0:g}'}" />
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <StatusBar DockPanel.Dock="Bottom" Background="Transparent">
+            <StatusBarItem>
+                <TextBlock Text="{Binding SummaryText}" />
+            </StatusBarItem>
+            <StatusBarItem>
+                <syncfusion:SfBusyIndicator IsBusy="{Binding IsLoading}"
+                                           Header="{Binding StatusMessage, FallbackValue='Loading...'}"
+                                           AnimationType="Windmill" />
+            </StatusBarItem>
+        </StatusBar>
+    </DockPanel>
+    </Grid>
+</UserControl>

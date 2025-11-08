@@ -1,0 +1,265 @@
+<UserControl x:Class="WileyWidget.Views.Panels.EnterprisePanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+             xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
+             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="1200"
+             xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+    <UserControl.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <local:BalanceColorConverter x:Key="BalanceColorConverter" />
+    </UserControl.Resources>
+
+    <DockPanel behaviors:MouseFocusBehavior.EnableOnClick="True"
+               behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
+        <!-- Ribbon Toolbar -->
+        <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="EnterpriseRibbon">
+            <syncfusion:RibbonTab Caption="Enterprise">
+                <syncfusion:RibbonBar Header="Actions">
+                    <syncfusion:RibbonButton Label="Load All" SizeForm="Large" Command="{Binding LoadEnterprisesAsyncCommand}" />
+                    <syncfusion:RibbonButton Label="Load Incremental" SizeForm="Large" Command="{Binding LoadEnterprisesIncrementalAsyncCommand}" />
+                    <syncfusion:RibbonButton Label="Add New" SizeForm="Large" Command="{Binding AddEnterpriseAsyncCommand}" />
+                    <syncfusion:RibbonButton Label="Save" Command="{Binding SaveEnterpriseAsyncCommand}" />
+                    <syncfusion:RibbonButton Label="Delete" Command="{Binding DeleteEnterpriseAsyncCommand}" />
+                    <syncfusion:RibbonButton Label="Bulk Update" Command="{Binding BulkUpdateAsyncCommand}" />
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Data">
+                    <syncfusion:RibbonButton Label="Export Excel" Command="{Binding ExportToExcelCommand}" />
+                    <syncfusion:RibbonButton Label="Export Advanced Excel" Command="{Binding ExportToExcelAdvancedCommand}" />
+                    <syncfusion:RibbonButton Label="Export PDF" Command="{Binding ExportToPdfCommand}" />
+                    <syncfusion:RibbonButton Label="Export Professional PDF" Command="{Binding ExportToPdfReportCommand}" />
+                    <syncfusion:RibbonButton Label="Export CSV" Command="{Binding ExportToCsvCommand}" />
+                    <syncfusion:RibbonButton Label="Import Data" Command="{Binding ImportDataCommand}" />
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="View">
+                    <syncfusion:RibbonButton Label="Group by Type" Command="{Binding GroupByTypeCommand}" />
+                    <syncfusion:RibbonButton Label="Group by Status" Command="{Binding GroupByStatusCommand}" />
+                    <syncfusion:RibbonButton Label="Clear Grouping" Command="{Binding ClearGroupingCommand}" />
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="Budget">
+                    <syncfusion:RibbonButton Label="Budget Summary" Command="{Binding UpdateBudgetSummaryCommand}" />
+                    <syncfusion:RibbonButton Label="Rate Analysis" Command="{Binding RateAnalysisCommand}" />
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+        </syncfusion:Ribbon>
+
+        <!-- Main Content Area with Busy Indicator -->
+        <notification:SfBusyIndicator IsBusy="{Binding IsLoading}"
+                                     AnimationType="SingleCircle"
+                                     ViewboxWidth="80"
+                                     ViewboxHeight="80"
+                                     Header="Loading Enterprise Data...">
+            <notification:SfBusyIndicator.Style>
+                <Style TargetType="notification:SfBusyIndicator">
+                    <Setter Property="Background" Value="#80000000" />
+                    <Setter Property="Foreground" Value="#4CAF50" />
+                </Style>
+            </notification:SfBusyIndicator.Style>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="350" />
+                </Grid.ColumnDefinitions>
+
+            <!-- Enterprise List -->
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top" Text="Municipal Enterprises" FontSize="16" FontWeight="Bold" Margin="8" />
+
+                <!-- Search and Filter Bar -->
+                <Border DockPanel.Dock="Top" Background="#F5F5F5" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <syncfusion:SfTextBoxExt Grid.Column="0" x:Name="SearchTextBox"
+                                               Watermark="Search enterprises..."
+                                               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                               Margin="0,0,8,0" />
+
+                        <ComboBox Grid.Column="1" x:Name="StatusFilterCombo"
+                                ItemsSource="{Binding StatusOptions}"
+                                SelectedItem="{Binding SelectedStatusFilter}"
+                                Margin="0,0,8,0" Width="120" />
+
+                        <Button Grid.Column="2" Content="Clear Filters" Command="{Binding ClearFiltersCommand}" Width="100" />
+                    </Grid>
+                </Border>
+
+                <syncfusion:SfTreeGrid
+                    x:Name="EnterpriseTreeGrid"
+                    ItemsSource="{Binding PagedHierarchicalEnterprises}"
+                    SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                    AutoGenerateColumns="False"
+                    AllowSorting="True"
+                    AllowEditing="True"
+                    AllowResizingColumns="True"
+                    AllowResizingHiddenColumns="True"
+                    AllowTriStateChecking="True"
+                    AutoExpandMode="RootNodesExpanded"
+                    ColumnSizer="Star"
+                    ExpanderColumn="Name"
+                    NavigationMode="Row"
+                    ShowRowHeader="True"
+                    RowHeaderWidth="36"
+                    RowHeight="32"
+                    SelectionMode="Single"
+                    ChildPropertyName="Children"
+                    Margin="8,0,8,8">
+
+                    <syncfusion:SfTreeGrid.SortColumnDescriptions>
+                        <syncfusion:SortColumnDescription ColumnName="Name" SortDirection="Ascending" />
+                    </syncfusion:SfTreeGrid.SortColumnDescriptions>
+
+                    <!-- Context Menu -->
+                    <syncfusion:SfTreeGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Add New Enterprise" Command="{Binding AddEnterpriseAsyncCommand}" />
+                            <MenuItem Header="Edit Selected" Command="{Binding EditEnterpriseCommand}" />
+                            <MenuItem Header="Delete Selected" Command="{Binding DeleteEnterpriseAsyncCommand}" />
+                            <Separator />
+                            <MenuItem Header="Export Selection" Command="{Binding ExportSelectionCommand}" />
+                            <MenuItem Header="Copy to Clipboard" Command="{Binding CopyToClipboardCommand}" />
+                        </ContextMenu>
+                    </syncfusion:SfTreeGrid.ContextMenu>
+
+                    <!-- Data Grid Columns -->
+                    <syncfusion:SfTreeGrid.Columns>
+                        <syncfusion:TreeGridCheckBoxColumn HeaderText="Select" MappingName="Enterprise.IsSelected" Width="70" />
+                        <syncfusion:TreeGridTextColumn HeaderText="Name" MappingName="Name" MinimumWidth="180" />
+                        <syncfusion:TreeGridTextColumn HeaderText="Type" MappingName="Enterprise.Type" MinimumWidth="120" />
+                        <syncfusion:TreeGridTextColumn HeaderText="Status" MappingName="Enterprise.Status" MinimumWidth="110" />
+                        <syncfusion:TreeGridNumericColumn HeaderText="Citizens" MappingName="Enterprise.CitizenCount" MinimumWidth="100" NumberDecimalDigits="0" />
+                        <syncfusion:TreeGridCurrencyColumn HeaderText="Rate" MappingName="Enterprise.CurrentRate" MinimumWidth="120" />
+                        <syncfusion:TreeGridCurrencyColumn HeaderText="Revenue" MappingName="Enterprise.MonthlyRevenue" MinimumWidth="140" />
+                        <syncfusion:TreeGridCurrencyColumn HeaderText="Expenses" MappingName="Enterprise.MonthlyExpenses" MinimumWidth="140" />
+                        <syncfusion:TreeGridCurrencyColumn HeaderText="Balance" MappingName="Enterprise.MonthlyBalance" MinimumWidth="140" />
+                        <syncfusion:TreeGridDateTimeColumn HeaderText="Last Updated" MappingName="Enterprise.LastUpdated" MinimumWidth="160" />
+                    </syncfusion:SfTreeGrid.Columns>
+                </syncfusion:SfTreeGrid>
+
+                <!-- Data Pager -->
+                <syncfusion:SfDataPager x:Name="dataPager"
+                                      DockPanel.Dock="Bottom"
+                                      Margin="0,8,0,0"
+                                      PageSize="{Binding PageSize, Mode=TwoWay}"
+                                      PageCount="{Binding PageCount, Mode=OneWay}"
+                                      PageIndex="{Binding CurrentPageIndex, Mode=TwoWay}"
+                                      NumericButtonCount="5"
+                                      DisplayMode="FirstLastPreviousNextNumeric" />
+            </DockPanel>
+
+            <!-- Enterprise Details Panel -->
+            <Border Grid.Column="1" BorderBrush="LightGray" BorderThickness="1" Margin="0,8,8,8" CornerRadius="4">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Enterprise Details" FontSize="14" FontWeight="Bold" Margin="8" />
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8" Orientation="Vertical">
+                            <!-- Selected Enterprise Info -->
+                            <GroupBox Header="Selected Enterprise" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedEnterprise.Name, StringFormat='Name: {0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedEnterprise.Id, StringFormat='ID: {0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedEnterprise.CitizenCount, StringFormat='Citizens: {0:N0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedEnterprise.Status, StringFormat='Status: {0}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedEnterprise.LastUpdated, StringFormat='Last Updated: {0:g}'}" Margin="0,0,0,4" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Financial Overview -->
+                            <GroupBox Header="Financial Overview" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedEnterprise.CurrentRate, StringFormat='Current Rate: {0:C2}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedEnterprise.MonthlyRevenue, StringFormat='Monthly Revenue: {0:C2}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedEnterprise.MonthlyExpenses, StringFormat='Monthly Expenses: {0:C2}'}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedEnterprise.MonthlyBalance, StringFormat='Monthly Balance: {0:C2}'}" Margin="0,0,0,4"
+                                             Foreground="{Binding SelectedEnterprise.MonthlyBalance, Converter={StaticResource BalanceColorConverter}}" />
+                                    <TextBlock Text="{Binding SelectedEnterprise.BreakEvenRate, StringFormat='Break-even Rate: {0:C2}'}" Margin="0,0,0,4" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Edit Form -->
+                            <GroupBox Header="Edit Enterprise" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Label Content="Name:" />
+                                    <TextBox Text="{Binding SelectedEnterprise.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Margin="0,0,0,8" />
+
+                                    <Label Content="Current Rate ($):" />
+                                    <syncfusion:DoubleTextBox Value="{Binding SelectedEnterprise.CurrentRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            Margin="0,0,0,8" />
+
+                                    <Label Content="Monthly Expenses ($):" />
+                                    <syncfusion:DoubleTextBox Value="{Binding SelectedEnterprise.MonthlyExpenses, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            Margin="0,0,0,8" />
+
+                                    <Label Content="Citizens Served:" />
+                                    <syncfusion:IntegerTextBox Value="{Binding SelectedEnterprise.CitizenCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                             Margin="0,0,0,8" />
+
+                                    <Label Content="Status:" />
+                                    <ComboBox ItemsSource="{Binding StatusOptions}"
+                                            SelectedItem="{Binding SelectedEnterprise.Status, Mode=TwoWay}"
+                                            Margin="0,0,0,8" />
+
+                                    <Label Content="Notes:" />
+                                    <TextBox Text="{Binding SelectedEnterprise.Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           Height="60" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,8" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Quick Actions -->
+                            <GroupBox Header="Quick Actions" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Button Content="Save Changes" Command="{Binding SaveEnterpriseAsyncCommand}"
+                                          Margin="0,0,0,4" />
+                                    <Button Content="Generate Report" Command="{Binding GenerateEnterpriseReportCommand}"
+                                          Margin="0,0,0,4" />
+                                    <Button Content="View History" Command="{Binding ViewAuditHistoryAsyncCommand}"
+                                          Margin="0,0,0,4" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Budget Summary -->
+                            <GroupBox Header="Budget Summary" Margin="0,0,0,8">
+                                <TextBlock Text="{Binding BudgetSummaryText}" TextWrapping="Wrap" />
+                            </GroupBox>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+            </Grid>
+        </notification:SfBusyIndicator>
+
+        <!-- Status Bar -->
+        <StatusBar DockPanel.Dock="Bottom" Background="Transparent">
+            <StatusBarItem>
+                <TextBlock>
+                    <Run Text="Enterprises: "/><Run Text="{Binding Enterprises.Count, Mode=OneWay}" />
+                </TextBlock>
+            </StatusBarItem>
+            <StatusBarItem>
+                <ProgressBar Width="200" Height="16"
+                           Value="{Binding ProgressPercentage}"
+                           Maximum="100"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+            </StatusBarItem>
+            <StatusBarItem>
+                <notification:SfBusyIndicator IsBusy="{Binding IsLoading}"
+                                           Header="{Binding StatusMessage, FallbackValue='Loading...'}"
+                                           AnimationType="Windmill" />
+            </StatusBarItem>
+        </StatusBar>
+    </DockPanel>
+</UserControl>
+

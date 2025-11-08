@@ -1,0 +1,387 @@
+<UserControl x:Class="WileyWidget.Views.Main.AnalyticsView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+    xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+    xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+    xmlns:converters="clr-namespace:WileyWidget.Converters"
+        mc:Ignorable="d"
+        d:DesignHeight="900"
+        d:DesignWidth="1400"
+    FontFamily="Segoe UI" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+        <converters:GreaterThanConverter x:Key="GreaterThanConverter" />
+        <converters:NullToBoolConverter x:Key="NullToBoolConverter" />
+    </UserControl.Resources>
+
+    <Grid x:Name="RootGrid" Background="#FF0F1826" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="AnalyticsFocusAnchor"
+          prism:RegionManager.RegionName="AnalyticsRegion">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Border x:Name="AnalyticsFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
+
+        <!-- Header Controls -->
+        <Border Grid.Row="0" Margin="16" Padding="16" Background="#66161F2D" CornerRadius="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Chart Type Selector -->
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Text="Chart Type" Foreground="#FFCEE6FF" FontWeight="SemiBold" />
+                    <syncfusion:ComboBoxAdv ItemsSource="{Binding ChartTypes}"
+                                            SelectedItem="{Binding SelectedChartType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            Width="180"
+                                            AutomationProperties.Name="Chart type selector"
+                                            AutomationProperties.HelpText="Select the type of analytics chart to display" />
+                </StackPanel>
+
+                <!-- Time Period Selector -->
+                <StackPanel Grid.Column="2" Orientation="Vertical">
+                    <TextBlock Text="Time Period" Foreground="#FFCEE6FF" FontWeight="SemiBold" />
+                    <syncfusion:ComboBoxAdv ItemsSource="{Binding TimePeriods}"
+                                            SelectedItem="{Binding SelectedTimePeriod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            Width="160"
+                                            AutomationProperties.Name="Time period selector"
+                                            AutomationProperties.HelpText="Select the time period for analytics data" />
+                </StackPanel>
+
+                <!-- Start Date (shown when Custom Range selected) -->
+                <StackPanel Grid.Column="4" Orientation="Vertical"
+                           Visibility="{Binding IsCustomRangeSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="Start Date" Foreground="#FFCEE6FF" FontWeight="SemiBold" />
+                    <syncfusion:SfDatePicker Value="{Binding StartDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           SetValueOnLostFocus="True"
+                                           Width="140"
+                                           AutomationProperties.Name="Start date picker"
+                                           AutomationProperties.HelpText="Select the start date for custom range">
+                        <syncfusion:SfDatePicker.Style>
+                            <Style TargetType="syncfusion:SfDatePicker" BasedOn="{StaticResource {x:Type syncfusion:SfDatePicker}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDateRangeValid}" Value="False">
+                                        <Setter Property="BorderBrush" Value="#FFFF6B6B" />
+                                        <Setter Property="BorderThickness" Value="2" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </syncfusion:SfDatePicker.Style>
+                    </syncfusion:SfDatePicker>
+                </StackPanel>
+
+                <!-- End Date (shown when Custom Range selected) -->
+                <StackPanel Grid.Column="6" Orientation="Vertical"
+                           Visibility="{Binding IsCustomRangeSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="End Date" Foreground="#FFCEE6FF" FontWeight="SemiBold" />
+                    <syncfusion:SfDatePicker Value="{Binding EndDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                           SetValueOnLostFocus="True"
+                                           Width="140"
+                                           AutomationProperties.Name="End date picker"
+                                           AutomationProperties.HelpText="Select the end date for custom range">
+                        <syncfusion:SfDatePicker.Style>
+                            <Style TargetType="syncfusion:SfDatePicker" BasedOn="{StaticResource {x:Type syncfusion:SfDatePicker}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDateRangeValid}" Value="False">
+                                        <Setter Property="BorderBrush" Value="#FFFF6B6B" />
+                                        <Setter Property="BorderThickness" Value="2" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </syncfusion:SfDatePicker.Style>
+                    </syncfusion:SfDatePicker>
+                </StackPanel>
+
+                <!-- Enterprise Selector -->
+                <StackPanel Grid.Column="8" Orientation="Vertical">
+                    <TextBlock Text="Enterprise" Foreground="#FFCEE6FF" FontWeight="SemiBold" />
+                    <syncfusion:ComboBoxAdv ItemsSource="{Binding Enterprises}"
+                                            DisplayMemberPath="Name"
+                                            SelectedValuePath="Id"
+                                            SelectedValue="{Binding EnterpriseId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            Width="180"
+                                            AutomationProperties.Name="Enterprise selector"
+                                            AutomationProperties.HelpText="Select an enterprise to filter analytics data" />
+                </StackPanel>
+
+                <!-- Action Buttons -->
+                <StackPanel Grid.Column="12" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right">
+                    <Button Content="Load Data"
+                            Command="{Binding LoadDataCommand}"
+                            Width="100"
+                            Height="36"
+                            Margin="0,0,8,0"
+                            AutomationProperties.Name="Load analytics data"
+                            AutomationProperties.HelpText="Load analytics data with current selections" />
+                    <Button Content="Refresh"
+                            Command="{Binding RefreshAnalyticsCommand}"
+                            Width="100"
+                            Height="36"
+                            Margin="0,0,8,0"
+                            AutomationProperties.Name="Refresh analytics data"
+                            AutomationProperties.HelpText="Refresh the analytics data with current settings" />
+                    <Button Content="Export"
+                            Command="{Binding ExportChartCommand}"
+                            Width="100"
+                            Height="36"
+                            Margin="0,0,8,0"
+                            AutomationProperties.Name="Export chart data"
+                            AutomationProperties.HelpText="Export the current chart data to Excel" />
+                    <Button Content="Drill Down"
+                            Command="{Binding DrillDownCommand}"
+                            Width="100"
+                            Height="36"
+                            Margin="0,0,8,0"
+                            AutomationProperties.Name="Drill down into data"
+                            AutomationProperties.HelpText="Drill down into detailed data for the selected chart" />
+                    <Button Content="AI Insights"
+                            Command="{Binding GenerateInsightsCommand}"
+                            Width="100"
+                            Height="36"
+                            AutomationProperties.Name="Generate AI insights"
+                            AutomationProperties.HelpText="Generate AI-powered insights from the analytics data" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1" Margin="16,0,16,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Charts and Data Display -->
+            <syncfusion:TileViewControl Grid.Row="0"
+                                        ColumnCount="2"
+                                        RowCount="2"
+                                        AnimationDuration="0:0:0.400">
+                <!-- Main Chart -->
+                <syncfusion:TileViewItem Header="{Binding SelectedChartType, StringFormat='{}Chart: {0}'}">
+                    <Grid>
+                        <syncfusion:SfChart x:Name="AnalyticsChart"
+                                           Background="#FF111E2E"
+                                           BorderBrush="#FFCEE6FF"
+                                           BorderThickness="1">
+                            <syncfusion:SfChart.Header>
+                                <TextBlock Text="{Binding SelectedChartType, StringFormat='{}Analytics: {0}'}"
+                                         FontSize="16"
+                                         FontWeight="SemiBold"
+                                         Foreground="#FFCEE6FF"
+                                         HorizontalAlignment="Center" />
+                            </syncfusion:SfChart.Header>
+
+                            <syncfusion:SfChart.PrimaryAxis>
+                                <syncfusion:CategoryAxis LabelPlacement="BetweenTicks"
+                                                       Foreground="#FFCEE6FF"
+                                                       FontSize="12" />
+                            </syncfusion:SfChart.PrimaryAxis>
+
+                            <syncfusion:SfChart.SecondaryAxis>
+                                <syncfusion:NumericalAxis Foreground="#FFCEE6FF"
+                                                       FontSize="12" />
+                            </syncfusion:SfChart.SecondaryAxis>
+
+                            <syncfusion:SfChart.Legend>
+                                <syncfusion:ChartLegend Background="Transparent"
+                                                      Foreground="#FFCEE6FF"
+                                                      DockPosition="Bottom" />
+                            </syncfusion:SfChart.Legend>
+
+                            <syncfusion:SfChart.Series>
+                                <syncfusion:ColumnSeries ItemsSource="{Binding ChartDataPoints}"
+                                                        XBindingPath="XValue"
+                                                        YBindingPath="YValue"
+                                                        Label="{Binding Label}"
+                                                        Interior="#FF2196F3"
+                                                        EnableAnimation="True"
+                                                        ShowTooltip="True" />
+                            </syncfusion:SfChart.Series>
+                        </syncfusion:SfChart>
+
+                        <!-- Empty State Overlay -->
+                        <Border Background="#CC111E2E"
+                               Visibility="{Binding HasChartData, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch">
+                            <StackPanel HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Orientation="Vertical">
+                                <TextBlock Text="📊"
+                                         FontSize="48"
+                                         HorizontalAlignment="Center"
+                                         Foreground="#FFCEE6FF"
+                                         Margin="0,0,0,16" />
+                                <TextBlock Text="No Data Available"
+                                         FontSize="18"
+                                         FontWeight="SemiBold"
+                                         HorizontalAlignment="Center"
+                                         Foreground="#FFCEE6FF"
+                                         Margin="0,0,0,8" />
+                                <TextBlock Text="Select a chart type and time period, then click 'Load Data' to view analytics."
+                                         FontSize="14"
+                                         HorizontalAlignment="Center"
+                                         TextAlignment="Center"
+                                         Foreground="#FF8B9BB4"
+                                         MaxWidth="300"
+                                         TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </syncfusion:TileViewItem>
+
+                <!-- Summary Statistics -->
+                <syncfusion:TileViewItem Header="Summary Statistics">
+                    <Grid Background="#FF111E2E">
+                        <ScrollViewer Margin="16" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding SummaryStatistics}"
+                                        Margin="8">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#FFCEE6FF"
+                                                BorderThickness="0,0,0,1"
+                                                Margin="0,0,0,8">
+                                            <Grid Margin="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Key}"
+                                                         Foreground="#FFCEE6FF"
+                                                         FontWeight="SemiBold" />
+                                                <TextBlock Grid.Column="1"
+                                                         Text="{Binding Value, StringFormat=C2}"
+                                                         Foreground="White"
+                                                         HorizontalAlignment="Right" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </syncfusion:TileViewItem>
+
+                <!-- Drill Down Data -->
+                <syncfusion:TileViewItem Header="{Binding DrillDownLevel, StringFormat='{}Drill Down Level {0}'}">
+                    <Grid Background="#FF111E2E">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Drill Down Controls -->
+                        <Border Grid.Row="0"
+                                Background="#33161F2D"
+                                Margin="16,16,16,0"
+                                Padding="12"
+                                CornerRadius="6"
+                                Visibility="{Binding HasDrillDownData, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Back"
+                                        Command="{Binding BackFromDrillDownCommand}"
+                                        Width="80"
+                                        Height="32"
+                                        Margin="0,0,8,0"
+                                        Visibility="{Binding DrillDownLevel, Converter={StaticResource GreaterThanConverter}, ConverterParameter=0}" />
+                                <Button Content="Select"
+                                        Command="{Binding SelectDrillDownItemCommand}"
+                                        CommandParameter="{Binding SelectedDrillDownItem}"
+                                        Width="80"
+                                        Height="32"
+                                        IsEnabled="{Binding SelectedDrillDownItem, Converter={StaticResource NullToBoolConverter}}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Drill Down Data Grid -->
+                        <syncfusion:SfDataGrid Grid.Row="1"
+                                              Margin="16"
+                                              ItemsSource="{Binding DrillDownData}"
+                                              SelectionMode="Single"
+                                              SelectedItem="{Binding SelectedDrillDownItem, Mode=TwoWay}"
+                                              AutoGenerateColumns="True"
+                                              AllowSorting="True"
+                                              AllowFiltering="True"
+                                              ShowRowHeader="True"
+                                              UseLayoutRounding="True"
+                                              Visibility="{Binding HasDrillDownData, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                              AutomationProperties.Name="Drill down data grid"
+                                              AutomationProperties.HelpText="Detailed data for drill down analysis. Select rows to further analyze." />
+
+                        <!-- No Drill Down Message -->
+                        <TextBlock Grid.Row="1"
+                                 Text="Click 'Drill Down' to view detailed data"
+                                 Foreground="#FFCEE6FF"
+                                 FontSize="16"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 Visibility="{Binding HasDrillDownData, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                    </Grid>
+                </syncfusion:TileViewItem>
+
+                <!-- Current Analytics Data -->
+                <syncfusion:TileViewItem Header="Current Data">
+                    <Grid Background="#FF111E2E">
+                        <syncfusion:SfDataGrid Margin="16"
+                                              ItemsSource="{Binding CurrentAnalyticsData}"
+                                              AutoGenerateColumns="True"
+                                              AllowSorting="True"
+                                              AllowFiltering="True"
+                                              ShowRowHeader="True"
+                                              UseLayoutRounding="True"
+                                              AutomationProperties.Name="Current analytics data grid"
+                                              AutomationProperties.HelpText="Current analytics data for export and analysis." />
+                    </Grid>
+                </syncfusion:TileViewItem>
+            </syncfusion:TileViewControl>
+
+            <!-- Status Bar -->
+            <Border Grid.Row="1"
+                    Background="#66161F2D"
+                    Margin="0,8,0,0"
+                    Padding="12"
+                    CornerRadius="6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="{Binding SelectedChartType, StringFormat='Chart: {0}'}"
+                             Foreground="#FFCEE6FF"
+                             VerticalAlignment="Center" />
+
+                    <TextBlock Grid.Column="1"
+                             Text="{Binding SelectedTimePeriod, StringFormat='Period: {0}'}"
+                             Foreground="#FFCEE6FF"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center" />
+
+                    <TextBlock Grid.Column="2"
+                             Text="{Binding DrillDownLevel, StringFormat='Drill Down Level: {0}'}"
+                             Foreground="#FFCEE6FF"
+                             VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,366 @@
+<UserControl x:Class="WileyWidget.Views.Panels.AIAssistPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+             xmlns:chat="clr-namespace:Syncfusion.UI.Xaml.Chat;assembly=Syncfusion.SfChat.WPF"
+             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:prism="http://prismlibrary.com/"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="800"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Loaded="OnViewLoaded"
+             AutomationProperties.Name="AI Assistant Panel"
+             AutomationProperties.HelpText="AI assistant interface for municipal utility management and financial planning">
+    <UserControl.InputBindings>
+        <!-- Keyboard shortcuts for primary actions -->
+        <KeyBinding Key="Enter" Modifiers="Control" Command="{Binding SendMessageCommand}" />
+        <KeyBinding Key="S" Modifiers="Alt" Command="{Binding SendMessageCommand}" />
+        <KeyBinding Key="R" Modifiers="Alt" Command="{Binding RefreshLiveDataCommand}" />
+    </UserControl.InputBindings>
+    <UserControl.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Message styling converters -->
+        <local:UserMessageBackgroundConverter x:Key="UserMessageBackgroundConverter" />
+        <local:MessageAlignmentConverter x:Key="MessageAlignmentConverter" />
+        <local:MessageForegroundConverter x:Key="MessageForegroundConverter" />
+        <local:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <!-- Main AI Assist Content -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Hidden probe control ensures UI automation tests find at least one WPF Control instance -->
+        <Button x:Name="UiProbeControl" Visibility="Collapsed" />
+
+        <!-- AI Chat Area -->
+        <Grid Grid.Row="0" Margin="10">
+            <!-- Empty State -->
+            <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                    Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}}"
+                    CornerRadius="8">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
+                    <TextBlock Text="🤖" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                    <TextBlock Text="AI Assistant Ready"
+                             FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                    <TextBlock Text="{Binding EmptyStateMessage}"
+                             TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
+                             Foreground="{DynamicResource SecondaryTextBrush}" MaxWidth="400" />
+                </StackPanel>
+            </Border>
+
+            <!-- Error State -->
+            <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Visibility="{Binding ShowErrorState, Converter={StaticResource BoolToVis}}"
+                    CornerRadius="8">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
+                    <TextBlock Text="⚠️" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                    <TextBlock Text="Something went wrong"
+                             FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                    <TextBlock Text="{Binding ErrorStateMessage}"
+                             TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
+                             Foreground="{DynamicResource ErrorBrush}" MaxWidth="400" Margin="0,0,0,15" />
+                    <syncfusion:ButtonAdv Label="Try _Again"
+                                        Command="{Binding RefreshLiveDataCommand}"
+                                        HorizontalAlignment="Center"
+                                        AutomationProperties.Name="Retry Button"
+                                        AutomationProperties.HelpText="Retry loading the AI assistant" />
+                </StackPanel>
+            </Border>
+
+            <!-- Loading State -->
+            <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                    CornerRadius="8">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
+                    <syncfusion:SfBusyIndicator IsBusy="{Binding IsLoading}"
+                                              AnimationType="Gear"
+                                              ViewboxWidth="50" ViewboxHeight="50"
+                                              Margin="0,0,0,15"
+                                              AutomationProperties.Name="AI Assistant Loading Indicator"
+                                              AutomationProperties.HelpText="Indicates that the AI assistant is loading" />
+                    <TextBlock Text="Loading AI Assistant..."
+                             FontSize="16" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- Chat Content -->
+            <chat:SfAIAssistView CurrentUser="{Binding CurrentUser}"
+                                  Messages="{Binding AiMessages}"
+                                  Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                  AutomationProperties.Name="AI Assistant Chat Area"
+                                  AutomationProperties.HelpText="Displays conversation with AI assistant for municipal utility management and financial planning" />
+        </Grid>
+
+        <!-- Input Area with Validation -->
+        <Border Grid.Row="1" Margin="10,0,10,10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Background="{DynamicResource PanelBackgroundBrush}">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Message Input -->
+                <TextBox x:Name="MessageInput"
+                        Text="{Binding MessageText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        Height="60"
+                        Margin="0,0,0,5"
+                        KeyDown="OnMessageInputKeyDown"
+                        AutomationProperties.Name="AI Assistant Message Input"
+                        AutomationProperties.HelpText="Enter your message to send to the AI assistant" />
+
+                <!-- Validation Error -->
+                <TextBlock Grid.Row="1"
+                          Text="{Binding InputValidationError}"
+                          Foreground="{DynamicResource ErrorBrush}"
+                          FontSize="12"
+                          Margin="0,0,0,5"
+                          Visibility="{Binding InputValidationError, Converter={StaticResource EmptyStringToVisibilityConverter}, ConverterParameter=invert}"
+                          AutomationProperties.Name="Input Validation Error" />
+
+                <!-- Status Message -->
+                <TextBlock Grid.Row="2"
+                          Text="{Binding StatusMessage}"
+                          Foreground="{DynamicResource InfoBrush}"
+                          FontSize="12"
+                          Margin="0,0,0,5"
+                          Visibility="{Binding StatusMessage, Converter={StaticResource EmptyStringToVisibilityConverter}, ConverterParameter=invert}"
+                          AutomationProperties.Name="Status Message" />
+
+                <!-- Send Button -->
+                <syncfusion:ButtonAdv Grid.Row="3"
+                                    Label="_Send Message"
+                                    Command="{Binding SendMessageCommand}"
+                                    IsEnabled="{Binding IsInputValid}"
+                                    HorizontalAlignment="Right"
+                                    Margin="0,5,0,0"
+                                    AutomationProperties.Name="Send Message Button"
+                                    AutomationProperties.HelpText="Send your message to the AI assistant" />
+            </Grid>
+        </Border>
+        <StackPanel Grid.Row="1" Margin="10,0,10,10" Orientation="Vertical">
+            <!-- Typing Indicator -->
+            <TextBlock Text="Assistant is typing…"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       Margin="0,0,0,6"
+                       Visibility="{Binding IsTyping, Converter={StaticResource BoolToVis}}"
+                       AutomationProperties.Name="AI Assistant Typing Indicator"
+                       AutomationProperties.HelpText="The AI assistant is currently processing your request" />
+
+            <!-- Suggestions -->
+            <ItemsControl ItemsSource="{Binding Suggestions}" Margin="0,8,0,16">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Content="{Binding}"
+                                Margin="0,0,16,12"
+                                Padding="20,10"
+                                Background="{DynamicResource PanelBackgroundBrush}"
+                                BorderBrush="{DynamicResource PrimaryBrush}"
+                                BorderThickness="1"
+                                Foreground="{DynamicResource PrimaryBrush}"
+                                Cursor="Hand"
+                                Command="{Binding DataContext.ApplySuggestionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                AutomationProperties.Name="{Binding StringFormat='Suggestion: {0}'}"
+                                AutomationProperties.HelpText="Click to send this suggestion as your message to the AI assistant"
+                                ToolTip="{Binding}">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource SecondaryBrush}" />
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Financial Input Forms -->
+            <Border Background="#F8F9FA" BorderBrush="#E9ECEF" BorderThickness="1"
+                    Padding="15"
+                    Visibility="{Binding ShowFinancialInputs, Converter={StaticResource BoolToVis}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Service Charge Calculator Inputs -->
+                <GroupBox Grid.Row="0" Header="Service Charge Calculator"
+                         Visibility="{Binding IsServiceChargeMode, Converter={StaticResource BoolToVis}}"
+                         Margin="0,0,0,10">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Annual Expenses: Total yearly operational costs used to calculate service charge rates -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Annual Expenses:"
+                                 VerticalAlignment="Center" Margin="0,0,10,5"
+                                 AutomationProperties.Name="Annual Expenses Label" />
+                        <syncfusion:DoubleTextBox Grid.Row="0" Grid.Column="1"
+                                                Value="{Binding AnnualExpenses, Mode=TwoWay}"
+                                                Margin="0,0,10,5"
+                                                AutomationProperties.Name="Annual Expenses Input"
+                                                AutomationProperties.HelpText="Enter the total annual operational expenses for service charge calculation"
+                                                ToolTip="Total yearly costs in dollars" />
+
+                        <!-- Target Reserve %: Desired percentage of annual expenses to maintain as reserve fund -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Target Reserve %:"
+                                 VerticalAlignment="Center" Margin="0,0,10,5"
+                                 AutomationProperties.Name="Target Reserve Percentage Label" />
+                        <syncfusion:DoubleTextBox Grid.Row="1" Grid.Column="1"
+                                                Value="{Binding TargetReservePercentage, Mode=TwoWay}"
+                                                Margin="0,0,10,5"
+                                                AutomationProperties.Name="Target Reserve Percentage Input"
+                                                AutomationProperties.HelpText="Enter the desired percentage of annual expenses to maintain as reserve"
+                                                ToolTip="Percentage value (e.g., 10 for 10%)" />
+
+                        <!-- Calculate Button -->
+                        <syncfusion:ButtonAdv Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                                            Label="Calculate Service Charge"
+                                            Command="{Binding CalculateServiceChargeCommand}"
+                                            HorizontalAlignment="Right" Margin="0,10,0,0"
+                                            AutomationProperties.Name="Calculate Service Charge Button"
+                                            AutomationProperties.HelpText="Calculate recommended service charge based on entered values" />
+                    </Grid>
+                </GroupBox>
+
+                <!-- What-If Scenario Inputs -->
+                <GroupBox Grid.Row="1" Header="What-If Scenario Analysis"
+                         Visibility="{Binding IsWhatIfMode, Converter={StaticResource BoolToVis}}"
+                         Margin="0,0,0,10">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Scenario Description -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Scenario:"
+                                 VerticalAlignment="Center" Margin="0,0,10,5"
+                                 AutomationProperties.Name="What-If Scenario Description Label" />
+                        <TextBox Grid.Row="0" Grid.Column="1"
+                               Text="{Binding WhatIfScenario, Mode=TwoWay}"
+                               Margin="0,0,0,5"
+                               AutomationProperties.Name="What-If Scenario Description Input"
+                               AutomationProperties.HelpText="Describe your what-if scenario (e.g., '15% pay raise, benefits improvement')"
+                               ToolTip="Describe the scenario you want to analyze" />
+
+                        <!-- Variable to Change -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Variable:"
+                                 VerticalAlignment="Center" Margin="0,0,10,5"
+                                 AutomationProperties.Name="What-If Variable Label" />
+                        <ComboBox Grid.Row="1" Grid.Column="1"
+                                SelectedItem="{Binding WhatIfVariable, Mode=TwoWay}"
+                                Margin="0,0,0,5"
+                                AutomationProperties.Name="What-If Variable Selection"
+                                AutomationProperties.HelpText="Select which variable to change in your scenario"
+                                ToolTip="Choose the financial variable to modify">
+                            <ComboBoxItem Content="Annual Expenses" AutomationProperties.Name="Annual Expenses Option" />
+                            <ComboBoxItem Content="Target Reserve %" AutomationProperties.Name="Target Reserve Percentage Option" />
+                            <ComboBoxItem Content="Service Charge Rate" AutomationProperties.Name="Service Charge Rate Option" />
+                        </ComboBox>
+
+                        <!-- New Value -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="New Value:"
+                                 VerticalAlignment="Center" Margin="0,0,10,5"
+                                 AutomationProperties.Name="What-If New Value Label" />
+                        <syncfusion:DoubleTextBox Grid.Row="2" Grid.Column="1"
+                                                Value="{Binding WhatIfNewValue, Mode=TwoWay}"
+                                                Margin="0,0,0,5"
+                                                AutomationProperties.Name="What-If New Value Input"
+                                                AutomationProperties.HelpText="Enter the new value for the selected variable"
+                                                ToolTip="New value for the scenario analysis" />
+                    </Grid>
+                </GroupBox>
+
+                <!-- Proactive Insights Configuration -->
+                <GroupBox Grid.Row="2" Header="Proactive Insights Settings"
+                         Visibility="{Binding IsProactiveMode, Converter={StaticResource BoolToVis}}"
+                         Margin="0,0,0,10">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Alert Threshold -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Alert Threshold:"
+                                 VerticalAlignment="Center" Margin="0,0,10,5"
+                                 AutomationProperties.Name="Proactive Alert Threshold Label" />
+                        <syncfusion:DoubleTextBox Grid.Row="0" Grid.Column="1"
+                                                Value="{Binding ProactiveAlertThreshold, Mode=TwoWay}"
+                                                Margin="0,0,0,5"
+                                                AutomationProperties.Name="Proactive Alert Threshold Input"
+                                                AutomationProperties.HelpText="Set the threshold percentage for proactive alerts"
+                                                ToolTip="Threshold value as percentage (e.g., 80 for 80%)" />
+
+                        <!-- Enable Proactive Monitoring -->
+                        <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                Content="Enable proactive monitoring and alerts"
+                                IsChecked="{Binding EnableProactiveMonitoring, Mode=TwoWay}"
+                                Margin="0,5,0,0"
+                                AutomationProperties.Name="Enable Proactive Monitoring Checkbox"
+                                AutomationProperties.HelpText="Check to enable automatic proactive monitoring and alerts" />
+                    </Grid>
+                </GroupBox>
+            </Grid>
+            </Border>
+        </StackPanel>
+    </Grid>
+</UserControl>
+

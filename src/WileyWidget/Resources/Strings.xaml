@@ -1,0 +1,72 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:prism="http://prismlibrary.com/"
+                    xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+  <!-- Accessibility names/help -->
+  <sys:String x:Key="MunicipalAccounts_AccessibleName">Municipal Accounts View</sys:String>
+  <sys:String x:Key="MunicipalAccounts_AccessibleHelp">Review, filter, and manage municipal accounts.</sys:String>
+  <sys:String x:Key="Ribbon_AccessibleName">Account Management Ribbon</sys:String>
+
+  <!-- Ribbon -->
+  <sys:String x:Key="Ribbon_Tab_Accounts">Account Management</sys:String>
+  <sys:String x:Key="Btn_LoadAccounts">Load Accounts</sys:String>
+  <sys:String x:Key="Tip_LoadAccounts">Load all municipal accounts from database</sys:String>
+  <sys:String x:Key="Btn_SyncQuickBooks">Sync QuickBooks</sys:String>
+  <sys:String x:Key="Tip_SyncQuickBooks">Synchronize accounts from QuickBooks Online</sys:String>
+  <sys:String x:Key="Btn_BudgetAnalysis">Budget Analysis</sys:String>
+  <sys:String x:Key="Tip_BudgetAnalysis">Load budget analysis data</sys:String>
+  <sys:String x:Key="Btn_Refresh">Refresh</sys:String>
+  <sys:String x:Key="Tip_Refresh">Refresh account data</sys:String>
+
+  <!-- Filters -->
+  <sys:String x:Key="Filters_Header">Filters</sys:String>
+  <sys:String x:Key="Search_Label">Search Accounts</sys:String>
+  <sys:String x:Key="Search_Tip">Search by account name, number, fund, type, notes, or department</sys:String>
+  <sys:String x:Key="FundType_Label">Fund Type</sys:String>
+  <sys:String x:Key="FundType_Tip">Filter accounts by fund type</sys:String>
+  <sys:String x:Key="AccountType_Label">Account Type</sys:String>
+  <sys:String x:Key="AccountType_Tip">Filter accounts by account type</sys:String>
+  <sys:String x:Key="AdvancedFilters_Header">Advanced Filters</sys:String>
+  <sys:String x:Key="BalanceRange_Label">Balance Range</sys:String>
+  <sys:String x:Key="MinBalance_Label">Minimum balance</sys:String>
+  <sys:String x:Key="MinBalance_Tip">Set the minimum account balance to include</sys:String>
+  <sys:String x:Key="MaxBalance_Label">Maximum balance</sys:String>
+  <sys:String x:Key="MaxBalance_Tip">Set the maximum account balance to include</sys:String>
+  <sys:String x:Key="Department_Label">Department</sys:String>
+  <sys:String x:Key="Department_Tip">Filter by department</sys:String>
+  <sys:String x:Key="Btn_ApplyFilters">Apply Filters</sys:String>
+  <sys:String x:Key="Tip_ApplyFilters">Apply selected filters to account list</sys:String>
+  <sys:String x:Key="Btn_ClearFilters">Clear</sys:String>
+  <sys:String x:Key="Tip_ClearFilters">Clear all filters and show all accounts</sys:String>
+
+  <!-- Navigation -->
+  <sys:String x:Key="Navigation_Header">Navigation</sys:String>
+  <sys:String x:Key="Btn_Back">Back</sys:String>
+  <sys:String x:Key="Tip_Back">Return to main dashboard</sys:String>
+  <sys:String x:Key="Btn_Export">Export</sys:String>
+  <sys:String x:Key="Tip_Export">Export account data to Excel</sys:String>
+  <sys:String x:Key="Btn_Print">Print</sys:String>
+  <sys:String x:Key="Tip_Print">Print account report</sys:String>
+
+  <!-- Content header -->
+  <sys:String x:Key="MunicipalAccounts_Header">Municipal Accounts</sys:String>
+
+  <!-- DataGrid -->
+  <sys:String x:Key="AccountsGrid_AccessibleName">Accounts Data Grid</sys:String>
+  <sys:String x:Key="AccountsGrid_AccessibleHelp">Tabular view of municipal accounts with filtering and grouping.</sys:String>
+  <sys:String x:Key="Col_AccountNumber">Account #</sys:String>
+  <sys:String x:Key="Col_AccountName">Account Name</sys:String>
+  <sys:String x:Key="Tip_AccountName">Account name or description</sys:String>
+  <sys:String x:Key="Col_Fund">Fund</sys:String>
+  <sys:String x:Key="Tip_Fund">Fund classification (General, Special Revenue, etc.)</sys:String>
+  <sys:String x:Key="Col_Type">Type</sys:String>
+  <sys:String x:Key="Tip_Type">Account type (Asset, Liability, Revenue, Expense)</sys:String>
+  <sys:String x:Key="Col_Balance">Balance</sys:String>
+  <sys:String x:Key="Tip_Balance">Current account balance</sys:String>
+  <sys:String x:Key="Col_Department">Department</sys:String>
+  <sys:String x:Key="Tip_Department">Department assigned to this account</sys:String>
+  <sys:String x:Key="Col_Notes">Notes</sys:String>
+  <sys:String x:Key="Tip_Notes">Additional notes or comments</sys:String>
+  <sys:String x:Key="Summary_Title">Total Accounts: {Count} | Total Balance: {Balance}</sys:String>
+</ResourceDictionary>

@@ -1,0 +1,632 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AnalysisLevel>6.0</AnalysisLevel>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <RunAnalyzers>false</RunAnalyzers>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <!-- Nullable enabled for better null safety and code quality -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <RunAnalyzers>false</RunAnalyzers>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <NoWarn>
+      $(NoWarn);NETSDK1206;NU1605;NU1008;NU1604;NU1902;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS0103;CS1061;CS1929;CA1416;CA1812</NoWarn>
+    <!-- Temporarily disable TreatWarningsAsErrors to allow restore/build while resolving transitive
+    downgrades. Re-enable after fixes. -->
+    <!-- Suppress the NuGet warning suggesting upgrading Microsoft.CodeAnalysis.NetAnalyzers package
+                 to match the SDK analyzers. This is a temporary, opt-in suppression used during migration. -->
+    <_SkipUpgradeNetAnalyzersNuGetWarning>true</_SkipUpgradeNetAnalyzersNuGetWarning>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
+    <!-- Standardize RID for WPF: prefer single Windows RID to avoid lockfile RID mismatch -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <StartupObject>WileyWidget.Program</StartupObject>
+
+    <!-- Disable CPM for this project to ensure wpftmp gets explicit versions -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!-- Allow implicit framework references so mscorlib and runtime reference resolution works for
+    WPF XAML compile -->
+    <DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
+    <!-- XAML Debugging
+    Configuration -->
+    <XamlDebuggingInformation>true</XamlDebuggingInformation>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+
+    <!-- Enable binary logging for XAML diagnostics -->
+    <MSBuildDebugPathEnabled>true</MSBuildDebugPathEnabled>
+
+    <!-- Performance optimizations for startup -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishTrimmed>false</PublishTrimmed>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredPGO>true</TieredPGO>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+
+    <!-- Prefer modern wpftmp path; allow WPF to copy NuGet assets for temp project -->
+    <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
+
+    <!-- Disable ReadyToRun for Debug builds to improve build performance -->
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">false</PublishReadyToRun>
+
+    <!-- Assembly signing configuration: enabled for Release/Production builds -->
+    <!-- Development builds use SignAssembly=false for faster iteration -->
+    <!-- Production builds REQUIRE SignAssembly=true for security and integrity -->
+    <SignAssembly Condition="'$(Configuration)' == 'Release' OR '$(Configuration)' == 'Production'">
+      true</SignAssembly>
+    <SignAssembly Condition="'$(Configuration)' == 'Debug'">false</SignAssembly>
+    <AssemblyOriginatorKeyFile>signing\WileyWidget.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>false</DelaySign>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AnalysisLevel>6.0</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <!-- Production-specific configuration -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Production'">
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>true</Optimize>
+    <DefineConstants>TRACE;RELEASE;PRODUCTION</DefineConstants>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishTrimmed>false</PublishTrimmed>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+  </PropertyGroup>
+
+  <!-- Ensure Prism references are available to the WPF markup temporary project (wpftmp)
+       so App.xaml XAML can resolve PrismApplication and Prism types during markup compilation.
+       This prevents MC3074 errors by ensuring all Prism assemblies are included in wpftmp. -->
+
+  <!-- Exclude App.xaml from WPF ApplicationDefinition to avoid wpftmp Prism XAML resolution -->
+  <ItemGroup>
+    <ApplicationDefinition Remove="src\App.xaml" />
+    <Page Remove="src\App.xaml" />
+    <None Include="src\App.xaml" />
+  </ItemGroup>
+
+  <!-- Allow test assembly to access internal members for testing -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>WileyWidget.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- ENHANCED: Force full assembly resolution in wpftmp with comprehensive error handling -->
+  <Target
+      Name="IncludeAllAssembliesInTemporaryAssembly"
+      BeforeTargets="GenerateTemporaryTargetAssembly;MarkupCompilePass1"
+      AfterTargets="ResolveAssemblyReferences">
+
+    <!-- Include ALL critical assemblies for wpftmp, not just Prism -->
+    <ItemGroup>
+      <!-- Prism assemblies -->
+      <_CriticalAssemblies
+          Include="@(ReferencePath)"
+          Condition="'%(ReferencePath.NuGetPackageId)' == 'Prism.Wpf' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Prism.Core' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Prism.DryIoc' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Prism.Container.DryIoc' OR
+                     '%(ReferencePath.Filename)' == 'DryIoc'" />
+
+      <!-- Syncfusion assemblies -->
+      <_CriticalAssemblies
+          Include="@(ReferencePath)"
+          Condition="'%(ReferencePath.NuGetPackageId)' != '' AND (
+                     '%(ReferencePath.NuGetPackageId)' == 'Syncfusion.Licensing' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Syncfusion.SfSkinManager.WPF' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Syncfusion.Shared.WPF' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Syncfusion.Themes.FluentDark.WPF' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Syncfusion.Themes.FluentLight.WPF')" />
+
+      <!-- Microsoft.Extensions assemblies -->
+      <_CriticalAssemblies
+          Include="@(ReferencePath)"
+          Condition="'%(ReferencePath.NuGetPackageId)' != '' AND (
+                     '%(ReferencePath.NuGetPackageId)' == 'Microsoft.Extensions.DependencyInjection' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Microsoft.Extensions.Configuration' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Microsoft.Extensions.Logging')" />
+
+      <!-- Serilog assemblies -->
+      <_CriticalAssemblies
+          Include="@(ReferencePath)"
+          Condition="'%(ReferencePath.NuGetPackageId)' != '' AND (
+                     '%(ReferencePath.NuGetPackageId)' == 'Serilog' OR
+                     '%(ReferencePath.NuGetPackageId)' == 'Serilog.Extensions.Logging')" />
+
+      <!-- Our own WileyWidget assembly and related projects -->
+      <_CriticalAssemblies
+          Include="@(ReferencePath)"
+          Condition="$([System.String]::new('%(ReferencePath.Filename)').Contains('WileyWidget'))" />
+    </ItemGroup>
+
+    <!-- Enhanced logging for diagnostics -->
+    <Message
+        Text="[WPFTMP] Found @(_CriticalAssemblies->Count()) critical assemblies for wpftmp compilation"
+        Importance="high" />
+    <Message
+        Text="[WPFTMP] Critical assemblies: @(_CriticalAssemblies->'%(Filename)', ', ')"
+        Importance="high" />
+
+    <!-- Ensure these references are available to wpftmp -->
+    <ItemGroup>
+      <Reference Include="@(_CriticalAssemblies)" />
+    </ItemGroup>
+
+    <!-- Add explicit assembly binding redirects for wpftmp -->
+    <ItemGroup>
+      <_WpfTmpAssemblySearchPath Include="@(_CriticalAssemblies->'%(RootDir)%(Directory)'->Distinct())" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <AssemblySearchPaths>$(AssemblySearchPaths);@(_WpfTmpAssemblySearchPath, ';')</AssemblySearchPaths>
+    </PropertyGroup>
+
+    <!-- Enhanced validation with specific assembly checks -->
+    <Warning
+        Condition="'@(_CriticalAssemblies)' == '' OR @(_CriticalAssemblies->Count()) &lt; 5"
+        Text="[WPFTMP] WARNING: Insufficient critical assemblies found (@(_CriticalAssemblies->Count())). XAML compilation may fail!" />
+
+    <!-- Check for specific critical assemblies -->
+    <ItemGroup>
+      <_PrismCheck
+          Include="@(_CriticalAssemblies)"
+          Condition="$([System.String]::new('%(Filename)').Contains('Prism'))" />
+      <_SyncfusionCheck
+          Include="@(_CriticalAssemblies)"
+          Condition="$([System.String]::new('%(Filename)').Contains('Syncfusion'))" />
+    </ItemGroup>
+
+    <Warning
+        Condition="'@(_PrismCheck)' == ''"
+        Text="[WPFTMP] WARNING: No Prism assemblies found for wpftmp - PrismApplication XAML resolution will fail!" />
+    <Warning
+        Condition="'@(_SyncfusionCheck)' == ''"
+        Text="[WPFTMP] WARNING: No Syncfusion assemblies found for wpftmp - Syncfusion control styles may fail!" />
+  </Target>
+
+  <!-- Additional target to ensure self-reference for custom controls like PolishHost -->
+  <Target
+      Name="IncludeSelfReferenceForCustomControls"
+      BeforeTargets="GenerateTemporaryTargetAssembly;MarkupCompilePass1"
+      AfterTargets="IncludeAllAssembliesInTemporaryAssembly">
+
+    <!-- Force include our own assembly for custom controls -->
+    <PropertyGroup>
+      <_SelfAssemblyName>$(AssemblyName)</_SelfAssemblyName>
+      <_SelfAssemblyName Condition="'$(AssemblyName)' == ''">$(MSBuildProjectName)</_SelfAssemblyName>
+    </PropertyGroup>
+
+    <!-- Create temporary reference to self for XAML compilation -->
+    <ItemGroup>
+      <_SelfReference
+          Include="$(OutputPath)$(_SelfAssemblyName).dll"
+          Condition="Exists('$(OutputPath)$(_SelfAssemblyName).dll')" />
+      <_SelfReference
+          Include="$(OutDir)$(_SelfAssemblyName).dll"
+          Condition="Exists('$(OutDir)$(_SelfAssemblyName).dll')" />
+    </ItemGroup>
+
+    <!-- Add self-reference to wpftmp if assembly exists -->
+    <ItemGroup Condition="'@(_SelfReference)' != ''">
+      <Reference Include="@(_SelfReference)" />
+      <_WpfTmpAssemblySearchPath Include="@(_SelfReference->'%(RootDir)%(Directory)')" />
+    </ItemGroup>
+
+    <Message
+        Text="[WPFTMP] Self-reference for custom controls: @(_SelfReference, ', ')"
+        Importance="high"
+        Condition="'@(_SelfReference)' != ''" />
+    <Warning
+        Text="[WPFTMP] Self-assembly not found for custom controls - PolishHost and other custom controls may not resolve during XAML compilation"
+        Condition="'@(_SelfReference)' == ''" />
+  </Target>
+
+  <!-- Additional XAML namespace mapping shim for wpftmp -->
+  <Target
+      Name="AddXamlNamespaceMappings"
+      BeforeTargets="GenerateTemporaryTargetAssembly;MarkupCompilePass1"
+      AfterTargets="IncludeSelfReferenceForCustomControls">
+
+    <!-- Define explicit XAML namespace mappings for wpftmp -->
+    <ItemGroup>
+      <XamlNamespaceMapping Include="clr-namespace:WileyWidget.Controls">
+        <AssemblyName>$(AssemblyName)</AssemblyName>
+        <ClrNamespace>WileyWidget.Controls</ClrNamespace>
+      </XamlNamespaceMapping>
+      <XamlNamespaceMapping Include="clr-namespace:WileyWidget.Converters">
+        <AssemblyName>$(AssemblyName)</AssemblyName>
+        <ClrNamespace>WileyWidget.Converters</ClrNamespace>
+      </XamlNamespaceMapping>
+      <!-- Add more mappings as needed -->
+    </ItemGroup>
+
+    <Message
+        Text="[WPFTMP] Added XAML namespace mappings for WileyWidget.Controls and WileyWidget.Converters"
+        Importance="high" />
+  </Target>
+
+  <!-- The wpftmp shim is included only for the temporary WPF markup project (configured below)
+             to avoid affecting normal runtime compilation. See the wpftmp-specific ItemGroup later. -->
+
+  <ItemGroup>
+    <PackageReference
+        Include="BoldReports.WPF"
+        Version="11.1.15" />
+    <PackageReference
+        Include="Microsoft.ApplicationInsights"
+        Version="2.23.0" />
+    <!-- Removed explicit Roslyn runtime packages to avoid Hot Reload conflicts in VS -->
+    <PackageReference
+        Include="Microsoft.Xaml.Behaviors.Wpf"
+        Version="1.1.39" />
+    <PackageReference
+        Include="Polly.Extensions"
+        Version="8.6.4" />
+    <!-- Prism packages - explicit versions for wpftmp compatibility -->
+    <PackageReference
+        Include="Prism.Core"
+        Version="9.0.537" />
+    <PackageReference
+        Include="Prism.Wpf"
+        Version="9.0.537" />
+    <PackageReference
+        Include="Prism.DryIoc"
+        Version="9.0.537" />
+    <PackageReference
+        Include="Microsoft.Extensions.DependencyInjection.Abstractions"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Microsoft.EntityFrameworkCore"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Microsoft.EntityFrameworkCore.SqlServer"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Microsoft.EntityFrameworkCore.Tools"
+        Version="9.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference
+        Include="Microsoft.Data.SqlClient"
+        Version="6.1.2" />
+    <PackageReference
+        Include="Microsoft.Extensions.Configuration.EnvironmentVariables"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Microsoft.Extensions.Configuration.UserSecrets"
+        Version="9.0.10" />
+    <PackageReference
+        Include="DotNetEnv"
+        Version="3.1.1" />
+    <PackageReference
+        Include="Microsoft.Extensions.Caching.Memory"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Microsoft.Extensions.Hosting"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Microsoft.Extensions.DependencyInjection"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Microsoft.Extensions.Http"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Microsoft.Extensions.Logging"
+        Version="9.0.10" />
+    <PackageReference
+        Include="Serilog"
+        Version="4.3.0" />
+    <PackageReference
+        Include="Serilog.Enrichers.Environment"
+        Version="3.0.1" />
+    <PackageReference
+        Include="Serilog.Enrichers.Process"
+        Version="3.0.0" />
+    <PackageReference
+        Include="Serilog.Enrichers.Thread"
+        Version="4.0.0" />
+    <PackageReference
+        Include="Serilog.Settings.Configuration"
+        Version="9.0.0" />
+    <PackageReference
+        Include="Serilog.Sinks.Async"
+        Version="2.1.0" />
+    <PackageReference
+        Include="Serilog.Sinks.Email"
+        Version="4.1.0" />
+    <PackageReference
+        Include="Serilog.Sinks.File"
+        Version="4.1.0" />
+    <PackageReference
+        Include="Syncfusion.Licensing"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfBusyIndicator.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfChart.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfChat.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfGauge.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfGrid.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfInput.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfProgressBar.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfRichTextBoxAdv.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfSkinManager.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfSpreadsheet.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfTreeView.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.SfGridCommon.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.Shared.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.Themes.FluentDark.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.Themes.FluentLight.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.Tools.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.XlsIO.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="Syncfusion.Pdf.WPF"
+        Version="31.1.17" />
+    <PackageReference
+        Include="FluentValidation"
+        Version="11.11.0" />
+    <PackageReference
+        Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization"
+        Version="9.10.0" />
+    <PackageReference
+        Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common"
+        Version="9.10.0" />
+    <PackageReference
+        Include="System.Management"
+        Version="9.0.10" />
+    <!-- Resilience Packages -->
+    <PackageReference
+        Include="Polly"
+        Version="8.6.4" />
+    <PackageReference
+        Include="Polly.Extensions.Http"
+        Version="3.0.0" />
+    <PackageReference
+        Include="Microsoft.Extensions.Http.Resilience"
+        Version="9.1.0" />
+    <!-- SigNoz OpenTelemetry Packages -->
+    <PackageReference
+        Include="OpenTelemetry"
+        Version="[1.9.0, 2.0.0)" />
+    <PackageReference
+        Include="OpenTelemetry.Exporter.Console"
+        Version="[1.9.0, 2.0.0)" />
+    <PackageReference
+        Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"
+        Version="[1.9.0, 2.0.0)" />
+    <PackageReference
+        Include="OpenTelemetry.Instrumentation.Http"
+        Version="[1.9.0, 2.0.0)" />
+    <PackageReference
+        Include="OpenTelemetry.Extensions.Hosting"
+        Version="[1.9.0, 2.0.0)" />
+    <!-- Additional OpenTelemetry packages for comprehensive instrumentation -->
+    <!-- EntityFrameworkCore instrumentation removed - package not available as stable -->
+    <!-- <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" /> -->
+    <!-- SqlClient instrumentation removed - package not available as stable -->
+    <!-- <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" /> -->
+    <!-- AI Integration Packages -->
+    <!-- AI Integration Packages (removed - not used in bootstrapper/production code). If needed,
+    re-add in the specific module projects) -->
+    <!-- Azure Configuration Packages -->
+    <!-- No external QuickBooks SDK yet; using raw HTTP + PKCE. Add Intuit packages later if
+    desired. -->
+    <!-- QuickBooks SDK packages (Step 2) - modern package IDs differ from older docs -->
+    <PackageReference
+        Include="IppOAuth2PlatformSdk"
+        Version="14.0.0" />
+    <PackageReference
+        Include="IppDotNetSdkForQuickBooksApiV3"
+        Version="14.7.0.1" />
+    <PackageReference
+        Include="Microsoft.CodeAnalysis.NetAnalyzers"
+        Version="9.0.0"
+        PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Prevent duplicate compilation of sources that belong to other class library projects.
+       The workspace contains full-source copies under `src\` which are compiled into
+       their respective projects (WileyWidget.UI, WileyWidget.Services, etc.).
+       Remove those from the root project to avoid CS0436 duplicate-type conflicts,
+       but keep the application definition files required by this root project. -->
+  <ItemGroup>
+    <!-- Prevent broad compilation of workspace 'src' to avoid duplicate-type definitions.
+         Only include the application entry points here; UI-specific types (converters, views,
+         viewmodels) are compiled into the WileyWidget.UI project to keep assemblies single-authority. -->
+    <Compile Remove="src\**\*.cs" />
+    <Compile Include="src\App.xaml.cs" />
+    <Compile Include="src\Program.cs" />
+    <!-- Include Configuration sources needed by App.xaml.cs (excluding PolicyFactory which is in
+    Startup project) -->
+    <Compile Include="src\Configuration\AppOptionsConfiguration.cs" />
+    <Compile Include="src\Configuration\DatabaseConfiguration.cs" />
+    <Compile Include="src\Configuration\WpfHostingExtensions.cs" />
+    <Compile Include="src\Configuration\WpfApplicationHostExtensions.cs" />
+    <Compile Include="src\Configuration\OptionsValidators.cs" />
+    <Compile Include="src\Configuration\StaticOptionsMonitor.cs" />
+    <Compile Include="src\Configuration\AccountTypeValidator.cs" />
+    <Compile Include="src\Configuration\Resilience\PolicyFactory.cs" />
+    <Compile Include="src\Configuration\Resilience\DatabaseResiliencePolicy.cs" />
+    <!-- Include Diagnostics sources needed by App.xaml.cs -->
+    <Compile Include="src\Diagnostics\StartupPerformanceMonitor.cs" />
+    <Compile Include="src\Diagnostics\BindingErrorTraceListener.cs" />
+    <Compile Include="src\Diagnostics\XamlDiagnosticsService.cs" />
+    <!-- Include background database initializer used by App.xaml.cs during startup -->
+    <Compile Include="src\Startup\DatabaseInitializer.cs" />
+    <!-- Include startup orchestrator and diagnostics services -->
+    <Compile Include="src\Startup\StartupOrchestrator.cs" />
+    <Compile Include="src\Startup\StartupDiagnosticsService.cs" />
+    <Compile Include="src\HealthCheckHostedService.cs" />
+    <!-- QuickBooksService.cs moved to WileyWidget.Services project -->
+    <!-- Include Prism modules from Startup\Modules directory -->
+    <Compile Include="src\Startup\Modules\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="WileyWidget.UI\WileyWidget.UI.csproj" />
+    <ProjectReference Include="WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+  </ItemGroup>
+
+  <!-- Design-time noise suppression: exclude Region-heavy sources from the
+       temporary wpftmp project only. This does NOT affect normal builds. -->
+  <PropertyGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
+    <DefineConstants>$(DefineConstants);WPFTMP</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
+    <Compile Remove="src\Regions\**\*.cs" />
+    <Compile Remove="src\Behaviors\**\*.cs" />
+    <Compile Remove="src\Startup\Modules\**\*.cs" />
+    <Compile Remove="src\ViewModels\**\*.cs" />
+    <Compile Remove="src\Views\Shell.xaml.cs" />
+    <!-- Also exclude XAML Pages and their code-behind to avoid design-time g.cs references -->
+    <Compile Remove="src\Views\**\*.xaml.cs" />
+    <Page Remove="src\Views\**\*.xaml" />
+    <!-- Keep App.xaml and App.xaml.cs included for wpftmp so abstract PrismApplication methods are
+    implemented -->
+    <!-- Include a temporary shim that provides minimal Prism types when the WPF markup
+         temporary project (wpftmp) cannot resolve NuGet package references. This avoids
+         design-time/markup-compile errors while leaving runtime behavior unchanged. -->
+    <Compile Include="src\PrismWpftmpShim.cs" />
+  </ItemGroup>
+
+  <!-- Exclude test files and sample files from main project build -->
+  <ItemGroup>
+    <Compile Remove="WileyWidget.Tests\**" />
+    <Compile Remove="WileyWidget.UiTests\**" />
+    <Compile Remove="WileyWidget.TestModels\**" />
+    <Compile Remove="WileyWidget.ContainerTests\**" />
+    <Compile Remove="WileyWidget.Services.Tests\**" />
+    <Compile Remove="WileyWidget.IntegrationTests\**" />
+    <Compile Remove="tests\**" />
+    <Compile Remove="samples\LicenseKey.Private.sample.cs" />
+    <Compile Remove="Services\GrokAIService.cs" />
+    <Compile Remove="DatabaseTest\**" />
+    <Compile Remove="DatabaseSetup\**" />
+    <Compile Remove="DatabaseSeederRunner\**" />
+    <Compile Remove="DbTest\**" />
+    <Compile Remove="DbValidator\**" />
+    <Compile Remove="ExcelAnalyzer\**" />
+    <Compile Remove="temp-grant\**" />
+    <Compile Remove="WileyWidget.Business\**" />
+    <Compile Remove="WileyWidget.Data\**" />
+    <Compile Remove="WileyWidget.Models\**" />
+    <Compile Remove="WileyWidget.Webhooks\**" />
+    <Compile Remove="src\Models\**\*.cs" />
+    <EmbeddedResource Remove="WileyWidget.Business\**" />
+    <EmbeddedResource Remove="WileyWidget.Data\**" />
+    <EmbeddedResource Remove="WileyWidget.Models\**" />
+    <EmbeddedResource Remove="WileyWidget.Webhooks\**" />
+    <EmbeddedResource Remove="src\Models\**\*.*" />
+    <EmbeddedResource Remove="WileyWidget.IntegrationTests\**" />
+    <EmbeddedResource Remove="WileyWidget.Tests\**" />
+    <EmbeddedResource Remove="WileyWidget.UiTests\**" />
+    <EmbeddedResource Remove="WileyWidget.TestModels\**" />
+    <EmbeddedResource Remove="WileyWidget.ContainerTests\**" />
+    <EmbeddedResource Remove="WileyWidget.Services.Tests\**" />
+    <EmbeddedResource Remove="tests\**" />
+    <None Remove="WileyWidget.Business\**" />
+    <None Remove="WileyWidget.Data\**" />
+    <None Remove="WileyWidget.Models\**" />
+    <None Remove="WileyWidget.Webhooks\**" />
+    <None Remove="src\Models\**\*.*" />
+    <None Remove="WileyWidget.IntegrationTests\**" />
+    <None Remove="WileyWidget.Tests\**" />
+    <None Remove="WileyWidget.UiTests\**" />
+    <None Remove="WileyWidget.TestModels\**" />
+    <None Remove="WileyWidget.ContainerTests\**" />
+    <None Remove="WileyWidget.Services.Tests\**" />
+    <None Remove="tests\**" />
+    <None Remove="temp-grant\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="src\Resources\SplashScreen.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Ensure developer scripts are never compiled into the application -->
+  <ItemGroup>
+    <Compile Remove="scripts\**\*.cs" />
+    <None Include="scripts\**\*.cs" />
+  </ItemGroup>
+
+  <!-- Report Resources -->
+  <ItemGroup>
+    <Resource Include="src\Reports\EnterpriseSummary.rdl" />
+  </ItemGroup>
+
+  <!-- Ensure configuration files are copied to output directory -->
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Ensure theme resource dictionaries are copied to output directory -->
+  <ItemGroup>
+    <Content Include="src\Themes\*.xaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Clear VS designer cache after build to prevent stale XAML issues -->
+  <Target
+      Name="ClearDesignerCache"
+      AfterTargets="Clean">
+    <Exec Command="del /Q /S $(ProjectDir)\obj\*.cache" />
+  </Target>
+
+</Project>

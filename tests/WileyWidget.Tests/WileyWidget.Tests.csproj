@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AnalysisLevel>6.0</AnalysisLevel>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <RunAnalyzers>false</RunAnalyzers>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Xunit.StaFact" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+    <!-- Use centrally-managed Microsoft.Extensions.Logging versions from Directory.Packages.props -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <!-- EntityFrameworkCore InMemory provider used by repository tests -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <!-- FlaUI for WPF UI automation E2E tests (use signed variants only - no unsigned packages) -->
+    <PackageReference Include="FlaUI.UIA3.Signed" />
+    <!-- Selenium for web automation tests -->
+    <PackageReference Include="Selenium.WebDriver" />
+    <PackageReference Include="Appium.WebDriver" />
+    <!-- YAML processing for configuration -->
+    <PackageReference Include="YamlDotNet" />
+    <!-- Serilog logging for tests -->
+    <PackageReference Include="Serilog.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\WileyWidget.UI\WileyWidget.UI.csproj" />
+    <!-- Removed reference to main WileyWidget project to avoid type conflicts.
+         UI-related types should be accessed through WileyWidget.UI assembly. -->
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Configure Coverlet thresholds as a hint; enforce in CI separately -->
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>opencover</CoverletOutputFormat>
+  </PropertyGroup>
+
+
+</Project>

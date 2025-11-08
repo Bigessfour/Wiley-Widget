@@ -1,0 +1,389 @@
+<UserControl x:Class="WileyWidget.Views.Main.BudgetView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:WileyWidget.Converters"
+    xmlns:converters="clr-namespace:WileyWidget.Converters"
+    xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+    xmlns:notification="http://schemas.syncfusion.com/wpf"
+    xmlns:chart="clr-namespace:Syncfusion.UI.Xaml.Charts;assembly=Syncfusion.SfChart.WPF"
+        xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+    xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+        mc:Ignorable="d"
+        d:DesignHeight="900" d:DesignWidth="1200"
+        xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+    <!-- GASB-Compliant Municipal Budget Management UserControl -->
+    <!-- DataContext set programmatically: {Binding BudgetViewModel} -->
+    <!-- Theme: FluentDark with FluentLight fallback via SfSkinManager -->
+
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <local:BalanceColorConverter x:Key="BalanceColorConverter" />
+        <converters:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
+        <local:BudgetProgressConverter x:Key="BudgetProgressConverter" />
+
+        <!-- Pie Chart Label Template -->
+        <DataTemplate x:Key="PieChartLabelTemplate">
+            <TextBlock Text="{Binding Percentage, StringFormat=P0}"
+                       FontWeight="Bold"
+                       Foreground="White" />
+        </DataTemplate>
+
+        <!-- Over-budget highlight style -->
+        <Style x:Key="OverBudgetCellStyle" TargetType="syncfusion:TreeGridCell">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsOverBudget}" Value="True">
+                    <Setter Property="Background" Value="#33FF0000" />
+                    <Setter Property="Foreground" Value="#FFFF4444" />
+                    <Setter Property="FontWeight" Value="Bold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Grid enhancement resources -->
+        <SolidColorBrush x:Key="GridFilterRowBackgroundBrush" Color="#FF1F2329" />
+        <SolidColorBrush x:Key="GridFilterRowForegroundBrush" Color="#FFE9F3FF" />
+        <SolidColorBrush x:Key="GridSelectionBrush" Color="#FF4F6BED" />
+        <SolidColorBrush x:Key="GridSelectionForegroundBrush" Color="#FFFDFDFD" />
+        <SolidColorBrush x:Key="GridHoverBrush" Color="#334F6BED" />
+        <SolidColorBrush x:Key="TreeGridHeaderBrush" Color="#FF222832" />
+
+        <Style x:Key="BudgetTreeGridHeaderStyle" TargetType="syncfusion:TreeGridHeaderCell">
+            <Setter Property="Background" Value="{DynamicResource TreeGridHeaderBrush}" />
+            <Setter Property="Foreground" Value="#FFB0BCD6" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
+
+        <Style x:Key="BudgetToolBarStyle" TargetType="ToolBar">
+            <Setter Property="Background" Value="#FF2C3038" />
+            <Setter Property="Foreground" Value="#FFDCE6F5" />
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="BudgetFocusAnchor"
+          prism:RegionManager.RegionName="BudgetRegion">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /><!-- Toolbar -->
+            <RowDefinition Height="*" /><!-- Tree Grid -->
+            <RowDefinition Height="Auto" /><!-- Total Calculator -->
+            <RowDefinition Height="250" /><!-- Charts -->
+        </Grid.RowDefinitions>
+        <Border x:Name="BudgetFocusAnchor" Focusable="True" Width="0" Height="0" Opacity="0" />
+
+        <!-- Top Toolbar with Import/Export/Add functionality -->
+        <ToolBar Grid.Row="0"
+                 Style="{DynamicResource BudgetToolBarStyle}"
+                 AutomationProperties.Name="Budget Management Toolbar">
+
+                <syncfusion:ButtonAdv Label="Import Excel"
+                                      Command="{Binding ImportBudgetCommand}"
+                                      ToolTip="Import from TOW/WSD Excel files (handles hierarchies like 410.1)"
+                                      IconWidth="16" IconHeight="16" />
+
+                <syncfusion:ButtonAdv Label="Export Excel"
+                                      Command="{Binding ExportBudgetCommand}"
+                                      ToolTip="Export budget to Excel with hierarchy preserved"
+                                      IconWidth="16" IconHeight="16" />
+
+                <Separator />
+
+                <syncfusion:ButtonAdv Label="Add Account"
+                                      Command="{Binding AddAccountCommand}"
+                                      ToolTip="Add new budget account"
+                                      IconWidth="16" IconHeight="16" />
+
+                <syncfusion:ButtonAdv Label="Delete Account"
+                                      Command="{Binding DeleteAccountCommand}"
+                                      ToolTip="Delete selected account"
+                                      IconWidth="16" IconHeight="16" />
+
+                <Separator />
+
+                <syncfusion:ButtonAdv Label="Refresh"
+                                      Command="{Binding RefreshBudgetDataCommand}"
+                                      ToolTip="Refresh budget data from database"
+                                      IconWidth="16" IconHeight="16" />
+
+                <Separator />
+
+                <TextBlock Text="Fiscal Year:"
+                           VerticalAlignment="Center"
+                           Margin="8,0,4,0" />
+                <syncfusion:ComboBoxAdv Width="150"
+                                       ItemsSource="{Binding FiscalYears}"
+                                       SelectedItem="{Binding SelectedFiscalYear, Mode=TwoWay}"
+                                       ToolTip="Select fiscal year for budget view"
+                                       Margin="4,0" />
+        </ToolBar>
+
+        <!-- Central Hierarchical Budget Grid (SfTreeGrid) -->
+        <Grid Grid.Row="1">
+            <syncfusion:SfTreeGrid x:Name="BudgetTreeGrid"
+                                   ItemsSource="{Binding BudgetAccounts, FallbackValue=Empty}"
+                                   ChildPropertyName="Children"
+                                   AutoGenerateColumns="False"
+                                   AllowEditing="True"
+                                   EditTrigger="OnTap"
+                                   AllowSorting="True"
+                                   AllowResizingColumns="True"
+                                   ColumnSizer="AutoFillColumn"
+                                   ExpanderColumn="AccountNumber"
+                                   SelfRelationRootValue="-1"
+                                   SelectionMode="Single"
+                                   NavigationMode="Cell"
+                                   LiveNodeUpdateMode="AllowDataShaping"
+                                   GridValidationMode="InEdit"
+                                   RowHeight="32"
+                                   AutoExpandMode="RootNodesExpanded"
+                                   Margin="8"
+                                   AutomationProperties.Name="GASB-Compliant Hierarchical Budget Accounts">
+
+            <syncfusion:SfTreeGrid.Columns>
+                <!-- Account Number (Tree Column for hierarchy) -->
+                <syncfusion:TreeGridTextColumn HeaderText="Account Number"
+                                               MappingName="AccountNumber"
+                                               Width="200"
+                                               AllowEditing="False"
+                                               HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
+
+                <!-- Description -->
+                <syncfusion:TreeGridTextColumn HeaderText="Description"
+                                               MappingName="Description"
+                                               Width="300"
+                                               AllowEditing="True"
+                                               HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}"
+                                               ToolTipService.ToolTip="Double-click to edit (GASB rules applied)" />
+
+                <!-- Fund Type with Dropdown Editor -->
+                <syncfusion:TreeGridComboBoxColumn HeaderText="Fund Type"
+                                                   MappingName="FundType"
+                                                   Width="150"
+                                                   ItemsSource="{Binding FundTypes}"
+                                                   DisplayMemberPath="Name"
+                                                   SelectedValuePath="Code"
+                                                   ToolTipService.ToolTip="Select fund category (General, Special Revenue, Capital, etc.)"
+                                                   HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
+
+                <!-- Budget Amount (Currency formatting) -->
+                <syncfusion:TreeGridCurrencyColumn HeaderText="Budgeted Amount"
+                                                   MappingName="BudgetAmount"
+                                                   Width="150"
+                                                   CurrencyDecimalDigits="2"
+                                                   CurrencySymbol="$"
+                                                   AllowEditing="True"
+                                                   TextAlignment="Right"
+                                                   ToolTipService.ToolTip="Approved budget amount (must be positive)"
+                                                   HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
+
+                <!-- Actuals (Currency formatting) -->
+                <syncfusion:TreeGridCurrencyColumn HeaderText="Actual Expenses"
+                                                   MappingName="ActualAmount"
+                                                   Width="150"
+                                                   CurrencyDecimalDigits="2"
+                                                   CurrencySymbol="$"
+                                                   AllowEditing="True"
+                                                   TextAlignment="Right"
+                                                   ToolTipService.ToolTip="Year-to-date actual spending"
+                                                   HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
+
+                <!-- Variance (Calculated, conditional styling) -->
+                <syncfusion:TreeGridCurrencyColumn HeaderText="Variance"
+                                                   MappingName="Variance"
+                                                   Width="150"
+                                                   CurrencyDecimalDigits="2"
+                                                   CurrencySymbol="$"
+                                                   AllowEditing="False"
+                                                   TextAlignment="Right"
+                                                   ToolTipService.ToolTip="Budget vs Actual (negative = over budget)"
+                                                   CellStyle="{DynamicResource OverBudgetCellStyle}"
+                                                   HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}" />
+
+                <!-- Percentage Used -->
+                <syncfusion:TreeGridPercentColumn HeaderText="% Used"
+                                                  MappingName="PercentageUsed"
+                                                  Width="100"
+                                                  PercentEditMode="PercentMode"
+                                                  AllowEditing="False"
+                                                  TextAlignment="Right"
+                                                  ShowToolTip="True"
+                                                  HeaderStyle="{DynamicResource BudgetTreeGridHeaderStyle}">
+                    <syncfusion:TreeGridPercentColumn.ToolTipTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="Percentage of budget consumed" />
+                        </DataTemplate>
+                    </syncfusion:TreeGridPercentColumn.ToolTipTemplate>
+                </syncfusion:TreeGridPercentColumn>
+                </syncfusion:SfTreeGrid.Columns>
+            </syncfusion:SfTreeGrid>
+
+            <!-- Empty State Message -->
+            <TextBlock Text="No budget data available. Click 'Refresh' to load budgets for the selected fiscal year."
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Foreground="#FF9E9E9E"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap"
+                       Margin="20"
+                       Visibility="{Binding BudgetAccounts.Count, Converter={StaticResource ZeroToVisibleConverter}}" />
+        </Grid>        <!-- Footer with Total Calculations -->
+        <Border Grid.Row="2"
+                Background="#FF2C3038"
+                BorderBrush="#FF3D4451"
+                BorderThickness="0,1,0,0"
+                Padding="12,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="Total Budget:"
+                           FontWeight="SemiBold"
+                           Foreground="#FFDCE6F5"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding TotalBudget, Mode=OneWay, StringFormat=C2}"
+                           Width="180"
+                           FontWeight="Bold"
+                           Foreground="#FF4CAF50"
+                           ToolTipService.ToolTip="Sum of all budgeted amounts" />
+
+                <TextBlock Grid.Column="3"
+                           Text="Total Actual:"
+                           FontWeight="SemiBold"
+                           Foreground="#FFDCE6F5"
+                           VerticalAlignment="Center"
+                           Margin="16,0,8,0" />
+
+                <TextBlock Grid.Column="4"
+                           Text="{Binding TotalActual, Mode=OneWay, StringFormat=C2}"
+                           Width="180"
+                           FontWeight="Bold"
+                           Foreground="{Binding TotalVariance, Converter={StaticResource BalanceColorConverter}}"
+                           ToolTipService.ToolTip="Sum of all actual expenses" />
+            </Grid>
+        </Border>
+
+        <!-- Charts Section with Budget Visualizations -->
+        <Grid Grid.Row="3" Margin="8,0,8,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Budget Distribution Pie Chart -->
+            <GroupBox Grid.Column="0"
+                      Header="Budget Distribution by Fund"
+                      Margin="0,0,4,0"
+                      Padding="8"
+                      Foreground="#FFDCE6F5">
+                <chart:SfChart>
+                    <chart:SfChart.Legend>
+                        <chart:ChartLegend />
+                    </chart:SfChart.Legend>
+
+                    <chart:PieSeries ItemsSource="{Binding BudgetDistributionData}"
+                                     XBindingPath="FundType"
+                                     YBindingPath="Amount"
+                                     EnableAnimation="True"
+                                     EnableSmartLabels="True"
+                                     LabelPosition="Inside"
+                                     Palette="Metro">
+                        <chart:PieSeries.AdornmentsInfo>
+                            <chart:ChartAdornmentInfo
+                                LabelTemplate="{DynamicResource PieChartLabelTemplate}"
+                                LabelPosition="Auto" />
+                        </chart:PieSeries.AdornmentsInfo>
+
+                        <chart:PieSeries.TooltipTemplate>
+                            <DataTemplate>
+                                <Border Background="#FF2C3038"
+                                        BorderBrush="#FF4F6BED"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Item.FundType}"
+                                                   FontWeight="Bold"
+                                                   Foreground="White" />
+                                        <TextBlock Foreground="White">
+                                            <Run Text="Amount: " />
+                                            <Run Text="{Binding Item.Amount, StringFormat=C2}" FontWeight="Bold" />
+                                        </TextBlock>
+                                        <TextBlock Foreground="White">
+                                            <Run Text="Percentage: " />
+                                            <Run Text="{Binding Item.Percentage, StringFormat=P1}" FontWeight="Bold" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </chart:PieSeries.TooltipTemplate>
+                    </chart:PieSeries>
+                </chart:SfChart>
+            </GroupBox>
+
+            <!-- Budget vs Actual Bar Chart -->
+            <GroupBox Grid.Column="1"
+                      Header="Budget vs Actual by Category"
+                      Margin="4,0,0,0"
+                      Padding="8"
+                      Foreground="#FFDCE6F5">
+                <chart:SfChart>
+                    <chart:SfChart.PrimaryAxis>
+                        <chart:CategoryAxis LabelRotationAngle="-45" />
+                    </chart:SfChart.PrimaryAxis>
+
+                    <chart:SfChart.SecondaryAxis>
+                        <chart:NumericalAxis LabelFormat="C0" />
+                    </chart:SfChart.SecondaryAxis>
+
+                    <chart:SfChart.Legend>
+                        <chart:ChartLegend DockPosition="Top" />
+                    </chart:SfChart.Legend>
+
+                    <!-- Budgeted amounts -->
+                    <chart:ColumnSeries ItemsSource="{Binding BudgetComparisonData}"
+                                        XBindingPath="Category"
+                                        YBindingPath="BudgetAmount"
+                                        Label="Budgeted"
+                                        Interior="#FF4CAF50"
+                                        EnableAnimation="True">
+                        <chart:ColumnSeries.AdornmentsInfo>
+                            <chart:ChartAdornmentInfo
+                                ShowLabel="True"
+                                LabelPosition="Inner"
+                                SegmentLabelFormat="C0" />
+                        </chart:ColumnSeries.AdornmentsInfo>
+                    </chart:ColumnSeries>
+
+                    <!-- Actual amounts -->
+                    <chart:ColumnSeries ItemsSource="{Binding BudgetComparisonData}"
+                                        XBindingPath="Category"
+                                        YBindingPath="ActualAmount"
+                                        Label="Actual"
+                                        Interior="#FFF44336"
+                                        EnableAnimation="True">
+                        <chart:ColumnSeries.AdornmentsInfo>
+                            <chart:ChartAdornmentInfo
+                                ShowLabel="True"
+                                LabelPosition="Inner"
+                                SegmentLabelFormat="C0" />
+                        </chart:ColumnSeries.AdornmentsInfo>
+                    </chart:ColumnSeries>
+                </chart:SfChart>
+            </GroupBox>
+        </Grid>
+    </Grid>
+</UserControl>
+

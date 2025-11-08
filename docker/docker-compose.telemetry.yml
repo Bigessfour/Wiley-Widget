@@ -1,0 +1,20 @@
+# Minimal OpenTelemetry Collector for Wiley Widget
+# Based on SigNoz documentation - simplified for development
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.92.0
+    container_name: wiley-otel-collector
+    restart: unless-stopped
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "8888:8888" # Metrics
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+
+networks:
+  default:
+    name: wiley-telemetry
+    driver: bridge

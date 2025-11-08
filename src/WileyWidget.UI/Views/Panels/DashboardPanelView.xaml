@@ -1,0 +1,294 @@
+<UserControl x:Class="WileyWidget.Views.Panels.DashboardPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:WileyWidget.Converters"
+             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+             xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="1200"
+             xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
+    <UserControl.Resources>
+        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <local:BudgetProgressConverter x:Key="BudgetProgressConverter" />
+        <local:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <!-- Theme is inherited from SfSkinManager.ApplicationTheme (App.xaml.cs) -->
+    <Grid xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
+        behaviors:MouseFocusBehavior.EnableOnClick="True"
+        behaviors:MouseFocusBehavior.EnableOnFirstMove="True">
+        <DockPanel>
+        <!-- Ribbon Toolbar -->
+        <syncfusion:Ribbon DockPanel.Dock="Top" x:Name="DashboardRibbon">
+            <syncfusion:RibbonTab Caption="Dashboard">
+                <syncfusion:RibbonBar Header="Actions">
+                    <syncfusion:RibbonButton Label="Refresh" SizeForm="Large" Command="{Binding RefreshDashboardCommand}"
+                                           IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                    <syncfusion:RibbonButton Label="Export" Command="{Binding ExportDashboardCommand}"
+                                           IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                </syncfusion:RibbonBar>
+                <syncfusion:RibbonBar Header="View">
+                    <syncfusion:RibbonButton Label="Auto Refresh" Command="{Binding ToggleAutoRefreshCommand}"
+                                           IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                    <Label Content="Interval:" VerticalAlignment="Center" />
+                    <syncfusion:IntegerTextBox Value="{Binding RefreshIntervalMinutes, Mode=TwoWay}"
+                                             Width="60" Margin="5,0"
+                                             IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                    <Label Content="minutes" VerticalAlignment="Center" />
+                </syncfusion:RibbonBar>
+            </syncfusion:RibbonTab>
+        </syncfusion:Ribbon>
+
+        <!-- Loading Overlay with SfBusyIndicator -->
+        <notification:SfBusyIndicator IsBusy="{Binding IsLoading}"
+                                     AnimationType="DoubleCircle"
+                                     ViewboxWidth="100"
+                                     ViewboxHeight="100"
+                                     Header="Loading Dashboard Data..."
+                                     DockPanel.Dock="Top">
+            <notification:SfBusyIndicator.Style>
+                <Style TargetType="notification:SfBusyIndicator">
+                    <Setter Property="Background" Value="#80000000" />
+                    <Setter Property="Foreground" Value="#2196F3" />
+                </Style>
+            </notification:SfBusyIndicator.Style>
+        </notification:SfBusyIndicator>
+
+        <!-- Main Dashboard Content -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <StackPanel Margin="10">
+                <!-- KPI Summary Cards -->
+                <WrapPanel Margin="0,0,0,20" Orientation="Horizontal">
+                    <!-- Total Enterprises -->
+                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{StaticResource InfoBrush}" BorderThickness="2"
+                            CornerRadius="8" Margin="0,0,15,15" Padding="15" MinWidth="200">
+                        <StackPanel>
+                            <TextBlock Text="Total Enterprises" FontSize="14" FontWeight="Bold" Foreground="{StaticResource InfoBrush}" />
+                            <TextBlock Text="{Binding TotalEnterprises}" FontSize="32" FontWeight="Bold"
+                                     Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding EnterprisesChangeText}" FontSize="12"
+                                     Foreground="{Binding EnterprisesChangeColor}" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Total Budget -->
+                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{StaticResource AccentPurpleBrush}" BorderThickness="2"
+                            CornerRadius="8" Margin="0,0,15,15" Padding="15" MinWidth="200">
+                        <StackPanel>
+                            <TextBlock Text="Total Budget" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentPurpleBrush}" />
+                            <TextBlock Text="{Binding TotalBudget, StringFormat=C0}" FontSize="32" FontWeight="Bold"
+                                     Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding BudgetChangeText}" FontSize="12"
+                                     Foreground="{Binding BudgetChangeColor}" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Active Projects -->
+                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{StaticResource SuccessBrush}" BorderThickness="2"
+                            CornerRadius="8" Margin="0,0,15,15" Padding="15" MinWidth="200">
+                        <StackPanel>
+                            <TextBlock Text="Active Projects" FontSize="14" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}" />
+                            <TextBlock Text="{Binding ActiveProjects}" FontSize="32" FontWeight="Bold"
+                                     Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding ProjectsChangeText}" FontSize="12"
+                                     Foreground="{Binding ProjectsChangeColor}" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- System Health -->
+                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{StaticResource WarningBrush}" BorderThickness="2"
+                            CornerRadius="8" Margin="0,0,15,15" Padding="15" MinWidth="200">
+                        <StackPanel>
+                            <TextBlock Text="System Health" FontSize="14" FontWeight="Bold" Foreground="{StaticResource WarningBrush}" />
+                            <ProgressBar Height="120" Margin="0,10,0,0"
+                                        Value="{Binding SystemHealthScore}"
+                                        Maximum="100" Minimum="0"
+                                        Foreground="{Binding SystemHealthColor}" />
+                            <TextBlock Text="{Binding SystemHealthStatus}" FontSize="16" FontWeight="Bold"
+                                     Foreground="{Binding SystemHealthColor}" Margin="0,10,0,0" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding HealthScore, StringFormat={}{0}%}" FontSize="14"
+                                     Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Budget Utilization -->
+                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{StaticResource ErrorBrush}" BorderThickness="2"
+                            CornerRadius="8" Margin="0,0,15,15" Padding="15" MinWidth="200">
+                        <StackPanel>
+                            <TextBlock Text="Budget Utilization" FontSize="14" FontWeight="Bold" Foreground="{StaticResource ErrorBrush}" />
+                            <ProgressBar Height="120" Margin="0,10,0,0"
+                                        Value="{Binding BudgetUtilizationScore}"
+                                        Maximum="100" Minimum="0"
+                                        Foreground="{StaticResource ErrorBrush}" />
+                            <TextBlock Text="{Binding TotalBudget, StringFormat=C0}" FontSize="16" FontWeight="Bold"
+                                     Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,10,0,0" HorizontalAlignment="Center" />
+                            <TextBlock Text="Total Allocated" FontSize="12"
+                                     Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
+
+                <!-- Charts and Analytics Section -->
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Budget Trend Chart -->
+                    <GroupBox Header="Budget Trends" Margin="0,0,10,0" Padding="10">
+                        <syncfusion:SfChart Height="200"
+                                          AutomationProperties.Name="Budget Trends Chart"
+                                          AutomationProperties.HelpText="Line chart showing budget trends over time">
+                            <syncfusion:SfChart.PrimaryAxis>
+                                <syncfusion:CategoryAxis />
+                            </syncfusion:SfChart.PrimaryAxis>
+                            <syncfusion:SfChart.SecondaryAxis>
+                                <syncfusion:NumericalAxis LabelFormat="C0" />
+                            </syncfusion:SfChart.SecondaryAxis>
+                            <syncfusion:LineSeries ItemsSource="{Binding BudgetTrendData}"
+                                                 XBindingPath="Period"
+                                                 YBindingPath="Amount"
+                                                 Interior="{StaticResource InfoBrush}"
+                                                 EnableAnimation="True" />
+                        </syncfusion:SfChart>
+                    </GroupBox>
+
+                    <!-- Enterprise Distribution -->
+                    <GroupBox Header="Enterprise Distribution" Margin="10,0,0,0" Padding="10">
+                        <syncfusion:SfChart Height="200"
+                                          AutomationProperties.Name="Enterprise Distribution Chart"
+                                          AutomationProperties.HelpText="Pie chart showing distribution of enterprise types">
+                            <syncfusion:SfChart.Legend>
+                                <syncfusion:ChartLegend />
+                            </syncfusion:SfChart.Legend>
+                            <syncfusion:PieSeries ItemsSource="{Binding EnterpriseTypeData}"
+                                                 XBindingPath="Type"
+                                                 YBindingPath="Count"
+                                                 Label="Type"
+                                                 ExplodeAll="True"
+                                                 ExplodeRadius="10"
+                                                 EnableAnimation="True" />
+                        </syncfusion:SfChart>
+                    </GroupBox>
+                </Grid>
+
+                <!-- Recent Activity and Alerts -->
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Recent Activity -->
+                    <GroupBox Header="Recent Activity" Margin="0,0,10,0" Padding="10">
+                        <syncfusion:SfDataGrid x:Name="RecentActivityGrid"
+                                             ItemsSource="{Binding RecentActivities}"
+                                             AllowSorting="True"
+                                             AllowFiltering="True"
+                                             AutoGenerateColumns="False"
+                                             Height="200"
+                                             UseLayoutRounding="True"
+                                             AutomationProperties.Name="Recent Activity Grid"
+                                             AutomationProperties.HelpText="Displays recent system activities and user actions">
+                            <syncfusion:SfDataGrid.Columns>
+                                <syncfusion:GridTextColumn MappingName="Timestamp"
+                                                          HeaderText="Time"
+                                                          DisplayBinding="{Binding Timestamp, StringFormat=HH:mm}"
+                                                          Width="100" />
+                                <syncfusion:GridTextColumn MappingName="Activity"
+                                                          HeaderText="Activity"
+                                                          Width="200" />
+                                <syncfusion:GridTextColumn MappingName="Category"
+                                                          HeaderText="Category"
+                                                          Width="80" />
+                            </syncfusion:SfDataGrid.Columns>
+                        </syncfusion:SfDataGrid>
+                    </GroupBox>
+
+                    <!-- System Alerts -->
+                    <GroupBox Header="System Alerts" Margin="10,0,0,0" Padding="10">
+                        <syncfusion:SfDataGrid x:Name="SystemAlertsGrid"
+                                             ItemsSource="{Binding SystemAlerts}"
+                                             AllowSorting="True"
+                                             AllowFiltering="True"
+                                             AutoGenerateColumns="False"
+                                             Height="200"
+                                             UseLayoutRounding="True"
+                                             AutomationProperties.Name="System Alerts Grid"
+                                             AutomationProperties.HelpText="Displays system alerts and notifications">
+                            <syncfusion:SfDataGrid.Columns>
+                                <syncfusion:GridTextColumn MappingName="Severity"
+                                                          HeaderText="Severity"
+                                                          Width="80" />
+                                <syncfusion:GridTextColumn MappingName="Message"
+                                                          HeaderText="Alert"
+                                                          Width="200" />
+                                <syncfusion:GridTextColumn MappingName="Timestamp"
+                                                          HeaderText="Time"
+                                                          DisplayBinding="{Binding Timestamp, StringFormat=HH:mm}"
+                                                          Width="100" />
+                            </syncfusion:SfDataGrid.Columns>
+                        </syncfusion:SfDataGrid>
+                    </GroupBox>
+                </Grid>
+
+                <!-- Quick Actions -->
+                <GroupBox Header="Quick Actions" Padding="10">
+                    <WrapPanel>
+                        <syncfusion:ButtonAdv Content="Add Enterprise"
+                                          Command="{Binding OpenEnterpriseManagementCommand}"
+                                          Margin="0,0,10,10"
+                                          IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                        <syncfusion:ButtonAdv Content="Budget Analysis"
+                                          Command="{Binding OpenBudgetAnalysisCommand}"
+                                          Margin="0,0,10,10"
+                                          IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                        <syncfusion:ButtonAdv Content="Settings"
+                                          Command="{Binding OpenSettingsCommand}"
+                                          Margin="0,0,10,10"
+                                          IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                        <syncfusion:ButtonAdv Content="Generate Report"
+                                          Command="{Binding GenerateReportCommand}"
+                                          Margin="0,0,10,10"
+                                          IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                        <syncfusion:ButtonAdv Content="Backup Data"
+                                          Command="{Binding BackupDataCommand}"
+                                          Margin="0,0,10,10"
+                                          IsEnabled="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter= invert}" />
+                    </WrapPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Status Bar -->
+        <StatusBar DockPanel.Dock="Bottom" Background="Transparent">
+            <StatusBarItem>
+                <TextBlock>
+                    <Run Text="Last Updated: "/><Run Text="{Binding LastUpdated}" />
+                </TextBlock>
+            </StatusBarItem>
+            <StatusBarItem>
+                <notification:SfBusyIndicator IsBusy="{Binding IsLoading}"
+                                            Header="{Binding StatusMessage, FallbackValue='Loading...'}"
+                                            AnimationType="Windmill"
+                                            Width="100" Height="20"
+                                            Foreground="{DynamicResource PrimaryTextBrush}" />
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock>
+                    <Run Text="Status: "/><Run Text="{Binding DashboardStatus}" />
+                </TextBlock>
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock>
+                    <Run Text="Next Refresh: "/><Run Text="{Binding NextRefreshTime}" />
+                </TextBlock>
+            </StatusBarItem>
+        </StatusBar>
+    </DockPanel>
+    </Grid>
+</UserControl>
