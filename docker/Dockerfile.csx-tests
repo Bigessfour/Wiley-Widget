@@ -1,0 +1,33 @@
+# docker/Dockerfile.csx-tests
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS base
+
+# === Environment ===
+ARG DOTNET_CLI_TELEMETRY_OPTOUT=1
+ARG DOTNET_NOLOGO=1
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=${DOTNET_CLI_TELEMETRY_OPTOUT}
+ENV DOTNET_NOLOGO=${DOTNET_NOLOGO}
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+WORKDIR /app
+
+# === Install dotnet-script (cached layer) ===
+RUN dotnet tool install -g dotnet-script \
+    && dotnet nuget locals all --clear
+
+# === Runtime Stage ===
+FROM base AS runtime
+
+# Optional: Add non-root user
+# RUN adduser --disabled-password --gecos '' csxuser
+# USER csxuser
+# WORKDIR /home/csxuser/app
+
+# Copy nothing — use volume mounts
+VOLUME ["/app", "/src"]
+
+# Health check
+HEALTHCHECK CMD dotnet script --version || exit 1
+
+# Flexible entrypoint
+ENTRYPOINT ["dotnet", "script"]
+CMD ["--help"]
