@@ -20,7 +20,7 @@
 - [Overview](#-overview)
 - [Project Structure](#-project-structure)
 - [Quick Start](#-quick-start)
-- [QuickBooks Integration](#-quickbooks-sandbox-integration-new)
+- [QuickBooks Sandbox Integration](#-quickbooks-sandbox-integration)
 - [Configuration & Secrets](#-configuration--secret-management)
 - [Architecture](#-architecture)
 - [Development](#-development)
@@ -302,34 +302,216 @@ The application will:
 
 ---
 
-## � QuickBooks Sandbox Integration (New)
+## 🔌 QuickBooks Sandbox Integration
 
-Use your townofwiley.gov domain with Cloudflare Tunnel to expose the local webhooks receiver and complete Intuit Sandbox setup.
+WileyWidget integrates with **QuickBooks Online (QBO)** via OAuth 2.0 for secure financial data synchronization. The application supports both **sandbox** (development) and **production** environments.
 
-Paste these into Intuit Developer (Development environment):
+### 🎯 Current Connection Status
 
-- Host Domain: app.townofwiley.gov (no protocol)
-- Launch URL: https://app.townofwiley.gov/app/launch
-- Disconnect URL: https://app.townofwiley.gov/app/disconnect
-- Webhooks Endpoint URL: https://app.townofwiley.gov/qbo/webhooks
-- OAuth Redirect URI (desktop loopback): http://localhost:8080/callback
+**Environment:** Sandbox
+**Company:** Town of Wiley Sandbox
+**Realm ID:** 9341455168020461
+**Client ID:** ABWlf3T7raiKwVV8ILahdlGP7E5pblC6pH1i6lXZQoU6wloEOm
+**OAuth Redirect URI:** https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl
+**Last Connected:** November 8, 2025
+**Token Status:** ✅ Active (auto-refreshes)
 
-Environment variables (User scope) the app reads:
+### 🚀 Quick Setup (Automated)
 
-- QBO_CLIENT_ID, QBO_CLIENT_SECRET
-- QBO_REDIRECT_URI = http://localhost:8080/callback
-- QBO_ENVIRONMENT = sandbox
-- QBO_WEBHOOKS_VERIFIER = <value from Intuit Webhooks settings>
+Run the automated OAuth setup script to establish QuickBooks connection:
 
-Helpful guides:
+```powershell
+# Set credentials (get from Intuit Developer Portal)
+$env:QBO_CLIENT_ID = "your-client-id"
+$env:QBO_CLIENT_SECRET = "your-client-secret"
+$env:QBO_REALM_ID = "your-realm-id"  # Optional, captured automatically
+$env:QBO_ENVIRONMENT = "sandbox"      # or "production"
 
-- docs/integrations/quickbooks-oauth-setup.md
-- docs/guides/quickbooks-registration-guide.md
-- WileyWidget.Webhooks/README.md
+# Run setup script
+.\scripts\quickbooks\setup-oauth.ps1
+```
 
-Health check to verify tunnel and receiver:
+The script will:
 
-- https://app.townofwiley.gov/health → should return { "status": "ok" }
+1. Build and display the authorization URL
+2. Copy the URL to your clipboard
+3. Wait for you to authorize in browser
+4. Exchange the authorization code for tokens
+5. Persist tokens to `%APPDATA%\WileyWidget\settings.json`
+6. Validate the connection by calling QBO API
+
+### 🔑 OAuth Configuration
+
+#### Intuit Developer Portal Setup
+
+1. **Create App** at https://developer.intuit.com/app/developer/dashboard
+2. **Keys & OAuth** section:
+   - Copy **Client ID** and **Client Secret**
+   - Add **Redirect URIs**:
+     - `https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl` (for OAuth Playground)
+     - `http://localhost:8080/` (for local HttpListener)
+3. **App Settings**:
+   - Set environment to **Sandbox** or **Production**
+   - Enable **QuickBooks Online** scope: `com.intuit.quickbooks.accounting`
+
+#### Environment Variables
+
+The app reads these environment variables (set at User scope):
+
+```powershell
+# Required
+$env:QBO_CLIENT_ID = "your-client-id"
+$env:QBO_CLIENT_SECRET = "your-client-secret"
+
+# Optional (with defaults)
+$env:QBO_REALM_ID = "your-realm-id"  # Auto-captured during OAuth
+$env:QBO_REDIRECT_URI = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl"
+$env:QBO_ENVIRONMENT = "sandbox"  # or "production"
+
+# For testing (skip OAuth browser launch)
+$env:WW_SKIP_INTERACTIVE = "1"
+$env:WW_PRINT_AUTH_URL = "1"  # Print auth URL without launching browser
+```
+
+#### Settings Storage
+
+Tokens are persisted to: `%APPDATA%\WileyWidget\settings.json`
+
+```json
+{
+  "QboAccessToken": "eyJhbGciOiJkaXI...",
+  "QboRefreshToken": "RT1-9-H0-177136...",
+  "QboTokenExpiry": "2025-11-08T22:06:31Z",
+  "QuickBooksRealmId": "9341455168020461"
+}
+```
+
+### 🔄 Token Management
+
+**Access Token Lifetime:** 1 hour
+**Refresh Token Lifetime:** ~100 days
+**Auto-Refresh:** ✅ Tokens automatically refresh when expired
+
+The `QuickBooksService` checks token expiry before each API call and automatically refreshes if needed:
+
+```csharp
+// Automatic token refresh
+await _quickBooksService.RefreshTokenIfNeededAsync();
+
+// Manual refresh
+await _quickBooksService.RefreshTokenAsync();
+```
+
+### 🧪 Testing with QuickBooks Sandbox
+
+#### Run Unit Tests
+
+```powershell
+# Skip OAuth prompts during tests
+$env:WW_SKIP_INTERACTIVE = "1"
+
+# Run QuickBooks service tests
+dotnet test --filter "FullyQualifiedName~QuickBooksService"
+```
+
+#### Test Coverage
+
+- ✅ `SyncBudgetsToAppAsync_ValidBudgets_SyncsSuccessfullyAndPublishesEvent`
+- ✅ `SyncBudgetsToAppAsync_EmptyList_ReturnsSuccessWithZeroSynced`
+- ✅ `SyncBudgetsToAppAsync_HttpFailure_ReturnsErrorAndLogs`
+- ✅ `SyncBudgetsToAppAsync_Cancellation_ReturnsErrorResult`
+
+### 🌐 Webhooks Configuration (Optional)
+
+For real-time notifications from QuickBooks, expose a local endpoint using Cloudflare Tunnel:
+
+```powershell
+# Start tunnel (auto-configured in QuickBooksService)
+cloudflared tunnel --url https://localhost:7207
+
+# Configure in Intuit Developer Portal
+# Webhooks Endpoint: https://<your-tunnel>.trycloudflare.com/qbo/webhooks
+```
+
+**Environment Variables:**
+
+```powershell
+$env:WEBHOOKS_PORT = "7207"  # HTTPS port for webhooks server
+$env:QBO_WEBHOOKS_VERIFIER = "your-verifier-token"  # From Intuit
+```
+
+### 📊 Available QBO Operations
+
+The `QuickBooksService` provides these operations:
+
+```csharp
+// Connection & Auth
+await TestConnectionAsync()
+await AuthorizeAsync()
+await RefreshTokenAsync()
+
+// Data Retrieval
+await GetCustomersAsync()
+await GetInvoicesAsync(enterprise?)
+await GetChartOfAccountsAsync()
+await GetJournalEntriesAsync(startDate, endDate)
+await GetBudgetsAsync()
+
+// Data Sync
+await SyncBudgetsToAppAsync(budgets, cancellationToken)
+```
+
+### 🔍 Troubleshooting
+
+#### "redirect_uri is invalid"
+
+**Cause:** The redirect URI in the token exchange doesn't match what's registered.
+
+**Fix:**
+
+1. Print the exact auth URL:
+   ```powershell
+   $env:WW_PRINT_AUTH_URL = "1"
+   $env:WW_SKIP_INTERACTIVE = "1"
+   # Run app or script that triggers AuthorizeAsync()
+   ```
+2. Extract the `redirect_uri` parameter from the printed URL
+3. Add that **exact** URI to Intuit Developer Portal → Keys & OAuth → Redirect URIs
+
+#### "Access token invalid"
+
+**Cause:** Token expired or not yet acquired.
+
+**Fix:**
+
+```powershell
+# Re-run OAuth setup
+.\scripts\quickbooks\setup-oauth.ps1
+```
+
+#### Connection Test Fails
+
+**Cause:** Incorrect realm ID or expired tokens.
+
+**Fix:**
+
+```csharp
+// Validate connection
+var isConnected = await _quickBooksService.TestConnectionAsync();
+if (!isConnected)
+{
+    // Re-authorize
+    await _quickBooksService.AuthorizeAsync();
+}
+```
+
+### 📚 Additional Resources
+
+- **Intuit Docs:** https://developer.intuit.com/app/developer/qbo/docs/get-started
+- **OAuth 2.0 Flow:** https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization
+- **API Reference:** https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities
+- **Setup Script:** `scripts/quickbooks/setup-oauth.ps1`
+- **Service Tests:** `tests/WileyWidget.Services.Tests/QuickBooksServiceTests.cs`
 
 ---
 
@@ -682,6 +864,36 @@ WileyWidget/
 ---
 
 ### Testing Strategy by Layer
+
+**Official Methodology**: Two-Phase Hybrid Approach (Effective: November 8, 2025)
+
+#### **Phase 1: Exploratory Testing with Direct C# MCP** ⚡
+
+**Scope**: Rapid validation and intelligence gathering
+**Tool**: `mcp_csharp-mcp_eval_c_sharp` (AI-driven, inline execution)
+**Duration**: Seconds per test
+
+**Key Features**:
+
+- **Zero Overhead**: No script files - AI executes C# code inline
+- **Instant Feedback**: <1 second execution time
+- **Iterative**: Refine and retest immediately during conversation
+- **Mocking**: Full Moq support for dependencies
+- **Context**: Complete conversation history maintained
+
+**Use For**:
+
+- New ViewModel/Service exploration
+- Edge case validation
+- Async pattern testing
+- JSON serialization verification
+- Pre-xUnit prototyping
+
+**See**: [Direct MCP Testing Guide](docs/reference/DIRECT_MCP_TESTING_GUIDE.md)
+
+---
+
+#### **Phase 2: Formalized Regression Testing with xUnit** 🛡️
 
 #### **🧪 Integration Testing (WileyWidget.IntegrationTests)**
 
