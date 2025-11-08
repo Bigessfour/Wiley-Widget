@@ -74,10 +74,10 @@ function Clean-GitLines([string[]]$lines) {
 function Find-PythonExe {
     # Check common virtualenv folders
     $candidates = @(
-        Join-Path (Get-Location) '.venv\Scripts\python.exe',
-        Join-Path (Get-Location) 'venv\Scripts\python.exe',
-        Join-Path (Get-Location) '.venv/bin/python',
-        Join-Path (Get-Location) 'venv/bin/python'
+        (Join-Path (Get-Location) '.venv\Scripts\python.exe'),
+        (Join-Path (Get-Location) 'venv\Scripts\python.exe'),
+        (Join-Path (Get-Location) '.venv/bin/python'),
+        (Join-Path (Get-Location) 'venv/bin/python')
     )
     foreach ($c in $candidates) {
         if (Test-Path $c) { return (Resolve-Path $c).Path }
