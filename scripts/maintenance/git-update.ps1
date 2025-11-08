@@ -98,9 +98,15 @@ function Find-PythonExe {
 }
 
 function Run-PythonScript($pythonExe, $scriptPath, [string[]]$args) {
-    Write-Verbose "Running Python: $pythonExe $scriptPath $($args -join ' ')"
+    Write-Output "Running Python: $pythonExe $scriptPath $($args -join ' ')"
     $out = & $pythonExe $scriptPath @args 2>&1
     $exit = $LASTEXITCODE
+
+    # Output the results to console
+    if ($out) {
+        $out | ForEach-Object { Write-Output $_ }
+    }
+
     return @{ ExitCode = $exit; Output = $out }
 }
 
@@ -388,6 +394,7 @@ if ($RunManifest) {
 
     $pyRes = Run-PythonScript $pythonExe $manifestScript @('-o', 'ai-fetchable-manifest.json')
     if ($pyRes.ExitCode -ne 0) {
+        Write-Warning "Manifest generation failed with exit code $($pyRes.ExitCode)"
         Throw-Termination "Manifest generation failed. Output:`n$($pyRes.Output -join "`n")" 15
     }
 
