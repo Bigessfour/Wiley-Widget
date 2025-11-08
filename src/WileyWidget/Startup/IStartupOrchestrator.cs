@@ -74,8 +74,9 @@ public class StartupResult
 /// </summary>
 public enum StartupPhase
 {
-    PreStartup,
-    PrismBootstrap,
-    PostBootstrap,
-    UIActivation
+    Unknown = 0,
+    ConfigurationLoad = 1,
+    ContainerSetup = 2,
+    ModulesInit = 3,
+    UILoad = 4
 }

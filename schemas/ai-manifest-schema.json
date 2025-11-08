@@ -1,0 +1,600 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/schemas/ai-manifest-schema.json",
+  "title": "AI-Fetchable Repository Manifest",
+  "description": "Schema for AI-enhanced repository intelligence manifests",
+  "type": "object",
+  "required": ["repository", "summary", "files"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "repository": {
+      "type": "object",
+      "description": "Repository metadata",
+      "required": ["remote_url", "owner_repo", "branch", "generated_at"],
+      "properties": {
+        "remote_url": {
+          "type": "string",
+          "description": "Git remote URL"
+        },
+        "owner_repo": {
+          "type": "string",
+          "description": "Repository owner/name (e.g., 'Bigessfour/Wiley-Widget')"
+        },
+        "branch": {
+          "type": "string",
+          "description": "Current branch name"
+        },
+        "commit_hash": {
+          "type": "string",
+          "description": "Current commit SHA"
+        },
+        "is_dirty": {
+          "type": "boolean",
+          "description": "Whether repository has uncommitted changes"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Manifest generation timestamp"
+        },
+        "valid_until": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Manifest validity expiration timestamp"
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "description": "Repository license information",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "License type (e.g., MIT, Apache-2.0, GPL-3.0)"
+        },
+        "file": {
+          "type": ["string", "null"],
+          "description": "License file name"
+        },
+        "detected": {
+          "type": "boolean",
+          "description": "Whether license was successfully detected"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Repository statistics",
+      "required": ["total_files", "total_size", "categories", "languages"],
+      "properties": {
+        "total_files": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of files analyzed"
+        },
+        "files_in_manifest": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of files included in manifest (may be less if truncated)"
+        },
+        "files_truncated": {
+          "type": "boolean",
+          "description": "Whether file list was truncated due to size limits"
+        },
+        "total_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total size in bytes"
+        },
+        "categories": {
+          "type": "object",
+          "description": "File count by category",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "languages": {
+          "type": "object",
+          "description": "File count by programming language",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "description": "MVVM architecture overview",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Architecture pattern (e.g., MVVM)"
+        },
+        "counts": {
+          "type": "object",
+          "description": "Component counts"
+        },
+        "views": { "type": "array" },
+        "viewmodels": { "type": "array" },
+        "models": { "type": "array" },
+        "services": { "type": "array" },
+        "repositories": { "type": "array" },
+        "converters": { "type": "array" },
+        "behaviors": { "type": "array" },
+        "modules": { "type": "array" }
+      }
+    },
+    "folder_tree": {
+      "type": "object",
+      "description": "Hierarchical folder structure with nested children",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Root folder name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["directory", "file"],
+          "description": "Node type"
+        },
+        "path": {
+          "type": "string",
+          "description": "Relative path from root"
+        },
+        "children": {
+          "type": "array",
+          "description": "Child nodes (files and directories)",
+          "items": {
+            "$ref": "#/properties/folder_tree"
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Repository-wide code metrics and quality indicators",
+      "properties": {
+        "total_lines_of_code": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total lines of code (non-blank, non-comment)"
+        },
+        "total_code_lines": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total physical lines in all code files"
+        },
+        "total_comment_lines": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total comment lines"
+        },
+        "average_complexity": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average cyclomatic complexity across methods"
+        },
+        "test_coverage_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Overall test coverage percentage"
+        },
+        "test_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of test methods"
+        },
+        "project_metrics": {
+          "type": "object",
+          "description": "Per-project metrics",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "lines_of_code": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "file_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "average_complexity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "test_coverage": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "description": "Security and vulnerability information",
+      "properties": {
+        "vulnerable_packages": {
+          "type": "array",
+          "description": "NuGet packages with known vulnerabilities",
+          "items": {
+            "type": "object",
+            "properties": {
+              "package_name": {
+                "type": "string",
+                "description": "Package name"
+              },
+              "installed_version": {
+                "type": "string",
+                "description": "Currently installed version"
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["Low", "Moderate", "High", "Critical"],
+                "description": "Vulnerability severity"
+              },
+              "advisory_url": {
+                "type": "string",
+                "description": "URL to security advisory"
+              },
+              "affected_projects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Projects using this vulnerable package"
+              }
+            }
+          }
+        },
+        "outdated_packages": {
+          "type": "array",
+          "description": "Packages with available updates",
+          "items": {
+            "type": "object",
+            "properties": {
+              "package_name": {
+                "type": "string"
+              },
+              "installed_version": {
+                "type": "string"
+              },
+              "latest_version": {
+                "type": "string"
+              },
+              "used_by_projects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "secrets_detected": {
+          "type": "boolean",
+          "description": "Whether potential secrets were detected (via gitleaks/trufflehog patterns)"
+        },
+        "last_security_scan": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last security scan"
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "description": "Code quality indicators",
+      "properties": {
+        "build_status": {
+          "type": "string",
+          "enum": ["passing", "failing", "unknown"],
+          "description": "Latest build status"
+        },
+        "analyzers_enabled": {
+          "type": "boolean",
+          "description": "Whether .NET analyzers are enabled"
+        },
+        "documentation_coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of public APIs with XML documentation"
+        },
+        "technical_debt_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Estimated technical debt in minutes"
+        }
+      }
+    },
+    "dependency_graph": {
+      "type": "object",
+      "description": "Project-level dependency information",
+      "properties": {
+        "projects": {
+          "type": "object",
+          "description": "Project files and their dependencies",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Project file path"
+              },
+              "nuget_packages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "NuGet package dependencies"
+              },
+              "project_references": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Project-to-project references"
+              }
+            }
+          }
+        },
+        "nuget_packages": {
+          "type": "object",
+          "description": "NuGet packages used across projects",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "used_by_projects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Projects that use this package"
+              }
+            }
+          }
+        },
+        "top_dependencies": {
+          "type": "array",
+          "description": "Most frequently used dependencies",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Dependency name"
+              },
+              "usage_count": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of files using this dependency"
+              }
+            }
+          }
+        }
+      }
+    },
+    "search_index": {
+      "type": "array",
+      "description": "Searchable keywords extracted from repository",
+      "items": {
+        "type": "string"
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "Detailed file metadata",
+      "items": {
+        "type": "object",
+        "required": ["metadata", "urls", "context"],
+        "properties": {
+          "metadata": {
+            "type": "object",
+            "required": ["path", "exists", "size", "language"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Relative file path"
+              },
+              "exists": {
+                "type": "boolean",
+                "description": "Whether file exists"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "File size in bytes"
+              },
+              "last_modified": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Last modification timestamp"
+              },
+              "extension": {
+                "type": "string",
+                "description": "File extension"
+              },
+              "language": {
+                "type": "string",
+                "description": "Programming language"
+              },
+              "mime_type": {
+                "type": ["string", "null"],
+                "description": "MIME type"
+              },
+              "line_count": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of lines"
+              },
+              "code_metrics": {
+                "type": "object",
+                "description": "Code-level metrics for this file",
+                "properties": {
+                  "cyclomatic_complexity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Average cyclomatic complexity of methods"
+                  },
+                  "maintainability_index": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maintainability index (0-100)"
+                  },
+                  "class_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of classes"
+                  },
+                  "method_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of methods"
+                  },
+                  "test_coverage": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Test coverage for this file (%)"
+                  }
+                }
+              },
+              "encoding": {
+                "type": "string",
+                "description": "File encoding"
+              },
+              "is_binary": {
+                "type": "boolean",
+                "description": "Whether file is binary"
+              },
+              "sha256": {
+                "type": "string",
+                "description": "SHA256 hash"
+              },
+              "git": {
+                "type": "object",
+                "description": "Git metadata",
+                "properties": {
+                  "last_commit": {
+                    "type": ["string", "null"],
+                    "description": "Short commit hash"
+                  },
+                  "last_commit_hash": {
+                    "type": ["string", "null"],
+                    "description": "Full commit hash"
+                  },
+                  "last_commit_author": {
+                    "type": ["string", "null"],
+                    "description": "Commit author"
+                  },
+                  "last_commit_date": {
+                    "type": ["string", "null"],
+                    "description": "Commit date"
+                  },
+                  "last_commit_message": {
+                    "type": ["string", "null"],
+                    "description": "Commit message"
+                  },
+                  "recent_commits": {
+                    "type": "array",
+                    "description": "Recent commit history",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "hash": {
+                          "type": "string",
+                          "description": "Commit hash"
+                        },
+                        "author": {
+                          "type": "string",
+                          "description": "Author name"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Commit date"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Commit message"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "urls": {
+            "type": "object",
+            "description": "GitHub URLs",
+            "properties": {
+              "blob_url": {
+                "type": "string",
+                "description": "GitHub blob URL"
+              },
+              "raw_url": {
+                "type": "string",
+                "description": "GitHub raw content URL"
+              },
+              "history_url": {
+                "type": "string",
+                "description": "GitHub commit history URL"
+              }
+            }
+          },
+          "context": {
+            "type": "object",
+            "required": ["category", "importance", "description"],
+            "properties": {
+              "category": {
+                "type": "string",
+                "description": "File category (source_code, test, documentation, etc.)"
+              },
+              "sub_category": {
+                "type": "string",
+                "description": "Sub-category (ui, viewmodel, service, etc.)"
+              },
+              "importance": {
+                "type": "string",
+                "enum": ["high", "normal", "low"],
+                "description": "File importance level"
+              },
+              "description": {
+                "type": "string",
+                "description": "Human-readable file description"
+              },
+              "dependencies": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "File-level dependencies"
+              },
+              "related_files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Related file paths"
+              },
+              "summary": {
+                "type": "string",
+                "description": "File content summary or structure"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -3,7 +3,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
     xmlns:converters="clr-namespace:WileyWidget.Converters;assembly=WileyWidget.UI"
-    xmlns:controls="clr-namespace:WileyWidget.Controls;assembly=WileyWidget">
+    xmlns:controls="clr-namespace:WileyWidget.Controls"
+    xmlns:root="clr-namespace:WileyWidget;assembly=WileyWidget.UI">
 
   <!-- ====================================================================== -->
   <!-- CUSTOM CONTROL STYLES                                                  -->
@@ -106,7 +107,7 @@
 
   <!-- Other Converters -->
   <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
-  <converters:CurrencyFormatConverter x:Key="CurrencyFormatConverter" />
+  <root:CurrencyFormatConverter x:Key="CurrencyFormatConverter" />
   <converters:ComparisonConverter x:Key="ComparisonConverter" />
   <converters:GreaterThanConverter x:Key="GreaterThanConverter" />
   <converters:StringEqualsConverter x:Key="StringEqualsConverter" />

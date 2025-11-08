@@ -3,19 +3,21 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget", "WileyWidget.csproj", "{08232EAA-D701-4145-969C-607B74EA470C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget", "src\WileyWidget\WileyWidget.csproj", "{08232EAA-D701-4145-969C-607B74EA470C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Models", "WileyWidget.Models\WileyWidget.Models.csproj", "{BF47B6A4-27BF-43FB-B1D9-922A2576268A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Models", "src\WileyWidget.Models\WileyWidget.Models.csproj", "{BF47B6A4-27BF-43FB-B1D9-922A2576268A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Data", "WileyWidget.Data\WileyWidget.Data.csproj", "{BBBDB5D8-D01C-4A98-A545-545598DA20EE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Data", "src\WileyWidget.Data\WileyWidget.Data.csproj", "{BBBDB5D8-D01C-4A98-A545-545598DA20EE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Business", "WileyWidget.Business\WileyWidget.Business.csproj", "{5F30CD28-BF32-4804-AA91-E73AA0B6E2E3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Business", "src\WileyWidget.Business\WileyWidget.Business.csproj", "{5F30CD28-BF32-4804-AA91-E73AA0B6E2E3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.UI", "WileyWidget.UI\WileyWidget.UI.csproj", "{7C0AA4EC-CC0E-4DD7-9BB7-512E1E96EED8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.UI", "src\WileyWidget.UI\WileyWidget.UI.csproj", "{7C0AA4EC-CC0E-4DD7-9BB7-512E1E96EED8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services", "WileyWidget.Services\WileyWidget.Services.csproj", "{49075B38-4FDC-4C46-AF84-45AEDEEEA2FB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services", "src\WileyWidget.Services\WileyWidget.Services.csproj", "{49075B38-4FDC-4C46-AF84-45AEDEEEA2FB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Abstractions", "WileyWidget.Abstractions\WileyWidget.Abstractions.csproj", "{E8ED5FBD-A352-47BA-A642-811FC7BB53E7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Abstractions", "src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj", "{E8ED5FBD-A352-47BA-A642-811FC7BB53E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Abstractions", "src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj", "{E8ED5FBD-A352-47BA-A642-811FC7BB53E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Tests", "tests\\WileyWidget.Tests\\WileyWidget.Tests.csproj", "{D1F3A1B2-3C4D-4E5F-8123-ABCDEF123456}"
 EndProject

@@ -6,7 +6,7 @@
     <!-- Core Microsoft + EF -->
     <PackageVersion
         Include="BoldReports.WPF"
-        Version="11.1.16" />
+        Version="11.1.18" />
     <PackageVersion
         Include="MahApps.Metro.IconPacks"
         Version="6.2.1" />
@@ -75,7 +75,7 @@
         Version="5.67.0" />
     <PackageVersion
         Include="Microsoft.Xaml.Behaviors.Wpf"
-        Version="1.1.122" />
+        Version="1.1.135" />
     <!-- Serilog (Aligned with Intuit SDK 14.x expectations) -->
     <PackageVersion
         Include="Serilog"
@@ -103,7 +103,7 @@
         Version="4.1.0" />
     <PackageVersion
         Include="Serilog.Sinks.File"
-        Version="4.1.0" />
+        Version="7.0.0" />
     <PackageVersion
         Include="Serilog.Sinks.CosmosDB"
         Version="1.2.0" />
@@ -122,10 +122,10 @@
         Version="[1.13.1, 2.0.0)" />
     <PackageVersion
         Include="OpenTelemetry.Instrumentation.Http"
-        Version="[1.9.0, 2.0.0)" />
+        Version="[1.13.0, 2.0.0)" />
     <PackageVersion
         Include="OpenTelemetry.Instrumentation.Runtime"
-        Version="[1.13.1, 2.0.0)" />
+        Version="[1.13.0, 2.0.0)" />
     <!-- EntityFrameworkCore instrumentation removed - package not available as stable -->
     <!-- <PackageVersion
         Include="OpenTelemetry.Instrumentation.EntityFrameworkCore"
@@ -137,78 +137,75 @@
     <!-- Syncfusion WPF -->
     <PackageVersion
         Include="Syncfusion.Licensing"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfBusyIndicator.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfChart.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfChat.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfGauge.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfGrid.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfInput.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.Spreadsheet.WPF"
         Version="26.1.39" />
     <PackageVersion
         Include="Syncfusion.SfProgressBar.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfRichTextBoxAdv.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfSkinManager.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfSpreadsheet.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfTreeView.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.SfGridCommon.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.Shared.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.ReportViewer.WPF"
         Version="19.1.0.69" />
     <PackageVersion
         Include="Syncfusion.Themes.FluentDark.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.Themes.FluentLight.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.Tools.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.XlsIO.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageVersion
         Include="Syncfusion.Pdf.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <!-- QuickBooks -->
     <PackageVersion
         Include="IppOAuth2PlatformSdk"
         Version="14.0.0" />
-    <PackageVersion
-        Include="IppDotNetSdkForQuickBooksApiV3"
-        Version="14.7.0.1" />
     <!-- Validation -->
     <PackageVersion
         Include="FluentValidation"
-        Version="11.11.0" />
+        Version="12.1.0" />
     <!-- AI Integration Packages -->
     <PackageVersion
         Include="Microsoft.Extensions.AI"
@@ -292,7 +289,7 @@
         Version="3.0.0" />
     <PackageVersion
         Include="Microsoft.Extensions.Http.Resilience"
-        Version="9.1.0" />
+        Version="9.10.0" />
     <!-- Test Packages -->
     <PackageVersion
         Include="Microsoft.NET.Test.Sdk"
@@ -365,21 +362,19 @@
     <PackageVersion
         Include="Prism.Container.DryIoc"
         Version="9.0.107" />
-    <!-- Pin DryIoc to the version expected by Prism.Container.DryIoc to avoid duplicate/ambiguous
-    references -->
     <PackageVersion
-        Include="DryIoc"
-        Version="5.4.3" />
+        Include="Prism.Events"
+        Version="9.0.537" />
     <!-- Prism.DryIoc removed: replaced with Prism.Container.DryIoc for .NET 9 compatibility -->
 
     <!-- Security Updates: Override vulnerable transitive dependencies -->
     <!-- CRITICAL: Fixes for high-severity vulnerabilities found by osv-scanner -->
 
     <!-- System.Net.Security: Fix GHSA-qhqf-ghgh-x2m4, GHSA-6xh7-4v2w-36q6 -->
-    <!-- Current vulnerable: 4.0.0, Required: 4.0.1+ -->
+    <!-- Current vulnerable: 4.0.0, Required: 4.3.2+ -->
     <PackageVersion
         Include="System.Net.Security"
-        Version="6.0.0" />
+        Version="4.3.2" />
 
     <!-- System.Net.Http: Fix GHSA-7jgj-8wvc-jh57 -->
     <!-- Current vulnerable: 4.1.0, Required: 4.3.4+ -->
@@ -403,8 +398,13 @@
     <!-- Current vulnerable: 4.5.0, Required: 4.7.1+ -->
     <PackageVersion
         Include="System.Security.Cryptography.Xml"
-        Version="8.0.1" />
+        Version="9.0.10" />
 
     <!-- Azure configuration and identity packages removed to clean Azure traces -->
+
+    <!-- Intuit QuickBooks SDK packages for testing -->
+    <PackageVersion
+        Include="IppDotNetSdkForQuickBooksApiV3"
+        Version="14.7.0.2" />
   </ItemGroup>
 </Project>

@@ -50,10 +50,16 @@
     <TieredCompilation>true</TieredCompilation>
     <TieredPGO>true</TieredPGO>
     <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
-
-    <!-- Prefer modern wpftmp path; allow WPF to copy NuGet assets for temp project -->
     <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
 
+    <!-- Ensure all NuGet package assemblies are copied to output directory -->
+    <!-- This prevents runtime assembly resolution failures -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <!-- Prefer modern wpftmp path; allow WPF to copy NuGet assets for temp project -->
+
+  <PropertyGroup>
     <!-- Disable ReadyToRun for Debug builds to improve build performance -->
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">false</PublishReadyToRun>
 
@@ -68,6 +74,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
+
 
   <PropertyGroup>
     <AnalysisLevel>6.0</AnalysisLevel>
@@ -102,6 +109,11 @@
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>WileyWidget.Tests</_Parameter1>
+    </AssemblyAttribute>
+    <!-- WPF Theme Info for custom controls -->
+    <AssemblyAttribute Include="System.Windows.ThemeInfoAttribute">
+      <_Parameter1>System.Windows.ResourceDictionaryLocation.None</_Parameter1>
+      <_Parameter2>System.Windows.ResourceDictionaryLocation.SourceAssembly</_Parameter2>
     </AssemblyAttribute>
   </ItemGroup>
 
@@ -261,31 +273,41 @@
 
   <!-- The wpftmp shim is included only for the temporary WPF markup project (configured below)
              to avoid affecting normal runtime compilation. See the wpftmp-specific ItemGroup later. -->
+  <!-- DEPRECATED: PrismWpftmpShim.cs is no longer needed with the three-layer NuGet resolution
+  system.
+       Excluded globally to prevent type conflicts with real Prism packages. -->
+  <ItemGroup>
+    <Compile Remove="PrismWpftmpShim.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference
         Include="BoldReports.WPF"
-        Version="11.1.15" />
+        Version="11.1.18" />
     <PackageReference
         Include="Microsoft.ApplicationInsights"
         Version="2.23.0" />
     <!-- Removed explicit Roslyn runtime packages to avoid Hot Reload conflicts in VS -->
     <PackageReference
         Include="Microsoft.Xaml.Behaviors.Wpf"
-        Version="1.1.39" />
+        Version="1.1.135" />
     <PackageReference
         Include="Polly.Extensions"
         Version="8.6.4" />
     <!-- Prism packages - explicit versions for wpftmp compatibility -->
+    <!-- GeneratePathProperty provides MSBuild variables for package paths -->
     <PackageReference
         Include="Prism.Core"
-        Version="9.0.537" />
+        Version="9.0.537"
+        GeneratePathProperty="true" />
     <PackageReference
         Include="Prism.Wpf"
-        Version="9.0.537" />
+        Version="9.0.537"
+        GeneratePathProperty="true" />
     <PackageReference
         Include="Prism.DryIoc"
-        Version="9.0.537" />
+        Version="9.0.537"
+        GeneratePathProperty="true" />
     <PackageReference
         Include="Microsoft.Extensions.DependencyInjection.Abstractions"
         Version="9.0.10" />
@@ -351,67 +373,67 @@
         Version="4.1.0" />
     <PackageReference
         Include="Serilog.Sinks.File"
-        Version="4.1.0" />
+        Version="7.0.0" />
     <PackageReference
         Include="Syncfusion.Licensing"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfBusyIndicator.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfChart.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfChat.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfGauge.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfGrid.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfInput.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfProgressBar.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfRichTextBoxAdv.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfSkinManager.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfSpreadsheet.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfTreeView.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfGridCommon.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.Shared.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.Themes.FluentDark.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.Themes.FluentLight.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.Tools.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.XlsIO.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.Pdf.WPF"
-        Version="31.1.17" />
+        Version="31.2.5" />
     <PackageReference
         Include="FluentValidation"
-        Version="11.11.0" />
+        Version="12.1.0" />
     <PackageReference
         Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization"
         Version="9.10.0" />
@@ -421,6 +443,22 @@
     <PackageReference
         Include="System.Management"
         Version="9.0.10" />
+    <!-- Pin BCL packages to patched versions to address known vulnerabilities -->
+    <PackageReference
+        Include="System.Net.Http"
+        Version="4.3.4" />
+    <PackageReference
+        Include="System.Net.Security"
+        Version="4.3.2" />
+    <PackageReference
+        Include="System.Security.Cryptography.X509Certificates"
+        Version="4.3.2" />
+    <PackageReference
+        Include="System.Security.Cryptography.Xml"
+        Version="9.0.10" />
+    <PackageReference
+        Include="System.Private.Uri"
+        Version="4.3.2" />
     <!-- Resilience Packages -->
     <PackageReference
         Include="Polly"
@@ -430,23 +468,23 @@
         Version="3.0.0" />
     <PackageReference
         Include="Microsoft.Extensions.Http.Resilience"
-        Version="9.1.0" />
+        Version="9.10.0" />
     <!-- SigNoz OpenTelemetry Packages -->
     <PackageReference
         Include="OpenTelemetry"
-        Version="[1.9.0, 2.0.0)" />
+        Version="[1.13.1, 2.0.0)" />
     <PackageReference
         Include="OpenTelemetry.Exporter.Console"
-        Version="[1.9.0, 2.0.0)" />
+        Version="[1.13.1, 2.0.0)" />
     <PackageReference
         Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"
-        Version="[1.9.0, 2.0.0)" />
+        Version="[1.13.1, 2.0.0)" />
     <PackageReference
         Include="OpenTelemetry.Instrumentation.Http"
-        Version="[1.9.0, 2.0.0)" />
+        Version="[1.13.0, 2.0.0)" />
     <PackageReference
         Include="OpenTelemetry.Extensions.Hosting"
-        Version="[1.9.0, 2.0.0)" />
+        Version="[1.13.1, 2.0.0)" />
     <!-- Additional OpenTelemetry packages for comprehensive instrumentation -->
     <!-- EntityFrameworkCore instrumentation removed - package not available as stable -->
     <!-- <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" /> -->
@@ -464,11 +502,15 @@
         Version="14.0.0" />
     <PackageReference
         Include="IppDotNetSdkForQuickBooksApiV3"
-        Version="14.7.0.1" />
+        Version="14.7.0.2" />
     <PackageReference
         Include="Microsoft.CodeAnalysis.NetAnalyzers"
         Version="9.0.0"
         PrivateAssets="all" />
+    <!-- EF Core InMemory for test mode database -->
+    <PackageReference
+        Include="Microsoft.EntityFrameworkCore.InMemory"
+        Version="9.0.10" />
   </ItemGroup>
 
   <!-- Prevent duplicate compilation of sources that belong to other class library projects.
@@ -477,68 +519,70 @@
        Remove those from the root project to avoid CS0436 duplicate-type conflicts,
        but keep the application definition files required by this root project. -->
   <ItemGroup>
-    <!-- Prevent broad compilation of workspace 'src' to avoid duplicate-type definitions.
-         Only include the application entry points here; UI-specific types (converters, views,
-         viewmodels) are compiled into the WileyWidget.UI project to keep assemblies single-authority. -->
+    <!-- Remove broad 'src' copies to avoid duplicate compile with other projects -->
     <Compile Remove="src\**\*.cs" />
-    <Compile Include="src\App.xaml.cs" />
-    <Compile Include="src\Program.cs" />
-    <!-- Include Configuration sources needed by App.xaml.cs (excluding PolicyFactory which is in
-    Startup project) -->
-    <Compile Include="src\Configuration\AppOptionsConfiguration.cs" />
-    <Compile Include="src\Configuration\DatabaseConfiguration.cs" />
-    <Compile Include="src\Configuration\WpfHostingExtensions.cs" />
-    <Compile Include="src\Configuration\WpfApplicationHostExtensions.cs" />
-    <Compile Include="src\Configuration\OptionsValidators.cs" />
-    <Compile Include="src\Configuration\StaticOptionsMonitor.cs" />
-    <Compile Include="src\Configuration\AccountTypeValidator.cs" />
-    <Compile Include="src\Configuration\Resilience\PolicyFactory.cs" />
-    <Compile Include="src\Configuration\Resilience\DatabaseResiliencePolicy.cs" />
-    <!-- Include Diagnostics sources needed by App.xaml.cs -->
-    <Compile Include="src\Diagnostics\StartupPerformanceMonitor.cs" />
-    <Compile Include="src\Diagnostics\BindingErrorTraceListener.cs" />
-    <Compile Include="src\Diagnostics\XamlDiagnosticsService.cs" />
-    <!-- Include background database initializer used by App.xaml.cs during startup -->
-    <Compile Include="src\Startup\DatabaseInitializer.cs" />
-    <!-- Include startup orchestrator and diagnostics services -->
-    <Compile Include="src\Startup\StartupOrchestrator.cs" />
-    <Compile Include="src\Startup\StartupDiagnosticsService.cs" />
-    <Compile Include="src\HealthCheckHostedService.cs" />
-    <!-- QuickBooksService.cs moved to WileyWidget.Services project -->
-    <!-- Include Prism modules from Startup\Modules directory -->
-    <Compile Include="src\Startup\Modules\**\*.cs" />
+    <!-- Rely on SDK default Compile items for the project files in this folder. We only
+                 exclude the workspace 'src' copies above to avoid duplicates with other projects. -->
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-    <ProjectReference Include="WileyWidget.Business\WileyWidget.Business.csproj" />
-    <ProjectReference Include="WileyWidget.Data\WileyWidget.Data.csproj" />
-    <ProjectReference Include="WileyWidget.Models\WileyWidget.Models.csproj" />
-    <ProjectReference Include="WileyWidget.UI\WileyWidget.UI.csproj" />
-    <ProjectReference Include="WileyWidget.Services\WileyWidget.Services.csproj" />
-    <ProjectReference Include="WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\WileyWidget.UI\WileyWidget.UI.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
   </ItemGroup>
 
-  <!-- Design-time noise suppression: exclude Region-heavy sources from the
-       temporary wpftmp project only. This does NOT affect normal builds. -->
+  <!-- Design-time noise suppression: exclude almost all sources from the
+       temporary wpftmp project. wpftmp only needs custom control definitions (Controls\)
+       and App.Wpftmp.cs for XAML markup compilation. -->
   <PropertyGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
     <DefineConstants>$(DefineConstants);WPFTMP</DefineConstants>
+    <!-- Clear StartupObject for wpftmp since Program.cs is excluded -->
+    <StartupObject></StartupObject>
   </PropertyGroup>
   <ItemGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
-    <Compile Remove="src\Regions\**\*.cs" />
-    <Compile Remove="src\Behaviors\**\*.cs" />
-    <Compile Remove="src\Startup\Modules\**\*.cs" />
-    <Compile Remove="src\ViewModels\**\*.cs" />
-    <Compile Remove="src\Views\Shell.xaml.cs" />
-    <!-- Also exclude XAML Pages and their code-behind to avoid design-time g.cs references -->
-    <Compile Remove="src\Views\**\*.xaml.cs" />
-    <Page Remove="src\Views\**\*.xaml" />
-    <!-- Keep App.xaml and App.xaml.cs included for wpftmp so abstract PrismApplication methods are
-    implemented -->
-    <!-- Include a temporary shim that provides minimal Prism types when the WPF markup
-         temporary project (wpftmp) cannot resolve NuGet package references. This avoids
-         design-time/markup-compile errors while leaving runtime behavior unchanged. -->
-    <Compile Include="src\PrismWpftmpShim.cs" />
+    <!-- Remove root-level .cs files that reference application infrastructure -->
+    <Compile Remove="App.xaml.cs" />
+    <Compile Remove="Program.cs" />
+    <Compile Remove="NavigationRequestEventArgs.cs" />
+    <Compile Remove="HealthCheckHostedService.cs" />
+    <Compile Remove="QuickBooksService.cs" />
+    <Compile Remove="SettingsService.cs" />
+    <Compile Remove="ThemeUtility.cs" />
+    <Compile Remove="EnhancedResourceLoader.cs" />
+    <!-- Remove PrismWpftmpShim.cs - no longer needed with CopyLocalLockFileAssemblies enabling real
+    Prism DLL access -->
+    <Compile Remove="PrismWpftmpShim.cs" />
+
+    <!-- Remove all subdirectories except Controls\ (which wpftmp needs for custom control styles) -->
+    <Compile Remove="Attributes\**" />
+    <Compile Remove="Configuration\**" />
+    <Compile Remove="Diagnostics\**" />
+    <Compile Remove="Fakes\**" />
+    <Compile Remove="Helpers\**" />
+    <Compile Remove="Infrastructure\**" />
+    <Compile Remove="Models\**" />
+    <Compile Remove="Properties\**" />
+    <Compile Remove="Regions\**" />
+    <Compile Remove="Behaviors\**" />
+    <Compile Remove="Services\**" />
+    <Compile Remove="Startup\**" />
+    <Compile Remove="Testing\**" />
+    <Compile Remove="ViewModels\**" />
+    <Compile Remove="Views\**" />
+
+    <!-- Remove XAML pages -->
+    <Page Remove="Views\**\*.xaml" />
+
+    <!-- Remove App.xaml from wpftmp to prevent App.g.cs generation -->
+    <Page Remove="App.xaml" />
+    <ApplicationDefinition Remove="App.xaml" />
+
+    <!-- PrismWpftmpShim.cs and Controls\**\*.cs remain included via SDK defaults.
+         wpftmp can now compile Generic.xaml with custom control type references. -->
   </ItemGroup>
 
   <!-- Exclude test files and sample files from main project build -->
@@ -563,12 +607,12 @@
     <Compile Remove="WileyWidget.Data\**" />
     <Compile Remove="WileyWidget.Models\**" />
     <Compile Remove="WileyWidget.Webhooks\**" />
-    <Compile Remove="src\Models\**\*.cs" />
+    <Compile Remove="Models\**\*.cs" />
     <EmbeddedResource Remove="WileyWidget.Business\**" />
     <EmbeddedResource Remove="WileyWidget.Data\**" />
     <EmbeddedResource Remove="WileyWidget.Models\**" />
     <EmbeddedResource Remove="WileyWidget.Webhooks\**" />
-    <EmbeddedResource Remove="src\Models\**\*.*" />
+    <EmbeddedResource Remove="Models\**\*.*" />
     <EmbeddedResource Remove="WileyWidget.IntegrationTests\**" />
     <EmbeddedResource Remove="WileyWidget.Tests\**" />
     <EmbeddedResource Remove="WileyWidget.UiTests\**" />
@@ -580,7 +624,7 @@
     <None Remove="WileyWidget.Data\**" />
     <None Remove="WileyWidget.Models\**" />
     <None Remove="WileyWidget.Webhooks\**" />
-    <None Remove="src\Models\**\*.*" />
+    <None Remove="Models\**\*.*" />
     <None Remove="WileyWidget.IntegrationTests\**" />
     <None Remove="WileyWidget.Tests\**" />
     <None Remove="WileyWidget.UiTests\**" />
@@ -592,7 +636,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="src\Resources\SplashScreen.png">
+    <Content Include="Resources\SplashScreen.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -605,12 +649,13 @@
 
   <!-- Report Resources -->
   <ItemGroup>
-    <Resource Include="src\Reports\EnterpriseSummary.rdl" />
+    <Resource Include="Reports\EnterpriseSummary.rdl" />
   </ItemGroup>
 
   <!-- Ensure configuration files are copied to output directory -->
   <ItemGroup>
-    <Content Include="appsettings.json">
+    <Content Include="..\..\config\development\appsettings.json">
+      <Link>appsettings.json</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

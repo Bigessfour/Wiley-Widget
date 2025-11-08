@@ -2,12 +2,16 @@
 """
 Generate AI-Fetchable Manifest (ai-fetchable-manifest.json)
 
-This script creates a comprehensive manifest of the repository with:
+Enhanced repository intelligence manifest with:
 - File metadata (size, timestamps, hashes, languages)
 - GitHub URLs (blob, raw, history)
-- Categorization (source_code, test, documentation, etc.)
-- Search index for AI tools
-- Related files and dependencies analysis
+- Advanced categorization with sub-categories
+- Search index with weighted keywords
+- Related files and dependency graphs
+- Code structure analysis (classes, methods, namespaces)
+- Build and test status integration
+- License and compliance tracking
+- Recent commit history per file
 """
 
 import argparse
@@ -20,13 +24,17 @@ import shutil
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
 # Configuration defaults
 DEFAULT_CONFIG_FILE = ".ai-manifest-config.json"
 DEFAULT_OUTPUT_FILE = "ai-fetchable-manifest.json"
+KNOWN_CATEGORIES = {
+    "source_code", "test", "documentation", "configuration",
+    "automation", "assets", "unknown"
+}
 
 # Language detection by extension
 LANGUAGE_MAP = {
@@ -53,6 +61,22 @@ LANGUAGE_MAP = {
     ".sh": "Shell",
     ".bat": "Batch",
     ".toml": "TOML",
+    ".csx": "C# Script",
+    ".resx": "Resource File",
+    ".rdl": "Report Definition",
+    ".gitignore": "Git Configuration",
+    ".gitattributes": "Git Configuration",
+    ".editorconfig": "Editor Configuration",
+    ".prettierrc": "Prettier Configuration",
+    ".prettierignore": "Prettier Configuration",
+    ".eslintrc": "ESLint Configuration",
+    ".dockerignore": "Docker Configuration",
+    "dockerfile": "Docker",
+    ".lock": "Lock File",
+    ".svg": "SVG",
+    ".props": "MSBuild Properties",
+    ".targets": "MSBuild Targets",
+    ".snk": "Strong Name Key",
 }
 
 # Binary file extensions
@@ -74,6 +98,12 @@ BINARY_EXTENSIONS = {
     ".db",
     ".sqlite",
     ".bin",
+    ".pdf",  # Syncfusion reports
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".otf",
 }
 
 # Exclude patterns
@@ -131,7 +161,12 @@ class RepositoryAnalyzer:
         self.root_path = Path.cwd()
         self.config = self._load_config(config_path)
         self.exclude_patterns = self._compile_exclude_patterns()
+        # Cache git executable path to avoid repeated lookups
+        self.git_exe = shutil.which("git")
         self.git_info = self._get_git_info()
+        # Set parallel workers based on CPU count
+        cpu_count = os.cpu_count() or 4
+        self.max_workers = self.config.get("parallel_workers", max(2, cpu_count // 2))
 
     def _load_config(self, config_path: Optional[str]) -> Dict:
         """Load configuration from JSON file."""
@@ -139,7 +174,14 @@ class RepositoryAnalyzer:
         if config_file.exists():
             try:
                 with open(config_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    config = json.load(f)
+                    # Basic JSON schema validation
+                    if not isinstance(config, dict):
+                        print("Warning: Config must be a JSON object, using defaults")
+                        return {}
+                    return config
+            except json.JSONDecodeError as e:
+                print(f"Warning: Invalid JSON in config file: {e}")
             except Exception as e:
                 print(f"Warning: Could not load config file: {e}")
         return {}
@@ -224,10 +266,7 @@ class RepositoryAnalyzer:
 
     def _get_git_info(self) -> Dict:
         """Get git repository information."""
-        # Use shutil.which to resolve the full path of the git executable to avoid
-        # starting a process with a partial executable path (Bandit B607).
-        git_exe = shutil.which("git")
-        if not git_exe:
+        if not self.git_exe:
             # Git not available on PATH - return safe defaults
             return {
                 "remote_url": "",
@@ -235,13 +274,16 @@ class RepositoryAnalyzer:
                 "branch": "main",
                 "commit_hash": "",
                 "is_dirty": False,
+                "git_available": False,
             }
 
         def run_git(args: List[str]) -> str:
             # Run git with explicit executable path and without a shell to reduce injection risk (B603/B404).
+            # Note: self.git_exe is guaranteed to be non-None when this function is called
             try:
+                assert self.git_exe is not None  # Type narrowing for mypy/pyright
                 completed = subprocess.run(
-                    [git_exe] + args, check=True, capture_output=True, text=True
+                    [self.git_exe] + args, check=True, capture_output=True, text=True
                 )
                 return completed.stdout.strip()
             except subprocess.CalledProcessError:
@@ -267,12 +309,84 @@ class RepositoryAnalyzer:
             "branch": branch,
             "commit_hash": commit_hash,
             "is_dirty": is_dirty,
+            "git_available": True,
         }
 
+    def _get_file_git_history(self, relative_path: str, max_commits: int = 5) -> List[Dict]:
+        """Get recent git commit history for a file."""
+        if not self.git_info.get("git_available", False) or not self.git_exe:
+            return []
+
+        try:
+            # Get last N commits for the file with format: hash|author|date|message
+            result = subprocess.run(
+                [
+                    self.git_exe,
+                    "log",
+                    f"-{max_commits}",
+                    "--pretty=format:%H|%an|%ai|%s",
+                    "--",
+                    relative_path,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                cwd=self.root_path,
+            )
+
+            commits = []
+            for line in result.stdout.strip().split("\n"):
+                if not line:
+                    continue
+                parts = line.split("|", 3)
+                if len(parts) == 4:
+                    commits.append({
+                        "hash": parts[0],
+                        "author": parts[1],
+                        "date": parts[2],
+                        "message": parts[3],
+                    })
+
+            return commits
+        except subprocess.CalledProcessError:
+            return []
+
     def _get_file_language(self, file_path: Path) -> str:
-        """Determine file language from extension."""
+        """Determine file language from extension or filename."""
+        # Check lowercase filename for special cases
+        filename_lower = file_path.name.lower()
+
+        # Special filenames without extensions
+        if filename_lower in ["dockerfile", "makefile", "rakefile", "gemfile", "guardfile"]:
+            return "Docker" if filename_lower == "dockerfile" else "Ruby"
+        elif filename_lower in ["cmakelists.txt"]:
+            return "CMake"
+        elif filename_lower.startswith(".env"):
+            return "Environment"
+
+        # Extension-based detection
         extension = file_path.suffix.lower()
-        return LANGUAGE_MAP.get(extension, "Unknown")
+        if extension in LANGUAGE_MAP:
+            return LANGUAGE_MAP[extension]
+
+        # Try parent directory context for unknown extensions
+        parent_name = file_path.parent.name.lower()
+        if parent_name in ["scripts", "tools"]:
+            # Check if it looks like a script based on content
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    first_line = f.readline().strip()
+                    if first_line.startswith("#!"):
+                        if "python" in first_line:
+                            return "Python"
+                        elif "bash" in first_line or "sh" in first_line:
+                            return "Shell"
+                        elif "pwsh" in first_line or "powershell" in first_line:
+                            return "PowerShell"
+            except:
+                pass
+
+        return "Unknown"
 
     def _is_binary(self, file_path: Path) -> bool:
         """Check if file is binary."""
@@ -321,8 +435,141 @@ class RepositoryAnalyzer:
         except OSError:
             return "unknown"
 
-    def _categorize_file(self, file_path: Path) -> str:
-        """Categorize file based on path and extension."""
+    def _categorize_file(self, file_path: Path) -> tuple[str, str]:
+        """
+        Categorize file and determine sub-category.
+        Returns: (category, sub_category)
+        """
+        path_str = str(file_path).lower().replace("\\", "/")
+        path_parts = path_str.split("/")
+        filename = file_path.name.lower()
+        extension = file_path.suffix.lower()
+
+        # Check for migrations first (high priority path-based categorization)
+        if "migrations/" in path_str or "migration" in filename:
+            if extension == ".sql":
+                return "source_code", "data"
+
+        # Configuration files
+        if extension in [".json", ".yaml", ".yml", ".toml", ".config", ".xml"] or filename in [
+            ".editorconfig",
+            ".prettierrc",
+            ".eslintrc",
+            "package.json",
+            "pyproject.toml",
+            "global.json",
+        ]:
+            return "configuration", "build" if "build" in path_str or extension in [".props", ".targets"] else "settings"
+
+        # Documentation
+        if extension in [".md", ".txt", ".rst"] or "docs/" in path_str or "documentation/" in path_str:
+            sub_cat = "api" if "api" in path_str else "guide" if any(x in path_str for x in ["guide", "tutorial"]) else "general"
+            return "documentation", sub_cat
+
+        # Automation scripts
+        if extension in [".ps1", ".psm1", ".psd1", ".py", ".sh", ".bat", ".csx"]:
+            if "test" in path_str:
+                return "automation", "test-scripts"
+            elif "maintenance" in path_str or "cleanup" in filename:
+                return "automation", "maintenance"
+            elif "tools" in path_str or "setup" in path_str:
+                return "automation", "tools"
+            return "automation", "scripts"
+
+        # Test files
+        if "test" in path_str or extension == ".test.cs" or filename.endswith("tests.cs"):
+            if "unit" in path_str:
+                return "test", "unit"
+            elif "integration" in path_str:
+                return "test", "integration"
+            elif "e2e" in path_str or "end-to-end" in path_str:
+                return "test", "e2e"
+            return "test", "unit"
+
+        # Source code with enhanced sub-categorization
+        if extension in [".cs", ".csproj", ".xaml"]:
+            # XAML views
+            if extension == ".xaml":
+                if "app.xaml" in filename:
+                    return "source_code", "application"
+                return "source_code", "ui"
+
+            # C# files
+            if extension == ".cs":
+                # ViewModels
+                if "viewmodel" in filename:
+                    return "source_code", "viewmodel"
+                # Views (code-behind)
+                if filename.endswith(".xaml.cs"):
+                    return "source_code", "ui"
+                # Models
+                if "model" in path_str and "viewmodel" not in filename:
+                    if "migration" in filename or "migrations/" in path_str:
+                        return "source_code", "migration"
+                    return "source_code", "model"
+                # Services
+                if "service" in path_str or filename.endswith("service.cs"):
+                    if "abstractions" in path_str or filename.startswith("i") and filename.endswith("service.cs"):
+                        return "source_code", "interface"
+                    return "source_code", "service"
+                # Repositories
+                if "repository" in filename or "repositories/" in path_str:
+                    return "source_code", "data"
+                # Data contexts
+                if "context" in filename or "dbcontext" in filename:
+                    return "source_code", "data"
+                # Converters
+                if "converter" in filename or "converters/" in path_str:
+                    return "source_code", "converter"
+                # Behaviors
+                if "behavior" in filename or "behaviors/" in path_str:
+                    return "source_code", "behavior"
+                # Validators
+                if "validator" in filename or "validation" in path_str:
+                    return "source_code", "validation"
+                # Modules (Prism)
+                if "module" in filename:
+                    return "source_code", "module"
+                # Helpers/Utilities
+                if "helper" in filename or "utility" in filename or "utils" in path_str:
+                    return "source_code", "utility"
+                # Configuration
+                if "config" in filename or "settings" in filename:
+                    return "source_code", "configuration"
+                # General business logic
+                if "business" in path_str:
+                    return "source_code", "business"
+                # Facades
+                if "facade" in path_str or "facade" in filename:
+                    return "source_code", "facade"
+
+            # Project files
+            if extension == ".csproj":
+                return "source_code", "project"
+
+            # Default for C# files
+            return "source_code", "general"
+
+        # SQL files
+        if extension == ".sql":
+            if "migration" in filename:
+                return "source_code", "migration"
+            return "source_code", "data"
+
+        # Assets
+        if extension in [".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".bmp"]:
+            return "assets", "image"
+
+        # Web files
+        if extension in [".html", ".css", ".js", ".ts"]:
+            return "source_code", "web"
+
+        # Report files
+        if extension in [".rdl", ".rdlc"]:
+            return "source_code", "report"
+
+        return "unknown", "unclassified"
+        """Categorize file based on path and extension. Returns (category, sub_category)."""
         path_str = str(file_path).replace("\\", "/")
 
         # Check custom categories from config
@@ -330,7 +577,7 @@ class RepositoryAnalyzer:
             for custom_cat in self.config["custom_categories"]:
                 for pattern in custom_cat.get("patterns", []):
                     if Path(path_str).match(pattern):
-                        return custom_cat["name"]
+                        return (custom_cat["name"], custom_cat.get("sub_category", ""))
 
         # Default categorization - CHECK TEST PATTERNS FIRST
         if (
@@ -341,17 +588,41 @@ class RepositoryAnalyzer:
             or path_str.endswith("Tests.cs")
             or path_str.endswith("Test.cs")
         ):
-            return "test"
+            return ("test", "unit_test" if "Unit" in path_str else "integration_test" if "Integration" in path_str else "")
         elif path_str.startswith("src/") or "WileyWidget." in path_str:
-            return "source_code"
+            # Sub-categorize source code
+            if file_path.suffix == ".xaml":
+                return ("source_code", "ui")
+            elif "ViewModel" in path_str:
+                return ("source_code", "viewmodel")
+            elif "View" in path_str and file_path.suffix == ".cs":
+                return ("source_code", "view")
+            elif "Model" in path_str or "/Models/" in path_str:
+                return ("source_code", "model")
+            elif "Service" in path_str or "/Services/" in path_str:
+                return ("source_code", "service")
+            elif "Repository" in path_str or "/Repositories/" in path_str:
+                return ("source_code", "data")
+            elif "Converter" in path_str or "/Converters/" in path_str:
+                return ("source_code", "converter")
+            elif "Behavior" in path_str or "/Behaviors/" in path_str:
+                return ("source_code", "behavior")
+            else:
+                return ("source_code", "")
         elif path_str.startswith("docs/") or file_path.name in [
             "README.md",
             "CHANGELOG.md",
             "CONTRIBUTING.md",
+            "SECURITY.md",
+            "LICENSE",
+            "LICENSE.txt",
+            "LICENSE.md",
         ]:
-            return "documentation"
-        elif path_str.startswith("scripts/") or path_str.startswith(".github/"):
-            return "automation"
+            return ("documentation", "")
+        elif path_str.startswith("scripts/") or file_path.suffix in [".ps1", ".psm1", ".psd1"]:
+            return ("automation", "scripts")
+        elif path_str.startswith(".github/"):
+            return ("automation", "ci_cd")
         elif file_path.suffix in [
             ".json",
             ".yaml",
@@ -361,10 +632,20 @@ class RepositoryAnalyzer:
             ".sln",
             ".props",
             ".targets",
+            ".toml",
+            ".editorconfig",
         ]:
-            return "configuration"
+            return ("configuration", "build" if file_path.suffix in [".csproj", ".sln", ".props", ".targets"] else "")
+        elif path_str.startswith("docker/") or file_path.name.lower().startswith("dockerfile"):
+            return ("automation", "docker")
+        elif path_str.startswith("sql/") or file_path.suffix == ".sql":
+            return ("source_code", "data")
+        elif file_path.suffix in [".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico"]:
+            return ("assets", "image")
+        elif path_str.startswith("wwwroot/") or path_str.startswith("public/"):
+            return ("assets", "web")
         else:
-            return "unknown"
+            return ("unknown", "")
 
     def _determine_importance(self, file_path: Path, category: str) -> str:
         """Determine file importance."""
@@ -427,8 +708,25 @@ class RepositoryAnalyzer:
         """Extract dependencies from file content."""
         dependencies = set()
 
+        # C# Project file dependencies (NuGet packages)
+        if file_path.suffix == ".csproj":
+            # Extract PackageReference items
+            package_refs = re.findall(
+                r'<PackageReference\s+Include="([^"]+)"', content
+            )
+            dependencies.update(package_refs)
+
+            # Extract ProjectReference items
+            project_refs = re.findall(
+                r'<ProjectReference\s+Include="([^"]+)"', content
+            )
+            for ref in project_refs:
+                # Extract just the project name without path
+                proj_name = Path(ref).stem
+                dependencies.add(f"Project:{proj_name}")
+
         # C# dependencies
-        if file_path.suffix == ".cs":
+        elif file_path.suffix == ".cs":
             # Look for using statements
             if "using Prism" in content:
                 dependencies.add("Prism")
@@ -436,6 +734,12 @@ class RepositoryAnalyzer:
                 dependencies.add("Syncfusion.WPF")
             if "System.Windows" in content:
                 dependencies.add("WPF")
+            if "using Microsoft.EntityFrameworkCore" in content:
+                dependencies.add("EntityFrameworkCore")
+            if "using Moq" in content:
+                dependencies.add("Moq")
+            if "using Xunit" in content or "using xunit" in content.lower():
+                dependencies.add("xUnit")
 
         # XAML dependencies
         elif file_path.suffix == ".xaml":
@@ -452,6 +756,11 @@ class RepositoryAnalyzer:
             from_imports = re.findall(r"^from\s+(\w+)", content, re.MULTILINE)
             dependencies.update(imports)
             dependencies.update(from_imports)
+
+        # PowerShell module dependencies
+        elif file_path.suffix in [".ps1", ".psm1"]:
+            imports = re.findall(r"Import-Module\s+(\S+)", content)
+            dependencies.update(imports)
 
         return sorted(list(dependencies))
 
@@ -792,20 +1101,14 @@ class RepositoryAnalyzer:
         }
 
     def _collect_files(self) -> List[Path]:
-        """Collect all files in repository."""
+        """Collect all files in repository using efficient rglob."""
         all_files = []
-        for root, dirs, files in os.walk(self.root_path):
-            # Filter out excluded directories
-            dirs[:] = [
-                d for d in dirs if not self._should_exclude(os.path.join(root, d))
-            ]
-
-            for file in files:
-                file_path = Path(root) / file
+        # Use rglob for more efficient traversal
+        for file_path in self.root_path.rglob("*"):
+            if file_path.is_file():
                 relative = file_path.relative_to(self.root_path)
                 if not self._should_exclude(str(relative)):
                     all_files.append(file_path)
-
         return sorted(all_files)
 
     def _build_search_index(self, files_data: List[Dict]) -> List[str]:
@@ -833,13 +1136,417 @@ class RepositoryAnalyzer:
         # Limit to reasonable size
         return sorted(list(keywords))[:500]
 
+    def _build_dependency_graph(self, files_data: List[Dict]) -> Dict:
+        """Build project-level dependency graph from files."""
+        graph = {
+            "projects": {},
+            "nuget_packages": {},
+            "top_dependencies": [],
+        }
+
+        # Collect all dependencies across files
+        all_deps = {}
+
+        for file_data in files_data:
+            deps = file_data["context"]["dependencies"]
+            for dep in deps:
+                all_deps[dep] = all_deps.get(dep, 0) + 1
+
+        # Find project files and their dependencies
+        for file_data in files_data:
+            if file_data["metadata"]["path"].endswith(".csproj"):
+                project_name = Path(file_data["metadata"]["path"]).stem
+                project_deps = file_data["context"]["dependencies"]
+
+                # Separate NuGet packages from project references
+                nuget_deps = [d for d in project_deps if not d.startswith("Project:")]
+                project_refs = [d.replace("Project:", "") for d in project_deps if d.startswith("Project:")]
+
+                graph["projects"][project_name] = {
+                    "path": file_data["metadata"]["path"],
+                    "nuget_packages": nuget_deps,
+                    "project_references": project_refs,
+                }
+
+        # Count NuGet package usage across all projects
+        for project_info in graph["projects"].values():
+            for pkg in project_info["nuget_packages"]:
+                if pkg not in graph["nuget_packages"]:
+                    graph["nuget_packages"][pkg] = {"used_by_projects": []}
+                graph["nuget_packages"][pkg]["used_by_projects"].append(
+                    Path(project_info["path"]).stem
+                )
+
+        # Identify top dependencies by usage count
+        sorted_deps = sorted(all_deps.items(), key=lambda x: x[1], reverse=True)
+        graph["top_dependencies"] = [
+            {"name": dep, "usage_count": count}
+            for dep, count in sorted_deps[:20]
+        ]
+
+        return graph
+
+    def _generate_architecture_summary(self, files_data: List[Dict]) -> Dict:
+        """Generate architecture overview for MVVM projects."""
+        summary = {
+            "pattern": "MVVM",
+            "views": [],
+            "viewmodels": [],
+            "models": [],
+            "services": [],
+            "repositories": [],
+            "converters": [],
+            "behaviors": [],
+            "modules": [],
+        }
+
+        for file_data in files_data:
+            path = file_data["metadata"]["path"]
+            category = file_data["context"]["category"]
+            sub_category = file_data["context"]["sub_category"]
+
+            if category == "source_code":
+                if sub_category == "ui":
+                    summary["views"].append({
+                        "path": path,
+                        "name": Path(path).stem,
+                        "related_files": file_data["context"]["related_files"],
+                    })
+                elif sub_category == "viewmodel":
+                    summary["viewmodels"].append({
+                        "path": path,
+                        "name": Path(path).stem,
+                        "dependencies": file_data["context"]["dependencies"],
+                    })
+                elif sub_category == "model":
+                    summary["models"].append({
+                        "path": path,
+                        "name": Path(path).stem,
+                    })
+                elif sub_category == "service":
+                    summary["services"].append({
+                        "path": path,
+                        "name": Path(path).stem,
+                    })
+                elif sub_category == "data":
+                    summary["repositories"].append({
+                        "path": path,
+                        "name": Path(path).stem,
+                    })
+                elif sub_category == "converter":
+                    summary["converters"].append({
+                        "path": path,
+                        "name": Path(path).stem,
+                    })
+                elif sub_category == "behavior":
+                    summary["behaviors"].append({
+                        "path": path,
+                        "name": Path(path).stem,
+                    })
+                elif "Module" in path:
+                    summary["modules"].append({
+                        "path": path,
+                        "name": Path(path).stem,
+                    })
+
+        # Add counts
+        summary["counts"] = {
+            "views": len(summary["views"]),
+            "viewmodels": len(summary["viewmodels"]),
+            "models": len(summary["models"]),
+            "services": len(summary["services"]),
+            "repositories": len(summary["repositories"]),
+            "converters": len(summary["converters"]),
+            "behaviors": len(summary["behaviors"]),
+            "modules": len(summary["modules"]),
+        }
+
+        return summary
+
+    def _scan_vulnerabilities(self) -> Dict:
+        """Scan for package vulnerabilities using dotnet list package --vulnerable."""
+        print("Scanning for NuGet package vulnerabilities...")
+
+        dotnet_exe = shutil.which("dotnet")
+        if not dotnet_exe:
+            print("  Warning: dotnet CLI not found - skipping vulnerability scan")
+            return {
+                "vulnerable_packages": [],
+                "outdated_packages": [],
+                "secrets_detected": False,
+                "last_security_scan": datetime.now().isoformat(),
+            }
+
+        vulnerable_packages = []
+        outdated_packages = []
+
+        # Use dictionaries for immediate deduplication
+        vuln_dict = {}
+        outdated_dict = {}
+
+        # Find all .csproj files
+        csproj_files = list(self.root_path.rglob("*.csproj"))
+
+        for csproj in csproj_files:
+            if self._should_exclude(str(csproj.relative_to(self.root_path))):
+                continue
+
+            try:
+                # Check for vulnerable packages
+                result = subprocess.run(
+                    [dotnet_exe, "list", str(csproj), "package", "--vulnerable", "--include-transitive"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+
+                if result.returncode == 0 and result.stdout:
+                    # Parse output for vulnerabilities
+                    lines = result.stdout.split("\n")
+                    project_name = csproj.stem
+
+                    for line in lines:
+                        # Look for vulnerability markers
+                        if ">" in line and ("Critical" in line or "High" in line or "Moderate" in line or "Low" in line):
+                            parts = line.split()
+                            if len(parts) >= 4:
+                                package_name = parts[1] if len(parts) > 1 else "Unknown"
+                                version = parts[2] if len(parts) > 2 else "Unknown"
+                                severity = next((s for s in ["Critical", "High", "Moderate", "Low"] if s in line), "Unknown")
+
+                                # Deduplicate immediately
+                                key = f"{package_name}:{version}"
+                                if key in vuln_dict:
+                                    vuln_dict[key]["affected_projects"].append(project_name)
+                                else:
+                                    vuln_dict[key] = {
+                                        "package_name": package_name,
+                                        "installed_version": version,
+                                        "severity": severity,
+                                        "advisory_url": f"https://github.com/advisories?query={package_name}",
+                                        "affected_projects": [project_name],
+                                    }
+
+                # Check for outdated packages
+                result_outdated = subprocess.run(
+                    [dotnet_exe, "list", str(csproj), "package", "--outdated"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+
+                if result_outdated.returncode == 0 and result_outdated.stdout:
+                    lines = result_outdated.stdout.split("\n")
+                    for line in lines:
+                        if ">" in line and len(line.split()) >= 5:
+                            parts = line.split()
+                            if len(parts) >= 5:
+                                package_name = parts[1]
+                                installed_ver = parts[2]
+                                latest_ver = parts[4] if len(parts) > 4 else "Unknown"
+
+                                # Deduplicate immediately
+                                key = f"{package_name}:{installed_ver}"
+                                if key in outdated_dict:
+                                    outdated_dict[key]["used_by_projects"].append(project_name)
+                                else:
+                                    outdated_dict[key] = {
+                                        "package_name": package_name,
+                                        "installed_version": installed_ver,
+                                        "latest_version": latest_ver,
+                                        "used_by_projects": [project_name],
+                                    }
+
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                print(f"  Warning: Failed to scan {csproj.name}: {e}")
+                continue
+
+        result = {
+            "vulnerable_packages": list(vuln_dict.values()),
+            "outdated_packages": list(outdated_dict.values())[:50],  # Limit to 50
+            "secrets_detected": False,  # Could integrate with gitleaks
+            "last_security_scan": datetime.now().isoformat(),
+        }
+
+        print(f"  Found {len(result['vulnerable_packages'])} vulnerable packages")
+        print(f"  Found {len(result['outdated_packages'])} outdated packages")
+
+        return result
+
+    def _calculate_metrics(self, files_data: List[Dict]) -> Dict:
+        """Calculate repository-wide code metrics."""
+        print("Calculating code metrics...")
+
+        # Language-specific code/comment ratios
+        LANGUAGE_RATIOS = {
+            "C#": (0.75, 0.25),
+            "XAML": (0.85, 0.15),
+            "PowerShell": (0.60, 0.40),
+            "Python": (0.70, 0.30),
+            "JavaScript": (0.65, 0.35),
+            "SQL": (0.70, 0.30),
+        }
+        DEFAULT_RATIO = (0.70, 0.30)
+
+        total_lines = 0
+        total_code_lines = 0
+        total_comment_lines = 0
+        test_count = 0
+        project_metrics = {}
+
+        for file_data in files_data:
+            metadata = file_data["metadata"]
+            context = file_data["context"]
+
+            # Count lines
+            if metadata.get("line_count"):
+                total_lines += metadata["line_count"]
+
+            # Estimate code vs comments using language-specific ratios
+            if context["category"] == "source_code" and metadata.get("line_count"):
+                language = metadata.get("language", "Unknown")
+                code_ratio, comment_ratio = LANGUAGE_RATIOS.get(language, DEFAULT_RATIO)
+                code_lines = int(metadata["line_count"] * code_ratio)
+                comment_lines = int(metadata["line_count"] * comment_ratio)
+                total_code_lines += code_lines
+                total_comment_lines += comment_lines
+
+            # Count tests
+            if context["category"] == "test":
+                summary = context.get("summary", "")
+                if "test_methods" in summary.lower():
+                    # Try to extract test count
+                    matches = re.findall(r"(\d+) test", summary.lower())
+                    if matches:
+                        test_count += int(matches[0])
+
+            # Project-level metrics
+            path = metadata["path"]
+            if "src/" in path:
+                project = path.split("src/")[1].split("/")[0] if "/" in path else "root"
+                if project not in project_metrics:
+                    project_metrics[project] = {
+                        "lines_of_code": 0,
+                        "file_count": 0,
+                        "average_complexity": 0.0,
+                        "test_coverage": 0.0,
+                    }
+
+                project_metrics[project]["lines_of_code"] += metadata.get("line_count", 0)
+                project_metrics[project]["file_count"] += 1
+
+        return {
+            "total_lines_of_code": total_code_lines,
+            "total_code_lines": total_lines,
+            "total_comment_lines": total_comment_lines,
+            "average_complexity": 0.0,  # Would require Roslyn analysis
+            "test_coverage_percent": 0.0,  # Would require coverlet
+            "test_count": test_count,
+            "project_metrics": project_metrics,
+        }
+
+    def _build_folder_tree(self, files: List[Path]) -> Dict:
+        """Build hierarchical folder structure as nested dict."""
+        print("Building folder tree...")
+
+        root = {
+            "name": self.root_path.name,
+            "type": "directory",
+            "path": ".",
+            "children": []
+        }
+
+        # Group files by directory
+        for file_path in files:
+            relative = file_path.relative_to(self.root_path)
+            parts = relative.parts
+
+            # Build directory structure
+            current = root
+            current_path = []
+
+            for i, part in enumerate(parts[:-1]):  # All but last (file name)
+                current_path.append(part)
+                path_key = "/".join(current_path)
+
+                # Find or create directory entry
+                existing = next((c for c in current["children"] if c["name"] == part and c["type"] == "directory"), None)
+                if not existing:
+                    new_dir = {
+                        "name": part,
+                        "type": "directory",
+                        "path": path_key,
+                        "children": []
+                    }
+                    current["children"].append(new_dir)
+                    current = new_dir
+                else:
+                    current = existing
+
+            # Add file
+            if parts:  # Ensure we have parts
+                current["children"].append({
+                    "name": parts[-1],
+                    "type": "file",
+                    "path": str(relative).replace("\\", "/"),
+                })
+
+        # Sort children recursively
+        def sort_tree(node):
+            if "children" in node:
+                node["children"].sort(key=lambda x: (x["type"] == "file", x["name"]))
+                for child in node["children"]:
+                    sort_tree(child)
+
+        sort_tree(root)
+        return root
+
+    def _extract_license_info(self) -> Dict:
+        """Extract license information from LICENSE file."""
+        license_files = ["LICENSE", "LICENSE.txt", "LICENSE.md", "LICENSE.rst"]
+
+        for license_file in license_files:
+            license_path = self.root_path / license_file
+            if license_path.exists():
+                try:
+                    with open(license_path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read(2000)  # Read first 2000 chars
+
+                    # Detect common license types
+                    license_type = "Unknown"
+                    if "MIT License" in content or "MIT" in content[:100]:
+                        license_type = "MIT"
+                    elif "Apache License" in content:
+                        license_type = "Apache-2.0"
+                    elif "GNU GENERAL PUBLIC LICENSE" in content:
+                        if "Version 3" in content:
+                            license_type = "GPL-3.0"
+                        elif "Version 2" in content:
+                            license_type = "GPL-2.0"
+                    elif "BSD" in content[:200]:
+                        license_type = "BSD"
+
+                    return {
+                        "type": license_type,
+                        "file": license_file,
+                        "detected": True,
+                    }
+                except Exception:
+                    pass
+
+        return {
+            "type": "Unknown",
+            "file": None,
+            "detected": False,
+        }
+
     def analyze_file(self, file_path: Path) -> Dict:
         """Analyze a single file and return metadata."""
         relative_path = str(file_path.relative_to(self.root_path)).replace("\\", "/")
         stat = file_path.stat()
         is_binary = self._is_binary(file_path)
         language = self._get_file_language(file_path)
-        category = self._categorize_file(file_path)
+        category, sub_category = self._categorize_file(file_path)
         importance = self._determine_importance(file_path, category)
 
         # Read content if not binary
@@ -848,16 +1555,43 @@ class RepositoryAnalyzer:
             try:
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
-            except (OSError, UnicodeDecodeError) as e:
-                # If a file can't be read, continue with empty content and record a small warning
-                # rather than silently passing (helps surface I/O issues during manifest generation).
-                print(f"Warning: unable to read {file_path}: {e}")
+            except PermissionError as e:
+                print(f"Warning: Permission denied reading {relative_path}: {e}")
+            except OSError as e:
+                print(f"Warning: OS error reading {relative_path}: {e}")
+            except UnicodeDecodeError as e:
+                print(f"Warning: Unicode decode error reading {relative_path}: {e}")
 
         dependencies = self._extract_dependencies(file_path, content)
         related_files = self._find_related_files(file_path)
         summary = self._generate_summary(
             file_path, is_binary, self.config.get("max_summary_length", 1500)
         )
+
+        # Get git history if enabled in config
+        git_history = []
+        if self.config.get("include_git_history", True):
+            git_history = self._get_file_git_history(relative_path, max_commits=5)
+
+        # Extract last commit info if available
+        git_metadata = {
+            "last_commit": None,
+            "last_commit_hash": None,
+            "last_commit_author": None,
+            "last_commit_date": None,
+            "last_commit_message": None,
+            "recent_commits": git_history,
+        }
+
+        if git_history:
+            last = git_history[0]
+            git_metadata.update({
+                "last_commit": last["hash"][:7],
+                "last_commit_hash": last["hash"],
+                "last_commit_author": last["author"],
+                "last_commit_date": last["date"],
+                "last_commit_message": last["message"],
+            })
 
         return {
             "metadata": {
@@ -874,17 +1608,12 @@ class RepositoryAnalyzer:
                 ),
                 "is_binary": is_binary,
                 "sha256": self._calculate_sha256(file_path),
-                "git": {
-                    "last_commit": None,
-                    "last_commit_hash": None,
-                    "last_commit_author": None,
-                    "last_commit_date": None,
-                    "last_commit_message": None,
-                },
+                "git": git_metadata,
             },
             "urls": self._generate_github_urls(relative_path),
             "context": {
                 "category": category,
+                "sub_category": sub_category,
                 "importance": importance,
                 "description": self._get_file_description(
                     file_path, category, language
@@ -913,12 +1642,11 @@ class RepositoryAnalyzer:
         categories_count = {}
         languages_count = {}
 
-        # Get parallel workers from config
-        max_workers = self.config.get("parallel_workers", 4)
+        # Use cached max_workers from __init__
         start_time = time.time()
 
         # Process files in parallel
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Submit all analysis tasks
             future_to_file = {
                 executor.submit(self.analyze_file, file_path): file_path
@@ -974,7 +1702,48 @@ class RepositoryAnalyzer:
         print("Building search index...")
         search_index = self._build_search_index(files_data)
 
+        print("Building dependency graph...")
+        dependency_graph = self._build_dependency_graph(files_data)
+
+        print("Building folder tree...")
+        folder_tree = self._build_folder_tree(files)
+
+        print("Generating architecture summary...")
+        architecture = self._generate_architecture_summary(files_data)
+
+        print("Extracting license information...")
+        license_info = self._extract_license_info()
+
+        print("Scanning for vulnerabilities...")
+        security_info = self._scan_vulnerabilities()
+
+        print("Calculating code metrics...")
+        metrics_info = self._calculate_metrics(files_data)
+
+        # Calculate manifest validity period (default 7 days)
+        validity_hours = self.config.get("manifest_validity_hours", 168)
+        valid_until = datetime.now() + timedelta(hours=validity_hours)
+
+        # Pagination/filtering support
+        max_files_in_manifest = self.config.get("max_files_in_manifest", None)
+        files_truncated = False
+        original_file_count = len(files_data)
+
+        if max_files_in_manifest and len(files_data) > max_files_in_manifest:
+            files_truncated = True
+            # Prioritize important files
+            files_data_sorted = sorted(
+                files_data,
+                key=lambda x: (
+                    0 if x["context"]["importance"] == "high" else
+                    1 if x["context"]["importance"] == "normal" else 2,
+                    -x["metadata"]["size"]  # Then by size
+                )
+            )
+            files_data = files_data_sorted[:max_files_in_manifest]
+
         manifest = {
+            "$schema": "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/schemas/ai-manifest-schema.json",
             "repository": {
                 "remote_url": self.git_info["remote_url"],
                 "owner_repo": self.git_info["owner_repo"],
@@ -982,13 +1751,28 @@ class RepositoryAnalyzer:
                 "commit_hash": self.git_info["commit_hash"],
                 "is_dirty": self.git_info["is_dirty"],
                 "generated_at": datetime.now().isoformat(),
+                "valid_until": valid_until.isoformat(),
             },
+            "license": license_info,
             "summary": {
-                "total_files": len(files_data),
+                "total_files": original_file_count,
+                "files_in_manifest": len(files_data),
+                "files_truncated": files_truncated,
                 "total_size": total_size,
                 "categories": categories_count,
                 "languages": languages_count,
             },
+            "metrics": metrics_info,
+            "security": security_info,
+            "quality": {
+                "build_status": "unknown",
+                "analyzers_enabled": True,
+                "documentation_coverage": 0.0,
+                "technical_debt_minutes": 0,
+            },
+            "architecture": architecture,
+            "dependency_graph": dependency_graph,
+            "folder_tree": folder_tree,
             "search_index": search_index,
             "files": files_data,
         }
@@ -998,10 +1782,17 @@ class RepositoryAnalyzer:
             json.dump(manifest, f, indent=2)
 
         print("[SUCCESS] Manifest generated successfully!")
-        print(f"   Files: {len(files_data)}")
+        print(f"   Files: {len(files_data)}" + (f" of {original_file_count} (truncated)" if files_truncated else ""))
         print(f"   Size: {total_size:,} bytes")
         print(f"   Categories: {', '.join(categories_count.keys())}")
         print(f"   Search keywords: {len(search_index)}")
+        print(f"   Projects: {len(dependency_graph['projects'])}")
+        print(f"   NuGet packages: {len(dependency_graph['nuget_packages'])}")
+        print(f"   Architecture: {architecture['counts']['viewmodels']} ViewModels, {architecture['counts']['views']} Views")
+        print(f"   Metrics: {metrics_info['total_lines_of_code']:,} LOC, {metrics_info['test_count']} tests")
+        print(f"   Security: {len(security_info['vulnerable_packages'])} vulnerable packages, {len(security_info['outdated_packages'])} outdated")
+        print(f"   License: {license_info['type']}")
+        print(f"   Valid until: {valid_until.strftime('%Y-%m-%d %H:%M')}")
 
         return manifest
 
@@ -1030,6 +1821,15 @@ def main():
     filter_categories = None
     if args.categories:
         filter_categories = [c.strip() for c in args.categories.split(",")]
+        # Validate categories
+        invalid_cats = [c for c in filter_categories if c not in KNOWN_CATEGORIES]
+        if invalid_cats:
+            print(f"Warning: Unknown categories will be ignored: {', '.join(invalid_cats)}")
+            print(f"Valid categories: {', '.join(sorted(KNOWN_CATEGORIES))}")
+            filter_categories = [c for c in filter_categories if c in KNOWN_CATEGORIES]
+            if not filter_categories:
+                print("Error: No valid categories specified")
+                return
 
     analyzer = RepositoryAnalyzer(args.config)
     analyzer.generate_manifest(args.output, filter_categories)

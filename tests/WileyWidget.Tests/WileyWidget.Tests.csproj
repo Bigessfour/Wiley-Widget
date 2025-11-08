@@ -37,15 +37,21 @@
     <PackageReference Include="YamlDotNet" />
     <!-- Serilog logging for tests -->
     <PackageReference Include="Serilog.Extensions.Logging" />
+    <!-- Prism packages for testing ViewModels and event handling -->
+    <PackageReference Include="Prism.Events" />
+    <PackageReference Include="Prism.Wpf" />
+    <!-- Intuit QuickBooks SDK packages for testing QuickBooks integration -->
+    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
-    <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
-    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
-    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
-    <ProjectReference Include="..\WileyWidget.UI\WileyWidget.UI.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.UI\WileyWidget.UI.csproj" />
     <!-- Removed reference to main WileyWidget project to avoid type conflicts.
          UI-related types should be accessed through WileyWidget.UI assembly. -->
   </ItemGroup>

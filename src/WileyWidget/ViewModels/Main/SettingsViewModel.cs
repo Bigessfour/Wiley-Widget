@@ -1,15 +1,19 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Net.Http;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Prism.Commands;
 using Prism.Mvvm;
+using Syncfusion.SfSkinManager;
 using WileyWidget.Abstractions;
 using WileyWidget.Models;
-using WileyWidget.Services.Abstractions;
+using WileyWidget.Services;
 
 namespace WileyWidget.ViewModels.Main
 {

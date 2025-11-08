@@ -93,13 +93,148 @@ using IContainerExtension = Prism.Ioc.IContainerExtension;
 
 namespace WileyWidget
 {
-    public partial class App : Prism.PrismApplicationBase
+    public partial class App : Prism.DryIoc.PrismApplication
     {
+        #region Assembly Resolution Infrastructure
+
+        // Assembly resolution cache to avoid repeated file system lookups
+        private static readonly ConcurrentDictionary<string, Assembly?> _resolvedAssemblies = new();
+
+        // Known NuGet package prefixes that we may need to resolve at runtime
+        private static readonly HashSet<string> _knownPackagePrefixes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Prism", "DryIoc", "Syncfusion", "Bold", "Serilog",
+            "Microsoft.Extensions", "Microsoft.EntityFrameworkCore",
+            "System.Text.Json", "Polly", "Microsoft.Data",
+            "Microsoft.Xaml", "System.Runtime"
+        };
+
+        // Cached NuGet global packages directory
+        private static readonly Lazy<string> _nugetPackagesPath = new(() =>
+        {
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Path.Combine(userProfile, ".nuget", "packages");
+        });
+
+        // Target framework monikers to probe in priority order
+        private static readonly string[] _targetFrameworks =
+        {
+            "net9.0-windows10.0.19041.0",
+            "net9.0-windows",
+            "net9.0",
+            "net8.0",
+            "net6.0",
+            "netstandard2.1",
+            "netstandard2.0",
+            "netstandard1.6"
+        };
+
+        /// <summary>
+        /// Handles assembly resolution failures by probing multiple locations for NuGet package assemblies.
+        /// This is a last-resort fallback when normal probing paths fail.
+        /// </summary>
+        private static Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args)
+        {
+            try
+            {
+                // Parse the assembly name
+                var assemblyName = new AssemblyName(args.Name);
+                var simpleName = assemblyName.Name ?? string.Empty;
+
+                // Check cache first for performance
+                if (_resolvedAssemblies.TryGetValue(args.Name, out var cachedAssembly))
+                {
+                    return cachedAssembly;
+                }
+
+                // Only attempt to resolve known NuGet packages to avoid interfering with system assemblies
+                if (!_knownPackagePrefixes.Any(prefix => simpleName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _resolvedAssemblies.TryAdd(args.Name, null);
+                    return null;
+                }
+
+                var dllName = simpleName + ".dll";
+
+                // Probe locations in priority order:
+                // 1. Application base directory (bin) - most likely with CopyLocalLockFileAssemblies
+                var appBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dllName);
+                if (File.Exists(appBasePath))
+                {
+                    var assembly = Assembly.LoadFrom(appBasePath);
+                    _resolvedAssemblies.TryAdd(args.Name, assembly);
+                    Log.Information("Assembly resolved from app directory: {AssemblyName} -> {Path}", simpleName, appBasePath);
+                    return assembly;
+                }
+
+                // 2. Subdirectories defined in App.config probing paths
+                var probePaths = new[] { "bin", "lib", "packages", "bin/plugins", "lib/syncfusion" };
+                foreach (var probePath in probePaths)
+                {
+                    var fullProbePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, probePath, dllName);
+                    if (File.Exists(fullProbePath))
+                    {
+                        var assembly = Assembly.LoadFrom(fullProbePath);
+                        _resolvedAssemblies.TryAdd(args.Name, assembly);
+                        Log.Information("Assembly resolved from probe path: {AssemblyName} -> {Path}", simpleName, fullProbePath);
+                        return assembly;
+                    }
+                }
+
+                // 3. NuGet global packages cache - probe multiple target frameworks
+                if (Directory.Exists(_nugetPackagesPath.Value))
+                {
+                    var packagePath = Path.Combine(_nugetPackagesPath.Value, simpleName.ToLowerInvariant());
+                    if (Directory.Exists(packagePath))
+                    {
+                        // Find the most recent version directory
+                        var versionDirs = Directory.GetDirectories(packagePath)
+                            .Select(d => new DirectoryInfo(d))
+                            .OrderByDescending(d => d.Name)
+                            .ToArray();
+
+                        foreach (var versionDir in versionDirs)
+                        {
+                            foreach (var tfm in _targetFrameworks)
+                            {
+                                var libPath = Path.Combine(versionDir.FullName, "lib", tfm, dllName);
+                                if (File.Exists(libPath))
+                                {
+                                    var assembly = Assembly.LoadFrom(libPath);
+                                    _resolvedAssemblies.TryAdd(args.Name, assembly);
+                                    Log.Information("Assembly resolved from NuGet cache: {AssemblyName} -> {Path}", simpleName, libPath);
+                                    return assembly;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Assembly not found - cache null result to avoid repeated lookups
+                _resolvedAssemblies.TryAdd(args.Name, null);
+                Log.Warning("Failed to resolve assembly: {AssemblyName} (requested by {RequestingAssembly})",
+                    simpleName, args.RequestingAssembly?.FullName ?? "unknown");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                // Don't throw from AssemblyResolve - log and return null
+                Log.Error(ex, "Error in AssemblyResolve handler for {AssemblyName}", args.Name);
+                return null;
+            }
+        }
+
+        #endregion
+
         // Static constructor: Register Syncfusion licenses BEFORE any instance members or controls
         // Per Syncfusion docs: https://help.syncfusion.com/wpf/licensing/how-to-register-in-an-application
         // This runs once, before any App instance is created
         static App()
         {
+            // Register assembly resolution handler as early as possible
+            // This provides a fallback when normal probing paths fail
+            AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+
             // Read license keys directly from environment variables (no complex configuration loading)
             var syncfusionKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
             var boldKey = Environment.GetEnvironmentVariable("BOLD_LICENSE_KEY");

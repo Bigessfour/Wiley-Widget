@@ -76,11 +76,11 @@ namespace Prism
     // This is the base class that Prism.Wpf actually exports at runtime.
     public abstract class PrismApplicationBase : Application
     {
-    protected virtual void ConfigureRegionAdapterMappings(Prism.Navigation.Regions.RegionAdapterMappings mappings) { }
-    protected virtual void ConfigureDefaultRegionBehaviors(Prism.Navigation.Regions.IRegionBehaviorFactory factory) { }
-        protected virtual Window CreateShell() => null;
+        protected virtual void ConfigureRegionAdapterMappings(Prism.Navigation.Regions.RegionAdapterMappings mappings) { }
+        protected virtual void ConfigureDefaultRegionBehaviors(Prism.Navigation.Regions.IRegionBehaviorFactory factory) { }
+        protected abstract Window CreateShell();
         protected virtual void InitializeShell(Window shell) { }
-        protected virtual void RegisterTypes(Prism.Ioc.IContainerRegistry registry) { }
+        protected abstract void RegisterTypes(Prism.Ioc.IContainerRegistry registry);
         protected virtual void ConfigureModuleCatalog(Prism.Modularity.IModuleCatalog catalog) { }
         protected virtual void InitializeModules() { }
         protected virtual void OnInitialized() { }
@@ -97,11 +97,13 @@ namespace Prism
     }
 
     // Concrete PrismApplication class for XAML instantiation in wpftmp
-    // CRITICAL: Must be non-abstract to match XAML-generated partial class (App.g.cs)
-    // This aligns with runtime Prism.Wpf.PrismApplication structure
+    // CRITICAL: Must provide concrete implementations of abstract methods for App.g.cs
+    // This allows wpftmp to compile when App.xaml.cs is excluded
     public class PrismApplication : PrismApplicationBase
     {
-        // Concrete class - no abstract methods, allows XAML instantiation
+        // Concrete implementations required when App.xaml.cs is not included in wpftmp
+        protected override Window CreateShell() => null;
+        protected override void RegisterTypes(Prism.Ioc.IContainerRegistry registry) { }
     }
 }
 

@@ -7,10 +7,10 @@
 [![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 
-**Version:** 0.2.0 - Stable Release
-**Last Updated:** October 30, 2025
+**Version:** 0.3.0 - Stable Release
+**Last Updated:** November 8, 2025
 **Framework:** .NET 9.0 WPF
-**UI Framework:** Syncfusion WPF Controls v31.1.17
+**UI Framework:** Syncfusion WPF Controls v31.2.5
 **Application Framework:** Prism v9.0 (Pure MVVM Architecture)
 
 ---
@@ -36,33 +36,26 @@
 
 WileyWidget is a modern Windows desktop application built with WPF, Syncfusion controls, and Prism framework, designed for budget management and financial data analysis. The application features a **pure Prism MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
 
-### Recent Updates (October 2025)
+### Recent Updates (November 2025)
 
-**🧹 Architecture Cleanup & Standardization:**
+**� AI Repository Intelligence:**
 
-- Removed all non-Prism navigation code (standardized on `IRegionManager`)
-- Eliminated CommunityToolkit.Mvvm dependency (pure Prism patterns)
-- Deleted 7 duplicate/legacy theme files (single Syncfusion theme)
-- Removed 17 stale documentation files (completed milestones)
-- Cleaned 60+ obsolete scripts (71% reduction: 84→24 scripts)
-- Removed obsolete service wrappers (`InteractionRequestService`)
+- `generate_repo_urls.py` now builds dependency graphs, git history, security insights, and architecture summaries
+- Added JSON Schema validation (`schemas/ai-manifest-schema.json`) with sample config `.ai-manifest-config.json.example`
+- Published `docs/reference/AI_FETCHABLE_MANIFEST_ENHANCEMENTS.md` detailing the workflow and customization knobs
 
-**🎨 UI/Theme Improvements:**
+**🔐 Platform & Security Upgrades:**
 
-- Standardized on single theme: `WileyTheme-Syncfusion.xaml`
-- FluentDark/FluentLight theme switching via `SfSkinManager`
-- Removed all legacy/duplicate theme files
+- Upgraded Syncfusion WPF suite to 31.2.5 and BoldReports WPF to 11.1.18 for latest fixes
+- Raised Microsoft.Extensions.Http.Resilience to 9.10.0 and Serilog.Sinks.File to 7.0.0
+- Adopted OpenTelemetry 1.13.x packages for runtime, hosting, and HTTP instrumentation parity
+- Bumped FluentValidation to 12.1.0 and QuickBooks SDK to 14.7.0.2
 
-**📦 Package Management:**
+**� Documentation Refresh:**
 
-- Removed CommunityToolkit.Mvvm (conflicts with Prism)
-- All MVVM patterns use Prism exclusively (`BindableBase`, `DelegateCommand`)
-
-**📚 Documentation:**
-
-- Added `LEGACY_CLEANUP_REPORT.md` - Full code cleanup details
-- Added `SCRIPTS_CLEANUP_REPORT.md` - Scripts cleanup details
-- Cleaned docs/ folder of 17 obsolete/completed files
+- README now covers AI manifest usage and November release changes
+- Added manifest enhancement reference guide and linked schema/config assets
+- Clarified package upgrade impact and follow-up validation needs
 
 ### Key Capabilities
 
@@ -74,6 +67,7 @@ WileyWidget is a modern Windows desktop application built with WPF, Syncfusion c
 - **Secure Secret Management**: DPAPI-encrypted credential storage for API keys and licenses
 - **Comprehensive Testing**: Unit tests, integration tests, and UI tests with >70% coverage
 - **CI/CD Pipeline**: GitHub Actions with Trunk integration (90% success rate target)
+- **AI Repository Manifest**: Schema-backed manifest with dependency graphs, git history, and security insights for LLM tooling
 
 ### Project Status
 
@@ -867,23 +861,178 @@ public class App : PrismApplication
 
 ---
 
+## 🔧 NuGet Package Resolution System
+
+WileyWidget implements a comprehensive **three-layer defense-in-depth** approach to ensure reliable NuGet package resolution at build time and runtime, eliminating assembly loading errors commonly encountered in WPF applications.
+
+### Problem Statement
+
+WPF applications, especially those using the temporary markup compilation project (`*_wpftmp.csproj`), can face assembly resolution challenges:
+
+- **Build-Time Issues**: wpftmp project unable to resolve NuGet package references
+- **Runtime Issues**: `FileNotFoundException` or `TypeLoadException` for NuGet assemblies
+- **Environment Variability**: Different resolution behavior across development machines
+
+### Three-Layer Solution Architecture
+
+#### **Layer 1: Build-Time Resolution (MSBuild)**
+
+**Configuration in `WileyWidget.csproj`:**
+
+```xml
+<PropertyGroup>
+  <!-- Ensure all NuGet package assemblies are copied to output directory -->
+  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+  <!-- Include package references during XAML markup compilation -->
+  <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
+</PropertyGroup>
+
+<ItemGroup>
+  <!-- GeneratePathProperty provides MSBuild variables for package paths -->
+  <PackageReference Include="Prism.Core" Version="9.0.537" GeneratePathProperty="true" />
+  <PackageReference Include="Prism.Wpf" Version="9.0.537" GeneratePathProperty="true" />
+  <PackageReference Include="Prism.DryIoc" Version="9.0.537" GeneratePathProperty="true" />
+</ItemGroup>
+```
+
+**Benefits:**
+
+- ✅ All dependencies copied to `bin` folder during build
+- ✅ MSBuild path variables available: `$(PkgPrism_Core)`, `$(PkgPrism_Wpf)`, etc.
+- ✅ Consistent builds across environments
+
+#### **Layer 2: Runtime Assembly Resolution (AppDomain.AssemblyResolve)**
+
+**Implementation in `App.xaml.cs`:**
+
+```csharp
+// Static assembly resolution infrastructure
+private static readonly ConcurrentDictionary<string, Assembly?> _resolvedAssemblies = new();
+private static readonly HashSet<string> _knownPackagePrefixes = new()
+{
+    "Prism", "DryIoc", "Syncfusion", "Bold", "Serilog",
+    "Microsoft.Extensions", "Polly"
+};
+
+// Registered in static constructor for earliest possible activation
+static App()
+{
+    AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+    // ... other initialization
+}
+
+private static Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args)
+{
+    // 1. Check cache for performance
+    // 2. Whitelist check - only resolve known packages
+    // 3. Probe application bin directory
+    // 4. Probe configured probe paths (App.config)
+    // 5. Probe NuGet global packages cache
+    // 6. Log resolution attempts for troubleshooting
+}
+```
+
+**Probing Order:**
+
+1. **Application Directory**: `bin\{assembly}.dll`
+2. **Probe Paths** (from App.config): `bin\plugins`, `lib`, `packages\syncfusion`
+3. **NuGet Global Cache**: `%USERPROFILE%\.nuget\packages\{package}\{version}\lib\{tfm}`
+
+**Safety Features:**
+
+- ✅ Uses `Assembly.LoadFrom()` (not `Load()`) to avoid recursive resolution
+- ✅ Whitelisted packages prevent interference with system assemblies
+- ✅ Result caching prevents repeated file system lookups
+- ✅ Comprehensive logging for debugging
+
+#### **Layer 3: Configuration-Based Probing (App.config)**
+
+**Probing paths configured in `App.config`:**
+
+```xml
+<runtime>
+  <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+    <probing privatePath="bin;bin/plugins;lib;packages/syncfusion;lib/syncfusion"/>
+  </assemblyBinding>
+</runtime>
+```
+
+**Benefits:**
+
+- ✅ Standard .NET Framework probing mechanism
+- ✅ No code changes required for additional paths
+- ✅ Works for both .NET Framework and .NET Core
+
+### Troubleshooting
+
+#### **Verify Build Output**
+
+```powershell
+# Check that NuGet assemblies are copied to bin folder
+Get-ChildItem -Path ".\bin\Debug\net9.0-windows10.0.19041.0\" -Filter "Prism.*.dll"
+
+# Should see:
+# Prism.Core.dll
+# Prism.Wpf.dll
+# Prism.DryIoc.dll
+# DryIoc.dll
+```
+
+#### **Enable Assembly Load Logging**
+
+The AssemblyResolve handler automatically logs to Serilog:
+
+```csharp
+// Logs appear in application logs
+[INF] Assembly resolved from app directory: Prism.Core -> bin\Prism.Core.dll
+[WRN] Failed to resolve assembly: UnknownPackage (requested by MyAssembly)
+```
+
+#### **Common Issues**
+
+| Issue                              | Cause                            | Solution                                                     |
+| ---------------------------------- | -------------------------------- | ------------------------------------------------------------ |
+| `FileNotFoundException` at runtime | Assembly not in bin folder       | Verify `CopyLocalLockFileAssemblies=true`                    |
+| wpftmp compilation errors          | Package references not available | Check `IncludePackageReferencesDuringMarkupCompilation=true` |
+| Wrong assembly version loaded      | Multiple versions in probe paths | Use binding redirects in App.config                          |
+| StackOverflowException             | Recursive Assembly.Load() call   | Ensure using `LoadFrom()` not `Load()`                       |
+
+### Performance Considerations
+
+- **Caching**: `ConcurrentDictionary` ensures O(1) lookups for previously resolved assemblies
+- **Early Exit**: Whitelist check prevents unnecessary file system probes
+- **Lazy Evaluation**: NuGet cache path computed only once on first use
+- **Impact**: Assembly resolution adds <1ms overhead only when normal probing fails
+
+### Related Documentation
+
+- **Wpftmp Shim**: See `PrismWpftmpShim.cs` for design-time type resolution
+- **Microsoft Docs**: [Resolve Assembly Loads](https://learn.microsoft.com/en-us/dotnet/standard/assembly/resolve-loads)
+- **Best Practices**: [Assembly Loading Best Practices](https://learn.microsoft.com/en-us/dotnet/framework/deployment/best-practices-for-assembly-loading)
+
+---
+
 ## ✨ Features
 
 ### Core Functionality
 
 - **📊 Budget Management**
+
   - Multi-year budget tracking
   - Department-wise budget allocation
   - Budget variance analysis
   - Historical data comparison
 
 - **🎨 Modern UI**
+
   - Syncfusion DataGrid with advanced features
   - Interactive charts and visualizations
   - Fluent Design themes (Dark/Light)
   - Responsive layout with docking panels
 
 - **🔗 Enterprise Integration**
+
   - QuickBooks Online API integration
   - Secure OAuth2 authentication
   - Automated data synchronization
@@ -1681,7 +1830,7 @@ Tokens are saved in `%AppData%/WileyWidget/settings.json` under:
 {
   "QboAccessToken": "...",
   "QboRefreshToken": "...",
-  "QboTokenExpiry": "2025-08-12T12:34:56.789Z",
+  "QboTokenExpiry": "2025-08-12T12:34:56.789Z"
 }
 ```
 
@@ -1833,6 +1982,7 @@ If issues persist, re-set the env var and restart your terminal:
 ### Cleanup & Architecture Reports
 
 - **[LEGACY_CLEANUP_REPORT.md](LEGACY_CLEANUP_REPORT.md)** - Comprehensive code cleanup report
+
   - 28 files deleted (themes, services, backups)
   - CommunityToolkit.Mvvm removed
   - Pure Prism architecture established

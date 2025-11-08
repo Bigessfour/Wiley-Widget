@@ -314,14 +314,4 @@ public class StartupOrchestrator
     }
 }
 
-/// <summary>
-/// Represents the phases of application startup for tracking and rollback.
-/// </summary>
-public enum StartupPhase
-{
-    Unknown = 0,
-    ConfigurationLoad = 1,
-    ContainerSetup = 2,
-    ModulesInit = 3,
-    UILoad = 4
-}
+// StartupPhase enum is defined in IStartupOrchestrator.cs to avoid duplication

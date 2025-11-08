@@ -17,6 +17,7 @@ using System.IO;
 using System.Globalization;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using WileyWidget.Data;
 using WileyWidget.Services;
 using DryIoc;
@@ -127,12 +128,22 @@ namespace WileyWidget.Startup
             else
             {
                 Log.Warning("Container is not DryIocContainerExtension - falling back to basic registration");
-                // Fallback: Try delegate-based registration (may have limited compatibility)
+                // Fallback: Try delegate-based registration using Func<Type, object> factory
                 try
                 {
-                    containerRegistry.Register(typeof(Microsoft.Extensions.Logging.ILogger<>),
-                        factory: (c, t) => loggerFactory.CreateLogger(t.GenericTypeArguments[0]));
-                    Log.Information("Bootstrapper: Open-generic ILogger<> registered using fallback delegate factory");
+                    var factory = new Func<Type, object>(t =>
+                    {
+                        if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Microsoft.Extensions.Logging.ILogger<>))
+                        {
+                            var targetType = t.GenericTypeArguments[0];
+                            return loggerFactory.CreateLogger(targetType);
+                        }
+                        throw new InvalidOperationException($"Cannot create logger for type {t}");
+                    });
+
+                    // Register the open generic type with a factory delegate
+                    containerRegistry.RegisterMany(typeof(Microsoft.Extensions.Logging.ILogger<>));
+                    Log.Information("Bootstrapper: Open-generic ILogger<> registered using fallback method");
                 }
                 catch (Exception ex)
                 {
@@ -637,7 +648,7 @@ namespace WileyWidget.Startup
             {
                 try
                 {
-                    var config = containerRegistry.Resolve<IConfiguration>();
+                    var config = containerRegistry.GetContainer().Resolve<IConfiguration>();
                     services.AddSingleton(config);
                     Log.Debug("Registered IConfiguration in ServiceCollection for DbContextFactory resilience");
                 }
@@ -664,12 +675,16 @@ namespace WileyWidget.Startup
             // Bridge the Microsoft.Extensions.DependencyInjection registrations into DryIoc
             try
             {
-                var dryContainer = containerRegistry.GetContainer();
-
-                // Import service collection into DryIoc
-                dryContainer.Populate(services);
-
-                Log.Information("✓ Registered IDbContextFactory<AppDbContext> via AddDbContextFactory (proper EF Core integration)");
+                // Import service collection into DryIoc via Prism's IContainerExtension
+                if (containerRegistry is IContainerExtension extension)
+                {
+                    extension.Populate(services);
+                    Log.Information("✓ Registered IDbContextFactory<AppDbContext> via AddDbContextFactory (proper EF Core integration)");
+                }
+                else
+                {
+                    Log.Warning("ContainerRegistry is not IContainerExtension; cannot populate ServiceCollection");
+                }
             }
             catch (Exception ex)
             {
