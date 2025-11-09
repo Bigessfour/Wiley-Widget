@@ -382,35 +382,6 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "dotnet:fast-build",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/fast-build.ps1",
-				"-Configuration",
-				"Debug"
-			],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"panel": "shared",
-				"clear": true,
-				"showReuseMessage": false
-			},
-			"problemMatcher": "$msCompile",
-			"dependsOn": [
-				"dotnet:clean-build-server"
-			]
-		},
-		{
 			"label": "dotnet:cleanup-processes",
 			"type": "shell",
 			"command": "pwsh",
@@ -441,6 +412,7 @@
 				"--verbosity",
 				"minimal",
 				"/m",
+				"/maxcpucount",
 				"/p:BuildInParallel=true",
 				"/p:UseSharedCompilation=true",
 				"/p:AccelerateBuildsInVisualStudio=true",
@@ -459,37 +431,16 @@
 			],
 			"isBackground": false,
 			"problemMatcher": "$msCompile",
-			"group": "build"
-		},
-		{
-			"label": "mcp:build-fix",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/mcp-build-fixer.ps1",
-				"-ProjectPath",
-				"${workspaceFolder}/WileyWidget.Tests.csproj",
-				"-Configuration",
-				"Debug",
-				"-MaxIterations",
-				"3"
-			],
 			"presentation": {
 				"echo": true,
 				"reveal": "always",
 				"panel": "shared",
-				"focus": true
+				"clear": false,
+				"showReuseMessage": true
 			},
-			"problemMatcher": [
-				"$msCompile"
-			],
 			"group": {
 				"kind": "build",
-				"isDefault": false
+				"isDefault": true
 			}
 		},
 		{

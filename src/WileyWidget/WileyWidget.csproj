@@ -570,6 +570,9 @@
     <Compile Remove="Behaviors\**" />
     <Compile Remove="Services\**" />
     <Compile Remove="Startup\**" />
+    <Compile
+        Include="Startup\**"
+        Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))" />
     <Compile Remove="Testing\**" />
     <Compile Remove="ViewModels\**" />
     <Compile Remove="Views\**" />
