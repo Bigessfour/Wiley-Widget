@@ -33,7 +33,7 @@
       <ResourceDictionary.MergedDictionaries>
         <!-- Data templates for ViewModels -->
         <!-- Reference DataTemplates from the main application assembly -->
-        <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/src/Resources/DataTemplates.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/WileyWidget;component/Resources/DataTemplates.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <!-- Converters -->

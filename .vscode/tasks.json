@@ -419,7 +419,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				"${workspaceFolder}/scripts/cleanup-dotnet-processes.ps1"
+				   "${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
 			"presentation": {
 				"echo": true,
@@ -640,7 +640,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				"${workspaceFolder}/scripts/cleanup-dotnet-processes.ps1"
+				   "${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
 			"presentation": {
 				"echo": true,

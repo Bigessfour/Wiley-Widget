@@ -47,13 +47,17 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
-    <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj">
+      <Aliases>global,WWServices</Aliases>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
-    <ProjectReference Include="..\..\src\WileyWidget.UI\WileyWidget.UI.csproj" />
-    <!-- Removed reference to main WileyWidget project to avoid type conflicts.
-         UI-related types should be accessed through WileyWidget.UI assembly. -->
+    <ProjectReference Include="..\..\src\WileyWidget.UI\WileyWidget.UI.csproj">
+      <Aliases>global,WWUI</Aliases>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\WileyWidget\WileyWidget.csproj" />
+    <!-- Main WileyWidget project reference added for EnterpriseResourceLoader tests -->
   </ItemGroup>
 
   <PropertyGroup>

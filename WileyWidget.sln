@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -20,6 +20,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Abstractions", "src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj", "{E8ED5FBD-A352-47BA-A642-811FC7BB53E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Tests", "tests\\WileyWidget.Tests\\WileyWidget.Tests.csproj", "{D1F3A1B2-3C4D-4E5F-8123-ABCDEF123456}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Tests", "tests\WileyWidget.Services.Tests\WileyWidget.Services.Tests.csproj", "{0532FD10-4037-4397-864C-D9A13903B729}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -127,8 +131,23 @@ Global
 		{D1F3A1B2-3C4D-4E5F-8123-ABCDEF123456}.Release|x64.Build.0 = Release|Any CPU
 		{D1F3A1B2-3C4D-4E5F-8123-ABCDEF123456}.Release|x86.ActiveCfg = Release|Any CPU
 		{D1F3A1B2-3C4D-4E5F-8123-ABCDEF123456}.Release|x86.Build.0 = Release|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Debug|x64.Build.0 = Debug|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Debug|x86.Build.0 = Debug|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Release|x64.ActiveCfg = Release|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Release|x64.Build.0 = Release|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Release|x86.ActiveCfg = Release|Any CPU
+		{0532FD10-4037-4397-864C-D9A13903B729}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0532FD10-4037-4397-864C-D9A13903B729} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

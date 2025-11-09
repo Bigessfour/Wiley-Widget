@@ -30,9 +30,9 @@
 
         <!-- Custom Wiley Widget theme resources (must come AFTER Syncfusion themes) -->
         <!-- Generic.xaml contains base styles and converters -->
-        <ResourceDictionary Source="Themes/Generic.xaml" />
+        <ResourceDictionary Source="/WileyWidget;component/Themes/Generic.xaml" />
         <!-- WileyTheme-Syncfusion.xaml contains theme-specific overrides -->
-        <ResourceDictionary Source="Themes/WileyTheme-Syncfusion.xaml" />
+        <ResourceDictionary Source="/WileyWidget;component/Themes/WileyTheme-Syncfusion.xaml" />
 
         <!-- Additional custom resources if needed -->
         <!-- <ResourceDictionary Source="Themes/CustomBrushes.xaml" /> -->

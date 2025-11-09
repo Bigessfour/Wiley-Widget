@@ -20,6 +20,7 @@ using WileyWidget.Configuration;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Services;
+using System.Runtime.InteropServices;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Hosting;
 using WileyWidget.Services.Threading;
@@ -252,16 +253,32 @@ public static class WpfHostingExtensions
         // This prevents DI resolution issues and allows proper lifetime management
         services.AddSingleton<ErrorReportingService>();
 
-        services.AddSingleton<LocalizationService>();
-        services.AddSingleton<SyncfusionLicenseState>();
-        services.AddSingleton<IStartupProgressReporter>(sp => (IStartupProgressReporter)WileyWidget.App.StartupProgress);
+    // Register AI logging service for tracking AI queries/responses/errors
+    // AILoggingService depends on ErrorReportingService which is already registered above.
+    services.AddSingleton<IAILoggingService, AILoggingService>();
+
+    services.AddSingleton<LocalizationService>();
+    services.AddSingleton<SyncfusionLicenseState>();
+    services.AddSingleton<IStartupProgressReporter>(sp => (IStartupProgressReporter)WileyWidget.App.StartupProgress);
 
         // ViewManager removed - MainWindow handles all child view navigation via DockingManager
         // MainWindow lifecycle now handled directly in App.xaml.cs OnStartup
 
         services.AddSingleton<ThemeService>();
         services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
-        services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
+        // Use encrypted DPAPI-based vault on Windows. For non-Windows (containers/CI),
+        // fall back to the plaintext LocalSecretVaultService so secrets can be mounted
+        // via a simple secrets.json file (useful for Linux containers where DPAPI
+        // is not available).
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
+        }
+        else
+        {
+            services.AddSingleton<ISecretVaultService, LocalSecretVaultService>();
+            Log.Information("Non-Windows platform detected. Registered LocalSecretVaultService for secrets (plaintext secrets.json expected in AppData/WileyWidget/Secrets).");
+        }
         services.AddMemoryCache();
         services.AddSingleton<IDispatcherHelper, DispatcherHelper>();
 

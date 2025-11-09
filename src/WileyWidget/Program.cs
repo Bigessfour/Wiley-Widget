@@ -21,10 +21,14 @@ public static class Program
     [STAThread]
     public static int Main()
     {
+        // Minimal console traces to ensure we always have a visible startup/exit marker
+        Console.WriteLine("[PROGRAM] Starting WileyWidget (console trace)");
         try
         {
             var app = new App();
-            return app.Run();
+            var exitCode = app.Run();
+            Console.WriteLine($"[PROGRAM] Exiting WileyWidget with code {exitCode}");
+            return exitCode;
         }
         catch (Exception ex)
         {
@@ -45,6 +49,8 @@ public static class Program
             }
 
             // Return non-zero exit code to indicate failure
+            Console.Error.WriteLine($"[PROGRAM] Exiting WileyWidget with fatal error: {ex.Message}");
+            Console.Error.WriteLine(ex.ToString());
             return 1;
         }
     }

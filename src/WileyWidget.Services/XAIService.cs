@@ -1,5 +1,7 @@
 using System;
+using System.Threading.RateLimiting;
 using System.Globalization;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -13,7 +15,11 @@ using Serilog;
 using WileyWidget.Services;
 using WileyWidget.Services.Telemetry;
 using Polly;
+using Polly.CircuitBreaker;
 using Polly.Retry;
+using Polly.Timeout;
+using Polly.RateLimiting;
+using Polly.Registry;
 // using Microsoft.ApplicationInsights;
 
 namespace WileyWidget.Services;
@@ -33,7 +39,7 @@ public class XAIService : IAIService, IDisposable
     private readonly SemaphoreSlim _concurrencySemaphore;
     private readonly SigNozTelemetryService? _telemetryService;
     // private readonly dynamic _telemetryClient; // Commented out until Azure is configured
-    private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
+    private readonly ResiliencePipeline<HttpResponseMessage> _httpPipeline;
     private bool _disposed;
 
     /// <summary>
@@ -67,6 +73,14 @@ public class XAIService : IAIService, IDisposable
 
         var baseUrl = configuration["XAI:BaseUrl"] ?? "https://api.x.ai/v1/";
         var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "15", CultureInfo.InvariantCulture);
+    // Allow tests to override circuit-breaker break duration (seconds) via configuration
+    // Use TryParse to avoid throwing if configuration is malformed; default to 60 seconds
+    var circuitBreakerBreakSeconds = 60;
+    if (!string.IsNullOrWhiteSpace(configuration["XAI:CircuitBreakerBreakSeconds"]) &&
+        int.TryParse(configuration["XAI:CircuitBreakerBreakSeconds"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedBreak))
+    {
+        circuitBreakerBreakSeconds = parsedBreak;
+    }
 
         // Validate API key format (basic check) - wrapped to handle exceptions gracefully
             try
@@ -86,9 +100,11 @@ public class XAIService : IAIService, IDisposable
         var maxConcurrentRequests = int.Parse(configuration["XAI:MaxConcurrentRequests"] ?? "5", CultureInfo.InvariantCulture);
         _concurrencySemaphore = new SemaphoreSlim(maxConcurrentRequests, maxConcurrentRequests);
 
-        _httpClient = httpClientFactory.CreateClient("AIServices");
-        _httpClient.BaseAddress = new Uri(baseUrl);
-        _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+    // Create or fall back to a default HttpClient if the factory returns null (tests may not set up a named client)
+    var createdClient = httpClientFactory.CreateClient("AIServices");
+    _httpClient = createdClient ?? new HttpClient();
+    _httpClient.BaseAddress = new Uri(baseUrl);
+    _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
         // Set default headers only if not already set by the named client
         if (!_httpClient.DefaultRequestHeaders.Contains("Authorization"))
@@ -96,34 +112,96 @@ public class XAIService : IAIService, IDisposable
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
         }
 
-        // Create Polly retry policy with exponential backoff
-        _retryPolicy = Policy<HttpResponseMessage>
-            .Handle<HttpRequestException>()
-            .OrResult(response => response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            .OrResult(response => response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
-            .OrResult(response => response.StatusCode == System.Net.HttpStatusCode.InternalServerError)
-            .OrResult(response => response.StatusCode == System.Net.HttpStatusCode.BadGateway)
-            .OrResult(response => response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
-            .OrResult(response => response.StatusCode == System.Net.HttpStatusCode.GatewayTimeout)
-            .WaitAndRetryAsync(
-                retryCount: 3,
-                sleepDurationProvider: (attemptCount, context) =>
-                    TimeSpan.FromMilliseconds(Math.Pow(2, attemptCount) * 500), // Exponential backoff: 500ms, 1s, 2s
-                onRetryAsync: async (outcome, timespan, attemptNumber, context) =>
+        // Create Polly v8 resilience pipeline with modern API
+        // Following Microsoft's recommended patterns for resilience
+        _httpPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+            // 1. RATE LIMITER - Prevent client-side throttling (50 requests/minute)
+            .AddRateLimiter(new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 50,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 2,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }))
+            // 2. TIMEOUT - Prevent hanging requests (15s configured timeout)
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(timeoutSeconds),
+                OnTimeout = args =>
                 {
-                    var statusCode = outcome.Result?.StatusCode.ToString() ?? "Unknown";
-                    Log.Warning("xAI API request failed (attempt {Attempt}/{MaxAttempts}). Status: {StatusCode}. Retrying in {DelayMs}ms",
-                        attemptNumber, 3, statusCode, timespan.TotalMilliseconds);
-                    await Task.CompletedTask;
+                    _logger.LogError("xAI API timeout after {Timeout}s", args.Timeout.TotalSeconds);
+                    // Outcome is not available on OnTimeout arguments in this runtime; record a timeout exception instead
+                    var tex = new TimeoutException($"xAI API timeout after {args.Timeout.TotalSeconds} seconds");
+                    _telemetryService?.RecordException(tex, ("xai.timeout", "request_timeout"));
+                    return ValueTask.CompletedTask;
+                }
+            })
+            // 3. CIRCUIT BREAKER - Fail fast during outages
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
+            {
+                FailureRatio = 0.5,                    // Open if 50% of requests fail
+                SamplingDuration = TimeSpan.FromSeconds(30),  // Sample window
+                MinimumThroughput = 5,                 // Minimum requests before evaluating
+                BreakDuration = TimeSpan.FromSeconds(circuitBreakerBreakSeconds), // Stay open for configured seconds
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .HandleResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
+                    .HandleResult(r => r.StatusCode >= HttpStatusCode.InternalServerError)
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>(),
+                OnOpened = args =>
+                {
+                    _logger.LogError("xAI API Circuit Breaker OPEN - too many failures");
+                    _telemetryService?.RecordException(args.Outcome.Exception,
+                        ("xai.circuit_breaker", "opened"));
+                    return ValueTask.CompletedTask;
+                },
+                OnClosed = args =>
+                {
+                    _logger.LogInformation("xAI API Circuit Breaker CLOSED - resuming normal operation");
+                    return ValueTask.CompletedTask;
+                },
+                OnHalfOpened = args =>
+                {
+                    _logger.LogInformation("xAI API Circuit Breaker HALF-OPEN - testing recovery");
+                    return ValueTask.CompletedTask;
+                }
+            })
+            // 4. RETRY - Handle transient errors with smart backoff
+            .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+            {
+                MaxRetryAttempts = 3,
+                BackoffType = DelayBackoffType.Exponential,
+                Delay = TimeSpan.FromMilliseconds(500),        // Base delay
+                UseJitter = true,                               // Critical for AI APIs with rate limits
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .HandleResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
+                    .HandleResult(r => r.StatusCode == HttpStatusCode.RequestTimeout)
+                    .HandleResult(r => r.StatusCode >= HttpStatusCode.InternalServerError)
+                    .HandleResult(r => r.StatusCode == HttpStatusCode.BadGateway)
+                    .HandleResult(r => r.StatusCode == HttpStatusCode.ServiceUnavailable)
+                    .HandleResult(r => r.StatusCode == HttpStatusCode.GatewayTimeout)
+                    .Handle<HttpRequestException>(),
+                OnRetry = args =>
+                {
+                    var statusCode = args.Outcome.Result?.StatusCode.ToString() ?? "Unknown";
+                    _logger.LogWarning("xAI API retry {Attempt}/3 after {Delay}ms due to {StatusCode}",
+                        args.AttemptNumber + 1, args.RetryDelay.TotalMilliseconds, statusCode);
+                    // Prefer logging the exception when available, otherwise log a string error
+                    if (args.Outcome.Exception != null)
+                    {
+                        _aiLoggingService.LogError("Retry", args.Outcome.Exception);
+                    }
+                    else
+                    {
+                        _aiLoggingService.LogError("Retry", $"HTTP {statusCode}", "Retry");
+                    }
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .Build();
 
-                    // Track retry telemetry - commented out until Azure is configured
-                    // _telemetryClient?.TrackEvent("XAIServiceRetry", new Dictionary<string, string>
-                    // {
-                    //     ["Attempt"] = attemptNumber.ToString(),
-                    //     ["StatusCode"] = statusCode,
-                    //     ["DelayMs"] = timespan.TotalMilliseconds.ToString()
-                    // });
-                });
+        _logger.LogInformation("✓ XAIService initialized with Polly v8 resilience pipeline (rate limit: 50/min, timeout: {Timeout}s, circuit breaker: 50% failure ratio, retry: 3x exponential with jitter)",
+            timeoutSeconds);
     }
 
     /// <summary>
@@ -181,12 +259,17 @@ public class XAIService : IAIService, IDisposable
             ("ai.model", _configuration["XAI:Model"] ?? "grok-4-0709"),
             ("ai.provider", "xAI"));
 
+        // Validate and sanitize inputs to prevent injection attacks
+        // Do this before the try so ArgumentException for invalid inputs can propagate to callers/tests
+        ValidateAndSanitizeInputs(ref context, ref question);
+
         var startTime = DateTime.UtcNow;
+
+        // Track whether we successfully entered the concurrency semaphore so we only release when acquired
+        var semaphoreEntered = false;
 
         try
         {
-            // Validate and sanitize inputs to prevent injection attacks
-            ValidateAndSanitizeInputs(ref context, ref question);
 
             apiCallSpan?.SetTag("ai.question_length", question?.Length ?? 0);
             apiCallSpan?.SetTag("ai.context_length", context?.Length ?? 0);
@@ -205,8 +288,9 @@ public class XAIService : IAIService, IDisposable
 
             apiCallSpan?.SetTag("ai.cache_hit", false);
 
-        // Acquire concurrency semaphore to limit concurrent requests
-        await _concurrencySemaphore.WaitAsync(cancellationToken);
+    // Acquire concurrency semaphore to limit concurrent requests
+    await _concurrencySemaphore.WaitAsync(cancellationToken);
+    semaphoreEntered = true;
 
             var model = _configuration["XAI:Model"] ?? "grok-4-0709";
 
@@ -242,8 +326,10 @@ public class XAIService : IAIService, IDisposable
                 temperature = 0.7
             };
 
-            var response = await _retryPolicy.ExecuteAsync(() =>
-                _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken));
+            // Execute HTTP request with Polly v8 resilience pipeline
+            var response = await _httpPipeline.ExecuteAsync(
+                async context => await _httpClient.PostAsJsonAsync("chat/completions", request, context.CancellationToken),
+                ResilienceContextPool.Shared.Get(cancellationToken));
 
             // Handle non-successful status codes gracefully
             if (!response.IsSuccessStatusCode)
@@ -357,6 +443,19 @@ public class XAIService : IAIService, IDisposable
 
             return $"The request timed out after {_httpClient.Timeout.TotalSeconds} seconds. The xAI service may be experiencing high load. Please try again later.";
         }
+        catch (BrokenCircuitException<HttpResponseMessage> ex)
+        {
+            Log.Warning(ex, "xAI API circuit breaker is open (generic): {Message}", ex.Message);
+            _aiLoggingService.LogError(question, ex.Message, "CircuitBreakerOpen");
+            return "error: xAI service circuit breaker is open";
+        }
+        catch (BrokenCircuitException ex)
+        {
+            // Circuit breaker is open - fail fast and return an error-like message for tests/consumers
+            Log.Warning(ex, "xAI API circuit breaker is open: {Message}", ex.Message);
+            _aiLoggingService.LogError(question, ex.Message, "CircuitBreakerOpen");
+            return "error: xAI service circuit breaker is open";
+        }
         catch (Exception ex)
         {
             Log.Error(ex, "Unexpected error in xAI service: {Message}", ex.Message);
@@ -373,8 +472,11 @@ public class XAIService : IAIService, IDisposable
         }
         finally
         {
-            // Always release the concurrency semaphore
-            _concurrencySemaphore.Release();
+            // Release the concurrency semaphore only if we acquired it
+            if (semaphoreEntered)
+            {
+                _concurrencySemaphore.Release();
+            }
         }
     }
 
@@ -483,8 +585,10 @@ public class XAIService : IAIService, IDisposable
             temperature = 0.7
         };
 
-        var response = await _retryPolicy.ExecuteAsync(() =>
-            _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken));
+        // Execute HTTP request with Polly v8 resilience pipeline
+        var response = await _httpPipeline.ExecuteAsync(
+            async context => await _httpClient.PostAsJsonAsync("chat/completions", request, context.CancellationToken),
+            ResilienceContextPool.Shared.Get(cancellationToken));
 
         if (!response.IsSuccessStatusCode)
         {
@@ -574,7 +678,10 @@ public class XAIService : IAIService, IDisposable
             temperature = 0.7
         };
 
-        var response = await _retryPolicy.ExecuteAsync(() => _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken));
+        // Execute HTTP request with Polly v8 resilience pipeline
+        var response = await _httpPipeline.ExecuteAsync(
+            async context => await _httpClient.PostAsJsonAsync("chat/completions", request, context.CancellationToken),
+            ResilienceContextPool.Shared.Get(cancellationToken));
 
         if (!response.IsSuccessStatusCode)
         {
@@ -649,7 +756,10 @@ public class XAIService : IAIService, IDisposable
             message.Headers.Remove("Authorization");
             message.Headers.Add("Authorization", $"Bearer {apiKey}");
 
-            var response = await _retryPolicy.ExecuteAsync(() => _httpClient.SendAsync(message, cancellationToken));
+            // Execute HTTP request with Polly v8 resilience pipeline
+            var response = await _httpPipeline.ExecuteAsync(
+                async context => await _httpClient.SendAsync(message, context.CancellationToken),
+                ResilienceContextPool.Shared.Get(cancellationToken));
 
             if (!response.IsSuccessStatusCode)
             {

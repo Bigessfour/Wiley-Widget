@@ -220,16 +220,41 @@ if ($untracked.Output.Count -gt 0) {
             Write-Output "No untracked files to add after filtering exclusions."
         } else {
             Write-Output "Adding untracked files: $($toAdd.Count)"
-            $addArgs = @('add', '--') + $toAdd
-            $addRes = Run-Git -GitArgs $addArgs
-            if ($addRes.ExitCode -ne 0) {
-                Throw-Termination "Failed to add untracked files. Output:`n$($addRes.Output -join "`n")" 5
+
+            # Add files one-by-one to avoid a single failing path aborting the whole operation.
+            $failedAdds = @()
+            $succeededAdds = @()
+            foreach ($p in $toAdd) {
+                try {
+                    $singleAdd = Run-Git -GitArgs @('add', '--', $p)
+                } catch {
+                    $singleAdd = @{ ExitCode = $LASTEXITCODE; Output = @($_.Exception.Message) }
+                }
+                if ($singleAdd.ExitCode -ne 0) {
+                    # Log the failure but continue. Some repositories may contain paths that Git
+                    # cannot index on the current platform (e.g. special files, symlinks or
+                    # path permission issues). Skip these rather than terminating the script.
+                    Write-Warning "git add failed for path: '$p' (exit=$($singleAdd.ExitCode)). Skipping. Output: $($singleAdd.Output -join ' | ')"
+                    $failedAdds += $p
+                } else {
+                    $succeededAdds += $p
+                }
             }
-            # Build a commit message that lists added files (shortened)
-            $addedSample = ($toAdd | Select-Object -First 10) -join ', '
-            $addSummaryMsg = "chore: add $($toAdd.Count) new files: $addedSample"
+
+            Write-Output "Successfully added $($succeededAdds.Count) of $($toAdd.Count) untracked paths."
+            if ($failedAdds.Count -gt 0) {
+                Write-Warning "Some untracked paths could not be added and were skipped: $($failedAdds -join ', ')"
+                # If nothing was added, continue but warn the user. Do not abort the whole script.
+                if ($succeededAdds.Count -eq 0) {
+                    Write-Warning "No untracked files were added. Continuing without them."
+                }
+            }
+
+            # Build a commit message that lists added files (shortened).
+            $addedSample = ($succeededAdds | Select-Object -First 10) -join ', '
+            $addSummaryMsg = "chore: add $($succeededAdds.Count) new files: $addedSample"
             # If there is no other commit message provided, use this when committing
-            if ([string]::IsNullOrEmpty($Message)) { $Message = $addSummaryMsg }
+            if ([string]::IsNullOrEmpty($Message) -and $succeededAdds.Count -gt 0) { $Message = $addSummaryMsg }
         }
     }
 }

@@ -680,8 +680,8 @@ namespace WileyWidget
                 }
 
                 // NOTE: License registration happens in static constructor
-                // Theme and resource loading continues here
-                LoadApplicationResources();
+                // Load resources using enterprise resource loader (synchronous wrapper for WPF override)
+                LoadApplicationResourcesEnterpriseAsync().GetAwaiter().GetResult();
                 VerifyAndApplyTheme();
 
                 // Initialize SigNoz telemetry early (before Prism bootstrap)
@@ -730,105 +730,54 @@ namespace WileyWidget
             }
         }
 
-        internal void LoadApplicationResources()
+        /// <summary>
+        /// Loads application resources using the enterprise resource loader.
+        /// This is the SINGLE CANONICAL METHOD for resource loading.
+        /// </summary>
+        private async Task LoadApplicationResourcesEnterpriseAsync()
         {
-            var sw = Stopwatch.StartNew();
-            Log.Information("[RESOURCES] Starting application resource loading with enhanced error handling...");
+            Log.Information("[STARTUP] Loading application resources via EnterpriseResourceLoader");
 
             try
             {
-                var resources = Application.Current?.Resources ?? new ResourceDictionary();
-                var resourcePaths = new[]
+                // Create minimal logger adapter for early startup
+                var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<EnterpriseResourceLoader>.Instance;
+
+                // Create minimal services for early startup (before DI container is ready)
+                var errorReporting = new ErrorReportingService(
+                    Microsoft.Extensions.Logging.Abstractions.NullLogger<ErrorReportingService>.Instance);
+
+                var telemetry = _earlyTelemetryService ?? new SigNozTelemetryService(
+                    Microsoft.Extensions.Logging.Abstractions.NullLogger<SigNozTelemetryService>.Instance,
+                    BuildConfiguration());
+
+                var resourceLoader = new EnterpriseResourceLoader(logger, errorReporting, telemetry);
+
+                var result = await resourceLoader.LoadApplicationResourcesAsync();
+
+                if (!result.Success)
                 {
-                    "src/Themes/Generic.xaml",
-                    "src/Themes/WileyTheme-Syncfusion.xaml"
-                };
+                    Log.Error("[STARTUP] Resource loading completed with errors: {ErrorCount} errors, {LoadedCount} loaded",
+                        result.ErrorCount, result.LoadedCount);
 
-                // Load each resource dictionary with individual error handling
-                foreach (var path in resourcePaths)
-                {
-                    try
+                    if (result.HasCriticalFailures)
                     {
-                        Log.Debug("[RESOURCES] Loading resource dictionary: {Path}", path);
-                        var uri = new Uri(path, UriKind.Relative);
-
-                        // Verify the resource exists before loading
-                        var streamInfo = Application.GetResourceStream(uri);
-                        if (streamInfo?.Stream == null)
-                        {
-                            Log.Warning("[RESOURCES] Resource stream not found for {Path} - attempting pack URI resolution", path);
-                            // Try pack URI format as fallback
-                            var packUri = new Uri($"pack://application:,,,/{path}", UriKind.Absolute);
-                            streamInfo = Application.GetResourceStream(packUri);
-                        }
-
-                        if (streamInfo?.Stream != null)
-                        {
-                            streamInfo.Stream.Close();
-                            var resourceDict = new ResourceDictionary { Source = uri };
-                            resources.MergedDictionaries.Add(resourceDict);
-                            Log.Debug("[RESOURCES] ✓ Successfully loaded {Path}", path);
-                        }
-                        else
-                        {
-                            Log.Error("[RESOURCES] ✗ Failed to locate resource stream for {Path}", path);
-                        }
-                    }
-                    catch (System.Windows.Markup.XamlParseException xamlEx)
-                    {
-                        Log.Error(xamlEx, "[RESOURCES] ✗ XAML Parse Error loading {Path}: {Message} at Line {LineNumber}, Position {LinePosition}",
-                            path, xamlEx.Message, xamlEx.LineNumber, xamlEx.LinePosition);
-
-                        // Log additional context for XAML parse errors
-                        if (xamlEx.InnerException != null)
-                        {
-                            Log.Error("[RESOURCES] XAML Parse Inner Exception: {InnerMessage}", xamlEx.InnerException.Message);
-                        }
-                    }
-                    catch (FileNotFoundException fileEx)
-                    {
-                        Log.Error(fileEx, "[RESOURCES] ✗ Resource file not found: {Path}", path);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "[RESOURCES] ✗ Unexpected error loading {Path}: {Message}", path, ex.Message);
+                        throw new ResourceLoadException(
+                            $"Critical resource loading failures: {result.ErrorCount} errors",
+                            result.FailedPaths,
+                            true);
                     }
                 }
-
-                // Add converters with error handling
-                try
+                else
                 {
-                    resources["BooleanToVisibilityConverter"] = new WileyWidget.Converters.BooleanToVisibilityConverter();
-                    Log.Debug("[RESOURCES] ✓ BooleanToVisibilityConverter registered");
+                    Log.Information("[STARTUP] ✓ Resources loaded successfully: {LoadedCount} resources in {Ms}ms",
+                        result.LoadedCount, result.LoadTimeMs);
                 }
-                catch (Exception converterEx)
-                {
-                    Log.Error(converterEx, "[RESOURCES] ✗ Failed to register BooleanToVisibilityConverter");
-                }
-
-                sw.Stop();
-                Log.Information("[RESOURCES] ✓ Application resources loading completed in {ElapsedMs}ms", sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
-                sw.Stop();
-                Log.Error(ex, "[RESOURCES] ✗ Critical failure in LoadApplicationResources after {ElapsedMs}ms: {Message}",
-                    sw.ElapsedMilliseconds, ex.Message);
-
-                // Log assembly loading context for troubleshooting
-                try
-                {
-                    var currentAssembly = Assembly.GetExecutingAssembly();
-                    var assemblyLocation = currentAssembly.Location;
-                    var assemblyName = currentAssembly.GetName();
-
-                    Log.Information("[RESOURCES] Assembly Context - Name: {AssemblyName}, Version: {Version}, Location: {Location}",
-                        assemblyName.Name, assemblyName.Version, assemblyLocation);
-                }
-                catch (Exception contextEx)
-                {
-                    Log.Warning(contextEx, "[RESOURCES] Failed to log assembly context");
-                }
+                Log.Fatal(ex, "[STARTUP] ✗ Critical failure loading application resources");
+                throw;
             }
         }
 
@@ -1173,7 +1122,10 @@ namespace WileyWidget
             // Register Prism error handler for navigation and region behavior error handling
             containerRegistry.RegisterSingleton<IPrismErrorHandler, PrismErrorHandler>();
 
-            Log.Information("✓ Critical services registered (ErrorReportingService, TelemetryStartupService, IModuleHealthService, DialogTrackingService, StartupDiagnosticsService, IPrismErrorHandler)");
+            // Register enterprise resource loader - SINGLE CANONICAL IMPLEMENTATION
+            containerRegistry.RegisterSingleton<IResourceLoader, EnterpriseResourceLoader>();
+
+            Log.Information("✓ Critical services registered (ErrorReportingService, TelemetryStartupService, IModuleHealthService, DialogTrackingService, StartupDiagnosticsService, IPrismErrorHandler, IResourceLoader)");
 
             // Example placeholders (uncomment and adapt if you have concrete implementations):
             // containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>();

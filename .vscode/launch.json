@@ -1,13 +1,12 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/vscode/main/src/vs/workbench/contrib/debug/common/debugger.schema.json",
   "version": "0.2.0",
   "configurations": [
     {
       "name": "Launch WileyWidget (Local)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build-clean",
-      "program": "${workspaceFolder}/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
+      "preLaunchTask": "dotnet:fast-build",
+      "program": "${workspaceFolder}/src/WileyWidget/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
@@ -39,36 +38,53 @@
       "name": "Launch WileyWidget (Debug Exceptions)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
+      "preLaunchTask": "dotnet:fast-build",
+      "program": "${workspaceFolder}/src/WileyWidget/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "postDebugTask": "kill-dotnet",
       "justMyCode": false,
       "stopAtEntry": false,
+      "exceptionBreakpointMode": "userUnhandled",
+      "enableStepFiltering": false,
+      "requireExactSource": false,
+      "exceptionBreakpoints": {
+        "CLR": {
+          "System.Exception": "unhandled",
+          "System.InvalidOperationException": "always",
+          "System.NullReferenceException": "always",
+          "System.ArgumentException": "always",
+          "System.ArgumentNullException": "always",
+          "System.IO.IOException": "unhandled",
+          "System.Net.Http.HttpRequestException": "unhandled",
+          "System.UnauthorizedAccessException": "unhandled",
+          "WileyWidget.*": "always"
+        }
+      },
       "symbolOptions": {
-        "searchMicrosoftSymbolServer": false,
-        "searchNuGetOrgSymbolServer": false,
+        "searchMicrosoftSymbolServer": true,
+        "searchNuGetOrgSymbolServer": true,
         "moduleFilter": {
           "mode": "loadAllButExcluded",
-          "excludedModules": [
-            "System.*",
-            "Microsoft.*",
-            "WindowsBase",
-            "PresentationCore",
-            "PresentationFramework",
-            "WindowsFormsIntegration",
-            "System.Xaml",
-            "mscorlib",
-            "netstandard"
-          ]
+          "excludedModules": []
         }
+      },
+      "logging": {
+        "moduleLoad": true,
+        "exceptions": true,
+        "programOutput": true,
+        "engineLogging": false
       },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
-        "COREHOST_TRACE": "1"
+        "COREHOST_TRACE": "1",
+        "QBO_CLIENT_ID": "${env:QBO_CLIENT_ID}",
+        "QBO_CLIENT_SECRET": "${env:QBO_CLIENT_SECRET}",
+        "QBO_REALM_ID": "${env:QBO_REALM_ID}",
+        "QBO_ENVIRONMENT": "sandbox",
+        "WW_DEBUG_EXCEPTIONS": "1"
       },
       "envFile": "${workspaceFolder}/.env"
     },
@@ -85,8 +101,8 @@
       "name": "Launch WileyWidget (Build Diagnostics)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
+      "preLaunchTask": "dotnet:fast-build",
+      "program": "${workspaceFolder}/src/WileyWidget/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
@@ -127,8 +143,8 @@
       "name": "Launch WileyWidget (Enhanced XAML Debug)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
+      "preLaunchTask": "dotnet:fast-build",
+      "program": "${workspaceFolder}/src/WileyWidget/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",

@@ -3,8 +3,8 @@ using System.Threading.Tasks;
 using Moq;
 using Xunit;
 using Microsoft.Extensions.Logging.Abstractions;
-using WileyWidget.ViewModels.Main;
 using WileyWidget.Services;
+
 namespace WileyWidget.Tests
 {
     public class SettingsViewModelTests

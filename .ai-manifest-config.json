@@ -1,0 +1,15 @@
+{
+  "exclude_patterns": [
+    "WileyWidget\\.Abstractions/",
+    "WileyWidget\\.Business/",
+    "WileyWidget\\.Data/",
+    "WileyWidget\\.Facade/",
+    "WileyWidget\\.Legacy/",
+    "WileyWidget\\.Models/",
+    "WileyWidget\\.Services/",
+    "WileyWidget\\.Services\\.Abstractions/",
+    "WileyWidget\\.UI/",
+    "WileyWidget\\.Webhooks/"
+  ],
+  "focus_mode": false
+}

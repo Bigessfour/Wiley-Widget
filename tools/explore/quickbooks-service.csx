@@ -99,6 +99,10 @@ var qbLogger = loggerFactory.CreateLogger<QuickBooksService>();
 var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
 var httpClient = httpClientFactory.CreateClient("QBO");
 
+// Diagnostic: print environment variables available to the dotnet-script process
+Console.WriteLine($"[DIAGNOSTIC] Process env QBO_CLIENT_ID={Environment.GetEnvironmentVariable("QBO_CLIENT_ID")}");
+Console.WriteLine($"[DIAGNOSTIC] Process env QUICKBOOKS_CLIENT_ID={Environment.GetEnvironmentVariable("QUICKBOOKS_CLIENT_ID")}");
+
 // Create QuickBooksService with proper DI setup
 var quickBooksService = new QuickBooksService(
     settings: provider.GetRequiredService<SettingsService>(),
@@ -186,9 +190,18 @@ sealed class StubHttpMessageHandler : HttpMessageHandler
 
 sealed class FakeSecretVaultService : ISecretVaultService
 {
-    public string? GetSecret(string key) => null;
+    public string? GetSecret(string key)
+    {
+        return GetSecretInternal(key);
+    }
+
     public void StoreSecret(string key, string value) { }
-    public System.Threading.Tasks.Task<string?> GetSecretAsync(string key) => System.Threading.Tasks.Task.FromResult<string?>(null);
+
+    public System.Threading.Tasks.Task<string?> GetSecretAsync(string key)
+    {
+        return System.Threading.Tasks.Task.FromResult<string?>(GetSecretInternal(key));
+    }
+
     public System.Threading.Tasks.Task SetSecretAsync(string key, string value) => System.Threading.Tasks.Task.CompletedTask;
     public System.Threading.Tasks.Task RotateSecretAsync(string secretName, string newValue) => System.Threading.Tasks.Task.CompletedTask;
     public System.Threading.Tasks.Task MigrateSecretsFromEnvironmentAsync() => System.Threading.Tasks.Task.CompletedTask;
@@ -198,6 +211,30 @@ sealed class FakeSecretVaultService : ISecretVaultService
     public System.Threading.Tasks.Task ImportSecretsAsync(string jsonSecrets) => System.Threading.Tasks.Task.CompletedTask;
     public System.Threading.Tasks.Task<IEnumerable<string>> ListSecretKeysAsync() => System.Threading.Tasks.Task.FromResult<IEnumerable<string>>(Array.Empty<string>());
     public System.Threading.Tasks.Task DeleteSecretAsync(string secretName) => System.Threading.Tasks.Task.CompletedTask;
+
+    private string? GetSecretInternal(string key)
+    {
+        // Map vault keys to environment variables for this exploratory harness so
+        // docker -e QBO_CLIENT_ID=... works without changing production code paths.
+        switch (key?.ToLowerInvariant())
+        {
+            case "qbo-client-id":
+            case "quickbooks-clientid":
+                return Environment.GetEnvironmentVariable("QBO_CLIENT_ID") ?? Environment.GetEnvironmentVariable("QUICKBOOKS_CLIENT_ID");
+            case "qbo-client-secret":
+            case "quickbooks-clientsecret":
+                return Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET") ?? Environment.GetEnvironmentVariable("QUICKBOOKS_CLIENT_SECRET");
+            case "qbo-realm-id":
+            case "quickbooks-realmid":
+                return Environment.GetEnvironmentVariable("QBO_REALM_ID") ?? Environment.GetEnvironmentVariable("QUICKBOOKS_REALM_ID");
+            case "qbo-redirect-uri":
+                return Environment.GetEnvironmentVariable("QBO_REDIRECT_URI");
+            case "qbo-environment":
+                return Environment.GetEnvironmentVariable("QBO_ENVIRONMENT");
+            default:
+                return null;
+        }
+    }
 }
 
 static void SetPrivateField<TValue>(object instance, string fieldName, TValue value)
