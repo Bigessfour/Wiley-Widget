@@ -25,8 +25,8 @@ namespace WileyWidget
 
         /// <summary>
         /// Loads application resources synchronously during WPF startup.
-        /// This is the SINGLE CANONICAL METHOD for resource loading to avoid UI thread deadlocks.
-        /// Uses the EnterpriseResourceLoader for resilient resource loading.
+        /// This is called AFTER the DI container is initialized, ensuring proper service resolution.
+        /// Uses the EnterpriseResourceLoader for resilient resource loading with full telemetry.
         /// </summary>
         private void LoadApplicationResourcesSync()
         {
@@ -34,26 +34,12 @@ namespace WileyWidget
 
             try
             {
-                Log.Information("[STARTUP] Loading application resources synchronously");
+                Log.Information("[STARTUP] Loading application resources synchronously (container ready)");
 
                 // Get the enterprise resource loader from DI container
-                // Note: Container may not be fully initialized yet, so use direct instantiation if needed
-                IResourceLoader resourceLoader;
-                try
-                {
-                    resourceLoader = Container.Resolve<IResourceLoader>();
-                }
-                catch
-                {
-                    // Fallback: create new instance if container not ready
-                    // Note: This should rarely happen - container should be available by this point
-                    Log.Warning("[STARTUP] Container not ready, using NullLogger for EnterpriseResourceLoader");
-                    resourceLoader = new Startup.EnterpriseResourceLoader(
-                        Microsoft.Extensions.Logging.Abstractions.NullLogger<Startup.EnterpriseResourceLoader>.Instance,
-                        null, // ErrorReportingService - will use Serilog directly
-                        null  // SigNozTelemetryService - telemetry unavailable in fallback
-                    );
-                }
+                // Container is guaranteed to be available since this is called after base.OnStartup()
+                var resourceLoader = Container.Resolve<IResourceLoader>();
+                Log.Debug("[STARTUP] EnterpriseResourceLoader resolved from DI container with full services");
 
                 // Load resources synchronously (no async/await to avoid WPF UI thread deadlocks)
                 var result = Task.Run(() => resourceLoader.LoadApplicationResourcesAsync()).GetAwaiter().GetResult();
@@ -87,6 +73,7 @@ namespace WileyWidget
         /// Verifies and applies the Syncfusion theme for the application.
         /// This method ensures theme is applied before Prism's ConfigureRegionAdapterMappings is called.
         /// CRITICAL: Sets SfSkinManager.ApplyThemeAsDefaultStyle = true for global theme application.
+        /// Enhanced with license validation and conservative memory management for .NET 9.
         /// </summary>
         private void VerifyAndApplyTheme()
         {
@@ -96,31 +83,74 @@ namespace WileyWidget
             {
                 Log.Information("[THEME] Verifying and applying Syncfusion theme");
 
-                // CRITICAL: Enable automatic theme application to all controls
-                // Per Syncfusion docs: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
-                // This MUST be set before setting ApplicationTheme
-                SfSkinManager.ApplyThemeAsDefaultStyle = true;
-                Log.Debug("[THEME] ApplyThemeAsDefaultStyle enabled for global theme propagation");
+                // PHASE 1: License Status Validation
+                Log.Information("[THEME] Checking Syncfusion license status: {Status}", App.SyncfusionLicenseStatus);
+                
+                switch (App.SyncfusionLicenseStatus)
+                {
+                    case App.LicenseRegistrationStatus.Failed:
+                        Log.Warning("[THEME] License registration failed: {Error}. Proceeding with limited functionality.", App.SyncfusionLicenseError);
+                        break;
+                    case App.LicenseRegistrationStatus.InvalidKey:
+                        Log.Warning("[THEME] Invalid license key: {Error}. Proceeding in trial mode.", App.SyncfusionLicenseError);
+                        break;
+                    case App.LicenseRegistrationStatus.NetworkError:
+                        Log.Warning("[THEME] Network error during license validation: {Error}. Proceeding with cached/offline validation.", App.SyncfusionLicenseError);
+                        break;
+                    case App.LicenseRegistrationStatus.TrialMode:
+                        Log.Information("[THEME] Running in trial mode - full theme functionality available with trial limitations");
+                        break;
+                    case App.LicenseRegistrationStatus.Success:
+                        Log.Information("[THEME] ✓ Licensed mode - full theme functionality available");
+                        break;
+                    case App.LicenseRegistrationStatus.NotAttempted:
+                        Log.Error("[THEME] License registration was not attempted - this indicates a static constructor failure");
+                        break;
+                }
 
-                // Check available system memory before theme application
-                // Note: Using GC memory info to get available memory, not process working set
+                // PHASE 2: Enhanced Memory Validation for .NET 9
                 try
                 {
+                    // Use both GC memory info (available memory) and process working set (current usage)
                     var gcMemInfo = GC.GetGCMemoryInfo();
-                    var totalMemoryMB = gcMemInfo.TotalAvailableMemoryBytes / (1024 * 1024);
-                    var currentMemoryMB = GC.GetTotalMemory(false) / (1024 * 1024);
-                    var availableMemoryMB = totalMemoryMB - currentMemoryMB;
-                    const int minMemoryMB = 128;
+                    var totalAvailableMemoryMB = gcMemInfo.TotalAvailableMemoryBytes / (1024 * 1024);
+                    var currentGcMemoryMB = GC.GetTotalMemory(false) / (1024 * 1024);
+                    
+                    var process = Process.GetCurrentProcess();
+                    var workingSetMB = process.WorkingSet64 / (1024 * 1024);
+                    var privateMemoryMB = process.PrivateMemorySize64 / (1024 * 1024);
 
-                    Log.Debug("[THEME] Memory status: {Available}MB available of {Total}MB total (current usage: {Current}MB)",
-                        availableMemoryMB, totalMemoryMB, currentMemoryMB);
+                    // Conservative memory thresholds for .NET 9 theme operations
+                    const int criticalMemoryMB = 64;    // Abort theme application
+                    const int lowMemoryMB = 128;         // Warning but proceed
+                    const int recommendedMemoryMB = 256; // Optimal
 
-                    if (availableMemoryMB < minMemoryMB)
+                    var effectiveAvailableMemory = Math.Min(totalAvailableMemoryMB - currentGcMemoryMB, totalAvailableMemoryMB * 0.8); // Leave 20% buffer
+
+                    Log.Debug("[THEME] Memory status: Available={Available}MB, GC={GcMemory}MB, WorkingSet={WorkingSet}MB, Private={Private}MB",
+                        effectiveAvailableMemory, currentGcMemoryMB, workingSetMB, privateMemoryMB);
+
+                    if (effectiveAvailableMemory < criticalMemoryMB)
                     {
-                        Log.Warning("[THEME] Low memory detected: {Available}MB available, {Required}MB recommended. " +
-                                    "Proceeding with theme application - this may cause performance issues.",
-                            availableMemoryMB, minMemoryMB);
-                        // Don't throw - this is informational only. Theme will work with less memory.
+                        var errorMsg = $"Critical memory shortage: {effectiveAvailableMemory}MB available, {criticalMemoryMB}MB minimum required. " +
+                                      "Theme application aborted to prevent OOM exception.";
+                        Log.Fatal("[THEME] {Error}", errorMsg);
+                        throw new InsufficientMemoryException(errorMsg);
+                    }
+                    else if (effectiveAvailableMemory < lowMemoryMB)
+                    {
+                        Log.Warning("[THEME] Low memory detected: {Available}MB available, {Recommended}MB recommended. " +
+                                    "Proceeding with theme application - monitor for performance issues.",
+                            effectiveAvailableMemory, recommendedMemoryMB);
+                        
+                        // Force garbage collection before theme operations in low memory scenarios
+                        GC.Collect(2, GCCollectionMode.Forced, true);
+                        GC.WaitForPendingFinalizers();
+                        Log.Debug("[THEME] Forced GC completed in low memory scenario");
+                    }
+                    else if (effectiveAvailableMemory >= recommendedMemoryMB)
+                    {
+                        Log.Debug("[THEME] ✓ Memory status optimal: {Available}MB available", effectiveAvailableMemory);
                     }
                 }
                 catch (Exception memEx)
@@ -128,14 +158,39 @@ namespace WileyWidget
                     Log.Warning(memEx, "[THEME] Could not check memory status - proceeding with theme application");
                 }
 
-                // Apply FluentLight theme using SfSkinManager
-                // This sets SfSkinManager.ApplicationTheme which is required for region adapters
-                // NOTE: MainWindow doesn't exist yet (CreateShell hasn't been called), so we only set ApplicationTheme
-                var theme = new Syncfusion.SfSkinManager.Theme("FluentLight");
-                SfSkinManager.ApplicationTheme = theme;
+                // PHASE 3: Theme Application with License-Aware Error Handling
+                Log.Information("[THEME] Applying FluentLight theme...");
+                
+                // CRITICAL: Enable automatic theme application to all controls
+                // Per Syncfusion docs: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
+                // This MUST be set before setting ApplicationTheme
+                SfSkinManager.ApplyThemeAsDefaultStyle = true;
+                Log.Debug("[THEME] ApplyThemeAsDefaultStyle enabled for global theme propagation");
 
-                // The theme will be automatically applied to the Shell window when it's created
-                // because ApplicationTheme is already set
+                // Apply FluentLight theme using SfSkinManager with license-aware error handling
+                try
+                {
+                    var theme = new Syncfusion.SfSkinManager.Theme("FluentLight");
+                    SfSkinManager.ApplicationTheme = theme;
+                    Log.Debug("[THEME] ApplicationTheme set to FluentLight");
+                }
+                catch (Exception themeEx) when (themeEx.Message.Contains("license") || themeEx.Message.Contains("trial"))
+                {
+                    // Handle licensing exceptions specifically
+                    var licenseMsg = $"Theme application encountered licensing issue: {themeEx.Message}. " +
+                                   $"License Status: {App.SyncfusionLicenseStatus}";
+                    Log.Warning("[THEME] {LicenseMessage}", licenseMsg);
+                    
+                    // In trial/license issues, still try to proceed - Syncfusion may work with limitations
+                    if (App.SyncfusionLicenseStatus != App.LicenseRegistrationStatus.Failed)
+                    {
+                        Log.Information("[THEME] Continuing with theme application despite licensing warning");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Theme application failed due to licensing: {themeEx.Message}", themeEx);
+                    }
+                }
 
                 // Verify theme was applied successfully
                 if (SfSkinManager.ApplicationTheme == null)
@@ -145,12 +200,17 @@ namespace WileyWidget
                     throw new InvalidOperationException(errorMsg);
                 }
 
-                Log.Information("[THEME] ✓ Theme applied successfully: {Theme} ({Ms}ms)",
-                    SfSkinManager.ApplicationTheme.ToString(), sw.ElapsedMilliseconds);
+                Log.Information("[THEME] ✓ Theme applied successfully: {Theme} in {Ms}ms (License: {LicenseStatus})",
+                    SfSkinManager.ApplicationTheme.ToString(), sw.ElapsedMilliseconds, App.SyncfusionLicenseStatus);
+            }
+            catch (InsufficientMemoryException)
+            {
+                // Re-throw memory exceptions as-is
+                throw;
             }
             catch (Exception ex)
             {
-                Log.Fatal(ex, "[THEME] ✗ Critical failure applying theme");
+                Log.Fatal(ex, "[THEME] ✗ Critical failure applying theme (License Status: {LicenseStatus})", App.SyncfusionLicenseStatus);
                 throw; // This is critical - rethrow to fail startup
             }
         }

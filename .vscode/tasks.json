@@ -2,6 +2,138 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "WileyWidget: Kill Old Processes",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Get-Process -Name dotnet, WileyWidget -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match 'dotnet|WileyWidget' } | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host 'Killed old WileyWidget/.NET processes'"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"isBackground": false
+		},
+		{
+			"label": "WileyWidget: Clean",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"clean",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile",
+			"dependsOn": "WileyWidget: Kill Old Processes"
+		},
+		{
+			"label": "WileyWidget: Build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--no-restore",
+				"--verbosity",
+				"minimal",
+				"--configuration",
+				"Debug"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile",
+			"dependsOn": "WileyWidget: Clean"
+		},
+		{
+			"label": "WileyWidget: Clean & Build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile",
+			"dependsOn": [
+				"WileyWidget: Kill Old Processes",
+				"WileyWidget: Clean"
+			]
+		},
+		{
+			"label": "WileyWidget: Run",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"${workspaceFolder}/src/WileyWidget/WileyWidget.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "new"
+			},
+			"problemMatcher": [],
+			"isBackground": true,
+			"dependsOn": "WileyWidget: Clean & Build"
+		},
+		{
+			"label": "WileyWidget: Cleanup Processes",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Get-Process -Name dotnet, WileyWidget -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match 'dotnet|WileyWidget' } | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host 'Post-debug cleanup: Killed lingering processes'; Remove-Item -Path '${workspaceFolder}/src/WileyWidget/bin/Debug/net9.0-windows10.0.19041.0/logs/*.log' -Recurse -Force -ErrorAction SilentlyContinue"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
 			"label": "csx:build-image",
 			"type": "shell",
 			"command": "docker build -t wiley-widget/csx-mcp:local -f docker/Dockerfile.csx-tests .",
@@ -628,6 +760,24 @@
 			"presentation": {
 				"echo": true,
 				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "kill-dotnet",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Get-Process | Where-Object { $_.ProcessName -match 'dotnet|WileyWidget' -and $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue"
+			],
+			"presentation": {
+				"echo": false,
+				"reveal": "never",
 				"panel": "shared"
 			},
 			"problemMatcher": []

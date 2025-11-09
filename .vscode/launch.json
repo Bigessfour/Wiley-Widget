@@ -2,6 +2,58 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "WileyWidget: Launch (Debug Startup) - OPTIMIZED",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/WileyWidget/bin/Debug/net9.0-windows10.0.19041.0/win-x64/WileyWidget.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "preLaunchTask": "WileyWidget: Clean & Build",
+      "postDebugTask": "WileyWidget: Cleanup Processes",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
+        "XAI_API_KEY": "${env:XAI_API_KEY}",
+        "QBO_CLIENT_ID": "${env:QBO_CLIENT_ID}",
+        "QBO_CLIENT_SECRET": "${env:QBO_CLIENT_SECRET}",
+        "QBO_REALM_ID": "${env:QBO_REALM_ID}",
+        "QBO_ENVIRONMENT": "sandbox"
+      },
+      "justMyCode": true,
+      "enableStepFiltering": true,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": true,
+        "searchNugetOrgSymbolServer": true,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework"
+          ]
+        }
+      }
+    },
+    {
+      "name": "WileyWidget: Attach to Running App - OPTIMIZED",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "requireExactSource": false,
+      "preLaunchTask": "WileyWidget: Kill Old Processes",
+      "postDebugTask": "WileyWidget: Cleanup Processes",
+      "justMyCode": true,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": true,
+        "searchNugetOrgSymbolServer": true
+      }
+    },
+    {
       "name": "Launch WileyWidget (Local)",
       "type": "coreclr",
       "request": "launch",
@@ -423,10 +475,14 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/WileyWidget.Tests/bin/Debug/net9.0/WileyWidget.Tests.dll",
+      "program": "dotnet",
       "args": [
+        "test",
+        "${workspaceFolder}/WileyWidget.Tests/WileyWidget.Tests.csproj",
+        "--no-build",
         "--collect:\"XPlat Code Coverage\"",
-        "--results-directory:${workspaceFolder}/TestResults/Coverage"
+        "--results-directory:${workspaceFolder}/TestResults/Coverage",
+        "--logger:console;verbosity=detailed"
       ],
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
@@ -547,43 +603,6 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "args": ["--report", "--timeout=60"],
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}"
-      }
-    },
-    {
-      "name": "Debug WPF Threading Script",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/debug-wpf-thread.py",
-      "args": ["--verbose", "--timeout=90"],
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}",
-        "DEBUG_STARTUP": "true"
-      },
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "name": "Debug DI Threading Script",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/test-di-thread.py",
-      "args": ["--verbose"],
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}"
-      }
-    },
-    {
-      "name": "Debug Test Thread Monitor",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/monitor-test-thread.py",
-      "args": ["--verbose", "--timeout=90"],
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       }

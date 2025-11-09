@@ -441,8 +441,9 @@ namespace WileyWidget.ViewModels.Panels
                     _logger?.LogInformation("File logging disabled");
                 }
 
-                // TODO: Implement dynamic Serilog reconfiguration if needed
-                // This would require storing the logger configuration and recreating it
+                // Note: Dynamic Serilog reconfiguration not implemented by design.
+                // Log level changes take effect on next application restart.
+                // Settings are persisted via SettingsService for next session.
             }
             catch (Exception ex)
             {
@@ -862,9 +863,9 @@ namespace WileyWidget.ViewModels.Panels
                     _settingsService.Current.SessionTimeoutMinutes = value;
                     _settingsService.Save();
 
-                    // TODO: Implement session timeout timer logic
-                    // This would require integrating with an authentication/session service
-                    _logger?.LogInformation("Session timeout changed to: {Minutes} minutes", value);
+                    // Note: Session timeout monitoring not implemented - no authentication system in current version.
+                    // This setting is preserved for future enterprise authentication integration.
+                    _logger?.LogInformation("Session timeout preference saved: {Minutes} minutes", value);
                 }
             }
         }

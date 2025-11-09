@@ -235,8 +235,8 @@ public static class WpfHostingExtensions
 
         // Critical services - load immediately
         // AuthenticationService removed - Azure integration archived
-        // TODO: Implement ISyncfusionLicenseService or remove if not needed
-        // services.AddSingleton<ISyncfusionLicenseService, SyncfusionLicenseService>();
+        // Note: Syncfusion licensing handled directly in App.xaml.cs OnStartup via SyncfusionLicenseProvider.
+        // No separate service needed - license key loaded from configuration during bootstrap.
         services.AddSingleton<ApplicationMetricsService>();
     // Register SettingsService and expose as ISettingsService.
     // Use non-generic overload to avoid compile-time generic assignability checks

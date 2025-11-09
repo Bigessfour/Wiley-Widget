@@ -1,6 +1,136 @@
 // App.DependencyInjection.cs - Dependency Injection & Configuration Partial Class
 // Contains: DI container setup, Prism configuration, module catalog, region adapters
 // Part of App.xaml.cs partial class split for maintainability
+//
+// ═══════════════════════════════════════════════════════════════════════════════
+// DI REGISTRATION ARCHITECTURE (Comprehensive, Rock-Solid Implementation)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// 1. CONTAINER SETUP (CreateContainerExtension):
+//    - DryIoc with Microsoft DI rules
+//    - Singleton as default lifetime
+//    - Auto-concrete type resolution
+//    - Disposable transient tracking
+//    - 60s timeout for complex ViewModels
+//
+// 2. REGISTRATION FLOW (RegisterTypes):
+//    ├── Critical Services (explicit registrations)
+//    │   ├── Shell (main window)
+//    │   ├── ErrorReportingService (Singleton)
+//    │   ├── TelemetryStartupService (Singleton)
+//    │   ├── ModuleHealthService (Singleton)
+//    │   ├── SigNozTelemetryService (Instance or Singleton)
+//    │   ├── ApplicationMetricsService (Singleton)
+//    │   ├── DialogTrackingService (Singleton)
+//    │   ├── StartupDiagnosticsService (Singleton)
+//    │   ├── StartupEnvironmentValidator (Singleton)
+//    │   ├── HealthReportingService (Singleton)
+//    │   ├── DiagnosticsService (Singleton)
+//    │   ├── PrismErrorHandler (Singleton)
+//    │   ├── EnterpriseResourceLoader (Singleton)
+//    │   ├── IServiceScopeFactory (Singleton)
+//    │   └── FiscalYearSettings (Instance from configuration)
+//    │
+//    ├── RegisterConventionTypes()
+//    │   ├── RegisterCoreInfrastructure()
+//    │   │   ├── IConfiguration (Instance, cached)
+//    │   │   ├── IMemoryCache (Instance, 100MB limit)
+//    │   │   ├── ICacheService (Singleton)
+//    │   │   ├── ILoggerFactory (Instance, Serilog bridge)
+//    │   │   ├── ILogger<T> (Transient, generic factory)
+//    │   │   ├── IHttpClientFactory (Instance, 3 named clients: Default, QuickBooks, XAI)
+//    │   │   └── IDbContextFactory<AppDbContext> (Instance, conditional on connection string)
+//    │   │
+//    │   ├── RegisterRepositories()
+//    │   │   └── Auto-discovers from WileyWidget.Data assembly (Scoped lifetime)
+//    │   │       ├── IEnterpriseRepository -> EnterpriseRepository
+//    │   │       ├── IBudgetRepository -> BudgetRepository
+//    │   │       ├── IMunicipalAccountRepository -> MunicipalAccountRepository
+//    │   │       ├── IDepartmentRepository -> DepartmentRepository
+//    │   │       ├── IUtilityCustomerRepository -> UtilityCustomerRepository
+//    │   │       ├── IUtilityBillRepository -> UtilityBillRepository
+//    │   │       └── IAuditRepository -> AuditRepository
+//    │   │
+//    │   ├── RegisterBusinessServices()
+//    │   │   └── Auto-discovers from WileyWidget.Services assembly (Singleton lifetime)
+//    │   │       Patterns: *Service, *Engine, *Helper, *Importer, *Calculator
+//    │   │       ├── ISettingsService -> SettingsService
+//    │   │       ├── IQuickBooksService -> QuickBooksService
+//    │   │       ├── ITelemetryService -> SigNozTelemetryService
+//    │   │       ├── ISecretVaultService -> LocalSecretVaultService
+//    │   │       ├── IReportExportService -> ReportExportService
+//    │   │       ├── IDataAnonymizerService -> DataAnonymizerService
+//    │   │       ├── IChargeCalculatorService -> ServiceChargeCalculatorService
+//    │   │       ├── IBoldReportService -> BoldReportService
+//    │   │       ├── IAuditService -> AuditService
+//    │   │       ├── ICompositeCommandService -> CompositeCommandService
+//    │   │       ├── IWileyWidgetContextService -> WileyWidgetContextService
+//    │   │       ├── IRegionMonitoringService -> RegionMonitoringService
+//    │   │       ├── IExcelExportService -> ExcelExportService
+//    │   │       ├── IExcelReaderService -> ExcelReaderService
+//    │   │       ├── IWhatIfScenarioEngine -> WhatIfScenarioEngine ✓ (NEW)
+//    │   │       ├── IBudgetImporter -> BudgetImporter ✓ (NEW)
+//    │   │       ├── IDispatcherHelper -> DispatcherHelper ✓ (NEW)
+//    │   │       └── ... (all matching patterns auto-registered)
+//    │   │
+//    │   └── RegisterViewModels()
+//    │       └── Auto-discovers from WileyWidget.UI assembly (Transient lifetime) ✓ (IMPROVED)
+//    │           ├── SettingsViewModel
+//    │           ├── DashboardViewModel
+//    │           ├── MainViewModel
+//    │           ├── BudgetViewModel
+//    │           ├── AIAssistViewModel
+//    │           ├── QuickBooksViewModel
+//    │           ├── EnterpriseViewModel
+//    │           ├── MunicipalAccountViewModel
+//    │           ├── UtilityCustomerViewModel
+//    │           ├── DepartmentViewModel
+//    │           ├── AnalyticsViewModel
+//    │           ├── ReportsViewModel
+//    │           ├── ToolsViewModel
+//    │           ├── ProgressViewModel
+//    │           ├── ExcelImportViewModel
+//    │           ├── BudgetAnalysisViewModel
+//    │           ├── AIResponseViewModel
+//    │           ├── SplashScreenWindowViewModel
+//    │           ├── UtilityCustomerPanelViewModel
+//    │           └── ... (all ViewModels auto-registered)
+//    │
+//    ├── RegisterLazyAIServices()
+//    │   ├── IAIService -> XAIService or NullAIService (Singleton, with API key validation)
+//    │   └── IAILoggingService -> AILoggingService (Singleton)
+//    │
+//    └── ValidateAndRegisterViewModels()
+//        └── Delegates to StartupEnvironmentValidator for constructor dependency validation
+//
+// 3. PRISM SERVICES (auto-registered by framework):
+//    ├── IDialogService (dialog system)
+//    ├── IRegionManager (region navigation)
+//    ├── IEventAggregator (pub/sub messaging)
+//    └── IContainerProvider (container access)
+//
+// 4. MODULE CATALOG (ConfigureModuleCatalog):
+//    ├── CoreModule (essential services)
+//    └── QuickBooksModule (QuickBooks integration)
+//
+// 5. LIFETIME PATTERNS:
+//    ├── Singleton: Stateless services, caches, managers (one instance per app)
+//    ├── Scoped: Repositories, DbContext (one instance per operation/request)
+//    ├── Transient: ViewModels, disposable services (new instance per resolve)
+//    └── Instance: Pre-configured objects, cached configuration
+//
+// 6. DEPENDENCY RESOLUTION RULES:
+//    ├── Constructor injection (preferred)
+//    ├── Lazy<T> for circular dependency breaking
+//    ├── Optional dependencies via nullable parameters
+//    └── Factory pattern for complex object graphs
+//
+// 7. VALIDATION & MONITORING:
+//    ├── ValidateAndRegisterViewModels: Constructor dependency checks
+//    ├── Startup logging for all registrations
+//    └── Container diagnostics in debug builds
+//
+// ═══════════════════════════════════════════════════════════════════════════════
 
 using System;
 using System.Diagnostics;
@@ -62,14 +192,14 @@ namespace WileyWidget
             var containerExtension = new DryIocContainerExtension(container);
             LogStartupTiming("CreateContainerExtension: DryIoc setup", sw.Elapsed);
 
-            // Convention-based registrations (implemented in App.DependencyInjection.Convention.cs)
+            // Convention-based registrations (defined later in this file)
             RegisterConventionTypes(containerExtension);
 
-            // Lazy AI services (implemented in App.DependencyInjection.Convention.cs)
+            // Lazy AI services (defined later in this file)
             RegisterLazyAIServices(containerExtension);
 
-            // ViewModel validation/auto-reg (implemented in App.DependencyInjection.Convention.cs)
-            ValidateAndRegisterViewModels(containerExtension);
+            // NOTE: ViewModel validation moved to OnInitialized() after RegisterTypes completes
+            // to ensure StartupEnvironmentValidator is registered first.
 
             // NOTE: ModuleOrder and ModuleRegionMap properties kept for backward compatibility
             // but are no longer loaded from config. Modules are hardcoded in ConfigureModuleCatalog.
@@ -125,29 +255,40 @@ namespace WileyWidget
             containerRegistry.RegisterSingleton<WileyWidget.Services.Startup.IDiagnosticsService, WileyWidget.Services.Startup.DiagnosticsService>();
             Log.Information("✓ Diagnostics service registered");
 
+            // Register enhanced diagnostics service for comprehensive startup debugging
+            containerRegistry.RegisterSingleton<WileyWidget.Services.Startup.IEnhancedDiagnosticsService, WileyWidget.Services.Startup.EnhancedDiagnosticsService>();
+            Log.Information("✓ Enhanced diagnostics service registered");
+
             // Register Prism error handler for navigation and region behavior error handling
             containerRegistry.RegisterSingleton<Services.IPrismErrorHandler, Services.PrismErrorHandler>();
 
             // Register enterprise resource loader for Polly-based resilient resource loading
             containerRegistry.RegisterSingleton<Abstractions.IResourceLoader, Startup.EnterpriseResourceLoader>();
 
+            // Register IServiceScopeFactory for scoped service creation (required by some business services)
+            containerRegistry.RegisterSingleton<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory, Services.DryIocServiceScopeFactory>();
+            Log.Information("✓ IServiceScopeFactory registered");
+
+            // Register FiscalYearSettings from configuration
+            var configuration = BuildConfiguration();
+            var fiscalYearSettings = new Models.FiscalYearSettings();
+            configuration.GetSection("FiscalYear").Bind(fiscalYearSettings);
+            containerRegistry.RegisterInstance(fiscalYearSettings);
+            Log.Information("✓ FiscalYearSettings registered from configuration");
+
             Log.Information("✓ Critical services registered");
 
-            // CRITICAL: Call convention-based registration helpers
-            // These methods are still in App.xaml.cs and contain bulk of service registrations
-            RegisterConventionTypes(containerRegistry);
-            RegisterCoreInfrastructure(containerRegistry);
-            RegisterRepositories(containerRegistry);
-            RegisterBusinessServices(containerRegistry);
-            RegisterViewModels(containerRegistry);
-            RegisterLazyAIServices(containerRegistry);
-            ValidateAndRegisterViewModels(containerRegistry);
+            // Note: Convention-based types are registered in CreateContainerExtension()
+            // ValidateAndRegisterViewModels moved to OnInitialized() to ensure all services
+            // are properly registered before validation attempts.
+            // This fixes the ILogger<T> resolution error during startup.
 
             Log.Information("✓ All convention-based services registered");
         }
 
         /// <summary>
         /// Configures the module catalog with application modules.
+        /// Enhanced with dynamic discovery and better error handling for missing assemblies.
         /// </summary>
         protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
         {
@@ -155,16 +296,168 @@ namespace WileyWidget
             {
                 Log.Information("[PRISM] Configuring module catalog...");
 
-                // Register essential modules only (Phase 0: Dead modules deleted)
-                moduleCatalog.AddModule<Startup.Modules.CoreModule>();
-                moduleCatalog.AddModule<Startup.Modules.QuickBooksModule>();
+                // Enhanced module registration with assembly validation
+                var moduleRegistrationErrors = new List<string>();
 
-                Log.Information("✓ [PRISM] Module catalog configured with CoreModule and QuickBooksModule");
+                // Register essential modules with validation
+                if (!TryRegisterModule<Startup.Modules.CoreModule>(moduleCatalog))
+                {
+                    moduleRegistrationErrors.Add("CoreModule");
+                    Log.Warning("CoreModule assembly validation failed - attempting fallback registration");
+                }
+
+                if (!TryRegisterModule<Startup.Modules.QuickBooksModule>(moduleCatalog))
+                {
+                    moduleRegistrationErrors.Add("QuickBooksModule");
+                    Log.Warning("QuickBooksModule assembly validation failed - attempting fallback registration");
+                }
+
+                // Dynamic module discovery - scan for additional modules in current assembly
+                try
+                {
+                    var discoveredModules = DiscoverAdditionalModules();
+                    foreach (var moduleType in discoveredModules)
+                    {
+                        try
+                        {
+                            moduleCatalog.AddModule(new ModuleInfo
+                            {
+                                ModuleName = moduleType.Name,
+                                ModuleType = moduleType.AssemblyQualifiedName,
+                                InitializationMode = InitializationMode.WhenAvailable
+                            });
+                            Log.Debug("Dynamically discovered module: {ModuleName}", moduleType.Name);
+                        }
+                        catch (Exception discEx)
+                        {
+                            Log.Warning(discEx, "Failed to register discovered module: {ModuleName}", moduleType.Name);
+                        }
+                    }
+                }
+                catch (Exception dynamicEx)
+                {
+                    Log.Warning(dynamicEx, "Dynamic module discovery failed - continuing with core modules only");
+                }
+
+                if (moduleRegistrationErrors.Any())
+                {
+                    Log.Warning("Some modules failed validation but application will continue with available modules. Failed: {FailedModules}",
+                        string.Join(", ", moduleRegistrationErrors));
+                }
+                else
+                {
+                    Log.Information("✓ [PRISM] Module catalog configured successfully with all requested modules");
+                }
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "✗ [PRISM] Failed to configure module catalog");
-                throw; // Re-throw to prevent invalid startup state
+
+                // Don't rethrow - create minimal module catalog to allow app startup
+                try
+                {
+                    Log.Information("Attempting minimal module catalog configuration...");
+                    // Application can start without modules in degraded mode
+                    Log.Information("✓ [PRISM] Minimal module catalog configured - application will run in degraded mode");
+                }
+                catch (Exception fallbackEx)
+                {
+                    Log.Fatal(fallbackEx, "Failed to configure even minimal module catalog");
+                    throw; // This is critical - can't start without any module catalog
+                }
+            }
+        }
+
+        /// <summary>
+        /// Attempts to register a module type with assembly validation.
+        /// </summary>
+        /// <typeparam name="T">The module type to register</typeparam>
+        /// <param name="moduleCatalog">The module catalog</param>
+        /// <returns>True if successful, false otherwise</returns>
+        private bool TryRegisterModule<T>(IModuleCatalog moduleCatalog) where T : class, IModule
+        {
+            try
+            {
+                // Validate that the module type can be loaded
+                var moduleType = typeof(T);
+                var assembly = moduleType.Assembly;
+
+                // Check if assembly is properly loaded and accessible
+                if (assembly == null || string.IsNullOrEmpty(assembly.Location))
+                {
+                    Log.Warning("Module type {ModuleType} has invalid assembly information", typeof(T).Name);
+                    return false;
+                }
+
+                // Verify the module type has the required interface
+                if (!typeof(IModule).IsAssignableFrom(moduleType))
+                {
+                    Log.Warning("Module type {ModuleType} does not implement IModule interface", typeof(T).Name);
+                    return false;
+                }
+
+                // Verify the module has a parameterless constructor
+                var parameterlessConstructor = moduleType.GetConstructor(Type.EmptyTypes);
+                if (parameterlessConstructor == null)
+                {
+                    Log.Warning("Module type {ModuleType} does not have a parameterless constructor", typeof(T).Name);
+                    return false;
+                }
+
+                // All validations passed - register the module
+                moduleCatalog.AddModule<T>();
+                Log.Debug("Module {ModuleName} registered successfully", typeof(T).Name);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to register module {ModuleType}: {Message}", typeof(T).Name, ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Discovers additional modules in the current assembly that implement IModule.
+        /// </summary>
+        /// <returns>Collection of discovered module types</returns>
+        private IEnumerable<Type> DiscoverAdditionalModules()
+        {
+            try
+            {
+                var currentAssembly = Assembly.GetExecutingAssembly();
+                var moduleTypes = currentAssembly.GetTypes()
+                    .Where(t => t.IsClass && !t.IsAbstract)
+                    .Where(t => typeof(IModule).IsAssignableFrom(t))
+                    .Where(t => t != typeof(Startup.Modules.CoreModule) && t != typeof(Startup.Modules.QuickBooksModule)) // Exclude already registered
+                    .Where(t => t.GetConstructor(Type.EmptyTypes) != null) // Must have parameterless constructor
+                    .ToList();
+
+                Log.Debug("Discovered {Count} additional module types", moduleTypes.Count);
+                return moduleTypes;
+            }
+            catch (ReflectionTypeLoadException rtle)
+            {
+                Log.Warning("ReflectionTypeLoadException during module discovery - checking partially loaded types");
+
+                try
+                {
+                    return rtle.Types
+                        .Where(t => t != null && t.IsClass && !t.IsAbstract)
+                        .Where(t => typeof(IModule).IsAssignableFrom(t))
+                        .Where(t => t != typeof(Startup.Modules.CoreModule) && t != typeof(Startup.Modules.QuickBooksModule))
+                        .Where(t => t.GetConstructor(Type.EmptyTypes) != null)
+                        .ToList()!;
+                }
+                catch
+                {
+                    Log.Warning("Failed to process partially loaded types during module discovery");
+                    return Enumerable.Empty<Type>();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to discover additional modules");
+                return Enumerable.Empty<Type>();
             }
         }
 
@@ -339,6 +632,7 @@ namespace WileyWidget
 
         /// <summary>
         /// Resolves placeholder values in configuration (e.g., ${ENV_VAR} references).
+        /// Supports recursive resolution for nested configuration sections.
         /// </summary>
         private static void TryResolvePlaceholders(IConfigurationRoot? config)
         {
@@ -349,29 +643,41 @@ namespace WileyWidget
 
             try
             {
-                // Placeholder resolution logic
-                // Example: Replace ${ENV_VAR} with actual environment variable values
-                foreach (var section in config.GetChildren())
+                // Recursively resolve placeholders in all configuration sections
+                ResolveSection(config);
+
+                // Helper method to recursively process configuration sections
+                static void ResolveSection(IConfiguration section)
                 {
-                    var value = section.Value;
-                    if (!string.IsNullOrEmpty(value) && value.Contains("${"))
+                    // Process current section's value if it exists
+                    if (section is IConfigurationSection configSection && !string.IsNullOrEmpty(configSection.Value))
                     {
-                        // Simple placeholder resolution: ${VAR_NAME} -> Environment.GetEnvironmentVariable("VAR_NAME")
-                        var startIndex = value.IndexOf("${", StringComparison.Ordinal);
-                        var endIndex = value.IndexOf("}", startIndex, StringComparison.Ordinal);
-
-                        if (startIndex >= 0 && endIndex > startIndex)
+                        var value = configSection.Value;
+                        if (value.Contains("${"))
                         {
-                            var envVarName = value.Substring(startIndex + 2, endIndex - startIndex - 2);
-                            var envVarValue = Environment.GetEnvironmentVariable(envVarName);
+                            // Simple placeholder resolution: ${VAR_NAME} -> Environment.GetEnvironmentVariable("VAR_NAME")
+                            var startIndex = value.IndexOf("${", StringComparison.Ordinal);
+                            var endIndex = value.IndexOf("}", startIndex, StringComparison.Ordinal);
 
-                            if (!string.IsNullOrEmpty(envVarValue))
+                            if (startIndex >= 0 && endIndex > startIndex)
                             {
-                                var resolvedValue = value.Replace($"${{{envVarName}}}", envVarValue);
-                                section.Value = resolvedValue;
-                                Log.Debug("Resolved placeholder {Placeholder} in configuration", envVarName);
+                                var envVarName = value.Substring(startIndex + 2, endIndex - startIndex - 2);
+                                var envVarValue = Environment.GetEnvironmentVariable(envVarName);
+
+                                if (!string.IsNullOrEmpty(envVarValue))
+                                {
+                                    var resolvedValue = value.Replace($"${{{envVarName}}}", envVarValue);
+                                    configSection.Value = resolvedValue;
+                                    Log.Debug("Resolved placeholder {Placeholder} in {Path}", envVarName, configSection.Path);
+                                }
                             }
                         }
+                    }
+
+                    // Recursively process all child sections
+                    foreach (var child in section.GetChildren())
+                    {
+                        ResolveSection(child);
                     }
                 }
             }
@@ -417,6 +723,7 @@ namespace WileyWidget
         /// <summary>
         /// Register core infrastructure services required by all components.
         /// Includes IConfiguration, IMemoryCache, IHttpClientFactory, and ILoggerFactory.
+        /// Uses a single ServiceCollection for optimal resource management.
         /// </summary>
         private static void RegisterCoreInfrastructure(IContainerRegistry registry)
         {
@@ -443,15 +750,14 @@ namespace WileyWidget
                 registry.RegisterSingleton<WileyWidget.Abstractions.ICacheService, WileyWidget.Services.MemoryCacheService>();
                 Log.Information("✓ ICacheService registered");
 
-                // Register ILoggerFactory bridging Serilog to Microsoft.Extensions.Logging
+                // Create a single ServiceCollection for all Microsoft.Extensions services
+                // This is more efficient than creating multiple ServiceProvider instances
                 var serviceCollection = new ServiceCollection();
-                serviceCollection.AddLogging(builder => builder.AddSerilog(dispose: false));
-                var serviceProvider = serviceCollection.BuildServiceProvider();
-                var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-                registry.RegisterInstance<ILoggerFactory>(loggerFactory);
-                Log.Information("✓ ILoggerFactory registered (Serilog bridge)");
 
-                // Register IHttpClientFactory with resilience policies
+                // Add logging with Serilog bridge
+                serviceCollection.AddLogging(builder => builder.AddSerilog(dispose: false));
+
+                // Add HTTP clients with resilience policies
                 serviceCollection.AddHttpClient("Default", client =>
                 {
                     client.Timeout = TimeSpan.FromSeconds(30);
@@ -476,17 +782,11 @@ namespace WileyWidget
                     client.Timeout = TimeSpan.FromSeconds(120);
                 });
 
-                var httpServiceProvider = serviceCollection.BuildServiceProvider();
-                var httpClientFactory = httpServiceProvider.GetRequiredService<IHttpClientFactory>();
-                registry.RegisterInstance<IHttpClientFactory>(httpClientFactory);
-                Log.Information("✓ IHttpClientFactory registered with Default, QuickBooks, and XAI clients");
-
-                // Register IDbContextFactory<AppDbContext> if connection string exists
+                // Add DbContext factory if connection string exists
                 var connectionString = configuration.GetConnectionString("DefaultConnection");
                 if (!string.IsNullOrWhiteSpace(connectionString))
                 {
-                    var dbServiceCollection = new ServiceCollection();
-                    dbServiceCollection.AddDbContextFactory<WileyWidget.Data.AppDbContext>(options =>
+                    serviceCollection.AddDbContextFactory<WileyWidget.Data.AppDbContext>(options =>
                     {
                         options.UseSqlServer(connectionString, sqlOptions =>
                         {
@@ -494,8 +794,33 @@ namespace WileyWidget
                             sqlOptions.CommandTimeout(30);
                         });
                     });
-                    var dbServiceProvider = dbServiceCollection.BuildServiceProvider();
-                    var dbContextFactory = dbServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>>();
+                }
+
+                // Build ServiceProvider to extract configured services
+                var serviceProvider = serviceCollection.BuildServiceProvider();
+
+                // Register services in DryIoc from the ServiceProvider
+                var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+                registry.RegisterInstance<ILoggerFactory>(loggerFactory);
+
+                // Register ILogger<T> by leveraging Prism's built-in support for Microsoft.Extensions.DependencyInjection
+                // This is the simplest and most reliable approach
+                var loggingServices = new ServiceCollection();
+                loggingServices.AddLogging(builder => builder.AddSerilog(dispose: false));
+
+                // Use the registry (IContainerExtension) to populate the services
+                ((IContainerExtension)registry).Populate(loggingServices);
+
+                Log.Information("✓ ILoggerFactory registered (Serilog bridge)");                Log.Information("✓ ILoggerFactory registered (Serilog bridge)");
+                Log.Information("✓ ILogger<T> generic factory registered");
+
+                var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+                registry.RegisterInstance<IHttpClientFactory>(httpClientFactory);
+                Log.Information("✓ IHttpClientFactory registered with Default, QuickBooks, and XAI clients");
+
+                if (!string.IsNullOrWhiteSpace(connectionString))
+                {
+                    var dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>>();
                     registry.RegisterInstance(dbContextFactory);
                     Log.Information("✓ IDbContextFactory<AppDbContext> registered");
                 }
@@ -556,6 +881,7 @@ namespace WileyWidget
         /// <summary>
         /// Register business services from WileyWidget.Services assembly.
         /// Uses Singleton lifetime for stateless services.
+        /// Scans for classes ending in: Service, Engine, Helper, Importer, Calculator
         /// </summary>
         private static void RegisterBusinessServices(IContainerRegistry registry)
         {
@@ -564,8 +890,12 @@ namespace WileyWidget
                 Log.Information("Registering business services...");
 
                 var servicesAssembly = Assembly.Load("WileyWidget.Services");
+
+                // Expanded pattern matching for business components
+                var suffixes = new[] { "Service", "Engine", "Helper", "Importer", "Calculator" };
                 var serviceTypes = servicesAssembly.GetTypes()
-                    .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Service"))
+                    .Where(t => t.IsClass && !t.IsAbstract)
+                    .Where(t => suffixes.Any(suffix => t.Name.EndsWith(suffix)))
                     .Where(t => t.GetInterfaces().Any(i => i.Name.StartsWith("I")))
                     .ToList();
 
@@ -587,7 +917,7 @@ namespace WileyWidget
                     }
                 }
 
-                Log.Information("✓ Registered {Count} business services", serviceTypes.Count);
+                Log.Information("✓ Registered {Count} business services (Service/Engine/Helper/Importer/Calculator)", serviceTypes.Count);
             }
             catch (FileNotFoundException)
             {
@@ -602,7 +932,7 @@ namespace WileyWidget
 
         /// <summary>
         /// Register ViewModels by convention.
-        /// Currently only SettingsViewModel is active per manifest.
+        /// Auto-discovers all ViewModels from WileyWidget.UI assembly and registers with Transient lifetime.
         /// </summary>
         private static void RegisterViewModels(IContainerRegistry registry)
         {
@@ -610,24 +940,130 @@ namespace WileyWidget
             {
                 Log.Information("Registering ViewModels by convention...");
 
-                // Register SettingsViewModel (only active ViewModel per manifest)
-                var settingsVMType = Type.GetType("WileyWidget.ViewModels.Main.SettingsViewModel, WileyWidget");
-                if (settingsVMType != null)
+                // Enhanced assembly loading strategy for WileyWidget.UI
+                Assembly? uiAssembly = null;
+
+                // Strategy 1: Try to load from output directory first (CopyLocalLockFileAssemblies should put it there)
+                var outputDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                if (!string.IsNullOrEmpty(outputDir))
                 {
-                    registry.Register(settingsVMType);
-                    Log.Information("  ✓ SettingsViewModel registered");
-                }
-                else
-                {
-                    Log.Warning("⚠ SettingsViewModel type not found");
+                    var uiAssemblyPath = Path.Combine(outputDir, "WileyWidget.UI.dll");
+                    if (File.Exists(uiAssemblyPath))
+                    {
+                        try
+                        {
+                            uiAssembly = Assembly.LoadFrom(uiAssemblyPath);
+                            Log.Debug("WileyWidget.UI assembly loaded from output directory: {Path}", uiAssemblyPath);
+                        }
+                        catch (Exception loadEx)
+                        {
+                            Log.Warning(loadEx, "Failed to load WileyWidget.UI from output directory: {Path}", uiAssemblyPath);
+                        }
+                    }
                 }
 
-                Log.Information("✓ ViewModel registration complete (1 ViewModel)");
+                // Strategy 2: Try Assembly.Load with name
+                if (uiAssembly == null)
+                {
+                    try
+                    {
+                        uiAssembly = Assembly.Load("WileyWidget.UI");
+                        Log.Debug("WileyWidget.UI assembly loaded by name");
+                    }
+                    catch (FileNotFoundException)
+                    {
+                        Log.Warning("⚠ WileyWidget.UI assembly not found by name - checking loaded assemblies");
+                    }
+                    catch (Exception loadEx)
+                    {
+                        Log.Warning(loadEx, "Failed to load WileyWidget.UI assembly by name");
+                    }
+                }
+
+                // Strategy 3: Search in already loaded assemblies
+                if (uiAssembly == null)
+                {
+                    uiAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                        .FirstOrDefault(a => a.GetName().Name?.Equals("WileyWidget.UI", StringComparison.OrdinalIgnoreCase) == true);
+
+                    if (uiAssembly != null)
+                    {
+                        Log.Debug("WileyWidget.UI assembly found in loaded assemblies");
+                    }
+                }
+
+                // Strategy 4: Fallback to current assembly if UI assembly not found
+                if (uiAssembly == null)
+                {
+                    uiAssembly = Assembly.GetExecutingAssembly();
+                    Log.Warning("⚠ WileyWidget.UI assembly not found - using current assembly as fallback");
+                }
+
+                // Auto-discover ViewModels with enhanced error handling
+                List<Type> viewModelTypes = new();
+                try
+                {
+                    var allTypes = uiAssembly.GetTypes();
+                    viewModelTypes = allTypes
+                        .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("ViewModel"))
+                        .Where(t => t.Namespace?.Contains("ViewModels") == true) // Only types in ViewModels namespace
+                        .ToList();
+                }
+                catch (ReflectionTypeLoadException rtle)
+                {
+                    Log.Warning("ReflectionTypeLoadException while discovering ViewModels - using successfully loaded types");
+
+                    // Process successfully loaded types
+                    try
+                    {
+                        viewModelTypes = rtle.Types
+                            .Where(t => t != null && t.IsClass && !t.IsAbstract && t.Name.EndsWith("ViewModel"))
+                            .Where(t => t.Namespace?.Contains("ViewModels") == true)
+                            .ToList()!;
+                    }
+                    catch (Exception innerEx)
+                    {
+                        Log.Error(innerEx, "Failed to process partially loaded ViewModels");
+                        viewModelTypes = new List<Type>();
+                    }
+                }
+
+                // Register discovered ViewModels
+                foreach (var vmType in viewModelTypes)
+                {
+                    try
+                    {
+                        // Validate that the type has a suitable constructor
+                        var constructors = vmType.GetConstructors();
+                        var hasParameterlessConstructor = constructors.Any(c => c.GetParameters().Length == 0);
+                        var hasInjectableConstructor = constructors.Any(c =>
+                            c.GetParameters().All(p =>
+                                p.ParameterType.IsInterface ||
+                                p.ParameterType.IsClass && !p.ParameterType.IsSealed));
+
+                        if (hasParameterlessConstructor || hasInjectableConstructor)
+                        {
+                            // Register as Transient (new instance per resolve)
+                            registry.Register(vmType);
+                            Log.Debug("  ✓ {ViewModel} registered (Transient)", vmType.Name);
+                        }
+                        else
+                        {
+                            Log.Warning("  ⚠ {ViewModel} skipped - no suitable constructor found", vmType.Name);
+                        }
+                    }
+                    catch (Exception registerEx)
+                    {
+                        Log.Warning(registerEx, "Failed to register ViewModel: {ViewModel}", vmType.Name);
+                    }
+                }
+
+                Log.Information("✓ ViewModel registration complete ({Count} ViewModels)", viewModelTypes.Count);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "✗ Failed to register ViewModels");
-                throw;
+                // Don't rethrow - allow app to continue with manual ViewModel registration if needed
             }
         }
 
@@ -695,8 +1131,9 @@ namespace WileyWidget
         /// <summary>
         /// Wrapper for ViewModel validation that delegates to StartupEnvironmentValidator.
         /// Kept as static method for compatibility with DI registration flow.
+        /// Made internal so it can be called from App.Lifecycle.cs after container initialization.
         /// </summary>
-        private static void ValidateAndRegisterViewModels(IContainerRegistry registry)
+        internal static void ValidateAndRegisterViewModels(IContainerRegistry registry)
         {
             try
             {

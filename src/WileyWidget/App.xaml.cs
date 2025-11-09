@@ -145,11 +145,74 @@ namespace WileyWidget
             "Microsoft.Xaml", "System.Runtime"
         };
 
-        // Cached NuGet global packages directory
-        private static readonly Lazy<string> _nugetPackagesPath = new(() =>
+        // Dynamic NuGet global packages directory detection with multiple fallbacks
+        private static readonly Lazy<string?> _nugetPackagesPath = new(() =>
         {
-            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return Path.Combine(userProfile, ".nuget", "packages");
+            // Priority 1: Environment variable (allows custom NuGet configuration)
+            var nugetPackages = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+            if (!string.IsNullOrEmpty(nugetPackages) && Directory.Exists(nugetPackages))
+            {
+                Log.Debug("Using NUGET_PACKAGES environment variable: {Path}", nugetPackages);
+                return nugetPackages;
+            }
+
+            // Priority 2: Try to get actual global-packages folder from dotnet CLI
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = "nuget locals global-packages --list",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    var output = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit();
+                    
+                    if (process.ExitCode == 0)
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(output, @"global-packages:\s*(.+)");
+                        if (match.Success)
+                        {
+                            var path = match.Groups[1].Value.Trim();
+                            if (Directory.Exists(path))
+                            {
+                                Log.Debug("Detected NuGet global-packages folder via dotnet CLI: {Path}", path);
+                                return path;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed to detect NuGet global-packages folder via dotnet CLI");
+            }
+
+            // Priority 3: Standard fallback locations
+            var fallbackLocations = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NuGet", "v3-cache"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NuGet", "packages")
+            };
+
+            foreach (var location in fallbackLocations)
+            {
+                if (Directory.Exists(location))
+                {
+                    Log.Debug("Using fallback NuGet packages location: {Path}", location);
+                    return location;
+                }
+            }
+
+            Log.Warning("No valid NuGet packages directory found - assembly resolution may fail for NuGet packages");
+            return null;
         });
 
         // Target framework monikers to probe in priority order
@@ -181,6 +244,14 @@ namespace WileyWidget
                 if (_resolvedAssemblies.TryGetValue(args.Name, out var cachedAssembly))
                 {
                     return cachedAssembly;
+                }
+
+                // Suppress warnings for satellite resource assemblies (localization) - these are optional
+                // Examples: Syncfusion.Themes.FluentLight.WPF.resources, Prism.Wpf.resources
+                if (simpleName.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
+                {
+                    _resolvedAssemblies.TryAdd(args.Name, null);
+                    return null; // Silent fail for resource assemblies
                 }
 
                 // Only attempt to resolve known NuGet packages to avoid interfering with system assemblies
@@ -218,9 +289,10 @@ namespace WileyWidget
                 }
 
                 // 3. NuGet global packages cache - probe multiple target frameworks
-                if (Directory.Exists(_nugetPackagesPath.Value))
+                var nugetPath = _nugetPackagesPath.Value;
+                if (!string.IsNullOrEmpty(nugetPath) && Directory.Exists(nugetPath))
                 {
-                    var packagePath = Path.Combine(_nugetPackagesPath.Value, simpleName.ToLowerInvariant());
+                    var packagePath = Path.Combine(nugetPath, simpleName.ToLowerInvariant());
                     if (Directory.Exists(packagePath))
                     {
                         // Find the most recent version directory
@@ -236,14 +308,43 @@ namespace WileyWidget
                                 var libPath = Path.Combine(versionDir.FullName, "lib", tfm, dllName);
                                 if (File.Exists(libPath))
                                 {
-                                    var assembly = Assembly.LoadFrom(libPath);
-                                    _resolvedAssemblies.TryAdd(args.Name, assembly);
-                                    Log.Information("Assembly resolved from NuGet cache: {AssemblyName} -> {Path}", simpleName, libPath);
-                                    return assembly;
+                                    try
+                                    {
+                                        var assembly = Assembly.LoadFrom(libPath);
+                                        _resolvedAssemblies.TryAdd(args.Name, assembly);
+                                        Log.Information("Assembly resolved from NuGet cache: {AssemblyName} -> {Path}", simpleName, libPath);
+                                        return assembly;
+                                    }
+                                    catch (Exception loadEx)
+                                    {
+                                        Log.Debug(loadEx, "Failed to load assembly from NuGet path: {Path}", libPath);
+                                        // Continue trying other paths
+                                    }
                                 }
                             }
                         }
                     }
+                }
+                else if (string.IsNullOrEmpty(nugetPath))
+                {
+                    Log.Debug("No NuGet packages path available for assembly resolution: {AssemblyName}", simpleName);
+                }
+
+                // 4. Additional fallback: check GAC and other standard locations
+                try
+                {
+                    // Attempt to load from GAC or other standard locations
+                    var gacAssembly = Assembly.Load(assemblyName);
+                    if (gacAssembly != null)
+                    {
+                        _resolvedAssemblies.TryAdd(args.Name, gacAssembly);
+                        Log.Information("Assembly resolved from GAC: {AssemblyName}", simpleName);
+                        return gacAssembly;
+                    }
+                }
+                catch (Exception gacEx)
+                {
+                    Log.Debug(gacEx, "Failed to load assembly from GAC: {AssemblyName}", simpleName);
                 }
 
                 // Assembly not found - cache null result to avoid repeated lookups
@@ -259,6 +360,49 @@ namespace WileyWidget
                 return null;
             }
         }
+
+        #endregion
+
+        #region License Management and Status Tracking
+
+        /// <summary>
+        /// License registration status tracking for runtime validation
+        /// </summary>
+        public enum LicenseRegistrationStatus
+        {
+            NotAttempted,
+            Success,
+            TrialMode,
+            Failed,
+            InvalidKey,
+            NetworkError
+        }
+
+        // Static license status tracking
+        private static LicenseRegistrationStatus _syncfusionLicenseStatus = LicenseRegistrationStatus.NotAttempted;
+        private static LicenseRegistrationStatus _boldLicenseStatus = LicenseRegistrationStatus.NotAttempted;
+        private static string _syncfusionLicenseError = string.Empty;
+        private static string _boldLicenseError = string.Empty;
+
+        /// <summary>
+        /// Gets the current Syncfusion license registration status
+        /// </summary>
+        public static LicenseRegistrationStatus SyncfusionLicenseStatus => _syncfusionLicenseStatus;
+
+        /// <summary>
+        /// Gets the current Bold Reports license registration status
+        /// </summary>
+        public static LicenseRegistrationStatus BoldLicenseStatus => _boldLicenseStatus;
+
+        /// <summary>
+        /// Gets the last Syncfusion license error message (if any)
+        /// </summary>
+        public static string SyncfusionLicenseError => _syncfusionLicenseError;
+
+        /// <summary>
+        /// Gets the last Bold Reports license error message (if any)
+        /// </summary>
+        public static string BoldLicenseError => _boldLicenseError;
 
         #endregion
 
@@ -283,39 +427,80 @@ namespace WileyWidget
             var syncfusionKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
             var boldKey = Environment.GetEnvironmentVariable("BOLD_LICENSE_KEY");
 
-            // Register Syncfusion license if available
+            // Enhanced Syncfusion license registration with specific error handling
             if (!string.IsNullOrWhiteSpace(syncfusionKey) && !syncfusionKey.StartsWith("${"))
             {
                 try
                 {
                     Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
-                    System.Diagnostics.Debug.WriteLine("✓ Syncfusion license registered from SYNCFUSION_LICENSE_KEY");
+                    _syncfusionLicenseStatus = LicenseRegistrationStatus.Success;
+                    System.Diagnostics.Debug.WriteLine("✓ Syncfusion license registered successfully from SYNCFUSION_LICENSE_KEY");
+                }
+                catch (ArgumentException argEx) when (argEx.Message.Contains("license") || argEx.Message.Contains("key"))
+                {
+                    _syncfusionLicenseStatus = LicenseRegistrationStatus.InvalidKey;
+                    _syncfusionLicenseError = argEx.Message;
+                    System.Diagnostics.Debug.WriteLine($"✗ Invalid Syncfusion license key: {argEx.Message}");
+                }
+                catch (System.Net.WebException webEx)
+                {
+                    _syncfusionLicenseStatus = LicenseRegistrationStatus.NetworkError;
+                    _syncfusionLicenseError = webEx.Message;
+                    System.Diagnostics.Debug.WriteLine($"✗ Network error during Syncfusion license validation: {webEx.Message}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"✗ Failed to register Syncfusion license: {ex.Message}");
+                    _syncfusionLicenseStatus = LicenseRegistrationStatus.Failed;
+                    _syncfusionLicenseError = ex.Message;
+                    System.Diagnostics.Debug.WriteLine($"✗ Unexpected error registering Syncfusion license: {ex.Message}");
                 }
             }
             else
             {
+                _syncfusionLicenseStatus = LicenseRegistrationStatus.TrialMode;
+                _syncfusionLicenseError = "License key not configured";
                 System.Diagnostics.Debug.WriteLine("⚠ SYNCFUSION_LICENSE_KEY not set - application will run in trial mode");
                 System.Diagnostics.Debug.WriteLine("  Get FREE Community License: https://www.syncfusion.com/account/downloads");
             }
 
-            // Register Bold Reports license if available (falls back to Syncfusion key)
+            // Enhanced Bold Reports license registration with fallback logic
             var boldLicenseKey = !string.IsNullOrWhiteSpace(boldKey) && !boldKey.StartsWith("${") ? boldKey : syncfusionKey;
             if (!string.IsNullOrWhiteSpace(boldLicenseKey) && !boldLicenseKey.StartsWith("${"))
             {
                 try
                 {
                     Bold.Licensing.BoldLicenseProvider.RegisterLicense(boldLicenseKey);
-                    System.Diagnostics.Debug.WriteLine("✓ Bold Reports license registered");
+                    _boldLicenseStatus = LicenseRegistrationStatus.Success;
+                    System.Diagnostics.Debug.WriteLine("✓ Bold Reports license registered successfully");
+                }
+                catch (ArgumentException argEx) when (argEx.Message.Contains("license") || argEx.Message.Contains("key"))
+                {
+                    _boldLicenseStatus = LicenseRegistrationStatus.InvalidKey;
+                    _boldLicenseError = argEx.Message;
+                    System.Diagnostics.Debug.WriteLine($"✗ Invalid Bold Reports license key: {argEx.Message}");
+                }
+                catch (System.Net.WebException webEx)
+                {
+                    _boldLicenseStatus = LicenseRegistrationStatus.NetworkError;
+                    _boldLicenseError = webEx.Message;
+                    System.Diagnostics.Debug.WriteLine($"✗ Network error during Bold Reports license validation: {webEx.Message}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"✗ Failed to register Bold Reports license: {ex.Message}");
+                    _boldLicenseStatus = LicenseRegistrationStatus.Failed;
+                    _boldLicenseError = ex.Message;
+                    System.Diagnostics.Debug.WriteLine($"✗ Unexpected error registering Bold Reports license: {ex.Message}");
                 }
             }
+            else
+            {
+                _boldLicenseStatus = LicenseRegistrationStatus.TrialMode;
+                _boldLicenseError = "License key not configured";
+                System.Diagnostics.Debug.WriteLine("⚠ Bold Reports license key not set - will use trial mode or Syncfusion license");
+            }
+
+            // Log final license status summary
+            System.Diagnostics.Debug.WriteLine($"[LICENSE SUMMARY] Syncfusion: {_syncfusionLicenseStatus}, Bold Reports: {_boldLicenseStatus}");
         }
 
         // Deferred secrets task, lifecycle fields, telemetry tracking moved to App.Lifecycle.cs
@@ -351,6 +536,7 @@ namespace WileyWidget
         /// <summary>
         /// Finds a type by short name from loaded assemblies with caching for performance.
         /// Used for region adapter registration where types may not be loaded yet.
+        /// Enhanced with better ReflectionTypeLoadException handling.
         /// </summary>
         /// <param name="shortName">Short type name (e.g., "DockingManager", "SfDataGrid")</param>
         /// <returns>Type if found, null otherwise</returns>
@@ -365,13 +551,16 @@ namespace WileyWidget
 
             try
             {
-                // Search in loaded assemblies
-                var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+                // Search in loaded assemblies with improved error handling
+                var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a => !IsWpfTmpAssembly(a)) // Filter out WPFTMP assemblies
+                    .ToArray();
 
                 foreach (var assembly in loadedAssemblies)
                 {
                     try
                     {
+                        // First try the normal path
                         var type = assembly.GetTypes()
                             .FirstOrDefault(t => t.Name.Equals(shortName, StringComparison.OrdinalIgnoreCase));
 
@@ -382,9 +571,28 @@ namespace WileyWidget
                             return type;
                         }
                     }
-                    catch (ReflectionTypeLoadException ex)
+                    catch (ReflectionTypeLoadException rtle)
                     {
-                        Log.Debug(ex, "Could not load types from assembly {AssemblyName}", assembly.FullName);
+                        // Handle partial type loading - some types may have loaded successfully
+                        Log.Debug("ReflectionTypeLoadException in assembly {AssemblyName}, checking successfully loaded types", assembly.FullName);
+                        
+                        try
+                        {
+                            var successfullyLoadedTypes = rtle.Types.Where(t => t != null);
+                            var type = successfullyLoadedTypes
+                                .FirstOrDefault(t => t!.Name.Equals(shortName, StringComparison.OrdinalIgnoreCase));
+
+                            if (type != null)
+                            {
+                                TypeByShortNameCache.TryAdd(shortName, type);
+                                Log.Debug("Found type {TypeName} in partially loaded assembly {AssemblyName}", type.FullName, assembly.FullName);
+                                return type;
+                            }
+                        }
+                        catch (Exception innerEx)
+                        {
+                            Log.Debug(innerEx, "Error processing partially loaded types from assembly {AssemblyName}", assembly.FullName);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -400,7 +608,29 @@ namespace WileyWidget
             catch (Exception ex)
             {
                 Log.Warning(ex, "Error finding type by short name: {ShortName}", shortName);
+                TypeByShortNameCache.TryAdd(shortName, null);
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Determines if an assembly is a WPF temporary project assembly that should be excluded from type scanning.
+        /// </summary>
+        private static bool IsWpfTmpAssembly(Assembly assembly)
+        {
+            try
+            {
+                var location = assembly.Location;
+                var fullName = assembly.FullName;
+                
+                // Check for wpftmp in assembly location or full name
+                return (!string.IsNullOrEmpty(location) && location.Contains("wpftmp", StringComparison.OrdinalIgnoreCase)) ||
+                       (!string.IsNullOrEmpty(fullName) && fullName.Contains("wpftmp", StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                // If we can't determine, err on the side of caution and include it
+                return false;
             }
         }
 
@@ -433,7 +663,7 @@ namespace WileyWidget
             if (string.IsNullOrWhiteSpace(shortName)) return null;
             return TypeByShortNameCache.GetOrAdd(shortName, name =>
             {
-                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies().Where(a => !IsWpfTmpAssembly(a)))
                 {
                     try
                     {
@@ -444,10 +674,22 @@ namespace WileyWidget
                     }
                     catch (ReflectionTypeLoadException rtle)
                     {
-                        foreach (var t in rtle.Types?.Where(t => t != null) ?? Enumerable.Empty<Type>())
+                        // Handle partial loading - check successfully loaded types
+                        try
                         {
-                            if (t.Name == name || t.FullName?.EndsWith("." + name) == true) return t;
+                            foreach (var t in rtle.Types?.Where(t => t != null) ?? Enumerable.Empty<Type>())
+                            {
+                                if (t.Name == name || t.FullName?.EndsWith("." + name) == true) return t;
+                            }
                         }
+                        catch (Exception innerEx)
+                        {
+                            Log.Debug(innerEx, "Error processing partially loaded types from assembly {AssemblyName}", asm.FullName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Error scanning assembly {AssemblyName} for type {TypeName}", asm.FullName, name);
                     }
                 }
                 return null;

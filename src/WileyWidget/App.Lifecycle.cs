@@ -11,13 +11,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Prism.Ioc;
 using Prism.Modularity;
 using Serilog;
 using Syncfusion.SfSkinManager;
 using WileyWidget.Abstractions;
-// using WileyWidget.Startup;  // Conditionally excluded for wpftmp builds
+using WileyWidget.Startup;
 using WileyWidget.Services;
+using WileyWidget.Services.Startup;
 using WileyWidget.Services.Telemetry;
 using WileyWidget.Views.Windows;
 
@@ -47,6 +50,7 @@ namespace WileyWidget
 
         /// <summary>
         /// Enhanced 4-phase startup: Phase 1 (validation/config/theme) → Phase 2-4 (Prism bootstrap)
+        /// INCLUDES COMPREHENSIVE DIAGNOSTIC CAPABILITIES
         /// </summary>
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -54,8 +58,36 @@ namespace WileyWidget
 
             try
             {
+                // DIAGNOSTIC STEP 1: Enable comprehensive verbose logging
+                var configuration = BuildConfiguration();
+                DiagnosticIntegration.EnableVerboseStartupLogging(configuration);
+
+                // DIAGNOSTIC STEP 4: Start runtime profiler if enabled
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var profilerStarted = await DiagnosticIntegration.TryStartRuntimeProfiler(configuration);
+                        if (profilerStarted)
+                        {
+                            Log.Information("🔍 Runtime profiler started successfully");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Runtime profiler startup failed");
+                    }
+                });
+
                 // Phase 1: Early Configuration and Validation (before Prism bootstrap)
                 Log.Information("Phase 1: Early validation and configuration");
+
+                // DIAGNOSTIC STEP 2: Breakpoint debugging for Phase 1
+                #if DEBUG
+                var phase1Report = DiagnosticIntegration.PerformBreakpointAnalysis(null, "Phase1-PrePrism");
+                Log.Debug("Breakpoint debugging Phase 1 completed");
+                #endif
+
                 var validationResult = ValidateStartupEnvironment();
 
                 if (!validationResult.isValid)
@@ -72,8 +104,7 @@ namespace WileyWidget
                 }
 
                 // NOTE: License registration happens in static constructor
-                // Load resources synchronously during WPF startup (async causes deadlocks)
-                LoadApplicationResourcesSync();
+                // Apply theme early (before Prism bootstrap) - no container needed
                 VerifyAndApplyTheme();
 
                 // CRITICAL: Verify theme was successfully applied before Prism initialization
@@ -101,11 +132,32 @@ namespace WileyWidget
 
                 Log.Information("✅ Phase 1 completed: Configuration, validation, and telemetry");
 
-                // Phase 2-4: Prism will handle container setup, modules, and UI via RegisterTypes() and OnInitialized()
-                Log.Information("Phase 2-4: Proceeding with Prism bootstrap (integrated phases)");
+                // Phase 2: Prism bootstrap (container setup, module registration)
+                Log.Information("Phase 2: Proceeding with Prism bootstrap (container setup)");
 
-                // Now trigger Prism bootstrap (this handles remaining phases)
-                base.OnStartup(e);  // This calls Initialize() -> CreateShell() -> OnInitialized()
+                // Now trigger Prism bootstrap (this handles container setup)
+                base.OnStartup(e);  // This calls Initialize() -> CreateContainerExtension() -> RegisterTypes() -> ConfigureRegionAdapterMappings() -> CreateShell() -> OnInitialized()
+
+                // DIAGNOSTIC STEP 2: Breakpoint debugging for Phase 2 (Post-Prism with Container)
+                #if DEBUG
+                var phase2Report = DiagnosticIntegration.PerformBreakpointAnalysis(Container, "Phase2-PostPrism");
+                Log.Debug("Breakpoint debugging Phase 2 completed");
+                #endif
+
+                // DIAGNOSTIC STEP 3: Check phase isolation settings
+                var (skipResourceLoading, skipTelemetry, skipModules) = DiagnosticIntegration.CheckPhaseIsolationSettings(configuration);
+
+                // Phase 2B: Load resources AFTER container is ready but BEFORE modules initialize (unless skipped for debugging)
+                if (!skipResourceLoading)
+                {
+                    Log.Information("Phase 2B: Loading application resources (container ready)");
+                    LoadApplicationResourcesSync();
+                }
+                else
+                {
+                    Log.Warning("⚠️ PHASE ISOLATION: Resource loading SKIPPED for debugging");
+                }
+                LoadApplicationResourcesSync();
 
 #if DEBUG
                 // Post-Prism diagnostics
@@ -135,6 +187,7 @@ namespace WileyWidget
 
         /// <summary>
         /// Phase 3-4: Module and UI initialization after Prism container is ready
+        /// INCLUDES DIAGNOSTIC STEP 2 AND LOG ANALYSIS
         /// </summary>
         protected override void OnInitialized()
         {
@@ -142,6 +195,29 @@ namespace WileyWidget
             try
             {
                 Log.Information("Phase 3: Module and service initialization (OnInitialized)");
+
+                // DIAGNOSTIC STEP 2: Breakpoint debugging for Phase 3
+                #if DEBUG
+                var phase3Report = DiagnosticIntegration.PerformBreakpointAnalysis(Container, "Phase3-OnInitialized");
+                Log.Debug("Breakpoint debugging Phase 3 completed");
+                #endif
+
+                // DIAGNOSTIC STEP 5: Analyze startup logs for exceptions
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var (exceptions, failures) = await DiagnosticIntegration.AnalyzeRecentStartupLogs();
+                        if (exceptions > 0 || failures > 0)
+                        {
+                            Log.Warning("🚨 DIAGNOSTIC ALERT: Found {Exceptions} exceptions and {Failures} failures in startup logs", exceptions, failures);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Failed to analyze startup logs");
+                    }
+                });
 
                 Log.Information("[SPLASH] Creating splash screen window");
                 splashWindow = new SplashWindow();
@@ -159,6 +235,23 @@ namespace WileyWidget
                 splashWindow.UpdateStatus("Initializing Prism framework...");
                 base.OnInitialized();  // This triggers custom InitializeModules() without duplication
 
+                // Now that the container is fully initialized, validate and register ViewModels
+                splashWindow.UpdateStatus("Validating ViewModels...");
+                try
+                {
+                    // Use the static method from App.DependencyInjection.cs
+                    var registry = Container as IContainerRegistry;
+                    if (registry != null)
+                    {
+                        ValidateAndRegisterViewModels(registry);
+                        Log.Information("✓ ViewModels validated and registered post-initialization");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to validate ViewModels post-initialization - continuing startup");
+                }
+
                 // Setup global exception handling post-container
                 SetupGlobalExceptionHandling();
                 Log.Debug("[EXCEPTION] Global exception handling configured successfully");
@@ -166,30 +259,9 @@ namespace WileyWidget
                 // Integrate telemetry services now that container is ready
                 IntegrateTelemetryServices();
 
-                // Start deferred secrets (non-blocking) - DISABLED: ISecretsService not implemented
-                // TODO: Implement ISecretsService or remove this code
-                /*
-                splashWindow.UpdateStatus("Initializing secrets service...");
-                _ = Task.Run(async () =>
-                {
-                    using var cts = new CancellationTokenSource(SecretsTimeout);
-                    try
-                    {
-                        var secretsService = ResolveWithRetry<ISecretsService>();
-                        await secretsService.InitializeAsync(cts.Token).ConfigureAwait(false);
-                        _secretsInitializationTcs.TrySetResult(true);
-                        Log.Information("[SECURITY] Deferred secrets initialization completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        _secretsInitializationTcs.TrySetException(ex);
-                        Log.Error(ex, "[SECURITY] Deferred secrets initialization failed");
-                    }
-                });
-
-                // Brief await for secrets (non-blocking)
-                _ = Task.WhenAny(SecretsInitializationTask, Task.Delay(BriefAwaitTimeout));
-                */
+                // Note: Deferred secrets initialization removed - secrets managed via LocalSecretVaultService.
+                // Secrets are loaded synchronously during bootstrap from local vault (secrets/ directory).
+                // No async initialization needed - ISecretsService was part of archived Azure Key Vault integration.
 
                 // Background DB init
                 splashWindow.UpdateStatus("Initializing database...");
@@ -291,6 +363,15 @@ namespace WileyWidget
         protected override void OnExit(ExitEventArgs e)
         {
             Log.Information("Application shutdown - Session: {StartupId}", _startupId);
+
+            // Guard: If Container is null, startup failed - skip cleanup
+            if (this.Container == null)
+            {
+                Log.Warning("Container is null during shutdown - startup failed before container initialization");
+                base.OnExit(e);
+                return;
+            }
+
             try
             {
                 // CRITICAL: Close all dialog windows BEFORE disposing container
@@ -489,15 +570,15 @@ namespace WileyWidget
             try
             {
                 var process = Process.GetCurrentProcess();
-                var availableMemoryMB = process.WorkingSet64 / (1024 * 1024);
-                var minMemoryMB = 128; // Minimum for WPF app
+                var workingSetMB = process.WorkingSet64 / (1024 * 1024);
+                var minMemoryMB = 64; // Minimum for WPF app (reduced from 128MB for development environments)
 
-                if (availableMemoryMB < minMemoryMB)
+                if (workingSetMB < minMemoryMB)
                 {
-                    warnings.Add($"Available memory {availableMemoryMB}MB is below recommended minimum {minMemoryMB}MB");
+                    warnings.Add($"Process memory {workingSetMB}MB is below recommended minimum {minMemoryMB}MB");
                 }
 
-                Log.Debug("✓ Process memory: {Memory}MB", availableMemoryMB);
+                Log.Debug("✓ Process memory: {Memory}MB (working set)", workingSetMB);
             }
             catch (Exception ex)
             {
@@ -525,7 +606,7 @@ namespace WileyWidget
                 issues.Add($"WPF framework validation failed: {ex.Message}");
             }
 
-            // 6. License key configuration validation (enhanced with dev mode support)
+            // 6. Enhanced license validation with runtime status checking
             try
             {
                 var config = BuildConfiguration();
@@ -537,36 +618,102 @@ namespace WileyWidget
                 var boldKey = config["BoldReports:LicenseKey"]
                            ?? Environment.GetEnvironmentVariable("BOLD_LICENSE_KEY");
 
-                // Only warn in production or if explicitly checking licenses
+                // Enhanced runtime license status validation
+                Log.Information("[VALIDATION] Checking runtime license status - Syncfusion: {SyncfusionStatus}, Bold: {BoldStatus}",
+                    App.SyncfusionLicenseStatus, App.BoldLicenseStatus);
+
+                // Check for critical license failures that should block startup
+                if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.Failed)
+                {
+                    var errorMsg = $"Critical Syncfusion license failure: {App.SyncfusionLicenseError}";
+                    if (isDevelopment)
+                    {
+                        warnings.Add($"Development Mode: {errorMsg}");
+                        Log.Warning("[VALIDATION] {Error}", errorMsg);
+                    }
+                    else
+                    {
+                        issues.Add(errorMsg);
+                        Log.Error("[VALIDATION] Production mode license failure: {Error}", errorMsg);
+                    }
+                }
+
+                // Production-specific license validation
                 if (!isDevelopment)
                 {
-                    if (string.IsNullOrEmpty(syncfusionKey))
+                    // In production, require valid licenses or at least successful trial registration
+                    if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.NotAttempted)
                     {
-                        warnings.Add("Syncfusion license key not configured - will run in trial mode");
+                        issues.Add("Production environment requires Syncfusion license registration attempt");
+                    }
+                    else if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.InvalidKey)
+                    {
+                        issues.Add($"Invalid Syncfusion license key in production: {App.SyncfusionLicenseError}");
+                    }
+                    else if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.TrialMode)
+                    {
+                        warnings.Add("Production environment running with Syncfusion trial license - functionality may be limited");
                     }
 
-                    if (string.IsNullOrEmpty(boldKey) && string.IsNullOrEmpty(syncfusionKey))
+                    // Bold Reports validation
+                    if (App.BoldLicenseStatus == App.LicenseRegistrationStatus.Failed)
                     {
-                        warnings.Add("Bold Reports license key not configured - will run in trial mode");
+                        warnings.Add($"Bold Reports license failure in production: {App.BoldLicenseError}");
                     }
                 }
                 else
                 {
-                    // Development mode - log but don't warn
+                    // Development mode - relaxed validation with informational logging
                     Log.Debug("[LICENSE] Development mode - license validation relaxed");
-                    if (string.IsNullOrEmpty(syncfusionKey))
+
+                    if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.NotAttempted)
                     {
-                        Log.Debug("[LICENSE] Syncfusion license not set - will use trial/community mode");
+                        warnings.Add("Development: License registration was not attempted - check static constructor");
                     }
-                    if (string.IsNullOrEmpty(boldKey) && string.IsNullOrEmpty(syncfusionKey))
+                    else if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.TrialMode)
                     {
-                        Log.Debug("[LICENSE] Bold Reports license not set - will use trial/community mode");
+                        Log.Debug("[LICENSE] Development: Running in Syncfusion trial mode");
+                    }
+                    else if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.Success)
+                    {
+                        Log.Debug("[LICENSE] Development: Syncfusion license registered successfully");
+                    }
+
+                    if (App.BoldLicenseStatus == App.LicenseRegistrationStatus.TrialMode)
+                    {
+                        Log.Debug("[LICENSE] Development: Bold Reports running in trial mode");
+                    }
+                }
+
+                // Legacy configuration-based warnings (retained for compatibility)
+                if (string.IsNullOrEmpty(syncfusionKey))
+                {
+                    if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.TrialMode)
+                    {
+                        Log.Debug("[LICENSE] Configuration validation: Syncfusion key not in config but trial mode active");
+                    }
+                    else
+                    {
+                        warnings.Add("Syncfusion license key not found in configuration");
+                    }
+                }
+
+                if (string.IsNullOrEmpty(boldKey) && string.IsNullOrEmpty(syncfusionKey))
+                {
+                    if (App.BoldLicenseStatus == App.LicenseRegistrationStatus.TrialMode)
+                    {
+                        Log.Debug("[LICENSE] Configuration validation: Bold Reports key not in config but trial mode active");
+                    }
+                    else
+                    {
+                        warnings.Add("Bold Reports license key not found in configuration");
                     }
                 }
             }
             catch (Exception ex)
             {
-                warnings.Add($"License key validation failed: {ex.Message}");
+                warnings.Add($"License validation failed: {ex.Message}");
+                Log.Warning(ex, "[VALIDATION] Exception during license validation");
             }
 
             // Final assessment

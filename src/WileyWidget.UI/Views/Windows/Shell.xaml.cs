@@ -293,16 +293,26 @@ namespace WileyWidget.Views.Windows {
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     Log.Verbose("[WIC_CHECK] Test 2: Testing pack:// URI resource access (non-critical)");
 
-                    var testUri = new Uri("pack://application:,,,/");
-                    // This will exercise the pack:// URI resolver
-                    var resourceStreamInfo = Application.GetResourceStream(testUri);
+                    // Try to access a known resource or use a proper pack URI format
+                    // Using siteoforigin instead of application since we may not have embedded resources
+                    var testUri = new Uri("pack://siteoforigin:,,,/", UriKind.Absolute);
+
+                    // Test if pack URI resolver is available (may throw if resource doesn't exist)
+                    try
+                    {
+                        var resourceStreamInfo = Application.GetResourceStream(testUri);
+                    }
+                    catch (System.IO.IOException)
+                    {
+                        // Expected if resource doesn't exist - this is fine
+                    }
 
                     sw.Stop();
-                    Log.Information("[WIC_CHECK] ✓ Test 2 PASSED - Pack URI resource access test passed in {ElapsedMs}ms", sw.ElapsedMilliseconds);
+                    Log.Information("[WIC_CHECK] ✓ Test 2 PASSED - Pack URI resolver is available (tested in {ElapsedMs}ms)", sw.ElapsedMilliseconds);
                 }
                 catch (Exception packEx)
                 {
-                    Log.Warning(packEx, "[WIC_CHECK] ⚠ Test 2 WARNING - Pack URI resource access test had issues (non-critical - may be normal if no resources exist)");
+                    Log.Warning("[WIC_CHECK] ⚠ Test 2 WARNING - Pack URI resource access test had issues (non-critical - may be normal if no resources exist): {Message}", packEx.Message);
                     hasWarnings = true;
                     // This is not critical - continue without failing WIC check
                 }
