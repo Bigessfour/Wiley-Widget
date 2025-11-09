@@ -5,12 +5,15 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Markup;
 using Prism.Events;
+using Serilog;
 using Serilog.Events;
 using WileyWidget.Services;
 using WileyWidget.Services.Telemetry;
+using WileyWidget.ViewModels.Messages;
 
 namespace WileyWidget
 {

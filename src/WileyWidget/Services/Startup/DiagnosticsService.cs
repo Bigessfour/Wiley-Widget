@@ -11,6 +11,7 @@
 
 using System;
 using System.Linq;
+using System.Runtime;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -201,17 +202,18 @@ namespace WileyWidget.Services.Startup
                     return status.ToString();
                 }
 
-                status.AppendLine($"Total Modules: {moduleStatuses.Count}");
+                status.AppendLine($"Total Modules: {moduleStatuses.Count()}");
                 status.AppendLine();
 
                 foreach (var module in moduleStatuses.OrderBy(m => m.ModuleName))
                 {
                     var statusIcon = module.Status switch
                     {
-                        Models.ModuleHealthStatus.Healthy => "✓",
-                        Models.ModuleHealthStatus.Degraded => "⚠",
-                        Models.ModuleHealthStatus.Unhealthy => "✗",
-                        Models.ModuleHealthStatus.Initializing => "◐",
+                        ModuleHealthStatus.Healthy => "✓",
+                        ModuleHealthStatus.Failed => "✗",
+                        ModuleHealthStatus.Initializing => "◐",
+                        ModuleHealthStatus.Registered => "○",
+                        ModuleHealthStatus.NotFound => "?",
                         _ => "?"
                     };
 
@@ -222,9 +224,9 @@ namespace WileyWidget.Services.Startup
                         status.AppendLine($"    Error: {module.ErrorMessage}");
                     }
 
-                    if (module.LastHealthCheck != default)
+                    if (module.InitializationTime.HasValue)
                     {
-                        status.AppendLine($"    Last Check: {module.LastHealthCheck:yyyy-MM-dd HH:mm:ss UTC}");
+                        status.AppendLine($"    Initialized: {module.InitializationTime.Value:yyyy-MM-dd HH:mm:ss}");
                     }
                 }
 

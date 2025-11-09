@@ -333,3 +333,6 @@ temp/
 
 # Generated manifests (optional - remove comment to ignore)
 # ai-fetchable-manifest.json
+
+# Prevent ThemeService reintroduction - theme managed globally by SfSkinManager
+**/ThemeService.cs

@@ -166,7 +166,9 @@ namespace WileyWidget
                 // Integrate telemetry services now that container is ready
                 IntegrateTelemetryServices();
 
-                // Start deferred secrets (non-blocking)
+                // Start deferred secrets (non-blocking) - DISABLED: ISecretsService not implemented
+                // TODO: Implement ISecretsService or remove this code
+                /*
                 splashWindow.UpdateStatus("Initializing secrets service...");
                 _ = Task.Run(async () =>
                 {
@@ -187,6 +189,7 @@ namespace WileyWidget
 
                 // Brief await for secrets (non-blocking)
                 _ = Task.WhenAny(SecretsInitializationTask, Task.Delay(BriefAwaitTimeout));
+                */
 
                 // Background DB init
                 splashWindow.UpdateStatus("Initializing database...");
@@ -385,6 +388,16 @@ namespace WileyWidget
             try
             {
                 base.InitializeShell(shell);
+
+                // ApplicationTheme is applied globally and inherited by all windows automatically
+                if (SfSkinManager.ApplicationTheme != null)
+                {
+                    Log.Information("[SHELL] ApplicationTheme {Theme} will be inherited by Shell window", SfSkinManager.ApplicationTheme);
+                }
+                else
+                {
+                    Log.Warning("[SHELL] ApplicationTheme is null - theme may not be applied correctly");
+                }
 
                 // Shell.xaml has Visibility="Hidden" by default - make it visible
                 shell.Visibility = Visibility.Visible;

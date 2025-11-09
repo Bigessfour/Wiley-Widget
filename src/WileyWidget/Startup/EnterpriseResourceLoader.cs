@@ -28,8 +28,8 @@ namespace WileyWidget.Startup
     public class EnterpriseResourceLoader : IResourceLoader
     {
         private readonly ILogger<EnterpriseResourceLoader> _logger;
-        private readonly ErrorReportingService _errorReporting;
-        private readonly SigNozTelemetryService _telemetry;
+        private readonly ErrorReportingService? _errorReporting;
+        private readonly SigNozTelemetryService? _telemetry;
         private readonly ConcurrentDictionary<string, bool> _loadedResources = new();
         private readonly SemaphoreSlim _loadSemaphore = new(1, 1);
         private DateTimeOffset? _lastLoadTimestamp;
@@ -76,12 +76,12 @@ namespace WileyWidget.Startup
 
         public EnterpriseResourceLoader(
             ILogger<EnterpriseResourceLoader> logger,
-            ErrorReportingService errorReporting,
-            SigNozTelemetryService telemetry)
+            ErrorReportingService? errorReporting,
+            SigNozTelemetryService? telemetry)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _errorReporting = errorReporting ?? throw new ArgumentNullException(nameof(errorReporting));
-            _telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
+            _errorReporting = errorReporting; // Nullable - use Serilog if null
+            _telemetry = telemetry; // Nullable - telemetry optional
 
             // Create Polly v8 resilience pipeline with modern API
             // Following Microsoft's recommended patterns for resilience
@@ -99,7 +99,7 @@ namespace WileyWidget.Startup
                             resourcePath,
                             args.Timeout.TotalSeconds);
 
-                        _errorReporting.TrackEvent("ResourceLoad_Timeout", new Dictionary<string, object>
+                        _errorReporting?.TrackEvent("ResourceLoad_Timeout", new Dictionary<string, object>
                         {
                             ["ResourcePath"] = resourcePath ?? "unknown",
                             ["TimeoutSeconds"] = args.Timeout.TotalSeconds
@@ -127,7 +127,7 @@ namespace WileyWidget.Startup
                             "[RESOURCE_LOADER] ⚠️ Circuit breaker OPEN - too many failures. Breaking for {Minutes} minute(s)",
                             args.BreakDuration.TotalMinutes);
 
-                        _errorReporting.TrackEvent("ResourceLoad_CircuitBreakerOpen", new Dictionary<string, object>
+                        _errorReporting?.TrackEvent("ResourceLoad_CircuitBreakerOpen", new Dictionary<string, object>
                         {
                             ["BreakDurationMinutes"] = args.BreakDuration.TotalMinutes,
                             ["ExceptionType"] = args.Outcome.Exception?.GetType().Name ?? "unknown"
@@ -138,7 +138,7 @@ namespace WileyWidget.Startup
                     OnClosed = args =>
                     {
                         _logger.LogInformation("[RESOURCE_LOADER] ✓ Circuit breaker CLOSED - resuming normal operation");
-                        _errorReporting.TrackEvent("ResourceLoad_CircuitBreakerReset", new Dictionary<string, object>());
+                        _errorReporting?.TrackEvent("ResourceLoad_CircuitBreakerReset", new Dictionary<string, object>());
                         return ValueTask.CompletedTask;
                     },
                     OnHalfOpened = args =>
@@ -170,7 +170,7 @@ namespace WileyWidget.Startup
                             args.RetryDelay.TotalMilliseconds,
                             args.Outcome.Exception?.GetType().Name);
 
-                        _errorReporting.TrackEvent("ResourceLoad_Retry", new Dictionary<string, object>
+                        _errorReporting?.TrackEvent("ResourceLoad_Retry", new Dictionary<string, object>
                         {
                             ["ResourcePath"] = resourcePath ?? "unknown",
                             ["RetryCount"] = args.AttemptNumber + 1,
@@ -320,7 +320,7 @@ namespace WileyWidget.Startup
                 activity?.SetTag("resource.critical_failures", result.HasCriticalFailures);
 
                 // Report to error tracking
-                _errorReporting.TrackEvent("ResourceLoad_Completed", new Dictionary<string, object>
+                _errorReporting?.TrackEvent("ResourceLoad_Completed", new Dictionary<string, object>
                 {
                     ["Success"] = result.Success,
                     ["LoadedCount"] = result.LoadedCount,
@@ -346,12 +346,12 @@ namespace WileyWidget.Startup
                 result.LoadTimeMs = sw.ElapsedMilliseconds;
 
                 activity?.SetTag("resource.exception", ex.GetType().Name);
-                _telemetry.RecordException(ex, ("resource.load", "critical_failure"));
+                _telemetry?.RecordException(ex, ("resource.load", "critical_failure"));
 
                 _logger.LogError(ex, "[RESOURCE_LOADER] ✗ Critical failure in enterprise resource loading after {LoadTimeMs}ms",
                     sw.ElapsedMilliseconds);
 
-                _errorReporting.TrackEvent("ResourceLoad_CriticalFailure", new Dictionary<string, object>
+                _errorReporting?.TrackEvent("ResourceLoad_CriticalFailure", new Dictionary<string, object>
                 {
                     ["ExceptionType"] = ex.GetType().Name,
                     ["ExceptionMessage"] = ex.Message,
@@ -457,7 +457,7 @@ namespace WileyWidget.Startup
                         result.Errors.Add(emptyError);
 
                         _logger.LogError("[RESOURCE_LOADER] ✗ Resource dictionary empty or null: {Path}", path);
-                        _telemetry.RecordException(emptyError, ("resource.load", "empty_dictionary"));
+                        _telemetry?.RecordException(emptyError, ("resource.load", "empty_dictionary"));
                     }
                 }
                 finally
@@ -475,7 +475,7 @@ namespace WileyWidget.Startup
                 result.ErrorCount = 1;
                 result.Errors.Add(xamlEx);
 
-                _telemetry.RecordException(xamlEx, ("resource.load", "xaml_parse_error"));
+                _telemetry?.RecordException(xamlEx, ("resource.load", "xaml_parse_error"));
 
                 _logger.LogError(xamlEx,
                     "[RESOURCE_LOADER] ✗ XAML Parse Error loading {Path}: {Message} at Line {LineNumber}, Position {LinePosition}",
@@ -496,7 +496,7 @@ namespace WileyWidget.Startup
                 result.ErrorCount = 1;
                 result.Errors.Add(timeoutEx);
 
-                _telemetry.RecordException(timeoutEx, ("resource.load", "timeout"));
+                _telemetry?.RecordException(timeoutEx, ("resource.load", "timeout"));
 
                 _logger.LogError(timeoutEx,
                     "[RESOURCE_LOADER] ⏱️ TIMEOUT loading {Path} after {Ms}ms (criticality: {Criticality}). " +
@@ -504,7 +504,7 @@ namespace WileyWidget.Startup
                     path, sw.ElapsedMilliseconds, criticality);
 
                 // Track detailed timeout metrics
-                _errorReporting.TrackEvent("ResourceLoad_Timeout_Detailed", new Dictionary<string, object>
+                _errorReporting?.TrackEvent("ResourceLoad_Timeout_Detailed", new Dictionary<string, object>
                 {
                     ["ResourcePath"] = path,
                     ["Criticality"] = criticality.ToString(),
@@ -522,7 +522,7 @@ namespace WileyWidget.Startup
                 result.ErrorCount = 1;
                 result.Errors.Add(ex);
 
-                _telemetry.RecordException(ex, ("resource.load", "unexpected_error"));
+                _telemetry?.RecordException(ex, ("resource.load", "unexpected_error"));
 
                 _logger.LogError(ex, "[RESOURCE_LOADER] ✗ Unexpected error loading {Path}: {Message}",
                     path, ex.Message);

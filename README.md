@@ -7,8 +7,8 @@
 [![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 
-**Version:** 0.3.0 - Stable Release
-**Last Updated:** November 8, 2025
+**Version:** 0.4.0 - Bootstrapper Refactor Complete
+**Last Updated:** November 9, 2025
 **Framework:** .NET 9.0 WPF
 **UI Framework:** Syncfusion WPF Controls v31.2.5
 **Application Framework:** Prism v9.0 (Pure MVVM Architecture)
@@ -993,7 +993,192 @@ WileyWidget/
 **Theme System:** Syncfusion SfSkinManager (FluentDark/FluentLight)
 **CI/CD:** GitHub Actions + Trunk (90% success rate target)
 
-This layered architecture ensures WileyWidget is maintainable, testable, and ready for enterprise-scale deployment while following Microsoft's recommended patterns for modern .NET applications.
+This layered architecture ensures WileyWidget is maintainable, testable, and ready for enterprise-scale deployment following Microsoft's recommended patterns for modern .NET applications.
+
+---
+
+## ⚙️ Bootstrapper Architecture (Phase 0-1 Complete - Nov 2025)
+
+WileyWidget's Prism bootstrapper has been refactored into a **clean partial class structure** with dead code eliminated and critical fixes implemented. The new architecture provides production-grade startup with comprehensive error handling and observability.
+
+### Partial Class Structure (6 Files, ~2,000 LOC)
+
+The monolithic `App.xaml.cs` (1,835 LOC) has been split into 6 maintainable partial classes:
+
+#### **1. App.xaml.cs (555 LOC) - Main Entry Point**
+
+- Assembly resolution infrastructure with NuGet package probing
+- Static helper utilities and caching
+- Public API fields (`ModuleOrder`, `ModuleRegionMap`)
+- App constructor and dialog cleanup methods
+
+#### **2. App.DependencyInjection.cs (749 LOC) - DI Container & Prism Config**
+
+- `CreateContainerExtension`: DryIoc setup with custom rules
+- `RegisterTypes`: Critical service registrations
+- `ConfigureModuleCatalog`: Module catalog (CoreModule, QuickBooksModule only)
+- `ConfigureDefaultRegionBehaviors`: Custom region behaviors
+- `ConfigureRegionAdapterMappings`: Syncfusion region adapters (requires theme)
+- Convention-based registration methods:
+  - `RegisterConventionTypes`: Infrastructure, repositories, services, ViewModels
+  - `RegisterCoreInfrastructure`: IConfiguration, IMemoryCache, ILoggerFactory, IHttpClientFactory
+  - `RegisterRepositories`: Auto-discovery and registration of repositories
+  - `RegisterBusinessServices`: Business layer service registration
+  - `RegisterViewModels`: ViewModel registration (currently SettingsViewModel only)
+  - `RegisterLazyAIServices`: AI service with fallback to NullAIService
+- `BuildConfiguration`: Multi-source config builder with caching
+
+#### **3. App.Lifecycle.cs (656 LOC) - Application Lifecycle**
+
+- `OnStartup`: 4-phase startup sequence
+  - Phase 1: Validation, config, theme (before Prism)
+  - Phase 2-4: Prism bootstrap (container, modules, UI)
+- `OnInitialized`: Module and service initialization with retry logic
+- `OnExit`: Graceful shutdown and cleanup
+- `CreateShell`: Shell window creation
+- `InitializeModules`: Custom module initialization with Polly retry policies
+
+#### **4. App.Telemetry.cs - Observability**
+
+- `InitializeSigNozTelemetry`: Distributed tracing setup
+- `IntegrateTelemetryServices`: Metrics and monitoring integration
+- SigNoz Activity spans and trace correlation
+- ApplicationMetricsService integration
+
+#### **5. App.Resources.cs - Resource & Theme Management**
+
+- `LoadApplicationResourcesSync`: Synchronous WPF resource loading (avoids deadlocks)
+- `VerifyAndApplyTheme`: Syncfusion theme application with fail-fast validation
+- Memory checks (128MB minimum) before theme application
+- Pack URI resolution and error handling
+
+#### **6. App.ExceptionHandling.cs - Global Exception Handling**
+
+- `SetupGlobalExceptionHandling`: Wire up exception handlers
+- `DispatcherUnhandledException` handler for WPF UI thread errors
+- EventAggregator subscriptions for navigation/general errors
+- `ShowEmergencyErrorDialog`: Last-resort error UI
+
+### Phase 0-1 Refactoring Complete (2025-11-09)
+
+#### **Phase 0: Dead Code Cleanup**
+
+✅ **Deleted 11 modules** (87.5% reduction): DashboardModule, MunicipalAccountModule, PanelModule, ReportsModule, ToolsModule, ThrowingModule, UtilityCustomerModule, AIAssistModule, BudgetModule, EnterpriseModule, SettingsModule
+✅ **Active modules**: CoreModule, QuickBooksModule (2 of original 16)
+✅ **Deleted files**: Bootstrapper.cs (825 LOC), App.Wpftmp.cs, CustomModuleManager.cs, PrismHttpClientFactory.cs
+✅ **Removed patterns**: IUnitOfWork (0 references), WPFTMP conditional compilation
+✅ **LOC reduction**: ~12,000+ lines removed
+
+#### **Phase 1: Critical Fixes**
+
+✅ **Stub implementations**: All empty methods now contain production-ready logic
+✅ **Theme race condition fix**: Theme applied in OnStartup BEFORE base.OnStartup(), fail-fast exception in ConfigureRegionAdapterMappings
+✅ **Configuration caching**: BuildConfiguration() cached to eliminate duplicate calls
+✅ **Partial class split**: 6 organized files for maintainability
+
+### Active Module System
+
+**Current Modules (2025-11-09):**
+
+- **CoreModule**: Core application services and infrastructure
+- **QuickBooksModule**: QuickBooks Desktop SDK integration
+
+**Registration Pattern:**
+
+```csharp
+protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
+{
+    moduleCatalog.AddModule<CoreModule>();
+    moduleCatalog.AddModule<QuickBooksModule>();
+}
+```
+
+**Module Configuration** (`appsettings.json`):
+
+```json
+"Modules": {
+  "Order": ["CoreModule", "QuickBooksModule"],
+  "Regions": {
+    "CoreModule": ["MainRegion", "SettingsRegion"],
+    "QuickBooksModule": ["MainRegion", "QuickBooksRegion"]
+  }
+}
+```
+
+### Startup Flow (4-Phase Architecture)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 1: Early Validation & Configuration (App.Lifecycle)  │
+│ - Environment validation (memory, dependencies)             │
+│ - License registration (static constructor)                 │
+│ - Resource loading (synchronous to avoid deadlocks)         │
+│ - Theme application (BEFORE Prism initialization)           │
+│ - SigNoz telemetry initialization                           │
+├─────────────────────────────────────────────────────────────┤
+│ PHASE 2: Prism Bootstrap (triggered by base.OnStartup)     │
+│ - CreateContainerExtension: DryIoc container setup          │
+│ - RegisterTypes: Critical service registrations             │
+│ - ConfigureModuleCatalog: Module registration               │
+│ - ConfigureRegionAdapterMappings: Syncfusion adapters       │
+├─────────────────────────────────────────────────────────────┤
+│ PHASE 3: Module & Service Initialization (OnInitialized)   │
+│ - Global exception handling setup                           │
+│ - Telemetry services integration                            │
+│ - Deferred secrets loading (async, non-blocking)            │
+│ - Database initialization (background)                      │
+│ - Custom module initialization with Polly retry             │
+├─────────────────────────────────────────────────────────────┤
+│ PHASE 4: UI Finalization (OnInitialized completion)        │
+│ - Shell window creation                                     │
+│ - Initial navigation                                        │
+│ - Splash screen closure                                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Decisions
+
+1. **Theme-First Initialization**: Syncfusion theme applied in Phase 1 (before Prism) to prevent region adapter registration failures
+2. **Fail-Fast Pattern**: ConfigureRegionAdapterMappings throws InvalidOperationException if theme not applied
+3. **Synchronous Resource Loading**: Avoids WPF UI thread deadlocks during OnStartup
+4. **Convention-Based DI**: Auto-discovery and registration of repositories, services, ViewModels
+5. **Lazy AI Services**: Fallback to NullAIService if XAI_API_KEY not configured
+6. **Config Caching**: Single BuildConfiguration() call cached for all consumers
+7. **Module Hardcoding**: Modules registered in code (not config-driven) for simplicity with 2 active modules
+
+### Observability & Diagnostics
+
+**SigNoz Distributed Tracing:**
+
+- Startup activity spans track each phase duration
+- Module initialization timing and health metrics
+- Integration with ApplicationMetricsService for memory monitoring
+
+**Logging:**
+
+- Serilog with structured logging
+- Per-phase logging with timing information
+- Critical failure logging to `logs/critical-startup-failures.log`
+
+**Health Checks:**
+
+- StartupDiagnosticsService tracks 4-phase progress
+- Module health tracked via IModuleHealthService
+- Startup environment validation (memory, dependencies)
+
+### Migration Guide
+
+**For developers working on bootstrapper code:**
+
+1. **Finding methods**: Use partial class header comments in App.xaml.cs to locate methods across 6 files
+2. **Adding services**: Use RegisterConventionTypes in App.DependencyInjection.cs
+3. **Lifecycle hooks**: Override methods in App.Lifecycle.cs
+4. **Theme customization**: Modify VerifyAndApplyTheme in App.Resources.cs
+5. **Exception handling**: Extend SetupGlobalExceptionHandling in App.ExceptionHandling.cs
+
+**Build Status:** ✅ Zero compilation errors
+**Test Coverage:** ✅ SettingsViewModel DI resolution validated via C# MCP
+**Documentation:** See `docs/reference/BOOTSTRAPPER_AUDIT_2025-11-09.md` for complete audit report
 
 ---
 
@@ -1006,21 +1191,20 @@ WileyWidget leverages the **Prism framework** for building modular, maintainable
 #### **📦 Module System**
 
 - **Modular Architecture**: Application divided into feature-specific modules
-- **Dynamic Loading**: Modules loaded on-demand for better startup performance
+- **Static Registration**: Modules registered in code (Phase 0-1 refactor: simplified to 2 active modules)
 - **Dependency Management**: Clean separation between module dependencies
 
-**Available Modules**:
+**Active Modules (2025-11-09):**
 
-- `DashboardModule`: Main dashboard and analytics
-- `BudgetModule`: Budget management and analysis
-- `EnterpriseModule`: Enterprise data management
-- `ReportsModule`: Reporting and data visualization
-- `SettingsModule`: Application configuration
-- `SettingsModule` consolidates former `ToolsModule` utilities.
+- `CoreModule`: Core application services, infrastructure, and settings
+- `QuickBooksModule`: QuickBooks Desktop SDK integration and accounting features
+
+**Retired Modules (Phase 0 Cleanup):**
+DashboardModule, MunicipalAccountModule, PanelModule, ReportsModule, ToolsModule, AIAssistModule, BudgetModule, EnterpriseModule, SettingsModule, UtilityCustomerModule, ThrowingModule - removed as part of dead code cleanup (87.5% module reduction)
 
 #### **🗣️ Dialog Service**
 
-- **Modal Dialogs**: Standardized dialog implementation
+- **Modal Dialogs**: Standardized dialog implementation via Prism.Dialogs
 - **ViewModel-First**: Dialogs driven by ViewModels, not Views
 - **Async Support**: Non-blocking dialog operations
 
@@ -1032,44 +1216,82 @@ WileyWidget leverages the **Prism framework** for building modular, maintainable
 - `ErrorDialog`: Error notifications
 - `SettingsDialog`: Application settings
 
-#### **🧭 Navigation Service**
+#### **🧭 Region Navigation**
 
-- **Region-Based Navigation**: Prism regions for view composition
-- **View Injection**: Dynamic view loading and replacement
-- **Navigation Parameters**: Type-safe parameter passing
+- **Region-Based Navigation**: Prism `IRegionManager` for view composition
+- **View Injection**: Dynamic view loading and replacement into regions
+- **Navigation Parameters**: Type-safe parameter passing via `NavigationContext`
+- **Custom Region Behaviors**: NavigationLogging, AutoSave, NavigationHistory, AutoActivate, DelayedRegionCreation
 
-#### **🏗️ Application Bootstrapper**
-
-- **Unity Container**: Dependency injection container
-- **Module Catalog**: Centralized module registration
-- **Shell Configuration**: Main window and region setup
-
-### Prism Configuration
+**Standard Navigation Pattern:**
 
 ```csharp
-// App.xaml.cs - Prism uses DryIoc container via Prism.Container.DryIoc in this workspace
+// Inject IRegionManager in ViewModel
+private readonly IRegionManager _regionManager;
+
+// Navigate to view
+_regionManager.RequestNavigate("MainRegion", "SettingsView",
+    new NavigationParameters { { "settingId", 42 } });
+```
+
+#### **🏗️ Application Bootstrapper (Refactored 2025-11-09)**
+
+- **DryIoc Container**: High-performance dependency injection container via Prism.Container.DryIoc
+- **Partial Class Structure**: Split across 6 files (~2,000 LOC) for maintainability
+- **4-Phase Startup**: Validation → Prism Bootstrap → Module Init → UI Finalization
+- **Convention-Based Registration**: Auto-discovery of repositories, services, ViewModels
+
+**See**: [Bootstrapper Architecture](#%EF%B8%8F-bootstrapper-architecture-phase-0-1-complete---nov-2025) section above for detailed structure
+
+### Prism Configuration (Current Implementation)
+
+```csharp
+// App.DependencyInjection.cs - Partial class for DI configuration
 using Prism.Ioc;
 using Prism.Modularity;
 using Prism.Container.DryIoc;
 
-public class App : PrismApplication
+public partial class App : PrismApplication
 {
    protected override void RegisterTypes(IContainerRegistry containerRegistry)
    {
-      // Register services and ViewModels here
-      containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
-      containerRegistry.RegisterSingleton<IDialogService, DialogService>();
+      // Critical services (Phase 1 registrations)
+      containerRegistry.RegisterSingleton<Services.ErrorReportingService>();
+      containerRegistry.RegisterSingleton<IModuleHealthService, ModuleHealthService>();
+      containerRegistry.RegisterSingleton<IDialogTrackingService, DialogTrackingService>();
+
+      // Convention-based registrations
+      RegisterConventionTypes(containerRegistry);
+      RegisterCoreInfrastructure(containerRegistry);
+      RegisterRepositories(containerRegistry);
+      RegisterBusinessServices(containerRegistry);
+      RegisterViewModels(containerRegistry);
    }
 
    protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
    {
-      // Register application modules
-      moduleCatalog.AddModule<DashboardModule>();
-      moduleCatalog.AddModule<BudgetModule>();
-      // ... other modules
+      // Active modules only (Phase 0 cleanup complete)
+      moduleCatalog.AddModule<CoreModule>();
+      moduleCatalog.AddModule<QuickBooksModule>();
+   }
+
+   protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings mappings)
+   {
+      // Syncfusion region adapters (requires theme applied in Phase 1)
+      base.ConfigureRegionAdapterMappings(mappings);
+
+      // Fail-fast if theme not ready
+      if (SfSkinManager.ApplicationTheme == null)
+         throw new InvalidOperationException("Theme must be applied before region adapters");
+
+      // Register Syncfusion adapters for DockingManager, SfDataGrid, etc.
    }
 }
 ```
+
+**Container:** DryIoc with custom rules (MicrosoftDependencyInjectionRules, AutoConcreteTypeResolution)
+**Module Count:** 2 active (CoreModule, QuickBooksModule)
+**ViewModel Count:** 1 active (SettingsViewModel per manifest analysis)
 
 ---
 

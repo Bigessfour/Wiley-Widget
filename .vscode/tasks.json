@@ -400,6 +400,38 @@
 			"problemMatcher": []
 		},
 		{
+			"label": "dotnet:fast-build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--no-restore",
+				"--configuration",
+				"Debug",
+				"--verbosity",
+				"quiet",
+				"/m",
+				"/maxcpucount",
+				"/p:BuildInParallel=true",
+				"/p:UseSharedCompilation=true",
+				"/p:NodeReuse=true",
+				"/p:RunAnalyzers=false",
+				"/p:RunAnalyzersDuringBuild=false",
+				"/p:EnableNETAnalyzers=false"
+			],
+			"isBackground": false,
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared",
+				"clear": false,
+				"showReuseMessage": false
+			},
+			"group": "build"
+		},
+		{
 			"label": "build",
 			"type": "shell",
 			"command": "dotnet",

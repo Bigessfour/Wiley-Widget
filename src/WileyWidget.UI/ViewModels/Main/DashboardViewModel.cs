@@ -333,7 +333,7 @@ namespace WileyWidget.ViewModels.Main {
                 var themeString = MapVisualStyleToTheme(value);
                 if (SetProperty(ref _currentTheme, themeString))
                 {
-                    // _themeService.ApplyTheme(themeString);
+                    // Theme changes are handled globally via SfSkinManager.ApplicationTheme
                 }
             }
         }

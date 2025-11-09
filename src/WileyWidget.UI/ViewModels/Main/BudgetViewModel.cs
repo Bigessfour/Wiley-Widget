@@ -539,10 +539,8 @@ public partial class BudgetViewModel : BindableBase, IDisposable, IDataErrorInfo
         });
     }
 
-    private void OnThemeChanged(object? sender, ThemeChangedEventArgs e)
-    {
-        Log.Debug("BudgetViewModel detected theme change from {OldTheme} to {NewTheme}", e.OldTheme, e.NewTheme);
-    }
+    // OnThemeChanged removed - theme management is now global via SfSkinManager.ApplicationTheme
+    // No per-ViewModel theme handling needed
 
     /// <summary>
     /// Starts the live update timer

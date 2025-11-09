@@ -26,8 +26,7 @@ namespace WileyWidget.Views.Main {
         /// </summary>
         private void TryApplyTheme(string themeName)
         {
-            // Theme application is handled at the Window level for UserControls
-            // Services.ThemeUtility.TryApplyTheme(this, themeName);
+            // Theme application is handled globally via SfSkinManager.ApplicationTheme
         }
     }
 }

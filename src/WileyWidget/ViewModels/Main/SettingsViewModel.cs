@@ -1622,15 +1622,15 @@ namespace WileyWidget.ViewModels.Main
         /// <param name="key">The Syncfusion license key.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>True if validation successful, false otherwise.</returns>
-        private async Task<bool> ValidateSyncfusionLicenseAsync(string key, CancellationToken ct)
+        private Task<bool> ValidateSyncfusionLicenseAsync(string key, CancellationToken ct)
         {
             // Prefer deterministic format check, then attempt to register license via Syncfusion API.
             if (string.IsNullOrWhiteSpace(key))
-                return false;
+                return Task.FromResult(false);
 
             // simple heuristic: reasonable length and contains letters/digits
             if (key.Length < 16 || key.Length > 512)
-                return false;
+                return Task.FromResult(false);
 
             // NOTE: License registration happens in App static constructor per Syncfusion documentation
             // Runtime re-registration is not supported and can cause issues
@@ -1638,7 +1638,7 @@ namespace WileyWidget.ViewModels.Main
             _logger?.LogInformation("Syncfusion license key format validation passed");
             _logger?.LogWarning("License registration occurs at application startup only - changes require app restart");
 
-            return true; // Format is valid
+            return Task.FromResult(true); // Format is valid
         }
 
         /// <summary>
@@ -1724,24 +1724,10 @@ namespace WileyWidget.ViewModels.Main
                     return;
                 }
 
-                // Convert theme name to VisualStyles enum
-                if (Enum.TryParse<VisualStyles>(themeName, true, out var visualStyle))
-                {
-                    // Apply theme to the main window if available
-                    if (Application.Current?.MainWindow != null)
-                    {
-                        SfSkinManager.SetVisualStyle(Application.Current.MainWindow, visualStyle);
-                        _logger.LogInformation("Theme successfully applied to MainWindow: {ThemeName}", themeName);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("MainWindow not available, theme not applied: {ThemeName}", themeName);
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("Invalid theme name: {ThemeName}. Valid options: FluentLight, FluentDark", themeName);
-                }
+                // Apply theme globally via SfSkinManager.ApplicationTheme
+                // This propagates to all windows and controls automatically
+                SfSkinManager.ApplicationTheme = new Theme(themeName);
+                _logger.LogInformation("Global application theme successfully changed to: {ThemeName}", themeName);
             }
             catch (Exception ex)
             {

@@ -6,6 +6,8 @@
 // behavior, this file is included conditionally into the temporary project
 // only (see WileyWidget.csproj). Do NOT rely on these types at runtime.
 
+#if WPFTMP
+
 using System;
 using System.Windows;
 using System.Windows.Markup;
@@ -115,3 +117,5 @@ namespace Bold.Licensing
         public static void RegisterLicense(string licenseKey) { }
     }
 }
+
+#endif

@@ -50,14 +50,32 @@
     <TieredCompilation>true</TieredCompilation>
     <TieredPGO>true</TieredPGO>
     <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
-    <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
+
+    <!-- Disable satellite assemblies for executable (CS7059: Executables cannot be satellite
+    assemblies) -->
+    <!-- English is the neutral language; other cultures embedded in main assembly -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!-- Workaround for wpftmp partial class compilation errors per dotnet/wpf#11150 -->
+    <!-- This disables the problematic temporary project generation -->
+    <IncludePackageReferencesDuringMarkupCompilation>false</IncludePackageReferencesDuringMarkupCompilation>
 
     <!-- Ensure all NuGet package assemblies are copied to output directory -->
     <!-- This prevents runtime assembly resolution failures -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+    <!-- Global SDK control: disable auto-includes for explicit control over compilation -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
   </PropertyGroup>
 
   <!-- Prefer modern wpftmp path; allow WPF to copy NuGet assets for temp project -->
+
+  <!-- Define WPFTMP symbol only during wpftmp builds -->
+  <PropertyGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
+    <DefineConstants>$(DefineConstants);WPFTMP</DefineConstants>
+  </PropertyGroup>
 
   <PropertyGroup>
     <!-- Disable ReadyToRun for Debug builds to improve build performance -->
@@ -94,15 +112,17 @@
     <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
 
-  <!-- Ensure Prism references are available to the WPF markup temporary project (wpftmp)
-       so App.xaml XAML can resolve PrismApplication and Prism types during markup compilation.
-       This prevents MC3074 errors by ensuring all Prism assemblies are included in wpftmp. -->
+  <!-- Simple approach: Let wpftmp handle App.xaml normally -->
+  <!-- ApplicationDefinition and Page items moved to explicit ItemGroup below -->
 
-  <!-- Exclude App.xaml from WPF ApplicationDefinition to avoid wpftmp Prism XAML resolution -->
+  <!-- Include all XAML files -->
   <ItemGroup>
-    <ApplicationDefinition Remove="src\App.xaml" />
-    <Page Remove="src\App.xaml" />
-    <None Include="src\App.xaml" />
+    <Page
+        Include="**\*.xaml"
+        Exclude="App.xaml" />
+    <!-- App.xaml must be ApplicationDefinition (root element is PrismApplication) -->
+    <!-- wpftmp will include App.Wpftmp.cs to provide stub method implementations -->
+    <ApplicationDefinition Include="App.xaml" />
   </ItemGroup>
 
   <!-- Allow test assembly to access internal members for testing -->
@@ -242,8 +262,9 @@
         Text="[WPFTMP] Self-reference for custom controls: @(_SelfReference, ', ')"
         Importance="high"
         Condition="'@(_SelfReference)' != ''" />
-    <Warning
-        Text="[WPFTMP] Self-assembly not found for custom controls - PolishHost and other custom controls may not resolve during XAML compilation"
+    <Message
+        Text="[WPFTMP] Self-assembly not found yet - this is normal for first-time builds or clean builds. Custom controls will resolve after initial compilation."
+        Importance="normal"
         Condition="'@(_SelfReference)' == ''" />
   </Target>
 
@@ -271,14 +292,11 @@
         Importance="high" />
   </Target>
 
-  <!-- The wpftmp shim is included only for the temporary WPF markup project (configured below)
-             to avoid affecting normal runtime compilation. See the wpftmp-specific ItemGroup later. -->
-  <!-- DEPRECATED: PrismWpftmpShim.cs is no longer needed with the three-layer NuGet resolution
-  system.
-       Excluded globally to prevent type conflicts with real Prism packages. -->
-  <ItemGroup>
-    <Compile Remove="PrismWpftmpShim.cs" />
-  </ItemGroup>
+  <!-- The wpftmp shim (PrismWpftmpShim.cs) is wrapped in #if WPFTMP guards to compile to nothing in
+  main build.
+       It's NOT included in wpftmp - real Prism DLLs are provided via
+  IncludeAllAssembliesInTemporaryAssembly target.
+       The shim exists only as compile-time protection against accidental main build inclusion. -->
 
   <ItemGroup>
     <PackageReference
@@ -525,6 +543,26 @@
                  exclude the workspace 'src' copies above to avoid duplicates with other projects. -->
   </ItemGroup>
 
+  <!-- Prevent SDK from auto-including shims in any build -->
+  <ItemGroup>
+    <None Include="App.Wpftmp.cs" />
+    <None Include="PrismWpftmpShim.cs" />
+  </ItemGroup>
+
+  <!-- Explicit includes for MAIN project (non-wpftmp) -->
+  <ItemGroup Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
+    <!-- Include all .cs files EXCEPT shims and test/sample directories -->
+    <Compile
+        Include="**\*.cs"
+        Exclude="App.Wpftmp.cs;PrismWpftmpShim.cs;src\**;tests\**;samples\**;WileyWidget.Tests\**;WileyWidget.UiTests\**;WileyWidget.IntegrationTests\**;WileyWidget.ContainerTests\**;WileyWidget.Services.Tests\**;temp-grant\**;DatabaseTest\**;DatabaseSetup\**;DatabaseSeederRunner\**;DbTest\**;DbValidator\**;ExcelAnalyzer\**;scripts\**;WileyWidget.Business\**;WileyWidget.Data\**;WileyWidget.Models\**;WileyWidget.Webhooks\**;Models\**\*.cs" />
+
+    <!-- Include SDK-generated files from obj folder (recursive pattern covers all subdirectories) -->
+    <Compile Include="$(IntermediateOutputPath)**\*.g.cs" />
+  </ItemGroup>
+
+  <!-- Exclude App.Wpftmp.cs from main project only (not wpftmp) -->
+  <!-- Use <None> to prevent SDK auto-inclusion, then wpftmp can override with <Compile Include> -->
+
   <ItemGroup>
     <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
@@ -539,25 +577,39 @@
        temporary wpftmp project. wpftmp only needs custom control definitions (Controls\)
        and App.Wpftmp.cs for XAML markup compilation. -->
   <PropertyGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
-    <DefineConstants>$(DefineConstants);WPFTMP</DefineConstants>
+    <!-- WPFTMP symbol already defined above, but keeping this for clarity -->
+    <!-- <DefineConstants>$(DefineConstants);WPFTMP</DefineConstants> -->
     <!-- Clear StartupObject for wpftmp since Program.cs is excluded -->
     <StartupObject></StartupObject>
+    <!-- EnableDefaultCompileItems already set to false globally -->
   </PropertyGroup>
+
   <ItemGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
-    <!-- Remove root-level .cs files that reference application infrastructure -->
+    <!-- Include ONLY the stub file for wpftmp - uses real Prism types from
+    IncludeAllAssembliesInTemporaryAssembly target -->
+    <Compile Include="App.Wpftmp.cs" />
+    <!-- PrismWpftmpShim.cs NOT included - real Prism DLLs are provided by target above -->
+    <!-- Include Controls\** for custom control definitions needed for XAML -->
+    <Compile Include="Controls\**\*.cs" />
+
+    <!-- Explicitly REMOVE all other App partial class files and application infrastructure -->
     <Compile Remove="App.xaml.cs" />
+    <Compile Remove="App.DependencyInjection.cs" />
+    <Compile Remove="App.Lifecycle.cs" />
+    <Compile Remove="App.Telemetry.cs" />
+    <Compile Remove="App.Resources.cs" />
+    <Compile Remove="App.ExceptionHandling.cs" />
     <Compile Remove="Program.cs" />
+
+    <!-- Remove other root-level files -->
     <Compile Remove="NavigationRequestEventArgs.cs" />
     <Compile Remove="HealthCheckHostedService.cs" />
     <Compile Remove="QuickBooksService.cs" />
     <Compile Remove="SettingsService.cs" />
     <Compile Remove="ThemeUtility.cs" />
     <Compile Remove="EnhancedResourceLoader.cs" />
-    <!-- Remove PrismWpftmpShim.cs - no longer needed with CopyLocalLockFileAssemblies enabling real
-    Prism DLL access -->
-    <Compile Remove="PrismWpftmpShim.cs" />
 
-    <!-- Remove all subdirectories except Controls\ (which wpftmp needs for custom control styles) -->
+    <!-- Remove all subdirectories except Controls\ -->
     <Compile Remove="Attributes\**" />
     <Compile Remove="Configuration\**" />
     <Compile Remove="Diagnostics\**" />
@@ -570,22 +622,12 @@
     <Compile Remove="Behaviors\**" />
     <Compile Remove="Services\**" />
     <Compile Remove="Startup\**" />
-    <Compile
-        Include="Startup\**"
-        Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))" />
     <Compile Remove="Testing\**" />
     <Compile Remove="ViewModels\**" />
     <Compile Remove="Views\**" />
 
-    <!-- Remove XAML pages -->
+    <!-- Remove XAML pages but keep ApplicationDefinition -->
     <Page Remove="Views\**\*.xaml" />
-
-    <!-- Remove App.xaml from wpftmp to prevent App.g.cs generation -->
-    <Page Remove="App.xaml" />
-    <ApplicationDefinition Remove="App.xaml" />
-
-    <!-- PrismWpftmpShim.cs and Controls\**\*.cs remain included via SDK defaults.
-         wpftmp can now compile Generic.xaml with custom control type references. -->
   </ItemGroup>
 
   <!-- Exclude test files and sample files from main project build -->
@@ -623,6 +665,9 @@
     <EmbeddedResource Remove="WileyWidget.ContainerTests\**" />
     <EmbeddedResource Remove="WileyWidget.Services.Tests\**" />
     <EmbeddedResource Remove="tests\**" />
+    <!-- Exclude satellite resource files (Spanish) - executables cannot be satellite assemblies
+    (CS7059) -->
+    <EmbeddedResource Remove="**\*.es.resx" />
     <None Remove="WileyWidget.Business\**" />
     <None Remove="WileyWidget.Data\**" />
     <None Remove="WileyWidget.Models\**" />

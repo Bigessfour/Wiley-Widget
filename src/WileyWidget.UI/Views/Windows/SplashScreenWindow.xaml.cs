@@ -385,14 +385,17 @@ public partial class SplashScreenWindow : Window, INotifyPropertyChanged, IDispo
     }
 
     /// <summary>
-    /// Applies advanced Syncfusion Fluent Dark theme features with enhanced animations
+    /// Applies enhanced animations. Theme is inherited from SfSkinManager.ApplicationTheme set at app startup.
     /// </summary>
+    /// <remarks>
+    /// Per Syncfusion documentation: When ApplicationTheme is set, individual windows automatically
+    /// inherit the theme without needing explicit SetTheme calls.
+    /// See: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
+    /// </remarks>
     private void ApplyAdvancedThemeFeatures()
     {
-        // Apply Fluent Dark theme using SfSkinManager directly per Syncfusion documentation
-#pragma warning disable CA2000 // Theme object is managed by SfSkinManager, not this code
-        SfSkinManager.SetTheme(this, new Theme("FluentDark"));
-#pragma warning restore CA2000
+        // Theme is automatically inherited from SfSkinManager.ApplicationTheme (set in App.Resources.cs)
+        // No SetTheme call needed per Syncfusion best practices
 
         // Enhanced fade-in with smooth, professional transition
         var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(800))

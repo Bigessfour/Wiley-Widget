@@ -65,7 +65,7 @@ namespace WileyWidget.ViewModels.Main
 
         // UI/General Settings Backing Fields
         private string _searchText = string.Empty;
-        private ObservableCollection<string> _availableThemes = new() { "FluentLight", "FluentDark" };
+        private ObservableCollection<string> _availableThemes = new() { "FluentDark", "FluentLight" };
         private string _selectedTheme = "FluentDark";
         private int _windowWidth = 1280;
         private string _windowWidthValidation = string.Empty;
@@ -170,6 +170,7 @@ namespace WileyWidget.ViewModels.Main
 
         /// <summary>
         /// Gets or sets the selected theme.
+        /// Applies theme via SfSkinManager.ApplicationTheme and persists to settings.
         /// </summary>
         public string SelectedTheme
         {
@@ -178,6 +179,18 @@ namespace WileyWidget.ViewModels.Main
             {
                 if (SetProperty(ref _selectedTheme, value))
                 {
+                    // Persist theme to settings
+                    try
+                    {
+                        _settingsService.Value.Current.Theme = value;
+                        _settingsService.Value.Save();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to persist theme setting: {Theme}", value);
+                    }
+
+                    // Apply theme globally
                     ApplyTheme(value);
                 }
             }

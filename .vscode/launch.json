@@ -35,7 +35,7 @@
       }
     },
     {
-      "name": "Launch WileyWidget (Debug Exceptions)",
+      "name": "Launch WileyWidget (Debug Exceptions - Optimized)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "dotnet:fast-build",
@@ -49,42 +49,80 @@
       "exceptionBreakpointMode": "userUnhandled",
       "enableStepFiltering": false,
       "requireExactSource": false,
+      "suppressJITOptimizations": true,
       "exceptionBreakpoints": {
         "CLR": {
-          "System.Exception": "unhandled",
-          "System.InvalidOperationException": "always",
+          // Critical runtime exceptions - always break
           "System.NullReferenceException": "always",
-          "System.ArgumentException": "always",
           "System.ArgumentNullException": "always",
+          "System.InvalidOperationException": "always",
+          "System.ArgumentException": "always",
+          "System.ObjectDisposedException": "always",
+
+          // WPF-specific exceptions - always break
+          "System.Windows.Markup.XamlParseException": "always",
+          "System.Windows.Data.BindingFailedException": "always",
+          "System.Windows.ResourceReferenceKeyNotFoundException": "always",
+
+          // Prism/DI-specific exceptions - always break
+          "Prism.Ioc.ContainerResolutionException": "always",
+          "Prism.Navigation.NavigationException": "always",
+          "System.ComponentModel.Composition.CompositionException": "always",
+          "Microsoft.Extensions.DependencyInjection.ActivationException": "always",
+
+          // Threading/async exceptions - always break
+          "System.Threading.Tasks.TaskCanceledException": "unhandled",
+          "System.OperationCanceledException": "unhandled",
+          "System.Threading.SynchronizationLockException": "always",
+
+          // Common exceptions - user unhandled only
           "System.IO.IOException": "unhandled",
+          "System.IO.FileNotFoundException": "unhandled",
           "System.Net.Http.HttpRequestException": "unhandled",
           "System.UnauthorizedAccessException": "unhandled",
+          "System.NotImplementedException": "always",
+          "System.NotSupportedException": "unhandled",
+
+          // Application-specific - always break
           "WileyWidget.*": "always"
         }
       },
       "symbolOptions": {
         "searchMicrosoftSymbolServer": true,
         "searchNuGetOrgSymbolServer": true,
+        "cachePath": "${workspaceFolder}/.symbols",
         "moduleFilter": {
           "mode": "loadAllButExcluded",
-          "excludedModules": []
+          "excludedModules": [],
+          "includeSymbolsNextToModules": true
         }
       },
       "logging": {
         "moduleLoad": true,
         "exceptions": true,
         "programOutput": true,
-        "engineLogging": false
+        "engineLogging": false,
+        "threadExit": false,
+        "processExit": true,
+        "elapsedTiming": false,
+        "diagnosticsLog": {
+          "debugEngineAPITracing": "none",
+          "startDebugging": false
+        }
       },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
-        "COREHOST_TRACE": "1",
+        "COREHOST_TRACE": "0",
         "QBO_CLIENT_ID": "${env:QBO_CLIENT_ID}",
         "QBO_CLIENT_SECRET": "${env:QBO_CLIENT_SECRET}",
         "QBO_REALM_ID": "${env:QBO_REALM_ID}",
         "QBO_ENVIRONMENT": "sandbox",
-        "WW_DEBUG_EXCEPTIONS": "1"
+        "WW_DEBUG_EXCEPTIONS": "1",
+        // Enhanced WPF debugging
+        "ENABLE_XAML_DIAGNOSTICS_SOURCE_INFO": "1",
+        "PresentationTraceSources.TraceLevel": "High",
+        "PresentationTraceSources.DataBindingSource": "All"
       },
       "envFile": "${workspaceFolder}/.env"
     },

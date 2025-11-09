@@ -263,8 +263,9 @@ public static class WpfHostingExtensions
         // ViewManager removed - MainWindow handles all child view navigation via DockingManager
         // MainWindow lifecycle now handled directly in App.xaml.cs OnStartup
 
-        services.AddSingleton<ThemeService>();
-        services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
+        // ThemeService REMOVED - Theme management handled globally by SfSkinManager.ApplicationTheme
+        // No per-service theme management needed - all theming is via App.Resources.cs VerifyAndApplyTheme()
+
         // Use encrypted DPAPI-based vault for all platforms. EncryptedLocalSecretVaultService
         // will handle cross-platform scenarios internally. For non-Windows platforms where DPAPI
         // is not available, it will fall back to appropriate secure storage mechanisms.

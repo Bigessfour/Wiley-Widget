@@ -10,7 +10,6 @@ using Prism.Ioc;
 using Serilog;
 using Syncfusion.SfSkinManager;
 using WileyWidget.Abstractions;
-using WileyWidget.Startup;
 using WileyWidget.Services;
 using WileyWidget.Services.Telemetry;
 
@@ -47,11 +46,12 @@ namespace WileyWidget
                 catch
                 {
                     // Fallback: create new instance if container not ready
-                    Log.Warning("[STARTUP] Container not ready, using direct EnterpriseResourceLoader instantiation");
+                    // Note: This should rarely happen - container should be available by this point
+                    Log.Warning("[STARTUP] Container not ready, using NullLogger for EnterpriseResourceLoader");
                     resourceLoader = new Startup.EnterpriseResourceLoader(
                         Microsoft.Extensions.Logging.Abstractions.NullLogger<Startup.EnterpriseResourceLoader>.Instance,
-                        Services.ErrorReportingService.Instance ?? new Services.ErrorReportingService(),
-                        Services.Telemetry.SigNozTelemetryService.Instance ?? new Services.Telemetry.SigNozTelemetryService()
+                        null, // ErrorReportingService - will use Serilog directly
+                        null  // SigNozTelemetryService - telemetry unavailable in fallback
                     );
                 }
 
@@ -86,6 +86,7 @@ namespace WileyWidget
         /// <summary>
         /// Verifies and applies the Syncfusion theme for the application.
         /// This method ensures theme is applied before Prism's ConfigureRegionAdapterMappings is called.
+        /// CRITICAL: Sets SfSkinManager.ApplyThemeAsDefaultStyle = true for global theme application.
         /// </summary>
         private void VerifyAndApplyTheme()
         {
@@ -95,21 +96,46 @@ namespace WileyWidget
             {
                 Log.Information("[THEME] Verifying and applying Syncfusion theme");
 
-                // Check available memory before theme application (128MB minimum)
-                var availableMemoryMB = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
-                const int minMemoryMB = 128;
+                // CRITICAL: Enable automatic theme application to all controls
+                // Per Syncfusion docs: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
+                // This MUST be set before setting ApplicationTheme
+                SfSkinManager.ApplyThemeAsDefaultStyle = true;
+                Log.Debug("[THEME] ApplyThemeAsDefaultStyle enabled for global theme propagation");
 
-                if (availableMemoryMB < minMemoryMB)
+                // Check available system memory before theme application
+                // Note: Using GC memory info to get available memory, not process working set
+                try
                 {
-                    var errorMsg = $"Insufficient memory for theme application: {availableMemoryMB}MB available, {minMemoryMB}MB required";
-                    Log.Fatal("[THEME] {Error}", errorMsg);
-                    throw new InsufficientMemoryException(errorMsg);
+                    var gcMemInfo = GC.GetGCMemoryInfo();
+                    var totalMemoryMB = gcMemInfo.TotalAvailableMemoryBytes / (1024 * 1024);
+                    var currentMemoryMB = GC.GetTotalMemory(false) / (1024 * 1024);
+                    var availableMemoryMB = totalMemoryMB - currentMemoryMB;
+                    const int minMemoryMB = 128;
+
+                    Log.Debug("[THEME] Memory status: {Available}MB available of {Total}MB total (current usage: {Current}MB)",
+                        availableMemoryMB, totalMemoryMB, currentMemoryMB);
+
+                    if (availableMemoryMB < minMemoryMB)
+                    {
+                        Log.Warning("[THEME] Low memory detected: {Available}MB available, {Required}MB recommended. " +
+                                    "Proceeding with theme application - this may cause performance issues.",
+                            availableMemoryMB, minMemoryMB);
+                        // Don't throw - this is informational only. Theme will work with less memory.
+                    }
+                }
+                catch (Exception memEx)
+                {
+                    Log.Warning(memEx, "[THEME] Could not check memory status - proceeding with theme application");
                 }
 
                 // Apply FluentLight theme using SfSkinManager
                 // This sets SfSkinManager.ApplicationTheme which is required for region adapters
+                // NOTE: MainWindow doesn't exist yet (CreateShell hasn't been called), so we only set ApplicationTheme
                 var theme = new Syncfusion.SfSkinManager.Theme("FluentLight");
-                SfSkinManager.ApplyTheme(Application.Current, theme);
+                SfSkinManager.ApplicationTheme = theme;
+
+                // The theme will be automatically applied to the Shell window when it's created
+                // because ApplicationTheme is already set
 
                 // Verify theme was applied successfully
                 if (SfSkinManager.ApplicationTheme == null)

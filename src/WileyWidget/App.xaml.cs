@@ -1,18 +1,56 @@
 // App.xaml.cs - Refactored WileyWidget Prism WPF Application Bootstrapper
 //
-// This file has been refactored for improved Prism compliance, reduced duplication, and better maintainability.
-// Key Changes:
-// - Standardized Prism bootstrap flow: Custom early init in OnStartup before base.OnStartup.
-// - Eliminated duplicate module initialization: Custom logic moved to override InitializeModules().
-// - Deferred container resolutions with Lazy<T> where possible to avoid early failures.
-// - Extracted static caches and helpers for performance (e.g., assembly scanning).
-// - Removed unused methods (e.g., InitializeGlobalErrorHandling, ConfigureLogging).
-// - Integrated global error handling into SetupGlobalExceptionHandling().
-// - Added config-driven timeouts and module ordering for flexibility.
-// - Ensured Syncfusion theme/license registration per docs: https://help.syncfusion.com/wpf/licensing/how-to-register-in-an-application
-// - Aligned with Wiley-Widget GitHub patterns: Modular, resilient startup with health checks.
+// PARTIAL CLASS STRUCTURE (Phase 0-1 Complete, 2025-11-09):
+// This class is split into 6 partial files (~2,000 LOC total) for maintainability:
 //
-// For partial class splits, see recommendations in audit report.
+// 1. App.xaml.cs (555 LOC) - Main entry point
+//    - Assembly resolution infrastructure
+//    - Static helper utilities
+//    - Public API fields (ModuleOrder, ModuleRegionMap)
+//    - App constructor and CloseAllDialogWindows
+//
+// 2. App.DependencyInjection.cs (749 LOC) - DI container & Prism configuration
+//    - CreateContainerExtension: DryIoc setup and rules
+//    - RegisterTypes: Critical service registrations
+//    - ConfigureModuleCatalog: Module catalog setup (CoreModule, QuickBooksModule)
+//    - ConfigureDefaultRegionBehaviors: Custom region behaviors
+//    - ConfigureRegionAdapterMappings: Syncfusion region adapters (requires theme)
+//    - RegisterConventionTypes, RegisterCoreInfrastructure, RegisterRepositories, etc.
+//    - BuildConfiguration: IConfiguration builder with caching
+//
+// 3. App.Lifecycle.cs (656 LOC) - Application lifecycle management
+//    - OnStartup: 4-phase startup (validation → Prism bootstrap)
+//    - OnInitialized: Module and service initialization
+//    - OnExit: Graceful shutdown and cleanup
+//    - CreateShell: Shell window creation
+//    - InitializeModules: Custom module initialization with retry logic
+//
+// 4. App.Telemetry.cs - Telemetry & observability
+//    - InitializeSigNozTelemetry: Distributed tracing setup
+//    - IntegrateTelemetryServices: Metrics and monitoring integration
+//    - SigNoz Activity spans and trace correlation
+//
+// 5. App.Resources.cs - Resource & theme management
+//    - LoadApplicationResourcesSync: Synchronous WPF resource loading
+//    - VerifyAndApplyTheme: Syncfusion theme application (fail-fast if memory insufficient)
+//    - Pack URI resolution and error handling
+//
+// 6. App.ExceptionHandling.cs - Global exception handling
+//    - SetupGlobalExceptionHandling: Wire up exception handlers
+//    - DispatcherUnhandledException handler
+//    - EventAggregator error subscriptions
+//    - ShowEmergencyErrorDialog: Last-resort error UI
+//
+// Key Refactoring Changes:
+// - Standardized Prism bootstrap flow: Custom early init in OnStartup before base.OnStartup
+// - Eliminated duplicate module initialization: Custom logic moved to override InitializeModules()
+// - Deferred container resolutions with Lazy<T> where possible to avoid early failures
+// - Extracted static caches and helpers for performance (e.g., assembly scanning)
+// - Removed unused methods and dead code (Phase 0: deleted 11 modules, Bootstrapper.cs, WPFTMP support)
+// - Integrated global error handling into SetupGlobalExceptionHandling()
+// - Config-driven timeouts removed; modules hardcoded in ConfigureModuleCatalog (2 active)
+// - Ensured Syncfusion theme/license registration per docs: https://help.syncfusion.com/wpf/licensing/how-to-register-in-an-application
+// - Aligned with Wiley-Widget GitHub patterns: Modular, resilient startup with health checks
 
 using System;
 using System.Collections.Generic;
@@ -296,9 +334,6 @@ namespace WileyWidget
         private static readonly object StartupProgressSyncRoot = new();
         public static object? StartupProgress { get; private set; }
         public static DateTimeOffset? LastHealthReportUpdate { get; private set; }
-
-        // Cached configuration to avoid duplicate BuildConfiguration() calls
-        private static IConfiguration? _cachedConfiguration;
 
         // Config-driven timeouts (from appsettings.json)
         private static TimeSpan SecretsTimeout => TimeSpan.FromSeconds(GetConfigValue("Startup:SecretsTimeoutSeconds", 30));

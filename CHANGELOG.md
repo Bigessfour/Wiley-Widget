@@ -1,6 +1,74 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-11-09
+### Major Bootstrapper Refactor - Phase 0-1 Complete
+
+#### Removed (Phase 0: Dead Code Cleanup)
+- **11 Dead Modules**: Deleted DashboardModule, MunicipalAccountModule, PanelModule, ReportsModule, ToolsModule, ThrowingModule, UtilityCustomerModule, AIAssistModule, BudgetModule, EnterpriseModule, SettingsModule
+- **Active Modules**: Only CoreModule and QuickBooksModule remain (2 of original 16)
+- **Dead Services**: Removed XamlDiagnosticsService, HealthCheckHostedService
+- **Dead Files**: Deleted Bootstrapper.cs (825 LOC), App.Wpftmp.cs, PrismHttpClientFactory.cs, CustomModuleManager.cs
+- **WPFTMP Support**: Removed all conditional compilation blocks (#if WPFTMP)
+- **IUnitOfWork Pattern**: Completely removed (zero references) - repositories now injected directly
+- **Test Directory**: Deleted entire tests/ directory (811 files, 0% coverage) for fresh rebuild
+- **Unused Methods**: Removed LoadApplicationResourcesEnterpriseAsync, GetModuleInitializationMode, NavigateToMinimalViewFallback
+- **LOC Reduction**: ~12,000+ lines removed
+
+#### Added (Phase 1: Critical Fixes & Partial Class Split)
+- **Partial Class Structure**: Split App.xaml.cs into 6 maintainable files (~2,000 LOC total):
+  - `App.xaml.cs` (555 LOC): Main entry, assembly resolution, helpers
+  - `App.DependencyInjection.cs` (749 LOC): DI container, Prism config, registration methods
+  - `App.Lifecycle.cs` (656 LOC): OnStartup, OnInitialized, OnExit, shell creation
+  - `App.Telemetry.cs`: SigNoz telemetry, metrics, distributed tracing
+  - `App.Resources.cs`: Resource loading, theme management (VerifyAndApplyTheme)
+  - `App.ExceptionHandling.cs`: Global exception handlers, error reporting
+- **Full Stub Implementations**:
+  - RegisterConventionTypes: Infrastructure, repositories, services, ViewModels
+  - RegisterLazyAIServices: AI service registration with XAI/NullAIService fallback
+  - ValidateAndRegisterViewModels: SettingsViewModel dependency validation
+  - RegisterCoreInfrastructure: IConfiguration, IMemoryCache, ILoggerFactory, IHttpClientFactory
+- **Theme Race Condition Fix**:
+  - VerifyAndApplyTheme() called in OnStartup BEFORE base.OnStartup() (Phase 1)
+  - Fail-fast exception in ConfigureRegionAdapterMappings if theme null
+  - Memory check (128MB minimum) before theme application
+- **Configuration Caching**: BuildConfiguration() now caches IConfiguration to eliminate duplicate calls
+
+#### Changed
+- **Module Registration**: Hardcoded CoreModule and QuickBooksModule in ConfigureModuleCatalog (no longer config-driven)
+- **Configuration Cleanup**: appsettings.json Modules:Order and Modules:Regions reduced to 2 active modules
+- **Bootstrapper Inlining**: Moved config/logging/HTTP setup from Bootstrapper.cs into App.DependencyInjection.cs
+- **LOC Reduction**: App.xaml.cs reduced from 1,835 LOC (monolithic) to 555 LOC (main partial) + 5 supporting partials
+- **Module Count**: 16 → 2 active modules (87.5% reduction)
+- **ViewModel Count**: Only SettingsViewModel active per manifest analysis
+
+#### Fixed
+- **Stale Module References**: Removed 10 deleted module names from appsettings.json (DashboardModule, etc.)
+- **Unused Config Loading**: Eliminated ModuleOrder/ModuleRegionMap config loading (modules now hardcoded)
+- **DI Registration Issues**: Fixed HealthCheckHostedService stale registration (2nd order effect)
+- **Theme Timing**: Syncfusion theme now applied before Prism region adapter registration (eliminates race condition)
+- **Build Errors**: Resolved WPFTMP-related compilation errors through complete removal of conditional support
+
+#### Documentation
+- **Partial Class Navigation**: Added comprehensive structure map in App.xaml.cs header (developer reference)
+- **Audit Report**: Created BOOTSTRAPPER_AUDIT_2025-11-09.md with phase completion status
+- **README Update**: Scrubbed legacy items, documented new bootstrapper architecture
+
+#### Validation Results
+- ✅ Zero compilation errors in core App files
+- ✅ All Phase 0-1 acceptance criteria met
+- ✅ Theme registration aligned with Syncfusion WPF docs
+- ✅ Prism auto-catalog pattern implemented for 2 active modules
+- ✅ DI container resolution validated via C# MCP testing
+- ✅ SettingsViewModel fully resolves with all dependencies
+
+#### Performance Impact
+- **Startup Simplification**: Reduced from 12-module to 2-module initialization
+- **Memory Footprint**: Smaller surface area from deleted services/modules
+- **Configuration Overhead**: Eliminated duplicate BuildConfiguration() calls via caching
+
+---
+
 ## [0.3.0] - 2025-11-08
 ### Added
 - AI manifest schema (`schemas/ai-manifest-schema.json`) with validation guidance

@@ -116,14 +116,10 @@ public class PolishHost : ContentControl
         {
             try
             {
-                // Apply Syncfusion theme to this control using VisualStyles
-                var visualStyle = Theme switch
-                {
-                    "FluentDark" => VisualStyles.FluentDark,
-                    "FluentLight" => VisualStyles.FluentLight,
-                    _ => VisualStyles.FluentDark
-                };
-                SfSkinManager.SetVisualStyle(this, visualStyle);
+                // Theme is managed globally via SfSkinManager.ApplicationTheme
+                // Individual control theming is discouraged - use global theme instead
+                // Keeping this for backward compatibility but it should inherit from ApplicationTheme
+                Serilog.Log.Debug("PolishHost theme property set to {Theme}, but global ApplicationTheme is preferred", Theme);
 
                 // Freeze resources for performance if requested
                 if (IsFrozen)

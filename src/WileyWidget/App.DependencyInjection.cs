@@ -6,9 +6,14 @@ using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using DryIoc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using Prism.Container.DryIoc;
 using Prism.Ioc;
 using Prism.Modularity;
@@ -66,12 +71,9 @@ namespace WileyWidget
             // ViewModel validation/auto-reg (implemented in App.DependencyInjection.Convention.cs)
             ValidateAndRegisterViewModels(containerExtension);
 
-            // Load config-driven module map/order
-            var config = BuildConfiguration();
-            ModuleRegionMap = config.GetSection("Modules:Regions").Get<System.Collections.Generic.Dictionary<string, string[]>>()
-                ?? new System.Collections.Generic.Dictionary<string, string[]>();
-            ModuleOrder = config.GetSection("Modules:Order").Get<string[]>()
-                ?? new[] { "CoreModule" };
+            // NOTE: ModuleOrder and ModuleRegionMap properties kept for backward compatibility
+            // but are no longer loaded from config. Modules are hardcoded in ConfigureModuleCatalog.
+            // Phase 0 cleanup (2025-11-09): Only CoreModule and QuickBooksModule remain active.
 
             return containerExtension;
         }
@@ -86,8 +88,8 @@ namespace WileyWidget
 
             // Register critical services for exception handling and modules
             containerRegistry.RegisterSingleton<Services.ErrorReportingService>();
-            containerRegistry.RegisterSingleton<Services.TelemetryStartupService>();
-            containerRegistry.RegisterSingleton<Abstractions.IModuleHealthService, Services.ModuleHealthService>();
+            containerRegistry.RegisterSingleton<Services.Telemetry.TelemetryStartupService>();
+            containerRegistry.RegisterSingleton<Services.IModuleHealthService, Services.ModuleHealthService>();
 
             // Register SigNoz telemetry service
             if (_earlyTelemetryService != null)
@@ -106,10 +108,10 @@ namespace WileyWidget
             Log.Information("✓ Application metrics service registered for memory monitoring");
 
             // Register dialog tracking service for proper shutdown handling
-            containerRegistry.RegisterSingleton<Abstractions.IDialogTrackingService, Services.DialogTrackingService>();
+            containerRegistry.RegisterSingleton<Services.IDialogTrackingService, Services.DialogTrackingService>();
 
             // Register enhanced startup diagnostics service for 4-phase startup
-            containerRegistry.RegisterSingleton<Abstractions.IStartupDiagnosticsService, Startup.StartupDiagnosticsService>();
+            containerRegistry.RegisterSingleton<Startup.IStartupDiagnosticsService, Startup.StartupDiagnosticsService>();
 
             // Register startup environment validator (Phase 2: Extracted from App.xaml.cs)
             containerRegistry.RegisterSingleton<WileyWidget.Services.Startup.IStartupEnvironmentValidator, WileyWidget.Services.Startup.StartupEnvironmentValidator>();
@@ -124,7 +126,7 @@ namespace WileyWidget
             Log.Information("✓ Diagnostics service registered");
 
             // Register Prism error handler for navigation and region behavior error handling
-            containerRegistry.RegisterSingleton<Abstractions.IPrismErrorHandler, Services.PrismErrorHandler>();
+            containerRegistry.RegisterSingleton<Services.IPrismErrorHandler, Services.PrismErrorHandler>();
 
             // Register enterprise resource loader for Polly-based resilient resource loading
             containerRegistry.RegisterSingleton<Abstractions.IResourceLoader, Startup.EnterpriseResourceLoader>();

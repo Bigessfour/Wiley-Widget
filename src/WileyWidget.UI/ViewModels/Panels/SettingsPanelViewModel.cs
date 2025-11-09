@@ -1,6 +1,7 @@
 using Prism.Commands;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using WileyWidget;
 using WileyWidget.UI.ViewModels;
 using WileyWidget.Services;
 using WileyWidget.Business.Interfaces;
@@ -1062,25 +1063,33 @@ namespace WileyWidget.ViewModels.Panels
 
         #region Missing Properties - Added for binding compatibility
 
-        private ObservableCollection<string> _availableThemes = new() { "FluentDark", "FluentLight", "MaterialDark", "MaterialLight" };
         /// <summary>
         /// Gets or sets the collection of available themes.
-        /// Initialized with known Syncfusion themes; can be extended to load from API.
+        /// Only FluentDark (default) and FluentLight are supported.
         /// </summary>
-        public ObservableCollection<string> AvailableThemes
-        {
-            get => _availableThemes;
-            set => SetProperty(ref _availableThemes, value);
-        }
+        /// <remarks>
+        /// Theme management via SfSkinManager.ApplicationTheme only.
+        /// Legacy Material and Office themes have been deprecated.
+        /// </remarks>
+        public ObservableCollection<string> AvailableThemes { get; } =
+            new ObservableCollection<string>(new[] { "FluentDark", "FluentLight" });
 
         private string _selectedTheme = "FluentDark";
         /// <summary>
         /// Gets or sets the currently selected theme.
+        /// Applies theme via SfSkinManager.ApplicationTheme.
         /// </summary>
         public string SelectedTheme
         {
             get => _selectedTheme;
-            set => SetProperty(ref _selectedTheme, value);
+            set
+            {
+                if (SetProperty(ref _selectedTheme, value))
+                {
+                    // Apply theme globally via SfSkinManager
+                    Syncfusion.SfSkinManager.SfSkinManager.ApplicationTheme = new Syncfusion.SfSkinManager.Theme(value);
+                }
+            }
         }
 
         /// <summary>

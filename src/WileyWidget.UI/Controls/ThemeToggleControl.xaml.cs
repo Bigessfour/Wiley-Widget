@@ -2,46 +2,35 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using Prism.Mvvm;
-using WileyWidget.Services;
+using Syncfusion.SfSkinManager;
 
 namespace WileyWidget.UI.Controls
 {
     /// <summary>
     /// Interaction logic for ThemeToggleControl.xaml
+    /// Manages theme toggling via SfSkinManager.ApplicationTheme directly.
     /// </summary>
     public partial class ThemeToggleControl : UserControl
     {
         public ThemeToggleControl()
         {
-            // Designer constructor - will use InitializeComponent when XAML is compiled
-        }
-
-        public ThemeToggleControl(IThemeService themeService) : this()
-        {
-            if (themeService != null)
-            {
-                DataContext = new ThemeToggleViewModel(themeService);
-            }
+            DataContext = new ThemeToggleViewModel();
         }
     }
 
     /// <summary>
     /// ViewModel for theme toggle control.
+    /// Uses SfSkinManager.ApplicationTheme directly for global theme management.
     /// </summary>
     public class ThemeToggleViewModel : BindableBase
     {
-        private readonly IThemeService _themeService;
         private bool _isDarkMode;
 
-        public ThemeToggleViewModel(IThemeService themeService)
+        public ThemeToggleViewModel()
         {
-            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
-
-            // Initialize from current theme
-            _isDarkMode = _themeService.IsDarkTheme;
-
-            // Subscribe to theme changes
-            _themeService.ThemeChanged += OnThemeChanged;
+            // Initialize from current global theme
+            var currentTheme = SfSkinManager.ApplicationTheme?.ThemeName ?? "FluentLight";
+            _isDarkMode = currentTheme.Contains("Dark", StringComparison.OrdinalIgnoreCase);
         }
 
         public bool IsDarkMode
@@ -51,20 +40,13 @@ namespace WileyWidget.UI.Controls
             {
                 if (SetProperty(ref _isDarkMode, value))
                 {
-                    // Apply theme based on toggle state
+                    // Apply theme globally via SfSkinManager.ApplicationTheme
                     var newTheme = value ? "FluentDark" : "FluentLight";
-                    _themeService.ApplyTheme(newTheme);
-                }
-            }
-        }
+                    SfSkinManager.ApplicationTheme = new Theme(newTheme);
 
-        private void OnThemeChanged(object? sender, ThemeChangedEventArgs e)
-        {
-            // Update toggle state when theme changes externally
-            var isDark = e.NewTheme.Contains("Dark", StringComparison.OrdinalIgnoreCase);
-            if (_isDarkMode != isDark)
-            {
-                SetProperty(ref _isDarkMode, isDark, nameof(IsDarkMode));
+                    // Note: Theme persistence to settings handled by SettingsViewModel
+                    // This control only manages the UI toggle state
+                }
             }
         }
     }
