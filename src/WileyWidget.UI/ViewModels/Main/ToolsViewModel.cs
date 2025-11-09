@@ -408,7 +408,7 @@ public class ToolsViewModel : AsyncViewModelBase, INavigationAware
         {
             ToolOutput += "Starting database cleanup operations...\n";
 
-            // Note: In a full implementation, this would require IUnitOfWork or AppDbContext injection
+            // Note: In a full implementation, this would require repository injection
             // For now, we'll simulate cleanup operations that would be performed
 
             ToolOutput += "Checking for temporary records...\n";

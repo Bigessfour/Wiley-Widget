@@ -947,7 +947,6 @@ protected override void OnExit(ExitEventArgs e)
             _ = Task.WhenAny(SecretsInitializationTask, Task.Delay(TimeSpan.FromSeconds(2)));
         }
 
-        try { this.Container.Resolve<IUnitOfWork>()?.Dispose(); } catch { }
         try { this.Container.Resolve<IMemoryCache>()?.Dispose(); } catch { }
 
         base.OnExit(e);

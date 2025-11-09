@@ -294,17 +294,10 @@ public class UtilityCustomerViewModel : BindableBase, INotifyDataErrorInfo, IDis
     // XAML bindings have been updated to use the proper command names
     // All commands now use consistent naming without AsyncCommand aliases
     // XAML bindings have been updated to use the proper command names
-    public UtilityCustomerViewModel(IUnitOfWork unitOfWork, IGrokSupercomputer grokSupercomputer, Prism.Dialogs.IDialogService? dialogService = null, ICacheService? cacheService = null)
+    public UtilityCustomerViewModel(IUtilityCustomerRepository customerRepository, IUtilityBillRepository billRepository, IGrokSupercomputer grokSupercomputer, Prism.Dialogs.IDialogService? dialogService = null, ICacheService? cacheService = null)
     {
-        if (unitOfWork is null)
-        {
-            throw new ArgumentNullException(nameof(unitOfWork));
-        }
-
-        _customerRepository = unitOfWork.UtilityCustomers
-            ?? throw new ArgumentNullException(nameof(unitOfWork));
-        _billRepository = unitOfWork.UtilityBills
-            ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
+        _billRepository = billRepository ?? throw new ArgumentNullException(nameof(billRepository));
         _grokSupercomputer = grokSupercomputer ?? throw new ArgumentNullException(nameof(grokSupercomputer));
     _dialogService = dialogService;
     _cacheService = cacheService;

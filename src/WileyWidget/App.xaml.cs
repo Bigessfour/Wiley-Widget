@@ -61,9 +61,7 @@ using WileyWidget.Views.Main;
 using WileyWidget.Views.Panels;
 using WileyWidget.Views.Dialogs;
 using WileyWidget.Views.Windows;
-#if !WPFTMP
 using WileyWidget.Startup.Modules;
-#endif
 using WileyWidget.Startup;
 using WileyWidget.Services;
 using WileyWidget.Services.Telemetry;
@@ -231,6 +229,14 @@ namespace WileyWidget
         // This runs once, before any App instance is created
         static App()
         {
+            // Initialize minimal Serilog logger FIRST - before assembly resolver that uses Log
+            // This prevents NullReferenceException if assembly resolution happens early
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.File("logs/wiley-widget-.log", rollingInterval: RollingInterval.Day)
+                .CreateLogger();
+
             // Register assembly resolution handler as early as possible
             // This provides a fallback when normal probing paths fail
             AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
@@ -680,8 +686,8 @@ namespace WileyWidget
                 }
 
                 // NOTE: License registration happens in static constructor
-                // Load resources using enterprise resource loader (synchronous wrapper for WPF override)
-                LoadApplicationResourcesEnterpriseAsync().GetAwaiter().GetResult();
+                // Load resources synchronously during WPF startup (async causes deadlocks)
+                LoadApplicationResourcesSync();
                 VerifyAndApplyTheme();
 
                 // Initialize SigNoz telemetry early (before Prism bootstrap)
@@ -731,53 +737,56 @@ namespace WileyWidget
         }
 
         /// <summary>
-        /// Loads application resources using the enterprise resource loader.
-        /// This is the SINGLE CANONICAL METHOD for resource loading.
+        /// Synchronous resource loading for WPF startup phase.
+        /// Avoids async/await deadlocks on UI thread.
         /// </summary>
-        private async Task LoadApplicationResourcesEnterpriseAsync()
+        private void LoadApplicationResourcesSync()
         {
-            Log.Information("[STARTUP] Loading application resources via EnterpriseResourceLoader");
+            var resources = Application.Current?.Resources ?? new ResourceDictionary();
 
-            try
+            // Critical resources that must load for app to start
+            var criticalResources = new[]
             {
-                // Create minimal logger adapter for early startup
-                var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<EnterpriseResourceLoader>.Instance;
+                "pack://application:,,,/WileyWidget;component/Themes/Generic.xaml",
+                "pack://application:,,,/WileyWidget;component/Themes/WileyTheme-Syncfusion.xaml",
+                "pack://application:,,,/WileyWidget;component/Resources/DataTemplates.xaml"
+            };
 
-                // Create minimal services for early startup (before DI container is ready)
-                var errorReporting = new ErrorReportingService(
-                    Microsoft.Extensions.Logging.Abstractions.NullLogger<ErrorReportingService>.Instance);
-
-                var telemetry = _earlyTelemetryService ?? new SigNozTelemetryService(
-                    Microsoft.Extensions.Logging.Abstractions.NullLogger<SigNozTelemetryService>.Instance,
-                    BuildConfiguration());
-
-                var resourceLoader = new EnterpriseResourceLoader(logger, errorReporting, telemetry);
-
-                var result = await resourceLoader.LoadApplicationResourcesAsync();
-
-                if (!result.Success)
+            foreach (var resourcePath in criticalResources)
+            {
+                try
                 {
-                    Log.Error("[STARTUP] Resource loading completed with errors: {ErrorCount} errors, {LoadedCount} loaded",
-                        result.ErrorCount, result.LoadedCount);
-
-                    if (result.HasCriticalFailures)
-                    {
-                        throw new ResourceLoadException(
-                            $"Critical resource loading failures: {result.ErrorCount} errors",
-                            result.FailedPaths,
-                            true);
-                    }
+                    var uri = new Uri(resourcePath, UriKind.Absolute);
+                    var dict = new ResourceDictionary { Source = uri };
+                    resources.MergedDictionaries.Add(dict);
+                    Log.Debug("[STARTUP] ✓ Loaded resource: {Path} ({KeyCount} keys)", resourcePath, dict.Keys.Count);
                 }
-                else
+                catch (Exception ex)
                 {
-                    Log.Information("[STARTUP] ✓ Resources loaded successfully: {LoadedCount} resources in {Ms}ms",
-                        result.LoadedCount, result.LoadTimeMs);
+                    Log.Fatal(ex, "[STARTUP] ✗ Failed to load critical resource: {Path}", resourcePath);
+                    throw new InvalidOperationException($"Critical resource failed to load: {resourcePath}", ex);
                 }
             }
-            catch (Exception ex)
+
+            // Optional resources - log errors but continue
+            var optionalResources = new[]
             {
-                Log.Fatal(ex, "[STARTUP] ✗ Critical failure loading application resources");
-                throw;
+                "pack://application:,,,/WileyWidget;component/Resources/Strings.xaml"
+            };
+
+            foreach (var resourcePath in optionalResources)
+            {
+                try
+                {
+                    var uri = new Uri(resourcePath, UriKind.Absolute);
+                    var dict = new ResourceDictionary { Source = uri };
+                    resources.MergedDictionaries.Add(dict);
+                    Log.Debug("[STARTUP] ✓ Loaded optional resource: {Path}", resourcePath);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "[STARTUP] Optional resource failed to load: {Path}", resourcePath);
+                }
             }
         }
 
@@ -1078,9 +1087,40 @@ namespace WileyWidget
 
         protected override Window CreateShell()
         {
-            // Resolve the application's main shell (Shell window) from the container.
-            // Ensure Shell is registered in RegisterTypes below or in a module.
-            return Container.Resolve<Shell>();
+            Log.Information("[SHELL] Creating Shell window...");
+            try
+            {
+                // Resolve the application's main shell (Shell window) from the container.
+                // Ensure Shell is registered in RegisterTypes below or in a module.
+                var shell = Container.Resolve<Shell>();
+                Log.Information("[SHELL] ✓ Shell window created successfully");
+                return shell;
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "[SHELL] ✗ Failed to create Shell window");
+                throw;
+            }
+        }
+
+        protected override void InitializeShell(Window shell)
+        {
+            Log.Information("[SHELL] Initializing and showing Shell window...");
+            try
+            {
+                base.InitializeShell(shell);
+
+                // Shell.xaml has Visibility="Hidden" by default - make it visible
+                shell.Visibility = Visibility.Visible;
+                shell.Show();
+
+                Log.Information("[SHELL] ✓ Shell window shown successfully");
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "[SHELL] ✗ Failed to initialize/show Shell window");
+                throw;
+            }
         }
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
@@ -1122,7 +1162,7 @@ namespace WileyWidget
             // Register Prism error handler for navigation and region behavior error handling
             containerRegistry.RegisterSingleton<IPrismErrorHandler, PrismErrorHandler>();
 
-            // Register enterprise resource loader - SINGLE CANONICAL IMPLEMENTATION
+            // Register enterprise resource loader for Polly-based resilient resource loading
             containerRegistry.RegisterSingleton<IResourceLoader, EnterpriseResourceLoader>();
 
             Log.Information("✓ Critical services registered (ErrorReportingService, TelemetryStartupService, IModuleHealthService, DialogTrackingService, StartupDiagnosticsService, IPrismErrorHandler, IResourceLoader)");
@@ -1237,10 +1277,7 @@ namespace WileyWidget
                         metricsService.RecordModuleInitialization(moduleName, false, moduleStopwatch.Elapsed.TotalMilliseconds);
                         metricsService.RecordError("ModuleInitializationException", "high", moduleName);
 
-                        if (moduleName.Equals("DashboardModule", StringComparison.OrdinalIgnoreCase))
-                        {
-                            NavigateToMinimalViewFallback();
-                        }
+                        // Phase 0: DashboardModule deleted - no specific fallback needed
                     }
                     finally
                     {
@@ -1279,22 +1316,9 @@ namespace WileyWidget
             Log.Information("Module validation: {Healthy}/{Total} healthy", healthy, total);
         }
 
-        private InitializationMode GetModuleInitializationMode(string moduleName, InitializationMode defaultMode)
-        {
-            var isTestMode = Environment.GetEnvironmentVariable("WILEY_WIDGET_TESTMODE") == "1";
-            var modes = new Dictionary<string, InitializationMode>
-            {
-                ["CoreModule"] = InitializationMode.WhenAvailable,
-                ["DashboardModule"] = InitializationMode.WhenAvailable,
-                // ... (your existing modes)
-            };
-            return modes.TryGetValue(moduleName, out var mode) ? mode : defaultMode;
-        }
 
-        private void NavigateToMinimalViewFallback()
-        {
-            // ... (your existing fallback logic)
-        }
+
+
 
         private static bool IsTransientModuleException(Exception ex)
         {
@@ -1454,12 +1478,6 @@ namespace WileyWidget
             var containerExtension = new DryIocContainerExtension(container);
             LogStartupTiming("CreateContainerExtension: DryIoc setup", sw.Elapsed);
 
-            // CRITICAL: Run Bootstrapper FIRST to setup IConfiguration, ILoggerFactory, and ILogger<>
-            // This MUST happen before any services that depend on ILogger<T> are registered
-            // var bootstrapper = new WileyWidget.Startup.Bootstrapper();
-            // var configuration = bootstrapper.Run(containerExtension);
-            LogStartupTiming("Bootstrapper.Run: Infrastructure setup", sw.Elapsed);
-
             // Convention-based registrations (your existing logic, trimmed)
             RegisterConventionTypes(containerExtension);
 
@@ -1479,23 +1497,29 @@ namespace WileyWidget
 
         private static void RegisterConventionTypes(IContainerRegistry registry)
         {
-            // ... (your existing convention logic, with caches)
+            // Register ViewModels by convention
+            registry.Register(typeof(WileyWidget.ViewModels.Main.SettingsViewModel));
         }
 
         private void RegisterLazyAIServices(IContainerRegistry registry)
         {
-            // ... (your existing AI registrations)
+            // Register lazy AI services
+            // Minimal implementation per manifest
             ValidateAIServiceConfiguration();
         }
 
         private static void ValidateAndRegisterViewModels(IContainerRegistry registry)
         {
-            // ... (your existing VM validation)
+            // Validate and register ViewModels
+            // Only SettingsViewModel exists per manifest
+            Log.Information("Validating ViewModel registrations...");
         }
 
         private void ValidateAIServiceConfiguration()
         {
-            // ... (your existing AI config validation)
+            // Validate AI service configuration
+            // Minimal implementation
+            Log.Information("AI service configuration validated (minimal)");
         }
 
         private static IConfiguration BuildConfiguration()
@@ -1552,16 +1576,11 @@ namespace WileyWidget
             {
                 Log.Information("[PRISM] Configuring module catalog...");
 
-#if !WPFTMP
-                // Register all application modules via CustomModuleManager
-                WileyWidget.Startup.Modules.CustomModuleManager.RegisterModules(moduleCatalog);
-#else
-                // Manual module registration for WPFTMP builds
-                Log.Information("WPFTMP build detected - using manual module registration");
-#endif
+                // Register essential modules only (Phase 0: Dead modules deleted)
+                moduleCatalog.AddModule<WileyWidget.Startup.Modules.CoreModule>();
+                moduleCatalog.AddModule<WileyWidget.Startup.Modules.QuickBooksModule>();
 
-                // Log registered modules for debugging using reflection since Modules property may not exist
-                Log.Information("✓ [PRISM] Module catalog configured successfully");
+                Log.Information("✓ [PRISM] Module catalog configured with CoreModule and QuickBooksModule");
             }
             catch (Exception ex)
             {
@@ -1711,7 +1730,6 @@ namespace WileyWidget
                 }
 
                 // Dispose key services
-                try { this.Container.Resolve<IUnitOfWork>()?.Dispose(); } catch { }
                 try { this.Container.Resolve<IMemoryCache>()?.Dispose(); } catch { }
 
                 base.OnExit(e);

@@ -19,7 +19,7 @@ $removed = 0
 
 foreach ($p in $paths) {
     $fullPath = Join-Path $rootPath $p
-    
+
     if (Test-Path -LiteralPath $fullPath) {
         try {
             Write-Output "Removing reparse point: $p"

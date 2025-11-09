@@ -21,7 +21,6 @@ namespace WileyWidget.ViewModels.Panels
     public class SettingsPanelViewModel : BasePanelViewModel, IDisposable
     {
         private readonly ISettingsService _settingsService;
-        private readonly IUnitOfWork _unitOfWork;
         private readonly IQuickBooksService? _quickBooksService;
         // ISyncfusionLicenseService removed - license registration happens in App static constructor per Syncfusion documentation
         private readonly IAIService? _aiService;
@@ -1701,7 +1700,6 @@ namespace WileyWidget.ViewModels.Panels
         {
             // Create fallback instances
             _settingsService = null!; // Will cause runtime errors if used
-            _unitOfWork = null!;
             _quickBooksService = null;
             // _syncfusionLicenseService removed - license registration happens in App static constructor
             _aiService = null;
@@ -1723,10 +1721,9 @@ namespace WileyWidget.ViewModels.Panels
             System.Diagnostics.Debug.WriteLine("WARNING: SettingsPanelViewModel created with parameterless fallback constructor - services unavailable");
         }
 
-        public SettingsPanelViewModel(ISettingsService settingsService, IUnitOfWork unitOfWork, IQuickBooksService? quickBooksService = null, IAIService? aiService = null, ILogger<SettingsPanelViewModel>? logger = null)
+        public SettingsPanelViewModel(ISettingsService settingsService, IQuickBooksService? quickBooksService = null, IAIService? aiService = null, ILogger<SettingsPanelViewModel>? logger = null)
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
-            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _quickBooksService = quickBooksService;
             // _syncfusionLicenseService removed - license registration happens in App static constructor
             _aiService = aiService;

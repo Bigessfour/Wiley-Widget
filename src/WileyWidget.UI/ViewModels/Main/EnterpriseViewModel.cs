@@ -27,7 +27,8 @@ namespace WileyWidget.ViewModels.Main;
 public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDisposable, INavigationAware
 {
     // Dependencies
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IEnterpriseRepository _enterpriseRepository;
+    private readonly IAuditRepository _auditRepository;
     private readonly IEventAggregator _eventAggregator;
     private readonly IReportExportService _reportExportService;
     private readonly IDispatcherHelper _dispatcherHelper;
@@ -372,7 +373,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             StatusMessage = "Generating Excel export...";
 
             // Get current enterprises data
-            var enterprises = await _unitOfWork.Enterprises.GetAllAsync();
+            var enterprises = await _enterpriseRepository.GetAllAsync();
             var enterpriseList = enterprises.ToList();
 
             if (!enterpriseList.Any())
@@ -421,7 +422,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             StatusMessage = "Generating PDF report...";
 
             // Get current enterprises data
-            var enterprises = await _unitOfWork.Enterprises.GetAllAsync();
+            var enterprises = await _enterpriseRepository.GetAllAsync();
             var enterpriseList = enterprises.ToList();
 
             if (!enterpriseList.Any())
@@ -861,7 +862,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
 
         foreach (var enterprise in parsed)
         {
-            await _unitOfWork.Enterprises.AddAsync(enterprise);
+            await _enterpriseRepository.AddAsync(enterprise);
         }
 
         return parsed.Count;
@@ -931,7 +932,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
 
         foreach (var enterprise in parsed)
         {
-            await _unitOfWork.Enterprises.AddAsync(enterprise);
+            await _enterpriseRepository.AddAsync(enterprise);
         }
 
         return parsed.Count;
@@ -965,7 +966,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
         StatusMessage = "Generating advanced Excel export...";
 
         // Get current enterprises data
-        var enterprises = await _unitOfWork.Enterprises.GetAllAsync();
+        var enterprises = await _enterpriseRepository.GetAllAsync();
         var enterpriseList = enterprises.ToList();
 
         if (!enterpriseList.Any())
@@ -1008,7 +1009,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             StatusMessage = "Generating CSV export...";
 
             // Get current enterprises data
-            var enterprises = await _unitOfWork.Enterprises.GetAllAsync();
+            var enterprises = await _enterpriseRepository.GetAllAsync();
             var enterpriseList = enterprises.ToList();
 
             if (!enterpriseList.Any())
@@ -1143,7 +1144,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                                     .WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
                                         (ex, timespan, retryCount, ctx) => Log.Warning(ex, "InitializeAsync retry {Retry} after {Delay}ms", retryCount, timespan.TotalMilliseconds));
 
-            var enterprises = await retryPolicy.ExecuteAsync(async ct => (await _unitOfWork.Enterprises.GetAllAsync()), cancellationToken).ConfigureAwait(false);
+            var enterprises = await retryPolicy.ExecuteAsync(async ct => (await _enterpriseRepository.GetAllAsync()), cancellationToken).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -1212,7 +1213,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             cancellationToken.ThrowIfCancellationRequested();
 
             var enterprises = await ExecuteWithRetryAsync(
-                async (ct) => await _unitOfWork.Enterprises.GetAllAsync(),
+                async (ct) => await _enterpriseRepository.GetAllAsync(),
                 cancellationToken: cancellationToken);
 
             // Check for cancellation before updating UI
@@ -1283,9 +1284,10 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public EnterpriseViewModel(IUnitOfWork unitOfWork, IEventAggregator eventAggregator, IReportExportService reportExportService, ICacheService? cacheService = null, IAuditService? auditService = null, Prism.Dialogs.IDialogService? dialogService = null)
+    public EnterpriseViewModel(IEnterpriseRepository enterpriseRepository, IAuditRepository auditRepository, IEventAggregator eventAggregator, IReportExportService reportExportService, ICacheService? cacheService = null, IAuditService? auditService = null, Prism.Dialogs.IDialogService? dialogService = null)
     {
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+        _auditRepository = auditRepository ?? throw new ArgumentNullException(nameof(auditRepository));
         _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
         _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
         _dispatcherHelper = new DispatcherHelper();
@@ -1313,7 +1315,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                     }
                 }
 
-                var all = await _unitOfWork.Enterprises.GetAllAsync();
+                var all = await _enterpriseRepository.GetAllAsync();
                 var list = all?.ToList() ?? new System.Collections.Generic.List<Enterprise>();
                 if (_cacheService != null && list.Any())
                     await _cacheService.SetAsync("enterprises", list, TimeSpan.FromHours(6));
@@ -1396,9 +1398,8 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                 Notes = "New enterprise - update details"
             };
 
-            var addedEnterprise = await _unitOfWork.Enterprises.AddAsync(newEnterprise);
-            // Persist the new enterprise
-            await _unitOfWork.SaveChangesAsync();
+            var addedEnterprise = await _enterpriseRepository.AddAsync(newEnterprise);
+            // Persist the new enterprise (handled by repository)
 
             EnterpriseList.Add(addedEnterprise);
             SelectedEnterprise = addedEnterprise;
@@ -1452,15 +1453,14 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             // If this is a new enterprise (Id == 0), call AddAsync; otherwise update
             if (SelectedEnterprise.Id == 0)
             {
-                await _unitOfWork.Enterprises.AddAsync(SelectedEnterprise);
+                await _enterpriseRepository.AddAsync(SelectedEnterprise);
             }
             else
             {
-                await _unitOfWork.Enterprises.UpdateAsync(SelectedEnterprise);
+                await _enterpriseRepository.UpdateAsync(SelectedEnterprise);
             }
 
-            // Persist changes
-            await _unitOfWork.SaveChangesAsync();
+            // Persist changes (handled by repository)
 
             StatusMessage = $"Enterprise '{SelectedEnterprise.Name}' saved successfully";
             Log.Information("Saved enterprise with ID: {EnterpriseId}", SelectedEnterprise.Id);
@@ -1524,12 +1524,11 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             IsLoading = true;
             StatusMessage = $"Deleting '{enterpriseName}'...";
 
-            var success = await _unitOfWork.Enterprises.DeleteAsync(enterpriseId);
+            var success = await _enterpriseRepository.DeleteAsync(enterpriseId);
 
             if (success)
             {
-                // Persist deletion
-                await _unitOfWork.SaveChangesAsync();
+                // Persist deletion (handled by repository)
 
                 // Audit logging
                 if (_auditService != null)
@@ -1652,13 +1651,12 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
                 if (updated)
                 {
                     // Save individual enterprise changes
-                    await _unitOfWork.Enterprises.UpdateAsync(enterprise);
+                    await _enterpriseRepository.UpdateAsync(enterprise);
                     updateCount++;
                 }
             }
 
-            // Commit all changes
-            await _unitOfWork.SaveChangesAsync();
+            // Commit all changes (handled by repository)
 
             StatusMessage = $"Bulk update completed: {updateCount} enterprises updated";
 
@@ -1965,7 +1963,7 @@ public partial class EnterpriseViewModel : BindableBase, IDataErrorInfo, IDispos
             var endDate = DateTime.UtcNow;
             var startDate = endDate.AddDays(-30);
 
-            var auditEntries = await _unitOfWork.Audits.GetAuditTrailForEntityAsync("Enterprise", SelectedEnterprise.Id, startDate, endDate);
+            var auditEntries = await _auditRepository.GetAuditTrailForEntityAsync("Enterprise", SelectedEnterprise.Id, startDate, endDate);
 
             if (auditEntries.Any())
             {

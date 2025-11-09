@@ -807,8 +807,7 @@ public static class DatabaseConfiguration
         services.TryAddSingleton<IWhatIfScenarioEngine, WhatIfScenarioEngine>();
 
         // Register FiscalYearSettings as singleton (configuration data)
-        services.AddSingleton<FiscalYearSettings>();        // Register Unit of Work (Clean Architecture - UI only depends on Business layer)
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddSingleton<FiscalYearSettings>();
 
         // Register health check configuration (service lifetime singleton)
         services.AddSingleton<Models.HealthCheckConfiguration>();

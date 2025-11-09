@@ -77,7 +77,6 @@ protected override void OnExit(ExitEventArgs e)
         // ... (license registration, secrets, etc.)
 
         // ✅ STEP 3: Dispose key services
-        try { this.Container.Resolve<IUnitOfWork>()?.Dispose(); } catch { }
         try { this.Container.Resolve<IMemoryCache>()?.Dispose(); } catch { }
 
         base.OnExit(e);

@@ -280,15 +280,9 @@ namespace WileyWidget.ViewModels.Panels
         /// <summary>
         /// Constructor with dependency injection
         /// </summary>
-        public UtilityCustomerPanelViewModel(IUnitOfWork unitOfWork, IGrokSupercomputer grokSupercomputer, Prism.Dialogs.IDialogService? dialogService = null, ICacheService? cacheService = null)
+        public UtilityCustomerPanelViewModel(IUtilityCustomerRepository customerRepository, IGrokSupercomputer grokSupercomputer, Prism.Dialogs.IDialogService? dialogService = null, ICacheService? cacheService = null)
         {
-            if (unitOfWork is null)
-            {
-                throw new ArgumentNullException(nameof(unitOfWork));
-            }
-
-            _customerRepository = unitOfWork.UtilityCustomers
-                ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
             _grokSupercomputer = grokSupercomputer ?? throw new ArgumentNullException(nameof(grokSupercomputer));
             _dialogService = dialogService;
             _cacheService = cacheService;

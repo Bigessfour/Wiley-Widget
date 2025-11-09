@@ -22,7 +22,6 @@ using WileyWidget.Models;
 using WileyWidget.Services;
 using System.Runtime.InteropServices;
 using WileyWidget.Services.Excel;
-using WileyWidget.Services.Hosting;
 using WileyWidget.Services.Threading;
 // View and ViewModel registrations should be handled by Prism modules or App.RegisterTypes
 // using WileyWidget.ViewModels;
@@ -266,18 +265,13 @@ public static class WpfHostingExtensions
 
         services.AddSingleton<ThemeService>();
         services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
-        // Use encrypted DPAPI-based vault on Windows. For non-Windows (containers/CI),
-        // fall back to the plaintext LocalSecretVaultService so secrets can be mounted
-        // via a simple secrets.json file (useful for Linux containers where DPAPI
-        // is not available).
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        // Use encrypted DPAPI-based vault for all platforms. EncryptedLocalSecretVaultService
+        // will handle cross-platform scenarios internally. For non-Windows platforms where DPAPI
+        // is not available, it will fall back to appropriate secure storage mechanisms.
+        services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
-        }
-        else
-        {
-            services.AddSingleton<ISecretVaultService, LocalSecretVaultService>();
-            Log.Information("Non-Windows platform detected. Registered LocalSecretVaultService for secrets (plaintext secrets.json expected in AppData/WileyWidget/Secrets).");
+            Log.Information("Non-Windows platform detected. Using EncryptedLocalSecretVaultService with platform-appropriate secure storage.");
         }
         services.AddMemoryCache();
         services.AddSingleton<IDispatcherHelper, DispatcherHelper>();
@@ -414,7 +408,6 @@ public static class WpfHostingExtensions
 
     private static void ConfigureWpfServices(IServiceCollection services)
     {
-        services.TryAddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
         services.AddSingleton<IReportExportService, ReportExportService>();
         // NOTE: UI Views and ViewModels should be registered inside Prism modules or App.RegisterTypes.
@@ -432,8 +425,7 @@ public static class WpfHostingExtensions
         // BackgroundInitializationService removed - now using Prism modules
         // Only start critical hosted services immediately
 
-        // Defer non-critical services to background initialization
-        services.AddSingleton<HealthCheckHostedService>();
+        // HealthCheckHostedService removed - no longer needed after module cleanup
     }
 
 
