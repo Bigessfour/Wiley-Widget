@@ -558,7 +558,18 @@
             "properties": {
               "category": {
                 "type": "string",
-                "description": "File category (source_code, test, documentation, etc.)"
+                "description": "File category (source_code, test, documentation, configuration, db_configs, etc.)",
+                "enum": [
+                  "source_code",
+                  "test",
+                  "documentation",
+                  "configuration",
+                  "db_configs",
+                  "build_system",
+                  "tooling",
+                  "assets",
+                  "unknown"
+                ]
               },
               "sub_category": {
                 "type": "string",

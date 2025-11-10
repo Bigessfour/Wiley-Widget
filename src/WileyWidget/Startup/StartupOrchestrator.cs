@@ -223,10 +223,10 @@ public class StartupOrchestrator
     {
         await Task.Run(() =>
         {
-            // Register database initializer for later use
-            _containerRegistry.RegisterSingleton<DatabaseInitializer>();
+            // Register database initializer as hosted service for background initialization
+            _containerRegistry.RegisterSingleton<Microsoft.Extensions.Hosting.IHostedService, DatabaseInitializer>();
 
-            Log.Information("Module services registered - initialization will be handled by App.xaml.cs");
+            Log.Information("Module services registered - DatabaseInitializer registered as IHostedService for background execution");
         });
     }    /// <summary>
     /// Phase 4: Load UI components, splash screen, and main shell.
