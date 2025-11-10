@@ -103,7 +103,7 @@ public class BudgetRepository : IBudgetRepository
         else
         {
             activity?.SetTag("cache.hit", true);
-            activity?.SetTag("result.count", budgetEntries.Count());
+            activity?.SetTag("result.count", budgetEntries?.Count() ?? 0);
         }
 
         return budgetEntries ?? Enumerable.Empty<BudgetEntry>();

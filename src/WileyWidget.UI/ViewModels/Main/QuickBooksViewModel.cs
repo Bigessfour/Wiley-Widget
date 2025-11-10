@@ -15,7 +15,7 @@ using WileyWidget.ViewModels.Base;
 namespace WileyWidget.ViewModels.Main {
     public class QuickBooksViewModel : AsyncViewModelBase, INavigationAware, IDisposable
     {
-        private readonly QuickBooksService _quickBooksService;
+        private readonly IQuickBooksService _quickBooksService;
         private readonly ISettingsService _settings;
         private CancellationTokenSource _cancellationTokenSource = new();
 
@@ -31,7 +31,7 @@ namespace WileyWidget.ViewModels.Main {
         private string _connectionValidationMessage;
         private string _syncValidationMessage;
 
-        public QuickBooksViewModel(QuickBooksService quickBooksService, ISettingsService settings, IDispatcherHelper dispatcherHelper, ILogger<QuickBooksViewModel> logger)
+        public QuickBooksViewModel(IQuickBooksService quickBooksService, ISettingsService settings, IDispatcherHelper dispatcherHelper, ILogger<QuickBooksViewModel> logger)
             : base(dispatcherHelper, logger)
         {
             _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));

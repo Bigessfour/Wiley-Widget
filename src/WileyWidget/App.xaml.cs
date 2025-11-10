@@ -173,7 +173,7 @@ namespace WileyWidget
                 {
                     var output = process.StandardOutput.ReadToEnd();
                     process.WaitForExit();
-                    
+
                     if (process.ExitCode == 0)
                     {
                         var match = System.Text.RegularExpressions.Regex.Match(output, @"global-packages:\s*(.+)");
@@ -411,12 +411,31 @@ namespace WileyWidget
         // This runs once, before any App instance is created
         static App()
         {
-            // Initialize minimal Serilog logger FIRST - before assembly resolver that uses Log
+            // Initialize comprehensive Serilog logger FIRST - before assembly resolver that uses Log
             // This prevents NullReferenceException if assembly resolution happens early
+            // Configured with all diagnostic features from the start (no hot-swapping needed)
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .WriteTo.File("logs/wiley-widget-.log", rollingInterval: RollingInterval.Day)
+                .MinimumLevel.Debug()  // Capture all debug messages
+                .Enrich.WithMachineName()  // Add machine name for distributed debugging
+                .Enrich.WithProcessId()  // Add process ID for multi-process scenarios
+                .Enrich.WithThreadId()  // Add thread ID for async debugging
+                .Enrich.FromLogContext()  // Allow contextual properties
+                .WriteTo.Console(
+                    outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+                .WriteTo.File(
+                    path: "logs/wiley-widget-.log",
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 7,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                    shared: true,  // Allow multiple processes to write
+                    flushToDiskInterval: TimeSpan.FromSeconds(1))
+                .WriteTo.File(
+                    path: "logs/startup-diagnostic-.txt",
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 5,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u4}] {MachineName} {ProcessId}:{ThreadId} {SourceContext}{NewLine}    {Message:lj}{NewLine}{Exception}",
+                    shared: true,
+                    flushToDiskInterval: TimeSpan.FromSeconds(1))
                 .CreateLogger();
 
             // Register assembly resolution handler as early as possible
@@ -575,7 +594,7 @@ namespace WileyWidget
                     {
                         // Handle partial type loading - some types may have loaded successfully
                         Log.Debug("ReflectionTypeLoadException in assembly {AssemblyName}, checking successfully loaded types", assembly.FullName);
-                        
+
                         try
                         {
                             var successfullyLoadedTypes = rtle.Types.Where(t => t != null);
@@ -622,7 +641,7 @@ namespace WileyWidget
             {
                 var location = assembly.Location;
                 var fullName = assembly.FullName;
-                
+
                 // Check for wpftmp in assembly location or full name
                 return (!string.IsNullOrEmpty(location) && location.Contains("wpftmp", StringComparison.OrdinalIgnoreCase)) ||
                        (!string.IsNullOrEmpty(fullName) && fullName.Contains("wpftmp", StringComparison.OrdinalIgnoreCase));

@@ -41,6 +41,17 @@
 
       <!-- Inline resources (converters, etc.) -->
       <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+      <!-- Critical brushes for CoreModule views -->
+      <SolidColorBrush
+          x:Key="InfoBrush"
+          Color="#0078D4" />
+      <SolidColorBrush
+          x:Key="ErrorBrush"
+          Color="#E81123" />
+      <SolidColorBrush
+          x:Key="ContentBackgroundBrush"
+          Color="#FFFFFF" />
     </ResourceDictionary>
   </Application.Resources>
 </prism:PrismApplication>

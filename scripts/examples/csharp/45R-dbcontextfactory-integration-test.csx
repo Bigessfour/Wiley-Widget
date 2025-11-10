@@ -1,5 +1,5 @@
 // DbContextFactory Integration Test - Validates enhanced DI registration
-// Usage: Run via .\scripts\testing\run-csx-test.ps1 -ScriptName "45-dbcontextfactory-integration-test.csx"
+// Usage: docker run --rm -v "${PWD}:/app:ro" wiley-widget/csx-mcp:local scripts/examples/csharp/45-dbcontextfactory-integration-test.csx
 // Purpose: Tests enhanced DbContextFactory registration with validation, fallback, and proper DryIoc scoping
 
 // Required NuGet package references
@@ -11,7 +11,7 @@
 #r "nuget: Microsoft.EntityFrameworkCore.SqlServer, 9.0.10"
 #r "nuget: Prism.Container.DryIoc, 9.0.107"
 #r "nuget: DryIoc, 5.4.3"
-#r "nuget: DryIoc.Microsoft.DependencyInjection, 7.1.0"
+#r "nuget: DryIoc.Microsoft.DependencyInjection, 6.2.0"
 
 #nullable enable
 
@@ -248,7 +248,7 @@ try
         services.AddSingleton<IConfiguration>(testConfig);
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
         services.AddSingleton<IHostEnvironment>(sp => new MockHostEnvironment("Development"));
-        
+
         services.AddDbContextFactory<TestAppDbContext>((sp, options) =>
         {
             var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger<TestAppDbContext>();

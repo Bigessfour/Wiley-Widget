@@ -19,7 +19,9 @@
   "mounts": [
     "source=wiley-widget-nuget-cache,target=/tmp/csharp-mcp-packages,type=volume",
     "source=${localWorkspaceFolder}/logs,target=/workspaces/Wiley_Widget/logs,type=bind",
-    "source=${localWorkspaceFolder}/scripts,target=/workspaces/Wiley_Widget/scripts,type=bind"
+    "source=${localWorkspaceFolder}/scripts,target=/workspaces/Wiley_Widget/scripts,type=bind",
+    // Mount host Docker socket for Docker-from-Docker
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
 
   // Container workspace settings

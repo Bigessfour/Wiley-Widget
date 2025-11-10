@@ -149,6 +149,100 @@
       Color="{DynamicResource PressedBackground}" />
 
   <!-- ====================================================================== -->
+  <!-- EXTENDED SEMANTIC COLORS (Missing Resources Fix)                     -->
+  <!-- Additional brushes required by views for proper startup              -->
+  <!-- ====================================================================== -->
+
+  <!-- Content & Background -->
+  <SolidColorBrush
+      x:Key="ContentBackgroundBrush"
+      Color="{DynamicResource ContentBackground}" />
+  <SolidColorBrush
+      x:Key="ContentBackgroundAlt2Brush"
+      Color="{DynamicResource ContentBackgroundAlt2}" />
+  <SolidColorBrush
+      x:Key="ContentForegroundBrush"
+      Color="{DynamicResource ContentForeground}" />
+  <SolidColorBrush
+      x:Key="ButtonBackgroundBrush"
+      Color="{DynamicResource ContentBackground}" />
+  <SolidColorBrush
+      x:Key="ButtonForegroundBrush"
+      Color="{DynamicResource ContentForeground}" />
+
+  <!-- Border & Panel -->
+  <SolidColorBrush
+      x:Key="BorderAltBrush"
+      Color="{DynamicResource BorderAlt}" />
+  <SolidColorBrush
+      x:Key="PanelBorderBrush"
+      Color="{DynamicResource BorderAlt}" />
+
+  <!-- Error States -->
+  <SolidColorBrush
+      x:Key="ErrorBackgroundBrush"
+      Color="#FFEBEE" />
+  <SolidColorBrush
+      x:Key="ErrorBorderBrush"
+      Color="#F44336" />
+  <SolidColorBrush
+      x:Key="ErrorForegroundBrush"
+      Color="#D32F2F" />
+
+  <!-- Success States -->
+  <SolidColorBrush
+      x:Key="SuccessBackgroundBrush"
+      Color="#E8F5E9" />
+  <SolidColorBrush
+      x:Key="SuccessForegroundBrush"
+      Color="#2E7D32" />
+
+  <!-- Warning States -->
+  <SolidColorBrush
+      x:Key="WarningBackgroundBrush"
+      Color="#FFF3E0" />
+  <SolidColorBrush
+      x:Key="WarningForegroundBrush"
+      Color="#E65100" />
+
+  <!-- Data Visualization -->
+  <SolidColorBrush
+      x:Key="PositiveBrush"
+      Color="#4CAF50" />
+  <SolidColorBrush
+      x:Key="NegativeBrush"
+      Color="#F44336" />
+  <SolidColorBrush
+      x:Key="EmphasisBrush"
+      Color="#2196F3" />
+
+  <!-- Section Headers & Grid -->
+  <SolidColorBrush
+      x:Key="SectionHeaderBrush"
+      Color="{DynamicResource ContentForeground}" />
+  <SolidColorBrush
+      x:Key="TreeGridHeaderBrush"
+      Color="{DynamicResource HeaderBackground}" />
+  <SolidColorBrush
+      x:Key="GridFilterRowBackgroundBrush"
+      Color="{DynamicResource ContentBackgroundAlt1}" />
+  <SolidColorBrush
+      x:Key="GridFilterRowForegroundBrush"
+      Color="{DynamicResource ContentForeground}" />
+  <SolidColorBrush
+      x:Key="GridGroupDropAreaBackgroundBrush"
+      Color="{DynamicResource ContentBackgroundAlt1}" />
+  <SolidColorBrush
+      x:Key="GridGroupDropAreaForegroundBrush"
+      Color="{DynamicResource ContentForeground}" />
+  <SolidColorBrush
+      x:Key="GridSummaryBackgroundBrush"
+      Color="{DynamicResource ContentBackgroundAlt1}" />
+  <SolidColorBrush
+      x:Key="GridSummaryForegroundBrush"
+      Color="{DynamicResource ContentForeground}" />
+
+  <!-- ====================================================================== -->
   <!-- SPACING SYSTEM (Issue #2 - P0)                                       -->
   <!-- Standardized spacing scale for consistent layout rhythm               -->
   <!-- ====================================================================== -->
@@ -212,9 +306,14 @@
   <Color x:Key="ContentBackground">#FFFFFF</Color>
   <Color x:Key="ContentForeground">#212121</Color>
   <Color x:Key="ContentForegroundAlt1">#757575</Color>
+  <Color x:Key="ContentForegroundAlt2">#9E9E9E</Color>
   <Color x:Key="ContentForegroundAlt3">#424242</Color>
+  <Color x:Key="ContentBackgroundAlt1">#FAFAFA</Color>
+  <Color x:Key="ContentBackgroundAlt2">#F5F5F5</Color>
   <Color x:Key="HeaderBackground">#F5F5F5</Color>
   <Color x:Key="BorderAlt">#E0E0E0</Color>
   <Color x:Key="DisabledForeground">#BDBDBD</Color>
+  <Color x:Key="HoverBackground">#EEEEEE</Color>
+  <Color x:Key="PressedBackground">#E0E0E0</Color>
 
 </ResourceDictionary>

@@ -9,8 +9,8 @@
 				"-NoProfile",
 				"-ExecutionPolicy",
 				"Bypass",
-				"-Command",
-				"Get-Process -Name dotnet, WileyWidget -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match 'dotnet|WileyWidget' } | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host 'Killed old WileyWidget/.NET processes'"
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
 			"group": "build",
 			"presentation": {
@@ -121,8 +121,8 @@
 				"-NoProfile",
 				"-ExecutionPolicy",
 				"Bypass",
-				"-Command",
-				"Get-Process -Name dotnet, WileyWidget -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match 'dotnet|WileyWidget' } | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host 'Post-debug cleanup: Killed lingering processes'; Remove-Item -Path '${workspaceFolder}/src/WileyWidget/bin/Debug/net9.0-windows10.0.19041.0/logs/*.log' -Recurse -Force -ErrorAction SilentlyContinue"
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
 			"group": "build",
 			"presentation": {
@@ -1345,6 +1345,86 @@
 				"focus": false,
 				"panel": "shared"
 			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-60P-dashboardviewmodel-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/60P-dashboardviewmodel-unit-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"isBackground": false,
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-61P-quickbooksservice-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/61P-quickbooksservice-unit-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"isBackground": false,
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-viewmodel-service-tests",
+			"dependsOn": [
+				"csx:run-60P-dashboardviewmodel-test",
+				"csx:run-61P-quickbooksservice-test"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "echo ViewModel and Service CSX tests completed",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"group": "test",
 			"problemMatcher": []
 		}
 	],

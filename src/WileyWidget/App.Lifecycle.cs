@@ -152,6 +152,10 @@ namespace WileyWidget
                 {
                     Log.Information("Phase 2B: Loading application resources (container ready)");
                     LoadApplicationResourcesSync();
+                    
+                    // PHASE 2C: VALIDATE CRITICAL RESOURCES ARE AVAILABLE
+                    Log.Information("🔍 [DIAGNOSTIC] Validating critical resources post-load...");
+                    ValidateCriticalResources();
                 }
                 else
                 {
@@ -271,7 +275,7 @@ namespace WileyWidget
                     try
                     {
                         var dbInit = this.Container.Resolve<WileyWidget.Startup.DatabaseInitializer>();
-                        await dbInit.InitializeAsync().ConfigureAwait(false);
+                        await dbInit.StartAsync(CancellationToken.None).ConfigureAwait(false);
                         Log.Information("[DATABASE] Background initialization completed");
                     }
                     catch (Exception ex)
@@ -745,6 +749,109 @@ namespace WileyWidget
 
             var isValid = !issues.Any();
             return (isValid, issues, warnings);
+        }
+
+        #endregion
+
+        #region Resource Validation
+
+        /// <summary>
+        /// Validates that all critical resources are loaded and available in the Application resource dictionary.
+        /// This diagnostic method ensures that views won't fail due to missing StaticResource or DynamicResource references.
+        /// Called after LoadApplicationResourcesSync() to verify successful resource loading.
+        /// </summary>
+        private void ValidateCriticalResources()
+        {
+            var sw = Stopwatch.StartNew();
+            
+            try
+            {
+                // Validate merged dictionaries loaded
+                var mergedDicts = Application.Current.Resources.MergedDictionaries;
+                Log.Information("📚 [DIAGNOSTIC] Merged Dictionaries Loaded: {Count}", mergedDicts.Count);
+                
+                var totalResources = 0;
+                foreach (var dict in mergedDicts)
+                {
+                    var source = dict.Source?.ToString() ?? "inline";
+                    totalResources += dict.Count;
+                    Log.Debug("  ✓ {Source} ({Count} resources)", source, dict.Count);
+                }
+                
+                Log.Information("📊 [DIAGNOSTIC] Total resources in merged dictionaries: {Count}", totalResources);
+                
+                // Validate critical brushes exist
+                var criticalBrushes = new[]
+                {
+                    "InfoBrush", "ErrorBrush", "WarningBrush", "SuccessBrush",
+                    "ContentBackgroundBrush", "ContentForegroundBrush",
+                    "ErrorBackgroundBrush", "ErrorBorderBrush", "ErrorForegroundBrush",
+                    "PanelBorderBrush", "SectionHeaderBrush",
+                    "AccentBlueBrush", "CardBackground", "PrimaryTextBrush"
+                };
+                
+                var missing = new List<string>();
+                var found = 0;
+                
+                foreach (var brush in criticalBrushes)
+                {
+                    if (Application.Current.Resources.Contains(brush))
+                    {
+                        found++;
+                        Log.Debug("  ✅ {Brush} - found", brush);
+                    }
+                    else
+                    {
+                        missing.Add(brush);
+                        Log.Error("  ❌ {Brush} - MISSING!", brush);
+                    }
+                }
+                
+                // Validate critical converters exist
+                var criticalConverters = new[]
+                {
+                    "BoolToVis", "NullToVis", "StringToVis",
+                    "CountToVisibilityConverter", "EmptyStringToVisibilityConverter",
+                    "BalanceColorConverter", "BooleanToVisibilityConverter"
+                };
+                
+                foreach (var converter in criticalConverters)
+                {
+                    if (Application.Current.Resources.Contains(converter))
+                    {
+                        found++;
+                        Log.Debug("  ✅ {Converter} - found", converter);
+                    }
+                    else
+                    {
+                        missing.Add(converter);
+                        Log.Error("  ❌ {Converter} - MISSING!", converter);
+                    }
+                }
+                
+                sw.Stop();
+                
+                // Report results
+                if (missing.Any())
+                {
+                    Log.Fatal("💥 [DIAGNOSTIC] {Count} critical resources MISSING - startup will fail!", missing.Count);
+                    Log.Fatal("Missing resources: {Resources}", string.Join(", ", missing));
+                    
+                    throw new ApplicationException($"Missing {missing.Count} critical resources: {string.Join(", ", missing)}. " +
+                                                 "Application cannot start without these resources. " +
+                                                 "Check WileyTheme-Syncfusion.xaml and Generic.xaml.");
+                }
+                else
+                {
+                    Log.Information("✅ [DIAGNOSTIC] All {Count} critical resources validated ({Ms}ms)", 
+                        criticalBrushes.Length + criticalConverters.Length, sw.ElapsedMilliseconds);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "💥 [DIAGNOSTIC] Resource validation failed catastrophically");
+                throw;
+            }
         }
 
         #endregion

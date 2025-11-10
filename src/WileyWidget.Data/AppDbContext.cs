@@ -24,24 +24,9 @@ namespace WileyWidget.Data
             configurationBuilder.Properties<decimal>().HavePrecision(19, 4);
         }
 
-        // Fallback provider configuration to avoid "No database provider configured" errors
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            if (optionsBuilder is null)
-                throw new ArgumentNullException(nameof(optionsBuilder));
-
-            if (!optionsBuilder.IsConfigured)
-            {
-                var connectionString = Environment.GetEnvironmentVariable("WILEY_WIDGET_SQLSERVER_CONNECTION")
-                    ?? "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
-
-                optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
-                {
-                    sqlOptions.MigrationsAssembly("WileyWidget.Data");
-                    sqlOptions.EnableRetryOnFailure();
-                });
-            }
-        }
+        // OnConfiguring removed: All configuration is handled via DI in DatabaseConfiguration.cs
+        // This prevents EF Core 9.0 ArgumentException: "At least one object must implement IComparable"
+        // which occurs when trying to modify already-configured DbContextOptions
 
         public DbSet<MunicipalAccount> MunicipalAccounts { get; set; } = null!;
         public DbSet<Department> Departments { get; set; } = null!;

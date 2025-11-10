@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -29,10 +30,17 @@ namespace WileyWidget.Startup.Modules
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            // Register real QuickBooksService implementation with QBO API
-            containerRegistry.RegisterSingleton<IQuickBooksService, QuickBooksService>();
+            // NOTE: IQuickBooksService is already registered as LazyQuickBooksService in App.RegisterTypes()
+            // We do NOT re-register it here to avoid DI conflicts.
+            // Instead, we create the real QuickBooksService instance in OnInitialized() and publish an event
+            // for LazyQuickBooksService to swap its internal implementation.
 
-            Log.Information("QuickBooksModule.RegisterTypes() - Registered real QuickBooksService as singleton");
+            // Explicitly register QuickBooksViewModel as fallback if convention registration fails
+            // QuickBooksViewModel inherits from AsyncViewModelBase and requires 4 dependencies
+            containerRegistry.Register<WileyWidget.ViewModels.Main.QuickBooksViewModel>();
+            Log.Debug("✓ QuickBooksViewModel registered explicitly (fallback for convention registration)");
+
+            Log.Information("QuickBooksModule.RegisterTypes() - LazyQuickBooksService already registered, will create real instance in OnInitialized()");
             Log.Debug("QuickBooksServiceReadyEvent will be published in OnInitialized()");
         }
 
@@ -58,16 +66,32 @@ namespace WileyWidget.Startup.Modules
                 Log.Warning(ex, "Failed to publish ModuleLoadedEvent");
             }
 
-            // Trigger lazy swap via event - publish the resolved QuickBooksService
+            // Create the real QuickBooksService instance and publish event for LazyQuickBooksService to swap
             try
             {
                 var eventAggregator = containerProvider.Resolve<IEventAggregator>();
-                var realQuickBooksService = containerProvider.Resolve<IQuickBooksService>();
+                
+                // Resolve dependencies for QuickBooksService
+                var settings = containerProvider.Resolve<SettingsService>();
+                var secretVaultService = containerProvider.Resolve<ISecretVaultService>();
+                var logger = containerProvider.Resolve<ILogger<QuickBooksService>>();
+                var httpClientFactory = containerProvider.Resolve<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("QuickBooks");
+                var serviceProvider = containerProvider.Resolve<IServiceProvider>();
+
+                // Create the real QuickBooksService instance
+                var realQuickBooksService = new QuickBooksService(
+                    settings,
+                    secretVaultService,
+                    logger,
+                    httpClient,
+                    serviceProvider
+                );
 
                 // Publish the service ready event for LazyQuickBooksService to swap
                 eventAggregator.GetEvent<QuickBooksServiceReadyEvent>().Publish(realQuickBooksService);
 
-                Log.Information("✓ Published QuickBooksServiceReadyEvent with resolved IQuickBooksService");
+                Log.Information("✓ Created real QuickBooksService and published QuickBooksServiceReadyEvent");
                 Log.Debug("LazyQuickBooksService should now swap to real implementation");
 
                 // Publish QuickBooksModuleLoadedEvent as alternate trigger
@@ -76,7 +100,7 @@ namespace WileyWidget.Startup.Modules
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to resolve and publish QuickBooksService - LazyQuickBooksService will remain as stub");
+                Log.Error(ex, "Failed to create and publish QuickBooksService - LazyQuickBooksService will remain as stub");
             }
 
             try

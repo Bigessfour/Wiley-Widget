@@ -26,7 +26,8 @@ namespace WileyWidget.Services.Startup
 
         /// <summary>
         /// Step 1: Enable verbose logging for startup debugging.
-        /// Enhances the existing Serilog configuration with debug-level output.
+        /// Instead of reconfiguring the logger (which causes failures), we use Serilog.Debugging
+        /// and configure the logger correctly from the start in App.xaml.cs static constructor.
         /// </summary>
         public static void EnableVerboseStartupLogging(IConfiguration configuration)
         {
@@ -39,35 +40,24 @@ namespace WileyWidget.Services.Startup
                     return;
                 }
 
-                Log.Information("🔍 DIAGNOSTIC STEP 1: Enabling verbose startup logging");
+                Log.Information("🔍 DIAGNOSTIC STEP 1: Enhanced startup logging active");
 
-                // Ensure logs directory exists
-                Directory.CreateDirectory(LogsDirectory);
+                // Enable Serilog self-diagnostics to troubleshoot logging issues
+                Serilog.Debugging.SelfLog.Enable(msg =>
+                {
+                    Debug.WriteLine($"[SERILOG] {msg}");
+                    File.AppendAllText(
+                        Path.Combine(LogsDirectory, "serilog-diagnostics.txt"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {msg}\n");
+                });
 
-                // Configure enhanced console output for immediate debugging
-                var loggerConfig = new LoggerConfiguration()
-                    .MinimumLevel.Debug()
-                    .Enrich.WithMachineName()
-                    .Enrich.WithProcessId()
-                    .Enrich.WithThreadId()
-                    .Enrich.FromLogContext()
-                    .WriteTo.Console(
-                        outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
-                    .WriteTo.File(
-                        path: Path.Combine(LogsDirectory, "startup-verbose-.txt"),
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 5,
-                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u4}] {MachineName} {ProcessId}:{ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}",
-                        shared: true,
-                        flushToDiskInterval: TimeSpan.FromSeconds(1));
-
-                // Update global logger
-                Log.Logger = loggerConfig.CreateLogger();
-
-                Log.Information("✅ Verbose startup logging enabled");
-                Log.Information("   📁 Debug logs: {LogPath}", Path.Combine(LogsDirectory, "startup-verbose-*.txt"));
-                Log.Information("   🖥️ Console: Enhanced output enabled");
-                Log.Information("   ⚡ Flush interval: 1 second for real-time debugging");
+                Log.Information("   ✅ Serilog self-diagnostics enabled");
+                Log.Information("   📁 Main logs: {LogPath}", Path.Combine(LogsDirectory, "wiley-widget-*.log"));
+                Log.Information("   📁 Self-diagnostics: {LogPath}", Path.Combine(LogsDirectory, "serilog-diagnostics.txt"));
+                Log.Information("   💡 To get verbose logging, configure the logger in App.xaml.cs with:");
+                Log.Information("      - .MinimumLevel.Debug()");
+                Log.Information("      - .Enrich.WithThreadId()");
+                Log.Information("      - .Enrich.WithProcessId()");
 
                 LogSystemInformation();
             }
@@ -254,51 +244,16 @@ namespace WileyWidget.Services.Startup
         /// <summary>
         /// Step 5: Analyze startup logs for exceptions and issues.
         /// Searches recent startup logs for problems.
+        /// DISABLED: This method causes infinite log feedback loops.
         /// </summary>
         public static async Task<(int exceptions, int failures)> AnalyzeRecentStartupLogs()
         {
-            Log.Information("🔍 DIAGNOSTIC STEP 5: Analyzing recent startup logs for exceptions");
-
-            try
-            {
-                var logFiles = Directory.GetFiles(LogsDirectory, "startup*.txt", SearchOption.TopDirectoryOnly);
-                var exceptions = 0;
-                var failures = 0;
-
-                foreach (var logFile in logFiles)
-                {
-                    try
-                    {
-                        var lines = await File.ReadAllLinesAsync(logFile);
-                        foreach (var line in lines)
-                        {
-                            if (line.Contains("Exception", StringComparison.OrdinalIgnoreCase))
-                            {
-                                exceptions++;
-                                Log.Warning("🚨 Exception found in {LogFile}: {Line}", Path.GetFileName(logFile), line.Trim());
-                            }
-                            else if (line.Contains("Failed to resolve", StringComparison.OrdinalIgnoreCase) ||
-                                     line.Contains("Registration failed", StringComparison.OrdinalIgnoreCase))
-                            {
-                                failures++;
-                                Log.Warning("🔧 Resolution failure in {LogFile}: {Line}", Path.GetFileName(logFile), line.Trim());
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "Failed to analyze log file: {LogFile}", logFile);
-                    }
-                }
-
-                Log.Information("✅ Log analysis completed - Exceptions: {Exceptions}, Failures: {Failures}", exceptions, failures);
-                return (exceptions, failures);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "❌ Failed to analyze startup logs");
-                return (0, 0);
-            }
+            // DISABLED: This creates infinite feedback loop
+            // The method reads log files, finds exceptions, and logs warnings
+            // Those warnings get written to log files, which then get read again
+            // This causes exponential log growth (646MB+ files observed)
+            Log.Information("⚠️ DIAGNOSTIC STEP 5 DISABLED: Log analysis causes feedback loops");
+            return await Task.FromResult((0, 0));
         }
 
         #region Private Helper Methods

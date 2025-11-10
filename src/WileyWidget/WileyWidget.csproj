@@ -551,13 +551,10 @@
 
   <!-- Explicit includes for MAIN project (non-wpftmp) -->
   <ItemGroup Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
-    <!-- Include all .cs files EXCEPT shims and test/sample directories -->
+    <!-- Include all .cs files EXCEPT shims and test/sample directories and build output folders -->
     <Compile
         Include="**\*.cs"
-        Exclude="App.Wpftmp.cs;PrismWpftmpShim.cs;src\**;tests\**;samples\**;WileyWidget.Tests\**;WileyWidget.UiTests\**;WileyWidget.IntegrationTests\**;WileyWidget.ContainerTests\**;WileyWidget.Services.Tests\**;temp-grant\**;DatabaseTest\**;DatabaseSetup\**;DatabaseSeederRunner\**;DbTest\**;DbValidator\**;ExcelAnalyzer\**;scripts\**;WileyWidget.Business\**;WileyWidget.Data\**;WileyWidget.Models\**;WileyWidget.Webhooks\**;Models\**\*.cs" />
-
-    <!-- Include SDK-generated files from obj folder (recursive pattern covers all subdirectories) -->
-    <Compile Include="$(IntermediateOutputPath)**\*.g.cs" />
+        Exclude="App.Wpftmp.cs;PrismWpftmpShim.cs;src\**;tests\**;samples\**;WileyWidget.Tests\**;WileyWidget.UiTests\**;WileyWidget.IntegrationTests\**;WileyWidget.ContainerTests\**;WileyWidget.Services.Tests\**;temp-grant\**;DatabaseTest\**;DatabaseSetup\**;DatabaseSeederRunner\**;DbTest\**;DbValidator\**;ExcelAnalyzer\**;scripts\**;WileyWidget.Business\**;WileyWidget.Data\**;WileyWidget.Models\**;WileyWidget.Webhooks\**;Models\**\*.cs;obj\**\*.cs;bin\**\*.cs" />
   </ItemGroup>
 
   <!-- Exclude App.Wpftmp.cs from main project only (not wpftmp) -->

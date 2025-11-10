@@ -232,10 +232,10 @@
                     <!-- Notes Header -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
                         <TextBlock Text="Quick Notes" FontWeight="Bold" />
-                        <TextBlock Text="*" Foreground="{StaticResource ErrorBrush}" FontWeight="Bold"
+                        <TextBlock Text="*" Foreground="{DynamicResource ErrorBrush}" FontWeight="Bold"
                                  Visibility="{Binding NotesHasUnsavedChanges, Converter={StaticResource BoolToVis}}"
-                                 Margin="5,0,0,0" />
-                        <TextBlock Text="(unsaved changes)" Foreground="{StaticResource ErrorBrush}"
+                                 Margin="5,0,0,0"/>
+                        <TextBlock Text="(unsaved changes)" Foreground="{DynamicResource ErrorBrush}"
                                  Visibility="{Binding NotesHasUnsavedChanges, Converter={StaticResource BoolToVis}}"
                                  Margin="2,0,0,0" />
                     </StackPanel>

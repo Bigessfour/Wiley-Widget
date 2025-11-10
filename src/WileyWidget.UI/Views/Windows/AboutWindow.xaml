@@ -56,7 +56,7 @@
                 Text="Wiley Widget"
                 FontSize="24"
                 FontWeight="Bold"
-                Foreground="{StaticResource InfoBrush}" />
+                Foreground="{DynamicResource InfoBrush}" />
             <TextBlock
                 Text="AI Enhanced Utility Rate Study Program"
                 FontSize="14"

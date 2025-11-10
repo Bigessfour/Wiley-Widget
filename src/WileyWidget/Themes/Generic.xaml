@@ -100,10 +100,16 @@
 
   <!-- Boolean Converters -->
   <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+  <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
   <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
+  <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
   <converters:NullToVisibilityConverter x:Key="NullToVis" />
+  <converters:NullToBoolConverter x:Key="NullToBool" />
+  <converters:NullToBoolConverter x:Key="NullToBoolConverter" />
   <converters:StringToVisibilityConverter x:Key="StringToVis" />
   <converters:ZeroToVisibleConverter x:Key="ZeroToVisible" />
+  <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />
+  <converters:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibilityConverter" />
 
   <!-- Other Converters -->
   <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
@@ -111,7 +117,10 @@
   <converters:ComparisonConverter x:Key="ComparisonConverter" />
   <converters:GreaterThanConverter x:Key="GreaterThanConverter" />
   <converters:StringEqualsConverter x:Key="StringEqualsConverter" />
-  <converters:NullToBoolConverter x:Key="NullToBool" />
+  <converters:BooleanToBrushConverter x:Key="BooleanToBrushConverter" />
+  <converters:StatusColorConverter x:Key="StatusColorConverter" />
+  <converters:StatusColorConverter x:Key="StatusToColorConverter" />
+  <converters:UniqueDepartmentsConverter x:Key="UniqueDepartmentsConverter" />
 
   <!-- Chat/AI Converters -->
   <converters:AuthorAlignmentConverter x:Key="MessageAlignmentConverter" />

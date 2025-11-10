@@ -215,8 +215,8 @@
             <!-- Budget Utilization Gauge -->
             <Border
                 Grid.Column="0"
-                Background="{StaticResource CardBackground}"
-                BorderBrush="{StaticResource AccentBlueBrush}"
+                Background="{DynamicResource CardBackground}"
+                BorderBrush="{DynamicResource AccentBlueBrush}"
                 BorderThickness="2"
                 CornerRadius="8"
                 Margin="{StaticResource CardMargin}"
@@ -229,7 +229,7 @@
                     FontWeight="SemiBold"
                     HorizontalAlignment="Center"
                     Margin="0,0,0,10"
-                    Foreground="{StaticResource AccentBlueBrush}" />
+                    Foreground="{DynamicResource AccentBlueBrush}" />
                 <chart:SfChart
                     Height="200"
                     Width="200">
@@ -252,7 +252,7 @@
                     FontSize="24"
                     FontWeight="Bold"
                     HorizontalAlignment="Center"
-                    Foreground="{StaticResource AccentBlueBrush}"
+                    Foreground="{DynamicResource AccentBlueBrush}"
                     Margin="0,5,0,0">
                   <TextBlock.ToolTip>
                     <StackPanel>
@@ -275,7 +275,7 @@
                     Text="{Binding TotalBudget, StringFormat='Total: {0:C0}'}"
                     FontSize="12"
                     HorizontalAlignment="Center"
-                    Foreground="{StaticResource SecondaryTextBrush2}" />
+                    Foreground="{DynamicResource SecondaryTextBrush2}" />
               </StackPanel>
             </Border>
 

@@ -558,5 +558,13 @@
   "docker.images.sortBy": "CreatedTime",
   "docker.showStartPage": false,
   "docker.commands.build": "docker build",
-  "docker.commands.run": "docker run"
+  "docker.commands.run": "docker run",
+  "containers.commands.build": "docker build",
+  "containers.commands.run": "docker run",
+  "containers.containers.groupBy": "None",
+  "containers.containers.label": "application",
+  "containers.containers.sortBy": "CreatedTime",
+  "containers.images.groupBy": "Repository",
+  "containers.images.label": "tag",
+  "containers.images.sortBy": "CreatedTime"
 }
