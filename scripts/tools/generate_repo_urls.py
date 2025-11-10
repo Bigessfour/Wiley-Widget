@@ -466,8 +466,14 @@ class RepositoryAnalyzer:
             sub_cat = "api" if "api" in path_str else "guide" if any(x in path_str for x in ["guide", "tutorial"]) else "general"
             return "documentation", sub_cat
 
+        # CSX (C# Script) files - explicit handling for test infrastructure
+        if extension == ".csx":
+            if "test" in path_str or "examples" in path_str:
+                return "test", "integration"
+            return "automation", "scripts"
+
         # Automation scripts
-        if extension in [".ps1", ".psm1", ".psd1", ".py", ".sh", ".bat", ".csx"]:
+        if extension in [".ps1", ".psm1", ".psd1", ".py", ".sh", ".bat"]:
             if "test" in path_str:
                 return "automation", "test-scripts"
             elif "maintenance" in path_str or "cleanup" in filename:
