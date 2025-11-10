@@ -441,7 +441,7 @@ class RepositoryAnalyzer:
         Returns: (category, sub_category)
         """
         path_str = str(file_path).lower().replace("\\", "/")
-        path_parts = path_str.split("/")
+        path_str.split("/")
         filename = file_path.name.lower()
         extension = file_path.suffix.lower()
 
@@ -1283,8 +1283,6 @@ class RepositoryAnalyzer:
                 "last_security_scan": datetime.now().isoformat(),
             }
 
-        vulnerable_packages = []
-        outdated_packages = []
 
         # Use dictionaries for immediate deduplication
         vuln_dict = {}
@@ -1455,6 +1453,10 @@ class RepositoryAnalyzer:
         """Build hierarchical folder structure as nested dict."""
         print("Building folder tree...")
 
+        max_depth = self.config.get("tree_max_depth", 4)
+        max_entries = self.config.get("max_tree_entries_per_dir", 50)
+        emit_full_tree = self.config.get("emit_full_tree", False)
+
         root = {
             "name": self.root_path.name,
             "type": "directory",
@@ -1467,13 +1469,28 @@ class RepositoryAnalyzer:
             relative = file_path.relative_to(self.root_path)
             parts = relative.parts
 
+            # Skip if depth exceeds limit (unless emit_full_tree is enabled)
+            if not emit_full_tree and len(parts) > max_depth:
+                continue
+
             # Build directory structure
             current = root
             current_path = []
 
-            for i, part in enumerate(parts[:-1]):  # All but last (file name)
+            for _part_idx, part in enumerate(parts[:-1]):  # All but last (file name)
                 current_path.append(part)
                 path_key = "/".join(current_path)
+
+                # Check entry limit per directory (unless emit_full_tree is enabled)
+                if not emit_full_tree and len(current["children"]) >= max_entries:
+                    # Add truncation marker if not already present
+                    if not any(c.get("name") == "..." for c in current["children"]):
+                        current["children"].append({
+                            "name": "...",
+                            "type": "truncated",
+                            "note": f"Additional entries truncated (limit: {max_entries})"
+                        })
+                    break
 
                 # Find or create directory entry
                 existing = next((c for c in current["children"] if c["name"] == part and c["type"] == "directory"), None)
@@ -1489,8 +1506,8 @@ class RepositoryAnalyzer:
                 else:
                     current = existing
 
-            # Add file
-            if parts:  # Ensure we have parts
+            # Add file (respect entry limit unless emit_full_tree)
+            if parts and (emit_full_tree or len(current["children"]) < max_entries):
                 current["children"].append({
                     "name": parts[-1],
                     "type": "file",
@@ -1500,12 +1517,37 @@ class RepositoryAnalyzer:
         # Sort children recursively
         def sort_tree(node):
             if "children" in node:
-                node["children"].sort(key=lambda x: (x["type"] == "file", x["name"]))
+                # Keep truncation markers at the end
+                truncated = [c for c in node["children"] if c.get("type") == "truncated"]
+                non_truncated = [c for c in node["children"] if c.get("type") != "truncated"]
+                non_truncated.sort(key=lambda x: (x["type"] == "file", x["name"]))
+                node["children"] = non_truncated + truncated
                 for child in node["children"]:
-                    sort_tree(child)
+                    if child.get("type") != "truncated":
+                        sort_tree(child)
 
         sort_tree(root)
+
+        tree_stats = self._count_tree_nodes(root)
+        print(f"  Folder tree: {tree_stats['dirs']} directories, {tree_stats['files']} files, depth={tree_stats['max_depth']}")
+
         return root
+
+    def _count_tree_nodes(self, node: Dict, depth: int = 0) -> Dict:
+        """Count nodes in tree for statistics."""
+        stats = {"dirs": 0, "files": 0, "max_depth": depth}
+
+        if node.get("type") == "directory":
+            stats["dirs"] = 1
+            for child in node.get("children", []):
+                child_stats = self._count_tree_nodes(child, depth + 1)
+                stats["dirs"] += child_stats["dirs"]
+                stats["files"] += child_stats["files"]
+                stats["max_depth"] = max(stats["max_depth"], child_stats["max_depth"])
+        elif node.get("type") == "file":
+            stats["files"] = 1
+
+        return stats
 
     def _extract_license_info(self) -> Dict:
         """Extract license information from LICENSE file."""
@@ -1804,7 +1846,10 @@ class RepositoryAnalyzer:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate AI-Fetchable Manifest")
+    parser = argparse.ArgumentParser(
+        description="Generate AI-Fetchable Manifest for Wiley Widget Repository",
+        epilog="Example: python generate_repo_urls.py --output manifest.json --depth 6 --full-tree"
+    )
     parser.add_argument(
         "-o",
         "--output",
@@ -1814,12 +1859,27 @@ def main():
     parser.add_argument(
         "-c",
         "--categories",
-        help="Comma-separated list of categories to include (e.g., source_code,documentation)",
+        help="Comma-separated list of categories to include (e.g., source_code,documentation,test)",
     )
     parser.add_argument(
         "--config",
         default=DEFAULT_CONFIG_FILE,
         help=f"Config file path (default: {DEFAULT_CONFIG_FILE})",
+    )
+    parser.add_argument(
+        "--depth",
+        type=int,
+        help="Maximum folder tree depth (overrides config, default: 4)",
+    )
+    parser.add_argument(
+        "--full-tree",
+        action="store_true",
+        help="Emit full folder tree without truncation (overrides config)",
+    )
+    parser.add_argument(
+        "--max-entries",
+        type=int,
+        help="Maximum entries per directory in tree (overrides config, default: 50)",
     )
 
     args = parser.parse_args()
@@ -1838,6 +1898,20 @@ def main():
                 return
 
     analyzer = RepositoryAnalyzer(args.config)
+
+    # Override config with command-line arguments
+    if args.depth is not None:
+        analyzer.config["tree_max_depth"] = args.depth
+        print(f"Overriding tree depth to: {args.depth}")
+
+    if args.full_tree:
+        analyzer.config["emit_full_tree"] = True
+        print("Enabled full tree emission (no truncation)")
+
+    if args.max_entries is not None:
+        analyzer.config["max_tree_entries_per_dir"] = args.max_entries
+        print(f"Overriding max entries per directory to: {args.max_entries}")
+
     analyzer.generate_manifest(args.output, filter_categories)
 
 

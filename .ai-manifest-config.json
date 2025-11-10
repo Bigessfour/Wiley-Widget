@@ -11,5 +11,17 @@
     "WileyWidget\\.UI/",
     "WileyWidget\\.Webhooks/"
   ],
-  "focus_mode": false
+  "focus_mode": false,
+  "max_files": 3000,
+  "emit_full_tree": true,
+  "tree_max_depth": 6,
+  "max_tree_entries_per_dir": 100,
+  "include_paths": [
+    "scripts/examples/csharp/*.csx",
+    "scripts/tests/*.csx",
+    "tools/explore/*.csx",
+    "sql/*.sql"
+  ],
+  "test_file_summary_length": 50000,
+  "max_summary_length": 2000
 }
