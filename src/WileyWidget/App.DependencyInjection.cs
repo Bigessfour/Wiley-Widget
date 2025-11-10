@@ -133,6 +133,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -142,6 +143,7 @@ using System.Reflection;
 using DryIoc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Prism.Container.DryIoc;
@@ -254,10 +256,6 @@ namespace WileyWidget
             // Register diagnostics service (Phase 2: Extracted from App.xaml.cs)
             containerRegistry.RegisterSingleton<WileyWidget.Services.Startup.IDiagnosticsService, WileyWidget.Services.Startup.DiagnosticsService>();
             Log.Information("✓ Diagnostics service registered");
-
-            // Register enhanced diagnostics service for comprehensive startup debugging
-            containerRegistry.RegisterSingleton<WileyWidget.Services.Startup.IEnhancedDiagnosticsService, WileyWidget.Services.Startup.EnhancedDiagnosticsService>();
-            Log.Information("✓ Enhanced diagnostics service registered");
 
             // Register Prism error handler for navigation and region behavior error handling
             containerRegistry.RegisterSingleton<Services.IPrismErrorHandler, Services.PrismErrorHandler>();
@@ -782,21 +780,65 @@ namespace WileyWidget
                     client.Timeout = TimeSpan.FromSeconds(120);
                 });
 
-                // Add DbContext factory if connection string exists
+                // Enhanced DbContext factory registration with comprehensive validation and fallback
                 var connectionString = configuration.GetConnectionString("DefaultConnection");
-                if (!string.IsNullOrWhiteSpace(connectionString))
+
+                // Validate connection string with graceful degradation (inline validation for now)
+                bool isValid = !string.IsNullOrWhiteSpace(connectionString);
+                var warnings = new List<string>();
+                var fallbackConnectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
+
+                if (!isValid)
                 {
-                    serviceCollection.AddDbContextFactory<WileyWidget.Data.AppDbContext>(options =>
-                    {
-                        options.UseSqlServer(connectionString, sqlOptions =>
-                        {
-                            sqlOptions.EnableRetryOnFailure(maxRetryCount: 3);
-                            sqlOptions.CommandTimeout(30);
-                        });
-                    });
+                    warnings.Add("Database connection string not configured - using fallback");
+                    Log.Warning("⚠ DB Connection: Database connection string not configured - using fallback");
                 }
 
-                // Build ServiceProvider to extract configured services
+                // Use validated or fallback connection string
+                var finalConnectionString = isValid ? connectionString! : fallbackConnectionString;
+
+                // Enhanced DbContextFactory registration mirroring DatabaseConfiguration.ConfigureAppDbContext
+                serviceCollection.AddDbContextFactory<WileyWidget.Data.AppDbContext>((sp, options) =>
+                {
+                    // Mirror DatabaseConfiguration.ConfigureAppDbContext configuration
+                    var logger = sp.GetService<ILogger<WileyWidget.Data.AppDbContext>>() ??
+                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<WileyWidget.Data.AppDbContext>();
+                    var hostEnvironment = sp.GetService<IHostEnvironment>();
+                    var environmentName = hostEnvironment?.EnvironmentName ?? "Production";
+
+                    logger.LogInformation("🔍 Enhanced DbContextFactory: Configuring for {Environment} environment", environmentName);
+
+                    // STEP 1: Configure general EF options (including warnings) BEFORE provider configuration
+                    // This prevents ArgumentException in EF Core 9.0 due to options builder state conflicts
+                    ConfigureEnterpriseDbContextOptions(options, logger);
+
+                    // STEP 2: Enable service provider caching for enhanced performance
+                    options.EnableServiceProviderCaching();
+
+                    // STEP 3: Configure SQL Server provider with enhanced options
+                    ConfigureEnhancedSqlServer(options, finalConnectionString, logger, environmentName);
+
+                    // STEP 4: Add interceptors if available (non-fatal if missing)
+                    try
+                    {
+                        var auditInterceptorType = Type.GetType("WileyWidget.Data.Interceptors.AuditInterceptor, WileyWidget.Data");
+                        if (auditInterceptorType != null)
+                        {
+                            var auditInterceptorInstance = sp.GetService(auditInterceptorType);
+                            if (auditInterceptorInstance is Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor efInterceptor)
+                            {
+                                options.AddInterceptors(efInterceptor);
+                                logger.LogDebug("✓ AuditInterceptor attached to DbContext options");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "⚠ Failed to attach AuditInterceptor to DbContext options (non-fatal)");
+                    }
+
+                    logger.LogInformation("✓ Enhanced DbContextFactory configured successfully");
+                }, ServiceLifetime.Singleton); // Singleton factory, creates scoped contexts                // Build ServiceProvider to extract configured services
                 var serviceProvider = serviceCollection.BuildServiceProvider();
 
                 // Register services in DryIoc from the ServiceProvider
@@ -811,22 +853,23 @@ namespace WileyWidget
                 // Use the registry (IContainerExtension) to populate the services
                 ((IContainerExtension)registry).Populate(loggingServices);
 
-                Log.Information("✓ ILoggerFactory registered (Serilog bridge)");                Log.Information("✓ ILoggerFactory registered (Serilog bridge)");
+                Log.Information("✓ ILoggerFactory registered (Serilog bridge)");
                 Log.Information("✓ ILogger<T> generic factory registered");
 
                 var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
                 registry.RegisterInstance<IHttpClientFactory>(httpClientFactory);
                 Log.Information("✓ IHttpClientFactory registered with Default, QuickBooks, and XAI clients");
 
-                if (!string.IsNullOrWhiteSpace(connectionString))
+                // Enhanced DbContextFactory registration with graceful fallback
+                if (!string.IsNullOrWhiteSpace(finalConnectionString))
                 {
                     var dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>>();
                     registry.RegisterInstance(dbContextFactory);
-                    Log.Information("✓ IDbContextFactory<AppDbContext> registered");
+                    Log.Information("✓ Enhanced IDbContextFactory<AppDbContext> registered");
                 }
                 else
                 {
-                    Log.Warning("⚠ No DefaultConnection found - database features will be unavailable");
+                    Log.Warning("⚠ Enhanced DbContextFactory registration failed - database features will be unavailable");
                 }
 
                 Log.Information("✓ Core infrastructure registration complete");
@@ -1179,6 +1222,64 @@ namespace WileyWidget
                 Log.Warning(ex, "Failed to validate AI configuration via StartupEnvironmentValidator");
             }
         }
+
+        #region Enhanced DbContextFactory Helper Methods
+
+        /// <summary>
+        /// Configures enterprise-grade DbContext options mirroring DatabaseConfiguration.ConfigureEnterpriseDbContextOptions.
+        /// This method ensures proper warning configuration and prevents EF Core 9.0 state conflicts.
+        /// </summary>
+        private static void ConfigureEnterpriseDbContextOptions(DbContextOptionsBuilder options, Microsoft.Extensions.Logging.ILogger logger)
+        {
+            // Enable sensitive data logging in development only
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                options.EnableSensitiveDataLogging();
+                logger.LogInformation("Sensitive data logging enabled for local diagnostics");
+            }
+            options.EnableDetailedErrors();
+
+            // Configure query tracking
+            options.UseQueryTrackingBehavior(Microsoft.EntityFrameworkCore.QueryTrackingBehavior.TrackAll);
+
+            // Configure warnings - this mirrors AppDbContext.OnConfiguring and Prompt 3 requirements
+            options.ConfigureWarnings(warnings =>
+            {
+                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.MultipleCollectionIncludeWarning);
+            });
+
+            // Add EF Core logging
+            options.LogTo(message => logger.LogDebug("EF Core: {Message}", message),
+                new[] { Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuted });
+
+            logger.LogInformation("✓ Enterprise DbContext options configured");
+        }
+
+        /// <summary>
+        /// Configures enhanced SQL Server connection mirroring DatabaseConfiguration.ConfigureSqlServer.
+        /// Includes retry policies, command timeout, and migrations assembly configuration.
+        /// </summary>
+        private static void ConfigureEnhancedSqlServer(DbContextOptionsBuilder options, string connectionString, Microsoft.Extensions.Logging.ILogger logger, string environmentName)
+        {
+            options.UseSqlServer(connectionString, sqlOptions =>
+            {
+                // Specify migrations assembly since DbContext is in WileyWidget.Data project
+                sqlOptions.MigrationsAssembly("WileyWidget.Data");
+
+                // Enhanced retry configuration mirroring DatabaseConfiguration
+                sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null);
+
+                // Connection timeout
+                sqlOptions.CommandTimeout(30);
+            });
+
+            logger.LogInformation("✅ Enhanced SQL Server connection configured for {Environment} environment", environmentName);
+        }
+
+        #endregion
 
         #endregion
 

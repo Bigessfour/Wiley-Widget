@@ -68,6 +68,13 @@ trim_trailing_whitespace = false
 indent_style = space
 indent_size = 2
 
+# C# Script files (CSX) - Suppress false positives
+[*.csx]
+indent_style = space
+indent_size = 4
+# CS8803: Top-level statements are supported in CSX scripts
+dotnet_diagnostic.CS8803.severity = none
+
 ##########################
 # .NET Code Analysis Rules - PRACTICAL FOCUS
 ##########################

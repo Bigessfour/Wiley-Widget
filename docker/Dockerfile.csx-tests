@@ -14,6 +14,48 @@ WORKDIR /app
 RUN dotnet tool install -g dotnet-script \
     && dotnet nuget locals all --clear
 
+# === Pre-cache common NuGet packages for CSX tests ===
+# Set the NuGet package cache directory for optimal caching
+ENV NUGET_PACKAGES=/tmp/csharp-mcp-packages
+
+# Create temporary project to restore common packages used in CSX tests
+RUN dotnet new console -n TempCacheProject && \
+    cd TempCacheProject && \
+    # Add Microsoft.Extensions packages commonly used in WileyWidget CSX tests \
+    dotnet add package Microsoft.Extensions.DependencyInjection --version 9.0.10 && \
+    dotnet add package Microsoft.Extensions.Configuration --version 9.0.10 && \
+    dotnet add package Microsoft.Extensions.Hosting --version 9.0.10 && \
+    dotnet add package Microsoft.Extensions.Logging --version 9.0.10 && \
+    dotnet add package Microsoft.Extensions.Logging.Abstractions --version 9.0.10 && \
+    # Add Entity Framework Core packages for DbContext tests \
+    dotnet add package Microsoft.EntityFrameworkCore --version 9.0.10 && \
+    dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 9.0.10 && \
+    dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 9.0.10 && \
+    # Add Prism and DryIoc packages for DI registration tests \
+    dotnet add package Prism.Container.DryIoc --version 9.0.107 && \
+    dotnet add package Prism.Core --version 9.0.537 && \
+    dotnet add package Prism.DryIoc --version 9.0.537 && \
+    dotnet add package DryIoc --version 5.4.3 && \
+    # Add testing frameworks \
+    dotnet add package Xunit --version 2.4.2 && \
+    dotnet add package Moq --version 4.20.72 && \
+    dotnet add package FluentAssertions --version 6.12.0 && \
+    # Add logging and serialization packages \
+    dotnet add package Serilog --version 4.2.0 && \
+    dotnet add package Serilog.Sinks.Console --version 6.0.0 && \
+    dotnet add package Newtonsoft.Json --version 13.0.3 && \
+    dotnet add package System.Text.Json --version 9.0.10 && \
+    # Add system packages for regex and process management \
+    dotnet add package System.Text.RegularExpressions --version 4.3.1 && \
+    dotnet add package System.Diagnostics.Process --version 4.3.0 && \
+    # Restore all packages to cache them \
+    dotnet restore && \
+    # Clean up temporary project but keep cached packages \
+    cd .. && rm -rf TempCacheProject
+
+# Verify cache directory exists and has packages
+RUN ls -la /tmp/csharp-mcp-packages && echo "NuGet cache populated successfully"
+
 # === Runtime Stage ===
 FROM base AS runtime
 

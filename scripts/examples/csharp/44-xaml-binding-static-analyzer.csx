@@ -117,7 +117,7 @@ string logsDir = Environment.GetEnvironmentVariable("WW_LOGS_DIR") ?? Path.Combi
 Directory.CreateDirectory(logsDir);
 
 // Scope: UI views
-string viewsRoot = Path.Combine(repoRoot, "WileyWidget.UI", "Views");
+string viewsRoot = Path.Combine(repoRoot, "src", "WileyWidget.UI", "Views");
 if (!Directory.Exists(viewsRoot))
 {
     Console.WriteLine($"Views folder not found: {viewsRoot}");

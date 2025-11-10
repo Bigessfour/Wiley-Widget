@@ -115,8 +115,10 @@ public static class DatabaseConfiguration
         logger.LogInformation("🔍 DEBUG: SQL Server connection string configured for {Environment}",
             environmentName);
 
-        ConfigureSqlServer(options, connectionString, logger, environmentName);
+        // FIXED: Configure general EF options (including warnings) BEFORE provider configuration
+        // This prevents ArgumentException in EF Core 9.0 due to options builder state conflicts
         ConfigureEnterpriseDbContextOptions(options, logger);
+        ConfigureSqlServer(options, connectionString, logger, environmentName);
 
         // Add registered interceptors (AuditInterceptor) into DbContext options
         try

@@ -103,7 +103,7 @@
   "powershell.enableReferencesCodeLens": true,
   "powershell.enableScriptAnalysis": true,
   "powershell.enableSignatureHelp": false,
-  "powershell.scriptAnalysis.settingsPath": ".vscode\\PSScriptAnalyzerSettings.psd1",
+  "powershell.scriptAnalysis.settingsPath": "scripts/PSScriptAnalyzerSettings.psd1",
   "powershell.codeFormatting.preset": "OTBS",
   "powershell.codeFormatting.autoCorrectAliases": false,
   "powershell.codeFormatting.useCorrectCasing": false,
@@ -547,5 +547,16 @@
   "continue.enableConsole": true, // Enable Continue Console for prompt logs
   "continue.telemetry.enabled": false, // Privacy: Align with your config.json
   "continue.agentMode": "auto", // Proactive for Grok agentic use
-  "continue.verboseLogging": true // Temporary for debugging; disable later
+  "continue.verboseLogging": true, // Temporary for debugging; disable later
+
+  // Docker Extension Configuration
+  "docker.containers.label": "application",
+  "docker.containers.groupBy": "None",
+  "docker.containers.sortBy": "CreatedTime",
+  "docker.images.label": "tag",
+  "docker.images.groupBy": "Repository",
+  "docker.images.sortBy": "CreatedTime",
+  "docker.showStartPage": false,
+  "docker.commands.build": "docker build",
+  "docker.commands.run": "docker run"
 }

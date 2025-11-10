@@ -505,7 +505,10 @@
 			"label": "dotnet:clean-build-server",
 			"type": "shell",
 			"command": "dotnet",
-			"args": ["build-server", "shutdown"],
+			"args": [
+				"build-server",
+				"shutdown"
+			],
 			"presentation": {
 				"echo": true,
 				"reveal": "silent",
@@ -522,7 +525,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				   "${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
+				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
 			"presentation": {
 				"echo": true,
@@ -755,7 +758,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				   "${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
+				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
 			"presentation": {
 				"echo": true,
@@ -797,7 +800,9 @@
 				"--results-directory",
 				"${workspaceFolder}/TestResults"
 			],
-			"dependsOn": ["kill-test-processes"],
+			"dependsOn": [
+				"kill-test-processes"
+			],
 			"presentation": {
 				"echo": true,
 				"reveal": "always",
@@ -990,6 +995,357 @@
 			},
 			"problemMatcher": [],
 			"group": "none"
+		},
+		{
+			"label": "csx:run-45-dbcontextfactory-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/45-dbcontextfactory-integration-test.csx"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "csx:run-49-database-initializer-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/49-database-initializer-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"isBackground": false,
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-50-startup-orchestrator-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/50-startup-orchestrator-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"isBackground": false,
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-51-database-initializer-dependencies-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/51-database-initializer-dependencies-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"isBackground": false,
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-52-database-initializer-fluent-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/52-database-initializer-fluent-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"isBackground": false,
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-all-database-initializer-tests",
+			"dependsOn": [
+				"csx:run-49-database-initializer-test",
+				"csx:run-51-database-initializer-dependencies-test",
+				"csx:run-52-database-initializer-fluent-test"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "echo All DatabaseInitializer CSX tests completed",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true
+			},
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "Docker: Build Enhanced CSX Image",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"build",
+				"-t",
+				"wiley-widget/csx-mcp:enhanced",
+				"-f",
+				"${workspaceFolder}/docker/Dockerfile.csx-tests",
+				"${workspaceFolder}"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Docker: Start Dev Environment",
+			"type": "shell",
+			"command": "docker-compose",
+			"args": [
+				"-f",
+				"${workspaceFolder}/docker-compose.dev.yml",
+				"up",
+				"-d",
+				"wiley-widget-dev"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"dependsOn": "Docker: Build Enhanced CSX Image",
+			"problemMatcher": []
+		},
+		{
+			"label": "Docker: Stop Dev Environment",
+			"type": "shell",
+			"command": "docker-compose",
+			"args": [
+				"-f",
+				"${workspaceFolder}/docker-compose.dev.yml",
+				"down"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Docker: Run CSX Test in Container",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w", "/app",
+				"-v", "${workspaceFolder}/scripts/examples/csharp:/app:ro",
+				"-v", "${workspaceFolder}/logs:/logs:rw",
+				"-v", "${workspaceFolder}/test-logs:/test-logs:rw",
+				"-e", "WW_REPO_ROOT=/app",
+				"-e", "WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:enhanced",
+				"${input:csxTestFile}"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"dependsOn": "Docker: Build Enhanced CSX Image",
+			"problemMatcher": []
+		},
+		{
+			"label": "Docker: Interactive CSX Shell",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-it",
+				"-w", "/app",
+				"-v", "${workspaceFolder}:/app:rw",
+				"-e", "WW_REPO_ROOT=/app",
+				"-e", "WW_LOGS_DIR=/app/logs",
+				"wiley-widget/csx-mcp:enhanced",
+				"/bin/bash"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"dependsOn": "Docker: Build Enhanced CSX Image",
+			"isBackground": false,
+			"runOptions": {
+				"runOn": "folderOpen"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Docker: Show Container Logs",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"logs",
+				"-f",
+				"wiley-widget-csx-dev"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Docker: Clean Up Containers and Images",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"docker container prune -f; docker image prune -f; docker volume prune -f; Write-Host 'Docker cleanup completed'"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Test Explorer: Discover CSX Tests",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Get-ChildItem -Path '${workspaceFolder}/scripts/examples/csharp' -Filter '*.csx' | ForEach-Object { Write-Host \"Found CSX test: $($_.Name)\" }"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
 		}
 	],
 	"inputs": [
@@ -1004,6 +1360,12 @@
 			"type": "promptString",
 			"description": "Path to the script to run (absolute or relative). Example: ${workspaceFolder}/scripts/deploy.ps1",
 			"default": "${workspaceFolder}/scripts"
+		},
+		{
+			"id": "csxTestFile",
+			"type": "promptString",
+			"description": "CSX test file to run (e.g., 44-xaml-binding-static-analyzer.csx)",
+			"default": "44-xaml-binding-static-analyzer.csx"
 		}
 	]
 }
