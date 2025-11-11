@@ -36,11 +36,8 @@
       </ResourceDictionary.MergedDictionaries>
 
       <!-- Converters -->
-      <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-      <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
-      <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
 
-      <!-- Icon Templates for RibbonButtons using MahApps.Metro.IconPacks -->
+<!-- Icon Templates for RibbonButtons using MahApps.Metro.IconPacks -->
       <!-- Action Icons (16x16) -->
       <DataTemplate x:Key="SaveIconTemplate">
         <iconPacks:PackIconMaterial

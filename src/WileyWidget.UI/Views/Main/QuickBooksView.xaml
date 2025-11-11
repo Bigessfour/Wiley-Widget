@@ -31,9 +31,8 @@
         </Style>
 
         <!-- Converters -->
-        <converters:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
-        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
-    </UserControl.Resources>
+
+</UserControl.Resources>
 
     <Grid Margin="20" behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="QuickBooksFocusAnchor">
         <Grid.RowDefinitions>

@@ -115,7 +115,7 @@ namespace WileyWidget.Services.Startup
                     retainedFileCountLimit: 7,
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u4}] {MachineName} {ProcessId}:{ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}",
                     shared: true,
-                    flushToDiskInterval: TimeSpan.FromSeconds(1))
+                    flushToDiskInterval: TimeSpan.Zero)  // Immediate flush for startup diagnostics
                 .WriteTo.Console(
                     outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}");
 
@@ -302,9 +302,20 @@ namespace WileyWidget.Services.Startup
 
         /// <summary>
         /// Analyzes startup logs for exceptions and failures.
+        /// ⚠️ DISABLED: This method causes infinite logging loops.
         /// </summary>
         public async Task<LogAnalysisResult> AnalyzeStartupLogsAsync()
         {
+            var result = new LogAnalysisResult
+            {
+                Success = true,
+                AnalysisError = "Log analysis disabled to prevent infinite feedback loops"
+            };
+
+            _logger.LogInformation("⚠️ Log analysis disabled to prevent infinite logging loops");
+            return await Task.FromResult(result);
+
+            /* ORIGINAL CODE DISABLED
             var result = new LogAnalysisResult();
 
             try
@@ -333,6 +344,7 @@ namespace WileyWidget.Services.Startup
                 result.AnalysisError = ex.Message;
                 return result;
             }
+            */
         }
 
         /// <summary>

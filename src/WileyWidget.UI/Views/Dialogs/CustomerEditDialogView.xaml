@@ -20,8 +20,6 @@
     behaviors:FocusOnLoadBehavior.IsEnabled="True"
     behaviors:FocusOnLoadBehavior.TargetName="FirstFocusable">
   <UserControl.Resources>
-    <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
-    <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
     <ControlTemplate x:Key="ErrorTemplate">
       <DockPanel LastChildFill="True">
         <Border

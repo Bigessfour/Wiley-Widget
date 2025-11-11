@@ -26,10 +26,7 @@
   translucent blurred background effect per Syncfusion FluentDark theme docs and
   FLUENTDARK_ENHANCED_EFFECTS_CONFIGURATION.md -->
   <UserControl.Resources>
-    <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
-
     <!-- Converter for empty collection visibility -->
-    <local:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
 
     <!-- Chat message converters -->
     <local:AuthorBackgroundConverter x:Key="MessageBackgroundConverter" />

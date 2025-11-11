@@ -52,7 +52,8 @@ namespace WileyWidget.Services
                     rollingInterval: RollingInterval.Day,
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                     retainedFileCountLimit: 30,
-                    formatProvider: CultureInfo.InvariantCulture)
+                    formatProvider: CultureInfo.InvariantCulture,
+                    flushToDiskInterval: TimeSpan.Zero)  // Immediate flush for AI operations
                 .CreateLogger();
 
             _logger.LogInformation("AILoggingService initialized with dedicated Serilog file sink at {LogPath}",

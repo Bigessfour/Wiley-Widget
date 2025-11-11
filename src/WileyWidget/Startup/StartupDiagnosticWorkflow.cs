@@ -75,7 +75,7 @@ namespace WileyWidget.Startup
                         retainedFileCountLimit: 7,
                         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u4}] {MachineName} {ProcessId}:{ThreadId} {SourceContext} STACK:{@StackTrace} {Message:lj}{NewLine}{Exception}",
                         shared: true,
-                        flushToDiskInterval: TimeSpan.FromSeconds(1));
+                        flushToDiskInterval: TimeSpan.Zero);  // Immediate flush for startup diagnostics
 
                 // Replace global logger for enhanced debugging
                 Log.Logger = loggerConfig.CreateLogger();
@@ -276,9 +276,22 @@ namespace WileyWidget.Startup
         /// <summary>
         /// Comprehensive log analysis for exceptions and stack traces.
         /// Searches logs directory for startup-*.txt files and analyzes them.
+        /// ⚠️ DISABLED: This method causes infinite logging loops by reading log files,
+        /// finding exceptions, and logging warnings that get written back to logs.
         /// </summary>
         public static async Task<LogAnalysisReport> AnalyzeStartupLogs()
         {
+            _logger?.LogInformation("⚠️ DIAGNOSTIC STEP 5 DISABLED: Log analysis causes infinite feedback loops");
+
+            var report = new LogAnalysisReport
+            {
+                Success = true,
+                AnalysisError = "Log analysis disabled to prevent infinite logging loops"
+            };
+
+            return await Task.FromResult(report);
+
+            /* ORIGINAL CODE DISABLED - CAUSES 1GB+ LOG FILES
             _logger?.LogInformation("🔍 DIAGNOSTIC STEP 5: Analyzing startup logs for exceptions and failures");
 
             var report = new LogAnalysisReport();
@@ -317,6 +330,7 @@ namespace WileyWidget.Startup
             }
 
             return report;
+            */
         }
 
         #region Private Helper Methods

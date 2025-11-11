@@ -446,4 +446,47 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
             _fileLock.Release();
         }
     }
+
+    /// <summary>
+    /// Get diagnostic information about the local secret vault.
+    /// </summary>
+    public async Task<string> GetDiagnosticsAsync()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("=== Local Secret Vault Diagnostics ===");
+        sb.AppendLine($"Secrets File Path: {_secretsPath}");
+        sb.AppendLine($"Directory Exists: {Directory.Exists(Path.GetDirectoryName(_secretsPath) ?? string.Empty)}");
+        sb.AppendLine($"Secrets File Exists: {File.Exists(_secretsPath)}");
+
+        await _fileLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var secrets = await LoadSecretsAsync().ConfigureAwait(false);
+            sb.AppendLine($"Secret Keys Count: {secrets.Count}");
+            sb.AppendLine($"Secret Keys: {string.Join(", ", secrets.Keys)}");
+
+            // Test write permissions
+            var testFile = _secretsPath + ".diag";
+            try
+            {
+                await File.WriteAllTextAsync(testFile, "diag").ConfigureAwait(false);
+                File.Delete(testFile);
+                sb.AppendLine("Write Permissions: OK");
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine($"Write Permissions: FAILED - {ex.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"Error reading secrets: {ex.Message}");
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+
+        return sb.ToString();
+    }
 }

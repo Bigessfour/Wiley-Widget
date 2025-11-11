@@ -148,6 +148,9 @@
         Include="Syncfusion.SfChat.WPF"
         Version="31.2.5" />
     <PackageVersion
+        Include="Syncfusion.Data.WPF"
+        Version="31.2.5" />
+    <PackageVersion
         Include="Syncfusion.SfGauge.WPF"
         Version="31.2.5" />
     <PackageVersion

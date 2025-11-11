@@ -1,340 +1,476 @@
-<UserControl x:Class="WileyWidget.Views.Panels.BudgetPanelView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:WileyWidget.Converters"
-             xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
-             xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
-             xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
-             mc:Ignorable="d"
-             d:DesignHeight="600"
-             d:DesignWidth="800"
-             xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
-    <UserControl.Resources>
-        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <local:BalanceColorConverter x:Key="BalanceColorConverter" />
-
+<UserControl
+    x:Class="WileyWidget.Views.Panels.BudgetPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:WileyWidget.Converters"
+    xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+    xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
+    xmlns:notification="clr-namespace:Syncfusion.Windows.Controls.Notification;assembly=Syncfusion.SfBusyIndicator.WPF"
+    mc:Ignorable="d"
+    d:DesignHeight="600"
+    d:DesignWidth="800"
+    xmlns:prism="http://prismlibrary.com/"
+    prism:ViewModelLocator.AutoWireViewModel="True">
+  <UserControl.Resources>
     <!-- Fluent Dark palette for budget UI -->
-    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FF0F172A" />
-    <SolidColorBrush x:Key="PanelBorderBrush" Color="#FF1F2937" />
-    <SolidColorBrush x:Key="SectionHeaderBrush" Color="#FFCBD5F5" />
-    <SolidColorBrush x:Key="EmphasisBrush" Color="#FF60A5FA" />
-    <SolidColorBrush x:Key="PositiveBrush" Color="#FF22D3EE" />
-    <SolidColorBrush x:Key="NegativeBrush" Color="#FFFB7185" />
+    <SolidColorBrush
+        x:Key="PanelBackgroundBrush"
+        Color="#FF0F172A" />
+    <SolidColorBrush
+        x:Key="PanelBorderBrush"
+        Color="#FF1F2937" />
+    <SolidColorBrush
+        x:Key="SectionHeaderBrush"
+        Color="#FFCBD5F5" />
 
     <!-- SfDataGrid enhancement resources -->
-    <SolidColorBrush x:Key="GridFilterRowBackgroundBrush" Color="#FF1A2233" />
-    <SolidColorBrush x:Key="GridFilterRowForegroundBrush" Color="#FFEFF6FF" />
-    <SolidColorBrush x:Key="GridGroupDropAreaBackgroundBrush" Color="#FF131B2B" />
-    <SolidColorBrush x:Key="GridGroupDropAreaForegroundBrush" Color="#FFC7D2FE" />
-    <SolidColorBrush x:Key="GridSummaryBackgroundBrush" Color="#FF182030" />
-    <SolidColorBrush x:Key="GridSummaryForegroundBrush" Color="#FFE0E6F0" />
-    <SolidColorBrush x:Key="GridSelectionBrush" Color="#665A6FF3" />
-    <SolidColorBrush x:Key="GridSelectionForegroundBrush" Color="#FFF9FAFB" />
-    <SolidColorBrush x:Key="GridHoverBrush" Color="#334C51E0" />
-    <SolidColorBrush x:Key="GridSearchHighlightBrush" Color="#55FACC15" />
+    <SolidColorBrush
+        x:Key="GridFilterRowBackgroundBrush"
+        Color="#FF1A2233" />
+    <SolidColorBrush
+        x:Key="GridFilterRowForegroundBrush"
+        Color="#FFEFF6FF" />
+    <SolidColorBrush
+        x:Key="GridGroupDropAreaBackgroundBrush"
+        Color="#FF131B2B" />
+    <SolidColorBrush
+        x:Key="GridGroupDropAreaForegroundBrush"
+        Color="#FFC7D2FE" />
+    <SolidColorBrush
+        x:Key="GridSummaryBackgroundBrush"
+        Color="#FF182030" />
+    <SolidColorBrush
+        x:Key="GridSummaryForegroundBrush"
+        Color="#FFE0E6F0" />
+    <SolidColorBrush
+        x:Key="GridSelectionBrush"
+        Color="#665A6FF3" />
+    <SolidColorBrush
+        x:Key="GridSelectionForegroundBrush"
+        Color="#FFF9FAFB" />
+    <SolidColorBrush
+        x:Key="GridHoverBrush"
+        Color="#334C51E0" />
+    <SolidColorBrush
+        x:Key="GridSearchHighlightBrush"
+        Color="#55FACC15" />
 
-        <Style x:Key="BudgetFilterRowCellStyle" TargetType="syncfusion:GridFilterRowCell">
-            <Setter Property="Background" Value="{DynamicResource GridFilterRowBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource GridFilterRowForegroundBrush}" />
-        </Style>
+    <Style
+        x:Key="BudgetFilterRowCellStyle"
+        TargetType="syncfusion:GridFilterRowCell">
+      <Setter
+          Property="Background"
+          Value="{DynamicResource GridFilterRowBackgroundBrush}" />
+      <Setter
+          Property="Foreground"
+          Value="{DynamicResource GridFilterRowForegroundBrush}" />
+    </Style>
 
-        <Style x:Key="BudgetGroupDropAreaStyle" TargetType="syncfusion:GroupDropArea">
-            <Setter Property="Background" Value="{DynamicResource GridGroupDropAreaBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource GridGroupDropAreaForegroundBrush}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="12,6" />
-        </Style>
+    <Style
+        x:Key="BudgetGroupDropAreaStyle"
+        TargetType="syncfusion:GroupDropArea">
+      <Setter
+          Property="Background"
+          Value="{DynamicResource GridGroupDropAreaBackgroundBrush}" />
+      <Setter
+          Property="Foreground"
+          Value="{DynamicResource GridGroupDropAreaForegroundBrush}" />
+      <Setter
+          Property="FontWeight"
+          Value="SemiBold" />
+      <Setter
+          Property="Padding"
+          Value="12,6" />
+    </Style>
 
-        <Style x:Key="BudgetSummaryCellStyle" TargetType="syncfusion:GridTableSummaryCell">
-            <Setter Property="Background" Value="{DynamicResource GridSummaryBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource GridSummaryForegroundBrush}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-        </Style>
+    <Style
+        x:Key="BudgetSummaryCellStyle"
+        TargetType="syncfusion:GridTableSummaryCell">
+      <Setter
+          Property="Background"
+          Value="{DynamicResource GridSummaryBackgroundBrush}" />
+      <Setter
+          Property="Foreground"
+          Value="{DynamicResource GridSummaryForegroundBrush}" />
+      <Setter
+          Property="FontWeight"
+          Value="SemiBold" />
+    </Style>
 
-        <Style x:Key="BudgetRowHeaderStyle" TargetType="syncfusion:GridHeaderCellControl">
-            <Setter Property="Background" Value="#FF1F2937" />
-            <Setter Property="Foreground" Value="#FFCBD5F5" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-        </Style>
-    </UserControl.Resources>
+    <Style
+        x:Key="BudgetRowHeaderStyle"
+        TargetType="syncfusion:GridHeaderCellControl">
+      <Setter
+          Property="Background"
+          Value="#FF1F2937" />
+      <Setter
+          Property="Foreground"
+          Value="#FFCBD5F5" />
+      <Setter
+          Property="FontWeight"
+          Value="SemiBold" />
+      <Setter
+          Property="HorizontalContentAlignment"
+          Value="Center" />
+    </Style>
+  </UserControl.Resources>
 
-    <!-- Main Content Area with Busy Indicator -->
-    <notification:SfBusyIndicator IsBusy="{Binding IsLoading}"
-                                 AnimationType="Gear"
-                                 ViewboxWidth="80"
-                                 ViewboxHeight="80"
-                                 Header="Loading Budget Data..."
-                                 Background="#BF0B1120"
-                                 Foreground="{DynamicResource EmphasisBrush}">
-        <Grid Background="{DynamicResource PanelBackgroundBrush}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="250" />
-                <RowDefinition Height="200" />
-            </Grid.RowDefinitions>
+  <!-- Main Content Area with Busy Indicator -->
+  <notification:SfBusyIndicator
+      IsBusy="{Binding IsLoading}"
+      AnimationType="Gear"
+      ViewboxWidth="80"
+      ViewboxHeight="80"
+      Header="Loading Budget Data..."
+      Background="#BF0B1120"
+      Foreground="{DynamicResource EmphasisBrush}">
+    <Grid Background="{DynamicResource PanelBackgroundBrush}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="250" />
+        <RowDefinition Height="200" />
+      </Grid.RowDefinitions>
 
-        <!-- Budget Summary Cards -->
-        <Grid Grid.Row="0" Margin="8">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+      <!-- Budget Summary Cards -->
+      <Grid
+          Grid.Row="0"
+          Margin="8">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-            <!-- Summary Cards -->
-            <WrapPanel Grid.Row="0" Margin="0,0,0,8">
-                <Border BorderBrush="{DynamicResource EmphasisBrush}"
-                        BorderThickness="1"
-                        CornerRadius="10"
-                        Margin="4"
-                        Padding="14"
-                        Background="{DynamicResource PanelBorderBrush}">
-                    <StackPanel>
-                        <TextBlock Text="Total Revenue"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource SectionHeaderBrush}" />
-                        <TextBlock Text="{Binding TotalRevenue, StringFormat=C2}"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource PositiveBrush}" />
-                    </StackPanel>
-                </Border>
+        <!-- Summary Cards -->
+        <WrapPanel
+            Grid.Row="0"
+            Margin="0,0,0,8">
+          <Border
+              BorderBrush="{DynamicResource EmphasisBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Margin="4"
+              Padding="14"
+              Background="{DynamicResource PanelBorderBrush}">
+            <StackPanel>
+              <TextBlock
+                  Text="Total Revenue"
+                  FontWeight="SemiBold"
+                  Foreground="{DynamicResource SectionHeaderBrush}" />
+              <TextBlock
+                  Text="{Binding TotalRevenue, StringFormat=C2}"
+                  FontSize="20"
+                  FontWeight="Bold"
+                  Foreground="{DynamicResource PositiveBrush}" />
+            </StackPanel>
+          </Border>
 
-                <Border BorderBrush="{DynamicResource NegativeBrush}"
-                        BorderThickness="1"
-                        CornerRadius="10"
-                        Margin="4"
-                        Padding="14"
-                        Background="{DynamicResource PanelBorderBrush}">
-                    <StackPanel>
-                        <TextBlock Text="Total Expenses"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource SectionHeaderBrush}" />
-                        <TextBlock Text="{Binding TotalExpenses, StringFormat=C2}"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource NegativeBrush}" />
-                    </StackPanel>
-                </Border>
+          <Border
+              BorderBrush="{DynamicResource NegativeBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Margin="4"
+              Padding="14"
+              Background="{DynamicResource PanelBorderBrush}">
+            <StackPanel>
+              <TextBlock
+                  Text="Total Expenses"
+                  FontWeight="SemiBold"
+                  Foreground="{DynamicResource SectionHeaderBrush}" />
+              <TextBlock
+                  Text="{Binding TotalExpenses, StringFormat=C2}"
+                  FontSize="20"
+                  FontWeight="Bold"
+                  Foreground="{DynamicResource NegativeBrush}" />
+            </StackPanel>
+          </Border>
 
-                <Border BorderBrush="{DynamicResource EmphasisBrush}"
-                        BorderThickness="1"
-                        CornerRadius="10"
-                        Margin="4"
-                        Padding="14"
-                        Background="{DynamicResource PanelBorderBrush}">
-                    <StackPanel>
-                        <TextBlock Text="Net Income"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource SectionHeaderBrush}" />
-                        <TextBlock Text="{Binding NetIncome, StringFormat=C2}"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                   Foreground="{Binding NetIncome, Converter={StaticResource BalanceColorConverter}}" />
-                    </StackPanel>
-                </Border>
+          <Border
+              BorderBrush="{DynamicResource EmphasisBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Margin="4"
+              Padding="14"
+              Background="{DynamicResource PanelBorderBrush}">
+            <StackPanel>
+              <TextBlock
+                  Text="Net Income"
+                  FontWeight="SemiBold"
+                  Foreground="{DynamicResource SectionHeaderBrush}" />
+              <TextBlock
+                  Text="{Binding NetIncome, StringFormat=C2}"
+                  FontSize="20"
+                  FontWeight="Bold"
+                  Foreground="{Binding NetIncome, Converter={StaticResource BalanceColorConverter}}" />
+            </StackPanel>
+          </Border>
 
-                <Border BorderBrush="{DynamicResource EmphasisBrush}"
-                        BorderThickness="1"
-                        CornerRadius="10"
-                        Margin="4"
-                        Padding="14"
-                        Background="{DynamicResource PanelBorderBrush}">
-                    <StackPanel>
-                        <TextBlock Text="Budget Variance"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource SectionHeaderBrush}" />
-                        <TextBlock Text="{Binding BudgetVariance, StringFormat=C2}"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                   Foreground="{Binding BudgetVariance, Converter={StaticResource BalanceColorConverter}}" />
-                    </StackPanel>
-                </Border>
-            </WrapPanel>
-        </Grid>
+          <Border
+              BorderBrush="{DynamicResource EmphasisBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Margin="4"
+              Padding="14"
+              Background="{DynamicResource PanelBorderBrush}">
+            <StackPanel>
+              <TextBlock
+                  Text="Budget Variance"
+                  FontWeight="SemiBold"
+                  Foreground="{DynamicResource SectionHeaderBrush}" />
+              <TextBlock
+                  Text="{Binding BudgetVariance, StringFormat=C2}"
+                  FontSize="20"
+                  FontWeight="Bold"
+                  Foreground="{Binding BudgetVariance, Converter={StaticResource BalanceColorConverter}}" />
+            </StackPanel>
+          </Border>
+        </WrapPanel>
+      </Grid>
 
-        <!-- Budget Data Grid -->
-        <syncfusion:SfDataGrid Grid.Row="1" Margin="8,0,8,8"
-                               ItemsSource="{Binding BudgetEntries}"
-                               AutoGenerateColumns="False"
-                               AllowSorting="True"
-                               AllowFiltering="True"
-                               FilterRowPosition="Top"
-                               ColumnSizer="AutoWithLastColumnFill"
-                               ShowGroupDropArea="True"
-                               GroupDropAreaText="Drag a column header here to group budget items"
-                               AllowGrouping="True"
-                               AllowResizingColumns="True"
-                               RowHeight="35"
-                               AlternationCount="2"
-                               AllowRowHoverHighlighting="True"
-                               ShowRowHeader="True"
-                               EnableDataVirtualization="True"
-                               UsePLINQ="True"
-                               UseLayoutRounding="True"
-                               Background="{DynamicResource PanelBackgroundBrush}"
-                               BorderBrush="{DynamicResource PanelBorderBrush}">
+      <!-- Budget Data Grid -->
+      <syncfusion:SfDataGrid
+          Grid.Row="1"
+          Margin="8,0,8,8"
+          ItemsSource="{Binding BudgetEntries}"
+          AutoGenerateColumns="False"
+          AllowSorting="True"
+          AllowFiltering="True"
+          FilterRowPosition="Top"
+          ColumnSizer="AutoWithLastColumnFill"
+          ShowGroupDropArea="True"
+          GroupDropAreaText="Drag a column header here to group budget items"
+          AllowGrouping="True"
+          AllowResizingColumns="True"
+          RowHeight="35"
+          AlternationCount="2"
+          AllowRowHoverHighlighting="True"
+          ShowRowHeader="True"
+          EnableDataVirtualization="True"
+          UsePLINQ="True"
+          UseLayoutRounding="True"
+          Background="{DynamicResource PanelBackgroundBrush}"
+          BorderBrush="{DynamicResource PanelBorderBrush}">
 
-            <syncfusion:SfDataGrid.GroupColumnDescriptions>
-                <syncfusion:GroupColumnDescription ColumnName="Category" />
-            </syncfusion:SfDataGrid.GroupColumnDescriptions>
+        <syncfusion:SfDataGrid.GroupColumnDescriptions>
+          <syncfusion:GroupColumnDescription ColumnName="Category" />
+        </syncfusion:SfDataGrid.GroupColumnDescriptions>
 
-            <syncfusion:SfDataGrid.GroupSummaryRows>
-                <syncfusion:GridSummaryRow ShowSummaryInRow="True" Title="Group Summary">
-                    <syncfusion:GridSummaryRow.SummaryColumns>
-                        <syncfusion:GridSummaryColumn Name="BudgetSum" MappingName="BudgetAmount" SummaryType="DoubleAggregate" Format="'{Sum:C0}'" />
-                    </syncfusion:GridSummaryRow.SummaryColumns>
-                </syncfusion:GridSummaryRow>
-            </syncfusion:SfDataGrid.GroupSummaryRows>
+        <syncfusion:SfDataGrid.GroupSummaryRows>
+          <syncfusion:GridSummaryRow
+              ShowSummaryInRow="True"
+              Title="Group Summary">
+            <syncfusion:GridSummaryRow.SummaryColumns>
+              <syncfusion:GridSummaryColumn
+                  Name="BudgetSum"
+                  MappingName="BudgetAmount"
+                  SummaryType="DoubleAggregate"
+                  Format="'{Sum:C0}'" />
+            </syncfusion:GridSummaryRow.SummaryColumns>
+          </syncfusion:GridSummaryRow>
+        </syncfusion:SfDataGrid.GroupSummaryRows>
 
-            <syncfusion:SfDataGrid.TableSummaryRows>
-                <syncfusion:GridTableSummaryRow
-                    Position="Bottom"
-                    ShowSummaryInRow="True"
-                    Title="Portfolio Summary — Total Items: {ItemCount} | Combined Budget: {BudgetSum}">
-                    <syncfusion:GridTableSummaryRow.SummaryColumns>
-                        <syncfusion:GridSummaryColumn Name="ItemCount" SummaryType="CountAggregate" Format="'{CountAggregate}'" />
-                        <syncfusion:GridSummaryColumn Name="BudgetSum" MappingName="BudgetAmount" SummaryType="DoubleAggregate" Format="'{Sum:C0}'" />
-                    </syncfusion:GridTableSummaryRow.SummaryColumns>
-                </syncfusion:GridTableSummaryRow>
-            </syncfusion:SfDataGrid.TableSummaryRows>
+        <syncfusion:SfDataGrid.TableSummaryRows>
+          <syncfusion:GridTableSummaryRow
+              Position="Bottom"
+              ShowSummaryInRow="True"
+              Title="Portfolio Summary — Total Items: {ItemCount} | Combined Budget: {BudgetSum}">
+            <syncfusion:GridTableSummaryRow.SummaryColumns>
+              <syncfusion:GridSummaryColumn
+                  Name="ItemCount"
+                  SummaryType="CountAggregate"
+                  Format="'{CountAggregate}'" />
+              <syncfusion:GridSummaryColumn
+                  Name="BudgetSum"
+                  MappingName="BudgetAmount"
+                  SummaryType="DoubleAggregate"
+                  Format="'{Sum:C0}'" />
+            </syncfusion:GridTableSummaryRow.SummaryColumns>
+          </syncfusion:GridTableSummaryRow>
+        </syncfusion:SfDataGrid.TableSummaryRows>
 
-            <syncfusion:SfDataGrid.Columns>
-                <syncfusion:GridTextColumn HeaderText="Account Number" MappingName="AccountNumber" Width="150" />
-                <syncfusion:GridTextColumn HeaderText="Description" MappingName="Description" Width="250" />
-                <syncfusion:GridNumericColumn HeaderText="Budget Amount" MappingName="BudgetedAmount" NumberDecimalDigits="2" Width="120" />
-                <syncfusion:GridNumericColumn HeaderText="Actual Amount" MappingName="ActualAmount" NumberDecimalDigits="2" Width="120" />
-                <syncfusion:GridNumericColumn HeaderText="Variance" MappingName="Variance" NumberDecimalDigits="2" Width="100" />
-                <syncfusion:GridTextColumn HeaderText="Fund Type" MappingName="FundType" Width="100" />
-                <syncfusion:GridNumericColumn HeaderText="Fiscal Year" MappingName="FiscalYear" Width="100" />
-            </syncfusion:SfDataGrid.Columns>
-        </syncfusion:SfDataGrid>
+        <syncfusion:SfDataGrid.Columns>
+          <syncfusion:GridTextColumn
+              HeaderText="Account Number"
+              MappingName="AccountNumber"
+              Width="150" />
+          <syncfusion:GridTextColumn
+              HeaderText="Description"
+              MappingName="Description"
+              Width="250" />
+          <syncfusion:GridNumericColumn
+              HeaderText="Budget Amount"
+              MappingName="BudgetedAmount"
+              NumberDecimalDigits="2"
+              Width="120" />
+          <syncfusion:GridNumericColumn
+              HeaderText="Actual Amount"
+              MappingName="ActualAmount"
+              NumberDecimalDigits="2"
+              Width="120" />
+          <syncfusion:GridNumericColumn
+              HeaderText="Variance"
+              MappingName="Variance"
+              NumberDecimalDigits="2"
+              Width="100" />
+          <syncfusion:GridTextColumn
+              HeaderText="Fund Type"
+              MappingName="FundType"
+              Width="100" />
+          <syncfusion:GridNumericColumn
+              HeaderText="Fiscal Year"
+              MappingName="FiscalYear"
+              Width="100" />
+        </syncfusion:SfDataGrid.Columns>
+      </syncfusion:SfDataGrid>
 
-        <!-- Charts Section -->
-        <Grid Grid.Row="2" Margin="8,0,8,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+      <!-- Charts Section -->
+      <Grid
+          Grid.Row="2"
+          Margin="8,0,8,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-            <!-- Rate Trend Chart -->
-            <syncfusion:SfChart Grid.Column="0" Margin="0,0,4,0"
-                                Header="Rate Trend Analysis"
-                                Background="{DynamicResource PanelBackgroundBrush}"
-                                BorderBrush="{DynamicResource PanelBorderBrush}"
-                                BorderThickness="1">
-                <syncfusion:SfChart.Legend>
-                    <syncfusion:ChartLegend Visibility="Visible" />
-                </syncfusion:SfChart.Legend>
-                <syncfusion:SfChart.PrimaryAxis>
-                    <syncfusion:CategoryAxis Header="Period" />
-                </syncfusion:SfChart.PrimaryAxis>
-                <syncfusion:SfChart.SecondaryAxis>
-                    <syncfusion:NumericalAxis Header="Rate ($)" />
-                </syncfusion:SfChart.SecondaryAxis>
+        <!-- Rate Trend Chart -->
+        <syncfusion:SfChart
+            Grid.Column="0"
+            Margin="0,0,4,0"
+            Header="Rate Trend Analysis"
+            Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource PanelBorderBrush}"
+            BorderThickness="1">
+          <syncfusion:SfChart.Legend>
+            <syncfusion:ChartLegend Visibility="Visible" />
+          </syncfusion:SfChart.Legend>
+          <syncfusion:SfChart.PrimaryAxis>
+            <syncfusion:CategoryAxis Header="Period" />
+          </syncfusion:SfChart.PrimaryAxis>
+          <syncfusion:SfChart.SecondaryAxis>
+            <syncfusion:NumericalAxis Header="Rate ($)" />
+          </syncfusion:SfChart.SecondaryAxis>
 
-                <!-- Current Rate Trend -->
-                <syncfusion:LineSeries ItemsSource="{Binding TrendData}"
-                                       XBindingPath="Period"
-                                       YBindingPath="Amount"
-                                       Label="Budget Amount"
-                                       StrokeThickness="2">
-                    <syncfusion:LineSeries.Interior>
-                        <SolidColorBrush Color="#FF60A5FA" />
-                    </syncfusion:LineSeries.Interior>
-                </syncfusion:LineSeries>
+          <!-- Current Rate Trend -->
+          <syncfusion:LineSeries
+              ItemsSource="{Binding TrendData}"
+              XBindingPath="Period"
+              YBindingPath="Amount"
+              Label="Budget Amount"
+              StrokeThickness="2">
+            <syncfusion:LineSeries.Interior>
+              <SolidColorBrush Color="#FF60A5FA" />
+            </syncfusion:LineSeries.Interior>
+          </syncfusion:LineSeries>
 
-                <!-- Projected Rate Trend -->
-                <syncfusion:LineSeries ItemsSource="{Binding TrendData}"
-                                       XBindingPath="Period"
-                                       YBindingPath="ProjectedAmount"
-                                       Label="Actual Amount"
-                                       StrokeThickness="2">
-                    <syncfusion:LineSeries.Interior>
-                        <SolidColorBrush Color="#FFA500" />
-                    </syncfusion:LineSeries.Interior>
-                </syncfusion:LineSeries>
-            </syncfusion:SfChart>
+          <!-- Projected Rate Trend -->
+          <syncfusion:LineSeries
+              ItemsSource="{Binding TrendData}"
+              XBindingPath="Period"
+              YBindingPath="ProjectedAmount"
+              Label="Actual Amount"
+              StrokeThickness="2">
+            <syncfusion:LineSeries.Interior>
+              <SolidColorBrush Color="#FFA500" />
+            </syncfusion:LineSeries.Interior>
+          </syncfusion:LineSeries>
+        </syncfusion:SfChart>
 
-            <!-- Budget Performance Chart -->
-            <syncfusion:SfChart Grid.Column="1" Margin="4,0,0,0"
-                                Header="Budget Performance"
-                                Background="{DynamicResource PanelBackgroundBrush}"
-                                BorderBrush="{DynamicResource PanelBorderBrush}"
-                                BorderThickness="1">
-                <syncfusion:SfChart.Legend>
-                    <syncfusion:ChartLegend Visibility="Visible" />
-                </syncfusion:SfChart.Legend>
-                <syncfusion:SfChart.PrimaryAxis>
-                    <syncfusion:CategoryAxis Header="Enterprise" />
-                </syncfusion:SfChart.PrimaryAxis>
-                <syncfusion:SfChart.SecondaryAxis>
-                    <syncfusion:NumericalAxis Header="Amount ($)" />
-                </syncfusion:SfChart.SecondaryAxis>
+        <!-- Budget Performance Chart -->
+        <syncfusion:SfChart
+            Grid.Column="1"
+            Margin="4,0,0,0"
+            Header="Budget Performance"
+            Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource PanelBorderBrush}"
+            BorderThickness="1">
+          <syncfusion:SfChart.Legend>
+            <syncfusion:ChartLegend Visibility="Visible" />
+          </syncfusion:SfChart.Legend>
+          <syncfusion:SfChart.PrimaryAxis>
+            <syncfusion:CategoryAxis Header="Enterprise" />
+          </syncfusion:SfChart.PrimaryAxis>
+          <syncfusion:SfChart.SecondaryAxis>
+            <syncfusion:NumericalAxis Header="Amount ($)" />
+          </syncfusion:SfChart.SecondaryAxis>
 
-                <!-- Budgeted Amount -->
-                <syncfusion:ColumnSeries ItemsSource="{Binding TrendData}"
-                                         XBindingPath="Category"
-                                         YBindingPath="Amount"
-                                         Label="Budget">
-                    <syncfusion:ColumnSeries.Interior>
-                        <SolidColorBrush Color="#28A745" />
-                    </syncfusion:ColumnSeries.Interior>
-                </syncfusion:ColumnSeries>
+          <!-- Budgeted Amount -->
+          <syncfusion:ColumnSeries
+              ItemsSource="{Binding TrendData}"
+              XBindingPath="Category"
+              YBindingPath="Amount"
+              Label="Budget">
+            <syncfusion:ColumnSeries.Interior>
+              <SolidColorBrush Color="#28A745" />
+            </syncfusion:ColumnSeries.Interior>
+          </syncfusion:ColumnSeries>
 
-                <!-- Actual Amount -->
-                <syncfusion:ColumnSeries ItemsSource="{Binding TrendData}"
-                                         XBindingPath="Category"
-                                         YBindingPath="ProjectedAmount"
-                                         Label="Actual">
-                    <syncfusion:ColumnSeries.Interior>
-                        <SolidColorBrush Color="#DC3545" />
-                    </syncfusion:ColumnSeries.Interior>
-                </syncfusion:ColumnSeries>
-            </syncfusion:SfChart>
-        </Grid>
+          <!-- Actual Amount -->
+          <syncfusion:ColumnSeries
+              ItemsSource="{Binding TrendData}"
+              XBindingPath="Category"
+              YBindingPath="ProjectedAmount"
+              Label="Actual">
+            <syncfusion:ColumnSeries.Interior>
+              <SolidColorBrush Color="#DC3545" />
+            </syncfusion:ColumnSeries.Interior>
+          </syncfusion:ColumnSeries>
+        </syncfusion:SfChart>
+      </Grid>
 
-        <!-- Budget Analysis & Details -->
-        <Grid Grid.Row="3" Margin="8,0,8,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+      <!-- Budget Analysis & Details -->
+      <Grid
+          Grid.Row="3"
+          Margin="8,0,8,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-            <!-- Break-Even Analysis -->
-            <GroupBox Grid.Column="0" Header="Break-Even Analysis" Margin="0,0,4,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBlock Text="{Binding BreakEvenAnalysisText}"
-                               TextWrapping="Wrap"
-                               Padding="8"
-                               Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                </ScrollViewer>
-            </GroupBox>
+        <!-- Break-Even Analysis -->
+        <GroupBox
+            Grid.Column="0"
+            Header="Break-Even Analysis"
+            Margin="0,0,4,0">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <TextBlock
+                Text="{Binding BreakEvenAnalysisText}"
+                TextWrapping="Wrap"
+                Padding="8"
+                Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+          </ScrollViewer>
+        </GroupBox>
 
-            <!-- Trend Analysis -->
-            <GroupBox Grid.Column="1" Header="Trend Analysis" Margin="2,0,2,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBlock Text="{Binding TrendAnalysisText}"
-                               TextWrapping="Wrap"
-                               Padding="8"
-                               Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                </ScrollViewer>
-            </GroupBox>
+        <!-- Trend Analysis -->
+        <GroupBox
+            Grid.Column="1"
+            Header="Trend Analysis"
+            Margin="2,0,2,0">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <TextBlock
+                Text="{Binding TrendAnalysisText}"
+                TextWrapping="Wrap"
+                Padding="8"
+                Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+          </ScrollViewer>
+        </GroupBox>
 
-            <!-- Recommendations -->
-            <GroupBox Grid.Column="2" Header="Recommendations" Margin="4,0,0,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBlock Text="{Binding RecommendationsText}"
-                               TextWrapping="Wrap"
-                               Padding="8"
-                               Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                </ScrollViewer>
-            </GroupBox>
-        </Grid>
-        </Grid>
-    </notification:SfBusyIndicator>
+        <!-- Recommendations -->
+        <GroupBox
+            Grid.Column="2"
+            Header="Recommendations"
+            Margin="4,0,0,0">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <TextBlock
+                Text="{Binding RecommendationsText}"
+                TextWrapping="Wrap"
+                Padding="8"
+                Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+          </ScrollViewer>
+        </GroupBox>
+      </Grid>
+    </Grid>
+  </notification:SfBusyIndicator>
 </UserControl>

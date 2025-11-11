@@ -18,11 +18,8 @@
     prism:ViewModelLocator.AutoWireViewModel="True">
   <UserControl.Resources>
     <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
-    <local:BudgetProgressConverter x:Key="BudgetProgressConverter" />
-    <local:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibilityConverter" />
-    <local:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />
 
-    <!-- Icon Templates for RibbonButtons using MahApps IconPacks -->
+<!-- Icon Templates for RibbonButtons using MahApps IconPacks -->
     <DataTemplate x:Key="RefreshIconTemplate">
       <iconPacks:PackIconMaterial
           Kind="Refresh"
@@ -791,8 +788,7 @@
             </Border>
           </Grid>
 
-
-          <!-- Main Dashboard Chart Section -->
+<!-- Main Dashboard Chart Section -->
           <TextBlock
               Text="Financial Overview Dashboard"
               FontSize="20"
@@ -866,8 +862,7 @@
             </StackPanel>
           </Border>
 
-
-          <!-- System Alerts Section with Enhanced Formatting -->
+<!-- System Alerts Section with Enhanced Formatting -->
           <TextBlock
               Text="System Alerts and Recent Activity"
               FontSize="20"

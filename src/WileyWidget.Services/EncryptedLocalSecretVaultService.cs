@@ -112,67 +112,87 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         {
             if (File.Exists(_entropyFile))
             {
-                // Load existing entropy (stored encrypted with DPAPI LocalMachine scope)
-                var encryptedEntropyBase64 = File.ReadAllText(_entropyFile);
-                var encryptedEntropy = Convert.FromBase64String(encryptedEntropyBase64);
-
-                // Decrypt entropy using machine-bound DPAPI for additional protection
-                var entropy = ProtectedData.Unprotect(
-                    encryptedEntropy,
-                    null, // No additional entropy for entropy itself (avoid recursion)
-                    DataProtectionScope.LocalMachine); // Machine-bound
-
-                _logger.LogDebug("Loaded entropy from encrypted file");
-                return entropy;
-            }
-            else
-            {
-                // Generate new entropy
-                using var rng = RandomNumberGenerator.Create();
-                var entropy = new byte[32]; // 256 bits
-                rng.GetBytes(entropy);
-
-                // Encrypt entropy with machine-bound DPAPI before saving
-                var encryptedEntropy = ProtectedData.Protect(
-                    entropy,
-                    null,
-                    DataProtectionScope.LocalMachine);
-
-                var encryptedEntropyBase64 = Convert.ToBase64String(encryptedEntropy);
-
-                // Save encrypted entropy (hidden file)
-                File.WriteAllText(_entropyFile, encryptedEntropyBase64);
-                File.SetAttributes(_entropyFile, FileAttributes.Hidden);
-
-                // Restrict entropy file to current user
                 try
                 {
-                    var fi = new FileInfo(_entropyFile);
-                    var sec = fi.GetAccessControl();
-                    var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-                    var user = identity?.User;
-                    if (user != null)
+                    // Load existing entropy (stored encrypted with DPAPI LocalMachine scope)
+                    var encryptedEntropyBase64 = File.ReadAllText(_entropyFile);
+                    var encryptedEntropy = Convert.FromBase64String(encryptedEntropyBase64);
+
+                    // Decrypt entropy using machine-bound DPAPI for additional protection
+                    var entropy = ProtectedData.Unprotect(
+                        encryptedEntropy,
+                        null, // No additional entropy for entropy itself (avoid recursion)
+                        DataProtectionScope.LocalMachine); // Machine-bound
+
+                    _logger.LogDebug("Loaded entropy from encrypted file");
+                    return entropy;
+                }
+                catch (CryptographicException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to decrypt existing entropy file - it may be corrupted or from a different machine/user. Regenerating entropy.");
+                    // Delete corrupted entropy file so we generate new entropy
+                    try
                     {
-                        var rules = sec.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
-                        foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
-                        {
-                            sec.RemoveAccessRule(r);
-                        }
-                        sec.SetOwner(user);
-                        sec.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
-                            System.Security.AccessControl.FileSystemRights.FullControl,
-                            System.Security.AccessControl.AccessControlType.Allow));
-                        fi.SetAccessControl(sec);
+                        File.Delete(_entropyFile);
                     }
+                    catch (Exception deleteEx)
+                    {
+                        _logger.LogWarning(deleteEx, "Failed to delete corrupted entropy file");
+                    }
+                    // Fall through to generate new entropy
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to restrict entropy file ACL - continuing with default permissions");
+                    _logger.LogWarning(ex, "Failed to load existing entropy file. Regenerating entropy.");
+                    // Fall through to generate new entropy
                 }
-
-                _logger.LogInformation("Generated new encryption entropy for secret vault");
-                return entropy;
             }
+
+            // Generate new entropy (executed when file doesn't exist OR loading failed)
+            using var rng = RandomNumberGenerator.Create();
+            var newEntropy = new byte[32]; // 256 bits
+            rng.GetBytes(newEntropy);
+
+            // Encrypt entropy with machine-bound DPAPI before saving
+            var newEncryptedEntropy = ProtectedData.Protect(
+                newEntropy,
+                null,
+                DataProtectionScope.LocalMachine);
+
+            var newEncryptedEntropyBase64 = Convert.ToBase64String(newEncryptedEntropy);
+
+            // Save encrypted entropy (hidden file)
+            File.WriteAllText(_entropyFile, newEncryptedEntropyBase64);
+            File.SetAttributes(_entropyFile, FileAttributes.Hidden);
+
+            // Restrict entropy file to current user
+            try
+            {
+                var fi = new FileInfo(_entropyFile);
+                var sec = fi.GetAccessControl();
+                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                var user = identity?.User;
+                if (user != null)
+                {
+                    var rules = sec.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
+                    foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
+                    {
+                        sec.RemoveAccessRule(r);
+                    }
+                    sec.SetOwner(user);
+                    sec.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
+                        System.Security.AccessControl.FileSystemRights.FullControl,
+                        System.Security.AccessControl.AccessControlType.Allow));
+                    fi.SetAccessControl(sec);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to restrict entropy file ACL - continuing with default permissions");
+            }
+
+            _logger.LogInformation("Generated new encryption entropy for secret vault");
+            return newEntropy;
         }
         catch (Exception ex)
         {

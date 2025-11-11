@@ -17,9 +17,9 @@
              mc:Ignorable="d"
              behaviors:FocusOnLoadBehavior.IsEnabled="True" behaviors:FocusOnLoadBehavior.TargetName="AccountNumberTextBox">
     <UserControl.Resources>
-        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        
         <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
+        
         <ControlTemplate x:Key="ErrorTemplate">
             <DockPanel LastChildFill="True">
                 <Border BorderBrush="{DynamicResource ErrorBorderBrush}" BorderThickness="1" CornerRadius="2" DockPanel.Dock="Right"

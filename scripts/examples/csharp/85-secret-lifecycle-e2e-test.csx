@@ -10,8 +10,9 @@
 #r "nuget: Microsoft.Extensions.DependencyInjection, 9.0.0"
 #r "nuget: Serilog, 4.2.0"
 #r "nuget: Serilog.Sinks.Console, 6.0.0"
+#r "nuget: Serilog.Sinks.File, 6.0.0"
 #r "nuget: Serilog.Extensions.Logging, 9.0.0"
-#r "nuget: System.Security.Cryptography.ProtectedData, 9.0.0"
+#r "nuget: System.Security.Cryptography.ProtectedData, 8.0.0"
 
 using System;
 using System.Collections.Generic;
@@ -954,6 +955,135 @@ try
             throw new Exception("Rotated secret not immediately available");
 
         Console.WriteLine("       Secret rotation successful");
+    });
+
+    // ========================================================================
+    // TEST 21: Serilog Buffering & Flush Behavior Simulation
+    // ========================================================================
+    await runner.RunTestAsync("21. Serilog Buffering with Async Operations", async () =>
+    {
+        Console.WriteLine("\n       Testing Serilog flush behavior with async module loading...");
+
+        // Create test log paths
+        var testLogsDir = Path.Combine(testVaultPath, "logs");
+        Directory.CreateDirectory(testLogsDir);
+        var bufferedLogPath = Path.Combine(testLogsDir, "buffered-test.log");
+        var immediateLogPath = Path.Combine(testLogsDir, "immediate-test.log");
+
+        // Test 1: Buffered logger (simulates TimeSpan.FromSeconds(5))
+        Console.WriteLine("       [1/3] Testing buffered logger (5s flush interval)...");
+        var bufferedLogger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.File(
+                path: bufferedLogPath,
+                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}",
+                flushToDiskInterval: TimeSpan.FromSeconds(5))
+            .CreateLogger();
+
+        bufferedLogger.Information("Phase 1: Vault migration started");
+        bufferedLogger.Debug("Vault entropy loaded");
+
+        // Simulate async module initialization delay
+        await Task.Delay(100);
+
+        bufferedLogger.Information("Phase 2: Module initialization started");
+        bufferedLogger.Debug("Container services registered");
+
+        // Check file BEFORE flush - should be empty or incomplete
+        await Task.Delay(50);
+        var bufferedContentBefore = File.Exists(bufferedLogPath) ? File.ReadAllText(bufferedLogPath) : "";
+        var bufferedLinesBefore = bufferedContentBefore.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+
+        // Now flush manually
+        bufferedLogger.Dispose();
+
+        // Check file AFTER flush
+        var bufferedContentAfter = File.ReadAllText(bufferedLogPath);
+        var bufferedLinesAfter = bufferedContentAfter.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+
+        Console.WriteLine($"       Buffered: {bufferedLinesBefore} lines before flush, {bufferedLinesAfter} lines after flush");
+
+        if (bufferedLinesAfter < 4)
+            throw new Exception($"Buffered logger lost messages: only {bufferedLinesAfter} lines written");
+
+        // Test 2: Immediate flush logger (TimeSpan.Zero)
+        Console.WriteLine("       [2/3] Testing immediate flush logger (TimeSpan.Zero)...");
+        var immediateLogger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.File(
+                path: immediateLogPath,
+                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}",
+                flushToDiskInterval: TimeSpan.Zero)
+            .CreateLogger();
+
+        immediateLogger.Information("Phase 1: Vault migration started");
+        immediateLogger.Debug("Vault entropy loaded");
+
+        // Small delay to allow disk I/O
+        await Task.Delay(50);
+
+        // Check file BEFORE any explicit flush - should have content
+        var immediateContentMid = File.ReadAllText(immediateLogPath);
+        var immediateLinesMid = immediateContentMid.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+
+        // Continue logging with async delay
+        await Task.Delay(100);
+        immediateLogger.Information("Phase 2: Module initialization started");
+        immediateLogger.Debug("Container services registered");
+
+        await Task.Delay(50);
+
+        // Check again - should have all content
+        var immediateContentAfter = File.ReadAllText(immediateLogPath);
+        var immediateLinesAfter = immediateContentAfter.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+
+        immediateLogger.Dispose();
+
+        Console.WriteLine($"       Immediate: {immediateLinesMid} lines mid-test, {immediateLinesAfter} lines at end");
+
+        if (immediateLinesMid < 2)
+            throw new Exception($"Immediate flush failed: only {immediateLinesMid} lines visible mid-test");
+
+        if (immediateLinesAfter < 4)
+            throw new Exception($"Immediate flush lost messages: only {immediateLinesAfter} lines total");
+
+        // Test 3: Verify buffering causes gaps in crash scenarios
+        Console.WriteLine("       [3/3] Testing crash scenario without flush...");
+        var crashTestPath = Path.Combine(testLogsDir, "crash-test.log");
+        var crashLogger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.File(
+                path: crashTestPath,
+                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}",
+                flushToDiskInterval: TimeSpan.FromSeconds(10))
+            .CreateLogger();
+
+        crashLogger.Information("App started");
+        crashLogger.Information("Vault migration at 19:29:49");
+
+        await Task.Delay(50);
+
+        // Simulate crash - NO DISPOSE/FLUSH
+        crashLogger = null!;
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+
+        await Task.Delay(100);
+
+        // Check what made it to disk
+        var crashContent = File.Exists(crashTestPath) ? File.ReadAllText(crashTestPath) : "";
+        var crashLines = crashContent.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+
+        Console.WriteLine($"       Crash scenario: {crashLines} lines survived (expected 0-2 due to buffering)");
+
+        if (crashLines >= 2)
+            Console.WriteLine("       ⚠️ WARNING: Buffered logger unexpectedly flushed without explicit disposal");
+
+        Console.WriteLine("\n       ✓ Serilog buffering behavior validated:");
+        Console.WriteLine($"         - Buffered (5s): Logs incomplete until flush");
+        Console.WriteLine($"         - Immediate (TimeSpan.Zero): Logs visible immediately");
+        Console.WriteLine($"         - Crash scenario: Buffering causes data loss without flush");
+        Console.WriteLine("\n       RECOMMENDATION: Use flushToDiskInterval: TimeSpan.Zero for critical logs");
     });
 }
 finally

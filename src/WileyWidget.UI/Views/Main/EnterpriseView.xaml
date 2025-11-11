@@ -16,11 +16,8 @@
     mc:Ignorable="d">
   <UserControl.Resources>
     <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
-    <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
-    <converters:StatusColorConverter x:Key="StatusColorConverter" />
-    <converters:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
 
-    <!-- Currency Cell Template with Color Indicators -->
+<!-- Currency Cell Template with Color Indicators -->
     <DataTemplate x:Key="CurrencyTemplate">
       <Border
           Background="{Binding Value, Converter={StaticResource BalanceColorConverter}, ConverterParameter=Light}"

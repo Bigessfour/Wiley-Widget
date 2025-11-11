@@ -15,9 +15,6 @@
     prism:ViewModelLocator.AutoWireViewModel="True"
     mc:Ignorable="d">
   <UserControl.Resources>
-    <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
-    <converters:NullToVisibilityConverter x:Key="NullToVis" />
-
     <!-- Status Indicator Template -->
     <DataTemplate x:Key="StatusTemplate">
       <StackPanel Orientation="Horizontal">

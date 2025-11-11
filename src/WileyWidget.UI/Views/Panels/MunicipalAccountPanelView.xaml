@@ -12,9 +12,6 @@
              d:DesignHeight="800"
              d:DesignWidth="1400" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <UserControl.Resources>
-        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
-
         <!-- Error Template for Validation -->
         <ControlTemplate x:Key="ErrorTemplate">
             <DockPanel LastChildFill="True">

@@ -30,12 +30,13 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// Unique identifier (singleton pattern - only one record should exist)
     /// </summary>
     [Key]
-    public int Id { get; set; } = 1;
+    public int Id { get; set; }
 
-    private int _fiscalYearStartMonth = 7; // Default to July (common fiscal year start)
+    private int _fiscalYearStartMonth = 7;
 
     /// <summary>
-    /// Month when fiscal year begins (1-12, where 1 = January)
+    /// Month when fiscal year begins (1-12, where 1 = January).
+    /// Defaults to July (fiscal year often starts in July for educational institutions and some organizations).
     /// </summary>
     [Required]
     [Range(1, 12, ErrorMessage = "Month must be between 1 and 12")]
@@ -114,13 +115,13 @@ public class FiscalYearSettings : INotifyPropertyChanged
         try
         {
             var fiscalStart = new DateTime(referenceDate.Year, FiscalYearStartMonth, FiscalYearStartDay);
-            
+
             // If the reference date is before this year's fiscal start, use last year's fiscal start
             if (referenceDate < fiscalStart)
             {
                 fiscalStart = new DateTime(referenceDate.Year - 1, FiscalYearStartMonth, FiscalYearStartDay);
             }
-            
+
             return fiscalStart;
         }
         catch

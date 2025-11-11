@@ -985,6 +985,14 @@ namespace WileyWidget
                     registry.RegisterInstance(dbContextFactory);
                     Log.Debug("    ✓ IDbContextFactory<AppDbContext> registered (Instance)");
 
+                    // Register AppDbContext as Scoped in DryIoc (creates from factory)
+                    // Use DryIoc-specific API via container cast
+                    var container = (DryIoc.IContainer)registry;
+                    container.Register<WileyWidget.Data.AppDbContext>(
+                        reuse: DryIoc.Reuse.Scoped,
+                        made: DryIoc.Made.Of(() => DryIoc.Arg.Of<Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>>().CreateDbContext()));
+                    Log.Debug("    ✓ AppDbContext registered (Scoped via factory)");
+
                     // Register DbContextOptions<AppDbContext> for DatabaseInitializer and other services
                     // Create options using the same configuration as the factory
                     Log.Debug("  🔧 Creating DbContextOptions<AppDbContext> for DatabaseInitializer...");

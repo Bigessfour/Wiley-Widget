@@ -11,10 +11,6 @@
              mc:Ignorable="d"
              d:DesignHeight="700" d:DesignWidth="1200"
              xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
-    <UserControl.Resources>
-        <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <local:BalanceColorConverter x:Key="BalanceColorConverter" />
-    </UserControl.Resources>
 
     <DockPanel behaviors:MouseFocusBehavior.EnableOnClick="True"
                behaviors:MouseFocusBehavior.EnableOnFirstMove="True">

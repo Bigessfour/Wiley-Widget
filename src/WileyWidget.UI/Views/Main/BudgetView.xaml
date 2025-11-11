@@ -19,11 +19,8 @@
 
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <local:BalanceColorConverter x:Key="BalanceColorConverter" />
-        <converters:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
-        <local:BudgetProgressConverter x:Key="BudgetProgressConverter" />
 
-        <!-- Pie Chart Label Template -->
+<!-- Pie Chart Label Template -->
         <DataTemplate x:Key="PieChartLabelTemplate">
             <TextBlock Text="{Binding Percentage, StringFormat=P0}"
                        FontWeight="Bold"

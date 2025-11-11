@@ -20,9 +20,8 @@
         <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <!-- ZeroToVisibleConverter for empty state handling -->
-        <local:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
 
-        <Style x:Key="ValidationErrorBorder" TargetType="Control">
+<Style x:Key="ValidationErrorBorder" TargetType="Control">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.HasError)}" Value="True">
                     <Setter Property="BorderBrush" Value="Red" />

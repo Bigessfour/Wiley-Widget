@@ -404,6 +404,10 @@
     <PackageReference
         Include="Syncfusion.SfChat.WPF"
         Version="31.2.5" />
+    <!-- Syncfusion.Data.WPF - Explicit reference for SfGrid and SfChart dependencies -->
+    <PackageReference
+        Include="Syncfusion.Data.WPF"
+        Version="31.2.5" />
     <PackageReference
         Include="Syncfusion.SfGauge.WPF"
         Version="31.2.5" />

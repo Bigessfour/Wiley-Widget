@@ -27,11 +27,8 @@
 
       <!-- Converters -->
       <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
-      <converters:BalanceColorConverter x:Key="BalanceColorConverter" />
-      <converters:UniqueDepartmentsConverter x:Key="UniqueDepartmentsConverter" />
-      <converters:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter" />
 
-      <!-- Balance Color Converter -->
+<!-- Balance Color Converter -->
       <Style
           x:Key="PositiveBalanceStyle"
           TargetType="TextBlock">

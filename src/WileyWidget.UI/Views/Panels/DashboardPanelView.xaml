@@ -13,11 +13,6 @@
     d:DesignWidth="1200"
     xmlns:prism="http://prismlibrary.com/"
     prism:ViewModelLocator.AutoWireViewModel="True">
-  <UserControl.Resources>
-    <local:BooleanToVisibilityConverter x:Key="BoolToVis" />
-    <local:BudgetProgressConverter x:Key="BudgetProgressConverter" />
-    <local:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibilityConverter" />
-  </UserControl.Resources>
 
   <!-- Theme is inherited from SfSkinManager.ApplicationTheme (App.xaml.cs) -->
   <Grid

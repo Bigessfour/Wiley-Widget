@@ -11,7 +11,7 @@ namespace WileyWidget.Tests.Data
         [Fact]
         public async Task MigrateSecretsFromEnvironment_CreatesVaultAndPassesDiagnostics()
         {
-            var logger = NullLoggerFactory.Instance.CreateLogger<EncryptedLocalSecretVaultService>();
+            var logger = NullLogger<EncryptedLocalSecretVaultService>.Instance;
             using var svc = new EncryptedLocalSecretVaultService(logger);
 
             // Ensure we can call migration without exceptions

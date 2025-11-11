@@ -136,20 +136,6 @@
   <!-- These are custom to Wiley Widget and don't come from Syncfusion       -->
   <!-- ====================================================================== -->
 
-  <!-- Semantic Brushes -->
-  <SolidColorBrush
-      x:Key="SuccessBrush"
-      Color="#4CAF50" />
-  <SolidColorBrush
-      x:Key="WarningBrush"
-      Color="#FF9800" />
-  <SolidColorBrush
-      x:Key="ErrorBrush"
-      Color="#F44336" />
-  <SolidColorBrush
-      x:Key="InfoBrush"
-      Color="#2196F3" />
-
   <!-- Data Visualization Brushes -->
   <SolidColorBrush
       x:Key="PositiveBrush"
@@ -177,6 +163,171 @@
 
   <!-- ====================================================================== -->
   <!-- SPACING SYSTEM (Layout Consistency)                                   -->
+  <!-- ====================================================================== -->
+
+  <!-- ====================================================================== -->
+  <!-- BRUSH RESOURCES                                                        -->
+  <!-- Critical brushes for Syncfusion theme and application styling         -->
+  <!-- ====================================================================== -->
+
+  <!-- Syncfusion Critical Brushes -->
+  <SolidColorBrush
+      x:Key="InfoBrush"
+      Color="#1976D2" />
+  <SolidColorBrush
+      x:Key="ErrorBrush"
+      Color="#D32F2F" />
+  <SolidColorBrush
+      x:Key="SuccessBrush"
+      Color="#388E3C" />
+  <SolidColorBrush
+      x:Key="WarningBrush"
+      Color="#F57C00" />
+  <SolidColorBrush
+      x:Key="PrimaryBackground"
+      Color="#FFFFFF" />
+  <SolidColorBrush
+      x:Key="SecondaryBackground"
+      Color="#F5F5F5" />
+  <SolidColorBrush
+      x:Key="ContentBackground"
+      Color="#FFFFFF" />
+  <SolidColorBrush
+      x:Key="PrimaryForeground"
+      Color="#000000" />
+  <SolidColorBrush
+      x:Key="SecondaryForeground"
+      Color="#666666" />
+  <SolidColorBrush
+      x:Key="BorderBrush"
+      Color="#CCCCCC" />
+  <SolidColorBrush
+      x:Key="AccentBrush"
+      Color="#1976D2" />
+  <SolidColorBrush
+      x:Key="HoverBrush"
+      Color="#E3F2FD" />
+  <SolidColorBrush
+      x:Key="PressedBrush"
+      Color="#BBDEFB" />
+  <SolidColorBrush
+      x:Key="DisabledBrush"
+      Color="#BDBDBD" />
+
+  <!-- Application-specific Brushes -->
+  <SolidColorBrush
+      x:Key="ContentBackgroundBrush"
+      Color="#FFFFFF" />
+
+  <!-- ====================================================================== -->
+  <!-- SYNCFUSION CONTROL STYLES                                             -->
+  <!-- Base styles for Syncfusion controls (optional theme overrides)        -->
+  <!-- ====================================================================== -->
+
+  <!-- Default font and sizing resources -->
+  <FontFamily x:Key="DefaultFontFamily">Segoe UI</FontFamily>
+  <system:Double x:Key="DefaultFontSize">14</system:Double>
+  <Thickness x:Key="ControlBorderThickness">1</Thickness>
+
+  <!-- Base TextBox Style (Syncfusion-compatible) -->
+  <Style
+      x:Key="TextBoxStyle"
+      TargetType="TextBox"
+      BasedOn="{StaticResource {x:Type TextBox}}">
+    <Setter
+        Property="FontFamily"
+        Value="{StaticResource DefaultFontFamily}" />
+    <Setter
+        Property="FontSize"
+        Value="{StaticResource DefaultFontSize}" />
+    <Setter
+        Property="Padding"
+        Value="8,4" />
+  </Style>
+
+  <!-- Base Button Style (Syncfusion-compatible) -->
+  <Style
+      x:Key="ButtonStyle"
+      TargetType="Button"
+      BasedOn="{StaticResource {x:Type Button}}">
+    <Setter
+        Property="FontFamily"
+        Value="{StaticResource DefaultFontFamily}" />
+    <Setter
+        Property="FontSize"
+        Value="{StaticResource DefaultFontSize}" />
+    <Setter
+        Property="Padding"
+        Value="16,8" />
+  </Style>
+
+  <!-- Base ComboBox Style (Syncfusion-compatible) -->
+  <Style
+      x:Key="ComboBoxStyle"
+      TargetType="ComboBox"
+      BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Setter
+        Property="FontFamily"
+        Value="{StaticResource DefaultFontFamily}" />
+    <Setter
+        Property="FontSize"
+        Value="{StaticResource DefaultFontSize}" />
+    <Setter
+        Property="Padding"
+        Value="8,4" />
+  </Style>
+
+  <!-- Base DataGrid Style (WPF standard) -->
+  <Style
+      x:Key="DataGridStyle"
+      TargetType="DataGrid"
+      BasedOn="{StaticResource {x:Type DataGrid}}">
+    <Setter
+        Property="FontFamily"
+        Value="{StaticResource DefaultFontFamily}" />
+    <Setter
+        Property="FontSize"
+        Value="{StaticResource DefaultFontSize}" />
+    <Setter
+        Property="AutoGenerateColumns"
+        Value="False" />
+  </Style>
+
+  <!-- Syncfusion SfDataGrid Style (theme-applied, base reference only) -->
+  <Style
+      x:Key="SfDataGridStyle"
+      TargetType="syncfusion:SfDataGrid">
+    <Setter
+        Property="FontFamily"
+        Value="{StaticResource DefaultFontFamily}" />
+    <Setter
+        Property="FontSize"
+        Value="{StaticResource DefaultFontSize}" />
+  </Style>
+
+  <!-- Syncfusion SfChart Style (theme-applied, base reference only) -->
+  <Style
+      x:Key="SfChartStyle"
+      TargetType="syncfusion:SfChart">
+    <Setter
+        Property="FontFamily"
+        Value="{StaticResource DefaultFontFamily}" />
+  </Style>
+
+  <!-- Syncfusion SfRibbon Style (theme-applied, base reference only) -->
+  <Style
+      x:Key="SfRibbonStyle"
+      TargetType="syncfusion:Ribbon">
+    <Setter
+        Property="FontFamily"
+        Value="{StaticResource DefaultFontFamily}" />
+    <Setter
+        Property="FontSize"
+        Value="{StaticResource DefaultFontSize}" />
+  </Style>
+
+  <!-- ====================================================================== -->
+  <!-- SPACING AND LAYOUT RESOURCES                                          -->
   <!-- ====================================================================== -->
 
   <system:Double x:Key="SpacingXS">4</system:Double>
