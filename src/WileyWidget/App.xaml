@@ -28,14 +28,14 @@
                     are no longer needed with SfSkinManager automatic theme application.
                 -->
 
-        <!-- Custom Wiley Widget theme resources (must come AFTER Syncfusion themes) -->
-        <!-- Generic.xaml contains base styles and converters -->
+        <!-- Custom Wiley Widget resources -->
+        <!-- Generic.xaml contains base styles, converters, and custom control templates -->
         <ResourceDictionary Source="/WileyWidget;component/Themes/Generic.xaml" />
-        <!-- WileyTheme-Syncfusion.xaml contains theme-specific overrides -->
-        <ResourceDictionary Source="/WileyWidget;component/Themes/WileyTheme-Syncfusion.xaml" />
 
-        <!-- Additional custom resources if needed -->
-        <!-- <ResourceDictionary Source="Themes/CustomBrushes.xaml" /> -->
+        <!-- NOTE: Syncfusion theme is applied programmatically via SfSkinManager in App.xaml.cs -->
+        <!-- SfSkinManager.ApplyThemeAsDefaultStyle = true applies theme to ALL controls
+        automatically -->
+        <!-- DO NOT manually load Syncfusion theme dictionaries here - let SfSkinManager handle it -->
       </ResourceDictionary.MergedDictionaries>
 
 

@@ -7,7 +7,6 @@
              xmlns:converters="clr-namespace:WileyWidget.Converters"
              xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
              xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
-             xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
              xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
              xmlns:models="clr-namespace:WileyWidget.Models;assembly=WileyWidget.Models"
              prism:ViewModelLocator.AutoWireViewModel="True"
@@ -45,10 +44,7 @@
         </Grid.RowDefinitions>
 
         <!-- Acrylic wrapper per FluentDark guidance -->
-        <darkTheme:SfAcrylicPanel TintBrush="#202020" TintOpacity="0.25" BlurRadius="30" NoiseOpacity="0.03"
-                      Visibility="{Binding ShowAcrylicBackground, Converter={StaticResource BoolToVis}}"
-                      Grid.RowSpan="3">
-            <Grid>
+        <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -146,6 +142,5 @@
                            AutomationProperties.Name="Save Button" />
                 </StackPanel>
             </Grid>
-        </darkTheme:SfAcrylicPanel>
-    </Grid>
+</Grid>
 </UserControl>

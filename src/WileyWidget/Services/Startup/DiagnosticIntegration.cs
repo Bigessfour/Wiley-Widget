@@ -51,6 +51,9 @@ namespace WileyWidget.Services.Startup
                         $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {msg}\n");
                 });
 
+                // Pipe Serilog self-log to main logger for centralized diagnostics
+                Serilog.Debugging.SelfLog.Enable(msg => Log.Debug("[SERILOG-DEBUG] {Msg}", msg));
+
                 Log.Information("   ✅ Serilog self-diagnostics enabled");
                 Log.Information("   📁 Main logs: {LogPath}", Path.Combine(LogsDirectory, "wiley-widget-*.log"));
                 Log.Information("   📁 Self-diagnostics: {LogPath}", Path.Combine(LogsDirectory, "serilog-diagnostics.txt"));

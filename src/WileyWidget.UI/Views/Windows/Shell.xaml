@@ -9,7 +9,6 @@
     xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
     xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
     xmlns:vm="clr-namespace:WileyWidget.ViewModels;assembly=WileyWidget.UI"
-    xmlns:darkTheme="clr-namespace:Syncfusion.Themes.FluentDark.WPF;assembly=Syncfusion.Themes.FluentDark.WPF"
     xmlns:converters="clr-namespace:WileyWidget.Converters"
     xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
     Title="{Binding CurrentViewTitle, FallbackValue='Wiley Widget - Municipal Enterprise Management'}"

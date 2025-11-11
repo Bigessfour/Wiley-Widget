@@ -601,6 +601,217 @@ XAI_BASE_URL                → XAI-BaseUrl
 - **Memory Safety**: Sensitive data cleared immediately after use
 - **Audit Trail**: All secret operations logged securely
 
+### Advanced Security Features
+
+#### **🔐 Critical Security Enhancements**
+
+WileyWidget's `EncryptedLocalSecretVaultService` implements multiple layers of defense-in-depth security:
+
+##### **1. SHA-256 Filename Hashing**
+
+Prevents filename collisions and obfuscates secret identifiers in the filesystem:
+
+```csharp
+// Secret names are hashed before storage
+// Example: "QuickBooks-ClientSecret" → "8a3f9b2c1d4e5f6a7b8c9d0e1f2a3b4c.secret"
+private string GetSecretFileName(string secretName)
+{
+    using var sha256 = SHA256.Create();
+    byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(secretName));
+    return $"{Convert.ToHexString(hash).ToLowerInvariant()}.secret";
+}
+```
+
+**Benefits:**
+
+- **Collision Prevention**: SHA-256 ensures unique filenames even for similar secret names
+- **Obfuscation**: Attackers cannot identify secret purposes from filesystem listings
+- **Forward Compatibility**: Consistent hashing supports future secret name changes
+
+##### **2. Machine-Bound Entropy Protection**
+
+Additional entropy layer bound to the specific machine using DPAPI:
+
+```csharp
+// Entropy is machine-bound and protected by DPAPI
+private byte[] LoadOrCreateEntropy()
+{
+    string entropyFile = Path.Combine(_secretsDirectory, ".entropy");
+
+    if (File.Exists(entropyFile))
+    {
+        // Load and decrypt machine-bound entropy
+        byte[] encryptedEntropy = File.ReadAllBytes(entropyFile);
+        return ProtectedData.Unprotect(
+            encryptedEntropy,
+            null,
+            DataProtectionScope.CurrentUser
+        );
+    }
+
+    // Generate new entropy and protect with DPAPI
+    byte[] entropy = new byte[32];
+    RandomNumberGenerator.Fill(entropy);
+    File.WriteAllBytes(
+        entropyFile,
+        ProtectedData.Protect(entropy, null, DataProtectionScope.CurrentUser)
+    );
+    return entropy;
+}
+```
+
+**Protection Layers:**
+
+- **DPAPI Encryption**: Entropy file itself is encrypted with Windows DPAPI
+- **Machine-Bound**: Entropy cannot be copied to different machines
+- **User-Specific**: Each Windows user gets their own protected entropy
+- **Tamper Detection**: Modified entropy files fail integrity checks
+
+##### **3. Configurable Environment Variable Migration**
+
+Controlled migration prevents accidental exposure of sensitive environment variables:
+
+```csharp
+// Define which environment variables should be migrated
+private static readonly HashSet<string> MigrateableVariables = new()
+{
+    "SYNCFUSION_LICENSE_KEY",
+    "QUICKBOOKS_CLIENT_ID",
+    "QUICKBOOKS_CLIENT_SECRET",
+    "QUICKBOOKS_REDIRECT_URI",
+    "QUICKBOOKS_ENVIRONMENT",
+    "XAI_API_KEY",
+    "XAI_BASE_URL",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY"
+};
+
+// Migration only processes whitelisted variables
+public async Task MigrateEnvironmentVariablesAsync()
+{
+    foreach (var kvp in _secretMapping)
+    {
+        string envValue = Environment.GetEnvironmentVariable(kvp.Value);
+
+        // Only migrate if in whitelist and not empty
+        if (!string.IsNullOrWhiteSpace(envValue) &&
+            MigrateableVariables.Contains(kvp.Value))
+        {
+            await StoreSecretAsync(kvp.Key, envValue);
+            _logger.LogInformation(
+                "Migrated environment variable {EnvVar} to encrypted secret {SecretName}",
+                kvp.Value, kvp.Key
+            );
+        }
+    }
+}
+```
+
+**Security Benefits:**
+
+- **Whitelist Protection**: Only pre-approved environment variables are migrated
+- **No Wildcards**: Prevents accidental migration of system variables
+- **Audit Trail**: All migrations logged with secret names (not values)
+- **Idempotent**: Safe to run multiple times without duplication
+
+##### **4. Entropy Tampering Detection**
+
+Detects if entropy file has been modified or corrupted:
+
+```csharp
+private bool ValidateEntropyIntegrity()
+{
+    try
+    {
+        byte[] entropy = LoadOrCreateEntropy();
+
+        // Validate entropy meets security requirements
+        if (entropy == null || entropy.Length != 32)
+        {
+            _logger.LogCritical("Entropy validation failed: Invalid length");
+            return false;
+        }
+
+        // Check for all-zero entropy (tampering indicator)
+        if (entropy.All(b => b == 0))
+        {
+            _logger.LogCritical("Entropy validation failed: All-zero entropy detected");
+            return false;
+        }
+
+        // Verify DPAPI can decrypt entropy file
+        string entropyFile = Path.Combine(_secretsDirectory, ".entropy");
+        byte[] encryptedEntropy = File.ReadAllBytes(entropyFile);
+        ProtectedData.Unprotect(encryptedEntropy, null, DataProtectionScope.CurrentUser);
+
+        return true;
+    }
+    catch (CryptographicException ex)
+    {
+        _logger.LogCritical(ex, "Entropy tampering detected: DPAPI decryption failed");
+        return false;
+    }
+}
+```
+
+**Detection Capabilities:**
+
+- **Length Validation**: Ensures entropy is exactly 256 bits
+- **Zero-Check**: Detects cleared or zeroed entropy files
+- **DPAPI Verification**: Confirms entropy file hasn't been replaced
+- **Tamper Alert**: Logs critical security events for monitoring
+
+#### **🛡️ Security Best Practices**
+
+##### **Production Deployment Checklist**
+
+- ✅ **Backup Entropy File**: Store `.entropy` file in secure backup location
+- ✅ **Rotate Secrets**: Implement regular secret rotation schedule
+- ✅ **Monitor Logs**: Watch for entropy validation failures in production
+- ✅ **Access Control**: Restrict `%APPDATA%\WileyWidget\Secrets\` folder permissions
+- ✅ **Disaster Recovery**: Document secret recovery procedures
+- ✅ **User Training**: Educate users on secret management best practices
+
+##### **Security Incident Response**
+
+If entropy tampering is detected:
+
+1. **Immediate Actions:**
+
+   - Application automatically refuses to load secrets
+   - Critical security event logged to system logs
+   - User notified of security issue
+
+2. **Investigation Steps:**
+
+   - Check Windows Event Viewer for security audit logs
+   - Review file system access logs for `Secrets` folder
+   - Verify user account integrity
+
+3. **Remediation:**
+   - Delete compromised `.entropy` file
+   - Restart application to generate new entropy
+   - Re-enter all secrets through Settings dialog
+   - Update all API credentials at provider portals
+
+##### **Development vs Production**
+
+**Development Environment:**
+
+```powershell
+# Safe to use environment variables during development
+$env:QUICKBOOKS_CLIENT_ID = "sandbox-client-id"
+$env:QUICKBOOKS_CLIENT_SECRET = "sandbox-secret"
+```
+
+**Production Environment:**
+
+```powershell
+# NEVER use environment variables in production
+# Always use encrypted secret vault through Settings dialog
+# Entropy file must be backed up securely
+```
+
 ### Configuration Workflow
 
 #### **Initial Setup Process**

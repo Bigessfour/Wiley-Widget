@@ -29,16 +29,81 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // Use AppData for user-specific storage
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        _vaultDirectory = Path.Combine(appData, "WileyWidget", "Secrets");
-        _entropyFile = Path.Combine(_vaultDirectory, ".entropy");
+        try
+        {
+            // Use AppData for user-specific storage
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            _vaultDirectory = Path.Combine(appData, "WileyWidget", "Secrets");
 
-        // Ensure directory exists
-        Directory.CreateDirectory(_vaultDirectory);
+            // Ensure directory exists with robust error handling
+            if (!Directory.Exists(_vaultDirectory))
+            {
+                try
+                {
+                    Directory.CreateDirectory(_vaultDirectory);
+                    _logger.LogInformation("Created secret vault directory: {VaultDirectory}", _vaultDirectory);
+                }
+                catch (UnauthorizedAccessException uaEx)
+                {
+                    // Attempt to fall back to a less-restricted temp location
+                    _logger.LogWarning(uaEx, "Insufficient permissions creating vault directory {VaultDirectory}. Falling back to TEMP folder.", _vaultDirectory);
+                    var tempVault = Path.Combine(Path.GetTempPath(), "WileyWidget", "Secrets");
+                    _vaultDirectory = tempVault;
+                    try
+                    {
+                        if (!Directory.Exists(_vaultDirectory))
+                        {
+                            Directory.CreateDirectory(_vaultDirectory);
+                        }
+                        _logger.LogInformation("Using fallback vault directory: {VaultDirectory}", _vaultDirectory);
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        _logger.LogError(fallbackEx, "Failed to create fallback vault directory: {VaultDirectory}", _vaultDirectory);
+                        throw; // Re-throw: can't proceed without a writable folder
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create secret vault directory: {VaultDirectory}", _vaultDirectory);
+                    throw;
+                }
 
-        // Load or generate entropy
-        _entropy = LoadOrGenerateEntropy();
+                // Set directory permissions (Windows only - restrict to current user)
+                try
+                {
+                    var dirInfo = new DirectoryInfo(_vaultDirectory);
+                    var security = dirInfo.GetAccessControl();
+                    var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                    var user = identity?.User;
+                    if (user != null)
+                    {
+                        security.SetOwner(user);
+                        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
+                            System.Security.AccessControl.FileSystemRights.FullControl,
+                            System.Security.AccessControl.AccessControlType.Allow));
+                        dirInfo.SetAccessControl(security);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to set directory ACL on secret vault");
+                }
+            }
+
+            // Ensure _entropyFile is aligned to final vault path (in case of fallback)
+            _entropyFile = Path.Combine(_vaultDirectory, ".entropy");
+
+            // Load or generate entropy
+            _entropy = LoadOrGenerateEntropy();
+
+            _logger.LogInformation("EncryptedLocalSecretVaultService initialized successfully. Vault: {VaultDirectory}", _vaultDirectory);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize EncryptedLocalSecretVaultService");
+            throw;
+        }
     }
 
     private byte[] LoadOrGenerateEntropy()
@@ -47,9 +112,18 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         {
             if (File.Exists(_entropyFile))
             {
-                // Load existing entropy
-                var entropyBase64 = File.ReadAllText(_entropyFile);
-                return Convert.FromBase64String(entropyBase64);
+                // Load existing entropy (stored encrypted with DPAPI LocalMachine scope)
+                var encryptedEntropyBase64 = File.ReadAllText(_entropyFile);
+                var encryptedEntropy = Convert.FromBase64String(encryptedEntropyBase64);
+
+                // Decrypt entropy using machine-bound DPAPI for additional protection
+                var entropy = ProtectedData.Unprotect(
+                    encryptedEntropy,
+                    null, // No additional entropy for entropy itself (avoid recursion)
+                    DataProtectionScope.LocalMachine); // Machine-bound
+
+                _logger.LogDebug("Loaded entropy from encrypted file");
+                return entropy;
             }
             else
             {
@@ -58,8 +132,16 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 var entropy = new byte[32]; // 256 bits
                 rng.GetBytes(entropy);
 
-                // Save entropy (hidden file)
-                File.WriteAllText(_entropyFile, Convert.ToBase64String(entropy));
+                // Encrypt entropy with machine-bound DPAPI before saving
+                var encryptedEntropy = ProtectedData.Protect(
+                    entropy,
+                    null,
+                    DataProtectionScope.LocalMachine);
+
+                var encryptedEntropyBase64 = Convert.ToBase64String(encryptedEntropy);
+
+                // Save encrypted entropy (hidden file)
+                File.WriteAllText(_entropyFile, encryptedEntropyBase64);
                 File.SetAttributes(_entropyFile, FileAttributes.Hidden);
 
                 // Restrict entropy file to current user
@@ -85,7 +167,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to restrict entropy file ACL");
+                    _logger.LogWarning(ex, "Failed to restrict entropy file ACL - continuing with default permissions");
                 }
 
                 _logger.LogInformation("Generated new encryption entropy for secret vault");
@@ -237,9 +319,38 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
                 var filePath = GetSecretFilePath(secretName);
 
-                // write atomically
+                // write atomically with proper error handling
                 var tmp = filePath + ".tmp";
-                await File.WriteAllTextAsync(tmp, encryptedBase64);
+
+                // Clean up any stale tmp file from previous failed attempts
+                if (File.Exists(tmp))
+                {
+                    try
+                    {
+                        File.Delete(tmp);
+                        _logger.LogDebug("Cleaned up stale temporary file for '{SecretName}'", secretName);
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        _logger.LogWarning(cleanupEx, "Failed to cleanup stale tmp file for '{SecretName}'", secretName);
+                    }
+                }
+
+                // Explicitly create the tmp file to ensure proper ACL and to avoid Replace/FileNotFound issues
+                try
+                {
+                    using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+                    {
+                        var bytes = Encoding.UTF8.GetBytes(encryptedBase64);
+                        await fs.WriteAsync(bytes, 0, bytes.Length).ConfigureAwait(false);
+                        await fs.FlushAsync().ConfigureAwait(false);
+                    }
+                }
+                catch (Exception createTmpEx)
+                {
+                    _logger.LogWarning(createTmpEx, "Failed to create tmp file '{TmpFile}' atomically - falling back to WriteAllTextAsync", tmp);
+                    await File.WriteAllTextAsync(tmp, encryptedBase64).ConfigureAwait(false);
+                }
 
                 try
                 {
@@ -266,7 +377,53 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                     _logger.LogWarning(ex, "Failed to set file ACL on secret tmp file");
                 }
 
-                File.Replace(tmp, filePath, null);
+                // Atomic write operation with proper error handling
+                try
+                {
+                    // Use Replace only if destination exists, otherwise Move
+                    if (File.Exists(filePath))
+                    {
+                        try
+                        {
+                            File.Replace(tmp, filePath, null);
+                            _logger.LogDebug("Replaced existing secret file for '{SecretName}'", secretName);
+                        }
+                        catch (FileNotFoundException fnf)
+                        {
+                            _logger.LogWarning(fnf, "Replace failed - falling back to Move for '{SecretName}'", secretName);
+                            File.Move(tmp, filePath);
+                        }
+                        catch (NotSupportedException nsEx)
+                        {
+                            _logger.LogWarning(nsEx, "Replace not supported on this filesystem for '{SecretName}' - using Move", secretName);
+                            File.Move(tmp, filePath);
+                        }
+                    }
+                    else
+                    {
+                        File.Move(tmp, filePath);
+                        _logger.LogDebug("Created new secret file for '{SecretName}'", secretName);
+                    }
+                }
+                catch (Exception moveEx)
+                {
+                    _logger.LogError(moveEx, "Failed to complete atomic write for '{SecretName}' - attempting cleanup", secretName);
+
+                    // Cleanup tmp file on failure
+                    if (File.Exists(tmp))
+                    {
+                        try
+                        {
+                            File.Delete(tmp);
+                        }
+                        catch (Exception cleanupEx)
+                        {
+                            _logger.LogWarning(cleanupEx, "Failed to cleanup tmp file after failed write");
+                        }
+                    }
+
+                    throw; // Re-throw to propagate error
+                }
 
                 _logger.LogInformation("Secret '{SecretName}' stored in encrypted vault", secretName);
             }
@@ -296,9 +453,29 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
 
         try
         {
+            // Verify vault directory exists and is writable
+            if (!Directory.Exists(_vaultDirectory))
+            {
+                _logger.LogError("Vault directory does not exist: {VaultDirectory}", _vaultDirectory);
+                return false;
+            }
+
+            // Test directory write permissions
+            var testPermFile = Path.Combine(_vaultDirectory, ".test_permissions");
+            try
+            {
+                File.WriteAllText(testPermFile, "test");
+                File.Delete(testPermFile);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Vault directory is not writable: {VaultDirectory}", _vaultDirectory);
+                return false;
+            }
+
             // Test by trying to store and retrieve a test secret
             const string testKey = "__test_connection__";
-            const string testValue = "test_value";
+            var testValue = "test_value_" + Guid.NewGuid().ToString("N");
 
             await SetSecretAsync(testKey, testValue);
             var retrieved = await GetSecretAsync(testKey);
@@ -312,16 +489,26 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                     File.Delete(testFile);
                 }
             }
-            catch
+            catch (Exception cleanupEx)
             {
-                // Ignore cleanup errors
+                _logger.LogWarning(cleanupEx, "Failed to cleanup test secret file");
             }
 
-            return retrieved == testValue;
+            var success = retrieved == testValue;
+            if (success)
+            {
+                _logger.LogInformation("Secret vault connection test PASSED");
+            }
+            else
+            {
+                _logger.LogError("Secret vault connection test FAILED - retrieved value does not match");
+            }
+
+            return success;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Connection test failed");
+            _logger.LogError(ex, "Secret vault connection test FAILED with exception");
             return false;
         }
     }
@@ -333,21 +520,34 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         var migratedSecrets = new List<string>();
 
         // Define environment variables to migrate
+        // Wiley Widget specific: Syncfusion license, QuickBooks OAuth, XAI API
         var envVars = new[]
         {
-            "syncfusion-license-key",
-            "QuickBooks-ClientId",
+            "SYNCFUSION_LICENSE_KEY",        // Syncfusion licensing
+            "syncfusion-license-key",        // Alternative format
+            "QBO_CLIENT_ID",                 // QuickBooks OAuth
+            "QuickBooks-ClientId",           // Alternative format
+            "QBO_CLIENT_SECRET",
             "QuickBooks-ClientSecret",
+            "QBO_REDIRECT_URI",
             "QuickBooks-RedirectUri",
+            "QBO_ENVIRONMENT",
             "QuickBooks-Environment",
+            "XAI_API_KEY",                   // xAI Grok API
             "XAI-ApiKey",
-            "XAI-BaseUrl"
+            "XAI_BASE_URL",
+            "XAI-BaseUrl",
+            "OPENAI_API_KEY",                // OpenAI API (if used)
+            "BOLD_LICENSE_KEY"               // Bold Reports
         };
 
-        foreach (var envVar in envVars)
+        // Remove duplicates (case-insensitive) and migrate
+        var uniqueVars = envVars.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        foreach (var envVar in uniqueVars)
         {
             var value = Environment.GetEnvironmentVariable(envVar);
-            if (!string.IsNullOrEmpty(value))
+            if (!string.IsNullOrEmpty(value) && !value.StartsWith("${")) // Skip placeholders
             {
                 await SetSecretAsync(envVar, value);
                 migratedSecrets.Add(envVar);
@@ -503,7 +703,21 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 var filePath = GetSecretFilePath(secretName);
                 var tmp = filePath + ".tmp";
 
-                await File.WriteAllTextAsync(tmp, encryptedBase64).ConfigureAwait(false);
+                // Create the tmp file explicitly to ensure ACL and atomic Replace compatibility
+                try
+                {
+                    using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+                    {
+                        var bytes = Encoding.UTF8.GetBytes(encryptedBase64);
+                        await fs.WriteAsync(bytes, 0, bytes.Length).ConfigureAwait(false);
+                        await fs.FlushAsync().ConfigureAwait(false);
+                    }
+                }
+                catch (Exception createTmpEx)
+                {
+                    _logger.LogWarning(createTmpEx, "Failed to create tmp file '{TmpFile}' in RotateSecretAsync using FileStream - falling back to WriteAllTextAsync", tmp);
+                    await File.WriteAllTextAsync(tmp, encryptedBase64).ConfigureAwait(false);
+                }
                 // try set ACL
                 try
                 {
@@ -530,7 +744,15 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                     _logger.LogWarning(ex, "Failed to set file ACL on secret tmp file during rotation");
                 }
 
-                File.Replace(tmp, filePath, null);
+                // Use Replace only if destination exists, otherwise Move
+                if (File.Exists(filePath))
+                {
+                    File.Replace(tmp, filePath, null);
+                }
+                else
+                {
+                    File.Move(tmp, filePath);
+                }
 
                 // verify by reading back
                 var decrypted = await GetSecretAsync(secretName).ConfigureAwait(false);
@@ -555,9 +777,101 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
 
     private string GetSecretFilePath(string secretName)
     {
-        // Sanitize filename
+        // Sanitize filename and add hash fragment to prevent collisions
+        // e.g., "Quick Books-Id" and "QuickBooks_Id" both sanitize to "QuickBooks_Id"
+        // Adding hash ensures uniqueness while maintaining readability
         var safeName = string.Join("_", secretName.Split(Path.GetInvalidFileNameChars()));
-        return Path.Combine(_vaultDirectory, $"{safeName}.secret");
+
+        // Add first 8 chars of SHA256 hash for collision prevention
+        using var sha = SHA256.Create();
+        var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(secretName));
+        var hashFragment = Convert.ToHexString(hashBytes)[..8];
+
+        return Path.Combine(_vaultDirectory, $"{safeName}_{hashFragment}.secret");
+    }
+
+    /// <summary>
+    /// Verify entropy file integrity and attempt to regenerate if tampered.
+    /// </summary>
+    private bool VerifyEntropyIntegrity()
+    {
+        try
+        {
+            if (!File.Exists(_entropyFile))
+            {
+                _logger.LogWarning("Entropy file missing - will regenerate on next operation");
+                return false;
+            }
+
+            // Try to decrypt entropy - if it fails, it's been tampered with or corrupted
+            var encryptedEntropyBase64 = File.ReadAllText(_entropyFile);
+            var encryptedEntropy = Convert.FromBase64String(encryptedEntropyBase64);
+            var testEntropy = ProtectedData.Unprotect(encryptedEntropy, null, DataProtectionScope.LocalMachine);
+
+            // If we get here, entropy is valid
+            return testEntropy.Length == 32; // Verify expected size
+        }
+        catch (CryptographicException ex)
+        {
+            _logger.LogError(ex, "Entropy file appears to be tampered or corrupted - regeneration required");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to verify entropy integrity");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Get diagnostic information about the secret vault.
+    /// </summary>
+    public async Task<string> GetDiagnosticsAsync()
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
+
+        var diagnostics = new StringBuilder();
+        diagnostics.AppendLine("=== Encrypted Secret Vault Diagnostics ===");
+        diagnostics.AppendLine($"Vault Directory: {_vaultDirectory}");
+        diagnostics.AppendLine($"Directory Exists: {Directory.Exists(_vaultDirectory)}");
+        diagnostics.AppendLine($"Entropy File: {_entropyFile}");
+        diagnostics.AppendLine($"Entropy File Exists: {File.Exists(_entropyFile)}");
+        diagnostics.AppendLine($"Entropy Loaded: {_entropy != null}");
+
+        if (Directory.Exists(_vaultDirectory))
+        {
+            try
+            {
+                var secretFiles = Directory.GetFiles(_vaultDirectory, "*.secret");
+                diagnostics.AppendLine($"Secret Files Found: {secretFiles.Length}");
+
+                var keys = await ListSecretKeysAsync();
+                diagnostics.AppendLine($"Secret Keys: {string.Join(", ", keys)}");
+
+                // Test write permissions
+                var testFile = Path.Combine(_vaultDirectory, ".diagnostic_test");
+                try
+                {
+                    File.WriteAllText(testFile, "test");
+                    File.Delete(testFile);
+                    diagnostics.AppendLine("Write Permissions: OK");
+                }
+                catch (Exception ex)
+                {
+                    diagnostics.AppendLine($"Write Permissions: FAILED - {ex.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                diagnostics.AppendLine($"Directory Access Error: {ex.Message}");
+            }
+        }
+
+        // Test connection
+        var connectionTest = await TestConnectionAsync();
+        diagnostics.AppendLine($"Connection Test: {(connectionTest ? "PASSED" : "FAILED")}");
+
+        return diagnostics.ToString();
     }
 
     public void Dispose()

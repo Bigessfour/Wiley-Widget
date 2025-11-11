@@ -669,14 +669,8 @@ namespace WileyWidget
 
             _startupId ??= Guid.NewGuid().ToString("N")[..8];
 
-            // Initialize Serilog early for configuration logging
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
-                .Enrich.WithMachineName()
-                .Enrich.WithThreadId()
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-                .WriteTo.File("logs/wiley-widget-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
-                .CreateLogger();
+            // NOTE: Logger is initialized in static constructor (App.xaml.cs)
+            // Do NOT recreate it here as it would dispose the existing logger and lose all previous logs
 
             // Build configuration from multiple sources
             var builder = new ConfigurationBuilder()
@@ -1261,7 +1255,7 @@ namespace WileyWidget
                         }
                         catch (Exception ctorEx)
                         {
-                            Log.Warning(ctorEx, "  ⚠ {ViewModel} skipped - GetConstructors() threw exception: {Message}", 
+                            Log.Warning(ctorEx, "  ⚠ {ViewModel} skipped - GetConstructors() threw exception: {Message}",
                                 vmType.Name, ctorEx.Message);
                             skippedCount++;
                             continue;
@@ -1306,7 +1300,7 @@ namespace WileyWidget
                             }
                             catch (Exception paramEx)
                             {
-                                Log.Warning(paramEx, "  ⚠ {ViewModel} constructor parameter analysis failed: {Message}", 
+                                Log.Warning(paramEx, "  ⚠ {ViewModel} constructor parameter analysis failed: {Message}",
                                     vmType.Name, paramEx.Message);
                             }
                         }
@@ -1330,13 +1324,13 @@ namespace WileyWidget
                     }
                     catch (Exception registerEx)
                     {
-                        Log.Warning(registerEx, "Failed to register ViewModel: {ViewModel} - Exception: {Message}", 
+                        Log.Warning(registerEx, "Failed to register ViewModel: {ViewModel} - Exception: {Message}",
                             vmType.Name, registerEx.Message);
                         skippedCount++;
                     }
                 }
 
-                Log.Information("✓ ViewModel registration complete ({RegisteredCount} registered, {SkippedCount} skipped)", 
+                Log.Information("✓ ViewModel registration complete ({RegisteredCount} registered, {SkippedCount} skipped)",
                     registeredCount, skippedCount);
             }
             catch (Exception ex)

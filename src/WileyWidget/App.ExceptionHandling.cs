@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Markup;
+using DryIoc;
 using Prism.Events;
 using Serilog;
 using Serilog.Events;
@@ -36,7 +37,7 @@ namespace WileyWidget
             Application.Current.DispatcherUnhandledException += (sender, e) =>
             {
                 var processedEx = TryUnwrapTargetInvocationException(e.Exception);
-                if (TryHandleDryIocContainerException(processedEx) || TryHandleXamlException(processedEx))
+                if (TryHandleDryIocContainerException(processedEx) || TryHandleXamlException(processedEx) || TryHandlePresentationFrameworkException(processedEx))
                 {
                     e.Handled = true;
                     // ... (your existing handling)
@@ -93,6 +94,71 @@ namespace WileyWidget
             {
                 Log.Warning(ex, "Handled XAML parse exception");
                 return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts to handle PresentationFramework ArgumentException gracefully.
+        /// These often occur due to XAML resource issues, invalid pack URIs, or duplicate keys.
+        /// </summary>
+        private bool TryHandlePresentationFrameworkException(Exception ex)
+        {
+            if (ex is ArgumentException argEx)
+            {
+                // Check if it's coming from PresentationFramework
+                var stackTrace = new StackTrace(ex, true);
+                var frames = stackTrace.GetFrames();
+                bool isPresentationFramework = false;
+
+                if (frames != null)
+                {
+                    foreach (var frame in frames)
+                    {
+                        var method = frame.GetMethod();
+                        if (method?.DeclaringType?.Assembly.GetName().Name == "PresentationFramework")
+                        {
+                            isPresentationFramework = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (isPresentationFramework)
+                {
+                    Log.Error(ex, "[PRESENTATION_FRAMEWORK] ArgumentException in PresentationFramework.dll - Message: {Message}, ParamName: {ParamName}",
+                        argEx.Message, argEx.ParamName ?? "(null)");
+
+                    // Log detailed diagnostic information
+                    Log.Error("[PRESENTATION_FRAMEWORK] This typically indicates:");
+                    Log.Error("  - Invalid XAML resource key (StaticResource/DynamicResource not found)");
+                    Log.Error("  - Duplicate resource keys in merged dictionaries");
+                    Log.Error("  - Invalid pack:// URI in ResourceDictionary.Source");
+                    Log.Error("  - Type mismatch in XAML property binding");
+                    Log.Error("[PRESENTATION_FRAMEWORK] Check App.xaml merged dictionaries and resource files");
+
+                    // Log current merged dictionaries for diagnostics
+                    try
+                    {
+                        if (Application.Current?.Resources?.MergedDictionaries != null)
+                        {
+                            Log.Debug("[PRESENTATION_FRAMEWORK] Current merged dictionaries ({Count}):",
+                                Application.Current.Resources.MergedDictionaries.Count);
+                            for (int i = 0; i < Application.Current.Resources.MergedDictionaries.Count; i++)
+                            {
+                                var dict = Application.Current.Resources.MergedDictionaries[i];
+                                Log.Debug("  [{Index}] Source: {Source}, Keys: {KeyCount}",
+                                    i, dict.Source?.ToString() ?? "(inline)", dict.Keys.Count);
+                            }
+                        }
+                    }
+                    catch (Exception diagEx)
+                    {
+                        Log.Warning(diagEx, "[PRESENTATION_FRAMEWORK] Could not log merged dictionaries diagnostic info");
+                    }
+
+                    return true; // Mark as handled to prevent crash
+                }
             }
             return false;
         }

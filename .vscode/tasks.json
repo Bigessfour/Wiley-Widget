@@ -1426,6 +1426,72 @@
 			},
 			"group": "test",
 			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-70-sfskinmanager-theme-e2e-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/70-sfskinmanager-theme-e2e-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true
+			},
+			"isBackground": false,
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-85-secret-lifecycle-e2e-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/85-secret-lifecycle-e2e-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true
+			},
+			"isBackground": false,
+			"group": "test",
+			"problemMatcher": []
 		}
 	],
 	"inputs": [

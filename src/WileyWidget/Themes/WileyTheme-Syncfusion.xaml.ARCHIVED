@@ -42,6 +42,23 @@
   <!-- Reference: https://help.syncfusion.com/wpf/themes/skin-manager#theme-resources -->
   <!-- ====================================================================== -->
 
+  <!-- FALLBACK COLOR DEFINITIONS -->
+  <!-- These provide default values before Syncfusion theme is applied -->
+  <!-- Once SfSkinManager applies the theme, these will be overridden by theme resources -->
+  <Color x:Key="PrimaryColor">#0078D4</Color>
+  <Color x:Key="PrimaryForeground">#FFFFFF</Color>
+  <Color x:Key="PrimaryLight">#4A9EE6</Color>
+  <Color x:Key="PrimaryDark">#005A9E</Color>
+  <Color x:Key="ContentBackground">#FFFFFF</Color>
+  <Color x:Key="HeaderBackground">#F3F3F3</Color>
+  <Color x:Key="BorderAlt">#D0D0D0</Color>
+  <Color x:Key="ContentForeground">#000000</Color>
+  <Color x:Key="ContentForegroundAlt1">#666666</Color>
+  <Color x:Key="ContentForegroundAlt3">#999999</Color>
+  <Color x:Key="DisabledForeground">#CCCCCC</Color>
+  <Color x:Key="HoverBackground">#E5E5E5</Color>
+  <Color x:Key="PressedBackground">#D0D0D0</Color>
+
   <!-- Primary Theme Colors -->
   <SolidColorBrush
       x:Key="PrimaryBrush"

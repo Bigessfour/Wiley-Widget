@@ -428,7 +428,7 @@ namespace WileyWidget
                     retainedFileCountLimit: 7,
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                     shared: true,  // Allow multiple processes to write
-                    flushToDiskInterval: TimeSpan.FromSeconds(1))
+                    flushToDiskInterval: TimeSpan.FromSeconds(5))  // Flush every 5 seconds for better diagnostics
                 .WriteTo.File(
                     path: "logs/startup-diagnostic-.txt",
                     rollingInterval: RollingInterval.Day,

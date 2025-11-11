@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Media;
 using Prism.Ioc;
 using Prism.Modularity;
 using Prism.Navigation.Regions;
@@ -97,7 +98,41 @@ namespace WileyWidget.Startup.Modules
 
                         if (!hasInfoBrush || !hasErrorBrush || !hasContentBackgroundBrush)
                         {
-                            Log.Warning("⚠️ [COREMODULE] Some critical brushes are missing - views may fail to load");
+                            Log.Warning("⚠️ [COREMODULE] Some critical brushes are missing - checking merged dictionaries...");
+
+                            // Additional diagnostic: Check if brushes exist in merged dictionaries
+                            var foundInMerged = false;
+                            foreach (var dict in app.Resources.MergedDictionaries)
+                            {
+                                if (dict.Contains("InfoBrush") || dict.Contains("ErrorBrush"))
+                                {
+                                    foundInMerged = true;
+                                    Log.Warning("⚠️ [COREMODULE] Brushes found in merged dictionary but not in Application.Resources - possible timing issue");
+                                    break;
+                                }
+                            }
+
+                            if (!foundInMerged)
+                            {
+                                Log.Error("❌ [COREMODULE] Critical brushes not found in Application.Resources or merged dictionaries - views may fail to load");
+
+                                // Inject fallback brushes to prevent XAML binding issues - these are safe defaults
+                                try
+                                {
+                                    if (!app.Resources.Contains("InfoBrush")) app.Resources["InfoBrush"] = new SolidColorBrush(Colors.DodgerBlue);
+                                    if (!app.Resources.Contains("ErrorBrush")) app.Resources["ErrorBrush"] = new SolidColorBrush(Colors.IndianRed);
+                                    if (!app.Resources.Contains("ContentBackgroundBrush")) app.Resources["ContentBackgroundBrush"] = new SolidColorBrush(Colors.Transparent);
+                                    Log.Warning("⚠️ [COREMODULE] Fallback brushes injected into Application.Resources to avoid UI errors");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Error(ex, "Failed to inject fallback brushes into Application.Resources");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Log.Debug("✅ [COREMODULE] All critical brushes available");
                         }
                     }
 

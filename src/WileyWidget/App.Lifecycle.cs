@@ -121,6 +121,23 @@ namespace WileyWidget
                 // Initialize SigNoz telemetry early (before Prism bootstrap)
                 InitializeSigNozTelemetry();
 
+                // Force early secret vault migration from environment variables to avoid lazy init race
+                try
+                {
+                    using var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(dispose: false));
+                    var logger = loggerFactory.CreateLogger<WileyWidget.Services.EncryptedLocalSecretVaultService>();
+                    using var tempVault = new WileyWidget.Services.EncryptedLocalSecretVaultService(logger);
+                    Log.Debug("Forcing early migration of environment secrets into local encrypted vault (OnStartup)");
+                    // Run migration synchronously to ensure files/dirs are created before modules initialize
+                    tempVault.MigrateSecretsFromEnvironmentAsync().GetAwaiter().GetResult();
+                    var diag = tempVault.GetDiagnosticsAsync().GetAwaiter().GetResult();
+                    Log.Debug("Early secret vault diagnostics:\n{Diagnostics}", diag);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Early secret vault migration failed (non-fatal) - continuing startup");
+                }
+
                 // MCP VALIDATION: Add test span for end-to-end trace verification
                 using var mcpValidationActivity = SigNozTelemetryService.ActivitySource.StartActivity("MCP.Validation.Startup");
                 mcpValidationActivity?.SetTag("mcp.phase", "validation");
@@ -152,16 +169,24 @@ namespace WileyWidget
                 {
                     Log.Information("Phase 2B: Loading application resources (container ready)");
                     LoadApplicationResourcesSync();
-                    
+
                     // PHASE 2C: VALIDATE CRITICAL RESOURCES ARE AVAILABLE
                     Log.Information("🔍 [DIAGNOSTIC] Validating critical resources post-load...");
                     ValidateCriticalResources();
+
+                    // CRITICAL FIX: Force WPF to process the merged dictionaries before modules initialize
+                    // This ensures brushes are queryable via Application.Current.Resources.Contains()
+                    // before CoreModule.OnInitialized() runs its pre-registration check
+                    Log.Debug("🔄 [DIAGNOSTIC] Forcing WPF Dispatcher to process pending operations...");
+                    System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                        System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                        new Action(() => { /* Force dispatcher pump */ }));
+                    Log.Debug("✅ [DIAGNOSTIC] Dispatcher processing completed - resources should be queryable");
                 }
                 else
                 {
                     Log.Warning("⚠️ PHASE ISOLATION: Resource loading SKIPPED for debugging");
                 }
-                LoadApplicationResourcesSync();
 
 #if DEBUG
                 // Post-Prism diagnostics
@@ -436,11 +461,11 @@ namespace WileyWidget
             }
             finally
             {
+                Log.Information("Shutdown complete - ExitCode: {Code}", e.ApplicationExitCode);
+
                 // Final log flush before exit
                 Log.CloseAndFlush();
             }
-
-            Log.Information("Shutdown complete - ExitCode: {Code}", e.ApplicationExitCode);
         }
 
         /// <summary>
@@ -689,16 +714,22 @@ namespace WileyWidget
                     }
                 }
 
-                // Legacy configuration-based warnings (retained for compatibility)
+                // Configuration-based warnings: Check both config and env var (env var takes precedence per static ctor)
+                // syncfusionKey already includes fallback: config["Syncfusion:LicenseKey"] ?? Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY")
                 if (string.IsNullOrEmpty(syncfusionKey))
                 {
                     if (App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.TrialMode)
                     {
-                        Log.Debug("[LICENSE] Configuration validation: Syncfusion key not in config but trial mode active");
+                        Log.Debug("[LICENSE] Configuration validation: Syncfusion key not in config/env but trial mode active");
+                    }
+                    else if (App.SyncfusionLicenseStatus != App.LicenseRegistrationStatus.Success)
+                    {
+                        warnings.Add("Syncfusion license key not found in configuration or SYNCFUSION_LICENSE_KEY environment variable");
                     }
                     else
                     {
-                        warnings.Add("Syncfusion license key not found in configuration");
+                        // Key was registered successfully in static ctor from env var but not visible in config check
+                        Log.Debug("[LICENSE] Syncfusion license registered from environment variable (not in appsettings.json)");
                     }
                 }
 
@@ -706,11 +737,16 @@ namespace WileyWidget
                 {
                     if (App.BoldLicenseStatus == App.LicenseRegistrationStatus.TrialMode)
                     {
-                        Log.Debug("[LICENSE] Configuration validation: Bold Reports key not in config but trial mode active");
+                        Log.Debug("[LICENSE] Configuration validation: Bold Reports key not in config/env but trial mode active");
+                    }
+                    else if (App.BoldLicenseStatus != App.LicenseRegistrationStatus.Success)
+                    {
+                        warnings.Add("Bold Reports license key not found in configuration or BOLD_LICENSE_KEY environment variable");
                     }
                     else
                     {
-                        warnings.Add("Bold Reports license key not found in configuration");
+                        // Key was registered successfully in static ctor from env var but not visible in config check
+                        Log.Debug("[LICENSE] Bold Reports license registered from environment variable (not in appsettings.json)");
                     }
                 }
             }
@@ -763,13 +799,13 @@ namespace WileyWidget
         private void ValidateCriticalResources()
         {
             var sw = Stopwatch.StartNew();
-            
+
             try
             {
                 // Validate merged dictionaries loaded
                 var mergedDicts = Application.Current.Resources.MergedDictionaries;
                 Log.Information("📚 [DIAGNOSTIC] Merged Dictionaries Loaded: {Count}", mergedDicts.Count);
-                
+
                 var totalResources = 0;
                 foreach (var dict in mergedDicts)
                 {
@@ -777,9 +813,9 @@ namespace WileyWidget
                     totalResources += dict.Count;
                     Log.Debug("  ✓ {Source} ({Count} resources)", source, dict.Count);
                 }
-                
+
                 Log.Information("📊 [DIAGNOSTIC] Total resources in merged dictionaries: {Count}", totalResources);
-                
+
                 // Validate critical brushes exist
                 var criticalBrushes = new[]
                 {
@@ -789,10 +825,10 @@ namespace WileyWidget
                     "PanelBorderBrush", "SectionHeaderBrush",
                     "AccentBlueBrush", "CardBackground", "PrimaryTextBrush"
                 };
-                
+
                 var missing = new List<string>();
                 var found = 0;
-                
+
                 foreach (var brush in criticalBrushes)
                 {
                     if (Application.Current.Resources.Contains(brush))
@@ -806,7 +842,7 @@ namespace WileyWidget
                         Log.Error("  ❌ {Brush} - MISSING!", brush);
                     }
                 }
-                
+
                 // Validate critical converters exist
                 var criticalConverters = new[]
                 {
@@ -814,7 +850,7 @@ namespace WileyWidget
                     "CountToVisibilityConverter", "EmptyStringToVisibilityConverter",
                     "BalanceColorConverter", "BooleanToVisibilityConverter"
                 };
-                
+
                 foreach (var converter in criticalConverters)
                 {
                     if (Application.Current.Resources.Contains(converter))
@@ -828,22 +864,22 @@ namespace WileyWidget
                         Log.Error("  ❌ {Converter} - MISSING!", converter);
                     }
                 }
-                
+
                 sw.Stop();
-                
+
                 // Report results
                 if (missing.Any())
                 {
                     Log.Fatal("💥 [DIAGNOSTIC] {Count} critical resources MISSING - startup will fail!", missing.Count);
                     Log.Fatal("Missing resources: {Resources}", string.Join(", ", missing));
-                    
+
                     throw new ApplicationException($"Missing {missing.Count} critical resources: {string.Join(", ", missing)}. " +
                                                  "Application cannot start without these resources. " +
                                                  "Check WileyTheme-Syncfusion.xaml and Generic.xaml.");
                 }
                 else
                 {
-                    Log.Information("✅ [DIAGNOSTIC] All {Count} critical resources validated ({Ms}ms)", 
+                    Log.Information("✅ [DIAGNOSTIC] All {Count} critical resources validated ({Ms}ms)",
                         criticalBrushes.Length + criticalConverters.Length, sw.ElapsedMilliseconds);
                 }
             }

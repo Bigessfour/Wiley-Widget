@@ -1,6 +1,7 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:system="clr-namespace:System;assembly=mscorlib"
     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
     xmlns:converters="clr-namespace:WileyWidget.Converters;assembly=WileyWidget.UI"
     xmlns:controls="clr-namespace:WileyWidget.Controls"
@@ -25,6 +26,7 @@
   <!-- ====================================================================== -->
   <!-- BASE TEXT STYLES (Typography Foundation)                               -->
   <!-- These provide consistent typography across the application            -->
+  <!-- NOTE: SfSkinManager will apply theme colors to these automatically    -->
   <!-- ====================================================================== -->
 
   <!-- Base Header Style -->
@@ -42,7 +44,7 @@
         Value="SemiBold" />
     <Setter
         Property="Foreground"
-        Value="{DynamicResource PrimaryTextBrush}" />
+        Value="#000000" />
     <Setter
         Property="Margin"
         Value="0,0,0,8" />
@@ -63,7 +65,7 @@
         Value="SemiBold" />
     <Setter
         Property="Foreground"
-        Value="{DynamicResource PrimaryTextBrush}" />
+        Value="#000000" />
     <Setter
         Property="Margin"
         Value="0,0,0,4" />
@@ -84,7 +86,7 @@
         Value="Normal" />
     <Setter
         Property="Foreground"
-        Value="{DynamicResource PrimaryTextBrush}" />
+        Value="#000000" />
     <Setter
         Property="LineHeight"
         Value="20" />
@@ -128,5 +130,70 @@
 
   <!-- Budget Converters -->
   <converters:BudgetProgressConverter x:Key="BudgetProgressConverter" />
+
+  <!-- ====================================================================== -->
+  <!-- SEMANTIC COLORS (Application-Specific, Static)                        -->
+  <!-- These are custom to Wiley Widget and don't come from Syncfusion       -->
+  <!-- ====================================================================== -->
+
+  <!-- Semantic Brushes -->
+  <SolidColorBrush
+      x:Key="SuccessBrush"
+      Color="#4CAF50" />
+  <SolidColorBrush
+      x:Key="WarningBrush"
+      Color="#FF9800" />
+  <SolidColorBrush
+      x:Key="ErrorBrush"
+      Color="#F44336" />
+  <SolidColorBrush
+      x:Key="InfoBrush"
+      Color="#2196F3" />
+
+  <!-- Data Visualization Brushes -->
+  <SolidColorBrush
+      x:Key="PositiveBrush"
+      Color="#4CAF50" />
+  <SolidColorBrush
+      x:Key="NegativeBrush"
+      Color="#F44336" />
+  <SolidColorBrush
+      x:Key="EmphasisBrush"
+      Color="#2196F3" />
+
+  <!-- Accent Brushes (Brand Colors) -->
+  <SolidColorBrush
+      x:Key="AccentBlueBrush"
+      Color="#2196F3" />
+  <SolidColorBrush
+      x:Key="AccentGreenBrush"
+      Color="#4CAF50" />
+  <SolidColorBrush
+      x:Key="AccentPurpleBrush"
+      Color="#9C27B0" />
+  <SolidColorBrush
+      x:Key="AccentOrangeBrush"
+      Color="#FF9800" />
+
+  <!-- ====================================================================== -->
+  <!-- SPACING SYSTEM (Layout Consistency)                                   -->
+  <!-- ====================================================================== -->
+
+  <system:Double x:Key="SpacingXS">4</system:Double>
+  <system:Double x:Key="SpacingS">8</system:Double>
+  <system:Double x:Key="SpacingM">16</system:Double>
+  <system:Double x:Key="SpacingL">24</system:Double>
+  <system:Double x:Key="SpacingXL">32</system:Double>
+
+  <Thickness x:Key="ThicknessXS">4</Thickness>
+  <Thickness x:Key="ThicknessS">8</Thickness>
+  <Thickness x:Key="ThicknessM">16</Thickness>
+  <Thickness x:Key="ThicknessL">24</Thickness>
+  <Thickness x:Key="ThicknessXL">32</Thickness>
+
+  <Thickness x:Key="CardMargin">8</Thickness>
+  <Thickness x:Key="CardPadding">16</Thickness>
+  <Thickness x:Key="SectionMargin">16</Thickness>
+  <Thickness x:Key="SectionSpacing">0,0,0,24</Thickness>
 
 </ResourceDictionary>

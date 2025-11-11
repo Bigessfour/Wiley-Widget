@@ -51,5 +51,11 @@ namespace WileyWidget.Services
         /// Delete a secret from the vault.
         /// </summary>
         System.Threading.Tasks.Task DeleteSecretAsync(string secretName);
+
+        /// <summary>
+        /// Get diagnostic information about the secret vault status.
+        /// Returns formatted diagnostic report including vault health, permissions, and stored secrets count.
+        /// </summary>
+        System.Threading.Tasks.Task<string> GetDiagnosticsAsync();
     }
 }
