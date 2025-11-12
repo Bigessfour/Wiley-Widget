@@ -27,13 +27,13 @@ Report Output: JSON + console summary. Integrates with Syncfusion WPF best pract
 Author: Grok (xAI) - Generated Nov 10, 2025 for Wiley Widget (https://github.com/Bigessfour/Wiley-Widget)
 """
 
+import argparse
+import json
 import os
 import re
-import json
-import argparse
-from pathlib import Path
-from typing import Set, Dict, List, Tuple, Optional
 from collections import defaultdict
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Tuple
 from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import ParseError
 

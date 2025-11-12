@@ -22,6 +22,7 @@ using WileyWidget.Services.Logging;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels.Base;
 using WileyWidget.Views;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Abstractions;
 
 namespace WileyWidget.ViewModels.Main {

@@ -54,13 +54,11 @@
 ### Primary Configurations to Use:
 
 1. **Launch WileyWidget (Debug Exceptions - Optimized)** ⭐
-
    - **Purpose**: Debugging runtime issues, exceptions, crashes
    - **Use When**: Investigating bugs, exception handling, DI issues
    - **Performance**: Medium startup, comprehensive coverage
 
 2. **Launch WileyWidget (Local)**
-
    - **Purpose**: Fast development iteration
    - **Use When**: Daily feature development, quick testing
    - **Performance**: Fast startup, minimal overhead

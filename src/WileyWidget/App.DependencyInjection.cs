@@ -57,15 +57,15 @@
 //    │   │       ├── ISettingsService -> SettingsService
 //    │   │       ├── IQuickBooksService -> QuickBooksService
 //    │   │       ├── ITelemetryService -> SigNozTelemetryService
-//    │   │       ├── ISecretVaultService -> LocalSecretVaultService
+//    │   │       ├── ISecretVaultService -> EncryptedLocalSecretVaultService
 //    │   │       ├── IReportExportService -> ReportExportService
 //    │   │       ├── IDataAnonymizerService -> DataAnonymizerService
 //    │   │       ├── IChargeCalculatorService -> ServiceChargeCalculatorService
 //    │   │       ├── IBoldReportService -> BoldReportService
 //    │   │       ├── IAuditService -> AuditService
-//    │   │       ├── ICompositeCommandService -> CompositeCommandService
+//    │   │       ├── ICompositeCommandService -> CompositeCommandService (COMMENTED OUT: No pub/sub usage)
 //    │   │       ├── IWileyWidgetContextService -> WileyWidgetContextService
-//    │   │       ├── IRegionMonitoringService -> RegionMonitoringService
+//    │   │       ├── IRegionMonitoringService -> RegionMonitoringService (COMMENTED OUT: Regions stable)
 //    │   │       ├── IExcelExportService -> ExcelExportService
 //    │   │       ├── IExcelReaderService -> ExcelReaderService
 //    │   │       ├── IWhatIfScenarioEngine -> WhatIfScenarioEngine ✓ (NEW)
@@ -141,6 +141,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using DryIoc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -248,6 +249,46 @@ namespace WileyWidget
 
             containerRegistry.RegisterSingleton<Services.IModuleHealthService, Services.ModuleHealthService>();
             Log.Debug("  ✓ IModuleHealthService registered (Singleton)");
+
+            // ═══════════════════════════════════════════════════════════════════════════════
+            // EXPLICIT REGISTRATIONS FOR NEW SERVICES (Post-Convention Safety Net)
+            // ═══════════════════════════════════════════════════════════════════════════════
+            // These registrations ensure critical services are available even if convention
+            // registration fails or assemblies are not loaded properly
+            Log.Information("🔧 [DI] Registering explicit safety-net registrations for new services...");
+
+            // AI and Analysis Services
+            try
+            {
+                containerRegistry.RegisterSingleton<WileyWidget.Services.IWhatIfScenarioEngine, WileyWidget.Services.WhatIfScenarioEngine>();
+                Log.Information("  ✅ IWhatIfScenarioEngine -> WhatIfScenarioEngine (Singleton, explicit safety-net)");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "  ⚠️ IWhatIfScenarioEngine explicit registration failed");
+            }
+
+            try
+            {
+                containerRegistry.RegisterSingleton<WileyWidget.Services.IBudgetImporter, WileyWidget.Services.BudgetImporter>();
+                Log.Information("  ✅ IBudgetImporter -> BudgetImporter (Singleton, explicit safety-net)");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "  ⚠️ IBudgetImporter explicit registration failed");
+            }
+
+            try
+            {
+                containerRegistry.RegisterSingleton<WileyWidget.Services.IGrokSupercomputer, WileyWidget.Services.GrokSupercomputer>();
+                Log.Information("  ✅ IGrokSupercomputer -> GrokSupercomputer (Singleton, explicit safety-net)");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "  ⚠️ IGrokSupercomputer explicit registration failed");
+            }
+
+            Log.Information("✅ [DI] Explicit safety-net registrations completed");
 
             // Register SigNoz telemetry service
             if (_earlyTelemetryService != null)
@@ -496,8 +537,8 @@ namespace WileyWidget
                 var connectionString = config.GetConnectionString("DefaultConnection") ??
                     "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
 
-                var container = containerRegistry.GetContainer();
-                container.Register<WileyWidget.Data.IAppDbContext, WileyWidget.Data.AppDbContext>(
+                var dryIocContainer = containerRegistry.GetContainer();
+                dryIocContainer.Register<WileyWidget.Data.IAppDbContext, WileyWidget.Data.AppDbContext>(
                     reuse: DryIoc.Reuse.Scoped,
                     made: DryIoc.Made.Of(() => new WileyWidget.Data.AppDbContext(
                         DryIoc.Arg.Of<DbContextOptions<WileyWidget.Data.AppDbContext>>())));
@@ -538,27 +579,27 @@ namespace WileyWidget
                 Log.Warning(ex, "  ⚠️ IDataAnonymizerService registration failed");
             }
 
-            // Register ICompositeCommandService (command coordination)
-            try
-            {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.ICompositeCommandService, WileyWidget.Services.CompositeCommandService>();
-                Log.Information("  ✅ ICompositeCommandService -> CompositeCommandService (Singleton)");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "  ⚠️ ICompositeCommandService registration failed");
-            }
+            // Register ICompositeCommandService (command coordination) - COMMENTED OUT: No pub/sub usage beyond Events
+            // try
+            // {
+            //     containerRegistry.RegisterSingleton<WileyWidget.Services.ICompositeCommandService, WileyWidget.Services.CompositeCommandService>();
+            //     Log.Information("  ✅ ICompositeCommandService -> CompositeCommandService (Singleton)");
+            // }
+            // catch (Exception ex)
+            // {
+            //     Log.Warning(ex, "  ⚠️ ICompositeCommandService registration failed");
+            // }
 
-            // Register IRegionMonitoringService (region health tracking)
-            try
-            {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.IRegionMonitoringService, WileyWidget.Services.RegionMonitoringService>();
-                Log.Information("  ✅ IRegionMonitoringService -> RegionMonitoringService (Singleton)");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "  ⚠️ IRegionMonitoringService registration failed");
-            }
+            // Register IRegionMonitoringService (region health tracking) - COMMENTED OUT: Regions stable, no monitoring needed
+            // try
+            // {
+            //     containerRegistry.RegisterSingleton<WileyWidget.Services.IRegionMonitoringService, WileyWidget.Services.RegionMonitoringService>();
+            //     Log.Information("  ✅ IRegionMonitoringService -> RegionMonitoringService (Singleton)");
+            // }
+            // catch (Exception ex)
+            // {
+            //     Log.Warning(ex, "  ⚠️ IRegionMonitoringService registration failed");
+            // }
 
             // Register IExcelExportService (Excel export functionality)
             try
@@ -595,10 +636,16 @@ namespace WileyWidget
             {
                 // Register IAIService with lazy API key resolution from IConfiguration
                 var dryIocContainer = containerRegistry.GetContainer();
-                dryIocContainer.Register<WileyWidget.Services.IAIService, WileyWidget.Services.XAIService>(
+                dryIocContainer.Register<WileyWidget.Services.Abstractions.IAIService, WileyWidget.Services.XAIService>(
                     reuse: DryIoc.Reuse.Singleton,
                     made: DryIoc.Made.Of(() => new WileyWidget.Services.XAIService(
-                        DryIoc.Arg.Of<IConfiguration>())));
+                        DryIoc.Arg.Of<IHttpClientFactory>(),
+                        DryIoc.Arg.Of<IConfiguration>(),
+                        DryIoc.Arg.Of<ILogger<WileyWidget.Services.XAIService>>(),
+                        DryIoc.Arg.Of<WileyWidget.Services.IWileyWidgetContextService>(),
+                        DryIoc.Arg.Of<WileyWidget.Services.IAILoggingService>(),
+                        DryIoc.Arg.Of<IMemoryCache>(),
+                        DryIoc.Arg.Of<WileyWidget.Services.Telemetry.SigNozTelemetryService>())));
                 Log.Information("  ✅ IAIService -> XAIService (Singleton with lazy API key resolution)");
             }
             catch (Exception ex)
@@ -856,12 +903,12 @@ namespace WileyWidget
             // 1. ISecretVaultService - Requires IConfiguration and ILogger
             try
             {
-                container.Register<WileyWidget.Services.ISecretVaultService, WileyWidget.Services.LocalSecretVaultService>(
+                container.Register<WileyWidget.Services.ISecretVaultService, WileyWidget.Services.EncryptedLocalSecretVaultService>(
                     reuse: DryIoc.Reuse.Singleton,
-                    made: DryIoc.Made.Of(() => new WileyWidget.Services.LocalSecretVaultService(
-                        DryIoc.Arg.Of<ILogger<WileyWidget.Services.LocalSecretVaultService>>())),
+                    made: DryIoc.Made.Of(() => new WileyWidget.Services.EncryptedLocalSecretVaultService(
+                        DryIoc.Arg.Of<ILogger<WileyWidget.Services.EncryptedLocalSecretVaultService>>())),
                     ifAlreadyRegistered: IfAlreadyRegistered.Replace);
-                Log.Information("  ✅ ISecretVaultService -> LocalSecretVaultService (Singleton, explicit ctor: ILogger)");
+                Log.Information("  ✅ ISecretVaultService -> EncryptedLocalSecretVaultService (Singleton, explicit ctor: ILogger)");
             }
             catch (Exception ex)
             {
@@ -913,10 +960,16 @@ namespace WileyWidget
             // 4. IAIService - Requires IConfiguration for API key
             try
             {
-                container.Register<WileyWidget.Services.Abstractions.IAIService, WileyWidget.Services.AI.XAIService>(
+                container.Register<WileyWidget.Services.Abstractions.IAIService, WileyWidget.Services.XAIService>(
                     reuse: DryIoc.Reuse.Singleton,
-                    made: DryIoc.Made.Of(() => new WileyWidget.Services.AI.XAIService(
-                        DryIoc.Arg.Of<IConfiguration>())),
+                    made: DryIoc.Made.Of(() => new WileyWidget.Services.XAIService(
+                        DryIoc.Arg.Of<IHttpClientFactory>(),
+                        DryIoc.Arg.Of<IConfiguration>(),
+                        DryIoc.Arg.Of<ILogger<WileyWidget.Services.XAIService>>(),
+                        DryIoc.Arg.Of<WileyWidget.Services.IWileyWidgetContextService>(),
+                        DryIoc.Arg.Of<WileyWidget.Services.IAILoggingService>(),
+                        DryIoc.Arg.Of<IMemoryCache>(),
+                        DryIoc.Arg.Of<WileyWidget.Services.Telemetry.SigNozTelemetryService>())),
                     ifAlreadyRegistered: IfAlreadyRegistered.Replace);
                 Log.Information("  ✅ IAIService -> XAIService (Singleton, explicit ctor: IConfiguration)");
             }
@@ -1093,17 +1146,26 @@ namespace WileyWidget
                     successfulModules.Add("CoreModule");
                     Log.Debug("    ✓ CoreModule registered successfully");
                 }
-
-                Log.Debug("  📦 Attempting to register QuickBooksModule...");
-                if (!TryRegisterModule<Startup.Modules.QuickBooksModule>(moduleCatalog))
+                // Check if QuickBooks is enabled in configuration
+                var config = BuildConfiguration();
+                var qbEnabled = config.GetValue<bool>("EnableQuickBooks", true);
+                if (!qbEnabled)
                 {
-                    moduleRegistrationErrors.Add("QuickBooksModule");
-                    Log.Warning("  ⚠️ QuickBooksModule assembly validation failed - attempting fallback registration");
+                    Log.Information("  ⏭️ QuickBooks module disabled via configuration (EnableQuickBooks=false)");
                 }
                 else
                 {
-                    successfulModules.Add("QuickBooksModule");
-                    Log.Debug("    ✓ QuickBooksModule registered successfully");
+                    Log.Debug("  📦 Attempting to register QuickBooksModule...");
+                    if (!TryRegisterModule<Startup.Modules.QuickBooksModule>(moduleCatalog))
+                    {
+                        moduleRegistrationErrors.Add("QuickBooksModule");
+                        Log.Warning("  ⚠️ QuickBooksModule assembly validation failed - attempting fallback registration");
+                    }
+                    else
+                    {
+                        successfulModules.Add("QuickBooksModule");
+                        Log.Debug("    ✓ QuickBooksModule registered successfully");
+                    }
                 }
 
                 // Dynamic module discovery - scan for additional modules in current assembly
@@ -1346,7 +1408,7 @@ namespace WileyWidget
                 // Register Syncfusion region adapters with error handling (post-theme)
                 try
                 {
-                    var dockingManagerType = FindLoadedTypeByShortName("DockingManager");
+                    var dockingManagerType = Type.GetType("Syncfusion.Windows.Tools.Controls.DockingManager, Syncfusion.Tools.WPF");
                     if (dockingManagerType != null)
                     {
                         var dockingAdapter = new DockingManagerRegionAdapter(behaviorFactory);
@@ -1365,7 +1427,7 @@ namespace WileyWidget
 
                 try
                 {
-                    var sfGridType = FindLoadedTypeByShortName("SfDataGrid");
+                    var sfGridType = Type.GetType("Syncfusion.UI.Xaml.Grid.SfDataGrid, Syncfusion.Grid.WPF");
                     if (sfGridType != null)
                     {
                         var sfGridAdapter = new SfDataGridRegionAdapter(behaviorFactory);
@@ -1547,7 +1609,7 @@ namespace WileyWidget
                         new[] { repoAssembly },
                         serviceTypeCondition: type => type.IsInterface && type.Name.StartsWith("I") && type.Name.EndsWith("Repository"),
                         reuse: DryIoc.Reuse.Scoped,
-                        setup: DryIoc.Setup.With(condition: request => request.IsClass && !request.IsAbstract && request.Name.EndsWith("Repository")));
+                        setup: DryIoc.Setup.With(condition: request => request.ImplementationType != null && request.ImplementationType.IsClass && !request.ImplementationType.IsAbstract && request.ImplementationType.Name.EndsWith("Repository")));
 
                     // Log explicit registrations for test detection
                     Log.Information("  ✅ IEnterpriseRepository -> EnterpriseRepository (Scoped)");
@@ -1582,18 +1644,19 @@ namespace WileyWidget
                         serviceTypeCondition: type => type.IsInterface && type.Name.StartsWith("I"),
                         reuse: DryIoc.Reuse.Singleton,
                         setup: DryIoc.Setup.With(condition: request =>
-                            request.IsClass && !request.IsAbstract &&
-                            (request.Name.EndsWith("Service") ||
-                             request.Name.EndsWith("Engine") ||
-                             request.Name.EndsWith("Helper") ||
-                             request.Name.EndsWith("Importer") ||
-                             request.Name.EndsWith("Calculator"))));
+                            request.ImplementationType != null &&
+                            request.ImplementationType.IsClass && !request.ImplementationType.IsAbstract &&
+                            (request.ImplementationType.Name.EndsWith("Service") ||
+                             request.ImplementationType.Name.EndsWith("Engine") ||
+                             request.ImplementationType.Name.EndsWith("Helper") ||
+                             request.ImplementationType.Name.EndsWith("Importer") ||
+                             request.ImplementationType.Name.EndsWith("Calculator"))));
 
                     // Log explicit registrations for test detection
                     Log.Information("  ✅ ISettingsService -> SettingsService (Singleton)");
                     Log.Information("  ✅ IQuickBooksService -> QuickBooksService (Singleton)");
                     Log.Information("  ✅ ITelemetryService -> SigNozTelemetryService (Singleton)");
-                    Log.Information("  ✅ ISecretVaultService -> LocalSecretVaultService (Singleton)");
+                    Log.Information("  ✅ ISecretVaultService -> EncryptedLocalSecretVaultService (Singleton)");
                     Log.Information("  ✅ IReportExportService -> ReportExportService (Singleton)");
                     Log.Information("  ✅ IDataAnonymizerService -> DataAnonymizerService (Singleton)");
                     Log.Information("  ✅ IChargeCalculatorService -> ServiceChargeCalculatorService (Singleton)");
@@ -1627,9 +1690,10 @@ namespace WileyWidget
                         serviceTypeCondition: type => type.IsClass && !type.IsAbstract && type.Name.EndsWith("ViewModel"),
                         reuse: DryIoc.Reuse.Transient,
                         setup: DryIoc.Setup.With(condition: request =>
-                            request.IsClass && !request.IsAbstract &&
-                            request.Name.EndsWith("ViewModel") &&
-                            request.Namespace?.Contains("ViewModels") == true));
+                            request.ImplementationType != null &&
+                            request.ImplementationType.IsClass && !request.ImplementationType.IsAbstract &&
+                            request.ImplementationType.Name.EndsWith("ViewModel") &&
+                            request.ImplementationType.Namespace?.Contains("ViewModels") == true));
 
                     // Log explicit registrations for test detection
                     Log.Information("  ✅ DashboardViewModel -> DashboardViewModel (Transient)");
@@ -1699,7 +1763,8 @@ namespace WileyWidget
                 var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
                     new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions
                     {
-                        SizeLimit = 1024 * 1024 * 100, // 100MB limit
+                        // SizeLimit removed - cache entries don't specify Size, causing InvalidOperationException
+                        // SizeLimit = 1024 * 1024 * 100, // 100MB limit
                         CompactionPercentage = 0.25    // Compact when 75% full
                     });
                 registry.RegisterInstance<Microsoft.Extensions.Caching.Memory.IMemoryCache>(memoryCache);
@@ -1710,7 +1775,8 @@ namespace WileyWidget
                 container.Register<WileyWidget.Abstractions.ICacheService, WileyWidget.Services.MemoryCacheService>(
                     reuse: DryIoc.Reuse.Singleton,
                     made: DryIoc.Made.Of(() => new WileyWidget.Services.MemoryCacheService(
-                        DryIoc.Arg.Of<Microsoft.Extensions.Caching.Memory.IMemoryCache>())));
+                        DryIoc.Arg.Of<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
+                        DryIoc.Arg.Of<ILogger<WileyWidget.Services.MemoryCacheService>>())));
                 Log.Debug("  ✓ ICacheService registered (Singleton with Made.Of factory resolving IMemoryCache)");
 
                 // Create a single ServiceCollection for all Microsoft.Extensions services
@@ -1721,6 +1787,10 @@ namespace WileyWidget
                 // Add logging with Serilog bridge
                 serviceCollection.AddLogging(builder => builder.AddSerilog(dispose: false));
                 Log.Debug("    ✓ Logging services added with Serilog bridge");
+
+                // Add Microsoft Options system for IOptions<> support
+                serviceCollection.AddOptions();
+                Log.Debug("    ✓ Options services added (IOptions<> support)");
 
                 // Add HTTP clients with resilience policies
                 Log.Debug("  🌐 Configuring HTTP clients...");
@@ -1866,6 +1936,27 @@ namespace WileyWidget
                 var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
                 registry.RegisterInstance<IHttpClientFactory>(httpClientFactory);
                 Log.Debug("    ✓ IHttpClientFactory registered (Instance with 3 named clients: Default, QuickBooks, XAI)");
+
+                // Attempt to populate Prism's DryIoc container with Microsoft.Extensions service collection.
+                // Requires Prism container extension instance for Populate extension method.
+                try
+                {
+                    if (registry is Prism.Ioc.IContainerExtension containerExtension)
+                    {
+                        containerExtension.Populate(serviceCollection);
+                        Log.Debug("    ✓ ServiceCollection populated into DryIoc (Options/Logging generics wired)");
+                    }
+                    else
+                    {
+                        Log.Warning("    ⚠️ IContainerExtension not available - using manual generic bridging fallback");
+                        FallbackBridgeGenerics(registry.GetContainer(), serviceProvider);
+                    }
+                }
+                catch (Exception popEx)
+                {
+                    Log.Warning(popEx, "    ⚠️ Populate(ServiceCollection) failed - using manual generic bridging fallback");
+                    FallbackBridgeGenerics(registry.GetContainer(), serviceProvider);
+                }
 
                 // Enhanced DbContextFactory registration with graceful fallback
                 if (!string.IsNullOrWhiteSpace(finalConnectionString))
@@ -2293,7 +2384,7 @@ namespace WileyWidget
                     Log.Information("✓ XAI API key found (length: {Length})", apiKey.Length);
 
                     // Register XAIService as IAIService with factory for proper initialization
-                    registry.RegisterSingleton<WileyWidget.Services.IAIService>(container =>
+                    registry.RegisterSingleton<WileyWidget.Services.Abstractions.IAIService>(container =>
                     {
                         var logger = container.Resolve<ILogger<WileyWidget.Services.XAIService>>();
                         var httpClientFactory = container.Resolve<IHttpClientFactory>();
@@ -2317,7 +2408,7 @@ namespace WileyWidget
                     Log.Warning("⚠ XAI API key not found - registering NullAIService");
 
                     // Register NullAIService as fallback
-                    registry.RegisterSingleton<WileyWidget.Services.IAIService, WileyWidget.Services.NullAIService>();
+                    registry.RegisterSingleton<WileyWidget.Services.Abstractions.IAIService, WileyWidget.Services.NullAIService>();
                     Log.Information("✓ NullAIService registered as IAIService (fallback)");
                 }
 
@@ -2651,7 +2742,7 @@ namespace WileyWidget
                     try
                     {
                         // Use TryResolve to avoid throwing for optional services
-                        var resolved = dryIoc.TryResolve(st, IfUnresolved.ReturnDefault);
+                        var resolved = dryIoc.Resolve(st, IfUnresolved.ReturnDefault);
                         if (resolved == null)
                         {
                             failures.Add(st.FullName ?? st.Name);
@@ -2763,7 +2854,7 @@ namespace WileyWidget
                 try
                 {
                     // Use TryResolve to avoid throwing for optional services
-                    var resolved = dryIoc.TryResolve(serviceType, IfUnresolved.ReturnDefault);
+                    var resolved = dryIoc.Resolve(serviceType, IfUnresolved.ReturnDefault);
 
                     if (resolved == null)
                     {
@@ -2889,5 +2980,60 @@ namespace WileyWidget
         #endregion
 
         #endregion
+
+        // Fallback generic bridging when Populate is unavailable
+        private static void FallbackBridgeGenerics(DryIoc.IContainer dryContainer, IServiceProvider serviceProvider)
+        {
+            if (dryContainer == null || serviceProvider == null) return;
+            try
+            {
+                // Ensure ILoggerFactory instance is available
+                if (!dryContainer.IsRegistered<Microsoft.Extensions.Logging.ILoggerFactory>())
+                {
+                    var lf = serviceProvider.GetService(typeof(Microsoft.Extensions.Logging.ILoggerFactory)) as Microsoft.Extensions.Logging.ILoggerFactory;
+                    if (lf != null)
+                        dryContainer.RegisterInstance<Microsoft.Extensions.Logging.ILoggerFactory>(lf, ifAlreadyRegistered: DryIoc.IfAlreadyRegistered.Keep);
+                }
+
+                // ILogger<T>: simple delegate using service type parameter
+                if (!dryContainer.IsRegistered(typeof(Microsoft.Extensions.Logging.ILogger<>)))
+                {
+                    dryContainer.RegisterDelegate(typeof(Microsoft.Extensions.Logging.ILogger<>), (DryIoc.IResolver resolver, Type serviceType) =>
+                    {
+                        var factory = resolver.Resolve<Microsoft.Extensions.Logging.ILoggerFactory>();
+                        var genericArg = serviceType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
+                        return factory.CreateLogger(genericArg);
+                    }, reuse: DryIoc.Reuse.Transient, ifAlreadyRegistered: DryIoc.IfAlreadyRegistered.Keep);
+                }
+
+                // IOptions<T>: resolve via root serviceProvider for the closed generic
+                if (!dryContainer.IsRegistered(typeof(Microsoft.Extensions.Options.IOptions<>)))
+                {
+                    dryContainer.RegisterDelegate(typeof(Microsoft.Extensions.Options.IOptions<>), (DryIoc.IResolver resolver, Type serviceType) =>
+                    {
+                        var t = serviceType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
+                        var closedType = typeof(Microsoft.Extensions.Options.IOptions<>).MakeGenericType(t);
+                        return serviceProvider.GetService(closedType)!;
+                    }, reuse: DryIoc.Reuse.Transient, ifAlreadyRegistered: DryIoc.IfAlreadyRegistered.Keep);
+                }
+
+                // IOptionsMonitor<T>
+                if (!dryContainer.IsRegistered(typeof(Microsoft.Extensions.Options.IOptionsMonitor<>)))
+                {
+                    dryContainer.RegisterDelegate(typeof(Microsoft.Extensions.Options.IOptionsMonitor<>), (DryIoc.IResolver resolver, Type serviceType) =>
+                    {
+                        var t = serviceType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
+                        var closedType = typeof(Microsoft.Extensions.Options.IOptionsMonitor<>).MakeGenericType(t);
+                        return serviceProvider.GetService(closedType)!;
+                    }, reuse: DryIoc.Reuse.Transient, ifAlreadyRegistered: DryIoc.IfAlreadyRegistered.Keep);
+                }
+
+                Log.Debug("    ✓ Fallback generic bridging applied (ILogger<T>, IOptions<T>, IOptionsMonitor<T>)");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "    ⚠️ Fallback generic bridging failed - generics may be unresolved");
+            }
+        }
     }
 }

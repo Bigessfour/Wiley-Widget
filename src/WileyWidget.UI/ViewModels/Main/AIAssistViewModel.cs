@@ -16,6 +16,7 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Threading;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.ViewModels.Messages;
 using WileyWidget.Abstractions;
 // Resolve ChatMessage naming conflict explicitly

@@ -21,10 +21,10 @@ Usage:
 import argparse
 import json
 import re
+import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import List, Set
-import sys
 
 # ============================================================================
 # ANIMATION PATTERNS
@@ -32,89 +32,75 @@ import sys
 
 # XAML Animation Patterns
 STORYBOARD_PAT = re.compile(
-    r'<Storyboard\s+(?:[^>]*\s+)?x:Key\s*=\s*"([^"]+)"',
-    re.IGNORECASE
+    r'<Storyboard\s+(?:[^>]*\s+)?x:Key\s*=\s*"([^"]+)"', re.IGNORECASE
 )
 
 DOUBLE_ANIMATION_PAT = re.compile(
     r'<DoubleAnimation\s+(?:[^>]*)(?:Storyboard\.TargetProperty\s*=\s*"([^"]+)")?',
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 COLOR_ANIMATION_PAT = re.compile(
     r'<ColorAnimation\s+(?:[^>]*)(?:Storyboard\.TargetProperty\s*=\s*"([^"]+)")?',
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 EVENT_TRIGGER_PAT = re.compile(
-    r'<EventTrigger\s+(?:[^>]*)RoutedEvent\s*=\s*"([^"]+)"',
-    re.IGNORECASE
+    r'<EventTrigger\s+(?:[^>]*)RoutedEvent\s*=\s*"([^"]+)"', re.IGNORECASE
 )
 
 PROPERTY_TRIGGER_PAT = re.compile(
-    r'<Trigger\s+Property\s*=\s*"([^"]+)"\s+Value\s*=\s*"([^"]+)"',
-    re.IGNORECASE
+    r'<Trigger\s+Property\s*=\s*"([^"]+)"\s+Value\s*=\s*"([^"]+)"', re.IGNORECASE
 )
 
-BEGIN_STORYBOARD_PAT = re.compile(
-    r'<BeginStoryboard[^>]*>',
-    re.IGNORECASE
-)
+BEGIN_STORYBOARD_PAT = re.compile(r"<BeginStoryboard[^>]*>", re.IGNORECASE)
 
 # Syncfusion-Specific XAML Patterns
 SYNCFUSION_ENABLE_ANIMATION_PAT = re.compile(
     r'<(?:syncfusion|sf):(\w+)[^>]*\s+EnableAnimation\s*=\s*"(True|False)"',
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 SYNCFUSION_ANIMATION_DURATION_PAT = re.compile(
-    r'AnimationDuration\s*=\s*"([^"]+)"',
-    re.IGNORECASE
+    r'AnimationDuration\s*=\s*"([^"]+)"', re.IGNORECASE
 )
 
 SYNCFUSION_SERIES_ANIMATION_PAT = re.compile(
-    r'SeriesAnimationMode\s*=\s*"([^"]+)"',
-    re.IGNORECASE
+    r'SeriesAnimationMode\s*=\s*"([^"]+)"', re.IGNORECASE
 )
 
 SYNCFUSION_ROW_TRANSITION_PAT = re.compile(
-    r'RowTransitionMode\s*=\s*"([^"]+)"',
-    re.IGNORECASE
+    r'RowTransitionMode\s*=\s*"([^"]+)"', re.IGNORECASE
 )
 
 SYNCFUSION_ANIMATE_ON_DATA_PAT = re.compile(
-    r'AnimateOnDataChange\s*=\s*"(True|False)"',
-    re.IGNORECASE
+    r'AnimateOnDataChange\s*=\s*"(True|False)"', re.IGNORECASE
 )
 
 # C# Animation Patterns
 CSHARP_ANIMATION_TIMELINE_PAT = re.compile(
-    r'(?:new\s+)?(\w*Animation(?:Timeline)?)\s*\(',
-    re.IGNORECASE
+    r"(?:new\s+)?(\w*Animation(?:Timeline)?)\s*\(", re.IGNORECASE
 )
 
 CSHARP_BEGIN_ANIMATION_PAT = re.compile(
-    r'\.BeginAnimation\s*\(\s*(\w+Property)\s*,',
-    re.IGNORECASE
+    r"\.BeginAnimation\s*\(\s*(\w+Property)\s*,", re.IGNORECASE
 )
 
-CSHARP_TRANSITION_MANAGER_PAT = re.compile(
-    r'TransitionManager\.(\w+)',
-    re.IGNORECASE
-)
+CSHARP_TRANSITION_MANAGER_PAT = re.compile(r"TransitionManager\.(\w+)", re.IGNORECASE)
 
 CSHARP_VISUAL_STATE_PAT = re.compile(
-    r'VisualStateManager\.GoToState\s*\(',
-    re.IGNORECASE
+    r"VisualStateManager\.GoToState\s*\(", re.IGNORECASE
 )
 
 # ============================================================================
 # DATA STRUCTURES
 # ============================================================================
 
+
 @dataclass
 class AnimationMatch:
     """Represents a single animation detection."""
+
     file: str
     line_number: int
     pattern_type: str
@@ -130,6 +116,7 @@ class AnimationMatch:
 @dataclass
 class AnimationReport:
     """Complete animation scan report."""
+
     scan_date: str
     repository: str
     scope: str
@@ -162,7 +149,11 @@ class AnimationReport:
             self.xaml_storyboards.append(match)
         elif match.pattern_type in ["DoubleAnimation", "ColorAnimation"]:
             self.xaml_animations.append(match)
-        elif match.pattern_type in ["EventTrigger", "PropertyTrigger", "BeginStoryboard"]:
+        elif match.pattern_type in [
+            "EventTrigger",
+            "PropertyTrigger",
+            "BeginStoryboard",
+        ]:
             self.xaml_triggers.append(match)
         elif "Syncfusion" in match.pattern_type:
             self.syncfusion_animations.append(match)
@@ -192,7 +183,9 @@ class AnimationReport:
                 "xaml_storyboards": [m.to_dict() for m in self.xaml_storyboards],
                 "xaml_animations": [m.to_dict() for m in self.xaml_animations],
                 "xaml_triggers": [m.to_dict() for m in self.xaml_triggers],
-                "syncfusion_animations": [m.to_dict() for m in self.syncfusion_animations],
+                "syncfusion_animations": [
+                    m.to_dict() for m in self.syncfusion_animations
+                ],
                 "csharp_animations": [m.to_dict() for m in self.csharp_animations],
             },
             "files_with_animations": sorted(list(self.files_with_animations)),
@@ -204,6 +197,7 @@ class AnimationReport:
 # SCANNER
 # ============================================================================
 
+
 class AnimationScanner:
     """Scans files for WPF and Syncfusion animations."""
 
@@ -213,6 +207,7 @@ class AnimationScanner:
         self.verbose = verbose
 
         from datetime import datetime
+
         self.report = AnimationReport(
             scan_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             repository="Bigessfour/Wiley-Widget",
@@ -247,7 +242,9 @@ class AnimationScanner:
         )
 
         if self.verbose:
-            print(f"✅ Scan complete: {self.report.total_animations_found} animations found")
+            print(
+                f"✅ Scan complete: {self.report.total_animations_found} animations found"
+            )
 
     def _scan_xaml_file(self, file_path: Path):
         """Scan a single XAML file."""
@@ -258,103 +255,123 @@ class AnimationScanner:
             for i, line in enumerate(lines, start=1):
                 # Storyboards
                 if match := STORYBOARD_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="Storyboard",
-                        content=line.strip(),
-                        animation_key=match.group(1),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="Storyboard",
+                            content=line.strip(),
+                            animation_key=match.group(1),
+                        )
+                    )
 
                 # DoubleAnimation
                 if match := DOUBLE_ANIMATION_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="DoubleAnimation",
-                        content=line.strip(),
-                        target_property=match.group(1) if match.group(1) else "",
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="DoubleAnimation",
+                            content=line.strip(),
+                            target_property=match.group(1) if match.group(1) else "",
+                        )
+                    )
 
                 # ColorAnimation
                 if match := COLOR_ANIMATION_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="ColorAnimation",
-                        content=line.strip(),
-                        target_property=match.group(1) if match.group(1) else "",
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="ColorAnimation",
+                            content=line.strip(),
+                            target_property=match.group(1) if match.group(1) else "",
+                        )
+                    )
 
                 # EventTrigger
                 if match := EVENT_TRIGGER_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="EventTrigger",
-                        content=line.strip(),
-                        target_property=match.group(1),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="EventTrigger",
+                            content=line.strip(),
+                            target_property=match.group(1),
+                        )
+                    )
 
                 # PropertyTrigger
                 if match := PROPERTY_TRIGGER_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="PropertyTrigger",
-                        content=line.strip(),
-                        target_property=f"{match.group(1)}={match.group(2)}",
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="PropertyTrigger",
+                            content=line.strip(),
+                            target_property=f"{match.group(1)}={match.group(2)}",
+                        )
+                    )
 
                 # BeginStoryboard
                 if BEGIN_STORYBOARD_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="BeginStoryboard",
-                        content=line.strip(),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="BeginStoryboard",
+                            content=line.strip(),
+                        )
+                    )
 
                 # Syncfusion EnableAnimation
                 if match := SYNCFUSION_ENABLE_ANIMATION_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="Syncfusion.EnableAnimation",
-                        content=line.strip(),
-                        control_type=match.group(1),
-                        target_property=f"EnableAnimation={match.group(2)}",
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="Syncfusion.EnableAnimation",
+                            content=line.strip(),
+                            control_type=match.group(1),
+                            target_property=f"EnableAnimation={match.group(2)}",
+                        )
+                    )
 
                 # Syncfusion SeriesAnimationMode
                 if match := SYNCFUSION_SERIES_ANIMATION_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="Syncfusion.SeriesAnimationMode",
-                        content=line.strip(),
-                        target_property=match.group(1),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="Syncfusion.SeriesAnimationMode",
+                            content=line.strip(),
+                            target_property=match.group(1),
+                        )
+                    )
 
                 # Syncfusion RowTransitionMode
                 if match := SYNCFUSION_ROW_TRANSITION_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="Syncfusion.RowTransitionMode",
-                        content=line.strip(),
-                        target_property=match.group(1),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="Syncfusion.RowTransitionMode",
+                            content=line.strip(),
+                            target_property=match.group(1),
+                        )
+                    )
 
                 # Syncfusion AnimateOnDataChange
                 if match := SYNCFUSION_ANIMATE_ON_DATA_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="Syncfusion.AnimateOnDataChange",
-                        content=line.strip(),
-                        target_property=f"AnimateOnDataChange={match.group(1)}",
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="Syncfusion.AnimateOnDataChange",
+                            content=line.strip(),
+                            target_property=f"AnimateOnDataChange={match.group(1)}",
+                        )
+                    )
 
         except Exception as e:
             if self.verbose:
@@ -369,42 +386,50 @@ class AnimationScanner:
             for i, line in enumerate(lines, start=1):
                 # AnimationTimeline (e.g., new DoubleAnimation())
                 if match := CSHARP_ANIMATION_TIMELINE_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="CSharp.AnimationTimeline",
-                        content=line.strip(),
-                        control_type=match.group(1),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="CSharp.AnimationTimeline",
+                            content=line.strip(),
+                            control_type=match.group(1),
+                        )
+                    )
 
                 # BeginAnimation
                 if match := CSHARP_BEGIN_ANIMATION_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="CSharp.BeginAnimation",
-                        content=line.strip(),
-                        target_property=match.group(1),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="CSharp.BeginAnimation",
+                            content=line.strip(),
+                            target_property=match.group(1),
+                        )
+                    )
 
                 # TransitionManager
                 if match := CSHARP_TRANSITION_MANAGER_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="CSharp.TransitionManager",
-                        content=line.strip(),
-                        target_property=match.group(1),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="CSharp.TransitionManager",
+                            content=line.strip(),
+                            target_property=match.group(1),
+                        )
+                    )
 
                 # VisualStateManager
                 if CSHARP_VISUAL_STATE_PAT.search(line):
-                    self.report.add_match(AnimationMatch(
-                        file=str(file_path.relative_to(self.root_path.parent)),
-                        line_number=i,
-                        pattern_type="CSharp.VisualStateManager",
-                        content=line.strip(),
-                    ))
+                    self.report.add_match(
+                        AnimationMatch(
+                            file=str(file_path.relative_to(self.root_path.parent)),
+                            line_number=i,
+                            pattern_type="CSharp.VisualStateManager",
+                            content=line.strip(),
+                        )
+                    )
 
         except Exception as e:
             if self.verbose:
@@ -425,9 +450,9 @@ class AnimationScanner:
 
     def print_summary(self):
         """Print summary to console."""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🎬 SYNCFUSION ANIMATION SCAN REPORT")
-        print("="*80)
+        print("=" * 80)
         print(f"Repository: {self.report.repository}")
         print(f"Scan Date: {self.report.scan_date}")
         print(f"Scope: {self.report.scope}")
@@ -469,12 +494,13 @@ class AnimationScanner:
             print("  ℹ️  Verify in runtime logs for resource warnings")
             print("  ℹ️  Ensure proper disposal to prevent memory leaks")
 
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
 
 # ============================================================================
 # MAIN
 # ============================================================================
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -486,34 +512,30 @@ Examples:
   python animation_scanner.py --path src/WileyWidget --output logs/animation_report.json
   python animation_scanner.py --focus xaml --verbose
   python animation_scanner.py --focus syncfusion --path src/WileyWidget/Themes
-        """
+        """,
     )
 
     parser.add_argument(
         "--path",
         type=Path,
         default=Path("src/WileyWidget"),
-        help="Root path to scan (default: src/WileyWidget)"
+        help="Root path to scan (default: src/WileyWidget)",
     )
 
     parser.add_argument(
         "--focus",
         choices=["all", "xaml", "csharp", "cs", "syncfusion"],
         default="all",
-        help="Focus scan on specific file types (default: all)"
+        help="Focus scan on specific file types (default: all)",
     )
 
     parser.add_argument(
         "--output",
         type=Path,
-        help="Output JSON report path (default: print to console only)"
+        help="Output JSON report path (default: print to console only)",
     )
 
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -524,9 +546,7 @@ Examples:
 
     # Run scanner
     scanner = AnimationScanner(
-        root_path=args.path,
-        focus=args.focus,
-        verbose=args.verbose
+        root_path=args.path, focus=args.focus, verbose=args.verbose
     )
 
     scanner.scan()

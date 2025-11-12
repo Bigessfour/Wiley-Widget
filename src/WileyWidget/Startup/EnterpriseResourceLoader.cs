@@ -44,7 +44,8 @@ namespace WileyWidget.Startup
             // Critical resources - application cannot start without these
             // App.xaml resources - loaded at application startup
             { "pack://application:,,,/WileyWidget;component/Themes/Generic.xaml", ResourceCriticality.Critical },
-            { "pack://application:,,,/WileyWidget;component/Themes/WileyTheme-Syncfusion.xaml", ResourceCriticality.Critical },
+            // NOTE: WileyTheme-Syncfusion.xaml is NOT loaded here - theme is applied programmatically via SfSkinManager
+            // { "pack://application:,,,/WileyWidget;component/Themes/WileyTheme-Syncfusion.xaml", ResourceCriticality.Critical },
 
             // Shell.xaml resources - required for main window
             { "pack://application:,,,/WileyWidget;component/Resources/DataTemplates.xaml", ResourceCriticality.Critical },

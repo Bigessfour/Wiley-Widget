@@ -6,7 +6,7 @@
     <!-- Core Microsoft + EF -->
     <PackageVersion
         Include="BoldReports.WPF"
-        Version="11.1.18" />
+        Version="11.1.19" />
     <PackageVersion
         Include="MahApps.Metro.IconPacks"
         Version="6.2.1" />
@@ -219,10 +219,13 @@
     <PackageVersion
         Include="Microsoft.SemanticKernel"
         Version="1.66.0" />
+    <!-- System.Diagnostics.DiagnosticSource - Required for OpenTelemetry and Activity tracing -->
+    <PackageVersion
+        Include="System.Diagnostics.DiagnosticSource"
+        Version="10.0.0" />
     <!-- Health Check Packages -->
     <PackageVersion
-        Include="Microsoft.Extensions.Diagnostics.HealthChecks"
-        Version="9.0.10" />
+        Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.11" />
     <!-- Pin system packages to avoid transitive downgrades coming from legacy NETStandard
     dependencies -->
     <PackageVersion
@@ -238,11 +241,9 @@
         Include="System.Net.Sockets"
         Version="4.3.0" />
     <PackageVersion
-        Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization"
-        Version="9.10.0" />
+        Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.10.0" />
     <PackageVersion
-        Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common"
-        Version="9.10.0" />
+        Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="9.10.0" />
     <!-- Microsoft.Extensions family -->
     <PackageVersion
         Include="Microsoft.Extensions.Hosting"
@@ -264,7 +265,7 @@
         Version="9.0.10" />
     <PackageVersion
         Include="Microsoft.Extensions.DependencyInjection"
-        Version="10.0.0" />
+        Version="9.0.10" />
     <PackageVersion
         Include="Microsoft.Extensions.Logging"
         Version="9.0.10" />
@@ -414,6 +415,6 @@
     <!-- Intuit QuickBooks SDK packages for testing -->
     <PackageVersion
         Include="IppDotNetSdkForQuickBooksApiV3"
-        Version="14.7.0.3" />
+        Version="14.7.0.2" />
   </ItemGroup>
 </Project>

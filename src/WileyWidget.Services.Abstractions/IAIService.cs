@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     /// <summary>
     /// Interface for AI services providing insights and analysis

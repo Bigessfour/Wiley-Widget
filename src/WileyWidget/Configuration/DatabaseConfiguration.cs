@@ -11,6 +11,7 @@ using System.Diagnostics;
 using Microsoft.Data.SqlClient;
 using WileyWidget.Data;
 using WileyWidget.Services;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Business.Interfaces;
 using System.Data.Common;
 using System.Net.Http;
@@ -1112,7 +1113,7 @@ public static class DatabaseConfiguration
 /// <summary>
 /// Local dev stub to avoid AI dependency in development environments.
 /// </summary>
-internal sealed class DevNullAIService : WileyWidget.Services.IAIService
+internal sealed class DevNullAIService : WileyWidget.Services.Abstractions.IAIService
 {
     public Task<string> GetInsightsAsync(string context, string question, CancellationToken cancellationToken = default) =>
         Task.FromResult("[Dev Stub] AI insights disabled. Set XAI_API_KEY to enable.");
@@ -1302,64 +1303,89 @@ public class SqlServerHealthCheck : Microsoft.Extensions.Diagnostics.HealthCheck
         }
         catch (Exception ex)
         {
+            // Improved diagnostics: differentiate credential vs connectivity vs general errors
+            string category = "General";
+            if (ex is Microsoft.Data.SqlClient.SqlException sqlEx)
+            {
+                if (sqlEx.Message.Contains("Login failed", StringComparison.OrdinalIgnoreCase))
+                    category = "Authentication";
+                else if (sqlEx.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+                    category = "Timeout";
+                else if (sqlEx.Message.Contains("single-user", StringComparison.OrdinalIgnoreCase))
+                    category = "SingleUserMode";
+            }
+            else if (ex is TimeoutException)
+            {
+                category = "Timeout";
+            }
+
             return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
-                $"SQL Server health check failed: {ex.Message}");
+                $"SQL Server health check failed ({category}): {ex.Message}");
         }
     }
 
     private (bool IsValid, string ErrorMessage) ValidateSqlConnectionString(string connectionString)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
-        {
             return (false, "Connection string is empty");
-        }
 
-        // Expected format: Server=<server>;Initial Catalog=<db>;User ID=<user>;Password=<pass>
-        var parts = connectionString.Split(';');
+        var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
 
         bool hasServer = false;
         bool hasInitialCatalog = false;
         bool hasUserId = false;
         bool hasPassword = false;
+        bool integratedSecurity = false;
 
         foreach (var part in parts)
         {
             var trimmed = part.Trim();
-            if (trimmed.StartsWith("Server=", StringComparison.OrdinalIgnoreCase))
+            if (trimmed.StartsWith("Server=", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
             {
-                var serverValue = trimmed.Substring(7);
                 hasServer = true;
             }
-            else if (trimmed.StartsWith("Initial Catalog=", StringComparison.OrdinalIgnoreCase))
+            else if (trimmed.StartsWith("Initial Catalog=", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("Database=", StringComparison.OrdinalIgnoreCase))
             {
                 hasInitialCatalog = true;
             }
-            else if (trimmed.StartsWith("User ID=", StringComparison.OrdinalIgnoreCase))
+            else if (trimmed.StartsWith("User ID=", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("Uid=", StringComparison.OrdinalIgnoreCase))
             {
                 hasUserId = true;
             }
-            else if (trimmed.StartsWith("Password=", StringComparison.OrdinalIgnoreCase))
+            else if (trimmed.StartsWith("Password=", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("Pwd=", StringComparison.OrdinalIgnoreCase))
             {
                 hasPassword = true;
             }
+            else if (trimmed.StartsWith("Trusted_Connection=", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("Integrated Security=", StringComparison.OrdinalIgnoreCase))
+            {
+                if (trimmed.Contains("True", StringComparison.OrdinalIgnoreCase) ||
+                    trimmed.Contains("SSPI", StringComparison.OrdinalIgnoreCase))
+                {
+                    integratedSecurity = true;
+                }
+            }
+        }
+
+        // If using Integrated Security we don't require explicit User ID / Password
+        if (integratedSecurity)
+        {
+            hasUserId = true;
+            hasPassword = true;
         }
 
         if (!hasServer)
-        {
             return (false, "Server parameter is required");
-        }
         if (!hasInitialCatalog)
-        {
-            return (false, "Initial Catalog parameter is required");
-        }
+            return (false, "Initial Catalog / Database parameter is required");
         if (!hasUserId)
-        {
-            return (false, "User ID parameter is required");
-        }
+            return (false, integratedSecurity ? "Integrated security flag missing" : "User ID parameter is required");
         if (!hasPassword)
-        {
-            return (false, "Password parameter is required");
-        }
+            return (false, integratedSecurity ? "Integrated security flag missing" : "Password parameter is required");
 
         return (true, string.Empty);
     }

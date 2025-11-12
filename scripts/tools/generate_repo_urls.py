@@ -32,8 +32,13 @@ from typing import Dict, List, Optional
 DEFAULT_CONFIG_FILE = ".ai-manifest-config.json"
 DEFAULT_OUTPUT_FILE = "ai-fetchable-manifest.json"
 KNOWN_CATEGORIES = {
-    "source_code", "test", "documentation", "configuration",
-    "automation", "assets", "unknown"
+    "source_code",
+    "test",
+    "documentation",
+    "configuration",
+    "automation",
+    "assets",
+    "unknown",
 }
 
 # Language detection by extension
@@ -312,7 +317,9 @@ class RepositoryAnalyzer:
             "git_available": True,
         }
 
-    def _get_file_git_history(self, relative_path: str, max_commits: int = 5) -> List[Dict]:
+    def _get_file_git_history(
+        self, relative_path: str, max_commits: int = 5
+    ) -> List[Dict]:
         """Get recent git commit history for a file."""
         if not self.git_info.get("git_available", False) or not self.git_exe:
             return []
@@ -340,12 +347,14 @@ class RepositoryAnalyzer:
                     continue
                 parts = line.split("|", 3)
                 if len(parts) == 4:
-                    commits.append({
-                        "hash": parts[0],
-                        "author": parts[1],
-                        "date": parts[2],
-                        "message": parts[3],
-                    })
+                    commits.append(
+                        {
+                            "hash": parts[0],
+                            "author": parts[1],
+                            "date": parts[2],
+                            "message": parts[3],
+                        }
+                    )
 
             return commits
         except subprocess.CalledProcessError:
@@ -357,7 +366,13 @@ class RepositoryAnalyzer:
         filename_lower = file_path.name.lower()
 
         # Special filenames without extensions
-        if filename_lower in ["dockerfile", "makefile", "rakefile", "gemfile", "guardfile"]:
+        if filename_lower in [
+            "dockerfile",
+            "makefile",
+            "rakefile",
+            "gemfile",
+            "guardfile",
+        ]:
             return "Docker" if filename_lower == "dockerfile" else "Ruby"
         elif filename_lower in ["cmakelists.txt"]:
             return "CMake"
@@ -451,7 +466,14 @@ class RepositoryAnalyzer:
                 return "source_code", "data"
 
         # Configuration files
-        if extension in [".json", ".yaml", ".yml", ".toml", ".config", ".xml"] or filename in [
+        if extension in [
+            ".json",
+            ".yaml",
+            ".yml",
+            ".toml",
+            ".config",
+            ".xml",
+        ] or filename in [
             ".editorconfig",
             ".prettierrc",
             ".eslintrc",
@@ -459,11 +481,27 @@ class RepositoryAnalyzer:
             "pyproject.toml",
             "global.json",
         ]:
-            return "configuration", "build" if "build" in path_str or extension in [".props", ".targets"] else "settings"
+            return "configuration", (
+                "build"
+                if "build" in path_str or extension in [".props", ".targets"]
+                else "settings"
+            )
 
         # Documentation
-        if extension in [".md", ".txt", ".rst"] or "docs/" in path_str or "documentation/" in path_str:
-            sub_cat = "api" if "api" in path_str else "guide" if any(x in path_str for x in ["guide", "tutorial"]) else "general"
+        if (
+            extension in [".md", ".txt", ".rst"]
+            or "docs/" in path_str
+            or "documentation/" in path_str
+        ):
+            sub_cat = (
+                "api"
+                if "api" in path_str
+                else (
+                    "guide"
+                    if any(x in path_str for x in ["guide", "tutorial"])
+                    else "general"
+                )
+            )
             return "documentation", sub_cat
 
         # CSX (C# Script) files - explicit handling for test infrastructure
@@ -483,7 +521,11 @@ class RepositoryAnalyzer:
             return "automation", "scripts"
 
         # Test files
-        if "test" in path_str or extension == ".test.cs" or filename.endswith("tests.cs"):
+        if (
+            "test" in path_str
+            or extension == ".test.cs"
+            or filename.endswith("tests.cs")
+        ):
             if "unit" in path_str:
                 return "test", "unit"
             elif "integration" in path_str:
@@ -515,7 +557,11 @@ class RepositoryAnalyzer:
                     return "source_code", "model"
                 # Services
                 if "service" in path_str or filename.endswith("service.cs"):
-                    if "abstractions" in path_str or filename.startswith("i") and filename.endswith("service.cs"):
+                    if (
+                        "abstractions" in path_str
+                        or filename.startswith("i")
+                        and filename.endswith("service.cs")
+                    ):
                         return "source_code", "interface"
                     return "source_code", "service"
                 # Repositories
@@ -594,7 +640,14 @@ class RepositoryAnalyzer:
             or path_str.endswith("Tests.cs")
             or path_str.endswith("Test.cs")
         ):
-            return ("test", "unit_test" if "Unit" in path_str else "integration_test" if "Integration" in path_str else "")
+            return (
+                "test",
+                (
+                    "unit_test"
+                    if "Unit" in path_str
+                    else "integration_test" if "Integration" in path_str else ""
+                ),
+            )
         elif path_str.startswith("src/") or "WileyWidget." in path_str:
             # Sub-categorize source code
             if file_path.suffix == ".xaml":
@@ -625,7 +678,11 @@ class RepositoryAnalyzer:
             "LICENSE.md",
         ]:
             return ("documentation", "")
-        elif path_str.startswith("scripts/") or file_path.suffix in [".ps1", ".psm1", ".psd1"]:
+        elif path_str.startswith("scripts/") or file_path.suffix in [
+            ".ps1",
+            ".psm1",
+            ".psd1",
+        ]:
             return ("automation", "scripts")
         elif path_str.startswith(".github/"):
             return ("automation", "ci_cd")
@@ -641,8 +698,17 @@ class RepositoryAnalyzer:
             ".toml",
             ".editorconfig",
         ]:
-            return ("configuration", "build" if file_path.suffix in [".csproj", ".sln", ".props", ".targets"] else "")
-        elif path_str.startswith("docker/") or file_path.name.lower().startswith("dockerfile"):
+            return (
+                "configuration",
+                (
+                    "build"
+                    if file_path.suffix in [".csproj", ".sln", ".props", ".targets"]
+                    else ""
+                ),
+            )
+        elif path_str.startswith("docker/") or file_path.name.lower().startswith(
+            "dockerfile"
+        ):
             return ("automation", "docker")
         elif path_str.startswith("sql/") or file_path.suffix == ".sql":
             return ("source_code", "data")
@@ -717,15 +783,11 @@ class RepositoryAnalyzer:
         # C# Project file dependencies (NuGet packages)
         if file_path.suffix == ".csproj":
             # Extract PackageReference items
-            package_refs = re.findall(
-                r'<PackageReference\s+Include="([^"]+)"', content
-            )
+            package_refs = re.findall(r'<PackageReference\s+Include="([^"]+)"', content)
             dependencies.update(package_refs)
 
             # Extract ProjectReference items
-            project_refs = re.findall(
-                r'<ProjectReference\s+Include="([^"]+)"', content
-            )
+            project_refs = re.findall(r'<ProjectReference\s+Include="([^"]+)"', content)
             for ref in project_refs:
                 # Extract just the project name without path
                 proj_name = Path(ref).stem
@@ -1166,7 +1228,11 @@ class RepositoryAnalyzer:
 
                 # Separate NuGet packages from project references
                 nuget_deps = [d for d in project_deps if not d.startswith("Project:")]
-                project_refs = [d.replace("Project:", "") for d in project_deps if d.startswith("Project:")]
+                project_refs = [
+                    d.replace("Project:", "")
+                    for d in project_deps
+                    if d.startswith("Project:")
+                ]
 
                 graph["projects"][project_name] = {
                     "path": file_data["metadata"]["path"],
@@ -1186,8 +1252,7 @@ class RepositoryAnalyzer:
         # Identify top dependencies by usage count
         sorted_deps = sorted(all_deps.items(), key=lambda x: x[1], reverse=True)
         graph["top_dependencies"] = [
-            {"name": dep, "usage_count": count}
-            for dep, count in sorted_deps[:20]
+            {"name": dep, "usage_count": count} for dep, count in sorted_deps[:20]
         ]
 
         return graph
@@ -1213,47 +1278,63 @@ class RepositoryAnalyzer:
 
             if category == "source_code":
                 if sub_category == "ui":
-                    summary["views"].append({
-                        "path": path,
-                        "name": Path(path).stem,
-                        "related_files": file_data["context"]["related_files"],
-                    })
+                    summary["views"].append(
+                        {
+                            "path": path,
+                            "name": Path(path).stem,
+                            "related_files": file_data["context"]["related_files"],
+                        }
+                    )
                 elif sub_category == "viewmodel":
-                    summary["viewmodels"].append({
-                        "path": path,
-                        "name": Path(path).stem,
-                        "dependencies": file_data["context"]["dependencies"],
-                    })
+                    summary["viewmodels"].append(
+                        {
+                            "path": path,
+                            "name": Path(path).stem,
+                            "dependencies": file_data["context"]["dependencies"],
+                        }
+                    )
                 elif sub_category == "model":
-                    summary["models"].append({
-                        "path": path,
-                        "name": Path(path).stem,
-                    })
+                    summary["models"].append(
+                        {
+                            "path": path,
+                            "name": Path(path).stem,
+                        }
+                    )
                 elif sub_category == "service":
-                    summary["services"].append({
-                        "path": path,
-                        "name": Path(path).stem,
-                    })
+                    summary["services"].append(
+                        {
+                            "path": path,
+                            "name": Path(path).stem,
+                        }
+                    )
                 elif sub_category == "data":
-                    summary["repositories"].append({
-                        "path": path,
-                        "name": Path(path).stem,
-                    })
+                    summary["repositories"].append(
+                        {
+                            "path": path,
+                            "name": Path(path).stem,
+                        }
+                    )
                 elif sub_category == "converter":
-                    summary["converters"].append({
-                        "path": path,
-                        "name": Path(path).stem,
-                    })
+                    summary["converters"].append(
+                        {
+                            "path": path,
+                            "name": Path(path).stem,
+                        }
+                    )
                 elif sub_category == "behavior":
-                    summary["behaviors"].append({
-                        "path": path,
-                        "name": Path(path).stem,
-                    })
+                    summary["behaviors"].append(
+                        {
+                            "path": path,
+                            "name": Path(path).stem,
+                        }
+                    )
                 elif "Module" in path:
-                    summary["modules"].append({
-                        "path": path,
-                        "name": Path(path).stem,
-                    })
+                    summary["modules"].append(
+                        {
+                            "path": path,
+                            "name": Path(path).stem,
+                        }
+                    )
 
         # Add counts
         summary["counts"] = {
@@ -1283,7 +1364,6 @@ class RepositoryAnalyzer:
                 "last_security_scan": datetime.now().isoformat(),
             }
 
-
         # Use dictionaries for immediate deduplication
         vuln_dict = {}
         outdated_dict = {}
@@ -1298,7 +1378,14 @@ class RepositoryAnalyzer:
             try:
                 # Check for vulnerable packages
                 result = subprocess.run(
-                    [dotnet_exe, "list", str(csproj), "package", "--vulnerable", "--include-transitive"],
+                    [
+                        dotnet_exe,
+                        "list",
+                        str(csproj),
+                        "package",
+                        "--vulnerable",
+                        "--include-transitive",
+                    ],
                     capture_output=True,
                     text=True,
                     timeout=30,
@@ -1311,17 +1398,31 @@ class RepositoryAnalyzer:
 
                     for line in lines:
                         # Look for vulnerability markers
-                        if ">" in line and ("Critical" in line or "High" in line or "Moderate" in line or "Low" in line):
+                        if ">" in line and (
+                            "Critical" in line
+                            or "High" in line
+                            or "Moderate" in line
+                            or "Low" in line
+                        ):
                             parts = line.split()
                             if len(parts) >= 4:
                                 package_name = parts[1] if len(parts) > 1 else "Unknown"
                                 version = parts[2] if len(parts) > 2 else "Unknown"
-                                severity = next((s for s in ["Critical", "High", "Moderate", "Low"] if s in line), "Unknown")
+                                severity = next(
+                                    (
+                                        s
+                                        for s in ["Critical", "High", "Moderate", "Low"]
+                                        if s in line
+                                    ),
+                                    "Unknown",
+                                )
 
                                 # Deduplicate immediately
                                 key = f"{package_name}:{version}"
                                 if key in vuln_dict:
-                                    vuln_dict[key]["affected_projects"].append(project_name)
+                                    vuln_dict[key]["affected_projects"].append(
+                                        project_name
+                                    )
                                 else:
                                     vuln_dict[key] = {
                                         "package_name": package_name,
@@ -1352,7 +1453,9 @@ class RepositoryAnalyzer:
                                 # Deduplicate immediately
                                 key = f"{package_name}:{installed_ver}"
                                 if key in outdated_dict:
-                                    outdated_dict[key]["used_by_projects"].append(project_name)
+                                    outdated_dict[key]["used_by_projects"].append(
+                                        project_name
+                                    )
                                 else:
                                     outdated_dict[key] = {
                                         "package_name": package_name,
@@ -1436,7 +1539,9 @@ class RepositoryAnalyzer:
                         "test_coverage": 0.0,
                     }
 
-                project_metrics[project]["lines_of_code"] += metadata.get("line_count", 0)
+                project_metrics[project]["lines_of_code"] += metadata.get(
+                    "line_count", 0
+                )
                 project_metrics[project]["file_count"] += 1
 
         return {
@@ -1461,7 +1566,7 @@ class RepositoryAnalyzer:
             "name": self.root_path.name,
             "type": "directory",
             "path": ".",
-            "children": []
+            "children": [],
         }
 
         # Group files by directory
@@ -1485,21 +1590,30 @@ class RepositoryAnalyzer:
                 if not emit_full_tree and len(current["children"]) >= max_entries:
                     # Add truncation marker if not already present
                     if not any(c.get("name") == "..." for c in current["children"]):
-                        current["children"].append({
-                            "name": "...",
-                            "type": "truncated",
-                            "note": f"Additional entries truncated (limit: {max_entries})"
-                        })
+                        current["children"].append(
+                            {
+                                "name": "...",
+                                "type": "truncated",
+                                "note": f"Additional entries truncated (limit: {max_entries})",
+                            }
+                        )
                     break
 
                 # Find or create directory entry
-                existing = next((c for c in current["children"] if c["name"] == part and c["type"] == "directory"), None)
+                existing = next(
+                    (
+                        c
+                        for c in current["children"]
+                        if c["name"] == part and c["type"] == "directory"
+                    ),
+                    None,
+                )
                 if not existing:
                     new_dir = {
                         "name": part,
                         "type": "directory",
                         "path": path_key,
-                        "children": []
+                        "children": [],
                     }
                     current["children"].append(new_dir)
                     current = new_dir
@@ -1508,18 +1622,24 @@ class RepositoryAnalyzer:
 
             # Add file (respect entry limit unless emit_full_tree)
             if parts and (emit_full_tree or len(current["children"]) < max_entries):
-                current["children"].append({
-                    "name": parts[-1],
-                    "type": "file",
-                    "path": str(relative).replace("\\", "/"),
-                })
+                current["children"].append(
+                    {
+                        "name": parts[-1],
+                        "type": "file",
+                        "path": str(relative).replace("\\", "/"),
+                    }
+                )
 
         # Sort children recursively
         def sort_tree(node):
             if "children" in node:
                 # Keep truncation markers at the end
-                truncated = [c for c in node["children"] if c.get("type") == "truncated"]
-                non_truncated = [c for c in node["children"] if c.get("type") != "truncated"]
+                truncated = [
+                    c for c in node["children"] if c.get("type") == "truncated"
+                ]
+                non_truncated = [
+                    c for c in node["children"] if c.get("type") != "truncated"
+                ]
                 non_truncated.sort(key=lambda x: (x["type"] == "file", x["name"]))
                 node["children"] = non_truncated + truncated
                 for child in node["children"]:
@@ -1529,7 +1649,9 @@ class RepositoryAnalyzer:
         sort_tree(root)
 
         tree_stats = self._count_tree_nodes(root)
-        print(f"  Folder tree: {tree_stats['dirs']} directories, {tree_stats['files']} files, depth={tree_stats['max_depth']}")
+        print(
+            f"  Folder tree: {tree_stats['dirs']} directories, {tree_stats['files']} files, depth={tree_stats['max_depth']}"
+        )
 
         return root
 
@@ -1557,7 +1679,9 @@ class RepositoryAnalyzer:
             license_path = self.root_path / license_file
             if license_path.exists():
                 try:
-                    with open(license_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(
+                        license_path, "r", encoding="utf-8", errors="ignore"
+                    ) as f:
                         content = f.read(2000)  # Read first 2000 chars
 
                     # Detect common license types
@@ -1633,13 +1757,15 @@ class RepositoryAnalyzer:
 
         if git_history:
             last = git_history[0]
-            git_metadata.update({
-                "last_commit": last["hash"][:7],
-                "last_commit_hash": last["hash"],
-                "last_commit_author": last["author"],
-                "last_commit_date": last["date"],
-                "last_commit_message": last["message"],
-            })
+            git_metadata.update(
+                {
+                    "last_commit": last["hash"][:7],
+                    "last_commit_hash": last["hash"],
+                    "last_commit_author": last["author"],
+                    "last_commit_date": last["date"],
+                    "last_commit_message": last["message"],
+                }
+            )
 
         return {
             "metadata": {
@@ -1783,10 +1909,13 @@ class RepositoryAnalyzer:
             files_data_sorted = sorted(
                 files_data,
                 key=lambda x: (
-                    0 if x["context"]["importance"] == "high" else
-                    1 if x["context"]["importance"] == "normal" else 2,
-                    -x["metadata"]["size"]  # Then by size
-                )
+                    (
+                        0
+                        if x["context"]["importance"] == "high"
+                        else 1 if x["context"]["importance"] == "normal" else 2
+                    ),
+                    -x["metadata"]["size"],  # Then by size
+                ),
             )
             files_data = files_data_sorted[:max_files_in_manifest]
 
@@ -1830,15 +1959,24 @@ class RepositoryAnalyzer:
             json.dump(manifest, f, indent=2)
 
         print("[SUCCESS] Manifest generated successfully!")
-        print(f"   Files: {len(files_data)}" + (f" of {original_file_count} (truncated)" if files_truncated else ""))
+        print(
+            f"   Files: {len(files_data)}"
+            + (f" of {original_file_count} (truncated)" if files_truncated else "")
+        )
         print(f"   Size: {total_size:,} bytes")
         print(f"   Categories: {', '.join(categories_count.keys())}")
         print(f"   Search keywords: {len(search_index)}")
         print(f"   Projects: {len(dependency_graph['projects'])}")
         print(f"   NuGet packages: {len(dependency_graph['nuget_packages'])}")
-        print(f"   Architecture: {architecture['counts']['viewmodels']} ViewModels, {architecture['counts']['views']} Views")
-        print(f"   Metrics: {metrics_info['total_lines_of_code']:,} LOC, {metrics_info['test_count']} tests")
-        print(f"   Security: {len(security_info['vulnerable_packages'])} vulnerable packages, {len(security_info['outdated_packages'])} outdated")
+        print(
+            f"   Architecture: {architecture['counts']['viewmodels']} ViewModels, {architecture['counts']['views']} Views"
+        )
+        print(
+            f"   Metrics: {metrics_info['total_lines_of_code']:,} LOC, {metrics_info['test_count']} tests"
+        )
+        print(
+            f"   Security: {len(security_info['vulnerable_packages'])} vulnerable packages, {len(security_info['outdated_packages'])} outdated"
+        )
         print(f"   License: {license_info['type']}")
         print(f"   Valid until: {valid_until.strftime('%Y-%m-%d %H:%M')}")
 
@@ -1848,7 +1986,7 @@ class RepositoryAnalyzer:
 def main():
     parser = argparse.ArgumentParser(
         description="Generate AI-Fetchable Manifest for Wiley Widget Repository",
-        epilog="Example: python generate_repo_urls.py --output manifest.json --depth 6 --full-tree"
+        epilog="Example: python generate_repo_urls.py --output manifest.json --depth 6 --full-tree",
     )
     parser.add_argument(
         "-o",
@@ -1890,7 +2028,9 @@ def main():
         # Validate categories
         invalid_cats = [c for c in filter_categories if c not in KNOWN_CATEGORIES]
         if invalid_cats:
-            print(f"Warning: Unknown categories will be ignored: {', '.join(invalid_cats)}")
+            print(
+                f"Warning: Unknown categories will be ignored: {', '.join(invalid_cats)}"
+            )
             print(f"Valid categories: {', '.join(sorted(KNOWN_CATEGORIES))}")
             filter_categories = [c for c in filter_categories if c in KNOWN_CATEGORIES]
             if not filter_categories:

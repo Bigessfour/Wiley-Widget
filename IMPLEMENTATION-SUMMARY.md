@@ -260,12 +260,10 @@ if (failures.Any()) {
 ### Modified Files
 
 1. `src/WileyWidget/App.DependencyInjection.cs`
-
    - Added `ValidateContainerHealth()` method
    - Added `ContainerHealthReport` class
 
 2. `src/WileyWidget/App.Lifecycle.cs`
-
    - Integrated container health validation in `OnInitialized()`
    - Enhanced startup diagnostics
 
@@ -276,12 +274,10 @@ if (failures.Any()) {
 ### Created Files
 
 1. `tests/WileyWidget.Tests/Helpers/ContainerTestHelper.cs`
-
    - Test infrastructure for DI validation
    - xUnit and .csx script support
 
 2. `scripts/maintenance/validate-di-registrations.ps1`
-
    - CI integration script
    - Resource scanner orchestration
    - Validation report generation

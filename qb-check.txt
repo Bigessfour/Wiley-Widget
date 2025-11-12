@@ -1,0 +1,20 @@
+                // Check if QuickBooks is enabled in configuration
+                var qbEnabled = _configuration?.GetValue<bool>("EnableQuickBooks", true) ?? true;
+                if (!qbEnabled)
+                {
+                    Log.Information("  ⏭️ QuickBooks module disabled via configuration (EnableQuickBooks=false)");
+                }
+                else
+                {
+                Log.Debug("  📦 Attempting to register QuickBooksModule...");
+                if (!TryRegisterModule<Startup.Modules.QuickBooksModule>(moduleCatalog))
+                {
+                    moduleRegistrationErrors.Add("QuickBooksModule");
+                    Log.Warning("  ⚠️ QuickBooksModule assembly validation failed - attempting fallback registration");
+                }
+                else
+                {
+                    successfulModules.Add("QuickBooksModule");
+                    Log.Debug("    ✓ QuickBooksModule registered successfully");
+                }
+                }

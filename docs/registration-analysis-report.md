@@ -221,13 +221,11 @@ Added explicit fallback registrations in modules:
 ### Phase 1: CreateContainerExtension
 
 1. **DryIoc Container Setup**
-
    - Rules: Microsoft DI, Singleton default, AutoConcreteTypeResolution
    - Timeout: 60s for complex ViewModels
    - Status: ✅ Optimal configuration
 
 2. **Convention-Based Registrations (RegisterConventionTypes)**
-
    - RegisterCoreInfrastructure → 10+ services ✅
    - RegisterRepositories → 7 repositories ✅
    - RegisterBusinessServices → 14 services ✅

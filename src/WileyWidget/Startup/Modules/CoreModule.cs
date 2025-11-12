@@ -26,7 +26,7 @@ namespace WileyWidget.Startup.Modules
     /// <summary>
     /// Core Prism module responsible for shell-level infrastructure registrations.
     /// Implements the module pattern described in Prism's module initialization guidance.
-    /// Priority HIGH Fix: Explicit registration of all 36 ViewModels to ensure DI container has them available.
+    /// Priority HIGH Fix: Explicit registration of all 35 ViewModels to ensure DI container has them available.
     ///
     /// ENHANCED (Nov 11, 2025):
     /// - Explicit IStartupEnvironmentValidator registrations with Polly retry
@@ -262,7 +262,34 @@ namespace WileyWidget.Startup.Modules
             }
 
             Log.Information("✅ [COREMODULE] ViewModel registration complete: {Count} ViewModels registered explicitly", registeredCount);
+            int expectedViewModels = 35;
+            if (registeredCount != expectedViewModels)
+            {
+                Log.Warning("⚠️ [COREMODULE] Expected {Expected} ViewModels, actually registered {Actual}. Review registration list.", expectedViewModels, registeredCount);
+            }
+            else
+            {
+                Log.Information("✅ [COREMODULE] ViewModel registration count matches expected ({Count})", registeredCount);
+            }
             Log.Debug("CoreModule types registered: Views (2), ViewModels ({Count})", registeredCount);
+            // Attempt sample generic resolution diagnostics
+            try
+            {
+                var dryContainer = containerRegistry.GetContainer();
+                if (dryContainer.IsRegistered(typeof(Microsoft.Extensions.Logging.ILogger<DashboardViewModel>)))
+                {
+                    var testLogger = dryContainer.Resolve<Microsoft.Extensions.Logging.ILogger<DashboardViewModel>>();
+                    Log.Debug("    ✓ ILogger<DashboardViewModel> resolved (generic logging operational)");
+                }
+                else
+                {
+                    Log.Warning("    ⚠️ ILogger<DashboardViewModel> not registered (generic logging bridging incomplete)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "    ⚠️ Failed to resolve ILogger<DashboardViewModel> for diagnostics");
+            }
         }
 
         public void OnInitialized(IContainerProvider containerProvider)

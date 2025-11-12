@@ -549,13 +549,13 @@
 
   <!-- Prevent SDK from auto-including shims in any build -->
   <ItemGroup>
-    <None Include="App.Wpftmp.cs" />
     <None Include="PrismWpftmpShim.cs" />
   </ItemGroup>
 
   <!-- Explicit includes for MAIN project (non-wpftmp) -->
   <ItemGroup Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
     <!-- Include all .cs files EXCEPT shims and test/sample directories and build output folders -->
+    <!-- App partial files (App.xaml.cs, App.DependencyInjection.cs, etc.) are included by the wildcard -->
     <Compile
         Include="**\*.cs"
         Exclude="App.Wpftmp.cs;PrismWpftmpShim.cs;src\**;tests\**;samples\**;WileyWidget.Tests\**;WileyWidget.UiTests\**;WileyWidget.IntegrationTests\**;WileyWidget.ContainerTests\**;WileyWidget.Services.Tests\**;temp-grant\**;DatabaseTest\**;DatabaseSetup\**;DatabaseSeederRunner\**;DbTest\**;DbValidator\**;ExcelAnalyzer\**;scripts\**;WileyWidget.Business\**;WileyWidget.Data\**;WileyWidget.Models\**;WileyWidget.Webhooks\**;Models\**\*.cs;obj\**\*.cs;bin\**\*.cs" />
@@ -576,7 +576,7 @@
 
   <!-- Design-time noise suppression: exclude almost all sources from the
        temporary wpftmp project. wpftmp only needs custom control definitions (Controls\)
-       and App.Wpftmp.cs for XAML markup compilation. -->
+       for XAML markup compilation. -->
   <PropertyGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectFile)','wpftmp'))">
     <!-- WPFTMP symbol already defined above, but keeping this for clarity -->
     <!-- <DefineConstants>$(DefineConstants);WPFTMP</DefineConstants> -->
@@ -597,8 +597,7 @@
     <Compile Remove="App.xaml.cs" />
     <Compile Remove="App.DependencyInjection.cs" />
     <Compile Remove="App.Lifecycle.cs" />
-    <Compile Remove="App.Telemetry.cs" />
-    <Compile Remove="App.Resources.cs" />
+    <Compile Remove="App.ResourcesAndTelemetry.cs" />
     <Compile Remove="App.ExceptionHandling.cs" />
     <Compile Remove="Program.cs" />
 

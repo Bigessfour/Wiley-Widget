@@ -440,6 +440,25 @@ namespace WileyWidget.Views.Windows {
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                MainWindow_Loaded_Core();
+            }
+            catch (System.IO.FileNotFoundException ex) when (ex.Message.Contains("DiagnosticSource"))
+            {
+                // DiagnosticSource assembly version mismatch - skip telemetry initialization
+                Log.Warning("Distributed tracing unavailable due to DiagnosticSource version mismatch - continuing without tracing");
+                MainWindow_Loaded_WithoutTelemetry();
+            }
+            catch (System.Exception ex)
+            {
+                Log.Error(ex, "Error during MainWindow_Loaded - attempting fallback");
+                MainWindow_Loaded_WithoutTelemetry();
+            }
+        }
+
+        private void MainWindow_Loaded_Core()
+        {
             // Start distributed tracing span for UI initialization
             using var uiLoadSpan = System.Diagnostics.Activity.Current?.Source.StartActivity("ui.mainwindow.loaded");
             uiLoadSpan?.SetTag("window.width", ActualWidth);
@@ -458,6 +477,176 @@ namespace WileyWidget.Views.Windows {
             // Add memory metrics to trace
             uiLoadSpan?.SetTag("memory.gc_bytes", gcMemoryBefore);
             uiLoadSpan?.SetTag("memory.working_set_bytes", workingSetBefore);
+
+            // **NULL-SAFE CONTROL INITIALIZATION**
+            // Verify critical controls loaded successfully before applying styles or states
+            try
+            {
+                // Check for DockingManager
+                var dockingManager = this.FindName("MainDockingManager") as DockingManager;
+                if (dockingManager == null)
+                {
+                    Log.Warning("MainDockingManager is null in Loaded event - control may not have initialized properly");
+                    // Attempt to find in visual tree as fallback
+                    dockingManager = FindVisualChild<DockingManager>(this);
+                    if (dockingManager != null)
+                    {
+                        Log.Information("Found DockingManager in visual tree during Loaded event");
+                        RegisterName("MainDockingManager", dockingManager);
+                    }
+                    else
+                    {
+                        Log.Error("DockingManager not found in visual tree - layout management may be impaired");
+                    }
+                }
+                else
+                {
+                    Log.Information("MainDockingManager verified - control loaded successfully");
+                }
+
+                // Check for Ribbon controls if present
+                var ribbon = FindVisualChild<Syncfusion.Windows.Tools.Controls.Ribbon>(this);
+                if (ribbon != null)
+                {
+                    Log.Information("Ribbon control found - verifying button states");
+
+                    // Verify RibbonButton controls are initialized
+                    var ribbonButtons = FindVisualChildren<Syncfusion.Windows.Tools.Controls.RibbonButton>(ribbon);
+                    var buttonCount = 0;
+                    foreach (var button in ribbonButtons)
+                    {
+                        if (button == null)
+                        {
+                            Log.Warning("Found null RibbonButton in collection - skipping");
+                            continue;
+                        }
+
+                        buttonCount++;
+
+                        // Check if LargeIcon is set and valid
+                        if (button.LargeIcon == null)
+                        {
+                            Log.Warning("RibbonButton '{ButtonLabel}' has null LargeIcon - no fallback available (use MahApps IconPacks IconTemplate instead)",
+                                button.Label ?? "Unknown");
+                            // Note: Removed PNG fallback system. All icons should use IconTemplate with MahApps.Metro.IconPacks
+                        }
+
+                        // Verify button is enabled and visible
+                        if (!button.IsEnabled)
+                        {
+                            Log.Debug("RibbonButton '{ButtonLabel}' is disabled", button.Label ?? "Unknown");
+                        }
+                        if (button.Visibility != Visibility.Visible)
+                        {
+                            Log.Debug("RibbonButton '{ButtonLabel}' is not visible (Visibility: {Visibility})",
+                                button.Label ?? "Unknown", button.Visibility);
+                        }
+                    }
+
+                    Log.Information("Verified {ButtonCount} RibbonButton controls", buttonCount);
+                }
+                else
+                {
+                    Log.Information("No Ribbon control found in visual tree - may not be using ribbon UI");
+                }
+
+                // Check ContentControl
+                var contentControl = Content as System.Windows.Controls.ContentControl;
+                if (contentControl != null)
+                {
+                    Log.Information("MainWindow: ContentControl - ActualSize: {Width}x{Height}, Content: {ContentType}",
+                        contentControl.ActualWidth, contentControl.ActualHeight,
+                        contentControl.Content?.GetType().Name ?? "null");
+
+                    if (contentControl.Content == null)
+                    {
+                        Log.Warning("ContentControl.Content is null - may indicate initialization issue");
+                    }
+                }
+                else
+                {
+                    Log.Information("Content is not a ContentControl (Type: {ContentType})",
+                        Content?.GetType().Name ?? "null");
+                }
+            }
+            catch (Exception controlCheckEx)
+            {
+                Log.Error(controlCheckEx, "Error during control initialization verification");
+                // Continue with initialization - this is diagnostic only
+            }
+
+            // ViewModel is auto-wired by Prism's ViewModelLocator; ensure we have a reference and log it
+            if (DataContext is MainViewModel vm)
+            {
+                _viewModel = vm;
+                Log.Information("MainViewModel resolved via ViewModelLocator");
+                Log.Debug("DataContext type: {DataContextType}", DataContext.GetType().Name);
+            }
+            else
+            {
+                Log.Warning("DataContext is not MainViewModel yet; ViewModelLocator may set it later");
+            }
+
+            // Verify region status and log for diagnostics
+            LogRegionStatus();
+
+            // Load DockingManager state per Syncfusion docs
+            LoadDockingManagerState();
+
+            // Memory tracking - after
+            var gcMemoryAfter = GC.GetTotalMemory(forceFullCollection: false);
+            var workingSetAfter = Environment.WorkingSet;
+            var gcMemoryDelta = gcMemoryAfter - gcMemoryBefore;
+            var workingSetDelta = workingSetAfter - workingSetBefore;
+
+            Log.Information("Memory After Load - GC: {GCMemory:N0} bytes (+{Delta:N0}), WorkingSet: {WorkingSet:N0} bytes (+{WSDelta:N0})",
+                gcMemoryAfter, gcMemoryDelta, workingSetAfter, workingSetDelta);
+            Log.Information("Total Memory Impact - GC Delta: {GCDeltaMB:F2} MB, WorkingSet Delta: {WSDeltaMB:F2} MB",
+                gcMemoryDelta / 1024.0 / 1024.0, workingSetDelta / 1024.0 / 1024.0);
+
+            // Show the window now that all initialization is complete
+            Log.Information("MainWindow initialization complete - showing window");
+            if (Visibility != Visibility.Visible)
+            {
+                Visibility = Visibility.Visible;
+                Log.Information("MainWindow is now visible to user");
+            }
+            else
+            {
+                Log.Information("MainWindow is already visible");
+            }
+
+            // Display warning if WIC components were unavailable
+            if (!_wicComponentsAvailable)
+            {
+                Log.Warning("WIC components have reduced functionality - user may experience limited image features");
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    MessageBox.Show(
+                        "⚠️ Windows Imaging Component Information\n\n" +
+                        "Some imaging components have limited functionality.\n\n" +
+                        "You may notice:\n" +
+                        "• Some icons using fallback designs\n" +
+                        "• PNG images replaced with vector graphics\n" +
+                        "• Reduced image processing features\n\n" +
+                        "The application will function normally with alternative rendering methods.",
+                        "Imaging Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            }
+        }
+
+        private void MainWindow_Loaded_WithoutTelemetry()
+        {
+            // Memory tracking - before
+            var gcMemoryBefore = GC.GetTotalMemory(forceFullCollection: false);
+            var workingSetBefore = Environment.WorkingSet;
+
+            Log.Information("MainWindow: Loaded event - Size: {Width}x{Height}, Position: ({Left}, {Top}), State: {State}, Visible: {IsVisible}",
+                ActualWidth, ActualHeight, Left, Top, WindowState, IsVisible);
+            Log.Information("Memory Before Load - GC: {GCMemory:N0} bytes, WorkingSet: {WorkingSet:N0} bytes",
+                gcMemoryBefore, workingSetBefore);
 
             // **NULL-SAFE CONTROL INITIALIZATION**
             // Verify critical controls loaded successfully before applying styles or states

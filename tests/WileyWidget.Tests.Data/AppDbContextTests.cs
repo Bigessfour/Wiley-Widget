@@ -24,8 +24,9 @@ namespace WileyWidget.Tests.Data
         /// <summary>
         /// Tests that OnConfiguring uses SQL Server with correct configuration when not pre-configured.
         /// This is critical for fallback scenarios and QuickBooksService.cs DB initialization blocking.
+        /// NOTE: OnConfiguring removed from AppDbContext - configuration handled via DI
         /// </summary>
-        [Fact]
+        [Fact(Skip = "OnConfiguring removed - configuration now handled via DI in DatabaseConfiguration.cs")]
         public void OnConfiguring_UsesSqlServer_WithCorrectConfiguration()
         {
             // Arrange & Act - Create context with unconfigured options to trigger OnConfiguring
@@ -44,8 +45,9 @@ namespace WileyWidget.Tests.Data
         /// <summary>
         /// Tests that fallback connection string is used when environment variable is not set.
         /// Critical for local development and CI/CD environments.
+        /// NOTE: OnConfiguring removed from AppDbContext - configuration handled via DI
         /// </summary>
-        [Fact]
+        [Fact(Skip = "OnConfiguring removed - configuration now handled via DI in DatabaseConfiguration.cs")]
         public void OnConfiguring_UsesFallbackConnectionString_WhenEnvironmentVariableNotSet()
         {
             // Arrange
@@ -74,8 +76,9 @@ namespace WileyWidget.Tests.Data
         /// <summary>
         /// Tests that environment variable connection string is used when available.
         /// Critical for production and staging environments.
+        /// NOTE: OnConfiguring removed from AppDbContext - configuration handled via DI
         /// </summary>
-        [Fact]
+        [Fact(Skip = "OnConfiguring removed - configuration now handled via DI in DatabaseConfiguration.cs")]
         public void OnConfiguring_UsesEnvironmentVariable_WhenAvailable()
         {
             // Arrange

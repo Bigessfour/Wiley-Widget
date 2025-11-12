@@ -345,15 +345,12 @@ PresentationTraceSources.DataBindingSource.Listeners.Add(
 ## 📖 References
 
 1. **Microsoft Docs - MEL:**
-
    - https://learn.microsoft.com/en-us/dotnet/core/extensions/logging
 
 2. **Prism Documentation:**
-
    - https://prismlibrary.com/docs/wpf/modules.html
 
 3. **Syncfusion WPF Docs:**
-
    - https://help.syncfusion.com/wpf/themes/skin-manager
 
 4. **Serilog Integration:**

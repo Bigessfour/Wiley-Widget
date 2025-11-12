@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using WileyWidget.Services;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Telemetry;
 using Polly;
 using Polly.CircuitBreaker;
