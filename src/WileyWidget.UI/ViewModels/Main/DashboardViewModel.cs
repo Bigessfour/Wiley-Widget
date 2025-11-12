@@ -36,9 +36,19 @@ namespace WileyWidget.ViewModels.Main {
         private readonly IMunicipalAccountRepository _municipalAccountRepository;
         private readonly FiscalYearSettings _fiscalYearSettings;
         private readonly IEventAggregator _eventAggregator;
-    private readonly IRegionManager _regionManager;
-    private readonly ICacheService? _cacheService;
-        // private readonly IThemeService _themeService;
+        private readonly IRegionManager _regionManager;
+
+        // Use Lazy<T> for optional/circular dependency services
+        private readonly Lazy<ICacheService>? _lazyCacheService;
+        private readonly Lazy<ISettingsService>? _lazySettingsService;
+        private readonly Lazy<IQuickBooksService>? _lazyQuickBooksService;
+        private readonly Lazy<IChargeCalculatorService>? _lazyChargeCalculatorService;
+
+        // Convenience properties for lazy services
+        private ICacheService? CacheService => _lazyCacheService?.Value;
+        private ISettingsService? SettingsService => _lazySettingsService?.Value;
+        private IQuickBooksService? QuickBooksService => _lazyQuickBooksService?.Value;
+        private IChargeCalculatorService? ChargeCalculatorService => _lazyChargeCalculatorService?.Value;
 
         private DispatcherTimer _refreshTimer;
         private Task? _cacheLoadingTask;
@@ -524,19 +534,30 @@ namespace WileyWidget.ViewModels.Main {
             FiscalYearSettings fiscalYearSettings,
             IEventAggregator eventAggregator,
             IRegionManager regionManager,
-            ICacheService? cacheService = null,
+            Lazy<ICacheService>? lazyCacheService = null,
+            Lazy<ISettingsService>? lazySettingsService = null,
+            Lazy<IQuickBooksService>? lazyQuickBooksService = null,
+            Lazy<IChargeCalculatorService>? lazyChargeCalculatorService = null,
             bool autoLoadData = true)
         {
-            _logger = logger;
-            _enterpriseRepository = enterpriseRepository;
-            _whatIfScenarioEngine = whatIfScenarioEngine;
-            _utilityCustomerRepository = utilityCustomerRepository;
-            _municipalAccountRepository = municipalAccountRepository;
-            _fiscalYearSettings = fiscalYearSettings;
-            _eventAggregator = eventAggregator;
-            _regionManager = regionManager;
-            _cacheService = cacheService;
-            // _themeService = themeService;
+            // REQUIRED dependencies (constructor injection enforces these)
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+            _whatIfScenarioEngine = whatIfScenarioEngine ?? throw new ArgumentNullException(nameof(whatIfScenarioEngine));
+            _utilityCustomerRepository = utilityCustomerRepository ?? throw new ArgumentNullException(nameof(utilityCustomerRepository));
+            _municipalAccountRepository = municipalAccountRepository ?? throw new ArgumentNullException(nameof(municipalAccountRepository));
+            _fiscalYearSettings = fiscalYearSettings ?? throw new ArgumentNullException(nameof(fiscalYearSettings));
+            _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+            _regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
+
+            // OPTIONAL dependencies (Lazy<T> prevents circular references and initialization order issues)
+            _lazyCacheService = lazyCacheService;
+            _lazySettingsService = lazySettingsService;
+            _lazyQuickBooksService = lazyQuickBooksService;
+            _lazyChargeCalculatorService = lazyChargeCalculatorService;
+
+            _logger.LogInformation("DashboardViewModel constructor: Initializing with {RequiredDeps} required and {OptionalDeps} optional dependencies",
+                8, (new object?[] { lazyCacheService, lazySettingsService, lazyQuickBooksService, lazyChargeCalculatorService }).Count(x => x != null));
 
             // Subscribe to collection change events for detailed logging
             Enterprises.CollectionChanged += Enterprises_CollectionChanged;
@@ -567,17 +588,17 @@ namespace WileyWidget.ViewModels.Main {
                 {
                     try
                     {
-                        if (_cacheService != null)
+                        if (CacheService != null)
                         {
-                            var cached = await _cacheService.GetAsync<System.Collections.Generic.List<Enterprise>>("enterprises").ConfigureAwait(false);
+                            var cached = await CacheService.GetAsync<System.Collections.Generic.List<Enterprise>>("enterprises").ConfigureAwait(false);
                             if (cached != null && cached.Any())
                                 return;
                         }
 
                         var all = await enterpriseRepository.GetAllAsync().ConfigureAwait(false);
                         var list = all?.ToList() ?? new System.Collections.Generic.List<Enterprise>();
-                        if (_cacheService != null && list.Any())
-                            await _cacheService.SetAsync("enterprises", list, TimeSpan.FromHours(6)).ConfigureAwait(false);
+                        if (CacheService != null && list.Any())
+                            await CacheService.SetAsync("enterprises", list, TimeSpan.FromHours(6)).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {

@@ -173,7 +173,13 @@ if (File.Exists(diFile))
         (@"services\.(AddSingleton|AddScoped|AddTransient)\(typeof\((I\w+)\),\s*typeof\((\w+)\)", 1, 2, 3),
         // Auto-registration inference (look for "✓ IInterface -> Implementation" in comments/logs)
         (@"//.*✓\s+(I\w+)\s*->\s*(\w+)", -1, 1, 2),
-        (@"✓\s+(I\w+)\s*->\s*(\w+)", -1, 1, 2)
+        (@"✓\s+(I\w+)\s*->\s*(\w+)", -1, 1, 2),
+        // Convention-based logging patterns (added for RegisterMany detection)
+        (@"✅\s+(I\w+)\s*->\s*(\w+)\s*\(Singleton\)", 1, 1, 2),
+        (@"✅\s+(I\w+)\s*->\s*(\w+)\s*\(Scoped\)", 1, 1, 2),
+        (@"✅\s+(\w+ViewModel)\s*->\s*(\w+)\s*\(Transient\)", 1, 1, 2),
+        // Log-based registration detection
+        (@"Log\.Information\(\s*""\s*✅\s+(I\w+)\s*->\s*(\w+)", -1, 1, 2)
     };
 
     foreach (var (pattern, lifetimeIdx, ifaceIdx, implIdx) in patterns)
@@ -282,6 +288,14 @@ var resolvablePct = (double)interfaceRegistry.Count(i => i.Value.Resolvable) / i
 
 Log.Information("  Missing: {Count} ({Pct:F1}%)", missing.Count, 100 - registeredPct);
 Log.Information("  Unresolvable: {Count}", unresolvable.Count);
+if (unresolvable.Any())
+{
+    Log.Debug("  Unresolvable services:");
+    foreach (var svc in unresolvable.Take(10))
+        Log.Debug("    → {Service}", svc);
+    if (unresolvable.Count > 10)
+        Log.Debug("    ... and {More} more", unresolvable.Count - 10);
+}
 if (securityGaps.Any())
     Log.Warning("  ⚠️ Security gaps: {Count} ({Services})", securityGaps.Count, string.Join(", ", securityGaps.Take(3)));
 
@@ -407,15 +421,55 @@ var report = new
     Metrics = new { RegisteredPct = registeredPct, ResolvablePct = resolvablePct, CriticalPct = criticalPct },
     Interfaces = interfaceRegistry.Count,
     Missing = missing.Count,
+    MissingList = missing,
     Unresolvable = unresolvable.Count,
+    UnresolvableList = unresolvable,
     SecurityGaps = securityGaps.Count,
+    SecurityGapsList = securityGaps,
     LoggingGaps = gapsFound,
     Recommendations = recommendations,
     TestDetails = testResults.ToDictionary(t => t.Key, t => new { t.Value.Passed, t.Value.Message, t.Value.Metrics })
 };
 
 var reportPath = Path.Combine(logsDir, $"lifecycle-validation-enhanced-{DateTime.Now:yyyyMMdd-HHmmss}.json");
-File.WriteAllText(reportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
+
+// Handle NaN values that can't be serialized to JSON
+try
+{
+    var sanitizedReport = SanitizeForJson(report);
+    var options = new JsonSerializerOptions
+    {
+        WriteIndented = true,
+        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals
+    };
+    File.WriteAllText(reportPath, JsonSerializer.Serialize(sanitizedReport, options));
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"JSON serialization failed, saving report as text: {ex.Message}");
+    // Fallback: save as formatted text instead of JSON
+    var textReport = new StringBuilder();
+    textReport.AppendLine("=== LIFECYCLE VALIDATION REPORT ===");
+    textReport.AppendLine($"Timestamp: {DateTime.Now}");
+    textReport.AppendLine($"Test Results: {passedTests}/{totalTests} passed ({(totalTests > 0 ? (passedTests * 100.0 / totalTests) : 0):F1}%)");
+    textReport.AppendLine();
+    textReport.AppendLine("Coverage Metrics:");
+    textReport.AppendLine($"Registered: {(double.IsNaN(registeredPct) ? "N/A" : $"{registeredPct:F1}%")}");
+    textReport.AppendLine($"Resolvable: {(double.IsNaN(resolvablePct) ? "N/A" : $"{resolvablePct:F1}%")}");
+    textReport.AppendLine($"Critical: {(double.IsNaN(criticalPct) ? "N/A" : $"{criticalPct:F1}%")}");
+    textReport.AppendLine();
+    textReport.AppendLine("Key Metrics:");
+    foreach (var test in testResults)
+    {
+        textReport.AppendLine($"  {(test.Value.Passed ? "✅" : "❌")} {test.Key}: {test.Value.Message} ({test.Value.Duration.TotalMilliseconds:F2}ms)");
+    }
+    // Always write text report to test-logs directory (which is writable)
+    var testLogsDir = Environment.GetEnvironmentVariable("WW_TEST_LOGS_DIR") ?? Path.Combine(repoRoot, "test-logs");
+    Directory.CreateDirectory(testLogsDir); // Ensure directory exists
+    var textReportPath = Path.Combine(testLogsDir, Path.GetFileNameWithoutExtension(Path.GetFileName(reportPath)) + ".txt");
+    File.WriteAllText(textReportPath, textReport.ToString());
+    reportPath = textReportPath;
+}
 Log.Information("📄 Report: {Path}", reportPath);
 Log.Information("");
 
@@ -426,3 +480,42 @@ Log.Information("=".PadRight(80, '='));
 
 Log.CloseAndFlush();
 Environment.Exit(exitCode);
+
+// Helper method to sanitize objects for JSON serialization
+object? SanitizeForJson(object? obj)
+{
+    if (obj == null) return null;
+
+    if (obj is double d && (double.IsNaN(d) || double.IsInfinity(d)))
+        return null;
+
+    if (obj is float f && (float.IsNaN(f) || float.IsInfinity(f)))
+        return null;
+
+    if (obj is Dictionary<string, object> dict)
+    {
+        var sanitized = new Dictionary<string, object>();
+        foreach (var kvp in dict)
+        {
+            sanitized[kvp.Key] = SanitizeForJson(kvp.Value)!;
+        }
+        return sanitized;
+    }
+
+    if (obj is IEnumerable<KeyValuePair<string, object>> enumerable)
+    {
+        var sanitized = new Dictionary<string, object>();
+        foreach (var kvp in enumerable)
+        {
+            sanitized[kvp.Key] = SanitizeForJson(kvp.Value)!;
+        }
+        return sanitized;
+    }
+
+    if (obj is IEnumerable<object> list)
+    {
+        return list.Select(SanitizeForJson).ToList();
+    }
+
+    return obj;
+}

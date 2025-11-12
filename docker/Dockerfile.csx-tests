@@ -26,7 +26,8 @@ RUN apt-get update && apt-get install -y \
 
 # === Install dotnet-script (cached layer) ===
 RUN dotnet tool install -g dotnet-script \
-    && dotnet nuget locals all --clear
+    && dotnet nuget locals all --clear \
+    && chmod -R a+rx /root/.dotnet/tools
 
 # === Pre-cache common NuGet packages for CSX tests ===
 # Set the NuGet package cache directory for optimal caching
@@ -73,17 +74,26 @@ RUN ls -la /tmp/csharp-mcp-packages && echo "NuGet cache populated successfully"
 # === Runtime Stage ===
 FROM base AS runtime
 
-# Optional: Add non-root user
-# RUN adduser --disabled-password --gecos '' csxuser
-# USER csxuser
-# WORKDIR /home/csxuser/app
+# Create non-root user for better security
+RUN groupadd -r csxuser && useradd -r -g csxuser csxuser \
+    && mkdir -p /home/csxuser/.dotnet/tools \
+    && cp -r /root/.dotnet /home/csxuser/ \
+    && chown -R csxuser:csxuser /home/csxuser \
+    && chown -R csxuser:csxuser /tmp/csharp-mcp-packages
+
+# Switch to non-root user
+USER csxuser
+WORKDIR /home/csxuser
+
+ENV PATH="$PATH:/home/csxuser/.dotnet/tools"
 
 # Copy nothing — use volume mounts
 VOLUME ["/app", "/src"]
 
-# Health check
-HEALTHCHECK CMD dotnet script --version || exit 1
+# Health check - verify dotnet-script is available and functional
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD dotnet script --version && echo "dotnet-script is healthy" || exit 1
 
 # Flexible entrypoint
-ENTRYPOINT ["dotnet", "script"]
+ENTRYPOINT ["/home/csxuser/.dotnet/tools/dotnet-script"]
 CMD ["--help"]

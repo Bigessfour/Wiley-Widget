@@ -1,0 +1,82 @@
+version: "3.8"
+
+# Production-optimized override for docker-compose.dev.yml
+# Use with: docker-compose -f docker-compose.dev.yml -f docker-compose.prod-override.yml up
+
+services:
+  wiley-widget-dev:
+    # Enhanced security for production-like environments
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Allow binding to privileged ports if needed
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /var/run:noexec,nosuid,size=10m
+    # Enhanced resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+    # Production-like restart policy
+    restart: on-failure:3
+    # Enhanced logging with compression
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: "5"
+        compress: "true"
+    # Enhanced health check
+    healthcheck:
+      test: ["CMD-SHELL", "dotnet script --version && dotnet --version && echo 'Enhanced health check passed'"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 120s
+    # Environment variables for production
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - DOTNET_CLI_TELEMETRY_OPTOUT=1
+      - DOTNET_NOLOGO=1
+      - DOTNET_EnableDiagnostics=0
+    # Labels for better management
+    labels:
+      - "com.wiley.widget.service=dev"
+      - "com.wiley.widget.version=latest"
+      - "com.wiley.widget.security=enhanced"
+
+  csx-test-runner:
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=50m
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    restart: "no" # Don't restart test containers
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "2"
+        compress: "true"
+    labels:
+      - "com.wiley.widget.service=test-runner"
+      - "com.wiley.widget.version=latest"

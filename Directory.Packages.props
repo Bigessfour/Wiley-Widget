@@ -414,6 +414,6 @@
     <!-- Intuit QuickBooks SDK packages for testing -->
     <PackageVersion
         Include="IppDotNetSdkForQuickBooksApiV3"
-        Version="14.7.0.2" />
+        Version="14.7.0.3" />
   </ItemGroup>
 </Project>

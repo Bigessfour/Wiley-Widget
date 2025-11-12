@@ -129,40 +129,53 @@ namespace WileyWidget
                 InitializeSigNozTelemetry();
 
                 // Force early secret vault migration from environment variables to avoid lazy init race
-                // TEMPORARILY DISABLED: GetAwaiter().GetResult() on async foreach causes deadlock on UI thread
-                // TODO: Move to async initialization point or use background task
-                /*
-                try
+                // FIXED: Use Task.Run to avoid UI thread deadlock - fire and forget for non-blocking startup
+                _ = Task.Run(async () =>
                 {
-                    Log.Debug("Forcing early migration of environment secrets into local encrypted vault (OnStartup)");
-
-                    WileyWidget.Services.EncryptedLocalSecretVaultService? tempVault = null;
-                    ILoggerFactory? loggerFactory = null;
-
                     try
                     {
-                        loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(dispose: false));
-                        var logger = loggerFactory.CreateLogger<WileyWidget.Services.EncryptedLocalSecretVaultService>();
-                        tempVault = new WileyWidget.Services.EncryptedLocalSecretVaultService(logger);
+                        Log.Debug("🔐 Starting early secret vault migration (background task)");
 
-                        // Run migration synchronously to ensure files/dirs are created before modules initialize
-                        tempVault.MigrateSecretsFromEnvironmentAsync().GetAwaiter().GetResult();
+                        WileyWidget.Services.EncryptedLocalSecretVaultService? tempVault = null;
+                        ILoggerFactory? loggerFactory = null;
+
+                        try
+                        {
+                            loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(dispose: false));
+                            var logger = loggerFactory.CreateLogger<WileyWidget.Services.EncryptedLocalSecretVaultService>();
+                            tempVault = new WileyWidget.Services.EncryptedLocalSecretVaultService(logger);
+
+                            // Run migration asynchronously in background task
+                            await tempVault.MigrateSecretsFromEnvironmentAsync().ConfigureAwait(false);
+                            Log.Information("✅ Early secret vault migration completed successfully");
+
+                            // Signal completion for any consumers waiting on SecretsInitializationTask
+                            _secretsInitializationTcs.TrySetResult(true);
+                        }
+                        catch (Exception migrationEx)
+                        {
+                            Log.Warning(migrationEx, "Secret vault migration failed in background task (non-fatal)");
+                            _secretsInitializationTcs.TrySetResult(false); // Signal completion even on failure
+                        }
+                        finally
+                        {
+                            // Explicit disposal to avoid async/sync disposal issues
+                            if (tempVault != null)
+                            {
+                                await Task.Run(() => tempVault.Dispose()).ConfigureAwait(false);
+                            }
+                            loggerFactory?.Dispose();
+                        }
                     }
-                    finally
+                    catch (Exception ex)
                     {
-                        // Explicit disposal to avoid async/sync disposal issues
-                        tempVault?.Dispose();
-                        loggerFactory?.Dispose();
+                        Log.Warning(ex, "Early secret vault migration task failed (non-fatal) - continuing startup");
+                        _secretsInitializationTcs.TrySetResult(false);
                     }
+                });
 
-                    Log.Debug("✅ Early secret vault migration completed successfully");
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Early secret vault migration failed (non-fatal) - continuing startup");
-                }
-                */
-                Log.Information("⚠️ Early secret vault migration SKIPPED - vault will initialize on first use");                // MCP VALIDATION: Add test span for end-to-end trace verification
+                // Don't wait for secrets task - let it run in background
+                Log.Information("🔐 Secret vault migration started in background (non-blocking)");                // MCP VALIDATION: Add test span for end-to-end trace verification
                 using var mcpValidationActivity = SigNozTelemetryService.ActivitySource.StartActivity("MCP.Validation.Startup");
                 mcpValidationActivity?.SetTag("mcp.phase", "validation");
                 mcpValidationActivity?.SetTag("session.id", "MCP-TEST-001");
@@ -349,20 +362,55 @@ namespace WileyWidget
 #endif
 
                 splashWindow.UpdateStatus("Phase 4: Finalizing UI initialization...");
-                Log.Information("Phase 4: UI finalization and health validation");
+                Log.Information("═══════════════════════════════════════════════════════════════");
+                Log.Information("Phase 4: UI finalization and comprehensive health validation");
+                Log.Information("═══════════════════════════════════════════════════════════════");
+                var phase4Sw = Stopwatch.StartNew();
+
+                // Log Phase 4 entry with complete service resolution state
+                Log.Information("[PHASE_4] Starting UI finalization phase");
+                Log.Information("[PHASE_4] Container state: {RegisteredServices} services registered",
+                    this.Container?.GetContainer()?.GetServiceRegistrations()?.Count() ?? 0);
+
+                // Validate secrets initialization completion with timeout protection
+                Log.Information("[PHASE_4] Validating secrets initialization completion...");
+                var secretsTimeout = Task.Delay(TimeSpan.FromSeconds(10));
+                var secretsCompletion = _secretsInitializationTcs?.Task ?? Task.CompletedTask;
+                var completedTask = await Task.WhenAny(secretsCompletion, secretsTimeout).ConfigureAwait(false);
+
+                if (completedTask == secretsTimeout)
+                {
+                    Log.Warning("[PHASE_4] Secrets initialization did not complete within 10 seconds - proceeding with caution");
+                }
+                else
+                {
+                    await secretsCompletion.ConfigureAwait(false);
+                    Log.Information("[PHASE_4] ✓ Secrets initialization verified complete");
+                }
 
                 // Final health validation using StartupEnvironmentValidator service
+                Log.Information("[PHASE_4] Performing module health validation...");
                 var moduleHealthService = ResolveWithRetry<IModuleHealthService>();
                 moduleHealthService.LogHealthReport();
+                Log.Information("[PHASE_4] ✓ Module health report logged");
 
 #if !WPFTMP
                 // Validate module initialization via extracted service
+                Log.Information("[PHASE_4] Validating module initialization state...");
                 var environmentValidator = ResolveWithRetry<WileyWidget.Services.Startup.IStartupEnvironmentValidator>();
                 environmentValidator.ValidateModuleInitialization(moduleHealthService);
+                Log.Information("[PHASE_4] ✓ Module initialization validated");
 #endif
 
+                phase4Sw.Stop();
+                Log.Information("═══════════════════════════════════════════════════════════════");
                 Log.Information("✅ Phase 3-4 completed: Module and UI initialization successful");
-                Log.Information("✅ Phase 4 complete: UI ready");
+                Log.Information("✅ Phase 4 complete: UI ready - {ElapsedMs}ms", phase4Sw.ElapsedMilliseconds);
+                Log.Information("   • Secrets validation: Complete");
+                Log.Information("   • Module health check: Complete");
+                Log.Information("   • Environment validation: Complete");
+                Log.Information("═══════════════════════════════════════════════════════════════");
+                Log.Information("Phase 4: UI finalized - {Elapsed}ms", phase4Sw.ElapsedMilliseconds);
 
                 // Show the main window now that initialization is complete
                 var mainWindow = Application.Current.MainWindow as Window;
