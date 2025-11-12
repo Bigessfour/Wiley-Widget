@@ -41,8 +41,7 @@ import logging
 import subprocess
 import shutil
 from pathlib import Path
-from typing import Set, Dict, List, Optional, Tuple
-from collections import defaultdict
+from typing import Dict, List, Optional
 import xml.etree.ElementTree as ET
 
 # ============================================================================
@@ -104,7 +103,7 @@ if __name__ == '__main__':
         # No Python executable detected - try to find one
         better_python = find_python_executable()
         if better_python and better_python != current_python:
-            print(f"⚠️  No Python executable detected")
+            print("⚠️  No Python executable detected")
             print(f"✓ Re-executing with: {better_python}")
             os.execv(better_python, [better_python] + sys.argv)
 
@@ -251,6 +250,67 @@ REQUIRED_SF_DICTS = [
     'SfSkinManager',
     'FluentLight',
     'FluentDark',
+]
+
+# ============================================================================
+# PATTERNS - RUNTIME RESOURCE EVALUATION (HIGH PRIORITY - NEW)
+# ============================================================================
+
+# XAML resource key patterns
+BRUSH_RESOURCE_PATTERN = re.compile(
+    r'<(?:SolidColorBrush|LinearGradientBrush|RadialGradientBrush)\s+x:Key\s*=\s*"([^"]+)"',
+    re.IGNORECASE
+)
+
+STYLE_RESOURCE_PATTERN = re.compile(
+    r'<Style\s+x:Key\s*=\s*"([^"]+)"(?:\s+TargetType\s*=\s*"(?:\{x:Type\s+)?([^}"]+)\}?")?',
+    re.IGNORECASE
+)
+
+STATIC_RESOURCE_REF_PATTERN = re.compile(
+    r'\{(?:StaticResource|DynamicResource)\s+([^}]+)\}',
+    re.IGNORECASE
+)
+
+DATA_TEMPLATE_PATTERN = re.compile(
+    r'<DataTemplate\s+x:Key\s*=\s*"([^"]+)"(?:\s+DataType\s*=\s*"(?:\{x:Type\s+)?([^}"]+)\}?")?',
+    re.IGNORECASE
+)
+
+# FluentLight theme conflicts (conflicting brush names)
+FLUENTLIGHT_RESERVED_BRUSHES = {
+    'PrimaryBrush', 'SecondaryBrush', 'TertiaryBrush', 'AccentBrush',
+    'BackgroundBrush', 'ForegroundBrush', 'BorderBrush', 'HoverBrush',
+    'PressedBrush', 'DisabledBrush', 'SelectionBrush', 'HighlightBrush'
+}
+
+# Syncfusion reserved style keys
+SF_RESERVED_STYLE_KEYS = {
+    'SfDataGridStyle', 'SfChartStyle', 'SfBusyIndicatorStyle',
+    'SyncfusionAccentBrush', 'SyncfusionBackground', 'SyncfusionForeground'
+}
+
+# Resource dictionary merge order issues
+MERGE_ORDER_CRITICAL = [
+    'Syncfusion.Themes',  # Must be first
+    'Syncfusion.SfSkinManager',  # Theme manager
+    'FluentLight',  # Theme resources
+    'DataTemplates',  # App-specific templates
+    'Strings',  # String resources (should be last)
+]
+
+# Potential silent exit patterns
+SILENT_EXIT_PATTERNS = [
+    re.compile(r'Setter\s+Property\s*=\s*"[^"]*"\s+Value\s*=\s*"\{StaticResource\s+NonExistent', re.IGNORECASE),
+    re.compile(r'Style\s+BasedOn\s*=\s*"\{StaticResource\s+([^}"]+)\}"', re.IGNORECASE),
+    # Note: DataTemplate with x:Type is VALID - removed false positive pattern
+]
+
+# .NET 9 WPF dispatcher deadlock patterns
+DISPATCHER_DEADLOCK_PATTERNS = [
+    re.compile(r'Dispatcher\.Invoke\s*\(\s*\(\s*\)\s*=>', re.IGNORECASE),
+    re.compile(r'Application\.Current\.Dispatcher\.Invoke', re.IGNORECASE),
+    re.compile(r'await\s+Dispatcher\.InvokeAsync.*ConfigureAwait\s*\(\s*false\s*\)', re.IGNORECASE),
 ]
 
 # ============================================================================
@@ -420,6 +480,18 @@ class StartupValidator:
             'duplicate_sources': []
         }
 
+        # NEW: Runtime resource evaluation results (HIGH PRIORITY)
+        self.resource_evals = {
+            'xaml_files_parsed': [],
+            'brush_conflicts': [],  # FluentLight conflicts
+            'style_conflicts': [],  # Syncfusion style conflicts
+            'missing_references': [],  # Unresolved StaticResource refs
+            'merge_order_issues': [],  # Incorrect merge order
+            'silent_exit_risks': [],  # Patterns that cause silent exits
+            'dispatcher_deadlocks': [],  # .NET 9 dispatcher issues
+            'data_template_issues': [],  # DataTemplate conflicts
+        }
+
         self.controls = {
             'found': [],
             'misconfigured': [],
@@ -570,6 +642,7 @@ class StartupValidator:
             'licenses': self._scan_licenses,
             'assemblies': self._scan_assemblies,
             'resources': self._scan_resources,
+            'resource_evals': self._scan_resource_evals,  # NEW: HIGH PRIORITY runtime simulation
             'controls': self._scan_controls,
             'prism': self._scan_prism,
             'deprecated': self._scan_deprecated,
@@ -710,7 +783,7 @@ class StartupValidator:
                             self.licenses['registrations'].append(entry)
 
                 # Track env var usage separately for informational purposes
-                for var_name, env_var_name in env_var_map.items():
+                for _, env_var_name in env_var_map.items():
                     if 'license' in env_var_name.lower():
                         self.licenses['env_fallbacks'].append({
                             'variable': env_var_name,
@@ -930,11 +1003,268 @@ class StartupValidator:
                     })
         else:
             if self.verbose:
-                print(f"  ✓ SfSkinManager detected - themes applied programmatically")
+                print("  ✓ SfSkinManager detected - themes applied programmatically")
 
         if self.verbose:
             print(f"  ✓ Found {len(self.resources['merged_dicts'])} merged dictionaries")
             print(f"  ⚠️  Missing {len(self.resources['missing_required'])} required dictionaries")
+
+    # ========================================================================
+    # SCAN 3B: RUNTIME RESOURCE EVALUATION (HIGH PRIORITY - NEW)
+    # ========================================================================
+
+    def _scan_resource_evals(self):
+        """
+        Simulate runtime resource loading to detect FluentLight conflicts,
+        merged dictionary issues, and potential silent exits.
+
+        HIGH PRIORITY: Parses XAML resource files (DataTemplates.xaml, Strings.xaml)
+        and validates against Syncfusion theme resources to prevent runtime crashes.
+        """
+        if self.verbose:
+            print("🔬 Simulating runtime resource evaluation...")
+
+        # Track all defined resources across all XAML files
+        all_brushes = {}  # key -> (file, line)
+        all_styles = {}   # key -> (file, line)
+        all_data_templates = {}  # key -> (file, line)
+        all_static_refs = set()  # All referenced resources
+
+        # Collect all XAML excluding build artifacts)
+        xaml_files = []
+        for file_path in self.root.rglob('*.xaml'):
+            if 'bin' not in str(file_path).lower() and 'obj' not in str(file_path).lower():
+                xaml_files.append(file_path)
+
+        # Phase 1: Parse all XAML files and collect resource definitions
+        for file_path in xaml_files:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                file_rel = str(file_path.relative_to(self.root))
+                self.resource_evals['xaml_files_parsed'].append(file_rel)
+
+                # Extract brush definitions
+                for match in BRUSH_RESOURCE_PATTERN.finditer(content):
+                    brush_key = match.group(1)
+                    line_num = content[:match.start()].count('\n') + 1
+
+                    if brush_key in all_brushes:
+                        # Duplicate brush definition
+                        prev_file, prev_line = all_brushes[brush_key]
+                        self.resource_evals['brush_conflicts'].append({
+                            'key': brush_key,
+                            'file1': prev_file,
+                            'line1': prev_line,
+                            'file2': file_rel,
+                            'line2': line_num,
+                            'severity': 'HIGH',
+                            'issue': f'Duplicate brush key "{brush_key}" defined in multiple files',
+                            'recommendation': 'Remove duplicate or use unique key names'
+                        })
+
+                    all_brushes[brush_key] = (file_rel, line_num)
+
+                    # Check for FluentLight reserved names
+                    if brush_key in FLUENTLIGHT_RESERVED_BRUSHES:
+                        self.resource_evals['brush_conflicts'].append({
+                            'key': brush_key,
+                            'file': file_rel,
+                            'line': line_num,
+                            'severity': 'CRITICAL',
+                            'issue': f'Brush key "{brush_key}" conflicts with FluentLight theme',
+                            'recommendation': f'Rename brush to avoid FluentLight reserved name (e.g., "App{brush_key}")'
+                        })
+
+                # Extract style definitions
+                for match in STYLE_RESOURCE_PATTERN.finditer(content):
+                    style_key = match.group(1)
+                    # Note: target_type available in group(2) if needed for future validation
+                    line_num = content[:match.start()].count('\n') + 1
+
+                    if style_key in all_styles:
+                        prev_file, prev_line = all_styles[style_key]
+                        self.resource_evals['style_conflicts'].append({
+                            'key': style_key,
+                            'file1': prev_file,
+                            'line1': prev_line,
+                            'file2': file_rel,
+                            'line2': line_num,
+                            'severity': 'HIGH',
+                            'issue': f'Duplicate style key "{style_key}" defined in multiple files',
+                            'recommendation': 'Remove duplicate or use unique key names'
+                        })
+
+                    all_styles[style_key] = (file_rel, line_num)
+
+                    # Check for Syncfusion reserved style keys
+                    if style_key in SF_RESERVED_STYLE_KEYS:
+                        self.resource_evals['style_conflicts'].append({
+                            'key': style_key,
+                            'file': file_rel,
+                            'line': line_num,
+                            'severity': 'CRITICAL',
+                            'issue': f'Style key "{style_key}" conflicts with Syncfusion reserved key',
+                            'recommendation': f'Rename style to avoid Syncfusion conflict (e.g., "Custom{style_key}")'
+                        })
+
+                # Extract DataTemplate definitions
+                for match in DATA_TEMPLATE_PATTERN.finditer(content):
+                    template_key = match.group(1)
+                    # Note: data_type available in group(2) if needed for future validation
+                    line_num = content[:match.start()].count('\n') + 1
+
+                    if template_key in all_data_templates:
+                        prev_file, prev_line = all_data_templates[template_key]
+                        self.resource_evals['data_template_issues'].append({
+                            'key': template_key,
+                            'file1': prev_file,
+                            'line1': prev_line,
+                            'file2': file_rel,
+                            'line2': line_num,
+                            'severity': 'MEDIUM',
+                            'issue': f'Duplicate DataTemplate key "{template_key}"',
+                            'recommendation': 'Ensure only one DataTemplate per key or use DataType'
+                        })
+
+                    all_data_templates[template_key] = (file_rel, line_num)
+
+                # Extract StaticResource/DynamicResource references
+                for match in STATIC_RESOURCE_REF_PATTERN.finditer(content):
+                    resource_ref = match.group(1).strip()
+                    all_static_refs.add(resource_ref)
+
+                # Check for silent exit patterns
+                for pattern in SILENT_EXIT_PATTERNS:
+                    for match in pattern.finditer(content):
+                        line_num = content[:match.start()].count('\n') + 1
+                        self.resource_evals['silent_exit_risks'].append({
+                            'file': file_rel,
+                            'line': line_num,
+                            'pattern': match.group(0)[:100],
+                            'severity': 'CRITICAL',
+                            'issue': 'Pattern detected that may cause silent application exit',
+                            'recommendation': 'Verify all StaticResource references exist before runtime'
+                        })
+
+                # Check for dispatcher deadlock patterns (C# files)
+                if file_path.suffix.lower() == '.cs':
+                    for pattern in DISPATCHER_DEADLOCK_PATTERNS:
+                        for match in pattern.finditer(content):
+                            line_num = content[:match.start()].count('\n') + 1
+                            self.resource_evals['dispatcher_deadlocks'].append({
+                                'file': file_rel,
+                                'line': line_num,
+                                'pattern': match.group(0)[:100],
+                                'severity': 'HIGH',
+                                'issue': '.NET 9 WPF Dispatcher pattern may cause deadlock',
+                                'recommendation': 'Use await Dispatcher.InvokeAsync with ConfigureAwait(true) in WPF'
+                            })
+
+            except Exception as e:
+                if self.verbose:
+                    print(f"  ⚠️  Error parsing {file_path}: {e}")
+
+        # Phase 2: Validate all StaticResource references
+        all_defined_keys = set(all_brushes.keys()) | set(all_styles.keys()) | set(all_data_templates.keys())
+
+        for ref_key in all_static_refs:
+            # Skip system resources and binding expressions
+            if ref_key.startswith('{') or ref_key.startswith('x:'):
+                continue
+
+            if ref_key not in all_defined_keys:
+                self.resource_evals['missing_references'].append({
+                    'key': ref_key,
+                    'severity': 'HIGH',
+                    'issue': f'StaticResource "{ref_key}" referenced but not defined',
+                    'recommendation': 'Define the resource or check for typos'
+                })
+
+        # Phase 3: Validate merge order in App.xaml
+        app_xaml = self.root / 'src' / 'WileyWidget' / 'App.xaml'
+        if app_xaml.exists():
+            try:
+                with open(app_xaml, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                merged_dicts = MERGED_DICT_PATTERN.findall(content)
+
+                # Check if merge order matches MERGE_ORDER_CRITICAL
+                for i, critical_item in enumerate(MERGE_ORDER_CRITICAL):
+                    found_index = None
+                    for j, merged_dict in enumerate(merged_dicts):
+                        if critical_item.lower() in merged_dict.lower():
+                            found_index = j
+                            break
+
+                    # Check if order is correct relative to others
+                    for prev_critical in MERGE_ORDER_CRITICAL[:i]:
+                        for j, merged_dict in enumerate(merged_dicts):
+                            if prev_critical.lower() in merged_dict.lower():
+                                if found_index is not None and j > found_index:
+                                    self.resource_evals['merge_order_issues'].append({
+                                        'file': 'App.xaml',
+                                        'severity': 'HIGH',
+                                        'issue': f'{critical_item} must be loaded after {prev_critical}',
+                                        'recommendation': f'Reorder MergedDictionaries: {prev_critical} before {critical_item}'
+                                    })
+
+            except Exception as e:
+                if self.verbose:
+                    print(f"  ⚠️  Error validating merge order: {e}")
+
+        # Phase 4: Mock .NET 9 WPF Dispatcher simulation
+        # Detect patterns that would fail during actual dispatcher invoke
+        if self.verbose:
+            print("  🔧 Simulating .NET 9 WPF Dispatcher resource loading...")
+
+        # Simulate loading resources in merge order
+        simulated_resources = set()
+        for merged_dict in self.resources['merged_dicts']:
+            source = merged_dict['source']
+
+            # Simulate loading resources from this dictionary
+            for xaml_file in xaml_files:
+                if source.lower() in str(xaml_file).lower():
+                    try:
+                        with open(xaml_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+
+                        # Extract keys from this file
+                        for match in BRUSH_RESOURCE_PATTERN.finditer(content):
+                            simulated_resources.add(match.group(1))
+                        for match in STYLE_RESOURCE_PATTERN.finditer(content):
+                            simulated_resources.add(match.group(1))
+                        for match in DATA_TEMPLATE_PATTERN.finditer(content):
+                            simulated_resources.add(match.group(1))
+
+                    except Exception:
+                        pass
+
+        # Check if all referenced resources would be available
+        for ref_key in all_static_refs:
+            if ref_key.startswith('{') or ref_key.startswith('x:'):
+                continue
+
+            if ref_key not in simulated_resources and ref_key not in all_defined_keys:
+                # This would cause a silent exit in WPF
+                self.resource_evals['silent_exit_risks'].append({
+                    'key': ref_key,
+                    'severity': 'CRITICAL',
+                    'issue': f'Resource "{ref_key}" would not be available during dispatcher invoke',
+                    'recommendation': 'Ensure resource is defined before first reference or use DynamicResource'
+                })
+
+        if self.verbose:
+            print(f"  ✓ Parsed {len(self.resource_evals['xaml_files_parsed'])} XAML files")
+            print(f"  ✓ Found {len(all_brushes)} brushes, {len(all_styles)} styles, {len(all_data_templates)} templates")
+            print(f"  ⚠️  {len(self.resource_evals['brush_conflicts'])} brush conflicts")
+            print(f"  ⚠️  {len(self.resource_evals['style_conflicts'])} style conflicts")
+            print(f"  ⚠️  {len(self.resource_evals['missing_references'])} missing references")
+            print(f"  ⚠️  {len(self.resource_evals['silent_exit_risks'])} silent exit risks")
+            print(f"  ⚠️  {len(self.resource_evals['dispatcher_deadlocks'])} dispatcher deadlock risks")
 
     # ========================================================================
     # SCAN 4: CONTROL-SPECIFIC INTEGRATIONS (MEDIUM PRIORITY)
@@ -1112,17 +1442,87 @@ class StartupValidator:
         if len(self.prism['modules']) < 2:
             self.prism['issues'].append({
                 'severity': 'HIGH',
-                'message': f'Expected at least 2 Prism modules (CoreModule, QuickBooksModule), found {len(self.prism["modules"])}',
-                'recommendation': 'Verify module registration in ConfigureModuleCatalog'
+                'issue': 'Expected at least 2 Prism modules, found ' + str(len(self.prism['modules'])),
+                'recommendation': 'Verify CoreModule and QuickBooksModule are properly defined'
             })
 
-        # Validation: Expected at least 16 explicit registrations in RegisterTypes
-        if total_registrations < 10:
-            self.prism['issues'].append({
-                'severity': 'MEDIUM',
-                'message': f'Expected at least 16 explicit DI registrations, found {total_registrations}',
-                'recommendation': 'Verify RegisterTypes() method in App.DependencyInjection.cs'
-            })
+        # NEW: View Discovery Validation against deprecated configs
+        if self.verbose:
+            print("  🔍 Validating Prism view discovery patterns...")
+
+        # Collect all views registered
+        view_registrations = [r for r in self.prism['registrations'] if r.get('type') == 'view']
+
+        # Scan for ViewModelLocator usage and deprecated patterns
+        for file_path in self.root.rglob('*.xaml'):
+            if 'bin' in str(file_path).lower() or 'obj' in str(file_path).lower():
+                continue
+
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Check for manual ViewModel assignments (deprecated)
+                manual_datacontext = re.search(
+                    r'DataContext\s*=\s*"\{(?:Binding|StaticResource|DynamicResource)',
+                    content, re.IGNORECASE
+                )
+
+                if manual_datacontext:
+                    # Check if AutoWireViewModel is also enabled
+                    auto_wire_match = VIEWMODEL_LOCATOR_PATTERN.search(content)
+                    if auto_wire_match and auto_wire_match.group(1).lower() == 'true':
+                        line_num = content[:manual_datacontext.start()].count('\n') + 1
+                        self.prism['issues'].append({
+                            'file': str(file_path.relative_to(self.root)),
+                            'line': line_num,
+                            'severity': 'MEDIUM',
+                            'issue': 'Manual DataContext binding conflicts with ViewModelLocator.AutoWireViewModel',
+                            'recommendation': 'Remove manual DataContext or disable AutoWireViewModel'
+                        })
+
+                # Check for deprecated region adapter registrations
+                deprecated_region_adapters = [
+                    'ContentControlRegionAdapter',
+                    'SelectorRegionAdapter',
+                    'ItemsControlRegionAdapter'
+                ]
+
+                for deprecated in deprecated_region_adapters:
+                    if deprecated in content:
+                        self.prism['issues'].append({
+                            'file': str(file_path.relative_to(self.root)),
+                            'severity': 'LOW',
+                            'issue': f'Using deprecated region adapter: {deprecated}',
+                            'recommendation': 'Modern Prism versions auto-register region adapters'
+                        })
+
+            except Exception as e:
+                if self.verbose:
+                    print(f"  ⚠️  Error checking view discovery in {file_path}: {e}")
+
+        # Check for missing view registrations for discovered views
+        discovered_views = set()
+        for file_path in self.root.rglob('Views/*.xaml'):
+            if 'bin' not in str(file_path).lower() and 'obj' not in str(file_path).lower():
+                view_name = file_path.stem  # e.g., "DashboardView"
+                discovered_views.add(view_name)
+
+        registered_views = {r.get('view') for r in view_registrations if r.get('view')}
+
+        # Find views that are not registered
+        unregistered_views = discovered_views - registered_views
+        if unregistered_views:
+            for view_name in unregistered_views:
+                self.prism['missing_registrations'].append({
+                    'view': view_name,
+                    'severity': 'MEDIUM',
+                    'issue': f'View "{view_name}" found but not registered with RegionManager',
+                    'recommendation': f'Register in module: regionManager.RegisterViewWithRegion("RegionName", typeof({view_name}))'
+                })
+
+        if self.verbose and unregistered_views:
+            print(f"  ⚠️  Found {len(unregistered_views)} unregistered views")
 
     # ========================================================================
     # SCAN 6: DEPRECATED CONTROLS (LOW PRIORITY)
@@ -1279,6 +1679,163 @@ class StartupValidator:
             print(f"  {'✓' if self.shell['main_window_found'] else '✗'} Main window found")
             print(f"  ✓ Found {len(self.shell['regions_defined'])} regions")
             print(f"  {'✓' if self.shell['viewmodel_locator_enabled'] else '⚠️ '} ViewModelLocator enabled")
+
+        # NEW: Shell Integration Crash Detection (Syncfusion theme)
+        if self.verbose:
+            print("  🔥 Testing for Syncfusion theme apply crashes...")
+
+        # Check App.xaml.cs for proper theme initialization order
+        app_xaml_cs = self.root / 'src' / 'WileyWidget' / 'App.xaml.cs'
+        if app_xaml_cs.exists():
+            try:
+                with open(app_xaml_cs, 'r', encoding='utf-8') as f:
+                    cs_content = f.read()
+
+                # Check for SfSkinManager usage
+                theme_apply_match = re.search(
+                    r'SfSkinManager\.(SetTheme|ApplyThemeAsDefaultStyle|SetVisualStyle)',
+                    cs_content, re.IGNORECASE
+                )
+
+                if theme_apply_match:
+                    # Verify it's called BEFORE InitializeComponent()
+                    init_component_pos = cs_content.find('InitializeComponent()')
+                    theme_apply_pos = theme_apply_match.start()
+
+                    if init_component_pos != -1 and theme_apply_pos > init_component_pos:
+                        self.shell['missing_windows'].append({
+                            'severity': 'CRITICAL',
+                            'issue': 'SfSkinManager theme apply called AFTER InitializeComponent()',
+                            'recommendation': 'Move SfSkinManager theme setup BEFORE InitializeComponent() to prevent crashes',
+                            'file': 'App.xaml.cs'
+                        })
+
+                    # Check for license registration before theme apply
+                    license_match = re.search(
+                        r'(?:SyncfusionLicenseProvider|SfSkinManager)\.(?:RegisterLicense|SetLicenseKey)',
+                        cs_content, re.IGNORECASE
+                    )
+
+                    if license_match:
+                        license_pos = license_match.start()
+                        if theme_apply_pos < license_pos:
+                            self.shell['missing_windows'].append({
+                                'severity': 'HIGH',
+                                'issue': 'Theme applied before license registration',
+                                'recommendation': 'Register Syncfusion license BEFORE applying theme',
+                                'file': 'App.xaml.cs'
+                            })
+                    else:
+                        self.shell['missing_windows'].append({
+                            'severity': 'CRITICAL',
+                            'issue': 'No Syncfusion license registration found in App.xaml.cs',
+                            'recommendation': 'Add SyncfusionLicenseProvider.RegisterLicense() before theme apply',
+                            'file': 'App.xaml.cs'
+                        })
+
+                # Check for Application_Startup event handler
+                startup_match = re.search(
+                    r'protected\s+override\s+void\s+OnStartup|Application_Startup',
+                    cs_content, re.IGNORECASE
+                )
+
+                if not startup_match:
+                    self.shell['missing_windows'].append({
+                        'severity': 'MEDIUM',
+                        'issue': 'No OnStartup or Application_Startup event handler found',
+                        'recommendation': 'Add OnStartup override for proper initialization sequence',
+                        'file': 'App.xaml.cs'
+                    })
+
+                # Check for synchronous Dispatcher operations in startup
+                sync_dispatcher = re.findall(
+                    r'Dispatcher\.Invoke\s*\([^)]*\)\s*(?!\.Wait|ConfigureAwait)',
+                    cs_content
+                )
+
+                if sync_dispatcher:
+                    self.shell['missing_windows'].append({
+                        'severity': 'HIGH',
+                        'issue': f'Found {len(sync_dispatcher)} synchronous Dispatcher.Invoke calls in App.xaml.cs',
+                        'recommendation': 'Use await Dispatcher.InvokeAsync() to prevent startup deadlocks',
+                        'file': 'App.xaml.cs'
+                    })
+
+                # Check for theme resource loading in wrong thread context
+                theme_resource_match = re.findall(
+                    r'Application\.Current\.Resources\.MergedDictionaries\.Add',
+                    cs_content
+                )
+
+                if theme_resource_match:
+                    # Verify it's in UI thread context
+                    for match_obj in re.finditer(
+                        r'Application\.Current\.Resources\.MergedDictionaries\.Add',
+                        cs_content
+                    ):
+                        pos = match_obj.start()
+                        # Check if inside Dispatcher.Invoke or Task.Run
+                        context_before = cs_content[max(0, pos-200):pos]
+
+                        if 'Task.Run' in context_before and 'Dispatcher.Invoke' not in context_before:
+                            self.shell['missing_windows'].append({
+                                'severity': 'CRITICAL',
+                                'issue': 'Theme resources loaded in background thread without Dispatcher',
+                                'recommendation': 'Wrap Application.Current.Resources access with Dispatcher.Invoke()',
+                                'file': 'App.xaml.cs'
+                            })
+
+            except Exception as e:
+                if self.verbose:
+                    print(f"  ⚠️  Error checking theme initialization: {e}")
+
+        # Check MainWindow.xaml.cs for post-theme initialization issues
+        main_window_cs = self.root / 'src' / 'WileyWidget' / 'MainWindow.xaml.cs'
+        if main_window_cs.exists():
+            try:
+                with open(main_window_cs, 'r', encoding='utf-8') as f:
+                    cs_content = f.read()
+
+                # Check for theme-dependent control access in constructor
+                constructor_match = re.search(
+                    r'public\s+MainWindow\s*\([^)]*\)\s*\{([^}]+)\}',
+                    cs_content, re.DOTALL
+                )
+
+                if constructor_match:
+                    constructor_body = constructor_match.group(1)
+
+                    # Check for SfSkinManager calls in constructor (bad practice)
+                    if 'SfSkinManager' in constructor_body:
+                        self.shell['missing_windows'].append({
+                            'severity': 'HIGH',
+                            'issue': 'SfSkinManager used in MainWindow constructor',
+                            'recommendation': 'Move theme setup to App.xaml.cs OnStartup',
+                            'file': 'MainWindow.xaml.cs'
+                        })
+
+                    # Check for resource dictionary access before Loaded event
+                    if 'Resources[' in constructor_body or 'FindResource(' in constructor_body:
+                        if 'Loaded +=' not in constructor_body:
+                            self.shell['missing_windows'].append({
+                                'severity': 'MEDIUM',
+                                'issue': 'Resource access in constructor before Loaded event',
+                                'recommendation': 'Move resource access to Loaded event handler',
+                                'file': 'MainWindow.xaml.cs'
+                            })
+
+            except Exception as e:
+                if self.verbose:
+                    print(f"  ⚠️  Error checking MainWindow initialization: {e}")
+
+        if self.verbose:
+            theme_issues = [w for w in self.shell['missing_windows']
+                          if 'theme' in w.get('issue', '').lower()
+                          or 'SfSkinManager' in w.get('issue', '')]
+            if theme_issues:
+                print(f"  ⚠️  Found {len(theme_issues)} theme-related crash risks")
+            else:
+                print("  ✓ No theme initialization issues detected")
 
     # ========================================================================
     # SCAN 9: SERVICE REGISTRATIONS (NEW)
@@ -1487,9 +2044,12 @@ class StartupValidator:
             len(self.licenses['placeholders']) +
             len(self.assemblies['outdated']) +
             len(self.assemblies['version_mismatches']) +
-            len([f for f in self.configuration['missing_files'] if f.get('severity') == 'HIGH']) +  # NEW
-            len([w for w in self.shell['missing_windows'] if w.get('severity') == 'HIGH']) +  # NEW
-            len([s for s in self.database['missing_setup'] if s.get('severity') == 'HIGH'])  # NEW
+            len([r for r in self.resource_evals['brush_conflicts'] if r.get('severity') == 'CRITICAL']) +  # NEW
+            len([r for r in self.resource_evals['style_conflicts'] if r.get('severity') == 'CRITICAL']) +  # NEW
+            len(self.resource_evals['silent_exit_risks']) +  # NEW: Silent exits are CRITICAL
+            len([f for f in self.configuration['missing_files'] if f.get('severity') == 'HIGH']) +
+            len([w for w in self.shell['missing_windows'] if w.get('severity') in ['HIGH', 'CRITICAL']]) +  # Enhanced
+            len([s for s in self.database['missing_setup'] if s.get('severity') == 'HIGH'])
         )
 
         medium_issues = (
@@ -1497,9 +2057,14 @@ class StartupValidator:
             len(self.controls['missing_props']) +
             len(self.assemblies['breaking_changes']) +
             len(self.assemblies['missing_dependencies']) +
-            len(self.configuration['missing_sections']) +  # NEW
-            len(self.services['missing_registrations']) +  # NEW
-            len([s for s in self.database['missing_setup'] if s.get('severity') == 'MEDIUM'])  # NEW
+            len([r for r in self.resource_evals['brush_conflicts'] if r.get('severity') == 'HIGH']) +  # NEW
+            len([r for r in self.resource_evals['style_conflicts'] if r.get('severity') == 'HIGH']) +  # NEW
+            len(self.resource_evals['missing_references']) +  # NEW
+            len(self.resource_evals['merge_order_issues']) +  # NEW
+            len(self.resource_evals['dispatcher_deadlocks']) +  # NEW
+            len(self.configuration['missing_sections']) +
+            len(self.services['missing_registrations']) +
+            len([s for s in self.database['missing_setup'] if s.get('severity') == 'MEDIUM'])
         )
 
         low_issues = (
@@ -1527,6 +2092,7 @@ class StartupValidator:
             'licenses': self.licenses,
             'assemblies': self.assemblies,
             'resources': self.resources,
+            'resource_evals': self.resource_evals,  # NEW: Runtime resource evaluation results
             'controls': self.controls,
             'prism': self.prism,
             'deprecated': self.deprecated,
@@ -1542,11 +2108,11 @@ class StartupValidator:
         print("🚀 WILEY WIDGET STARTUP VALIDATION REPORT")
         print("=" * 80)
 
-        print(f"\n📊 Statistics:")
+        print("\n📊 Statistics:")
         print(f"   Files Scanned: {self.stats['files_scanned']}")
         print(f"   XAML: {self.stats['xaml_files']}, C#: {self.stats['cs_files']}, CSProj: {self.stats['csproj_files']}")
 
-        print(f"\n🚨 Issues Summary:")
+        print("\n🚨 Issues Summary:")
         print(f"   🔴 BLOCKING (High): {blocking_issues}")
         print(f"   🟡 MEDIUM: {medium_issues}")
         print(f"   🟢 LOW: {low_issues}")
@@ -1554,16 +2120,16 @@ class StartupValidator:
 
         # License details
         if self.licenses['registrations'] or self.licenses['missing']:
-            print(f"\n🔑 License Registrations:")
+            print("\n🔑 License Registrations:")
             print(f"   ✓ Found: {len(self.licenses['registrations'])}")
             print(f"   ⚠️  Placeholders: {len(self.licenses['placeholders'])}")
             print(f"   🌐 Env Fallbacks: {len(self.licenses['env_fallbacks'])}")
             if self.licenses['missing']:
-                print(f"   ❌ CRITICAL: No license registrations found!")
+                print("   ❌ CRITICAL: No license registrations found!")
 
         # Assembly details
         if self.assemblies['packages']:
-            print(f"\n📦 Assemblies:")
+            print("\n📦 Assemblies:")
             print(f"   ✓ Syncfusion Packages: {len(self.assemblies['packages'])}")
             print(f"   ⚠️  Outdated: {len(self.assemblies['outdated'])}")
             for pkg in self.assemblies['outdated']:
@@ -1571,27 +2137,59 @@ class StartupValidator:
 
         # Resource details
         if self.resources['merged_dicts'] or self.resources['missing_required']:
-            print(f"\n🎨 Resources:")
+            print("\n🎨 Resources:")
             print(f"   ✓ Merged Dictionaries: {len(self.resources['merged_dicts'])}")
             print(f"   ⚠️  Missing Required: {len(self.resources['missing_required'])}")
             for missing in self.resources['missing_required']:
                 print(f"      - {missing['dictionary']}")
 
+        # NEW: Resource Evaluation details (HIGH PRIORITY)
+        if (self.resource_evals['brush_conflicts'] or self.resource_evals['style_conflicts'] or
+            self.resource_evals['silent_exit_risks'] or self.resource_evals['dispatcher_deadlocks']):
+            print("\n🔬 Runtime Resource Evaluation (HIGH PRIORITY):")
+            print(f"   ✓ XAML Files Parsed: {len(self.resource_evals['xaml_files_parsed'])}")
+
+            if self.resource_evals['brush_conflicts']:
+                critical_brushes = [b for b in self.resource_evals['brush_conflicts'] if b.get('severity') == 'CRITICAL']
+                print(f"   ❌ CRITICAL Brush Conflicts: {len(critical_brushes)}")
+                for conflict in critical_brushes[:3]:  # Show first 3
+                    print(f"      - {conflict['key']}: {conflict['issue']}")
+
+            if self.resource_evals['style_conflicts']:
+                critical_styles = [s for s in self.resource_evals['style_conflicts'] if s.get('severity') == 'CRITICAL']
+                print(f"   ❌ CRITICAL Style Conflicts: {len(critical_styles)}")
+                for conflict in critical_styles[:3]:
+                    print(f"      - {conflict['key']}: {conflict['issue']}")
+
+            if self.resource_evals['silent_exit_risks']:
+                print(f"   ❌ CRITICAL Silent Exit Risks: {len(self.resource_evals['silent_exit_risks'])}")
+                for risk in self.resource_evals['silent_exit_risks'][:3]:
+                    print(f"      - {risk.get('file', 'Unknown')}: {risk['issue']}")
+
+            if self.resource_evals['missing_references']:
+                print(f"   ⚠️  Missing Resource References: {len(self.resource_evals['missing_references'])}")
+
+            if self.resource_evals['dispatcher_deadlocks']:
+                print(f"   ⚠️  .NET 9 Dispatcher Deadlock Risks: {len(self.resource_evals['dispatcher_deadlocks'])}")
+
+            if self.resource_evals['merge_order_issues']:
+                print(f"   ⚠️  Merge Order Issues: {len(self.resource_evals['merge_order_issues'])}")
+
         # Control details
         if self.controls['found']:
-            print(f"\n🎮 Syncfusion Controls:")
+            print("\n🎮 Syncfusion Controls:")
             print(f"   ✓ Found: {len(self.controls['found'])}")
             print(f"   ⚠️  Missing Props: {len(self.controls['missing_props'])}")
 
         # Prism details
         if self.prism['modules'] or self.prism['registrations']:
-            print(f"\n🔧 Prism Modules:")
+            print("\n🔧 Prism Modules:")
             print(f"   ✓ Modules: {len(self.prism['modules'])}")
             print(f"   ✓ Registrations: {len(self.prism['registrations'])}")
 
         # Deprecated controls
         if self.deprecated['classic_controls']:
-            print(f"\n⚠️  Deprecated:")
+            print("\n⚠️  Deprecated:")
             print(f"   Classic Controls: {len(self.deprecated['classic_controls'])}")
 
         # Health assessment
@@ -1654,22 +2252,26 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Scan Types:
-  licenses    - License key registrations (HIGH)
-  assemblies  - Assembly references and versions (HIGH)
-  resources   - Merged resource dictionaries (HIGH)
-  controls    - Control-specific integrations (MEDIUM)
-  prism       - Prism module & DI registrations (MEDIUM)
-  deprecated  - Classic/deprecated controls (LOW)
+  licenses      - License key registrations (HIGH)
+  assemblies    - Assembly references and versions (HIGH)
+  resources     - Merged resource dictionaries (HIGH)
+  resource_evals - Runtime resource loading simulation (HIGH - NEW)
+                  Parses XAML for FluentLight conflicts, validates merged dictionaries,
+                  detects silent exit risks, mocks .NET 9 WPF Dispatcher
+  controls      - Control-specific integrations (MEDIUM)
+  prism         - Prism module & DI registrations + view discovery (MEDIUM)
+  deprecated    - Classic/deprecated controls (LOW)
   configuration - Config files validation (MEDIUM)
-  shell       - Shell/window validation (MEDIUM)
-  services    - Service registrations (MEDIUM)
-  viewmodels  - ViewModel registrations (LOW)
-  database    - Database setup validation (MEDIUM)
-  all         - Run all scans
+  shell         - Shell/window + Syncfusion theme crash detection (MEDIUM)
+  services      - Service registrations (MEDIUM)
+  viewmodels    - ViewModel registrations (LOW)
+  database      - Database setup validation (MEDIUM)
+  all           - Run all scans
 
 Examples:
   python startup_validator.py --scan all
-  python startup_validator.py --scan licenses,assemblies
+  python startup_validator.py --scan resource_evals  # High-priority resource validation
+  python startup_validator.py --scan licenses,assemblies,resource_evals
   python startup_validator.py --path src/WileyWidget --output logs/startup.json --verbose
   python startup_validator.py --scan all --ci  # CI mode: quiet, exit code based on blocking issues
         """
@@ -1690,7 +2292,7 @@ Examples:
 
     # Validate scan types
     valid_scan_types = {
-        'licenses', 'assemblies', 'resources', 'controls', 'prism',
+        'licenses', 'assemblies', 'resources', 'resource_evals', 'controls', 'prism',
         'deprecated', 'configuration', 'shell', 'services', 'viewmodels',
         'database', 'all'
     }

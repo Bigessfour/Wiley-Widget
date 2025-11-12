@@ -118,27 +118,51 @@ namespace WileyWidget
                 }
                 Log.Information("✓ Theme verified as applied: {Theme}", SfSkinManager.ApplicationTheme.ToString());
 
+                // CRITICAL FIX: Pre-load global Resources/Strings.xaml/Generic.xaml/DataTemplates.xaml BEFORE theme validation
+                // This addresses dispatcher_invoke_issues where PrimaryTextBrush/Btn_Export/TreeGridHeaderBrush are unavailable
+                PreLoadCriticalResources();
+
+                // CRITICAL: Verify theme integration for zero hangs after resources are loaded
+                VerifyThemeIntegration();
+
                 // Initialize SigNoz telemetry early (before Prism bootstrap)
                 InitializeSigNozTelemetry();
 
                 // Force early secret vault migration from environment variables to avoid lazy init race
+                // TEMPORARILY DISABLED: GetAwaiter().GetResult() on async foreach causes deadlock on UI thread
+                // TODO: Move to async initialization point or use background task
+                /*
                 try
                 {
-                    using var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(dispose: false));
-                    var logger = loggerFactory.CreateLogger<WileyWidget.Services.EncryptedLocalSecretVaultService>();
-                    using var tempVault = new WileyWidget.Services.EncryptedLocalSecretVaultService(logger);
                     Log.Debug("Forcing early migration of environment secrets into local encrypted vault (OnStartup)");
-                    // Run migration synchronously to ensure files/dirs are created before modules initialize
-                    tempVault.MigrateSecretsFromEnvironmentAsync().GetAwaiter().GetResult();
-                    var diag = tempVault.GetDiagnosticsAsync().GetAwaiter().GetResult();
-                    Log.Debug("Early secret vault diagnostics:\n{Diagnostics}", diag);
+
+                    WileyWidget.Services.EncryptedLocalSecretVaultService? tempVault = null;
+                    ILoggerFactory? loggerFactory = null;
+
+                    try
+                    {
+                        loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(dispose: false));
+                        var logger = loggerFactory.CreateLogger<WileyWidget.Services.EncryptedLocalSecretVaultService>();
+                        tempVault = new WileyWidget.Services.EncryptedLocalSecretVaultService(logger);
+
+                        // Run migration synchronously to ensure files/dirs are created before modules initialize
+                        tempVault.MigrateSecretsFromEnvironmentAsync().GetAwaiter().GetResult();
+                    }
+                    finally
+                    {
+                        // Explicit disposal to avoid async/sync disposal issues
+                        tempVault?.Dispose();
+                        loggerFactory?.Dispose();
+                    }
+
+                    Log.Debug("✅ Early secret vault migration completed successfully");
                 }
                 catch (Exception ex)
                 {
                     Log.Warning(ex, "Early secret vault migration failed (non-fatal) - continuing startup");
                 }
-
-                // MCP VALIDATION: Add test span for end-to-end trace verification
+                */
+                Log.Information("⚠️ Early secret vault migration SKIPPED - vault will initialize on first use");                // MCP VALIDATION: Add test span for end-to-end trace verification
                 using var mcpValidationActivity = SigNozTelemetryService.ActivitySource.StartActivity("MCP.Validation.Startup");
                 mcpValidationActivity?.SetTag("mcp.phase", "validation");
                 mcpValidationActivity?.SetTag("session.id", "MCP-TEST-001");
@@ -177,9 +201,10 @@ namespace WileyWidget
                     // CRITICAL FIX: Force WPF to process the merged dictionaries before modules initialize
                     // This ensures brushes are queryable via Application.Current.Resources.Contains()
                     // before CoreModule.OnInitialized() runs its pre-registration check
+                    // Using Background priority instead of ApplicationIdle to prevent startup hangs
                     Log.Debug("🔄 [DIAGNOSTIC] Forcing WPF Dispatcher to process pending operations...");
                     System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
-                        System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                        System.Windows.Threading.DispatcherPriority.Background,
                         new Action(() => { /* Force dispatcher pump */ }));
                     Log.Debug("✅ [DIAGNOSTIC] Dispatcher processing completed - resources should be queryable");
                 }
@@ -281,6 +306,19 @@ namespace WileyWidget
                     Log.Warning(ex, "Failed to validate ViewModels post-initialization - continuing startup");
                 }
 
+                // Validate critical dependencies required by core ViewModels
+                splashWindow.UpdateStatus("Validating critical dependencies...");
+                try
+                {
+                    ValidateCriticalDependencies(Container);
+                    Log.Information("✅ Critical dependency validation passed");
+                }
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "❌ CRITICAL: Dependency validation failed - application cannot start safely");
+                    throw new InvalidOperationException("Critical dependencies missing. See logs for details.", ex);
+                }
+
                 // Setup global exception handling post-container
                 SetupGlobalExceptionHandling();
                 Log.Debug("[EXCEPTION] Global exception handling configured successfully");
@@ -324,6 +362,7 @@ namespace WileyWidget
 #endif
 
                 Log.Information("✅ Phase 3-4 completed: Module and UI initialization successful");
+                Log.Information("✅ Phase 4 complete: UI ready");
 
                 // Show the main window now that initialization is complete
                 var mainWindow = Application.Current.MainWindow as Window;
@@ -476,9 +515,32 @@ namespace WileyWidget
             Log.Information("[SHELL] Creating Shell window...");
             try
             {
-                // Resolve the application's main shell (Shell window) from the container.
-                // Ensure Shell is registered in RegisterTypes below or in a module.
-                var shell = Container.Resolve<Shell>();
+                // CRITICAL FIX: Wrap resource-dependent Prism bootstrap in Dispatcher.Invoke
+                // This addresses dispatcher_invoke_issues where PrimaryTextBrush/Btn_Export are unavailable
+                // during Shell window creation. Using Dispatcher.Invoke ensures proper UI thread context
+                // and resource availability.
+                Window shell = null;
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                    System.Windows.Threading.DispatcherPriority.Normal,
+                    new Action(() =>
+                    {
+                        try
+                        {
+                            // Resolve the application's main shell (Shell window) from the container.
+                            // Ensure Shell is registered in RegisterTypes below or in a module.
+                            shell = Container.Resolve<Shell>();
+                            Log.Debug("[SHELL] Shell window resolved successfully via Dispatcher.Invoke");
+                        }
+                        catch (System.Windows.ResourceReferenceKeyNotFoundException ex)
+                        {
+                            // Handle ResourceReferenceException specifically for missing resources
+                            Log.Fatal(ex, "[SHELL] ✗ ResourceReferenceException during Shell resolution - PrimaryTextBrush/Btn_Export unavailable. " +
+                                "Ensure Strings.xaml and DataTemplates.xaml are pre-loaded before Prism bootstrap.");
+                            throw new InvalidOperationException("Critical resources not available during Shell creation. " +
+                                "Pre-load Strings.xaml and DataTemplates.xaml before vault migration.", ex);
+                        }
+                    }));
+
                 Log.Information("[SHELL] ✓ Shell window created successfully");
                 return shell;
             }
@@ -498,6 +560,11 @@ namespace WileyWidget
             try
             {
                 base.InitializeShell(shell);
+
+                // CRITICAL: Explicitly set Shell.xaml as MainWindow
+                Application.Current.MainWindow = shell;
+                Log.Information("[SHELL] ✓ MainWindow set explicitly to Shell window (main_window_found: {Found})",
+                    Application.Current.MainWindow != null);
 
                 // ApplicationTheme is applied globally and inherited by all windows automatically
                 if (SfSkinManager.ApplicationTheme != null)

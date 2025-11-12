@@ -14,18 +14,11 @@
         d:DesignHeight="900" d:DesignWidth="1200"
         xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <!-- GASB-Compliant Municipal Budget Management UserControl -->
-    <!-- DataContext set programmatically: {Binding BudgetViewModel} -->
+    <!-- ViewModel auto-wired by Prism ViewModelLocator -->
     <!-- Theme: FluentDark with FluentLight fallback via SfSkinManager -->
 
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
-
-<!-- Pie Chart Label Template -->
-        <DataTemplate x:Key="PieChartLabelTemplate">
-            <TextBlock Text="{Binding Percentage, StringFormat=P0}"
-                       FontWeight="Bold"
-                       Foreground="White" />
-        </DataTemplate>
 
         <!-- Over-budget highlight style -->
         <Style x:Key="OverBudgetCellStyle" TargetType="syncfusion:TreeGridCell">
@@ -38,13 +31,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Grid enhancement resources -->
-        <SolidColorBrush x:Key="GridFilterRowBackgroundBrush" Color="#FF1F2329" />
-        <SolidColorBrush x:Key="GridFilterRowForegroundBrush" Color="#FFE9F3FF" />
-        <SolidColorBrush x:Key="GridSelectionBrush" Color="#FF4F6BED" />
-        <SolidColorBrush x:Key="GridSelectionForegroundBrush" Color="#FFFDFDFD" />
-        <SolidColorBrush x:Key="GridHoverBrush" Color="#334F6BED" />
-        <SolidColorBrush x:Key="TreeGridHeaderBrush" Color="#FF222832" />
+        <!-- Grid enhancement resources - MOVED TO Generic.xaml for centralization -->
 
         <Style x:Key="BudgetTreeGridHeaderStyle" TargetType="syncfusion:TreeGridHeaderCell">
             <Setter Property="Background" Value="{DynamicResource TreeGridHeaderBrush}" />

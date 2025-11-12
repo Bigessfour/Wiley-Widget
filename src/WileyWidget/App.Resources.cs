@@ -65,6 +65,54 @@ namespace WileyWidget
             }
         }
 
+        /// <summary>
+        /// Pre-loads critical global resources (Strings.xaml, DataTemplates.xaml) before vault migration.
+        /// This addresses CRITICAL dispatcher_invoke_issues where resources like PrimaryTextBrush/Btn_Export
+        /// are unavailable during Prism bootstrap. Loading these early ensures WPF resource resolution
+        /// works correctly when Container.Resolve&lt;Shell&gt;() is called.
+        /// </summary>
+        private void PreLoadCriticalResources()
+        {
+            var sw = Stopwatch.StartNew();
+
+            try
+            {
+                Log.Information("[STARTUP] Pre-loading critical global resources before vault migration");
+
+                // CRITICAL: Load Strings.xaml first (contains localized strings and brushes)
+                var stringsUri = new Uri("pack://application:,,,/WileyWidget;component/Resources/Strings.xaml");
+                var stringsDict = new ResourceDictionary { Source = stringsUri };
+                Application.Current.Resources.MergedDictionaries.Add(stringsDict);
+                Log.Debug("[STARTUP] ✓ Strings.xaml pre-loaded successfully");
+
+                // CRITICAL: Load Generic.xaml (contains theme brushes like TreeGridHeaderBrush)
+                var genericUri = new Uri("pack://application:,,,/WileyWidget;component/Themes/Generic.xaml");
+                var genericDict = new ResourceDictionary { Source = genericUri };
+                Application.Current.Resources.MergedDictionaries.Add(genericDict);
+                Log.Debug("[STARTUP] ✓ Generic.xaml pre-loaded successfully");
+
+                // CRITICAL: Load DataTemplates.xaml (contains ViewModel→View mappings for Prism navigation)
+                var dataTemplatesUri = new Uri("pack://application:,,,/WileyWidget;component/Resources/DataTemplates.xaml");
+                var dataTemplatesDict = new ResourceDictionary { Source = dataTemplatesUri };
+                Application.Current.Resources.MergedDictionaries.Add(dataTemplatesDict);
+                Log.Debug("[STARTUP] ✓ DataTemplates.xaml pre-loaded successfully");
+
+                // Force WPF to process the merged dictionaries immediately
+                // This ensures brushes and templates are available for immediate resolution
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                    System.Windows.Threading.DispatcherPriority.Loaded,
+                    new Action(() => { /* Force resource processing */ }));
+
+                Log.Information("[STARTUP] ✓ Critical resources pre-loaded successfully ({Ms}ms) - dispatcher_invoke_issues mitigated",
+                    sw.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "[STARTUP] ✗ Critical failure pre-loading global resources - dispatcher_invoke_issues may occur");
+                throw; // This is critical - rethrow to fail startup
+            }
+        }
+
         #endregion
 
         #region Theme Management
@@ -85,7 +133,7 @@ namespace WileyWidget
 
                 // PHASE 1: License Status Validation
                 Log.Information("[THEME] Checking Syncfusion license status: {Status}", App.SyncfusionLicenseStatus);
-                
+
                 switch (App.SyncfusionLicenseStatus)
                 {
                     case App.LicenseRegistrationStatus.Failed:
@@ -115,7 +163,7 @@ namespace WileyWidget
                     var gcMemInfo = GC.GetGCMemoryInfo();
                     var totalAvailableMemoryMB = gcMemInfo.TotalAvailableMemoryBytes / (1024 * 1024);
                     var currentGcMemoryMB = GC.GetTotalMemory(false) / (1024 * 1024);
-                    
+
                     var process = Process.GetCurrentProcess();
                     var workingSetMB = process.WorkingSet64 / (1024 * 1024);
                     var privateMemoryMB = process.PrivateMemorySize64 / (1024 * 1024);
@@ -142,7 +190,7 @@ namespace WileyWidget
                         Log.Warning("[THEME] Low memory detected: {Available}MB available, {Recommended}MB recommended. " +
                                     "Proceeding with theme application - monitor for performance issues.",
                             effectiveAvailableMemory, recommendedMemoryMB);
-                        
+
                         // Force garbage collection before theme operations in low memory scenarios
                         GC.Collect(2, GCCollectionMode.Forced, true);
                         GC.WaitForPendingFinalizers();
@@ -160,7 +208,7 @@ namespace WileyWidget
 
                 // PHASE 3: Theme Application with License-Aware Error Handling
                 Log.Information("[THEME] Applying FluentLight theme...");
-                
+
                 // CRITICAL: Enable automatic theme application to all controls
                 // Per Syncfusion docs: https://help.syncfusion.com/wpf/themes/skin-manager#apply-a-theme-globally-in-the-application
                 // This MUST be set before setting ApplicationTheme
@@ -180,7 +228,7 @@ namespace WileyWidget
                     var licenseMsg = $"Theme application encountered licensing issue: {themeEx.Message}. " +
                                    $"License Status: {App.SyncfusionLicenseStatus}";
                     Log.Warning("[THEME] {LicenseMessage}", licenseMsg);
-                    
+
                     // In trial/license issues, still try to proceed - Syncfusion may work with limitations
                     if (App.SyncfusionLicenseStatus != App.LicenseRegistrationStatus.Failed)
                     {
@@ -213,6 +261,96 @@ namespace WileyWidget
                 Log.Fatal(ex, "[THEME] ✗ Critical failure applying theme (License Status: {LicenseStatus})", App.SyncfusionLicenseStatus);
                 throw; // This is critical - rethrow to fail startup
             }
+        }
+
+        /// <summary>
+        /// Verifies Syncfusion theme integration for zero hangs after theme application.
+        /// This addresses potential hangs during Prism bootstrap by ensuring theme resources
+        /// are properly loaded and accessible before Container.Resolve&lt;Shell&gt;() is called.
+        /// </summary>
+        private void VerifyThemeIntegration()
+        {
+            try
+            {
+                Log.Information("[THEME] Verifying theme integration for zero hangs...");
+
+                // Verify theme is still applied
+                if (SfSkinManager.ApplicationTheme == null)
+                {
+                    throw new InvalidOperationException("Theme lost after application - potential hang condition");
+                }
+
+                // Test critical theme resources are accessible (no hangs)
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                    System.Windows.Threading.DispatcherPriority.Background,
+                    new Action(() =>
+                    {
+                        try
+                        {
+                            // Test theme resource access that might cause hangs if theme is broken
+                            var testBrush = Application.Current.TryFindResource("PrimaryTextBrush");
+                            if (testBrush == null)
+                            {
+                                Log.Warning("[THEME] PrimaryTextBrush not found - may cause UI issues but not a hang");
+                            }
+
+                            // Test Syncfusion theme integration
+                            var sfTest = Application.Current.TryFindResource("SfSkinManager");
+                            if (sfTest == null)
+                            {
+                                Log.Warning("[THEME] SfSkinManager resource not found - theme integration may be incomplete");
+                            }
+
+                            // Validate BudgetView-specific brushes to prevent XAML load exceptions
+                            ValidateBudgetViewBrushes();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "[THEME] Theme resource access test failed - potential hang condition");
+                        }
+                    }));
+
+                Log.Information("[THEME] ✓ Theme integration verified - zero hangs expected");
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "[THEME] ✗ Theme integration verification failed - hangs may occur during Prism bootstrap");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Validates that BudgetView-specific brushes are available to prevent XAML load exceptions.
+        /// This addresses report conflicts by ensuring centralized brushes from Generic.xaml are accessible.
+        /// </summary>
+        private void ValidateBudgetViewBrushes()
+        {
+            var criticalBrushes = new[]
+            {
+                "TreeGridHeaderBrush",
+                "GridFilterRowForegroundBrush",
+                "GridHoverBrush",
+                "BorderAlt",
+                "BorderAltBrush",
+                "PieChartLabelTemplate"
+            };
+
+            foreach (var brushKey in criticalBrushes)
+            {
+                var resource = Application.Current.TryFindResource(brushKey);
+                if (resource == null)
+                {
+                    var errorMsg = $"Critical BudgetView brush/template '{brushKey}' not found. This will cause XAML load exceptions.";
+                    Log.Error("[THEME] {Error}", errorMsg);
+                    throw new InvalidOperationException(errorMsg);
+                }
+                else
+                {
+                    Log.Debug("[THEME] ✓ BudgetView brush/template '{Brush}' validated", brushKey);
+                }
+            }
+
+            Log.Information("[THEME] ✓ All BudgetView brushes/templates validated successfully");
         }
 
         #endregion

@@ -74,9 +74,21 @@ namespace WileyWidget.Services
             if (string.IsNullOrEmpty(key)) return Task.CompletedTask;
             if (value == null) return Task.CompletedTask;
 
-            var memOptions = MapOptions(options);
-            _memoryCache.Set(key, value, memOptions);
-            _logger?.LogDebug("MemoryCacheService: SET key {Key} (TTL={Ttl})", key, options?.AbsoluteExpirationRelativeToNow);
+            try
+            {
+                var memOptions = MapOptions(options);
+                _memoryCache.Set(key, value, memOptions);
+                _logger?.LogDebug("MemoryCacheService: SET key {Key} (TTL={Ttl}, Size={Size})",
+                    key,
+                    options?.AbsoluteExpirationRelativeToNow,
+                    memOptions.Size);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "MemoryCacheService: Failed to SET key {Key} - cache entry skipped", key);
+                // Non-fatal: cache miss is acceptable, don't propagate exception
+            }
+
             return Task.CompletedTask;
         }
 
@@ -122,6 +134,9 @@ namespace WileyWidget.Services
         private static MemoryCacheEntryOptions MapOptions(CacheEntryOptions? options)
         {
             var mem = new MemoryCacheEntryOptions();
+
+            // CRITICAL: Always set Size when cache has SizeLimit configured
+            // Default to 1 unit if not specified (prevents InvalidOperationException)
             if (options != null)
             {
                 if (options.AbsoluteExpirationRelativeToNow.HasValue)
@@ -130,8 +145,14 @@ namespace WileyWidget.Services
                 if (options.SlidingExpiration.HasValue)
                     mem.SlidingExpiration = options.SlidingExpiration;
 
-                if (options.Size.HasValue)
-                    mem.Size = options.Size.Value;
+                // Use explicit size or default to 1
+                mem.Size = options.Size ?? 1;
+            }
+            else
+            {
+                // No options provided: use safe defaults
+                mem.Size = 1;
+                mem.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1); // 1 hour default TTL
             }
 
             return mem;

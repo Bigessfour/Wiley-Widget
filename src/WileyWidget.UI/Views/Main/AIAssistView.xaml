@@ -249,7 +249,7 @@
               Label="_Clear"
               Command="{Binding ClearChatCommand}"
               ToolTip="Clear conversation history (Alt+C)"
-              Background="{DynamicResource SecondaryBrush}"
+              Background="{DynamicResource AppSecondaryBrush}"
               Foreground="{DynamicResource ContentForegroundBrush}"
               MinWidth="75"
               MinHeight="36" />

@@ -5,7 +5,8 @@
                     xmlns:vm="clr-namespace:WileyWidget.ViewModels;assembly=WileyWidget.UI"
                     xmlns:vmMain="clr-namespace:WileyWidget.ViewModels.Main;assembly=WileyWidget.UI"
                     xmlns:views="clr-namespace:WileyWidget.Views.Main;assembly=WileyWidget.UI"
-                    xmlns:panels="clr-namespace:WileyWidget.Views.Main;assembly=WileyWidget.UI">
+                    xmlns:panels="clr-namespace:WileyWidget.Views.Main;assembly=WileyWidget.UI"
+                    xmlns:models="clr-namespace:WileyWidget.Models;assembly=WileyWidget.Models">
 
     <!--
     DataTemplates for Prism Navigation

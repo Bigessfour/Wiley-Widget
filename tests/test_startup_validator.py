@@ -68,13 +68,15 @@ class TestPatternMatching:
 
     def test_valid_license_format(self):
         """Test license key format validation"""
-        # Valid base64-like keys
+        # Valid base64-like keys (must be 40+ chars before padding)
         assert VALID_LICENSE_FORMAT.match('MTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0g=')
-        assert VALID_LICENSE_FORMAT.match('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/==')
+        assert VALID_LICENSE_FORMAT.match('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCD+/==')  # 40 chars + padding
+        assert VALID_LICENSE_FORMAT.match('a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0==')  # 40 chars + padding
 
         # Invalid keys
         assert not VALID_LICENSE_FORMAT.match('short')
         assert not VALID_LICENSE_FORMAT.match('invalid!@#$%^&*()')
+        assert not VALID_LICENSE_FORMAT.match('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123==')  # Only 30 chars
 
     def test_placeholder_pattern(self):
         """Test placeholder detection"""
@@ -133,6 +135,70 @@ class TestPatternMatching:
         match = MODULE_INIT_PATTERN.search(code)
         assert match is not None
         assert match.group(1) == 'QuickBooksModule'
+
+
+class TestResourceEvaluationPatterns:
+    """Test new resource_evals scan patterns"""
+
+    def test_brush_resource_pattern(self):
+        """Test brush resource key detection"""
+        from startup_validator import BRUSH_RESOURCE_PATTERN
+
+        xaml = '<SolidColorBrush x:Key="PrimaryBrush" Color="#FF0000" />'
+        match = BRUSH_RESOURCE_PATTERN.search(xaml)
+        assert match is not None
+        assert match.group(1) == 'PrimaryBrush'
+
+    def test_style_resource_pattern(self):
+        """Test style resource key detection"""
+        from startup_validator import STYLE_RESOURCE_PATTERN
+
+        xaml = '<Style x:Key="ButtonStyle" TargetType="Button">'
+        match = STYLE_RESOURCE_PATTERN.search(xaml)
+        assert match is not None
+        assert match.group(1) == 'ButtonStyle'
+        assert match.group(2) == 'Button'
+
+    def test_static_resource_ref_pattern(self):
+        """Test StaticResource reference detection"""
+        from startup_validator import STATIC_RESOURCE_REF_PATTERN
+
+        xaml = 'Background="{StaticResource PrimaryBrush}"'
+        match = STATIC_RESOURCE_REF_PATTERN.search(xaml)
+        assert match is not None
+        assert match.group(1) == 'PrimaryBrush'
+
+    def test_data_template_pattern(self):
+        """Test DataTemplate key detection"""
+        from startup_validator import DATA_TEMPLATE_PATTERN
+
+        xaml = '<DataTemplate x:Key="CustomerTemplate" DataType="{x:Type local:Customer}">'
+        match = DATA_TEMPLATE_PATTERN.search(xaml)
+        assert match is not None
+        assert match.group(1) == 'CustomerTemplate'
+
+    def test_fluentlight_reserved_brushes(self):
+        """Test FluentLight reserved brush detection"""
+        from startup_validator import FLUENTLIGHT_RESERVED_BRUSHES
+
+        assert 'PrimaryBrush' in FLUENTLIGHT_RESERVED_BRUSHES
+        assert 'AccentBrush' in FLUENTLIGHT_RESERVED_BRUSHES
+        assert 'BackgroundBrush' in FLUENTLIGHT_RESERVED_BRUSHES
+
+    def test_sf_reserved_style_keys(self):
+        """Test Syncfusion reserved style keys"""
+        from startup_validator import SF_RESERVED_STYLE_KEYS
+
+        assert 'SfDataGridStyle' in SF_RESERVED_STYLE_KEYS
+        assert 'SyncfusionAccentBrush' in SF_RESERVED_STYLE_KEYS
+
+    def test_dispatcher_deadlock_patterns(self):
+        """Test .NET 9 dispatcher deadlock pattern detection"""
+        from startup_validator import DISPATCHER_DEADLOCK_PATTERNS
+
+        code = 'Dispatcher.Invoke(() => { /* do work */ })'
+        matches = [p.search(code) for p in DISPATCHER_DEADLOCK_PATTERNS]
+        assert any(m is not None for m in matches)
 
 
 class TestVersionParsing:

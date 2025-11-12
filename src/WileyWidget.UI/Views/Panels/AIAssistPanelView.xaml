@@ -286,7 +286,7 @@
                               Value="True">
                             <Setter
                                 Property="Background"
-                                Value="{DynamicResource SecondaryBrush}" />
+                                Value="{DynamicResource AppSecondaryBrush}" />
                             <Setter
                                 Property="Foreground"
                                 Value="White" />

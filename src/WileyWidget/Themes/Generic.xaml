@@ -199,25 +199,196 @@
       x:Key="SecondaryForeground"
       Color="#666666" />
   <SolidColorBrush
-      x:Key="BorderBrush"
+      x:Key="AppBorderBrush"
       Color="#CCCCCC" />
   <SolidColorBrush
-      x:Key="AccentBrush"
+      x:Key="AppAccentBrush"
       Color="#1976D2" />
   <SolidColorBrush
-      x:Key="HoverBrush"
+      x:Key="AppHoverBrush"
       Color="#E3F2FD" />
   <SolidColorBrush
-      x:Key="PressedBrush"
+      x:Key="AppPressedBrush"
       Color="#BBDEFB" />
   <SolidColorBrush
-      x:Key="DisabledBrush"
+      x:Key="AppDisabledBrush"
       Color="#BDBDBD" />
 
-  <!-- Application-specific Brushes -->
   <SolidColorBrush
-      x:Key="ContentBackgroundBrush"
+      x:Key="SecondaryTextBrush2"
+      Color="#888888" />
+
+  <!-- Status-specific Brushes -->
+  <SolidColorBrush
+      x:Key="SuccessForegroundBrush"
+      Color="#388E3C" />
+  <SolidColorBrush
+      x:Key="WarningBackgroundBrush"
+      Color="#FFF3E0" />
+  <SolidColorBrush
+      x:Key="ErrorBackgroundBrush"
+      Color="#FFEBEE" />
+
+  <!-- Content and UI Brushes -->
+  <SolidColorBrush
+      x:Key="ContentForegroundBrush"
+      Color="#000000" />
+  <SolidColorBrush
+      x:Key="PrimaryForegroundBrush"
+      Color="#000000" />
+  <SolidColorBrush
+      x:Key="AppSecondaryBrush"
+      Color="#666666" />
+  <SolidColorBrush
+      x:Key="PressedBackgroundBrush"
+      Color="#E0E0E0" />
+
+  <!-- Alternative Border Brush -->
+  <SolidColorBrush
+      x:Key="BorderAltBrush"
+      Color="#DDDDDD" />
+  <SolidColorBrush
+      x:Key="BorderAlt"
+      Color="#DDDDDD" />
+
+  <!-- Content Background Alternatives -->
+  <SolidColorBrush
+      x:Key="ContentBackgroundAlt1"
+      Color="#FAFAFA" />
+  <SolidColorBrush
+      x:Key="ContentBackgroundAlt2Brush"
+      Color="#F5F5F5" />
+
+  <!-- Hover and Selection Brushes -->
+  <SolidColorBrush
+      x:Key="HoverBackgroundBrush"
+      Color="#F0F0F0" />
+
+  <!-- Grid Enhancement Brushes (Centralized from BudgetView/BudgetPanel conflicts) -->
+  <SolidColorBrush
+      x:Key="GridFilterRowBackgroundBrush"
+      Color="#FF1F2329" />
+  <SolidColorBrush
+      x:Key="GridFilterRowForegroundBrush"
+      Color="#FFE9F3FF" />
+  <SolidColorBrush
+      x:Key="GridSelectionBrush"
+      Color="#FF4F6BED" />
+  <SolidColorBrush
+      x:Key="GridSelectionForegroundBrush"
+      Color="#FFFDFDFD" />
+  <SolidColorBrush
+      x:Key="GridHoverBrush"
+      Color="#334F6BED" />
+  <SolidColorBrush
+      x:Key="GridGroupDropAreaBackgroundBrush"
+      Color="#FF131B2B" />
+  <SolidColorBrush
+      x:Key="GridGroupDropAreaForegroundBrush"
+      Color="#FFC7D2FE" />
+  <SolidColorBrush
+      x:Key="GridSummaryBackgroundBrush"
+      Color="#FF182030" />
+  <SolidColorBrush
+      x:Key="GridSummaryForegroundBrush"
+      Color="#FFE0E6F0" />
+  <SolidColorBrush
+      x:Key="GridSearchHighlightBrush"
+      Color="#55FACC15" />
+  <SolidColorBrush
+      x:Key="TreeGridHeaderBrush"
+      Color="#FF222832" />
+
+  <!-- Window and Button Brushes -->
+  <SolidColorBrush
+      x:Key="WindowBackgroundBrush"
       Color="#FFFFFF" />
+  <SolidColorBrush
+      x:Key="ButtonBackgroundBrush"
+      Color="#FFFFFF" />
+  <SolidColorBrush
+      x:Key="ButtonForegroundBrush"
+      Color="#000000" />
+
+  <!-- Header Background -->
+  <SolidColorBrush
+      x:Key="HeaderBackgroundBrush"
+      Color="#F8F8F8" />
+
+  <!-- ====================================================================== -->
+  <!-- CENTRALIZED TEXT STYLES (From View Conflicts)                         -->
+  <!-- Styles moved from BudgetAnalysisView/ExcelImportView conflicts        -->
+  <!-- ====================================================================== -->
+
+  <!-- Header Text Styles -->
+  <Style
+      x:Key="HeaderTextBlockStyle"
+      TargetType="TextBlock">
+    <Setter
+        Property="FontSize"
+        Value="16" />
+    <Setter
+        Property="FontWeight"
+        Value="SemiBold" />
+    <Setter
+        Property="Margin"
+        Value="0,0,0,10" />
+    <Setter
+        Property="Foreground"
+        Value="{DynamicResource PrimaryTextBrush}" />
+  </Style>
+
+  <Style
+      x:Key="SubHeaderTextBlockStyle"
+      TargetType="TextBlock">
+    <Setter
+        Property="FontSize"
+        Value="14" />
+    <Setter
+        Property="FontWeight"
+        Value="SemiBold" />
+    <Setter
+        Property="Margin"
+        Value="0,10,0,5" />
+    <Setter
+        Property="Foreground"
+        Value="{DynamicResource PrimaryTextBrush}" />
+  </Style>
+
+  <Style
+      x:Key="StatusTextBlockStyle"
+      TargetType="TextBlock">
+    <Setter
+        Property="FontSize"
+        Value="12" />
+    <Setter
+        Property="Margin"
+        Value="0,2,0,2" />
+    <Setter
+        Property="TextWrapping"
+        Value="Wrap" />
+  </Style>
+
+  <!-- Action Button Style -->
+  <Style
+      x:Key="ActionButtonStyle"
+      TargetType="Button">
+    <Setter
+        Property="Height"
+        Value="35" />
+    <Setter
+        Property="Padding"
+        Value="15,5" />
+    <Setter
+        Property="Margin"
+        Value="5,0" />
+    <Setter
+        Property="FontSize"
+        Value="13" />
+    <Setter
+        Property="FontWeight"
+        Value="SemiBold" />
+  </Style>
 
   <!-- ====================================================================== -->
   <!-- SYNCFUSION CONTROL STYLES                                             -->
@@ -295,7 +466,7 @@
 
   <!-- Syncfusion SfDataGrid Style (theme-applied, base reference only) -->
   <Style
-      x:Key="SfDataGridStyle"
+      x:Key="CustomSfDataGridStyle"
       TargetType="syncfusion:SfDataGrid">
     <Setter
         Property="FontFamily"
@@ -307,7 +478,7 @@
 
   <!-- Syncfusion SfChart Style (theme-applied, base reference only) -->
   <Style
-      x:Key="SfChartStyle"
+      x:Key="CustomSfChartStyle"
       TargetType="syncfusion:SfChart">
     <Setter
         Property="FontFamily"
@@ -346,5 +517,12 @@
   <Thickness x:Key="CardPadding">16</Thickness>
   <Thickness x:Key="SectionMargin">16</Thickness>
   <Thickness x:Key="SectionSpacing">0,0,0,24</Thickness>
+
+  <!-- Shared Chart Templates -->
+  <DataTemplate x:Key="PieChartLabelTemplate">
+    <TextBlock Text="{Binding Percentage, StringFormat=P0}"
+               FontWeight="Bold"
+               Foreground="White" />
+  </DataTemplate>
 
 </ResourceDictionary>

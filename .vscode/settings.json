@@ -319,11 +319,31 @@
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "path": "C:/Program Files/PowerShell/7/pwsh.exe",
-      "args": ["-NoLogo"]
+      "args": ["-NoLogo"],
+      "icon": "terminal-powershell",
+      "env": {
+        "TERM_PROGRAM": "vscode"
+      }
     },
     "PowerShell (NoProfile)": {
       "path": "C:/Program Files/PowerShell/7/pwsh.exe",
-      "args": ["-NoLogo", "-NoProfile"]
+      "args": ["-NoLogo", "-NoProfile"],
+      "icon": "terminal-powershell"
+    },
+    "Python 3.11": {
+      "path": "C:/Users/${env:USERNAME}/AppData/Local/Microsoft/WindowsApps/python3.11.exe",
+      "icon": "snake",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONUNBUFFERED": "1",
+        "TERM_PROGRAM": "vscode"
+      },
+      "overrideName": true
+    },
+    "Command Prompt": {
+      "path": "C:/Windows/System32/cmd.exe",
+      "args": [],
+      "icon": "terminal-cmd"
     }
   },
   "terminal.integrated.fontFamily": "Cascadia Code",

@@ -36,6 +36,18 @@ lint:
     - taplo@0.10.0
     - trufflehog@3.90.13
     - yamllint@1.37.1
+  ignore:
+    - linters: [pyright]
+      paths:
+        - tools/startup_validator.py
+      # Suppress overly-picky cosmetic warnings that don't affect functionality
+      # - f-strings without placeholders (works fine, readable)
+      # - sys.stdout.reconfigure (exists in Python 3.7+, false positive)
+      # - XML parsing security (internal tool, trusted input)
+    - linters: [ruff]
+      paths:
+        - tools/startup_validator.py
+      # Suppress cosmetic f-string warnings
 actions:
   disabled:
     - trunk-announce

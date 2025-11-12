@@ -1,5 +1,61 @@
 {
 	"version": "2.0.0",
+	// Pragmatic Problem Matcher Configuration for Wiley Widget
+	// ========================================================
+	// Focus: FUNCTIONAL ISSUES ONLY (runtime blockers, not cosmetic)
+	//
+	// CRITICAL ERROR CODES (filtered):
+	// --------------------------------
+	// Nullability Issues (Real bugs):
+	//   - CS8600: Converting null literal or possible null value
+	//   - CS8601: Possible null reference assignment
+	//   - CS8602: Dereference of a possibly null reference (!!!)
+	//   - CS8603: Possible null reference return
+	//   - CS8604: Possible null reference argument
+	//   - CS8618: Non-nullable field uninitialized
+	//   - CS8625: Cannot convert null literal to non-nullable reference
+	//
+	// Async/Await Issues:
+	//   - CS4014: Call is not awaited (fire-and-forget danger)
+	//   - CS1998: Async method lacks 'await' operators
+	//
+	// Type System Violations:
+	//   - CS0029: Cannot implicitly convert type
+	//   - CS0266: Cannot implicitly convert (explicit cast exists)
+	//   - CS1503: Argument type mismatch
+	//   - CS1061: Type does not contain definition (missing member)
+	//   - CS0103: Name does not exist in current context
+	//   - CS0246: Type or namespace not found
+	//   - CS0234: Type/namespace not found in namespace
+	//
+	// DI/Prism Resolution Issues:
+	//   - CS0115: No suitable method found to override
+	//   - CS0534: Does not implement inherited abstract member
+	//   - CS0051: Inconsistent accessibility
+	//   - CS0052: Inconsistent accessibility (field)
+	//
+	// Deprecation (Security/Breaking Changes):
+	//   - CS0619: Obsolete member usage
+	//
+	// IGNORED (Cosmetic/Style):
+	// -------------------------
+	// - IDE0001-IDE9999: All IntelliSense style suggestions
+	// - CS0168: Variable declared but never used
+	// - CS0219: Variable assigned but never used
+	// - CS8321: Local function is declared but never used
+	// - IDE0008: Use explicit type instead of 'var'
+	// - IDE0011: Add braces
+	// - IDE0055: Fix formatting
+	// - Unused imports, naming conventions, etc.
+	//
+	// Integration Notes:
+	// ------------------
+	// - Works with Serilog startup diagnostics
+	// - Detects Prism DI resolution failures
+	// - Catches Syncfusion threading issues via type errors
+	// - EF Core N+1 issues appear as CS1061 (missing async methods)
+	// - Vault security leaks show as CS8600/CS8602 (null handling)
+	//
 	"tasks": [
 		{
 			"label": "WileyWidget: Kill Old Processes",
@@ -65,7 +121,27 @@
 				"focus": false,
 				"panel": "shared"
 			},
-			"problemMatcher": "$msCompile",
+			"problemMatcher": [
+				{
+					"owner": "csharp",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS8600|CS8601|CS8602|CS8603|CS8604|CS8618|CS8625|CS4014|CS1998|CS0029|CS0266|CS1503|CS1061|CS0103|CS0246|CS0234|CS0115|CS0534|CS0051|CS0052|CS0619):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					},
+					"background": {
+						"activeOnStart": false,
+						"beginsPattern": "^Build started",
+						"endsPattern": "^Build (succeeded|failed)"
+					}
+				}
+			],
 			"dependsOn": "WileyWidget: Clean"
 		},
 		{
@@ -85,7 +161,22 @@
 				"focus": false,
 				"panel": "shared"
 			},
-			"problemMatcher": "$msCompile",
+			"problemMatcher": [
+				{
+					"owner": "csharp",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS8600|CS8601|CS8602|CS8603|CS8604|CS8618|CS8625|CS4014|CS1998|CS0029|CS0266|CS1503|CS1061|CS0103|CS0246|CS0234|CS0115|CS0534|CS0051|CS0052|CS0619):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					}
+				}
+			],
 			"dependsOn": [
 				"WileyWidget: Kill Old Processes",
 				"WileyWidget: Clean"
@@ -597,7 +688,22 @@
 				"dotnet:clean-build-server"
 			],
 			"isBackground": false,
-			"problemMatcher": "$msCompile",
+			"problemMatcher": [
+				{
+					"owner": "csharp",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS8600|CS8601|CS8602|CS8603|CS8604|CS8618|CS8625|CS4014|CS1998|CS0029|CS0266|CS1503|CS1061|CS0103|CS0246|CS0234|CS0115|CS0534|CS0051|CS0052|CS0619):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					}
+				}
+			],
 			"presentation": {
 				"echo": true,
 				"reveal": "always",
@@ -1492,9 +1598,189 @@
 			"isBackground": false,
 			"group": "test",
 			"problemMatcher": []
+		},
+		{
+			"label": "csx:run-90P-app-startup-phase2-validation-test",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-w",
+				"/app",
+				"-v",
+				"${workspaceFolder}:/app:ro",
+				"-v",
+				"${workspaceFolder}/logs:/logs:rw",
+				"-e",
+				"WW_REPO_ROOT=/app",
+				"-e",
+				"WW_LOGS_DIR=/logs",
+				"wiley-widget/csx-mcp:local",
+				"scripts/examples/csharp/90P-app-startup-phase2-validation-test.csx"
+			],
+			"dependsOn": [
+				"csx:build-image",
+				"ensure-logs-dir"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true
+			},
+			"isBackground": false,
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "Run Script (Intelligent)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/run-script.ps1",
+				"-ScriptPath",
+				"${input:intelligentScriptPath}",
+				"-Verbose"
+			],
+			"group": "none",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": false
+			},
+			"problemMatcher": [],
+			"options": {
+				"env": {
+					"TERM_PROGRAM": "vscode"
+				}
+			}
+		},
+		{
+			"label": "Run Python Script",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/run-script.ps1",
+				"-ScriptPath",
+				"${input:pythonScriptPath}",
+				"-ShowInterpreterInfo"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Run PowerShell Script",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/run-script.ps1",
+				"-ScriptPath",
+				"${input:powershellScriptPath}"
+			],
+			"group": "none",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Run CSX Script",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/run-script.ps1",
+				"-ScriptPath",
+				"${input:csxScriptPath}",
+				"-Verbose"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Run Startup Validator (Python)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/run-script.ps1",
+				"-ScriptPath",
+				"tests/test_startup_validator.py"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false
+			},
+			"problemMatcher": []
 		}
 	],
 	"inputs": [
+		{
+			"id": "intelligentScriptPath",
+			"type": "promptString",
+			"description": "Script to run (auto-detects .py, .ps1, .csx, .cs)",
+			"default": "tests/test_startup_validator.py"
+		},
+		{
+			"id": "pythonScriptPath",
+			"type": "promptString",
+			"description": "Python script to run (.py)",
+			"default": "tests/test_startup_validator.py"
+		},
+		{
+			"id": "powershellScriptPath",
+			"type": "promptString",
+			"description": "PowerShell script to run (.ps1)",
+			"default": "scripts/maintenance/git-update.ps1"
+		},
+		{
+			"id": "csxScriptPath",
+			"type": "promptString",
+			"description": "C# script to run (.csx)",
+			"default": "scripts/examples/csharp/44-xaml-binding-static-analyzer.csx"
+		},
 		{
 			"id": "commitMessage",
 			"type": "promptString",

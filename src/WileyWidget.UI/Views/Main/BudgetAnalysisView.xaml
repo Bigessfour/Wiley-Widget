@@ -12,19 +12,7 @@
              d:DesignHeight="700" d:DesignWidth="900" xmlns:prism="http://prismlibrary.com/" prism:ViewModelLocator.AutoWireViewModel="True">
     <UserControl.Resources>
 
-<Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
-        </Style>
-
-        <Style x:Key="SubHeaderTextBlockStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,10,0,5"/>
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
-        </Style>
+        <!-- Text styles - MOVED TO Generic.xaml for centralization -->
 
         <Style x:Key="MetricTextBlockStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12"/>
@@ -45,20 +33,8 @@
             <Setter Property="Foreground" Value="Red"/>
         </Style>
 
-        <Style x:Key="ActionButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Padding" Value="15,5"/>
-            <Setter Property="Margin" Value="5,0"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
+        <!-- Action button style - MOVED TO Generic.xaml for centralization -->
 
-        <!-- Pie Chart Label Template -->
-        <DataTemplate x:Key="PieChartLabelTemplate">
-            <TextBlock Text="{Binding Percentage, StringFormat=P0}"
-                       FontWeight="Bold"
-                       Foreground="White" />
-        </DataTemplate>
     </UserControl.Resources>
 
     <Grid Margin="20" xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"

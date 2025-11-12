@@ -44,7 +44,13 @@ public class EnterpriseRepository : IEnterpriseRepository
                 .OrderBy(e => e.Name)
                 .ToListAsync();
 
-            _cache.Set(cacheKey, enterprises, TimeSpan.FromMinutes(10));
+            // Set cache with proper size specification (required when SizeLimit is configured)
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
+                Size = 1 // Logical size unit for cache eviction
+            };
+            _cache.Set(cacheKey, enterprises, cacheOptions);
         }
 
         return enterprises!;

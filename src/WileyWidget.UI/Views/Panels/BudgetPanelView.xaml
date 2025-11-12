@@ -25,37 +25,7 @@
         x:Key="SectionHeaderBrush"
         Color="#FFCBD5F5" />
 
-    <!-- SfDataGrid enhancement resources -->
-    <SolidColorBrush
-        x:Key="GridFilterRowBackgroundBrush"
-        Color="#FF1A2233" />
-    <SolidColorBrush
-        x:Key="GridFilterRowForegroundBrush"
-        Color="#FFEFF6FF" />
-    <SolidColorBrush
-        x:Key="GridGroupDropAreaBackgroundBrush"
-        Color="#FF131B2B" />
-    <SolidColorBrush
-        x:Key="GridGroupDropAreaForegroundBrush"
-        Color="#FFC7D2FE" />
-    <SolidColorBrush
-        x:Key="GridSummaryBackgroundBrush"
-        Color="#FF182030" />
-    <SolidColorBrush
-        x:Key="GridSummaryForegroundBrush"
-        Color="#FFE0E6F0" />
-    <SolidColorBrush
-        x:Key="GridSelectionBrush"
-        Color="#665A6FF3" />
-    <SolidColorBrush
-        x:Key="GridSelectionForegroundBrush"
-        Color="#FFF9FAFB" />
-    <SolidColorBrush
-        x:Key="GridHoverBrush"
-        Color="#334C51E0" />
-    <SolidColorBrush
-        x:Key="GridSearchHighlightBrush"
-        Color="#55FACC15" />
+    <!-- SfDataGrid enhancement resources - MOVED TO Generic.xaml for centralization -->
 
     <Style
         x:Key="BudgetFilterRowCellStyle"
