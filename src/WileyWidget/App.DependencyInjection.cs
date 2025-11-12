@@ -156,6 +156,7 @@ using Syncfusion.SfSkinManager;
 using WileyWidget.Regions;
 using WileyWidget.Services;
 using WileyWidget.Views.Windows;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace WileyWidget
 {
@@ -190,7 +191,9 @@ namespace WileyWidget
                 .WithDefaultIfAlreadyRegistered(IfAlreadyRegistered.Replace)
                 .WithFactorySelector(Rules.SelectLastRegisteredFactory())
                 .WithoutThrowOnRegisteringDisposableTransient()
-                .WithTrackingDisposableTransients();
+                .WithTrackingDisposableTransients()
+                // Allows resolving Func<T> and Lazy<T> without explicit registrations for more flexible ViewModel wiring
+                .WithFuncAndLazyWithoutRegistration();
 
             DryIoc.Scope.WaitForScopedServiceIsCreatedTimeoutTicks = 60000;  // 60s for complex VMs
             Log.Debug("  ✓ DryIoc rules configured (DefaultReuse=Singleton, AutoConcreteResolution=True, Timeout=60s)");
@@ -342,7 +345,7 @@ namespace WileyWidget
             // Excel services (required by MainViewModel, BudgetImporter)
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Excel.IExcelReaderService, WileyWidget.Services.ExcelReaderService>();
+                containerRegistry.RegisterSingleton<WileyWidget.Services.Excel.IExcelReaderService, WileyWidget.Services.Excel.ExcelReaderService>();
                 Log.Information("  ✅ IExcelReaderService -> ExcelReaderService (Singleton)");
             }
             catch (Exception ex)
@@ -387,7 +390,7 @@ namespace WileyWidget
             // Dispatcher helper (required by multiple ViewModels for UI thread marshalling)
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Abstractions.IDispatcherHelper, WileyWidget.Services.Threading.DispatcherHelper>();
+                containerRegistry.RegisterSingleton<WileyWidget.Services.Threading.IDispatcherHelper, WileyWidget.Services.Threading.DispatcherHelper>();
                 Log.Information("  ✅ IDispatcherHelper -> DispatcherHelper (Singleton, thread-safe)");
             }
             catch (Exception ex)
@@ -418,7 +421,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IEnterpriseRepository, WileyWidget.Business.Data.EnterpriseRepository>();
+                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IEnterpriseRepository, WileyWidget.Data.EnterpriseRepository>();
                 Log.Information("  ✅ IEnterpriseRepository -> EnterpriseRepository (Scoped)");
             }
             catch (Exception ex)
@@ -428,7 +431,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IBudgetRepository, WileyWidget.Business.Data.BudgetRepository>();
+                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IBudgetRepository, WileyWidget.Data.BudgetRepository>();
                 Log.Information("  ✅ IBudgetRepository -> BudgetRepository (Scoped)");
             }
             catch (Exception ex)
@@ -438,7 +441,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IMunicipalAccountRepository, WileyWidget.Business.Data.MunicipalAccountRepository>();
+                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IMunicipalAccountRepository, WileyWidget.Data.MunicipalAccountRepository>();
                 Log.Information("  ✅ IMunicipalAccountRepository -> MunicipalAccountRepository (Scoped)");
             }
             catch (Exception ex)
@@ -448,7 +451,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IDepartmentRepository, WileyWidget.Business.Data.DepartmentRepository>();
+                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IDepartmentRepository, WileyWidget.Data.DepartmentRepository>();
                 Log.Information("  ✅ IDepartmentRepository -> DepartmentRepository (Scoped)");
             }
             catch (Exception ex)
@@ -458,7 +461,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IUtilityCustomerRepository, WileyWidget.Business.Data.UtilityCustomerRepository>();
+                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IUtilityCustomerRepository, WileyWidget.Data.UtilityCustomerRepository>();
                 Log.Information("  ✅ IUtilityCustomerRepository -> UtilityCustomerRepository (Scoped)");
             }
             catch (Exception ex)
@@ -468,7 +471,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IUtilityBillRepository, WileyWidget.Business.Data.UtilityBillRepository>();
+                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IUtilityBillRepository, WileyWidget.Data.UtilityBillRepository>();
                 Log.Information("  ✅ IUtilityBillRepository -> UtilityBillRepository (Scoped)");
             }
             catch (Exception ex)
@@ -478,7 +481,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IAuditRepository, WileyWidget.Business.Data.AuditRepository>();
+                containerRegistry.RegisterScoped<WileyWidget.Business.Interfaces.IAuditRepository, WileyWidget.Data.AuditRepository>();
                 Log.Information("  ✅ IAuditRepository -> AuditRepository (Scoped)");
             }
             catch (Exception ex)
@@ -489,8 +492,8 @@ namespace WileyWidget
             // Register IAppDbContext (EF Core DbContext) with explicit connection string injection
             try
             {
-                var configuration = BuildConfiguration();
-                var connectionString = configuration.GetConnectionString("DefaultConnection") ??
+                var config = BuildConfiguration();
+                var connectionString = config.GetConnectionString("DefaultConnection") ??
                     "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
 
                 var container = containerRegistry.GetContainer();
@@ -560,7 +563,7 @@ namespace WileyWidget
             // Register IExcelExportService (Excel export functionality)
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Excel.IExcelExportService, WileyWidget.Services.ExcelExportService>();
+                containerRegistry.RegisterSingleton<WileyWidget.Services.Export.IExcelExportService, WileyWidget.Services.Export.ExcelExportService>();
                 Log.Information("  ✅ IExcelExportService -> ExcelExportService (Singleton)");
             }
             catch (Exception ex)
@@ -580,7 +583,7 @@ namespace WileyWidget
             // AI and Logging Services
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Abstractions.IAILoggingService, WileyWidget.Services.AI.AILoggingService>();
+                containerRegistry.RegisterSingleton<WileyWidget.Services.IAILoggingService, WileyWidget.Services.AILoggingService>();
                 Log.Information("  ✅ IAILoggingService -> AILoggingService (Singleton)");
             }
             catch (Exception ex)
@@ -591,10 +594,10 @@ namespace WileyWidget
             try
             {
                 // Register IAIService with lazy API key resolution from IConfiguration
-                var container = containerRegistry.GetContainer();
-                container.Register<WileyWidget.Services.Abstractions.IAIService, WileyWidget.Services.AI.XAIService>(
+                var dryIocContainer = containerRegistry.GetContainer();
+                dryIocContainer.Register<WileyWidget.Services.IAIService, WileyWidget.Services.XAIService>(
                     reuse: DryIoc.Reuse.Singleton,
-                    made: DryIoc.Made.Of(() => new WileyWidget.Services.AI.XAIService(
+                    made: DryIoc.Made.Of(() => new WileyWidget.Services.XAIService(
                         DryIoc.Arg.Of<IConfiguration>())));
                 Log.Information("  ✅ IAIService -> XAIService (Singleton with lazy API key resolution)");
             }
@@ -606,7 +609,7 @@ namespace WileyWidget
             // Bold Report Service
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Abstractions.IBoldReportService, WileyWidget.Services.BoldReportService>();
+                containerRegistry.RegisterSingleton<WileyWidget.Services.IBoldReportService, WileyWidget.Services.BoldReportService>();
                 Log.Information("  ✅ IBoldReportService -> BoldReportService (Singleton)");
             }
             catch (Exception ex)
@@ -617,70 +620,72 @@ namespace WileyWidget
             // User Context Service
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Abstractions.IUserContext, WileyWidget.Services.UserContextService>();
-                Log.Information("  ✅ IUserContext -> UserContextService (Singleton)");
+                containerRegistry.RegisterSingleton<WileyWidget.Services.IUserContext, WileyWidget.Services.UserContext>();
+                Log.Information("  ✅ IUserContext -> UserContext (Singleton)");
             }
             catch (Exception ex)
             {
                 Log.Warning(ex, "  ⚠️ IUserContext registration failed");
             }
 
-            // Memory Profiler (for diagnostics)
-            try
-            {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Abstractions.IMemoryProfiler, WileyWidget.Services.Diagnostics.MemoryProfilerService>();
-                Log.Information("  ✅ IMemoryProfiler -> MemoryProfilerService (Singleton)");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "  ⚠️ IMemoryProfiler registration failed");
-            }
+            // Memory Profiler (for diagnostics) - TODO: Implement MemoryProfilerService
+            // try
+            // {
+            //     containerRegistry.RegisterSingleton<WileyWidget.Services.IMemoryProfiler, WileyWidget.Services.Diagnostics.MemoryProfilerService>();
+            //     Log.Information("  ✅ IMemoryProfiler -> MemoryProfilerService (Singleton)");
+            // }
+            // catch (Exception ex)
+            // {
+            //     Log.Warning(ex, "  ⚠️ IMemoryProfiler registration failed");
+            // }
 
             // Grok Supercomputer Service
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Services.Abstractions.IGrokSupercomputer, WileyWidget.Services.AI.GrokSupercomputerService>();
-                Log.Information("  ✅ IGrokSupercomputer -> GrokSupercomputerService (Singleton)");
+                containerRegistry.RegisterSingleton<WileyWidget.Services.IGrokSupercomputer, WileyWidget.Services.GrokSupercomputer>();
+                Log.Information("  ✅ IGrokSupercomputer -> GrokSupercomputer (Singleton)");
             }
             catch (Exception ex)
             {
                 Log.Warning(ex, "  ⚠️ IGrokSupercomputer registration failed");
             }
 
-            // Abstractions Services
-            try
-            {
-                containerRegistry.RegisterSingleton<WileyWidget.Abstractions.IApplicationStateService, WileyWidget.Services.ApplicationStateService>();
-                Log.Information("  ✅ IApplicationStateService -> ApplicationStateService (Singleton)");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "  ⚠️ IApplicationStateService registration failed");
-            }
+            // Abstractions Services - TODO: Implement ApplicationStateService
+            // try
+            // {
+            //     containerRegistry.RegisterSingleton<WileyWidget.Abstractions.IApplicationStateService, WileyWidget.Services.ApplicationStateService>();
+            //     Log.Information("  ✅ IApplicationStateService -> ApplicationStateService (Singleton)");
+            // }
+            // catch (Exception ex)
+            // {
+            //     Log.Warning(ex, "  ⚠️ IApplicationStateService registration failed");
+            // }
 
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Abstractions.IExceptionHandler, WileyWidget.Services.ExceptionHandlerService>();
-                Log.Information("  ✅ IExceptionHandler -> ExceptionHandlerService (Singleton)");
+                // TODO: Implement ExceptionHandlerService
+                // containerRegistry.RegisterSingleton<WileyWidget.Services.IExceptionHandler, WileyWidget.Services.ExceptionHandlerService>();
+                Log.Information("  ⚠️ IExceptionHandler registration skipped - implementation missing");
             }
             catch (Exception ex)
             {
                 Log.Warning(ex, "  ⚠️ IExceptionHandler registration failed");
             }
 
-            try
-            {
-                containerRegistry.RegisterSingleton<WileyWidget.Abstractions.IStartupProgressReporter, WileyWidget.Services.Startup.StartupProgressReporter>();
-                Log.Information("  ✅ IStartupProgressReporter -> StartupProgressReporter (Singleton)");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "  ⚠️ IStartupProgressReporter registration failed");
-            }
+            // IStartupProgressReporter - TODO: Implement StartupProgressReporter
+            // try
+            // {
+            //     containerRegistry.RegisterSingleton<WileyWidget.Services.IStartupProgressReporter, WileyWidget.Services.Startup.StartupProgressReporter>();
+            //     Log.Information("  ✅ IStartupProgressReporter -> StartupProgressReporter (Singleton)");
+            // }
+            // catch (Exception ex)
+            // {
+            //     Log.Warning(ex, "  ⚠️ IStartupProgressReporter registration failed");
+            // }
 
             try
             {
-                containerRegistry.RegisterSingleton<WileyWidget.Abstractions.IViewRegistrationService, WileyWidget.Services.ViewRegistrationService>();
+                containerRegistry.RegisterSingleton<WileyWidget.Services.IViewRegistrationService, WileyWidget.Services.ViewRegistrationService>();
                 Log.Information("  ✅ IViewRegistrationService -> ViewRegistrationService (Singleton)");
             }
             catch (Exception ex)
@@ -699,7 +704,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.DashboardViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.DashboardViewModel>();
                 Log.Information("  ✅ DashboardViewModel -> DashboardViewModel (Transient)");
             }
             catch (Exception ex)
@@ -709,7 +714,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.MainViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.MainViewModel>();
                 Log.Information("  ✅ MainViewModel -> MainViewModel (Transient)");
             }
             catch (Exception ex)
@@ -719,7 +724,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.SettingsViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.SettingsViewModel>();
                 Log.Information("  ✅ SettingsViewModel -> SettingsViewModel (Transient)");
             }
             catch (Exception ex)
@@ -729,7 +734,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.BudgetViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.BudgetViewModel>();
                 Log.Information("  ✅ BudgetViewModel -> BudgetViewModel (Transient)");
             }
             catch (Exception ex)
@@ -739,7 +744,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.QuickBooksViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.QuickBooksViewModel>();
                 Log.Information("  ✅ QuickBooksViewModel -> QuickBooksViewModel (Transient)");
             }
             catch (Exception ex)
@@ -749,7 +754,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.AIAssistViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.AIAssistViewModel>();
                 Log.Information("  ✅ AIAssistViewModel -> AIAssistViewModel (Transient)");
             }
             catch (Exception ex)
@@ -759,7 +764,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.EnterpriseViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.EnterpriseViewModel>();
                 Log.Information("  ✅ EnterpriseViewModel -> EnterpriseViewModel (Transient)");
             }
             catch (Exception ex)
@@ -769,7 +774,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.MunicipalAccountViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.MunicipalAccountViewModel>();
                 Log.Information("  ✅ MunicipalAccountViewModel -> MunicipalAccountViewModel (Transient)");
             }
             catch (Exception ex)
@@ -779,7 +784,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.UtilityCustomerViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.UtilityCustomerViewModel>();
                 Log.Information("  ✅ UtilityCustomerViewModel -> UtilityCustomerViewModel (Transient)");
             }
             catch (Exception ex)
@@ -789,7 +794,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.DepartmentViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.DepartmentViewModel>();
                 Log.Information("  ✅ DepartmentViewModel -> DepartmentViewModel (Transient)");
             }
             catch (Exception ex)
@@ -799,7 +804,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.AnalyticsViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.AnalyticsViewModel>();
                 Log.Information("  ✅ AnalyticsViewModel -> AnalyticsViewModel (Transient)");
             }
             catch (Exception ex)
@@ -809,7 +814,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.ReportsViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.ReportsViewModel>();
                 Log.Information("  ✅ ReportsViewModel -> ReportsViewModel (Transient)");
             }
             catch (Exception ex)
@@ -819,7 +824,7 @@ namespace WileyWidget
 
             try
             {
-                containerRegistry.Register<WileyWidget.UI.ViewModels.Main.ToolsViewModel>();
+                containerRegistry.Register<WileyWidget.ViewModels.Main.ToolsViewModel>();
                 Log.Information("  ✅ ToolsViewModel -> ToolsViewModel (Transient)");
             }
             catch (Exception ex)
@@ -854,10 +859,9 @@ namespace WileyWidget
                 container.Register<WileyWidget.Services.ISecretVaultService, WileyWidget.Services.LocalSecretVaultService>(
                     reuse: DryIoc.Reuse.Singleton,
                     made: DryIoc.Made.Of(() => new WileyWidget.Services.LocalSecretVaultService(
-                        DryIoc.Arg.Of<IConfiguration>(),
                         DryIoc.Arg.Of<ILogger<WileyWidget.Services.LocalSecretVaultService>>())),
                     ifAlreadyRegistered: IfAlreadyRegistered.Replace);
-                Log.Information("  ✅ ISecretVaultService -> LocalSecretVaultService (Singleton, explicit ctor: IConfiguration, ILogger)");
+                Log.Information("  ✅ ISecretVaultService -> LocalSecretVaultService (Singleton, explicit ctor: ILogger)");
             }
             catch (Exception ex)
             {
@@ -872,9 +876,10 @@ namespace WileyWidget
                     container.Register<WileyWidget.Services.Abstractions.ITelemetryService, WileyWidget.Services.Telemetry.SigNozTelemetryService>(
                         reuse: DryIoc.Reuse.Singleton,
                         made: DryIoc.Made.Of(() => new WileyWidget.Services.Telemetry.SigNozTelemetryService(
+                            DryIoc.Arg.Of<ILogger<WileyWidget.Services.Telemetry.SigNozTelemetryService>>(),
                             DryIoc.Arg.Of<IConfiguration>())),
                         ifAlreadyRegistered: IfAlreadyRegistered.Replace);
-                    Log.Information("  ✅ ITelemetryService -> SigNozTelemetryService (Singleton, explicit ctor: IConfiguration)");
+                    Log.Information("  ✅ ITelemetryService -> SigNozTelemetryService (Singleton, explicit ctor: ILogger, IConfiguration)");
                 }
                 else
                 {
@@ -926,10 +931,11 @@ namespace WileyWidget
                 container.Register<WileyWidget.Services.IChargeCalculatorService, WileyWidget.Services.ServiceChargeCalculatorService>(
                     reuse: DryIoc.Reuse.Singleton,
                     made: DryIoc.Made.Of(() => new WileyWidget.Services.ServiceChargeCalculatorService(
-                        DryIoc.Arg.Of<Models.FiscalYearSettings>(),
-                        DryIoc.Arg.Of<WileyWidget.Business.Interfaces.IEnterpriseRepository>())),
+                        DryIoc.Arg.Of<WileyWidget.Business.Interfaces.IEnterpriseRepository>(),
+                        DryIoc.Arg.Of<WileyWidget.Business.Interfaces.IMunicipalAccountRepository>(),
+                        DryIoc.Arg.Of<WileyWidget.Business.Interfaces.IBudgetRepository>())),
                     ifAlreadyRegistered: IfAlreadyRegistered.Replace);
-                Log.Information("  ✅ IChargeCalculatorService -> ServiceChargeCalculatorService (Singleton, explicit ctor: FiscalYearSettings, IEnterpriseRepository)");
+                Log.Information("  ✅ IChargeCalculatorService -> ServiceChargeCalculatorService (Singleton, explicit ctor: IEnterpriseRepository, IMunicipalAccountRepository, IBudgetRepository)");
             }
             catch (Exception ex)
             {
@@ -1535,13 +1541,13 @@ namespace WileyWidget
                 try
                 {
                     Log.Debug("  🔧 Scanning WileyWidget.Data for repositories...");
-                    var repoAssembly = typeof(WileyWidget.Business.Data.EnterpriseRepository).Assembly;
+                    var repoAssembly = typeof(WileyWidget.Data.EnterpriseRepository).Assembly;
 
                     container.RegisterMany(
                         new[] { repoAssembly },
                         serviceTypeCondition: type => type.IsInterface && type.Name.StartsWith("I") && type.Name.EndsWith("Repository"),
                         reuse: DryIoc.Reuse.Scoped,
-                        setup: DryIoc.Setup.With(condition: type => type.IsClass && !type.IsAbstract && type.Name.EndsWith("Repository")));
+                        setup: DryIoc.Setup.With(condition: request => request.IsClass && !request.IsAbstract && request.Name.EndsWith("Repository")));
 
                     // Log explicit registrations for test detection
                     Log.Information("  ✅ IEnterpriseRepository -> EnterpriseRepository (Scoped)");
@@ -1575,13 +1581,13 @@ namespace WileyWidget
                         new[] { serviceAssembly },
                         serviceTypeCondition: type => type.IsInterface && type.Name.StartsWith("I"),
                         reuse: DryIoc.Reuse.Singleton,
-                        setup: DryIoc.Setup.With(condition: type =>
-                            type.IsClass && !type.IsAbstract &&
-                            (type.Name.EndsWith("Service") ||
-                             type.Name.EndsWith("Engine") ||
-                             type.Name.EndsWith("Helper") ||
-                             type.Name.EndsWith("Importer") ||
-                             type.Name.EndsWith("Calculator"))));
+                        setup: DryIoc.Setup.With(condition: request =>
+                            request.IsClass && !request.IsAbstract &&
+                            (request.Name.EndsWith("Service") ||
+                             request.Name.EndsWith("Engine") ||
+                             request.Name.EndsWith("Helper") ||
+                             request.Name.EndsWith("Importer") ||
+                             request.Name.EndsWith("Calculator"))));
 
                     // Log explicit registrations for test detection
                     Log.Information("  ✅ ISettingsService -> SettingsService (Singleton)");
@@ -1613,17 +1619,17 @@ namespace WileyWidget
                 try
                 {
                     Log.Debug("  🔧 Scanning WileyWidget.UI for ViewModels...");
-                    var vmAssembly = typeof(WileyWidget.UI.ViewModels.Main.DashboardViewModel).Assembly;
+                    var vmAssembly = typeof(WileyWidget.ViewModels.Main.DashboardViewModel).Assembly;
 
                     // Register all ViewModels as self-registered (no interface required for VMs)
                     container.RegisterMany(
                         new[] { vmAssembly },
                         serviceTypeCondition: type => type.IsClass && !type.IsAbstract && type.Name.EndsWith("ViewModel"),
                         reuse: DryIoc.Reuse.Transient,
-                        setup: DryIoc.Setup.With(condition: type =>
-                            type.IsClass && !type.IsAbstract &&
-                            type.Name.EndsWith("ViewModel") &&
-                            type.Namespace?.Contains("ViewModels") == true));
+                        setup: DryIoc.Setup.With(condition: request =>
+                            request.IsClass && !request.IsAbstract &&
+                            request.Name.EndsWith("ViewModel") &&
+                            request.Namespace?.Contains("ViewModels") == true));
 
                     // Log explicit registrations for test detection
                     Log.Information("  ✅ DashboardViewModel -> DashboardViewModel (Transient)");
@@ -1870,8 +1876,8 @@ namespace WileyWidget
 
                     // Register AppDbContext as Scoped in DryIoc (creates from factory)
                     // Use DryIoc-specific API via GetContainer()
-                    var container = registry.GetContainer();
-                    container.Register<WileyWidget.Data.AppDbContext>(
+                    var dryIocContainer = registry.GetContainer();
+                    dryIocContainer.Register<WileyWidget.Data.AppDbContext>(
                         reuse: DryIoc.Reuse.Scoped,
                         made: DryIoc.Made.Of(() => DryIoc.Arg.Of<Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>>().CreateDbContext()));
                     Log.Debug("    ✓ AppDbContext registered (Scoped via factory)");
@@ -2444,6 +2450,12 @@ namespace WileyWidget
 
                 // Connection timeout
                 sqlOptions.CommandTimeout(30);
+
+                // EF Core 10: Enable SQL Server 2025 JSON type support (compatibility level 170)
+                sqlOptions.UseCompatibilityLevel(170);
+
+                // EF Core 10: Optimize parameterized collection translation
+                // sqlOptions.UseParameterTranslationMode(Microsoft.EntityFrameworkCore.Infrastructure.ParameterTranslationMode.Parameter); // Commented out - requires EF Core 10+
             });
 
             logger.LogInformation("✅ Enhanced SQL Server connection configured for {Environment} environment", environmentName);
@@ -2600,7 +2612,279 @@ namespace WileyWidget
             }
         }
 
+        /// <summary>
+        /// Performs a broad container health check by attempting to resolve a sample of registered services.
+        /// Only runs in DEBUG builds to avoid startup performance costs in production.
+        /// </summary>
+        [System.Diagnostics.Conditional("DEBUG")]
+        internal static void DebugValidateContainerHealth(IContainerProvider container)
+        {
+            try
+            {
+                var dryIoc = (container as IContainerExtension<DryIoc.IContainer>)?.Instance;
+                if (dryIoc == null)
+                {
+                    Log.Debug("[HEALTH] DryIoc container instance unavailable for health validation");
+                    return;
+                }
+
+                var registrations = dryIoc.GetServiceRegistrations()?.ToList() ?? new List<ServiceRegistrationInfo>();
+                if (registrations.Count == 0)
+                {
+                    Log.Debug("[HEALTH] No service registrations found for validation");
+                    return;
+                }
+
+                // Sample up to 40 registrations (skip Prism infrastructure and WPF assemblies to reduce noise)
+                var sample = registrations
+                    .Where(r => r.ServiceType != null &&
+                                !r.ServiceType.FullName!.StartsWith("Prism.") &&
+                                !r.ServiceType.FullName.StartsWith("System.Windows"))
+                    .Take(40)
+                    .ToList();
+
+                Log.Debug("[HEALTH] Beginning debug resolution sample for {Count} services", sample.Count);
+                var failures = new List<string>();
+                foreach (var reg in sample)
+                {
+                    var st = reg.ServiceType!;
+                    try
+                    {
+                        // Use TryResolve to avoid throwing for optional services
+                        var resolved = dryIoc.TryResolve(st, IfUnresolved.ReturnDefault);
+                        if (resolved == null)
+                        {
+                            failures.Add(st.FullName ?? st.Name);
+                            Log.Warning("[HEALTH] Could not resolve {ServiceType}", st.FullName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add(st.FullName ?? st.Name);
+                        Log.Warning(ex, "[HEALTH] Exception resolving {ServiceType}", st.FullName);
+                    }
+                }
+
+                if (failures.Count == 0)
+                {
+                    Log.Information("✅ [HEALTH] Debug container validation passed for sampled services");
+                }
+                else
+                {
+                    Log.Warning("⚠️ [HEALTH] {FailureCount} sampled services failed to resolve:", failures.Count);
+                    foreach (var f in failures)
+                    {
+                        Log.Warning("   • {Service}", f);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[HEALTH] Container health validation encountered an error (non-critical)");
+            }
+        }
+
         #endregion
+
+        /// <summary>
+        /// Performs comprehensive container health validation by enumerating all service registrations
+        /// and attempting resolution. Provides detailed reporting of registration coverage and failures.
+        /// This method should be called after all modules have loaded to ensure complete validation.
+        /// </summary>
+        /// <param name="container">The container to validate</param>
+        /// <param name="throwOnFailure">Whether to throw exception on validation failures (default: false for graceful degradation)</param>
+        /// <returns>Validation result with statistics</returns>
+        public static ContainerHealthReport ValidateContainerHealth(IContainerProvider container, bool throwOnFailure = false)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Log.Information("🔍 [CONTAINER_HEALTH] Starting comprehensive container validation...");
+
+            var report = new ContainerHealthReport();
+            var dryIoc = (container as IContainerExtension<DryIoc.IContainer>)?.Instance;
+
+            if (dryIoc == null)
+            {
+                Log.Warning("[CONTAINER_HEALTH] DryIoc container instance unavailable - validation skipped");
+                report.ValidationSkipped = true;
+                report.SkipReason = "DryIoc container not accessible";
+                return report;
+            }
+
+            // Get all service registrations
+            var registrations = dryIoc.GetServiceRegistrations()?.ToList() ?? new List<ServiceRegistrationInfo>();
+            report.TotalRegistrations = registrations.Count;
+
+            if (registrations.Count == 0)
+            {
+                Log.Warning("[CONTAINER_HEALTH] No service registrations found");
+                report.ValidationSkipped = true;
+                report.SkipReason = "No registrations found";
+                return report;
+            }
+
+            Log.Information("[CONTAINER_HEALTH] Found {Count} service registrations to validate", registrations.Count);
+
+            // Filter out types we should skip validation for (heavy UI controls, WPF infrastructure)
+            var skipPatterns = new[]
+            {
+                "System.Windows.",
+                "Syncfusion.UI.",
+                "Syncfusion.Windows.",
+                "Prism.Regions.IRegion",
+                "Microsoft.Xaml.",
+                "*View", // Skip all View types to avoid heavy UI instantiation
+            };
+
+            var validatableRegistrations = registrations
+                .Where(r => r.ServiceType != null)
+                .Where(r => !skipPatterns.Any(pattern =>
+                {
+                    var fullName = r.ServiceType!.FullName ?? r.ServiceType.Name;
+                    if (pattern.EndsWith("*"))
+                        return fullName.StartsWith(pattern.TrimEnd('*'), StringComparison.OrdinalIgnoreCase);
+                    if (pattern.StartsWith("*"))
+                        return fullName.EndsWith(pattern.TrimStart('*'), StringComparison.OrdinalIgnoreCase);
+                    return fullName.Contains(pattern, StringComparison.OrdinalIgnoreCase);
+                }))
+                .ToList();
+
+            report.ValidatableCount = validatableRegistrations.Count;
+            report.SkippedCount = registrations.Count - validatableRegistrations.Count;
+
+            Log.Information("[CONTAINER_HEALTH] Validating {Validatable} registrations (skipped {Skipped} UI/infrastructure types)",
+                validatableRegistrations.Count, report.SkippedCount);
+
+            // Validate each registration
+            foreach (var reg in validatableRegistrations)
+            {
+                var serviceType = reg.ServiceType!;
+                var serviceName = serviceType.FullName ?? serviceType.Name;
+
+                try
+                {
+                    // Use TryResolve to avoid throwing for optional services
+                    var resolved = dryIoc.TryResolve(serviceType, IfUnresolved.ReturnDefault);
+
+                    if (resolved == null)
+                    {
+                        report.UnresolvableServices.Add(serviceName);
+                        Log.Debug("[CONTAINER_HEALTH] ⚠️ {Service} resolved to null", serviceName);
+                    }
+                    else
+                    {
+                        report.ValidatedServices.Add(serviceName);
+                        var implType = resolved.GetType().Name;
+
+                        // Only log a sample to avoid excessive output
+                        if (report.ValidatedServices.Count <= 20 || report.ValidatedServices.Count % 50 == 0)
+                        {
+                            Log.Debug("[CONTAINER_HEALTH] ✅ {Service} → {Implementation}", serviceName, implType);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    report.FailedServices.Add((serviceName, $"{ex.GetType().Name}: {ex.Message}"));
+                    Log.Warning("[CONTAINER_HEALTH] ❌ Failed to resolve {Service}: {Error}", serviceName, ex.Message);
+
+                    // Log inner exception chain for dependency issues
+                    var innerEx = ex.InnerException;
+                    var depth = 1;
+                    while (innerEx != null && depth <= 3)
+                    {
+                        Log.Debug("  └─ Inner[{Depth}]: {Type}: {Message}", depth, innerEx.GetType().Name, innerEx.Message);
+                        innerEx = innerEx.InnerException;
+                        depth++;
+                    }
+                }
+            }
+
+            sw.Stop();
+            report.ValidationDurationMs = sw.ElapsedMilliseconds;
+
+            // Calculate statistics
+            report.SuccessRate = report.ValidatableCount > 0
+                ? (double)report.ValidatedServices.Count / report.ValidatableCount * 100.0
+                : 0.0;
+
+            // Generate summary
+            Log.Information("═══════════════════════════════════════════════════════════════");
+            Log.Information("📊 [CONTAINER_HEALTH] Validation Complete ({ElapsedMs}ms)", sw.ElapsedMilliseconds);
+            Log.Information("═══════════════════════════════════════════════════════════════");
+            Log.Information("  Total Registrations: {Total}", report.TotalRegistrations);
+            Log.Information("  Validatable: {Validatable} (skipped {Skipped} UI types)", report.ValidatableCount, report.SkippedCount);
+            Log.Information("  ✅ Validated: {Validated} ({SuccessRate:F1}%)", report.ValidatedServices.Count, report.SuccessRate);
+            Log.Information("  ⚠️ Unresolvable: {Unresolvable}", report.UnresolvableServices.Count);
+            Log.Information("  ❌ Failed: {Failed}", report.FailedServices.Count);
+            Log.Information("═══════════════════════════════════════════════════════════════");
+
+            // Log failures if any
+            if (report.FailedServices.Count > 0)
+            {
+                Log.Warning("[CONTAINER_HEALTH] Failed service resolutions:");
+                foreach (var (service, error) in report.FailedServices.Take(20))
+                {
+                    Log.Warning("  • {Service}: {Error}", service, error);
+                }
+                if (report.FailedServices.Count > 20)
+                {
+                    Log.Warning("  ... and {More} more failures (see debug log for details)", report.FailedServices.Count - 20);
+                }
+            }
+
+            // Log critical unresolvable services
+            if (report.UnresolvableServices.Count > 0)
+            {
+                Log.Warning("[CONTAINER_HEALTH] Unresolvable services (resolved to null):");
+                foreach (var service in report.UnresolvableServices.Take(10))
+                {
+                    Log.Warning("  • {Service}", service);
+                }
+                if (report.UnresolvableServices.Count > 10)
+                {
+                    Log.Warning("  ... and {More} more", report.UnresolvableServices.Count - 10);
+                }
+            }
+
+            // Determine if validation passed (90%+ success rate target from user requirements)
+            report.ValidationPassed = report.SuccessRate >= 90.0 && report.FailedServices.Count == 0;
+
+            if (!report.ValidationPassed)
+            {
+                Log.Warning("[CONTAINER_HEALTH] ⚠️ Container validation did NOT meet 90% success rate target");
+
+                if (throwOnFailure)
+                {
+                    throw new InvalidOperationException(
+                        $"Container validation failed: {report.SuccessRate:F1}% success rate (target: 90%), " +
+                        $"{report.FailedServices.Count} failed resolutions");
+                }
+            }
+            else
+            {
+                Log.Information("[CONTAINER_HEALTH] ✅ Container validation PASSED - {SuccessRate:F1}% success rate", report.SuccessRate);
+            }
+
+            return report;
+        }
+
+        /// <summary>
+        /// Container health validation report with detailed statistics
+        /// </summary>
+        public class ContainerHealthReport
+        {
+            public int TotalRegistrations { get; set; }
+            public int ValidatableCount { get; set; }
+            public int SkippedCount { get; set; }
+            public List<string> ValidatedServices { get; set; } = new List<string>();
+            public List<string> UnresolvableServices { get; set; } = new List<string>();
+            public List<(string Service, string Error)> FailedServices { get; set; } = new List<(string, string)>();
+            public double SuccessRate { get; set; }
+            public long ValidationDurationMs { get; set; }
+            public bool ValidationPassed { get; set; }
+            public bool ValidationSkipped { get; set; }
+            public string? SkipReason { get; set; }
+        }
 
         #endregion
 

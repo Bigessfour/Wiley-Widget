@@ -7,7 +7,7 @@ using WileyWidget.Models.Entities;
 
 namespace WileyWidget.Data
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : DbContext, IAppDbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -53,6 +53,9 @@ namespace WileyWidget.Data
         }
 
         base.OnModelCreating(modelBuilder);
+
+        // EF Core 10: Enable named default constraints for better migration control
+        // modelBuilder.UseNamedDefaultConstraints(); // Commented out - requires EF Core 10+
 
         // BudgetEntry (updated)
         modelBuilder.Entity<BudgetEntry>(entity =>

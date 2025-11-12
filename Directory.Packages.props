@@ -43,25 +43,25 @@
         Version="1.0.0-beta.23506.1" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore"
-        Version="9.0.10" />
+        Version="9.0.0" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.Design"
-        Version="9.0.10">
+        Version="9.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.SqlServer"
-        Version="9.0.10" />
+        Version="9.0.0" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.Tools"
-        Version="9.0.10" />
+        Version="9.0.0" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.Sqlite"
-        Version="9.0.10" />
+        Version="9.0.0" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.InMemory"
-        Version="9.0.10" />
+        Version="9.0.0" />
     <PackageVersion
         Include="Microsoft.Extensions.Configuration.EnvironmentVariables"
         Version="9.0.10" />
@@ -264,7 +264,7 @@
         Version="9.0.10" />
     <PackageVersion
         Include="Microsoft.Extensions.DependencyInjection"
-        Version="9.0.10" />
+        Version="10.0.0" />
     <PackageVersion
         Include="Microsoft.Extensions.Logging"
         Version="9.0.10" />
@@ -323,7 +323,7 @@
         Version="7.0.0" />
     <PackageVersion
         Include="Microsoft.CodeAnalysis.NetAnalyzers"
-        Version="9.0.0" />
+        Version="10.0.100" />
     <PackageVersion
         Include="Moq"
         Version="4.20.70" />

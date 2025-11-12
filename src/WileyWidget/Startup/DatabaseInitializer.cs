@@ -233,6 +233,8 @@ namespace WileyWidget.Startup
 
             try
             {
+                // Mark that initialization path was attempted (used for idempotency/telemetry)
+                AppDbStartupState.MarkInitializationAttempted();
                 // Start telemetry tracking
                 _startupActivity = _telemetryService?.StartActivity("DB.Initialization");
                 _startupActivity?.SetTag("db.operation", "migrate");
@@ -489,6 +491,18 @@ namespace WileyWidget.Startup
                     _telemetryService?.RecordException(ensureEx,
                         ("operation", "ensure_created"),
                         ("context", "db_initialization"));
+
+                    // Optional degraded-mode fallback: enable in-memory provider for the rest of the app
+                    var enableInMemoryFallback = _configuration.GetValue<bool>("Database:EnableInMemoryFallback", false);
+                    if (enableInMemoryFallback)
+                    {
+                        AppDbStartupState.ActivateFallback("Migrate and EnsureCreated failed");
+                        _startupActivity?.SetTag("db.fallback", "in_memory");
+                        _logger.LogWarning("[DB_FALLBACK] Enabled in-memory degraded mode after migration failure");
+                        // Do not rethrow - allow startup to continue in degraded mode
+                        return;
+                    }
+
                     throw;
                 }
             }

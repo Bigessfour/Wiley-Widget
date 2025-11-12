@@ -5,15 +5,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace WileyWidget.Data
 {
     /// <summary>
-    /// Application DbContext factory. Provides IDbContextFactory&lt;AppDbContext&gt; using
-    /// configured DbContextOptions with resilience logic to handle early registration issues.
-    /// Supports both pre-configured options and on-demand configuration via IConfiguration.
+    /// Application DbContext factory. Provides IDbContextFactory<AppDbContext> using
+    /// configured DbContextOptions with resilience logic and a degraded-mode fallback.
     /// </summary>
     public sealed class AppDbContextFactory : IDbContextFactory<AppDbContext>
     {
@@ -31,9 +29,7 @@ namespace WileyWidget.Data
         }
 
         /// <summary>
-        /// Constructor with IConfiguration fallback for early registration scenarios
-        /// where DbContextOptions may not be available yet. This enables the factory
-        /// to be registered before full DI container initialization.
+        /// Constructor with IConfiguration fallback for early registration scenarios.
         /// </summary>
         public AppDbContextFactory(IConfiguration configuration)
         {
@@ -43,7 +39,7 @@ namespace WileyWidget.Data
 
         /// <summary>
         /// Constructor with both options and configuration for maximum resilience.
-        /// Prefers options, falls back to configuration if options are invalid.
+        /// Prefers options, falls back to configuration if options are not provided.
         /// </summary>
         public AppDbContextFactory(DbContextOptions<AppDbContext>? options, IConfiguration? configuration)
         {
@@ -54,77 +50,93 @@ namespace WileyWidget.Data
 
             _options = options;
             _configuration = configuration;
-            _lazyOptions = new Lazy<DbContextOptions<AppDbContext>>(() =>
-                _options ?? BuildOptionsFromConfiguration());
+            _lazyOptions = new Lazy<DbContextOptions<AppDbContext>>(() => _options ?? BuildOptionsFromConfiguration());
         }
 
         private DbContextOptions<AppDbContext> BuildOptionsFromConfiguration()
         {
             if (_configuration == null)
             {
-                throw new InvalidOperationException(
-                    "Cannot build DbContextOptions: no configuration available. " +
-                    "Ensure IConfiguration is registered before resolving AppDbContextFactory.");
+                throw new InvalidOperationException("Cannot build DbContextOptions without IConfiguration.");
             }
 
             try
             {
-                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+                // Global degraded-mode enforcement
+                if (AppDbStartupState.IsDegradedMode)
+                {
+                    var degradedDbName = _configuration.GetValue<string>("Database:DegradedModeName") ?? "WileyWidget_Degraded";
+                    Log.Warning("[DB_FACTORY] Degraded mode active - using InMemory provider (db='{DbName}')", degradedDbName);
+                    return new DbContextOptionsBuilder<AppDbContext>()
+                        .UseInMemoryDatabase(degradedDbName)
+                        .Options;
+                }
 
+                var connectionString = _configuration.GetConnectionString("DefaultConnection");
                 if (string.IsNullOrWhiteSpace(connectionString))
                 {
                     connectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
                     Log.Warning("DefaultConnection missing; using fallback SQL Server connection string");
                 }
 
-                // Expand environment variables (e.g., %APPDATA%)
+                // Expand environment variables
                 connectionString = Environment.ExpandEnvironmentVariables(connectionString);
 
-                var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-                optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
+                var builder = new DbContextOptionsBuilder<AppDbContext>();
+                builder.UseSqlServer(connectionString, sql =>
                 {
-                    sqlOptions.MigrationsAssembly("WileyWidget.Data");
-                    sqlOptions.CommandTimeout(_configuration.GetValue<int>("Database:CommandTimeoutSeconds", 30));
-                    sqlOptions.EnableRetryOnFailure(
+                    sql.MigrationsAssembly("WileyWidget.Data");
+                    sql.CommandTimeout(_configuration.GetValue<int>("Database:CommandTimeoutSeconds", 30));
+                    sql.EnableRetryOnFailure(
                         maxRetryCount: _configuration.GetValue<int>("Database:MaxRetryCount", 3),
                         maxRetryDelay: TimeSpan.FromSeconds(_configuration.GetValue<int>("Database:MaxRetryDelaySeconds", 10)),
                         errorNumbersToAdd: null);
                 });
 
-                optionsBuilder.EnableDetailedErrors();
-                optionsBuilder.EnableSensitiveDataLogging(_configuration.GetValue<bool>("Database:EnableSensitiveDataLogging", false));
+                builder.EnableDetailedErrors();
+                builder.EnableSensitiveDataLogging(_configuration.GetValue<bool>("Database:EnableSensitiveDataLogging", false));
 
-                Log.Information("✓ Built DbContextOptions from IConfiguration (resilient factory mode)");
-                return optionsBuilder.Options;
+                Log.Information("✓ Built DbContextOptions from IConfiguration");
+                return builder.Options;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to build DbContextOptions from configuration; using minimal fallback");
+                Log.Error(ex, "Failed to build DbContextOptions from configuration");
 
-                // Ultimate fallback: minimal working configuration
-                var fallbackBuilder = new DbContextOptionsBuilder<AppDbContext>();
-                fallbackBuilder.UseSqlServer(
+                // Optional in-memory fallback on configuration failure
+                if (_configuration.GetValue<bool>("Database:EnableInMemoryFallback", false))
+                {
+                    AppDbStartupState.ActivateFallback("Factory configuration failure");
+                    var degradedDbName = _configuration.GetValue<string>("Database:DegradedModeName") ?? "WileyWidget_Degraded";
+                    Log.Warning("[DB_FACTORY] Activating InMemory fallback after configuration failure (db='{DbName}')", degradedDbName);
+                    return new DbContextOptionsBuilder<AppDbContext>()
+                        .UseInMemoryDatabase(degradedDbName)
+                        .Options;
+                }
+
+                // Minimal SQL Server fallback
+                var fallback = new DbContextOptionsBuilder<AppDbContext>();
+                fallback.UseSqlServer(
                     "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;",
-                    sqlOptions =>
+                    sql =>
                     {
-                        sqlOptions.MigrationsAssembly("WileyWidget.Data");
-                        sqlOptions.EnableRetryOnFailure();
+                        sql.MigrationsAssembly("WileyWidget.Data");
+                        sql.EnableRetryOnFailure();
                     });
-
-                return fallbackBuilder.Options;
+                return fallback.Options;
             }
         }
 
         public AppDbContext CreateDbContext()
         {
-#pragma warning disable CA2000 // Factory method - caller is responsible for disposal
+#pragma warning disable CA2000
             return new AppDbContext(_lazyOptions.Value);
 #pragma warning restore CA2000
         }
 
         public ValueTask<AppDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
         {
-#pragma warning disable CA2000 // Factory method - caller is responsible for disposal
+#pragma warning disable CA2000
             return new ValueTask<AppDbContext>(new AppDbContext(_lazyOptions.Value));
 #pragma warning restore CA2000
         }

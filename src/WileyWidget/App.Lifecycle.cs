@@ -319,7 +319,64 @@ namespace WileyWidget
                     Log.Warning(ex, "Failed to validate ViewModels post-initialization - continuing startup");
                 }
 
+                // COMPREHENSIVE CONTAINER HEALTH VALIDATION (Production + Debug)
+                // This performs a full sweep of all service registrations after modules have loaded
+                // Target: 90%+ success rate as per DI quality requirements
+                splashWindow.UpdateStatus("Validating container health...");
+                try
+                {
+                    Log.Information("🔍 [STARTUP] Running comprehensive container health validation...");
+                    var healthReport = ValidateContainerHealth(Container, throwOnFailure: false);
+
+                    if (!healthReport.ValidationPassed)
+                    {
+                        Log.Warning("⚠️ [STARTUP] Container health validation did not meet quality targets");
+                        Log.Warning("   Success Rate: {SuccessRate:F1}% (target: 90%+)", healthReport.SuccessRate);
+                        Log.Warning("   Failed Services: {Failed}", healthReport.FailedServices.Count);
+
+                        // Log top failures for diagnostics
+                        if (healthReport.FailedServices.Count > 0)
+                        {
+                            Log.Warning("   Top failures:");
+                            foreach (var (service, error) in healthReport.FailedServices.Take(5))
+                            {
+                                Log.Warning("     • {Service}: {Error}", service, error);
+                            }
+                        }
+
+                        // Continue startup but mark as degraded mode
+                        Log.Warning("   Application will continue in degraded mode");
+                    }
+                    else
+                    {
+                        Log.Information("✅ [STARTUP] Container health validation PASSED");
+                        Log.Information("   Validated: {Validated}/{Total} services ({SuccessRate:F1}%)",
+                            healthReport.ValidatedServices.Count,
+                            healthReport.ValidatableCount,
+                            healthReport.SuccessRate);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "❌ [STARTUP] Container health validation encountered an error");
+                    // Don't throw - allow startup to continue with degraded diagnostics
+                }
+
+                // DEBUG-ONLY: Additional debug validation for development
+                #if DEBUG
+                try
+                {
+                    Log.Debug("[DEBUG] Running additional debug container checks...");
+                    DebugValidateContainerHealth(Container);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "[DEBUG] Debug container validation failed (non-critical)");
+                }
+                #endif
+
                 // Validate critical dependencies required by core ViewModels
+                // This is a focused check on essential services that must be present
                 splashWindow.UpdateStatus("Validating critical dependencies...");
                 try
                 {
@@ -376,7 +433,7 @@ namespace WileyWidget
                 Log.Information("[PHASE_4] Validating secrets initialization completion...");
                 var secretsTimeout = Task.Delay(TimeSpan.FromSeconds(10));
                 var secretsCompletion = _secretsInitializationTcs?.Task ?? Task.CompletedTask;
-                var completedTask = await Task.WhenAny(secretsCompletion, secretsTimeout).ConfigureAwait(false);
+                var completedTask = Task.WhenAny(secretsCompletion, secretsTimeout).Result;
 
                 if (completedTask == secretsTimeout)
                 {
@@ -384,7 +441,7 @@ namespace WileyWidget
                 }
                 else
                 {
-                    await secretsCompletion.ConfigureAwait(false);
+                    secretsCompletion.Wait();
                     Log.Information("[PHASE_4] ✓ Secrets initialization verified complete");
                 }
 

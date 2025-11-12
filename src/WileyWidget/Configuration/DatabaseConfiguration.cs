@@ -172,6 +172,15 @@ public static class DatabaseConfiguration
 
             // Connection timeout
             sqlOptions.CommandTimeout(30);
+
+            // EF Core 10: Enable SQL Server 2025 JSON type support (compatibility level 170)
+            // Falls back to nvarchar(max) on older SQL Server versions automatically
+            sqlOptions.UseCompatibilityLevel(170);
+
+            // EF Core 10: Optimize parameterized collection translation
+            // Uses multiple scalar parameters by default (better than EF9's JSON array approach)
+            // This provides better query plan optimization with cardinality information
+            // sqlOptions.UseParameterTranslationMode(Microsoft.EntityFrameworkCore.Infrastructure.ParameterTranslationMode.Parameter); // Commented out - requires EF Core 10+
         });
 
         logger.LogInformation("✅ Configured SQL Server connection for {Environment} environment", environmentName);
