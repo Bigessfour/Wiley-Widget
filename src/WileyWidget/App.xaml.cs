@@ -131,6 +131,12 @@ namespace WileyWidget
 
         // Assembly resolution cache to avoid repeated file system lookups
         private static readonly ConcurrentDictionary<string, Assembly?> _resolvedAssemblies = new();
+        
+        // Control flag for NuGet scanning - disabled during critical startup to prevent freeze
+        internal static bool _enableNuGetScanning = false;
+        
+        // Track failed assembly resolutions to avoid repeated expensive scans
+        private static readonly ConcurrentDictionary<string, bool> _failedAssemblies = new();
 
         // Known NuGet package prefixes that we may need to resolve at runtime
         private static readonly HashSet<string> _knownPackagePrefixes = new(StringComparer.OrdinalIgnoreCase)
@@ -167,21 +173,29 @@ namespace WileyWidget
                 using var process = Process.Start(startInfo);
                 if (process != null)
                 {
-                    var output = process.StandardOutput.ReadToEnd();
-                    process.WaitForExit();
-
-                    if (process.ExitCode == 0)
+                    // Add timeout to prevent indefinite hang
+                    if (process.WaitForExit(3000)) // 3 second timeout
                     {
-                        var match = System.Text.RegularExpressions.Regex.Match(output, @"global-packages:\s*(.+)");
-                        if (match.Success)
+                        var output = process.StandardOutput.ReadToEnd();
+
+                        if (process.ExitCode == 0)
                         {
-                            var path = match.Groups[1].Value.Trim();
-                            if (Directory.Exists(path))
+                            var match = System.Text.RegularExpressions.Regex.Match(output, @"global-packages:\s*(.+)");
+                            if (match.Success)
                             {
-                                Log.Debug("Detected NuGet global-packages folder via dotnet CLI: {Path}", path);
-                                return path;
+                                var path = match.Groups[1].Value.Trim();
+                                if (Directory.Exists(path))
+                                {
+                                    Log.Debug("Detected NuGet global-packages folder via dotnet CLI: {Path}", path);
+                                    return path;
+                                }
                             }
                         }
+                    }
+                    else
+                    {
+                        Log.Warning("dotnet nuget locals command timed out after 3 seconds");
+                        try { process.Kill(); } catch { /* ignore */ }
                     }
                 }
             }
@@ -256,6 +270,13 @@ namespace WileyWidget
                     _resolvedAssemblies.TryAdd(args.Name, null);
                     return null;
                 }
+                
+                // Skip if previously failed to avoid repeated expensive scans
+                if (_failedAssemblies.ContainsKey(simpleName))
+                {
+                    Log.Debug("Assembly previously failed resolution, skipping: {Name}", simpleName);
+                    return null;
+                }
 
                 var dllName = simpleName + ".dll";
 
@@ -281,23 +302,29 @@ namespace WileyWidget
                         _resolvedAssemblies.TryAdd(args.Name, assembly);
                         Log.Information("Assembly resolved from probe path: {AssemblyName} -> {Path}", simpleName, fullProbePath);
                         return assembly;
-                    }
                 }
+            }
 
-                // 3. NuGet global packages cache - probe multiple target frameworks
-                var nugetPath = _nugetPackagesPath.Value;
-                if (!string.IsNullOrEmpty(nugetPath) && Directory.Exists(nugetPath))
+            // 4. NuGet global packages cache - DISABLED during startup to prevent freeze
+            if (!_enableNuGetScanning)
+            {
+                Log.Debug("NuGet scanning disabled during startup - skipping: {Name}", simpleName);
+                _failedAssemblies.TryAdd(simpleName, true);
+                return null;
+            }
+            
+            var nugetPath = _nugetPackagesPath.Value;
+            if (!string.IsNullOrEmpty(nugetPath) && Directory.Exists(nugetPath))
+            {
+                var packagePath = Path.Combine(nugetPath, simpleName.ToLowerInvariant());
+                if (Directory.Exists(packagePath))
                 {
-                    var packagePath = Path.Combine(nugetPath, simpleName.ToLowerInvariant());
-                    if (Directory.Exists(packagePath))
-                    {
-                        // Find the most recent version directory
-                        var versionDirs = Directory.GetDirectories(packagePath)
-                            .Select(d => new DirectoryInfo(d))
-                            .OrderByDescending(d => d.Name)
-                            .ToArray();
-
-                        foreach (var versionDir in versionDirs)
+                    // Find the most recent version directories - LIMIT TO TOP 3 to prevent hang
+                    var versionDirs = Directory.GetDirectories(packagePath)
+                        .Select(d => new DirectoryInfo(d))
+                        .OrderByDescending(d => d.Name)
+                        .Take(3)
+                        .ToArray();                        foreach (var versionDir in versionDirs)
                         {
                             foreach (var tfm in _targetFrameworks)
                             {
@@ -343,8 +370,9 @@ namespace WileyWidget
                     Log.Debug(gacEx, "Failed to load assembly from GAC: {AssemblyName}", simpleName);
                 }
 
-                // Assembly not found - cache null result to avoid repeated lookups
+                // Assembly not found - cache failure to avoid repeated lookups
                 _resolvedAssemblies.TryAdd(args.Name, null);
+                _failedAssemblies.TryAdd(simpleName, true);
                 Log.Warning("Failed to resolve assembly: {AssemblyName} (requested by {RequestingAssembly})",
                     simpleName, args.RequestingAssembly?.FullName ?? "unknown");
                 return null;

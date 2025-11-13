@@ -16,6 +16,56 @@ namespace WileyWidget.Data
     /// </summary>
     public class MunicipalAccountRepository : IMunicipalAccountRepository, IDisposable
     {
+        // Compiled queries to reduce first-query JIT/plan compilation overhead
+        private static readonly Func<AppDbContext, List<MunicipalAccount>> CQ_GetAllOrdered =
+            EF.CompileQuery((AppDbContext ctx) =>
+                ctx.MunicipalAccounts
+                   .AsNoTracking()
+                   .OrderBy(ma => ma.AccountNumber!.Value)
+                   .ToList());
+
+        private static readonly Func<AppDbContext, bool, List<MunicipalAccount>> CQ_GetAllActiveFlag =
+            EF.CompileQuery((AppDbContext ctx, bool onlyActive) =>
+                ctx.MunicipalAccounts
+                   .AsNoTracking()
+                   .Where(ma => !onlyActive || ma.IsActive)
+                   .OrderBy(ma => ma.AccountNumber!.Value)
+                   .ToList());
+
+        private static readonly Func<AppDbContext, MunicipalFundType, List<MunicipalAccount>> CQ_GetByFund =
+            EF.CompileQuery((AppDbContext ctx, MunicipalFundType fund) =>
+                ctx.MunicipalAccounts
+                   .AsNoTracking()
+                   .Where(ma => ma.Fund == fund && ma.IsActive)
+                   .OrderBy(ma => ma.AccountNumber!.Value)
+                   .ToList());
+
+        private static readonly Func<AppDbContext, AccountType, List<MunicipalAccount>> CQ_GetByType =
+            EF.CompileQuery((AppDbContext ctx, AccountType type) =>
+                ctx.MunicipalAccounts
+                   .AsNoTracking()
+                   .Where(ma => ma.Type == type && ma.IsActive)
+                   .OrderBy(ma => ma.AccountNumber!.Value)
+                   .ToList());
+
+        private static readonly Func<AppDbContext, int, List<MunicipalAccount>> CQ_GetByDepartment =
+            EF.CompileQuery((AppDbContext ctx, int departmentId) =>
+                ctx.MunicipalAccounts
+                   .AsNoTracking()
+                   .Where(ma => ma.DepartmentId == departmentId && ma.IsActive)
+                   .ToList());
+
+        private static readonly Func<AppDbContext, int, List<MunicipalAccount>> CQ_GetChildren =
+            EF.CompileQuery((AppDbContext ctx, int parentAccountId) =>
+                ctx.MunicipalAccounts
+                   .AsNoTracking()
+                   .Where(ma => ma.ParentAccountId == parentAccountId && ma.IsActive)
+                   .ToList());
+
+        // For single row lookups, compiled sync query is the most efficient form
+        private static readonly Func<AppDbContext, int, MunicipalAccount?> CQ_GetById_NoTracking =
+            EF.CompileQuery((AppDbContext ctx, int id) =>
+                ctx.MunicipalAccounts.AsNoTracking().SingleOrDefault(ma => ma.Id == id));
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IMemoryCache _cache;
         private bool _disposed;
@@ -60,18 +110,17 @@ namespace WileyWidget.Data
             {
                 return Task.FromResult(new AppDbContext(_options));
             }
-        }        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
+        }
+
+        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
         {
             const string cacheKey = "MunicipalAccounts_All";
 
             if (!_cache.TryGetValue(cacheKey, out IEnumerable<MunicipalAccount>? accounts))
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-                accounts = await context.MunicipalAccounts
-                    .AsNoTracking()
-                    .OrderBy(ma => ma.AccountNumber!.Value)
-                    .ToListAsync();
-
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var list = CQ_GetAllOrdered(context);
+                accounts = list;
                 _cache.Set(cacheKey, accounts, TimeSpan.FromMinutes(5));
             }
 
@@ -87,7 +136,7 @@ namespace WileyWidget.Data
             string? sortBy = null,
             bool sortDescending = false)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
 
             var query = context.MunicipalAccounts.AsNoTracking().AsQueryable();
 
@@ -97,7 +146,7 @@ namespace WileyWidget.Data
             // Get total count
             var totalCount = await query.CountAsync();
 
-            // Apply paging
+            // Apply paging (dynamic shapes are not compiled; keep as is)
             var items = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -117,7 +166,7 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> GetAllWithRelatedAsync()
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .Include(ma => ma.Department)
@@ -128,7 +177,7 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(string typeFilter)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .Where(a => a.TypeDescription == typeFilter)
@@ -138,38 +187,31 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> GetActiveAsync()
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            return await context.MunicipalAccounts
-                .AsNoTracking()
-                .Where(ma => ma.IsActive)
-                .OrderBy(ma => ma.AccountNumber!.Value)
-                .ToListAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var list = CQ_GetAllActiveFlag(context, true);
+            return list;
         }
 
     public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            return await context.MunicipalAccounts
-                .AsNoTracking()
-        .Where(ma => ma.Fund == fund && ma.IsActive)
-                .OrderBy(ma => ma.AccountNumber!.Value)
-                .ToListAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var list = CQ_GetByFund(context, fund);
+            return list;
         }
 
     public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            return await context.MunicipalAccounts
-                .AsNoTracking()
-        .Where(ma => ma.Type == type && ma.IsActive)
-                .OrderBy(ma => ma.AccountNumber!.Value)
-                .ToListAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var list = CQ_GetByType(context, type);
+            return list;
         }
 
         public async Task<MunicipalAccount?> GetByIdAsync(int id)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            return await context.MunicipalAccounts.FindAsync(id);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            // Compiled + NoTracking for fast first-hit performance
+            var entity = CQ_GetById_NoTracking(context, id);
+            return await Task.FromResult(entity);
         }
 
         public async Task<MunicipalAccount?> GetByAccountNumberAsync(string accountNumber)
@@ -182,14 +224,10 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> GetByDepartmentAsync(int departmentId)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            var accounts = await context.MunicipalAccounts
-                .AsNoTracking()
-                .Where(ma => ma.DepartmentId == departmentId && ma.IsActive)
-                .ToListAsync();
-
-            // Sort by AccountNumber.Value client-side (owned entities can't be used in OrderBy with in-memory provider)
-            return accounts.OrderBy(ma => ma.AccountNumber?.Value).ToList();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var list = CQ_GetByDepartment(context, departmentId);
+            // Ensure consistent sort
+            return list.OrderBy(ma => ma.AccountNumber?.Value).ToList();
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetByFundClassAsync(FundClass fundClass)
@@ -232,16 +270,12 @@ namespace WileyWidget.Data
 
             // Sort by AccountNumber.Value client-side (owned entities can't be used in OrderBy with in-memory provider)
             return accounts.OrderBy(ma => ma.AccountNumber?.Value).ToList();
-        }        public async Task<IEnumerable<MunicipalAccount>> GetChildAccountsAsync(int parentAccountId)
+        }
+        public async Task<IEnumerable<MunicipalAccount>> GetChildAccountsAsync(int parentAccountId)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            var accounts = await context.MunicipalAccounts
-                .AsNoTracking()
-                .Where(ma => ma.ParentAccountId == parentAccountId && ma.IsActive)
-                .ToListAsync();
-
-            // Sort by AccountNumber.Value client-side (owned entities can't be used in OrderBy with in-memory provider)
-            return accounts.OrderBy(ma => ma.AccountNumber?.Value).ToList();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var list = CQ_GetChildren(context, parentAccountId);
+            return list.OrderBy(ma => ma.AccountNumber?.Value).ToList();
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetAccountHierarchyAsync(int rootAccountId)

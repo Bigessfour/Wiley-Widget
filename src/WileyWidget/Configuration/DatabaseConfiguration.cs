@@ -249,8 +249,10 @@ public static class DatabaseConfiguration
             warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.MultipleCollectionIncludeWarning);
         });
 
-        options.LogTo(message => logger.LogDebug("EF Core: {Message}", message),
-            new[] { Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuted });
+        // Reduce noise: only log executed SQL at Information; suppress change-tracking chatter
+        options.LogTo(message => logger.LogInformation("EF SQL: {Message}", message),
+            new[] { Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuted },
+            LogLevel.Information);
 
         logger.LogInformation("Enterprise DbContext options configured for local environment");
     }

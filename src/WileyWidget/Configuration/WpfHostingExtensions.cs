@@ -67,9 +67,6 @@ public static class WpfHostingExtensions
         // UI layer services and view models
         ConfigureWpfServices(builder.Services);
 
-        // Hosted/background services
-        ConfigureHostedServices(builder.Services);
-
         // Database integration
 
         return builder;
@@ -176,6 +173,7 @@ public static class WpfHostingExtensions
 
         // Microsoft documented pattern: Create configured logger and set as global
         var configuredLogger = new LoggerConfiguration()
+            .WriteTo.File(Path.Combine(logsDirectory, "ef-timing-.txt"), rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information, buffered: false, shared: true)
             .ReadFrom.Configuration(builder.Configuration)
             .Enrich.WithMachineName()
             .Enrich.WithProcessId()
@@ -420,17 +418,6 @@ public static class WpfHostingExtensions
         services.AddTransient<IValidator<WileyWidget.Models.BudgetData>, BudgetDataValidator>();
         services.AddTransient<IValidator<WileyWidget.Models.Enterprise>, EnterpriseValidator>();
     }
-
-    private static void ConfigureHostedServices(IServiceCollection services)
-    {
-        // Defer heavy background services to reduce startup time
-        // BackgroundInitializationService removed - now using Prism modules
-        // Only start critical hosted services immediately
-
-        // HealthCheckHostedService removed - no longer needed after module cleanup
-    }
-
-
 
     private static string GetApiKeySource(string? apiKey)
     {

@@ -106,6 +106,10 @@ namespace WileyWidget
                 // NOTE: License registration happens in static constructor
                 // Apply theme early (before Prism bootstrap) - no container needed
                 VerifyAndApplyTheme();
+                
+                // Enable NuGet assembly scanning now that critical theme loading is complete
+                App._enableNuGetScanning = true;
+                Log.Information("✓ NuGet assembly scanning enabled post-theme-load");
 
                 // CRITICAL: Verify theme was successfully applied before Prism initialization
                 // This check ensures ConfigureRegionAdapterMappings won't fail
@@ -395,6 +399,53 @@ namespace WileyWidget
 
                 // Integrate telemetry services now that container is ready
                 IntegrateTelemetryServices();
+
+                // EF OPTIMIZATION: Measure first MunicipalAccount query with compiled queries
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(1000); // Let UI settle after initialization
+                        
+                        var repo = Container.Resolve<WileyWidget.Business.Interfaces.IMunicipalAccountRepository>();
+                        var logger = Container.Resolve<ILogger<App>>();
+                        
+                        // Measure cold query (first hit with compilation)
+                        var coldSw = Stopwatch.StartNew();
+                        var coldResult = await repo.GetAllAsync();
+                        coldSw.Stop();
+                        
+                        // Measure warm query (cached query plan)
+                        var warmSw = Stopwatch.StartNew();
+                        var warmResult = await repo.GetAllAsync();
+                        warmSw.Stop();
+                        
+                        var coldCount = coldResult.Count();
+                        var warmCount = warmResult.Count();
+                        var memoryMB = Math.Round(GC.GetTotalMemory(forceFullCollection: false) / 1024d / 1024d, 2);
+                        
+                        logger.LogInformation(
+                            "EF FIRST QUERY TIMING: Entity=MunicipalAccount ColdMs={ColdMs} WarmMs={WarmMs} ColdCount={ColdCount} WarmCount={WarmCount} MemoryMB={MemoryMB}",
+                            coldSw.ElapsedMilliseconds,
+                            warmSw.ElapsedMilliseconds,
+                            coldCount,
+                            warmCount,
+                            memoryMB);
+                        
+                        if (coldSw.ElapsedMilliseconds <= 1000)
+                        {
+                            logger.LogInformation("EF FIRST QUERY TARGET ✅ ColdMs={ColdMs} within <1000ms target", coldSw.ElapsedMilliseconds);
+                        }
+                        else
+                        {
+                            logger.LogWarning("EF FIRST QUERY TARGET ❌ ColdMs={ColdMs} exceeded <1000ms target", coldSw.ElapsedMilliseconds);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Failed to measure first MunicipalAccount query timing (non-critical)");
+                    }
+                });
 
                 // Note: Deferred secrets initialization removed - secrets managed via LocalSecretVaultService.
                 // Secrets are loaded synchronously during bootstrap from local vault (secrets/ directory).
