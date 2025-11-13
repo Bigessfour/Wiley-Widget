@@ -278,6 +278,32 @@ namespace WileyWidget
                     Log.Warning(memEx, "[THEME] Could not check memory status - proceeding with theme application");
                 }
 
+                // Ensure Syncfusion FluentLight resources are merged before applying theme
+                try
+                {
+                    var hasSfTheme = false;
+                    foreach (var dict in Application.Current.Resources.MergedDictionaries)
+                    {
+                        var src = dict.Source?.ToString();
+                        if (!string.IsNullOrEmpty(src) && src.Contains("/Syncfusion.SfSkinCore;component/Themes/FluentLight.xaml", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hasSfTheme = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasSfTheme)
+                    {
+                        var uri = new Uri("pack://application:,,,/Syncfusion.SfSkinCore;component/Themes/FluentLight.xaml", UriKind.Absolute);
+                        Application.Current.Resources.MergedDictionaries.Insert(0, new ResourceDictionary { Source = uri });
+                        Log.Information("[THEME] Injected Syncfusion FluentLight resource dictionary into Application.Resources");
+                    }
+                }
+                catch (Exception injectEx)
+                {
+                    Log.Warning(injectEx, "[THEME] Failed to ensure Syncfusion FluentLight resource dictionary is merged");
+                }
+
                 // PHASE 3: Theme Application with License-Aware Error Handling
                 Log.Information("[THEME] Applying FluentLight theme...");
 

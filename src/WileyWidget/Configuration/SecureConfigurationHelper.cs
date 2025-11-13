@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using WileyWidget.Abstractions;
+using WileyWidget.Services;
 
 namespace WileyWidget.Configuration;
 
@@ -65,7 +65,7 @@ public class SecureConfigurationHelper
         {
             try
             {
-                var vaultValue = await _secretVault.GetSecretAsync(vaultKey, cancellationToken);
+                var vaultValue = await _secretVault.GetSecretAsync(vaultKey);
                 if (!string.IsNullOrWhiteSpace(vaultValue))
                 {
                     _logger.LogDebug(

@@ -11,6 +11,8 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
+        <!-- Syncfusion FluentLight base theme (ensures resources available pre-theme) -->
+        <ResourceDictionary Source="pack://application:,,,/Syncfusion.SfSkinCore;component/Themes/FluentLight.xaml" />
         <!-- ============================================================== -->
         <!-- Syncfusion Theme Integration using SfSkinManager v31.1.17     -->
         <!-- Reference: https://help.syncfusion.com/wpf/themes/skin-manager -->
