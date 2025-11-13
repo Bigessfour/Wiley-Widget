@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <!-- Configurations that affect the Test Framework -->
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <!-- Set environment variables for tests -->
+      <TEST_ENVIRONMENT>CI</TEST_ENVIRONMENT>
+    </EnvironmentVariables>
+    <TestSessionTimeout>120000</TestSessionTimeout>
+  </RunConfiguration>
+
+  <!-- Configurations for data collectors -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Exclude>[WileyWidget.UI]*</Exclude>
+          <ExcludeByAttribute>ExcludeFromCodeCoverage</ExcludeByAttribute>
+          <IncludeTestAssembly>true</IncludeTestAssembly>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+
+  <!-- Adapter specific configurations -->
+  <MSTest>
+    <Parallelize>
+      <Workers>4</Workers>
+      <Scope>ClassLevel</Scope>
+    </Parallelize>
+    <CaptureTraceOutput>false</CaptureTraceOutput>
+    <DeleteOldTestResultsFiles>true</DeleteOldTestResultsFiles>
+    <DeploymentEnabled>false</DeploymentEnabled>
+  </MSTest>
+
+  <NUnit>
+    <TestOutputXml>../../../TestResults</TestOutputXml>
+  </NUnit>
+
+  <!-- Test run parameters -->
+  <TestRunParameters>
+    <Parameter name="AppUrl" value="http://localhost:5000" />
+    <Parameter name="DBConnectionString" value="Data Source=:memory:" />
+  </TestRunParameters>
+</RunSettings>

@@ -1754,6 +1754,29 @@
 				"showReuseMessage": false
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "Analyze CI Failures",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+			"-ExecutionPolicy",
+			"Bypass",
+			"-File",
+			"${workspaceFolder}/scripts/tools/analyze-ci-failures.ps1",
+				"-Limit",
+			"5",
+				"-Verbose"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
 		}
 	],
 	"inputs": [

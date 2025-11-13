@@ -51,12 +51,12 @@ param(
     [bool] $RunManifest = $true
 )
 
-function Throw-Termination($msg, [int]$code = 1) {
+function Stop-ScriptExecution($msg, [int]$code = 1) {
     Write-Error $msg
     exit $code
 }
 
-function Run-Git([string[]]$GitArgs) {
+function Invoke-Git([string[]]$GitArgs) {
     Write-Verbose "git $($GitArgs -join ' ')"
     $proc = & git @GitArgs 2>&1
     $exit = $LASTEXITCODE
@@ -64,7 +64,7 @@ function Run-Git([string[]]$GitArgs) {
 }
 
 # Filter out git warning lines (e.g., CRLF -> LF messages) and empty lines
-function Clean-GitLines([string[]]$lines) {
+function Remove-GitWarningLines([string[]]$lines) {
     if (-not $lines) { return @() }
     return $lines | ForEach-Object { $_.Trim() } |
     Where-Object { $_ -ne '' -and ($_ -notmatch '^warning:') -and ($_ -notmatch 'CRLF will be replaced by LF') }
@@ -97,9 +97,9 @@ function Find-PythonExe {
     return $null
 }
 
-function Run-PythonScript($pythonExe, $scriptPath, [string[]]$args) {
-    Write-Output "Running Python: $pythonExe $scriptPath $($args -join ' ')"
-    $out = & $pythonExe $scriptPath @args 2>&1
+function Invoke-PythonScript($pythonExe, $scriptPath, [string[]]$Arguments) {
+    Write-Output "Running Python: $pythonExe $scriptPath $($Arguments -join ' ')"
+    $out = & $pythonExe $scriptPath @Arguments 2>&1
     $exit = $LASTEXITCODE
 
     # Output the results to console
@@ -130,7 +130,7 @@ function Assert-ScriptsLayout {
     }
 
     if ($missing.Count -gt 0) {
-        Throw-Termination "Canonical scripts layout incomplete. Missing: $($missing -join ', '). Restore the expected structure before continuing." 99
+        Stop-ScriptExecution "Canonical scripts layout incomplete. Missing: $($missing -join ', '). Restore the expected structure before continuing." 99
     }
 }
 
@@ -145,16 +145,16 @@ if ($MyInvocation.MyCommand.Path) {
 Assert-ScriptsLayout
 
 # Ensure this is a git repository
-$check = Run-Git -GitArgs @('rev-parse', '--git-dir')
+$check = Invoke-Git -GitArgs @('rev-parse', '--git-dir')
 if ($check.ExitCode -ne 0) {
-    Throw-Termination "This directory is not a Git repository (git rev-parse failed)."
+    Stop-ScriptExecution "This directory is not a Git repository (git rev-parse failed)."
 }
 
 # Determine current branch if not provided
 if ([string]::IsNullOrEmpty($Branch)) {
-    $branchInfo = Run-Git -GitArgs @('rev-parse', '--abbrev-ref', 'HEAD')
+    $branchInfo = Invoke-Git -GitArgs @('rev-parse', '--abbrev-ref', 'HEAD')
     if ($branchInfo.ExitCode -ne 0) {
-        Throw-Termination "Failed to determine current branch."
+        Stop-ScriptExecution "Failed to determine current branch."
     }
     $Branch = $branchInfo.Output -join "`n" | ForEach-Object { $_.Trim() } | Select-Object -First 1
 }
@@ -162,28 +162,28 @@ if ([string]::IsNullOrEmpty($Branch)) {
 Write-Output "Repository branch: $Branch"
 
 # Check for unmerged paths (merge conflicts)
-$unmerged = Run-Git -GitArgs @('diff', '--name-only', '--diff-filter=U')
+$unmerged = Invoke-Git -GitArgs @('diff', '--name-only', '--diff-filter=U')
 if ($unmerged.ExitCode -ne 0) {
-    Throw-Termination "Failed to check for unmerged files."
+    Stop-ScriptExecution "Failed to check for unmerged files."
 }
 # Clean out warning lines that may appear on stderr (CRLF -> LF messages)
-$unmergedPaths = Clean-GitLines $unmerged.Output
+$unmergedPaths = Remove-GitWarningLines $unmerged.Output
 if ($unmergedPaths.Count -gt 0) {
     Write-Warning "Unmerged/conflicted files detected:"
     $unmergedPaths | ForEach-Object { Write-Warning "  $_" }
-    Throw-Termination "Resolve conflicts before running this script." 2
+    Stop-ScriptExecution "Resolve conflicts before running this script." 2
 }
 
 # Gather porcelain status
-$status = Run-Git -GitArgs @('status', '--porcelain')
+$status = Invoke-Git -GitArgs @('status', '--porcelain')
 if ($status.ExitCode -ne 0) {
-    Throw-Termination "git status failed." 3
+    Stop-ScriptExecution "git status failed." 3
 }
 
 # Collect untracked files explicitly
-$untracked = Run-Git -GitArgs @('ls-files', '--others', '--exclude-standard')
+$untracked = Invoke-Git -GitArgs @('ls-files', '--others', '--exclude-standard')
 if ($untracked.ExitCode -ne 0) {
-    Throw-Termination "git ls-files failed." 4
+    Stop-ScriptExecution "git ls-files failed." 4
 }
 
 if ($untracked.Output.Count -gt 0) {
@@ -208,7 +208,7 @@ if ($untracked.Output.Count -gt 0) {
             return $false
         }
 
-        $untrackedPaths = Clean-GitLines $untracked.Output
+        $untrackedPaths = Remove-GitWarningLines $untracked.Output
         $toAdd = @()
         foreach ($p in $untrackedPaths) {
             # Normalize to forward slashes for matching
@@ -226,7 +226,7 @@ if ($untracked.Output.Count -gt 0) {
             $succeededAdds = @()
             foreach ($p in $toAdd) {
                 try {
-                    $singleAdd = Run-Git -GitArgs @('add', '--', $p)
+                    $singleAdd = Invoke-Git -GitArgs @('add', '--', $p)
                 } catch {
                     $singleAdd = @{ ExitCode = $LASTEXITCODE; Output = @($_.Exception.Message) }
                 }
@@ -264,27 +264,27 @@ if ($DryRun) {
     Write-Output "Dry-run: would stage all changes (git add -A)."
 } else {
     Write-Output "Staging all changes (git add -A)..."
-    $addAll = Run-Git -GitArgs @('add', '-A')
+    $addAll = Invoke-Git -GitArgs @('add', '-A')
     if ($addAll.ExitCode -ne 0) {
-        Throw-Termination "git add -A failed. Output:`n$($addAll.Output -join "`n")" 6
+        Stop-ScriptExecution "git add -A failed. Output:`n$($addAll.Output -join "`n")" 6
     }
 }
 
 # Check if there is anything to commit
-$diffCached = Run-Git -GitArgs @('diff', '--cached', '--name-only')
+$diffCached = Invoke-Git -GitArgs @('diff', '--cached', '--name-only')
 if ($diffCached.ExitCode -ne 0) {
-    Throw-Termination "git diff --cached failed." 7
+    Stop-ScriptExecution "git diff --cached failed." 7
 }
 
-$stagedFiles = Clean-GitLines $diffCached.Output
+$stagedFiles = Remove-GitWarningLines $diffCached.Output
 
 if ($stagedFiles.Count -eq 0) {
     if ($Force) {
         Write-Warning "No staged changes, but -Force specified: creating an empty commit."
         if (-not $DryRun) {
-            $commitRes = Run-Git -GitArgs @('commit', '--allow-empty', '-m', (if ($Message -ne '') { $Message } else { "chore: empty commit on $Branch - $(Get-Date -Format o)" }))
+            $commitRes = Invoke-Git -GitArgs @('commit', '--allow-empty', '-m', (if ($Message -ne '') { $Message } else { "chore: empty commit on $Branch - $(Get-Date -Format o)" }))
             if ($commitRes.ExitCode -ne 0) {
-                Throw-Termination "Failed to create empty commit. Output:`n$($commitRes.Output -join "`n")" 8
+                Stop-ScriptExecution "Failed to create empty commit. Output:`n$($commitRes.Output -join "`n")" 8
             }
         }
     } else {
@@ -322,21 +322,21 @@ if ($stagedFiles.Count -eq 0) {
 
     Write-Output "Committing changes: $Message"
     if (-not $DryRun) {
-        $commitRes = Run-Git -GitArgs @('commit', '-m', $Message)
+        $commitRes = Invoke-Git -GitArgs @('commit', '-m', $Message)
         if ($commitRes.ExitCode -ne 0) {
-            Throw-Termination "git commit failed. Output:`n$($commitRes.Output -join "`n")" 9
+            Stop-ScriptExecution "git commit failed. Output:`n$($commitRes.Output -join "`n")" 9
         }
     }
 }
 
 # Ensure remote exists
-$remotes = Run-Git -GitArgs @('remote')
+$remotes = Invoke-Git -GitArgs @('remote')
 if ($remotes.ExitCode -ne 0) {
-    Throw-Termination "git remote failed." 10
+    Stop-ScriptExecution "git remote failed." 10
 }
 if (-not ($remotes.Output -contains $Remote)) {
     Write-Error "Remote '$Remote' not found. Available remotes: $($remotes.Output -join ', ')"
-    Throw-Termination "Remote '$Remote' does not exist." 11
+    Stop-ScriptExecution "Remote '$Remote' does not exist." 11
 }
 
 # Check for upstream and perform a safe pull (rebase) if remote is ahead
@@ -350,7 +350,7 @@ try {
 if (-not [string]::IsNullOrEmpty($upstream)) {
     Write-Verbose "Upstream exists: $upstream"
     # Compare local and upstream
-    $counts = Run-Git -GitArgs @('rev-list', '--left-right', '--count', 'HEAD...@{u}')
+    $counts = Invoke-Git -GitArgs @('rev-list', '--left-right', '--count', 'HEAD...@{u}')
     if ($counts.ExitCode -eq 0) {
         $parts = ($counts.Output -join "") -split '\s+'
         if ($parts.Length -ge 2) {
@@ -360,9 +360,9 @@ if (-not [string]::IsNullOrEmpty($upstream)) {
             if ($behind -gt 0) {
                 Write-Warning "Remote has new commits; pulling (rebase + autostash) before push..."
                 if (-not $DryRun) {
-                    $pullRes = Run-Git -GitArgs @('pull', '--rebase', '--autostash')
+                    $pullRes = Invoke-Git -GitArgs @('pull', '--rebase', '--autostash')
                     if ($pullRes.ExitCode -ne 0) {
-                        Throw-Termination "git pull --rebase failed. Resolve conflicts and try again. Output:`n$($pullRes.Output -join "`n")" 12
+                        Stop-ScriptExecution "git pull --rebase failed. Resolve conflicts and try again. Output:`n$($pullRes.Output -join "`n")" 12
                     }
                 }
             }
@@ -386,17 +386,88 @@ if ($DryRun) {
 
 if ([string]::IsNullOrEmpty($upstream)) {
     Write-Output "Pushing and setting upstream: git push --set-upstream $Remote $Branch"
-    $pushRes = Run-Git -GitArgs @('push', '--set-upstream', $Remote, $Branch)
+    $pushRes = Invoke-Git -GitArgs @('push', '--set-upstream', $Remote, $Branch)
 } else {
     Write-Output "Pushing: git push $Remote $Branch"
-    $pushRes = Run-Git -GitArgs @('push', $Remote, $Branch)
+    $pushRes = Invoke-Git -GitArgs @('push', $Remote, $Branch)
 }
 
 if ($pushRes.ExitCode -ne 0) {
-    Throw-Termination "git push failed. Output:`n$($pushRes.Output -join "`n")" 13
+    Stop-ScriptExecution "git push failed. Output:`n$($pushRes.Output -join "`n")" 13
 }
 
-Write-Output "Push succeeded."
+# After successful push, check for CI failures and attempt auto-fix if possible
+if (-not $DryRun) {
+    Write-Output "Checking for recent CI failures..."
+    
+    # Get the latest workflow run
+    $latestRun = & gh run list --limit 1 --json status,conclusion,databaseId 2>$null | ConvertFrom-Json
+    if ($latestRun) {
+        $runId = $latestRun.databaseId
+        $status = $latestRun.status
+        $conclusion = $latestRun.conclusion
+        
+        Write-Output "Latest run ID: $runId, Status: $status, Conclusion: $conclusion"
+        
+        if ($conclusion -eq 'failure') {
+            Write-Warning "CI failure detected. Analyzing logs..."
+            
+            # Get failed logs
+            $logOutput = & gh run view $runId --log-failed 2>$null
+            $logText = $logOutput -join "`n"
+            
+            # Check for common Trunk issues
+            $trunkIssues = $false
+            if ($logText -match 'trunk|lint|format|security') {
+                $trunkIssues = $true
+            }
+            
+            if ($trunkIssues) {
+                Write-Output "Detected Trunk-related issues. Running trunk check --fix..."
+                
+                # Run trunk fixes
+                $trunkFix = & trunk check --fix 2>&1
+                $trunkExit = $LASTEXITCODE
+                
+                if ($trunkExit -eq 0) {
+                    Write-Output "Trunk fixes applied successfully."
+                    
+                    # Check if there are changes to commit
+                    $statusCheck = Invoke-Git -GitArgs @('status', '--porcelain')
+                    if ($statusCheck.ExitCode -eq 0 -and $statusCheck.Output.Count -gt 0) {
+                        Write-Output "Committing Trunk fixes..."
+                        $fixCommit = Invoke-Git -GitArgs @('add', '-A')
+                        if ($fixCommit.ExitCode -eq 0) {
+                            $fixCommitMsg = "fix: apply Trunk automated fixes for CI failure"
+                            $commitFix = Invoke-Git -GitArgs @('commit', '-m', $fixCommitMsg)
+                            if ($commitFix.ExitCode -eq 0) {
+                                Write-Output "Committed fixes. Pushing..."
+                                $repush = Invoke-Git -GitArgs @('push', $Remote, $Branch)
+                                if ($repush.ExitCode -eq 0) {
+                                    Write-Output "Repush successful."
+                                } else {
+                                    Write-Warning "Repush failed."
+                                }
+                            }
+                        }
+                    } else {
+                        Write-Output "No changes from Trunk fixes."
+                    }
+                } else {
+                    Write-Warning "Trunk fixes failed. Manual intervention required."
+                }
+            } else {
+                Write-Warning "CI failure not related to Trunk issues. Manual review required."
+            }
+        } elseif ($conclusion -eq 'success') {
+            Write-Output "CI passed successfully."
+        } else {
+            Write-Output "CI status: $status ($conclusion)"
+        }
+    } else {
+        Write-Warning "Could not retrieve latest CI run status."
+    }
+}
 
 # After successful push, optionally update the AI fetchable manifest using the repository's Python environment
 if ($RunManifest) {
@@ -408,7 +479,7 @@ if ($RunManifest) {
 
     $pythonExe = Find-PythonExe
     if (-not $pythonExe) {
-        Throw-Termination "No Python executable found to run manifest generator. Please install Python or create a virtualenv." 14
+        Stop-ScriptExecution "No Python executable found to run manifest generator. Please install Python or create a virtualenv." 14
     }
 
     Write-Output "Invoking manifest generator with: $pythonExe $manifestScript"
@@ -417,10 +488,10 @@ if ($RunManifest) {
         exit 0
     }
 
-    $pyRes = Run-PythonScript $pythonExe $manifestScript @('-o', 'ai-fetchable-manifest.json')
+    $pyRes = Invoke-PythonScript $pythonExe $manifestScript @('-o', 'ai-fetchable-manifest.json')
     if ($pyRes.ExitCode -ne 0) {
         Write-Warning "Manifest generation failed with exit code $($pyRes.ExitCode)"
-        Throw-Termination "Manifest generation failed. Output:`n$($pyRes.Output -join "`n")" 15
+        Stop-ScriptExecution "Manifest generation failed. Output:`n$($pyRes.Output -join "`n")" 15
     }
 
     Write-Output "Manifest generated successfully."
