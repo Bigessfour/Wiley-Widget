@@ -35,11 +35,6 @@
         <!-- Strings.xaml contains localized strings and accessibility text -->
         <ResourceDictionary Source="/WileyWidget;component/Resources/Strings.xaml" />
 
-        <!-- Syncfusion Theme Resources (required for proper theme loading) -->
-        <ResourceDictionary Source="pack://application:,,,/Syncfusion.Themes.FluentLight.WPF;component/FluentLight/FluentLight.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/Syncfusion.Themes.FluentDark.WPF;component/FluentDark/FluentDark.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/Syncfusion.SfSkinManager.WPF;component/SfSkinManager/SfSkinManager.xaml" />
-
         <!-- NOTE: Syncfusion theme is applied programmatically via SfSkinManager in App.xaml.cs -->
         <!-- SfSkinManager.ApplyThemeAsDefaultStyle = true applies theme to ALL controls
         automatically -->

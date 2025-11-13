@@ -238,8 +238,10 @@ public static class DatabaseConfiguration
         }
         options.EnableDetailedErrors();
 
-        // Configure query tracking
-        options.UseQueryTrackingBehavior(QueryTrackingBehavior.TrackAll);
+        // Configure query tracking - optimized for read-heavy workloads
+        // EF Core 9.0.0 Optimization: Default to NoTracking to eliminate change detection overhead
+        // Individual queries can still use .AsTracking() when modification is needed
+        options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 
         // Configure warnings
         options.ConfigureWarnings(warnings =>

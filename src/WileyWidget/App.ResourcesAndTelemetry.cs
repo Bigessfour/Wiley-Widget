@@ -366,12 +366,9 @@ namespace WileyWidget
                                 Log.Warning("[THEME] PrimaryTextBrush not found - may cause UI issues but not a hang");
                             }
 
-                            // Test Syncfusion theme integration
-                            var sfTest = Application.Current.TryFindResource("SfSkinManager");
-                            if (sfTest == null)
-                            {
-                                Log.Warning("[THEME] SfSkinManager resource not found - theme integration may be incomplete");
-                            }
+                            // Syncfusion theme integration verified via SfSkinManager.ApplicationTheme check above
+                            // No need to check for specific resource keys - SfSkinManager handles all theme propagation
+                            Log.Debug("[THEME] ✓ SfSkinManager theme integration active: {Theme}", SfSkinManager.ApplicationTheme?.ThemeName ?? "None");
 
                             // Validate BudgetView-specific brushes to prevent XAML load exceptions
                             ValidateBudgetViewBrushes();

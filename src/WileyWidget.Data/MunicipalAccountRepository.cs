@@ -68,6 +68,7 @@ namespace WileyWidget.Data
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
                 accounts = await context.MunicipalAccounts
+                    .AsNoTracking()
                     .OrderBy(ma => ma.AccountNumber!.Value)
                     .ToListAsync();
 
@@ -88,7 +89,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
 
-            var query = context.MunicipalAccounts.AsQueryable();
+            var query = context.MunicipalAccounts.AsNoTracking().AsQueryable();
 
             // Apply sorting
             query = ApplySorting(query, sortBy, sortDescending);
@@ -118,6 +119,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
+                .AsNoTracking()
                 .Include(ma => ma.Department)
                 .Include(ma => ma.BudgetEntries)
                 .OrderBy(ma => ma.AccountNumber!.Value)
@@ -128,6 +130,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(a => a.TypeDescription == typeFilter)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
@@ -137,6 +140,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.IsActive)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
@@ -146,6 +150,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
+                .AsNoTracking()
         .Where(ma => ma.Fund == fund && ma.IsActive)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
@@ -155,6 +160,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
+                .AsNoTracking()
         .Where(ma => ma.Type == type && ma.IsActive)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
@@ -170,6 +176,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
+                .AsNoTracking()
                 .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber);
         }
 
@@ -177,6 +184,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             var accounts = await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.DepartmentId == departmentId && ma.IsActive)
                 .ToListAsync();
 
@@ -191,21 +199,21 @@ namespace WileyWidget.Data
             // FundClass is a computed property, so we need to filter by the underlying Fund property
             IQueryable<MunicipalAccount> query = fundClass switch
             {
-                FundClass.Governmental => context.MunicipalAccounts.Where(ma =>
+                FundClass.Governmental => context.MunicipalAccounts.AsNoTracking().Where(ma =>
                     (ma.Fund == MunicipalFundType.General ||
                      ma.Fund == MunicipalFundType.SpecialRevenue ||
                      ma.Fund == MunicipalFundType.CapitalProjects ||
                      ma.Fund == MunicipalFundType.DebtService) && ma.IsActive),
 
-                FundClass.Proprietary => context.MunicipalAccounts.Where(ma =>
+                FundClass.Proprietary => context.MunicipalAccounts.AsNoTracking().Where(ma =>
                     (ma.Fund == MunicipalFundType.Enterprise ||
                      ma.Fund == MunicipalFundType.InternalService) && ma.IsActive),
 
-                FundClass.Fiduciary => context.MunicipalAccounts.Where(ma =>
+                FundClass.Fiduciary => context.MunicipalAccounts.AsNoTracking().Where(ma =>
                     (ma.Fund == MunicipalFundType.Trust ||
                      ma.Fund == MunicipalFundType.Agency) && ma.IsActive),
 
-                _ => context.MunicipalAccounts.Where(ma => false) // No results for invalid fund class
+                _ => context.MunicipalAccounts.AsNoTracking().Where(ma => false) // No results for invalid fund class
             };
 
             var accounts = await query.ToListAsync();
@@ -218,6 +226,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             var accounts = await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.Type == accountType && ma.IsActive)
                 .ToListAsync();
 
@@ -227,6 +236,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             var accounts = await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.ParentAccountId == parentAccountId && ma.IsActive)
                 .ToListAsync();
 
@@ -245,6 +255,7 @@ namespace WileyWidget.Data
                 return new List<MunicipalAccount>();
 
             return await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.AccountNumber!.Value.StartsWith(rootAccount.AccountNumber!.Value) && ma.IsActive)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
@@ -254,6 +265,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.Name.Contains(searchTerm) && ma.IsActive)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
@@ -509,6 +521,7 @@ namespace WileyWidget.Data
 
             // Get accounts that have budget entries for this fiscal year
             var accounts = await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.IsActive && ma.BudgetAmount != 0)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
@@ -520,6 +533,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             var accounts = await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.IsActive && ma.BudgetAmount != 0)
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
@@ -530,6 +544,7 @@ namespace WileyWidget.Data
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.MunicipalAccounts
+                .AsNoTracking()
                 .Where(ma => ma.IsActive && ma.BudgetAmount != 0 && ma.AccountNumber != null)
                 .OrderBy(static ma => ma.AccountNumber!.Value)
                 .ToListAsync();
