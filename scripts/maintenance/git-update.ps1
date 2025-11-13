@@ -88,11 +88,11 @@ function Write-Log {
         Metadata = $Metadata
     }
     if ($LogFormat -eq 'json') {
-        $logEntry | ConvertTo-Json -Compress | Write-Output
+        $logEntry | ConvertTo-Json -Compress -Depth 3 | Write-Output
     } else {
         $emoji = switch ($Level) { 'INFO' { 'ℹ️' } 'WARN' { '⚠️' } 'ERROR' { '❌' } default { '✓' } }
         Write-Output "[$timestamp] $emoji [$Level] $Message"
-        if ($Metadata.Count -gt 0) { Write-Verbose "  Details: $($Metadata | ConvertTo-Json -Compress)" }
+        if ($Metadata.Count -gt 0) { Write-Verbose "  Details: $($Metadata | ConvertTo-Json -Compress -Depth 3)" }
     }
 }
 
@@ -129,7 +129,8 @@ function Invoke-Git([string[]] $GitArgs, [string] $OpName = '') {
 
 # Enhanced warning filter
 function Get-FilteredGitLines([string[]] $lines) {
-    return $lines | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -notmatch '^(warning:|CRLF)' }
+    if (-not $lines) { return @() }
+    return $lines | ForEach-Object { if ($_) { $_.Trim() } } | Where-Object { $_ -and $_ -notmatch '^(warning:|CRLF)' }
 }
 
 # Improved Python finder with version check
@@ -196,7 +197,11 @@ try {
     # Branch resolution
     if ([string]::IsNullOrEmpty($Branch)) {
         $branchInfo = Invoke-Git @('rev-parse', '--abbrev-ref', 'HEAD') 'branch-detect'
-        $Branch = (Get-FilteredGitLines $branchInfo.Output)[0]
+        $Branch = if ($branchInfo.Output -is [array]) { 
+            ($branchInfo.Output | Select-Object -First 1).ToString().Trim()
+        } else { 
+            $branchInfo.Output.ToString().Trim()
+        }
     }
     Write-Log 'INFO' "Operating on branch: $Branch" @{ Branch = $Branch }
 
@@ -279,7 +284,15 @@ try {
     if ($remotes.Output -notcontains $Remote) { Write-ErrorAndExit "Remote '$Remote' not found. Available: $($remotes.Output -join ', ')." 11 }
 
     $upstream = Invoke-Git @('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}') 'upstream-detect'
-    $upstream = if ($upstream.ExitCode -eq 0) { (Get-FilteredGitLines $upstream.Output)[0] } else { $null }
+    $upstream = if ($upstream.ExitCode -eq 0 -and $upstream.Output) {
+        if ($upstream.Output -is [array]) {
+            ($upstream.Output | Select-Object -First 1).ToString().Trim()
+        } else {
+            $upstream.Output.ToString().Trim()
+        }
+    } else {
+        $null
+    }
 
     # Pull if behind
     if ($upstream) {
@@ -308,7 +321,13 @@ try {
     if (-not $upstream) { $pushArgs += @('--set-upstream', $Remote, $Branch) } else { $pushArgs += @($Remote, $Branch) }
     if ($PSCmdlet.ShouldProcess("push to $Remote/$Branch", 'git push')) {
         $pushRes = Invoke-Git $pushArgs 'push'
-        if ($pushRes.ExitCode -ne 0) { Write-ErrorAndExit 'Push failed.' 13 @{ Output = $pushRes.Output } }
+        # Git push writes progress to stderr, so check for actual errors
+        $hasError = $pushRes.Output | Where-Object { $_ -match '^(error|fatal):' }
+        if ($pushRes.ExitCode -ne 0 -and $hasError) {
+            Write-ErrorAndExit 'Push failed.' 13 @{ Output = ($pushRes.Output | Select-Object -First 10) }
+        } else {
+            Write-Log 'INFO' "Pushed to $Remote/$Branch successfully"
+        }
     }
 
     # Enhanced CI check & auto-fix
