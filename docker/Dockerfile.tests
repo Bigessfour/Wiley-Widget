@@ -23,6 +23,14 @@ COPY test/ test/
 # Restore all projects
 RUN dotnet restore WileyWidget.sln
 
+# Create a non-root user for security
+RUN useradd -m testuser
+USER testuser
+
+# Health check to ensure the container is operational
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD dotnet --version || exit 1
+
 # Default command runs all tests with coverage
 CMD ["dotnet", "test", "WileyWidget.sln", \
      "--collect:XPlat Code Coverage", \

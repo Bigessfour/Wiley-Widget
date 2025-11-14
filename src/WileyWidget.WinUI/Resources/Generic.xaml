@@ -25,7 +25,4 @@
         <Setter Property="Padding" Value="12"/>
     </Style>
 
-    <!-- Simple converter (optional, can be moved to code-behind) -->
-    <local:BooleanToVisibilityConverter x:Key="BoolToVis"/>
-
 </ResourceDictionary>

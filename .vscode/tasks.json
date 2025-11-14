@@ -1846,6 +1846,93 @@
 			],
 			"group": "test",
 			"problemMatcher": []
+		},
+		{
+			"label": "mcp:setup-sql-server",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/setup-sql-mcp.ps1",
+				"-TestConnection",
+				"-CreateProfile"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "mcp:update-docker-images",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/update-mcp-images.ps1",
+				"-Verbose"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "mcp:audit-github-token",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/audit-github-token.ps1",
+				"-Verbose"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "mcp:integrate-sequential-thinking",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/integrate-sequential-thinking.ps1",
+				"-CreateHelpers",
+				"-GenerateExamples",
+				"-Validate"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
 		}
 	],
 	"inputs": [

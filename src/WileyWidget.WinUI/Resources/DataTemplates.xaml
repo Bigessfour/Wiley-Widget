@@ -3,28 +3,28 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:WileyWidget.ViewModels"
-    xmlns:views="using:WileyWidget.Views"
     xmlns:syncfusion="using:Syncfusion.UI.Xaml.Grids"
     xmlns:sfchart="using:Syncfusion.UI.Xaml.Charts">
 
     <!-- ============================================================= -->
     <!--  ViewModel → View mappings (Prism ViewModelLocator will use) -->
     <!-- ============================================================= -->
+    <!-- NOTE: WPF views removed - create WinUI equivalents in Views/ folder -->
 
-    <!-- Settings -->
-    <DataTemplate x:Key="SettingsViewTemplate" DataType="vm:SettingsViewModel">
+    <!-- Settings - TODO: Create WinUI SettingsView -->
+    <!-- <DataTemplate x:Key="SettingsViewTemplate" DataType="vm:SettingsViewModel">
         <views:SettingsView />
-    </DataTemplate>
+    </DataTemplate> -->
 
-    <!-- Dashboard -->
-    <DataTemplate x:Key="DashboardViewTemplate" DataType="vm:DashboardViewModel">
+    <!-- Dashboard - TODO: Create WinUI DashboardView -->
+    <!-- <DataTemplate x:Key="DashboardViewTemplate" DataType="vm:DashboardViewModel">
         <views:DashboardView />
-    </DataTemplate>
+    </DataTemplate> -->
 
-    <!-- QuickBooks Sync -->
-    <DataTemplate x:Key="QuickBooksSyncViewTemplate" DataType="vm:QuickBooksSyncViewModel">
+    <!-- QuickBooks Sync - TODO: Create WinUI QuickBooksSyncView -->
+    <!-- <DataTemplate x:Key="QuickBooksSyncViewTemplate" DataType="vm:QuickBooksSyncViewModel">
         <views:QuickBooksSyncView />
-    </DataTemplate>
+    </DataTemplate> -->
 
     <!-- Municipal Accounts Grid -->
     <DataTemplate x:Key="MunicipalAccountsTemplate" DataType="vm:MunicipalAccountsViewModel">

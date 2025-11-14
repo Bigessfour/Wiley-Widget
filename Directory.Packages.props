@@ -4,132 +4,54 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Core Microsoft + EF -->
-    <PackageVersion
-        Include="BoldReports.WPF"
-        Version="11.1.19" />
+    <PackageVersion Include="BoldReports.WPF" Version="11.1.19" />
     <!-- MahApps.Metro.IconPacks - Use specific packs instead of metapackage to avoid 50+ transitive dependencies -->
-    <PackageVersion
-        Include="MahApps.Metro.IconPacks.FontAwesome"
-        Version="6.2.1" />
-    <PackageVersion
-        Include="MahApps.Metro.IconPacks.Material"
-        Version="6.2.1" />
-    <PackageVersion
-        Include="Microsoft.ApplicationInsights"
-        Version="2.23.0" />
-    <PackageVersion
-        Include="Microsoft.CodeAnalysis.Common"
-        Version="4.8.0" />
-    <PackageVersion
-        Include="Microsoft.CodeAnalysis.CSharp"
-        Version="4.8.0" />
-    <PackageVersion
-        Include="Microsoft.CodeAnalysis.CSharp.Workspaces"
-        Version="4.8.0" />
-    <PackageVersion
-        Include="Microsoft.CodeAnalysis.VisualBasic"
-        Version="4.8.0" />
-    <PackageVersion
-        Include="Microsoft.CodeAnalysis.Workspaces.Common"
-        Version="4.8.0" />
-    <PackageVersion
-        Include="Microsoft.CodeAnalysis.Workspaces.MSBuild"
-        Version="4.8.0" />
-    <PackageVersion
-        Include="Microsoft.Data.SqlClient"
-        Version="6.1.2" />
+    <PackageVersion Include="MahApps.Metro.IconPacks.FontAwesome" Version="6.2.1" />
+    <PackageVersion Include="MahApps.Metro.IconPacks.Material" Version="6.2.1" />
+    <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.23.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.2" />
     <!-- MSAL packages removed from central package versions (archived) -->
-    <PackageVersion
-        Include="Newtonsoft.Json"
-        Version="13.0.3" />
-    <PackageVersion
-        Include="Microsoft.DotNet.Interactive"
-        Version="1.0.0-beta.23506.1" />
-    <PackageVersion
-        Include="Microsoft.EntityFrameworkCore"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.EntityFrameworkCore.Design"
-        Version="9.0.10">
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageVersion Include="Microsoft.DotNet.Interactive" Version="1.0.0-beta.23506.1" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
-    <PackageVersion
-        Include="Microsoft.EntityFrameworkCore.SqlServer"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.EntityFrameworkCore.Tools"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.EntityFrameworkCore.Sqlite"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.EntityFrameworkCore.InMemory"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Configuration.EnvironmentVariables"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Configuration.UserSecrets"
-        Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.10" />
     <!-- Identity -->
     <!-- Identity/MSAL entries removed from central package versions (archived) -->
-    <PackageVersion
-        Include="Microsoft.Graph"
-        Version="5.67.0" />
-    <PackageVersion
-        Include="Microsoft.Xaml.Behaviors.Wpf"
-        Version="1.1.135" />
+    <PackageVersion Include="Microsoft.Graph" Version="5.67.0" />
+    <PackageVersion Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
     <!-- Serilog (Aligned with Intuit SDK 14.x expectations) -->
-    <PackageVersion
-        Include="Serilog"
-        Version="4.3.0" />
-    <PackageVersion
-        Include="Serilog.Extensions.Logging"
-        Version="8.0.0" />
-    <PackageVersion
-        Include="Serilog.Enrichers.Environment"
-        Version="3.0.1" />
-    <PackageVersion
-        Include="Serilog.Enrichers.Process"
-        Version="3.0.0" />
-    <PackageVersion
-        Include="Serilog.Enrichers.Thread"
-        Version="4.0.0" />
-    <PackageVersion
-        Include="Serilog.Settings.Configuration"
-        Version="9.0.0" />
-    <PackageVersion
-        Include="Serilog.Sinks.Async"
-        Version="2.1.0" />
-    <PackageVersion
-        Include="Serilog.Sinks.Email"
-        Version="4.1.0" />
-    <PackageVersion
-        Include="Serilog.Sinks.File"
-        Version="7.0.0" />
-    <PackageVersion
-        Include="Serilog.Sinks.CosmosDB"
-        Version="1.2.0" />
+    <PackageVersion Include="Serilog" Version="4.3.0" />
+    <PackageVersion Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageVersion Include="Serilog.Settings.Configuration" Version="9.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Async" Version="2.1.0" />
+    <PackageVersion Include="Serilog.Sinks.Email" Version="4.1.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageVersion Include="Serilog.Sinks.CosmosDB" Version="1.2.0" />
     <!-- OpenTelemetry -->
-    <PackageVersion
-        Include="OpenTelemetry"
-        Version="[1.13.1, 2.0.0)" />
-    <PackageVersion
-        Include="OpenTelemetry.Exporter.Console"
-        Version="[1.13.1, 2.0.0)" />
-    <PackageVersion
-        Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"
-        Version="[1.13.1, 2.0.0)" />
-    <PackageVersion
-        Include="OpenTelemetry.Extensions.Hosting"
-        Version="[1.13.1, 2.0.0)" />
-    <PackageVersion
-        Include="OpenTelemetry.Instrumentation.Http"
-        Version="[1.13.0, 2.0.0)" />
-    <PackageVersion
-        Include="OpenTelemetry.Instrumentation.Runtime"
-        Version="[1.13.0, 2.0.0)" />
+    <PackageVersion Include="OpenTelemetry" Version="[1.13.1, 2.0.0)" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="[1.13.1, 2.0.0)" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="[1.13.1, 2.0.0)" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="[1.13.1, 2.0.0)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="[1.13.0, 2.0.0)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="[1.13.0, 2.0.0)" />
     <!-- EntityFrameworkCore instrumentation removed - package not available as stable -->
     <!-- <PackageVersion
         Include="OpenTelemetry.Instrumentation.EntityFrameworkCore"
@@ -139,327 +61,134 @@
         Include="OpenTelemetry.Instrumentation.SqlClient"
         Version="1.13.0-beta.2" /> -->
     <!-- Syncfusion WPF - v31.2.5 (latest with license compatibility) -->
-    <PackageVersion
-        Include="Syncfusion.Licensing"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfBusyIndicator.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfChart.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfChat.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Data.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfGauge.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfGrid.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfInput.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Spreadsheet.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfProgressBar.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfRichTextBoxAdv.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfSkinManager.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfSpreadsheet.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfTreeView.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.SfGridCommon.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Shared.WPF"
-        Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfBusyIndicator.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfChart.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfChat.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Data.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfGauge.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfGrid.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfInput.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Spreadsheet.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfProgressBar.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfRichTextBoxAdv.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfSkinManager.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfSpreadsheet.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfTreeView.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.SfGridCommon.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Shared.WPF" Version="31.2.5" />
     <!-- Syncfusion.ReportViewer.WPF removed - legacy package not used in WPF 9.0 -->
-    <PackageVersion
-        Include="Syncfusion.Themes.FluentDark.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Themes.FluentLight.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Tools.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.XlsIO.WPF"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Pdf.WPF"
-        Version="31.2.5" />
-    
-    <!-- Syncfusion WinUI 3 - v31.2.5 (matching WPF version) -->
-    <PackageVersion
-        Include="Syncfusion.Core.WinUI"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Grid.WinUI"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Chart.WinUI"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Gauge.WinUI"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.Editors.WinUI"
-        Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.TreeView.WinUI"
-        Version="31.2.5" />
-    
+    <PackageVersion Include="Syncfusion.Themes.FluentDark.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Themes.FluentLight.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Tools.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.XlsIO.WPF" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Pdf.WPF" Version="31.2.5" />
+    <!-- Syncfusion WinUI 3 - v31.2.5 (compatible with Windows App SDK 1.6) -->
+    <PackageVersion Include="Syncfusion.Core.WinUI" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Grid.WinUI" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Chart.WinUI" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Gauge.WinUI" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Editors.WinUI" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.TreeView.WinUI" Version="31.2.5" />
     <!-- QuickBooks -->
-    <PackageVersion
-        Include="IppOAuth2PlatformSdk"
-        Version="14.0.0" />
+    <PackageVersion Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <!-- Validation -->
-    <PackageVersion
-        Include="FluentValidation"
-        Version="12.1.0" />
+    <PackageVersion Include="FluentValidation" Version="12.1.0" />
     <!-- AI Integration Packages -->
-    <PackageVersion
-        Include="Microsoft.Extensions.AI"
-        Version="9.10.0" />
-    <PackageVersion
-        Include="OpenAI"
-        Version="2.5.0" />
-    <PackageVersion
-        Include="Microsoft.SemanticKernel"
-        Version="1.66.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="9.10.0" />
+    <PackageVersion Include="OpenAI" Version="2.5.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel" Version="1.66.0" />
     <!-- System.Diagnostics.DiagnosticSource - Required for OpenTelemetry and Activity tracing -->
-    <PackageVersion
-        Include="System.Diagnostics.DiagnosticSource"
-        Version="10.0.0" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.0" />
+    <!-- System.Text.Json - Required for MCP servers and modern JSON processing -->
+    <PackageVersion Include="System.Text.Json" Version="9.0.10" />
     <!-- Health Check Packages -->
-    <PackageVersion
-        Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.11" />
     <!-- Pin system packages to avoid transitive downgrades coming from legacy NETStandard
     dependencies -->
-    <PackageVersion
-        Include="System.IO.FileSystem"
-        Version="4.3.0" />
-    <PackageVersion
-        Include="System.Net.NameResolution"
-        Version="4.3.0" />
-    <PackageVersion
-        Include="System.Net.Primitives"
-        Version="4.3.0" />
-    <PackageVersion
-        Include="System.Net.Sockets"
-        Version="4.3.0" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.10.0" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="9.10.0" />
+    <PackageVersion Include="System.IO.FileSystem" Version="4.3.0" />
+    <PackageVersion Include="System.Net.NameResolution" Version="4.3.0" />
+    <PackageVersion Include="System.Net.Primitives" Version="4.3.0" />
+    <PackageVersion Include="System.Net.Sockets" Version="4.3.0" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="9.10.0" />
     <!-- Microsoft.Extensions family -->
-    <PackageVersion
-        Include="Microsoft.Extensions.Hosting"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Configuration"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Configuration.Json"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Primitives"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Options"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Caching.Memory"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.DependencyInjection"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Logging"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Logging.Console"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Logging.Abstractions"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="System.Management"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Http"
-        Version="9.0.10" />
-    <PackageVersion
-        Include="DotNetEnv"
-        Version="3.1.1" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Primitives" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageVersion Include="System.Management" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.10" />
+    <PackageVersion Include="DotNetEnv" Version="3.1.1" />
     <!-- Resilience Packages -->
-    <PackageVersion
-        Include="Polly"
-        Version="8.6.4" />
-    <PackageVersion
-        Include="Polly.Core"
-        Version="8.6.4" />
-    <PackageVersion
-        Include="Polly.RateLimiting"
-        Version="8.6.4" />
-    <PackageVersion
-        Include="Polly.Extensions.Http"
-        Version="3.0.0" />
-    <PackageVersion
-        Include="Microsoft.Extensions.Http.Resilience"
-        Version="9.10.0" />
+    <PackageVersion Include="Polly" Version="8.6.4" />
+    <PackageVersion Include="Polly.Core" Version="8.6.4" />
+    <PackageVersion Include="Polly.RateLimiting" Version="8.6.4" />
+    <PackageVersion Include="Polly.Extensions.Http" Version="3.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.10.0" />
     <!-- Test Packages -->
-    <PackageVersion
-        Include="Microsoft.NET.Test.Sdk"
-        Version="18.0.0" />
-    <PackageVersion
-        Include="xunit"
-        Version="2.9.2" />
-    <PackageVersion
-        Include="xunit.extensibility.core"
-        Version="2.9.2" />
-    <PackageVersion
-        Include="xunit.runner.visualstudio"
-        Version="3.0.1" />
-    <PackageVersion
-        Include="coverlet.collector"
-        Version="6.0.4" />
-    <PackageVersion
-        Include="Xunit.StaFact"
-        Version="1.1.11" />
-    <PackageVersion
-        Include="FluentAssertions"
-        Version="7.0.0" />
-    <PackageVersion
-        Include="Microsoft.CodeAnalysis.NetAnalyzers"
-        Version="10.0.100" />
-    <PackageVersion
-        Include="Moq"
-        Version="4.20.70" />
-    <PackageVersion
-        Include="RichardSzalay.MockHttp"
-        Version="7.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.extensibility.core" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.1" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Xunit.StaFact" Version="1.1.11" />
+    <PackageVersion Include="FluentAssertions" Version="7.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.100" />
+    <PackageVersion Include="Moq" Version="4.20.70" />
+    <PackageVersion Include="RichardSzalay.MockHttp" Version="7.0.0" />
     <!-- UI Test Packages (standardize on signed variants to avoid mixed Core) -->
-    <PackageVersion
-        Include="FlaUI.Core.Signed"
-        Version="5.0.0" />
-    <PackageVersion
-        Include="FlaUI.UIA3.Signed"
-        Version="5.0.0" />
-    <PackageVersion
-        Include="FlaUI.TestUtilities"
-        Version="5.0.0" />
+    <PackageVersion Include="FlaUI.Core.Signed" Version="5.0.0" />
+    <PackageVersion Include="FlaUI.UIA3.Signed" Version="5.0.0" />
+    <PackageVersion Include="FlaUI.TestUtilities" Version="5.0.0" />
     <!-- Selenium for E2E tests -->
-    <PackageVersion
-        Include="Selenium.WebDriver"
-        Version="4.28.0" />
-    <PackageVersion
-        Include="Appium.WebDriver"
-        Version="5.1.0" />
+    <PackageVersion Include="Selenium.WebDriver" Version="4.28.0" />
+    <PackageVersion Include="Appium.WebDriver" Version="5.1.0" />
     <!-- YAML processing -->
-    <PackageVersion
-        Include="YamlDotNet"
-        Version="16.3.0" />
+    <PackageVersion Include="YamlDotNet" Version="16.3.0" />
     <!-- Integration Test Packages -->
-    <PackageVersion
-        Include="Testcontainers.MsSql"
-        Version="4.2.0" />
-    <PackageVersion
-        Include="BenchmarkDotNet"
-        Version="0.14.0" />
-    <PackageVersion
-        Include="Respawn"
-        Version="6.2.1" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.2.0" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageVersion Include="Respawn" Version="6.2.1" />
     <!-- Prism MVVM Framework -->
-    <PackageVersion
-        Include="Prism.Core"
-        Version="9.0.537" />
-    <PackageVersion
-        Include="Prism.Wpf"
-        Version="9.0.537" />
-    <PackageVersion
-        Include="Prism.Container.DryIoc"
-        Version="9.0.107" />
-    <PackageVersion
-        Include="Prism.Events"
-        Version="9.0.537" />
-    
+    <PackageVersion Include="Prism.Core" Version="9.0.537" />
+    <PackageVersion Include="Prism.Wpf" Version="9.0.537" />
+    <PackageVersion Include="Prism.Container.DryIoc" Version="9.0.107" />
+    <PackageVersion Include="Prism.Events" Version="9.0.537" />
     <!-- Prism for WinUI 3 (via Uno Platform extensions) -->
-    <PackageVersion
-        Include="Prism.Uno.WinUI"
-        Version="9.0.537" />
-    <PackageVersion
-        Include="Prism.DryIoc.Uno.WinUI"
-        Version="9.0.537" />
+    <PackageVersion Include="Prism.Uno.WinUI" Version="9.0.537" />
+    <PackageVersion Include="Prism.DryIoc.Uno.WinUI" Version="9.0.537" />
     <!-- Prism.DryIoc removed: replaced with Prism.Container.DryIoc for .NET 9 compatibility -->
-
     <!-- Security Updates: Override vulnerable transitive dependencies -->
     <!-- CRITICAL: Fixes for high-severity vulnerabilities found by osv-scanner -->
-
     <!-- System.Net.Security: Fix GHSA-qhqf-ghgh-x2m4, GHSA-6xh7-4v2w-36q6 -->
     <!-- Current vulnerable: 4.0.0, Required: 4.3.2+ -->
-    <PackageVersion
-        Include="System.Net.Security"
-        Version="4.3.2" />
-
+    <PackageVersion Include="System.Net.Security" Version="4.3.2" />
     <!-- System.Net.Http: Fix GHSA-7jgj-8wvc-jh57 -->
     <!-- Current vulnerable: 4.1.0, Required: 4.3.4+ -->
-    <PackageVersion
-        Include="System.Net.Http"
-        Version="4.3.4" />
-
+    <PackageVersion Include="System.Net.Http" Version="4.3.4" />
     <!-- System.Security.Cryptography.X509Certificates: Fix GHSA-7mfr-774f-w5r9 -->
     <!-- Current vulnerable: 4.1.0, Required: 4.1.2+ -->
-    <PackageVersion
-        Include="System.Security.Cryptography.X509Certificates"
-        Version="4.3.2" />
-
+    <PackageVersion Include="System.Security.Cryptography.X509Certificates" Version="4.3.2" />
     <!-- System.Private.Uri: Fix GHSA-5f2m-466j-3848, GHSA-xhfc-gr8f-ffwc -->
     <!-- Current vulnerable: 4.3.0, Required: 4.3.2+ -->
-    <PackageVersion
-        Include="System.Private.Uri"
-        Version="4.3.2" />
-
+    <PackageVersion Include="System.Private.Uri" Version="4.3.2" />
     <!-- System.Security.Cryptography.Xml: Fix GHSA-vh55-786g-wjwj -->
     <!-- Current vulnerable: 4.5.0, Required: 4.7.1+ -->
-    <PackageVersion
-        Include="System.Security.Cryptography.Xml"
-        Version="9.0.10" />
-
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="9.0.10" />
     <!-- Azure configuration and identity packages removed to clean Azure traces -->
-
     <!-- Intuit QuickBooks SDK packages for testing -->
-    <PackageVersion
-        Include="IppDotNetSdkForQuickBooksApiV3"
-        Version="14.7.0.2" />
-    
+    <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
     <!-- WinUI 3 and Windows App SDK packages -->
-    <PackageVersion
-        Include="Microsoft.Windows.SDK.BuildTools"
-        Version="10.0.26100.1742" />
-    <PackageVersion
-        Include="Microsoft.WindowsAppSDK"
-        Version="1.6.250108001" />
-    <PackageVersion
-        Include="Microsoft.Windows.CsWinRT"
-        Version="2.1.3" />
-    <PackageVersion
-        Include="Microsoft.Web.WebView2"
-        Version="1.0.2849.39" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
+    <PackageVersion Include="Microsoft.Windows.CsWinRT" Version="2.1.3" />
+    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
   </ItemGroup>
 </Project>

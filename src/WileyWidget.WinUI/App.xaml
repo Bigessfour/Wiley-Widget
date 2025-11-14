@@ -1,20 +1,15 @@
-<prism:PrismApplication
+<Application
     x:Class="WileyWidget.WinUI.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:WileyWidget.WinUI"
-    xmlns:prism="using:Prism.DryIoc">
+    RequestedTheme="Light">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- WinUI-compatible resources -->
-                <ResourceDictionary Source="ms-appx:///Resources/Generic.xaml"/>
-                <ResourceDictionary Source="ms-appx:///Resources/Strings.xaml"/>
-                <ResourceDictionary Source="ms-appx:///Resources/DataTemplates.xaml"/>
+                <!-- WinUI default theme resources (REQUIRED) -->
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
-            <!-- Application-level color resources -->
-            <SolidColorBrush x:Key="CardBackgroundBrush" Color="#F5F5F5" />
-            <SolidColorBrush x:Key="CardBorderBrush" Color="#E0E0E0" />
         </ResourceDictionary>
     </Application.Resources>
-</prism:PrismApplication>
+</Application>
