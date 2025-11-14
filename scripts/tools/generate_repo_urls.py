@@ -1351,134 +1351,16 @@ class RepositoryAnalyzer:
         return summary
 
     def _scan_vulnerabilities(self) -> Dict:
-        """Scan for package vulnerabilities using dotnet list package --vulnerable."""
-        print("Scanning for NuGet package vulnerabilities...")
-
-        dotnet_exe = shutil.which("dotnet")
-        if not dotnet_exe:
-            print("  Warning: dotnet CLI not found - skipping vulnerability scan")
-            return {
-                "vulnerable_packages": [],
-                "outdated_packages": [],
-                "secrets_detected": False,
-                "last_security_scan": datetime.now().isoformat(),
-            }
-
-        # Use dictionaries for immediate deduplication
-        vuln_dict = {}
-        outdated_dict = {}
-
-        # Find all .csproj files
-        csproj_files = list(self.root_path.rglob("*.csproj"))
-
-        for csproj in csproj_files:
-            if self._should_exclude(str(csproj.relative_to(self.root_path))):
-                continue
-
-            try:
-                # Check for vulnerable packages
-                result = subprocess.run(
-                    [
-                        dotnet_exe,
-                        "list",
-                        str(csproj),
-                        "package",
-                        "--vulnerable",
-                        "--include-transitive",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-
-                if result.returncode == 0 and result.stdout:
-                    # Parse output for vulnerabilities
-                    lines = result.stdout.split("\n")
-                    project_name = csproj.stem
-
-                    for line in lines:
-                        # Look for vulnerability markers
-                        if ">" in line and (
-                            "Critical" in line
-                            or "High" in line
-                            or "Moderate" in line
-                            or "Low" in line
-                        ):
-                            parts = line.split()
-                            if len(parts) >= 4:
-                                package_name = parts[1] if len(parts) > 1 else "Unknown"
-                                version = parts[2] if len(parts) > 2 else "Unknown"
-                                severity = next(
-                                    (
-                                        s
-                                        for s in ["Critical", "High", "Moderate", "Low"]
-                                        if s in line
-                                    ),
-                                    "Unknown",
-                                )
-
-                                # Deduplicate immediately
-                                key = f"{package_name}:{version}"
-                                if key in vuln_dict:
-                                    vuln_dict[key]["affected_projects"].append(
-                                        project_name
-                                    )
-                                else:
-                                    vuln_dict[key] = {
-                                        "package_name": package_name,
-                                        "installed_version": version,
-                                        "severity": severity,
-                                        "advisory_url": f"https://github.com/advisories?query={package_name}",
-                                        "affected_projects": [project_name],
-                                    }
-
-                # Check for outdated packages
-                result_outdated = subprocess.run(
-                    [dotnet_exe, "list", str(csproj), "package", "--outdated"],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-
-                if result_outdated.returncode == 0 and result_outdated.stdout:
-                    lines = result_outdated.stdout.split("\n")
-                    for line in lines:
-                        if ">" in line and len(line.split()) >= 5:
-                            parts = line.split()
-                            if len(parts) >= 5:
-                                package_name = parts[1]
-                                installed_ver = parts[2]
-                                latest_ver = parts[4] if len(parts) > 4 else "Unknown"
-
-                                # Deduplicate immediately
-                                key = f"{package_name}:{installed_ver}"
-                                if key in outdated_dict:
-                                    outdated_dict[key]["used_by_projects"].append(
-                                        project_name
-                                    )
-                                else:
-                                    outdated_dict[key] = {
-                                        "package_name": package_name,
-                                        "installed_version": installed_ver,
-                                        "latest_version": latest_ver,
-                                        "used_by_projects": [project_name],
-                                    }
-
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
-                print(f"  Warning: Failed to scan {csproj.name}: {e}")
-                continue
-
-        result = {
-            "vulnerable_packages": list(vuln_dict.values()),
-            "outdated_packages": list(outdated_dict.values())[:50],  # Limit to 50
-            "secrets_detected": False,  # Could integrate with gitleaks
+        """Scan for package vulnerabilities (disabled - use Trunk for security scanning)."""
+        print("Skipping NuGet vulnerability scan (use Trunk for security analysis)")
+        
+        return {
+            "vulnerable_packages": [],
+            "outdated_packages": [],
+            "secrets_detected": False,
             "last_security_scan": datetime.now().isoformat(),
+            "note": "Vulnerability scanning disabled - use 'trunk check --filter=security' for security analysis"
         }
-
-        print(f"  Found {len(result['vulnerable_packages'])} vulnerable packages")
-        print(f"  Found {len(result['outdated_packages'])} outdated packages")
-
-        return result
 
     def _calculate_metrics(self, files_data: List[Dict]) -> Dict:
         """Calculate repository-wide code metrics."""
@@ -1888,7 +1770,7 @@ class RepositoryAnalyzer:
         print("Extracting license information...")
         license_info = self._extract_license_info()
 
-        print("Scanning for vulnerabilities...")
+        print("Security info (use Trunk for full security scans)...")
         security_info = self._scan_vulnerabilities()
 
         print("Calculating code metrics...")
@@ -1974,9 +1856,7 @@ class RepositoryAnalyzer:
         print(
             f"   Metrics: {metrics_info['total_lines_of_code']:,} LOC, {metrics_info['test_count']} tests"
         )
-        print(
-            f"   Security: {len(security_info['vulnerable_packages'])} vulnerable packages, {len(security_info['outdated_packages'])} outdated"
-        )
+        print(f"   Security: Scan disabled (use Trunk CLI)")
         print(f"   License: {license_info['type']}")
         print(f"   Valid until: {valid_until.strftime('%Y-%m-%d %H:%M')}")
 
