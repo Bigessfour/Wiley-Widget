@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <AnalysisLevel>6.0</AnalysisLevel>
@@ -19,7 +19,7 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="BoldReports.WPF" Version="11.1.18" />
+    <!-- Removed: BoldReports.WPF - service interface removed -->
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <!-- MSAL extensions removed (archived). -->
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />

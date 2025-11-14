@@ -7,8 +7,12 @@
     <PackageVersion
         Include="BoldReports.WPF"
         Version="11.1.19" />
+    <!-- MahApps.Metro.IconPacks - Use specific packs instead of metapackage to avoid 50+ transitive dependencies -->
     <PackageVersion
-        Include="MahApps.Metro.IconPacks"
+        Include="MahApps.Metro.IconPacks.FontAwesome"
+        Version="6.2.1" />
+    <PackageVersion
+        Include="MahApps.Metro.IconPacks.Material"
         Version="6.2.1" />
     <PackageVersion
         Include="Microsoft.ApplicationInsights"
@@ -43,25 +47,25 @@
         Version="1.0.0-beta.23506.1" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore"
-        Version="9.0.0" />
+        Version="9.0.10" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.Design"
-        Version="9.0.0">
+        Version="9.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.SqlServer"
-        Version="9.0.0" />
+        Version="9.0.10" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.Tools"
-        Version="9.0.0" />
+        Version="9.0.10" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.Sqlite"
-        Version="9.0.0" />
+        Version="9.0.10" />
     <PackageVersion
         Include="Microsoft.EntityFrameworkCore.InMemory"
-        Version="9.0.0" />
+        Version="9.0.10" />
     <PackageVersion
         Include="Microsoft.Extensions.Configuration.EnvironmentVariables"
         Version="9.0.10" />
@@ -183,9 +187,7 @@
     <PackageVersion
         Include="Syncfusion.Shared.WPF"
         Version="31.2.5" />
-    <PackageVersion
-        Include="Syncfusion.ReportViewer.WPF"
-        Version="19.1.0.69" />
+    <!-- Syncfusion.ReportViewer.WPF removed - legacy package not used in WPF 9.0 -->
     <PackageVersion
         Include="Syncfusion.Themes.FluentDark.WPF"
         Version="31.2.5" />

@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net9.0-windows10.0.19041": {
+      "Prism.Core": {
+        "type": "Direct",
+        "requested": "[9.0.537, )",
+        "resolved": "9.0.537",
+        "contentHash": "D7mEqPKLVNrD0g2WHCpC/MOKwn8h7X1liCWyjqjL7NCuxgwuhVLTG85E/ZPBkISrXdwvOQZ+bSY31bvP79FQlg==",
+        "dependencies": {
+          "Prism.Container.Abstractions": "9.0.106",
+          "Prism.Events": "9.0.537"
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+        "type": "Transitive",
+        "resolved": "8.0.1",
+        "contentHash": "fGLiCRLMYd00JYpClraLjJTNKLmMJPnqxMaiRzEBIIvevlzxz33mXy39Lkd48hu1G+N21S7QpaO5ZzKsI6FRuA=="
+      },
+      "Prism.Container.Abstractions": {
+        "type": "Transitive",
+        "resolved": "9.0.106",
+        "contentHash": "QNOERNOqsxvAa8pbWjqFB872DkvYK/cVRrcFO5vJYgWTIKBd8xfaI/jaZ0qeXLYVDz0nrvgJTZVVnip6+68dCw==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.1"
+        }
+      },
+      "Prism.Events": {
+        "type": "CentralTransitive",
+        "requested": "[9.0.537, )",
+        "resolved": "9.0.537",
+        "contentHash": "Pzp5MGUuhAyKXZUbHVYNWLGF/eA3sScqDN6VrzbWlKj85R0IS0q+JXe99umynso2xhXAe+1jrQCCkgqmEFCBng=="
+      }
+    },
+    "net9.0-windows10.0.19041/win-x64": {}
+  }
+}

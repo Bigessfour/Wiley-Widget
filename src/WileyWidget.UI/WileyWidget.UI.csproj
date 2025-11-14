@@ -17,7 +17,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MahApps.Metro.IconPacks" />
+    <!-- Use specific icon packs instead of metapackage to avoid 50+ transitive dependencies -->
+    <PackageReference Include="MahApps.Metro.IconPacks.FontAwesome" />
+    <PackageReference Include="MahApps.Metro.IconPacks.Material" />
+    <!-- Add more only if needed: BootstrapIcons, MaterialDesign, etc. -->
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
@@ -39,7 +42,7 @@
     <PackageReference Include="Syncfusion.SfSkinManager.WPF" />
     <PackageReference Include="Syncfusion.Themes.FluentDark.WPF" />
     <PackageReference Include="Syncfusion.Themes.FluentLight.WPF" />
-    <PackageReference Include="Syncfusion.ReportViewer.WPF" />
+    <!-- Removed: Syncfusion.ReportViewer.WPF - not used in WPF 9.0 -->
     <PackageReference Include="Syncfusion.XlsIO.WPF" />
     <PackageReference Include="Syncfusion.Pdf.WPF" />
     <PackageReference Include="Microsoft.Extensions.Logging" />

@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <WindowsSdkPackageVersion>10.0.19041.41</WindowsSdkPackageVersion>
     <RootNamespace>WileyWidget.WinUI</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
@@ -14,6 +15,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,14 +25,40 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
-    <PackageReference Include="Microsoft.Windows.CsWinRT" />
+    <!-- <PackageReference Include="Microsoft.Windows.CsWinRT" /> -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+    <PackageReference Include="Serilog.Enrichers.Process" />
+    <PackageReference Include="Serilog.Enrichers.Thread" />
+    <PackageReference Include="Serilog.Sinks.Async" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="Polly" />
+    <PackageReference Include="FluentValidation" />
     <Manifest Include="$(ApplicationManifest)" />
+    <!-- Prism packages for WinUI -->
+    <PackageReference Include="Prism.Core" />
+    <PackageReference Include="Prism.Wpf" />
+    <PackageReference Include="Prism.Container.DryIoc" />
+    <PackageReference Include="Prism.Events" />
+    <!-- QuickBooks SDK packages -->
+    <PackageReference Include="IppOAuth2PlatformSdk" />
+    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 
   <!-- Shared Project References from Manifest (Commented out temporarily for initial build) -->
-  <!--
   <ItemGroup>
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
@@ -40,7 +68,6 @@
     <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
     <ProjectReference Include="..\WileyWidget.UI\WileyWidget.UI.csproj" />
   </ItemGroup>
-  -->
 
   <!-- Unpackaged Mode Support (for debugging without packaging) -->
   <PropertyGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
