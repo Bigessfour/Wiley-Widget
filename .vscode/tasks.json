@@ -1777,6 +1777,75 @@
 				"panel": "shared"
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "mcp:validate-setup",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/validate-mcp-setup.ps1",
+				"-Verbose"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "mcp:update-images",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/validate-mcp-setup.ps1",
+				"-UpdateImages"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "mcp:fix-issues",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/validate-mcp-setup.ps1",
+				"-FixIssues"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "mcp:test-csharp-eval",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-v",
+				"${workspaceFolder}:/scripts:ro",
+				"-e",
+				"WW_REPO_ROOT=/scripts",
+				"ghcr.io/infinityflowapp/csharp-mcp:latest",
+				"-c",
+				"Console.WriteLine(\"MCP C# Evaluation Test: Success!\");"
+			],
+			"group": "test",
+			"problemMatcher": []
 		}
 	],
 	"inputs": [
