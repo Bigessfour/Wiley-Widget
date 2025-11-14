@@ -21,8 +21,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Abstra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinUI", "src\WileyWidget.WinUI\WileyWidget.WinUI.csproj", "{9A1B2C3D-4E5F-6789-0ABC-DEF123456789}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Tests.Data", "tests\WileyWidget.Tests.Data\WileyWidget.Tests.Data.csproj", "{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Tests.WinUI", "WileyWidget.Tests.WinUI\WileyWidget.Tests.WinUI.csproj", "{9D04ACEF-D939-4020-BD4D-DA82C330F228}"
 EndProject
 Global
@@ -131,18 +129,6 @@ Global
 		{9A1B2C3D-4E5F-6789-0ABC-DEF123456789}.Release|x64.Build.0 = Release|x64
 		{9A1B2C3D-4E5F-6789-0ABC-DEF123456789}.Release|x86.ActiveCfg = Release|x86
 		{9A1B2C3D-4E5F-6789-0ABC-DEF123456789}.Release|x86.Build.0 = Release|x86
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Debug|x64.Build.0 = Debug|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Debug|x86.Build.0 = Debug|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Release|x64.ActiveCfg = Release|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Release|x64.Build.0 = Release|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Release|x86.ActiveCfg = Release|Any CPU
-		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Release|x86.Build.0 = Release|Any CPU
 		{9D04ACEF-D939-4020-BD4D-DA82C330F228}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9D04ACEF-D939-4020-BD4D-DA82C330F228}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D04ACEF-D939-4020-BD4D-DA82C330F228}.Debug|x64.ActiveCfg = Debug|Any CPU
