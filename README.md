@@ -1,16 +1,16 @@
 # WileyWidget
 
-**A Modern WPF Application for Budget Management and Financial Analysis**
+**A Modern WinUI 3 Application for Budget Management and Financial Analysis**
 
 [![.NET Version](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 
-**Version:** 0.4.0 - Bootstrapper Refactor Complete
-**Last Updated:** November 9, 2025
-**Framework:** .NET 9.0 WPF
-**UI Framework:** Syncfusion WPF Controls v31.2.5
+**Version:** 0.5.0 - WinUI 3 Migration
+**Last Updated:** November 14, 2025
+**Framework:** .NET 9.0 WinUI 3
+**UI Framework:** Syncfusion WinUI Controls (https://help.syncfusion.com/winui/overview)
 **Application Framework:** Prism v9.0 (Pure MVVM Architecture)
 
 ---
@@ -34,7 +34,7 @@
 
 ## 📋 Overview
 
-WileyWidget is a modern Windows desktop application built with WPF, Syncfusion controls, and Prism framework, designed for budget management and financial data analysis. The application features a **pure Prism MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
+WileyWidget is a modern Windows desktop application built with WinUI 3, Syncfusion WinUI controls, and Prism framework, designed for budget management and financial data analysis. The application features a **pure Prism MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
 
 ### Recent Updates (November 2025)
 
@@ -63,7 +63,7 @@ WileyWidget is a modern Windows desktop application built with WPF, Syncfusion c
 - **Layered Architecture**: Separate Models, Data, Business, and UI layers for maintainability
 - **Dialog Management**: Prism dialog service for modal dialogs and user interactions
 - **Navigation**: Prism region-based navigation with view injection
-- **Modern UI**: Syncfusion FluentDark/FluentLight themes with seamless switching
+- **Modern UI**: Syncfusion WinUI themes with Windows 11 Fluent Design integration
 - **Secure Secret Management**: DPAPI-encrypted credential storage for API keys and licenses
 - **Comprehensive Testing**: Unit tests, integration tests, and UI tests with >70% coverage
 - **CI/CD Pipeline**: GitHub Actions with Trunk integration (90% success rate target)

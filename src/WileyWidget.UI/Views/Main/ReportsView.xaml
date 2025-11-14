@@ -8,7 +8,7 @@
     xmlns:behaviors="clr-namespace:WileyWidget.UI.Behaviors"
     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
     xmlns:pdf="clr-namespace:Syncfusion.Windows.PdfViewer;assembly=Syncfusion.PdfViewer.WPF"
-    xmlns:reports="clr-namespace:Syncfusion.ReportViewer.WPF;assembly=Syncfusion.ReportViewer.WPF"
+    
     xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
     xmlns:prism="http://prismlibrary.com/"
     mc:Ignorable="d"

@@ -203,6 +203,27 @@
     <PackageVersion
         Include="Syncfusion.Pdf.WPF"
         Version="31.2.5" />
+    
+    <!-- Syncfusion WinUI 3 - v31.2.5 (matching WPF version) -->
+    <PackageVersion
+        Include="Syncfusion.Core.WinUI"
+        Version="31.2.5" />
+    <PackageVersion
+        Include="Syncfusion.Grid.WinUI"
+        Version="31.2.5" />
+    <PackageVersion
+        Include="Syncfusion.Chart.WinUI"
+        Version="31.2.5" />
+    <PackageVersion
+        Include="Syncfusion.Gauge.WinUI"
+        Version="31.2.5" />
+    <PackageVersion
+        Include="Syncfusion.Editors.WinUI"
+        Version="31.2.5" />
+    <PackageVersion
+        Include="Syncfusion.TreeView.WinUI"
+        Version="31.2.5" />
+    
     <!-- QuickBooks -->
     <PackageVersion
         Include="IppOAuth2PlatformSdk"
@@ -376,6 +397,14 @@
         Version="9.0.107" />
     <PackageVersion
         Include="Prism.Events"
+        Version="9.0.537" />
+    
+    <!-- Prism for WinUI 3 (via Uno Platform extensions) -->
+    <PackageVersion
+        Include="Prism.Uno.WinUI"
+        Version="9.0.537" />
+    <PackageVersion
+        Include="Prism.DryIoc.Uno.WinUI"
         Version="9.0.537" />
     <!-- Prism.DryIoc removed: replaced with Prism.Container.DryIoc for .NET 9 compatibility -->
 

@@ -90,7 +90,50 @@ Prioritize files based on **manifest intelligence**:
 
 - **High LOC**: >500 lines (e.g., `DashboardViewModel.cs`)
 - **Business Critical**: AI (xAI Grok), Budget analysis, QuickBooks
-- **Dependency Rich**: Prism navigation, Syncfusion WPF controls, EF Core
+- **Dependency Rich**: Prism navigation, Syncfusion WinUI controls, EF Core
+
+## 🧪 Dual Testing Strategy: CSX Scripts + xUnit
+
+**Official Methodology**: Two-Phase Hybrid Approach (Effective: November 14, 2025)
+
+### Phase 1: Exploratory Testing with Direct C# MCP ⚡
+
+**Scope**: Rapid validation and intelligence gathering  
+**Tool**: `mcp_csharp-mcp_eval_c_sharp` (AI-driven, inline execution)  
+**Duration**: Seconds per test
+
+**Key Features**:
+- **Zero Overhead**: No script files - AI executes C# code inline
+- **Instant Feedback**: <1 second execution time
+- **Iterative**: Refine and retest immediately during conversation
+- **Mocking**: Full Moq support for dependencies
+- **Context**: Complete conversation history maintained
+
+**Use For**:
+- New ViewModel/Service exploration
+- Edge case validation
+- Async pattern testing
+- JSON serialization verification
+- Pre-xUnit prototyping
+
+**See**: [Direct MCP Testing Guide](../reference/DIRECT_MCP_TESTING_GUIDE.md)
+
+### Phase 2: Formalized Regression Testing with xUnit 🛡️
+
+**Scope**: Permanent test suite with CI/CD integration  
+**Tools**: xUnit, Moq, FluentAssertions, AutoFixture
+
+**Coverage by Layer**:
+- **Models**: Entity validation, property constraints
+- **Data**: Repository operations, query logic
+- **Business**: Service methods, validation rules
+- **ViewModels**: Command execution, property changes
+
+**Testing Patterns**:
+- **Arrange-Act-Assert**: Clear test structure
+- **Builder Pattern**: TestDataBuilder for complex objects
+- **Mocking**: External dependencies (database, APIs)
+- **Theory Tests**: Data-driven test scenarios
 - **Coverage Gaps**: Files with <50% coverage or outdated dependencies
 
 **Example Targets**:
@@ -654,7 +697,7 @@ namespace WileyWidget.Tests.ViewModels
 
 #### UI Tests (Limited)
 
-- **Target**: Critical WPF interactions (Syncfusion grids, navigation)
+- **Target**: Critical WinUI interactions (Syncfusion grids, navigation, WinUI 3 controls)
 - **Tool**: FlaUI or manual .csx scripts (via Docker)
 - **Note**: Keep minimal; prefer ViewModels + mocks
 - **Location**: `tests/WileyWidget.Tests/E2E/`

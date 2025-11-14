@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:WileyWidget.ViewModels"
+    xmlns:views="using:WileyWidget.Views"
+    xmlns:syncfusion="using:Syncfusion.UI.Xaml.Grids"
+    xmlns:sfchart="using:Syncfusion.UI.Xaml.Charts">
+
+    <!-- ============================================================= -->
+    <!--  ViewModel → View mappings (Prism ViewModelLocator will use) -->
+    <!-- ============================================================= -->
+
+    <!-- Settings -->
+    <DataTemplate x:Key="SettingsViewTemplate" DataType="vm:SettingsViewModel">
+        <views:SettingsView />
+    </DataTemplate>
+
+    <!-- Dashboard -->
+    <DataTemplate x:Key="DashboardViewTemplate" DataType="vm:DashboardViewModel">
+        <views:DashboardView />
+    </DataTemplate>
+
+    <!-- QuickBooks Sync -->
+    <DataTemplate x:Key="QuickBooksSyncViewTemplate" DataType="vm:QuickBooksSyncViewModel">
+        <views:QuickBooksSyncView />
+    </DataTemplate>
+
+    <!-- Municipal Accounts Grid -->
+    <DataTemplate x:Key="MunicipalAccountsTemplate" DataType="vm:MunicipalAccountsViewModel">
+        <syncfusion:SfDataGrid
+            x:Name="MunicipalAccountsGrid"
+            ItemsSource="{Binding Accounts}"
+            AutoGenerateColumns="False"
+            AllowEditing="True">
+            <syncfusion:SfDataGrid.Columns>
+                <syncfusion:GridTextColumn HeaderText="Account ID" MappingName="Id" />
+                <syncfusion:GridTextColumn HeaderText="Name"        MappingName="Name" />
+                <syncfusion:GridTextColumn HeaderText="Balance"    MappingName="Balance" />
+            </syncfusion:SfDataGrid.Columns>
+        </syncfusion:SfDataGrid>
+    </DataTemplate>
+
+    <!-- Example Chart -->
+    <DataTemplate x:Key="RevenueChartTemplate" DataType="vm:RevenueChartViewModel">
+        <sfchart:SfChart>
+            <sfchart:SfChart.PrimaryAxis>
+                <sfchart:CategoryAxis Header="Month"/>
+            </sfchart:SfChart.PrimaryAxis>
+            <sfchart:SfChart.SecondaryAxis>
+                <sfchart:NumericAxis Header="Revenue"/>
+            </sfchart:SfChart.SecondaryAxis>
+            <sfchart:ColumnSeries ItemsSource="{Binding SeriesData}"
+                                 XBindingPath="Month"
+                                 YBindingPath="Amount"/>
+        </sfchart:SfChart>
+    </DataTemplate>
+
+</ResourceDictionary>

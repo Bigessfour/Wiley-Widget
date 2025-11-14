@@ -24,7 +24,7 @@ Detailed database and infrastructure notes live in [Database Setup](../reference
 | 3. Build fast        | `pwsh ./scripts/build/fast-build.ps1 -Configuration Debug` | Wraps `dotnet build` with solution defaults |
 | 4. Run tests         | `dotnet test WileyWidget.sln --no-build`                   | See [Testing Strategy](Testing.md)          |
 | 5. Trunk checks      | `trunk check --ci`                                         | Mirrors the CI pipeline                     |
-| 6. Run local app     | `dotnet run --project src/WileyWidget/WileyWidget.csproj`  | Launches the WPF shell                      |
+| 6. Run local app     | `dotnet run --project src/WileyWidget.WinUI/WileyWidget.WinUI.csproj`  | Launches the WinUI shell                      |
 
 ## Useful References
 

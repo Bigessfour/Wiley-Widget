@@ -56,8 +56,8 @@ When adding new long-form documentation:| [README.md](../README.md) | Project ov
 
 - **MVVM Pattern**: Strict View-ViewModel-Model separation
 - **EF Core**: Azure SQL integration with Entity Framework
-- **Syncfusion WPF**: UI components and theming
-- **CommunityToolkit.Mvvm**: Reactive MVVM framework
+- **Syncfusion WinUI**: UI components and theming (https://help.syncfusion.com/winui/overview)
+- **Prism.Mvvm**: Reactive MVVM framework with Prism base classes
 
 ### Code Quality
 

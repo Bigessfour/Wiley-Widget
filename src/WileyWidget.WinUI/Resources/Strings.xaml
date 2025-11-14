@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- =========================================================== -->
+    <!--  Localized strings – referenced via {x:Static} in XAML      -->
+    <!-- =========================================================== -->
+
+    <x:String x:Key="AppTitle">Wiley Widget</x:String>
+
+    <x:String x:Key="Menu_File">File</x:String>
+    <x:String x:Key="Menu_File_Exit">Exit</x:String>
+
+    <x:String x:Key="Menu_Tools">Tools</x:String>
+    <x:String x:Key="Menu_Tools_Settings">Settings…</x:String>
+
+    <x:String x:Key="Status_Licensed">Licensed</x:String>
+    <x:String x:Key="Status_Trial">Trial Mode</x:String>
+    <x:String x:Key="Status_LicenseError">License Error</x:String>
+
+    <x:String x:Key="MunicipalAccounts_AccessibleName">Municipal Accounts Grid</x:String>
+
+    <x:String x:Key="QuickBooks_Syncing">Syncing with QuickBooks…</x:String>
+    <x:String x:Key="QuickBooks_SyncComplete">Sync complete</x:String>
+
+</ResourceDictionary>

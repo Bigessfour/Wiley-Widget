@@ -8,7 +8,7 @@ using WileyWidget.Services.Abstractions;
 using WileyWidget.Business.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using WileyWidget.Models;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using WileyWidget.Data;
 using System.IO;
 using System.Timers;

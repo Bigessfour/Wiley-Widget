@@ -1,6 +1,42 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2025-11-14
+### WinUI 3 Migration - Platform Modernization
+
+#### Added
+- **WinUI 3 Project**: New `WileyWidget.WinUI` project with Microsoft.UI.Xaml
+- **Syncfusion WinUI Controls**: Migrated from Syncfusion WPF to Syncfusion WinUI (https://help.syncfusion.com/winui/overview)
+- **Resource Dictionaries**: WinUI-compatible DataTemplates.xaml, Strings.xaml, Generic.xaml
+- **FrameRegionAdapter**: Custom Prism region adapter for WinUI Frame navigation
+- **CSX+xUnit Testing Strategy**: Dual-phase testing approach documented
+  - Phase 1: Exploratory testing with C# MCP (`mcp_csharp-mcp_eval_c_sharp`)
+  - Phase 2: Formalized regression testing with xUnit
+
+#### Changed
+- **Platform Migration**: WPF → WinUI 3 (.NET 9.0-windows10.0.19041.0)
+- **UI Framework**: All Syncfusion controls updated to WinUI equivalents
+- **App.xaml.cs**: RegisterTypes() fully adapted for WinUI with IDbContextFactory pattern
+- **Documentation**: All references updated from WPF to WinUI
+- **Testing Documentation**: Added comprehensive CSX+xUnit dual testing strategy guide
+
+#### Removed
+- **Legacy WPF Documentation**: Deleted WPF-specific integration guides
+  - `docs/integration/syncfusion-logging-bridge-integration.md`
+  - `docs/research/syncfusion-prism-logging-gap-analysis.md`
+  - `docs/reference/AI_E2E_TESTING_SETUP.md` (FlaUI WPF automation)
+- **Temporary Migration Files**: Cleaned up `temp-wiley-mig/` directory
+
+#### Documentation Updates
+- README.md: Updated to reflect WinUI 3 platform
+- CHANGELOG.md: Added WinUI migration entry
+- docs/core/Architecture.md: WPF → WinUI 3 references
+- docs/core/Development.md: Updated project paths for WinUI
+- docs/core/Testing.md: Added CSX+xUnit dual testing strategy section
+- docs/README.md: Syncfusion WinUI documentation links
+
+---
+
 ## [0.4.0] - 2025-11-09
 ### Major Bootstrapper Refactor - Phase 0-1 Complete
 
