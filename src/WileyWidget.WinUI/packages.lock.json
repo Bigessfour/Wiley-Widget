@@ -2697,6 +2697,7 @@
         "dependencies": {
           "MahApps.Metro.IconPacks.FontAwesome": "[6.2.1, )",
           "MahApps.Metro.IconPacks.Material": "[6.2.1, )",
+          "Microsoft.Data.SqlClient": "[6.1.2, )",
           "Microsoft.Extensions.DependencyInjection": "[9.0.10, )",
           "Microsoft.Extensions.Logging": "[9.0.10, )",
           "Microsoft.Xaml.Behaviors.Wpf": "[1.1.135, )",
