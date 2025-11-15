@@ -6,8 +6,8 @@
     <RunAnalyzers>false</RunAnalyzers>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-    <UseWPF>true</UseWPF>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -124,6 +124,14 @@
     <Compile Remove="Interfaces\IUserContext.cs" />
     <Compile Remove="Interfaces\IWhatIfScenarioEngine.cs" />
     <Compile Remove="Interfaces\IWileyWidgetContextService.cs" />
+
+    <!-- Exclude WPF-specific files when building for .NET 9.0 (Uno) -->
+    <Compile Remove="PasswordBoxHelper.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="DialogTrackingService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="SafeResourceDictionaryLoader.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="ErrorReportingService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="BoldReportService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="Threading\DispatcherExtensions.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
   </ItemGroup>
 
   <!-- Removed linked files - now using local copies in WileyWidget.Services/ -->

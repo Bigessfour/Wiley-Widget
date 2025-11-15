@@ -156,6 +156,14 @@
     <PackageVersion Include="Testcontainers.MsSql" Version="4.2.0" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageVersion Include="Respawn" Version="6.2.1" />
+    <!-- Uno Platform -->
+    <PackageVersion Include="Uno.WinUI" Version="5.5.12" />
+    <PackageVersion Include="Uno.WinUI.DevServer" Version="5.5.12" />
+    <PackageVersion Include="Uno.Extensions.Configuration" Version="4.3.1" />
+    <PackageVersion Include="Uno.Extensions.Hosting.WinUI" Version="4.3.1" />
+    <PackageVersion Include="Uno.Extensions.Logging.WinUI" Version="4.3.1" />
+    <PackageVersion Include="Uno.Extensions.Serialization.Http" Version="4.3.1" />
+    
     <!-- Prism MVVM Framework -->
     <PackageVersion Include="Prism.Core" Version="9.0.537" />
     <PackageVersion Include="Prism.Wpf" Version="9.0.537" />

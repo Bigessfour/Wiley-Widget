@@ -1,0 +1,143 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RuntimeIdentifiers>win-x64;win-x86;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <Platforms>x64;x86;ARM64</Platforms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    
+    <!-- Application Identity -->
+    <AssemblyName>WileyWidget.Uno</AssemblyName>
+    <RootNamespace>WileyWidget.Uno</RootNamespace>
+    <ApplicationTitle>WileyWidget Uno</ApplicationTitle>
+    
+    <!-- Compiler Settings -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AnalysisLevel>6.0</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <RunAnalyzers>true</RunAnalyzers>
+    <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>NU1605;NU1603;CA1416</NoWarn>
+    
+    <!-- Package Management -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Uno Platform Core Packages -->
+    <PackageReference Include="Uno.WinUI" Version="5.5.37" />
+    <PackageReference Include="Uno.WinUI.RemoteControl" Version="5.5.37" Condition="'$(Configuration)'=='Debug'" />
+    <PackageReference Include="Uno.UI.Adapter.Microsoft.Extensions.Logging" Version="5.5.37" />
+    <PackageReference Include="Uno.WinUI.Lottie" Version="5.5.37" />
+    <PackageReference Include="Uno.Resizetizer" Version="1.3.0" />
+    
+    <!-- Uno Extensions -->
+    <PackageReference Include="Uno.Extensions.Configuration" Version="4.2.2" />
+    <PackageReference Include="Uno.Extensions.Hosting.WinUI" Version="4.2.2" />
+    <PackageReference Include="Uno.Extensions.Logging.WinUI" Version="4.2.2" />
+    <PackageReference Include="Uno.Extensions.Navigation.WinUI" Version="4.2.2" />
+    <PackageReference Include="Uno.Extensions.Serialization.Http" Version="4.2.2" />
+    <PackageReference Include="Uno.Extensions.Serialization.Refit" Version="4.2.2" />
+    
+    <!-- Uno Toolkit and Themes -->
+    <PackageReference Include="Uno.Toolkit.WinUI" Version="6.3.5" />
+    <PackageReference Include="Uno.Themes.WinUI.Markup" Version="5.3.1" />
+    <PackageReference Include="Uno.Material.WinUI" Version="5.3.1" />
+    
+    <!-- Community Toolkit -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    
+    <!-- Windows App SDK -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241114003" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    
+    <!-- Prism for Uno Platform with WinUI -->
+    <PackageReference Include="Prism.Core" Version="9.0.537" />
+    <PackageReference Include="Prism.Uno.WinUI" Version="9.0.537" />
+    <PackageReference Include="Prism.DryIoc.Uno.WinUI" Version="9.0.537" />
+    <PackageReference Include="Prism.Events" Version="9.0.537" />
+    <PackageReference Include="DryIoc" Version="5.4.3" />
+    
+    <!-- Syncfusion WinUI Controls (match WPF version 31.2.5) -->
+    <PackageReference Include="Syncfusion.Licensing" Version="31.2.5" />
+    <PackageReference Include="Syncfusion.Core.WinUI" Version="27.2.5" />
+    <PackageReference Include="Syncfusion.Grid.WinUI" Version="27.2.5" />
+    <PackageReference Include="Syncfusion.Chart.WinUI" Version="27.2.5" />
+    <PackageReference Include="Syncfusion.Gauge.WinUI" Version="27.2.5" />
+    <PackageReference Include="Syncfusion.Editors.WinUI" Version="27.2.5" />
+    <PackageReference Include="Syncfusion.TreeView.WinUI" Version="27.2.5" />
+    
+    <!-- Data Access (match shared project versions) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    
+    <!-- Configuration and Hosting (match shared project versions) -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    
+    <!-- Logging with Serilog (match shared project versions) -->
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    
+    <!-- Resilience with Polly (match shared project versions) -->
+    <PackageReference Include="Polly" Version="8.6.4" />
+    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.10.0" />
+    
+    <!-- Validation (match shared project versions) -->
+    <PackageReference Include="FluentValidation" Version="12.1.0" />
+    
+    <!-- QuickBooks SDK -->
+    <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
+    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
+  </ItemGroup>
+
+  <!-- Shared Project References (Class Libraries) -->
+  <ItemGroup>
+    <ProjectReference Include="..\WileyWidget\WileyWidget.csproj" />
+    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+  </ItemGroup>
+
+  <!-- Content Files -->
+  <ItemGroup>
+    <Content Include="Assets\**\*" />
+  </ItemGroup>
+
+  <!-- Manifest for Windows -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0-windows10.0.26100.0'">
+    <Manifest Include="app.manifest" />
+  </ItemGroup>
+
+</Project>
