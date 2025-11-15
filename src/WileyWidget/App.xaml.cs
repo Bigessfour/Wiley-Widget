@@ -90,11 +90,6 @@ using Microsoft.Data.SqlClient;
 using System.Data;
 using Polly;
 using DotNetEnv;
-using WileyWidget.Views;
-using WileyWidget.Views.Main;
-using WileyWidget.Views.Panels;
-using WileyWidget.Views.Dialogs;
-using WileyWidget.Views.Windows;
 using WileyWidget.Startup.Modules;
 using WileyWidget.Startup;
 using WileyWidget.Services;
@@ -103,7 +98,6 @@ using WileyWidget.Abstractions;
 using WileyWidget.Configuration;
 using WileyWidget.Configuration.Resilience;
 using WileyWidget.Data;
-using WileyWidget.Regions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Diagnostics;
@@ -111,10 +105,6 @@ using WileyWidget.Services.Excel;
 using WileyWidget.Services.Threading;
 using WileyWidget.ViewModels;
 using WileyWidget.ViewModels.Main;
-using WileyWidget.ViewModels.Panels;
-using WileyWidget.ViewModels.Dialogs;
-using WileyWidget.ViewModels.Windows;
-using WileyWidget.ViewModels.Messages;
 using System.Diagnostics.CodeAnalysis;  // For SuppressMessage
 using Serilog.Events;  // For LogEventLevel
 

@@ -1,0 +1,17 @@
+<Project>
+  <!-- Fix for ExpandPriContent task loading -->
+  <UsingTask TaskName="Microsoft.Build.Packaging.Pri.Tasks.ExpandPriContent"
+             AssemblyFile="$(MSBuildProgramFiles32)\Windows Kits\10\bin\10.0.19041.0\Microsoft.Build.Packaging.Pri.Tasks.dll" />
+
+  <Target Name="FixExpandPriContent" BeforeTargets="Build">
+    <Message Text="Ensuring ExpandPriContent task is available..." Importance="high" />
+
+    <!-- Verify task assembly exists -->
+    <PropertyGroup>
+      <PriTasksAssembly>$(MSBuildProgramFiles32)\Windows Kits\10\bin\$(WindowsSdkPackageVersion)\Microsoft.Build.Packaging.Pri.Tasks.dll</PriTasksAssembly>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(PriTasksAssembly)')"
+           Text="ExpandPriContent task assembly not found at: $(PriTasksAssembly)" />
+  </Target>
+</Project>

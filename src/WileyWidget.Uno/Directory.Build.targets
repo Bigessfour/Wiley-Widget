@@ -1,2 +1,12 @@
 ﻿<Project>
+  <!-- Import custom build fixes -->
+  <Import Project="build\ExpandPriContent.targets" />
+
+  <!-- Additional Uno-specific build configurations -->
+  <PropertyGroup>
+    <!-- Ensure proper WinUI build tools are used -->
+    <UseWindowsSDKPreview>true</UseWindowsSDKPreview>
+    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+  </PropertyGroup>
 </Project>

@@ -154,9 +154,7 @@ using Prism.Navigation.Regions;
 using Serilog;
 using Serilog.Events;
 using Syncfusion.SfSkinManager;
-using WileyWidget.Regions;
 using WileyWidget.Services;
-using WileyWidget.Views.Windows;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace WileyWidget

@@ -1,29 +1,26 @@
 // App.Prism.cs - Prism Integration for Uno Platform
 // This partial class adapts the WPF Prism bootstrapping logic to Uno Platform
 
-using Microsoft.UI.Xaml;
-using Prism.Ioc;
-using Prism.Modularity;
-using Prism.Regions;
 using DryIoc;
 using WileyWidget.Uno.Views;
+using WileyWidget.Services;
 using Serilog;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System;
+using Prism.Navigation.Regions;
 
 namespace WileyWidget.Uno;
 
 /// <summary>
 /// Prism integration partial class for WileyWidget Uno application.
 /// Adapts WPF PrismApplication patterns to Uno Platform.
+/// Uses Prism.DryIoc.PrismApplication (resolved via GlobalUsings.cs).
 /// </summary>
-public partial class App
+public sealed partial class App : PrismApplication
 {
     /// <summary>
     /// Configures the host builder for Uno Platform dependency injection.
@@ -70,7 +67,7 @@ public partial class App
         services.AddHttpClient("Default");
         services.AddHttpClient("QuickBooks");
         services.AddHttpClient("XAI");
-        services.AddSingleton<IHttpClientFactory, DefaultHttpClientFactory>();
+        // IHttpClientFactory is automatically registered by AddHttpClient
         Log.Debug("  ✓ IHttpClientFactory registered (3 named clients)");
 
         // Database context factory (conditional on connection string)
@@ -155,7 +152,7 @@ public partial class App
         }
 
         // Register business services from WileyWidget.Business assembly (Singleton)
-        var businessAssembly = typeof(WileyWidget.Business.AuditService).Assembly;
+        var businessAssembly = typeof(WileyWidget.Business.Services.AuditService).Assembly;
         var businessServiceTypes = businessAssembly.GetTypes()
             .Where(t => t.Name.EndsWith("Service") && t.IsClass && !t.IsAbstract);
 
@@ -215,7 +212,7 @@ public partial class App
 
         Log.Information("[Prism] DryIoc container created with custom rules");
         
-        return new Prism.DryIoc.DryIocContainerExtension(container);
+        return new DryIocContainerExtension(container);
     }
 
     /// <summary>
@@ -268,12 +265,12 @@ public partial class App
         Log.Information("[Prism] Configuring region adapter mappings for WinUI controls");
 
         // Register standard region adapters for WinUI controls
-        regionAdapterMappings.RegisterMapping(typeof(Microsoft.UI.Xaml.Controls.ContentControl), 
-            Container.Resolve<Prism.Regions.ContentControlRegionAdapter>());
+        regionAdapterMappings.RegisterMapping(typeof(Microsoft.UI.Xaml.Controls.ContentControl),
+            Container.Resolve<Prism.Navigation.Regions.ContentControlRegionAdapter>());
         Log.Debug("  ✓ ContentControlRegionAdapter registered");
 
-        regionAdapterMappings.RegisterMapping(typeof(Microsoft.UI.Xaml.Controls.ItemsControl), 
-            Container.Resolve<Prism.Regions.ItemsControlRegionAdapter>());
+        regionAdapterMappings.RegisterMapping(typeof(Microsoft.UI.Xaml.Controls.ItemsControl),
+            Container.Resolve<Prism.Navigation.Regions.ItemsControlRegionAdapter>());
         Log.Debug("  ✓ ItemsControlRegionAdapter registered");
 
         // Note: Custom Syncfusion adapters can be added later if needed
@@ -298,10 +295,11 @@ public partial class App
     }
 
     /// <summary>
-    /// Creates the shell window/page.
+    /// Creates the shell UIElement.
     /// Adapted from WPF App.Lifecycle.cs CreateShell()
+    /// Note: Prism.Uno expects UIElement, not Window
     /// </summary>
-    protected override Window CreateShell()
+    protected override UIElement CreateShell()
     {
         Log.Information("[Prism] Creating shell window");
 

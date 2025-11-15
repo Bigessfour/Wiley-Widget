@@ -13,7 +13,7 @@
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>  <!-- Reduces noise during build -->
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>  <!-- If not set; enables
     FluentLight theme -->
-    <UseWPF>true</UseWPF>
+    <UseWPF Condition="'$(MSBuildProjectName)' != 'WileyWidget.WinUI'">true</UseWPF>
     <WpfTmpProject Condition="'$(WpfTmpProject)' == ''">true</WpfTmpProject>  <!-- WPFTMP opt-in -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <RestoreAdditionalProjectSources Condition="'$(RestoreAdditionalProjectSources)' == ''">

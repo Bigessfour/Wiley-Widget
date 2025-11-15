@@ -14,12 +14,7 @@ using WileyWidget.Services.Startup;
 using WileyWidget.Services.Telemetry;
 using WileyWidget.ViewModels;
 using WileyWidget.ViewModels.Main;
-using WileyWidget.ViewModels.Panels;
-using WileyWidget.ViewModels.Dialogs;
-using WileyWidget.ViewModels.Windows;
-using WileyWidget.Views;
 using WileyWidget.Views.Main;
-using WileyWidget.Views.Panels;
 
 namespace WileyWidget.Startup.Modules
 {

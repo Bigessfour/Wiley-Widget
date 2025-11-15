@@ -883,30 +883,6 @@
         "resolved": "2.14.1",
         "contentHash": "lQKvtaTDOXnoVJ20ibTuSIOf2i0uO0MPbDhd1jm238I+U/2ZnRENj0cktKZhtchBMtCUSRQ5v4xBCUbKNmyVMw=="
       },
-      "MahApps.Metro.IconPacks.Core": {
-        "type": "Transitive",
-        "resolved": "6.2.1",
-        "contentHash": "ySAyax37C045Ef1ufN33yQjn3qPM1MuQLgKdxZKYUAl2uZaIrn9wCeBNvfG46QPNRvBFLR6gVKTs6O3o81LNhQ==",
-        "dependencies": {
-          "System.Text.Json": "8.0.5"
-        }
-      },
-      "MahApps.Metro.IconPacks.FontAwesome": {
-        "type": "Transitive",
-        "resolved": "6.2.1",
-        "contentHash": "Su6jzajwH8rP7H5OGhXvyC2SlsoyH0pNwNCkDFSP5zyVQlMtmUZGOY8X0Qcj1QFn+t4TmEnMjwGMB6RuzozgEg==",
-        "dependencies": {
-          "MahApps.Metro.IconPacks.Core": "6.2.1"
-        }
-      },
-      "MahApps.Metro.IconPacks.Material": {
-        "type": "Transitive",
-        "resolved": "6.2.1",
-        "contentHash": "DcNQIsJLAmuzlpXdD2hQtMV8IzLRHsxFBn9+nHDLAsYs8duTBTycpNpQitkzuNYH0o+sgIbefCSp3jDUu9hIiQ==",
-        "dependencies": {
-          "MahApps.Metro.IconPacks.Core": "6.2.1"
-        }
-      },
       "MailKit": {
         "type": "Transitive",
         "resolved": "4.11.0",
@@ -1896,6 +1872,11 @@
         "resolved": "31.2.5",
         "contentHash": "SMQqbqVa8u+Qw+Ky+/q/9LEpKneNq3EGUdToCVPjKWUQAOyAU68hoxMAupP0NgMqf1phdqU0f3F8D7hYKCmdnw=="
       },
+      "Syncfusion.Compression.Net.Core": {
+        "type": "Transitive",
+        "resolved": "31.2.5",
+        "contentHash": "ZRLum4c6c+Y/liPfAR9Xxf5UyvNDGGWh+/toYCISKWybTQt/w+1evUZBvJe1842+BKIMu2vA2vfZj+NHue2VYw=="
+      },
       "Syncfusion.DocIO.Wpf": {
         "type": "Transitive",
         "resolved": "31.2.5",
@@ -1941,6 +1922,16 @@
           "Syncfusion.Compression.Base": "31.2.5"
         }
       },
+      "Syncfusion.Pdf.Net.Core": {
+        "type": "Transitive",
+        "resolved": "31.2.5",
+        "contentHash": "8fojCAAA2nJDY0KBw4jjmyZUz/o5QWLz69UdezlyNzswQIbibxPloYmPairRMPVU4wuqYqjyiu+hunPUGpxNaA==",
+        "dependencies": {
+          "Syncfusion.Compression.Net.Core": "31.2.5",
+          "Syncfusion.Licensing": "31.2.5",
+          "System.Text.Encoding.CodePages": "4.4.0"
+        }
+      },
       "Syncfusion.Presentation.Wpf": {
         "type": "Transitive",
         "resolved": "28.2.3",
@@ -1977,6 +1968,15 @@
         "contentHash": "M8UwtWkgr00JOM17oPR2MF6DYiMKlE+bfNCIUMO6ffm2ywYIL0H6uxIt+O3FZFQJShvPkY2N5LXL7MJQreZGyA==",
         "dependencies": {
           "Syncfusion.Shared.WPF": "28.2.3"
+        }
+      },
+      "Syncfusion.XlsIO.Net.Core": {
+        "type": "Transitive",
+        "resolved": "31.2.5",
+        "contentHash": "ONJK3H7Qc6SFrygu2YfaKyfYbX2m+Y/7t8RJYZFHgAvGDRJOxRNYLUxPNYOBm4EwaoPG5DViYRnxWW6NFVXUyg==",
+        "dependencies": {
+          "Syncfusion.Compression.Net.Core": "31.2.5",
+          "Syncfusion.Licensing": "31.2.5"
         }
       },
       "System.AppContext": {
@@ -3149,7 +3149,7 @@
         "dependencies": {
           "IppDotNetSdkForQuickBooksApiV3": "[14.7.0.2, )",
           "IppOAuth2PlatformSdk": "[14.0.0, )",
-          "Microsoft.Data.SqlClient": "[6.1.2, )",
+          "Microsoft.Data.SqlClient": "[6.1.3, )",
           "Microsoft.EntityFrameworkCore": "[9.0.10, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[9.0.10, )",
           "Microsoft.Extensions.Caching.Memory": "[9.0.10, )",
@@ -3172,7 +3172,7 @@
       "wileywidget.data": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Data.SqlClient": "[6.1.2, )",
+          "Microsoft.Data.SqlClient": "[6.1.3, )",
           "Microsoft.EntityFrameworkCore": "[9.0.10, )",
           "Microsoft.EntityFrameworkCore.InMemory": "[9.0.10, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[9.0.10, )",
@@ -3199,7 +3199,7 @@
         "type": "Project",
         "dependencies": {
           "FluentValidation": "[12.1.0, )",
-          "Microsoft.Data.SqlClient": "[6.1.2, )",
+          "Microsoft.Data.SqlClient": "[6.1.3, )",
           "Microsoft.EntityFrameworkCore": "[9.0.10, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[9.0.10, )",
           "Microsoft.Extensions.Caching.Memory": "[9.0.10, )",
@@ -3241,7 +3241,6 @@
           "Microsoft.Extensions.Hosting": "[9.0.10, )",
           "Microsoft.Extensions.Http": "[9.0.10, )",
           "Microsoft.Extensions.Logging": "[9.0.10, )",
-          "Microsoft.Xaml.Behaviors.Wpf": "[1.1.135, )",
           "OpenTelemetry": "[1.13.1, 2.0.0)",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.13.1, 2.0.0)",
           "OpenTelemetry.Extensions.Hosting": "[1.13.1, 2.0.0)",
@@ -3250,7 +3249,6 @@
           "Polly.RateLimiting": "[8.6.4, )",
           "Prism.Container.DryIoc": "[9.0.107, )",
           "Prism.Core": "[9.0.537, )",
-          "Prism.Wpf": "[9.0.537, )",
           "Serilog": "[4.3.0, )",
           "Serilog.Enrichers.Environment": "[3.0.1, )",
           "Serilog.Enrichers.Process": "[3.0.0, )",
@@ -3260,24 +3258,8 @@
           "Serilog.Sinks.Email": "[4.1.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
           "Syncfusion.Licensing": "[31.2.5, )",
-          "Syncfusion.Pdf.WPF": "[31.2.5, )",
-          "Syncfusion.SfBusyIndicator.WPF": "[31.2.5, )",
-          "Syncfusion.SfChart.WPF": "[31.2.5, )",
-          "Syncfusion.SfChat.WPF": "[31.2.5, )",
-          "Syncfusion.SfGauge.WPF": "[31.2.5, )",
-          "Syncfusion.SfGrid.WPF": "[31.2.5, )",
-          "Syncfusion.SfGridCommon.WPF": "[31.2.5, )",
-          "Syncfusion.SfInput.WPF": "[31.2.5, )",
-          "Syncfusion.SfProgressBar.WPF": "[31.2.5, )",
-          "Syncfusion.SfRichTextBoxAdv.WPF": "[31.2.5, )",
-          "Syncfusion.SfSkinManager.WPF": "[31.2.5, )",
-          "Syncfusion.SfSpreadsheet.WPF": "[31.2.5, )",
-          "Syncfusion.SfTreeView.WPF": "[31.2.5, )",
-          "Syncfusion.Shared.WPF": "[31.2.5, )",
-          "Syncfusion.Themes.FluentDark.WPF": "[31.2.5, )",
-          "Syncfusion.Themes.FluentLight.WPF": "[31.2.5, )",
-          "Syncfusion.Tools.WPF": "[31.2.5, )",
-          "Syncfusion.XlsIO.WPF": "[31.2.5, )",
+          "Syncfusion.Pdf.Net.Core": "[31.2.5, )",
+          "Syncfusion.XlsIO.Net.Core": "[31.2.5, )",
           "System.Management": "[9.0.10, )",
           "System.Net.Http": "[4.3.4, )",
           "System.Net.Security": "[4.3.2, )",
@@ -3299,45 +3281,6 @@
           "Microsoft.Extensions.Logging": "[9.0.10, )",
           "Microsoft.Extensions.Primitives": "[9.0.10, )",
           "WileyWidget.Models": "[1.0.0, )"
-        }
-      },
-      "wileywidget.ui": {
-        "type": "Project",
-        "dependencies": {
-          "MahApps.Metro.IconPacks.FontAwesome": "[6.2.1, )",
-          "MahApps.Metro.IconPacks.Material": "[6.2.1, )",
-          "Microsoft.Data.SqlClient": "[6.1.2, )",
-          "Microsoft.Extensions.DependencyInjection": "[9.0.10, )",
-          "Microsoft.Extensions.Logging": "[9.0.10, )",
-          "Microsoft.Xaml.Behaviors.Wpf": "[1.1.135, )",
-          "OpenTelemetry": "[1.13.1, 2.0.0)",
-          "OpenTelemetry.Exporter.Console": "[1.13.1, 2.0.0)",
-          "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.13.1, 2.0.0)",
-          "OpenTelemetry.Extensions.Hosting": "[1.13.1, 2.0.0)",
-          "OpenTelemetry.Instrumentation.Http": "[1.13.0, 2.0.0)",
-          "Prism.Container.DryIoc": "[9.0.107, )",
-          "Prism.Wpf": "[9.0.537, )",
-          "Syncfusion.Licensing": "[31.2.5, )",
-          "Syncfusion.Pdf.WPF": "[31.2.5, )",
-          "Syncfusion.SfBusyIndicator.WPF": "[31.2.5, )",
-          "Syncfusion.SfChart.WPF": "[31.2.5, )",
-          "Syncfusion.SfGrid.WPF": "[31.2.5, )",
-          "Syncfusion.SfGridCommon.WPF": "[31.2.5, )",
-          "Syncfusion.SfInput.WPF": "[31.2.5, )",
-          "Syncfusion.SfProgressBar.WPF": "[31.2.5, )",
-          "Syncfusion.SfSkinManager.WPF": "[31.2.5, )",
-          "Syncfusion.SfSpreadsheet.WPF": "[31.2.5, )",
-          "Syncfusion.SfTreeView.WPF": "[31.2.5, )",
-          "Syncfusion.Shared.WPF": "[31.2.5, )",
-          "Syncfusion.Themes.FluentDark.WPF": "[31.2.5, )",
-          "Syncfusion.Themes.FluentLight.WPF": "[31.2.5, )",
-          "Syncfusion.Tools.WPF": "[31.2.5, )",
-          "Syncfusion.XlsIO.WPF": "[31.2.5, )",
-          "WileyWidget.Business": "[1.0.0, )",
-          "WileyWidget.Data": "[1.0.0, )",
-          "WileyWidget.Models": "[1.0.0, )",
-          "WileyWidget.Services": "[1.0.0, )",
-          "WileyWidget.Services.Abstractions": "[1.0.0, )"
         }
       }
     },

@@ -17,6 +17,12 @@ namespace WileyWidget.Services
         /// <returns>True if the connection test succeeds, false otherwise</returns>
         System.Threading.Tasks.Task<bool> TestConnectionAsync();
 
+        /// <summary>
+        /// Checks if the service is currently connected
+        /// </summary>
+        /// <returns>True if connected, false otherwise</returns>
+        System.Threading.Tasks.Task<bool> IsConnectedAsync();
+
         System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null);
         System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync();
         System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null);

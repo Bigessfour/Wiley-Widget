@@ -14,6 +14,7 @@
     <NoWarn>
       $(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416</NoWarn>
     <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
 
     <!-- Disable CPM for consistency with other WPF projects -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
@@ -22,7 +23,8 @@
     <!-- Removed: BoldReports.WPF - service interface removed -->
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <!-- MSAL extensions removed (archived). -->
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
+    <!-- WPF-specific package removed for WinUI compatibility -->
+    <!-- <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" /> -->
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="[1.13.0, 2.0.0)" />
     <!-- Additional OpenTelemetry packages for SigNoz integration -->
     <PackageReference Include="OpenTelemetry" Version="[1.13.1, 2.0.0)" />
@@ -35,7 +37,8 @@
     <PackageReference Include="Polly.RateLimiting" Version="8.6.4" />
     <!-- Prism packages - explicit versions for consistency -->
     <PackageReference Include="Prism.Core" Version="9.0.537" />
-    <PackageReference Include="Prism.Wpf" Version="9.0.537" />
+    <!-- WPF-specific Prism removed for WinUI compatibility -->
+    <!-- <PackageReference Include="Prism.Wpf" Version="9.0.537" /> -->
     <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
@@ -61,24 +64,13 @@
     <PackageReference Include="Serilog.Sinks.Email" Version="4.1.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Syncfusion.Licensing" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfBusyIndicator.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfChart.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfChat.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfGauge.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfGrid.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfInput.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfProgressBar.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfRichTextBoxAdv.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfSkinManager.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfSpreadsheet.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfTreeView.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.SfGridCommon.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Shared.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Themes.FluentDark.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Themes.FluentLight.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Tools.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.XlsIO.WPF" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Pdf.WPF" Version="31.2.5" />
+    <!-- Platform-agnostic Syncfusion packages (work with both WPF and WinUI) -->
+    <!-- XlsIO for Excel operations (reading/writing Excel files) -->
+    <PackageReference Include="Syncfusion.XlsIO.Net.Core" Version="31.2.5" />
+    <!-- PDF for report generation -->
+    <PackageReference Include="Syncfusion.Pdf.Net.Core" Version="31.2.5" />
+    <!-- All WPF-specific UI control packages removed - UI controls belong in presentation layer -->
+    <!-- Service layer should only contain business logic and data manipulation -->
     <PackageReference Include="FluentValidation" Version="12.1.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.10.0" />

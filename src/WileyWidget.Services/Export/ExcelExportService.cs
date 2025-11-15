@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Syncfusion.XlsIO;
+using Syncfusion.Drawing;
 using WileyWidget.Models;
 
 namespace WileyWidget.Services.Export
@@ -68,7 +69,7 @@ namespace WileyWidget.Services.Export
                     {
                         worksheet[1, i + 1].Text = headers[i];
                         worksheet[1, i + 1].CellStyle.Font.Bold = true;
-                        worksheet[1, i + 1].CellStyle.Color = System.Drawing.Color.FromArgb(0, 112, 192);
+                        worksheet[1, i + 1].CellStyle.Color = Color.FromArgb(0, 112, 192);
                         worksheet[1, i + 1].CellStyle.Font.Color = ExcelKnownColors.White;
                     }
 
@@ -130,7 +131,7 @@ namespace WileyWidget.Services.Export
                     {
                         worksheet[1, i + 1].Text = headers[i];
                         worksheet[1, i + 1].CellStyle.Font.Bold = true;
-                        worksheet[1, i + 1].CellStyle.Color = System.Drawing.Color.FromArgb(0, 176, 80);
+                        worksheet[1, i + 1].CellStyle.Color = Color.FromArgb(0, 176, 80);
                         worksheet[1, i + 1].CellStyle.Font.Color = ExcelKnownColors.White;
                     }
 
@@ -210,7 +211,7 @@ namespace WileyWidget.Services.Export
                     {
                         worksheet[1, i + 1].Text = columnNames[i];
                         worksheet[1, i + 1].CellStyle.Font.Bold = true;
-                        worksheet[1, i + 1].CellStyle.Color = System.Drawing.Color.FromArgb(68, 114, 196);
+                        worksheet[1, i + 1].CellStyle.Color = Color.FromArgb(68, 114, 196);
                         worksheet[1, i + 1].CellStyle.Font.Color = ExcelKnownColors.White;
                     }
 

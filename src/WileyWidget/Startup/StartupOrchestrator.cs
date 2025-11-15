@@ -11,7 +11,6 @@ using Serilog;
 using WileyWidget.Services;
 using WileyWidget.Services.Telemetry;
 using WileyWidget.Startup;
-using WileyWidget.Views;
 using ILogger = Serilog.ILogger;
 
 namespace WileyWidget.Startup;

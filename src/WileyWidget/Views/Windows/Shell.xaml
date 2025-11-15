@@ -1,0 +1,49 @@
+<Window x:Class="WileyWidget.Shell"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:prism="http://prismlibrary.com/"
+        Title="Wiley Widget"
+        Height="800"
+        Width="1200"
+        WindowState="Maximized">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Menu/Toolbar Area -->
+        <Border Grid.Row="0" Background="#007ACC" Height="50">
+            <TextBlock Text="Wiley Widget"
+                     Foreground="White"
+                     FontSize="18"
+                     FontWeight="Bold"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Center"/>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel Region -->
+            <Border Grid.Column="0" BorderBrush="LightGray" BorderThickness="0,0,1,0">
+                <ContentControl prism:RegionManager.RegionName="LeftPanelRegion"/>
+            </Border>
+
+            <!-- Main Region -->
+            <Border Grid.Column="1">
+                <ContentControl prism:RegionManager.RegionName="MainRegion"/>
+            </Border>
+
+            <!-- Settings Region -->
+            <Border Grid.Column="2" BorderBrush="LightGray" BorderThickness="1,0,0,0">
+                <ContentControl prism:RegionManager.RegionName="SettingsRegion"/>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

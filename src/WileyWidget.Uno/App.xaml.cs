@@ -1,5 +1,3 @@
-using Microsoft.UI.Xaml;
-using Prism.DryIoc;
 using Serilog;
 using Serilog.Events;
 using System;
@@ -8,9 +6,9 @@ namespace WileyWidget.Uno;
 
 /// <summary>
 /// WileyWidget Uno Platform application with Prism MVVM framework.
-/// Inherits from Prism.DryIoc.PrismApplication for dependency injection and modularity.
+/// Inherits from PrismApplication (resolved via global using Prism.DryIoc).
 /// </summary>
-public partial class App : PrismApplication
+public sealed partial class App : PrismApplication
 {
     /// <summary>
     /// Initializes the singleton application object and sets up Serilog logging.
@@ -73,48 +71,17 @@ public partial class App : PrismApplication
         }
     }
 
-    /// <summary>
-    /// Called when the application is launched.
-    /// Overrides Prism's OnLaunched to integrate with Uno Platform lifecycle.
-    /// </summary>
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
-    {
-        Log.Information("[Startup] Application launched");
-        
-        try
-        {
-            base.OnLaunched(args);
-            
-            Log.Information("[Startup] Prism initialization completed");
-        }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "[Startup] Fatal error during application launch");
-            throw;
-        }
-    }
+    // Note: OnLaunched is sealed in PrismApplicationBase and cannot be overridden.
+    // Prism.Uno.WinUI handles application launch internally.
+    // Use OnInitialized() in App.Prism.cs for custom initialization logic.
     
     /// <summary>
     /// Called when the application is exiting.
     /// Ensures proper cleanup of resources.
     /// </summary>
-    protected override void OnExit(ExitEventArgs e)
-    {
-        try
-        {
-            Log.Information("[Shutdown] Application exiting");
-            
-            base.OnExit(e);
-            
-            // Flush and close Serilog
-            Log.CloseAndFlush();
-        }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "[Shutdown] Error during application exit");
-            throw;
-        }
-    }
+    // Note: Prism.Uno.WinUI does not expose OnExit in the same way as WPF.
+    // Cleanup is handled by Serilog sinks and process shutdown, so we avoid overriding OnExit here.
+
 }
 
 // Remove old Uno.Extensions code below

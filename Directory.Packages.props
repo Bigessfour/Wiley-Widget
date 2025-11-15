@@ -15,7 +15,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.8.0" />
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.3" />
     <!-- MSAL packages removed from central package versions (archived) -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageVersion Include="Microsoft.DotNet.Interactive" Version="1.0.0-beta.23506.1" />
@@ -61,7 +61,7 @@
         Include="OpenTelemetry.Instrumentation.SqlClient"
         Version="1.13.0-beta.2" /> -->
     <!-- Syncfusion WPF - v31.2.5 (latest with license compatibility) -->
-    <PackageVersion Include="Syncfusion.Licensing" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="31.2.10" />
     <PackageVersion Include="Syncfusion.SfBusyIndicator.WPF" Version="31.2.5" />
     <PackageVersion Include="Syncfusion.SfChart.WPF" Version="31.2.5" />
     <PackageVersion Include="Syncfusion.SfChat.WPF" Version="31.2.5" />
@@ -83,13 +83,13 @@
     <PackageVersion Include="Syncfusion.Tools.WPF" Version="31.2.5" />
     <PackageVersion Include="Syncfusion.XlsIO.WPF" Version="31.2.5" />
     <PackageVersion Include="Syncfusion.Pdf.WPF" Version="31.2.5" />
-    <!-- Syncfusion WinUI 3 - v31.2.5 (compatible with Windows App SDK 1.6) -->
-    <PackageVersion Include="Syncfusion.Core.WinUI" Version="31.2.5" />
-    <PackageVersion Include="Syncfusion.Grid.WinUI" Version="31.2.5" />
-    <PackageVersion Include="Syncfusion.Chart.WinUI" Version="31.2.5" />
-    <PackageVersion Include="Syncfusion.Gauge.WinUI" Version="31.2.5" />
-    <PackageVersion Include="Syncfusion.Editors.WinUI" Version="31.2.5" />
-    <PackageVersion Include="Syncfusion.TreeView.WinUI" Version="31.2.5" />
+    <!-- Syncfusion WinUI 3 - v31.2.10 (latest compatible with Windows App SDK 1.8) -->
+    <PackageVersion Include="Syncfusion.Core.WinUI" Version="31.2.10" />
+    <PackageVersion Include="Syncfusion.Grid.WinUI" Version="31.2.10" />
+    <PackageVersion Include="Syncfusion.Chart.WinUI" Version="31.2.10" />
+    <PackageVersion Include="Syncfusion.Gauge.WinUI" Version="31.2.10" />
+    <PackageVersion Include="Syncfusion.Editors.WinUI" Version="31.2.10" />
+    <PackageVersion Include="Syncfusion.TreeView.WinUI" Version="31.2.10" />
     <!-- QuickBooks -->
     <PackageVersion Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <!-- Validation -->
@@ -157,22 +157,27 @@
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageVersion Include="Respawn" Version="6.2.1" />
     <!-- Uno Platform -->
-    <PackageVersion Include="Uno.WinUI" Version="5.5.12" />
-    <PackageVersion Include="Uno.WinUI.DevServer" Version="5.5.12" />
-    <PackageVersion Include="Uno.Extensions.Configuration" Version="4.3.1" />
-    <PackageVersion Include="Uno.Extensions.Hosting.WinUI" Version="4.3.1" />
-    <PackageVersion Include="Uno.Extensions.Logging.WinUI" Version="4.3.1" />
-    <PackageVersion Include="Uno.Extensions.Serialization.Http" Version="4.3.1" />
+    <PackageVersion Include="Uno.WinUI" Version="6.4.13" />
+    <PackageVersion Include="Uno.WinUI.DevServer" Version="6.4.13" />
+    <PackageVersion Include="Uno.Extensions.Configuration" Version="5.0.0" />
+    <PackageVersion Include="Uno.Extensions.Hosting.WinUI" Version="5.0.0" />
+    <PackageVersion Include="Uno.Extensions.Logging.WinUI" Version="5.0.0" />
+    <PackageVersion Include="Uno.Extensions.Serialization.Http" Version="5.0.0" />
+    <PackageVersion Include="Uno.UI.Adapter.Microsoft.Extensions.Logging" Version="6.4.13" />
+    <PackageVersion Include="Uno.WinUI.Lottie" Version="6.4.13" />
+    <PackageVersion Include="Uno.Extensions.Navigation.Toolkit.WinUI" Version="5.0.0" />
+    <PackageVersion Include="Uno.Extensions.Navigation.WinUI" Version="5.0.0" />
+    <PackageVersion Include="Uno.Extensions.Serialization.Refit" Version="5.0.0" />
+    <PackageVersion Include="Uno.WinUI.RemoteControl" Version="6.4.13" />
     
     <!-- Prism MVVM Framework -->
     <PackageVersion Include="Prism.Core" Version="9.0.537" />
     <PackageVersion Include="Prism.Wpf" Version="9.0.537" />
     <PackageVersion Include="Prism.Container.DryIoc" Version="9.0.107" />
     <PackageVersion Include="Prism.Events" Version="9.0.537" />
-    <!-- Prism for WinUI 3 (via Uno Platform extensions) -->
+    <!-- Prism for WinUI 3 (official packages, NOT Uno extensions) -->
     <PackageVersion Include="Prism.Uno.WinUI" Version="9.0.537" />
     <PackageVersion Include="Prism.DryIoc.Uno.WinUI" Version="9.0.537" />
-    <!-- Prism.DryIoc removed: replaced with Prism.Container.DryIoc for .NET 9 compatibility -->
     <!-- Security Updates: Override vulnerable transitive dependencies -->
     <!-- CRITICAL: Fixes for high-severity vulnerabilities found by osv-scanner -->
     <!-- System.Net.Security: Fix GHSA-qhqf-ghgh-x2m4, GHSA-6xh7-4v2w-36q6 -->
@@ -193,10 +198,10 @@
     <!-- Azure configuration and identity packages removed to clean Azure traces -->
     <!-- Intuit QuickBooks SDK packages for testing -->
     <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
-    <!-- WinUI 3 and Windows App SDK packages -->
-    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <!-- WinUI 3 and Windows App SDK packages - Latest stable for .NET 9 -->
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.6901" />
     <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
-    <PackageVersion Include="Microsoft.Windows.CsWinRT" Version="2.1.3" />
+    <PackageVersion Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
     <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
   </ItemGroup>
 </Project>

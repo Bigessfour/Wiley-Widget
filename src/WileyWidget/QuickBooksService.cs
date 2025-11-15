@@ -1193,6 +1193,34 @@ public System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellatio
 }
 
 /// <summary>
+/// Checks if the service is currently connected to QuickBooks.
+/// </summary>
+public async System.Threading.Tasks.Task<bool> IsConnectedAsync()
+{
+    try
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+
+        // Check if we have valid tokens
+        var settings = EnsureSettingsLoaded();
+        if (string.IsNullOrEmpty(settings.QboAccessToken) ||
+            string.IsNullOrEmpty(settings.QboRefreshToken) ||
+            settings.QboTokenExpiry <= DateTime.Now)
+        {
+            return false;
+        }
+
+        // Test the connection
+        return await TestConnectionAsync();
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to check QuickBooks connection status");
+        return false;
+    }
+}
+
+/// <summary>
 /// Gets the current connection status of the QuickBooks service.
 /// </summary>
 public async System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default)

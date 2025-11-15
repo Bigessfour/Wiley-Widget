@@ -119,10 +119,13 @@
   <ItemGroup>
     <Page
         Include="**\*.xaml"
-        Exclude="App.xaml" />
+        Exclude="App.xaml;Resources\DataTemplates.xaml;Themes\Generic.xaml" />
     <!-- App.xaml must be ApplicationDefinition (root element is PrismApplication) -->
     <!-- wpftmp will include App.Wpftmp.cs to provide stub method implementations -->
     <ApplicationDefinition Include="App.xaml" />
+    <!-- Exclude XAML files referencing WileyWidget.UI assembly (removed during migration) -->
+    <None Include="Resources\DataTemplates.xaml" />
+    <None Include="Themes\Generic.xaml" />
   </ItemGroup>
 
   <!-- Allow test assembly to access internal members for testing -->
@@ -569,7 +572,7 @@
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
-    <ProjectReference Include="..\WileyWidget.UI\WileyWidget.UI.csproj" />
+    <!-- WileyWidget.UI removed - migrating to WinUI/Uno -->
     <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
     <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
   </ItemGroup>

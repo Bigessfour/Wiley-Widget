@@ -12,9 +12,9 @@ using DryIoc;
 using Prism.Events;
 using Serilog;
 using Serilog.Events;
+using WileyWidget.Events;
 using WileyWidget.Services;
 using WileyWidget.Services.Telemetry;
-using WileyWidget.ViewModels.Messages;
 
 namespace WileyWidget
 {

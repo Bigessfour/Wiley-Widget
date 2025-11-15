@@ -5,7 +5,6 @@
     xmlns:prism="http://prismlibrary.com/"
     xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
     xmlns:syncfusionClr="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
-    xmlns:converters="clr-namespace:WileyWidget.Converters;assembly=WileyWidget.UI"
     xmlns:local="clr-namespace:WileyWidget"
     prism:ViewModelLocator.AutoWireViewModel="False">
   <Application.Resources>

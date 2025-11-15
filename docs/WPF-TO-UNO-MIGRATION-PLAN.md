@@ -1,24 +1,32 @@
-# WPF to Uno Platform Migration Plan
+# WinUI + Uno Platform Unified Migration Plan
 
 **Project**: WileyWidget  
-**Goal**: Migrate WPF application to Uno Platform (WinUI target) while preserving Prism architecture  
+**Goal**: Unified WinUI/Uno Platform architecture with shared codebase
+**Strategy**: **FULL MIGRATION** - Complete Uno Platform implementation, discontinue WPF maintenance  
 **Estimated Duration**: 2-4 weeks (1-day prototype possible)  
-**Status**: Planning Phase  
-**Date**: November 14, 2025
+**Status**: **ACTIVE MIGRATION - WPF DISCONTINUED**
+**Date**: November 15, 2025
 
 ---
 
 ## Executive Summary
 
-This document outlines the comprehensive migration strategy for converting the WileyWidget WPF application to Uno Platform with WinUI target, preserving the existing Prism MVVM architecture, Syncfusion controls, and enterprise features.
+**STRATEGY CHANGE**: We are discontinuing WPF maintenance and focusing **100% effort on Uno Platform migration**. The WPF version will be archived and no longer maintained.
 
-### Key Benefits of Migration
+This document outlines the **complete migration strategy** for converting WileyWidget to a modern WinUI/Uno Platform architecture. We will build **one codebase** that targets:
 
-- **Cross-platform**: Single codebase for Windows, iOS, Android, macOS, WebAssembly
-- **Modern UI**: WinUI 3 design system with Fluent Design
-- **Prism Preserved**: Full Prism support via Prism.Uno.WinUI packages
-- **Syncfusion Support**: WinUI versions of all current controls
-- **Future-proof**: Active development and Microsoft backing
+1. **WinUI (Native Windows)** - Using `WileyWidget.Uno` for Windows 10/11
+2. **Uno Platform (Cross-Platform)** - Using `WileyWidget.Uno` for iOS/Android/macOS/WebAssembly
+
+### Key Benefits of Unified Approach
+
+- **Single Codebase**: Write once, deploy anywhere (Windows + cross-platform)
+- **Shared Business Logic**: All Models, Services, Data, Business projects reused
+- **Modern UI**: WinUI 3 controls work natively on Windows
+- **Cross-Platform**: Uno renders WinUI controls on all platforms
+- **Prism Preserved**: Same Prism.DryIoc.Uno.WinUI packages for both
+- **Syncfusion Support**: Same WinUI control packages (31.2.10) for both targets
+- **Future-proof**: Active Microsoft and Uno Platform development
 
 ---
 
@@ -256,7 +264,9 @@ protected override void ConfigureHost(IHostBuilder builder)
 **Why**: Uno's `PrismApplication` **does not** call `ConfigureServices` on the container directly.  
 **Result**: All DI registrations from WPF work **unchanged**.
 
-### 2.6 Region Adapter for Syncfusion WinUI Controls (NEW)
+### 2.6 Region Adapter for Syncfusion WinUI Controls (UPDATED)
+
+**Correct Namespace**: `Prism.Navigation.Regions` (NOT `Prism.Regions`)
 
 | Control | WPF Adapter | Uno Adapter |
 |---------|-------------|-------------|
@@ -270,8 +280,8 @@ protected override void ConfigureHost(IHostBuilder builder)
 ```csharp
 protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings mappings)
 {
-    mappings.RegisterMapping(typeof(ContentControl), Container.Resolve<ContentControlRegionAdapter>());
-    mappings.RegisterMapping(typeof(ItemsControl), Container.Resolve<ItemsControlRegionAdapter>());
+    mappings.RegisterMapping(typeof(ContentControl), Container.Resolve<Prism.Navigation.Regions.ContentControlRegionAdapter>());
+    mappings.RegisterMapping(typeof(ItemsControl), Container.Resolve<Prism.Navigation.Regions.ItemsControlRegionAdapter>());
     // No Syncfusion-specific adapters required
 }
 ```
@@ -283,7 +293,7 @@ protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings map
 | WPF XAML | Uno XAML | Action |
 |----------|----------|--------|
 | `xmlns:prism="http://prismlibrary.com/"` | ❌ **DELETE** | Causes XAML compiler errors |
-| `xmlns:prism="clr-namespace:Prism.Regions;assembly=Prism.Wpf"` | `xmlns:prism="using:Prism.Regions"` | Convert clr-namespace to using: |
+| `xmlns:prism="clr-namespace:Prism.Regions;assembly=Prism.Wpf"` | `xmlns:prism="using:Prism.Navigation.Regions"` | Convert clr-namespace to using: and correct namespace |
 | `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.Charts;assembly=Syncfusion.SfChart.WPF"` | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.Charts"` | Convert clr-namespace to using: |
 | `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.DataGrid;assembly=Syncfusion.SfDataGrid.WPF"` | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.DataGrid"` | Convert clr-namespace to using: |
 | `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.TreeView;assembly=Syncfusion.SfTreeView.WPF"` | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.TreeView"` | Convert clr-namespace to using: |
@@ -295,6 +305,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
     $content = Get-Content $_.FullName -Raw
     $content = $content -replace 'clr-namespace:([^;]+);assembly=([^"]+)', 'using:$1'
     $content = $content -replace 'xmlns:prism="http://prismlibrary.com/"', ''
+    $content = $content -replace 'Prism\.Regions', 'Prism.Navigation.Regions'
     Set-Content $_.FullName $content -Encoding UTF8
 }
 ```
@@ -532,30 +543,27 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 
 ---
 
-## Migration Approach: Parallel vs Sequential
+## Migration Approach: **FULL UNO MIGRATION** (UPDATED)
 
-### Recommended: Parallel Development
-
-**Strategy**: Keep WPF version running while building Uno version
+**Strategy**: **Complete Uno Platform migration, discontinue WPF maintenance**
 
 **Benefits**:
-- No disruption to users
-- Can validate features side-by-side
-- Gradual rollout possible
-- Fallback if issues found
+- **Full Focus**: 100% development effort on modern platform
+- **Simplified Architecture**: Single codebase, no dual maintenance
+- **Faster Progress**: No parallel development overhead
+- **Clear Direction**: Uno Platform as the future
 
-**Project Structure**:
+**Project Structure** (Simplified):
 ```
 WileyWidget.sln
 ├── src/
-│   ├── WileyWidget/           # Original WPF (keep)
-│   ├── WileyWidget.Uno/       # New Uno version
+│   ├── WileyWidget.Uno/       # NEW Uno version (PRIMARY FOCUS)
 │   ├── WileyWidget.Models/    # Shared ✅
 │   ├── WileyWidget.Services/  # Shared ✅
 │   ├── WileyWidget.Business/  # Shared ✅
 │   ├── WileyWidget.Data/      # Shared ✅
-│   └── WileyWidget.UI/        # WPF-specific views
-│       └── (Not shared - create WileyWidget.Uno.Views)
+│   └── WileyWidget.Abstractions/ # Shared ✅
+│   └── WileyWidget/           # WPF (ARCHIVED - NO LONGER MAINTAINED)
 ```
 
 ---
@@ -805,7 +813,8 @@ dotnet new install Uno.Templates
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: November 14, 2025  
-**Author**: GitHub Copilot (Claude Sonnet 4.5)  
-**Status**: Active Development
+**Document Version**: 1.1
+**Last Updated**: November 15, 2025
+**Author**: GitHub Copilot (Claude Sonnet 4.5)
+**Status**: **ACTIVE MIGRATION - WPF DISCONTINUED**
+**Latest Update**: Strategy changed to full Uno migration, discontinued WPF maintenance

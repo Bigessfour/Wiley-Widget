@@ -224,6 +224,18 @@ namespace WileyWidget.Services.Infrastructure
             return await System.Threading.Tasks.Task.FromResult(false);
         }
 
+        public async Task<bool> IsConnectedAsync()
+        {
+            if (_realService != null)
+            {
+                return await _realService.IsConnectedAsync();
+            }
+
+            Log.Debug("LazyQuickBooksService.IsConnectedAsync() called before module load - returning false (stub)");
+            _logger.LogDebug("IsConnectedAsync called on stub - QuickBooksModule not yet loaded");
+            return await System.Threading.Tasks.Task.FromResult(false);
+        }
+
         public async System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
         {
             if (_realService != null)

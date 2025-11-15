@@ -1,22 +1,19 @@
 // ShellWindow.xaml.cs - Main application shell for Uno Platform
 
-using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace WileyWidget.Uno.Views;
 
 /// <summary>
-/// Main application shell window.
-/// Replaces WPF MainWindow with Uno Platform Window.
+/// Main application shell page.
+/// Replaces WPF MainWindow with Uno Platform Page.
 /// </summary>
-public sealed partial class ShellWindow : Window
+public sealed partial class ShellWindow : Page
 {
     public ShellWindow()
     {
         this.InitializeComponent();
         
-        // Set window title
-        Title = "WileyWidget";
-        
-        // TODO: Configure window size, position, etc.
+        // TODO: Configure page properties if needed
     }
 }
