@@ -20,16 +20,6 @@
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
-
-    <!-- XAML Compilation Diagnostics -->
-    <XamlCompilerDebug>true</XamlCompilerDebug>
-    <XamlCompilationVerbosity>High</XamlCompilationVerbosity>
-    <XamlDebuggingInformation>true</XamlDebuggingInformation>
-    <UseXamlCompilerExecutable>true</UseXamlCompilerExecutable>
-    <XamlCompilerVerbose>true</XamlCompilerVerbose>
-
-    <!-- Disable automatic page inclusion to have explicit control -->
-    <EnableDefaultPageItems>false</EnableDefaultPageItems>
     
     <!-- Use Central Package Management -->
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
@@ -39,12 +29,6 @@
     <Content Include="Assets\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-  </ItemGroup>
-
-  <!-- XAML Files -->
-  <ItemGroup>
-    <ApplicationDefinition Include="App.xaml" />
-    <Page Include="MainWindow.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -118,7 +102,8 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
-  <!-- Shared Project References from Manifest (Commented out temporarily for initial build) -->
+  <!-- Shared Project References - TEMPORARILY DISABLED FOR XAML ISOLATION TEST -->
+  <!--
   <ItemGroup>
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
@@ -126,9 +111,8 @@
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-    <!-- REMOVED: WileyWidget.UI is WPF - incompatible with WinUI XAML compiler -->
-    <!-- <ProjectReference Include="..\WileyWidget.UI\WileyWidget.UI.csproj" /> -->
   </ItemGroup>
+  -->
 
   <!-- Unpackaged Mode Support (for debugging without packaging) -->
   <PropertyGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
