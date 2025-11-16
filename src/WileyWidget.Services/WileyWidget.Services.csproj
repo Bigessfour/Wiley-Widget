@@ -36,9 +36,9 @@
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="[1.13.1, 2.0.0)" />
     <PackageReference Include="Polly.RateLimiting" Version="8.6.4" />
     <!-- Prism packages - explicit versions for consistency -->
+    <!-- Prism.Core is the only Prism dependency needed in Services layer -->
+    <!-- Platform-specific Prism packages (Wpf/Uno.WinUI) belong in presentation projects -->
     <PackageReference Include="Prism.Core" Version="9.0.537" />
-    <!-- WPF-specific Prism removed for WinUI compatibility -->
-    <!-- <PackageReference Include="Prism.Wpf" Version="9.0.537" /> -->
     <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />

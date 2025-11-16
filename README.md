@@ -1,17 +1,23 @@
 # WileyWidget
 
-**A Modern WinUI 3 Application for Budget Management and Financial Analysis**
+**A Modern Cross-Platform Application for Budget Management and Financial Analysis**
 
 [![.NET Version](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/)
+[![Uno Platform](https://img.shields.io/badge/Uno%20Platform-5.5-purple.svg)](https://platform.uno/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
 
-**Version:** 0.5.0 - WinUI 3 Migration
-**Last Updated:** November 14, 2025
-**Framework:** .NET 9.0 WinUI 3
-**UI Framework:** Syncfusion WinUI Controls (https://help.syncfusion.com/winui/overview)
-**Application Framework:** Prism v9.0 (Pure MVVM Architecture)
+**Version:** 1.0.0 - Uno Platform Migration Complete
+**Last Updated:** November 16, 2025
+**Framework:** .NET 9.0 + Uno Platform 5.5
+**UI Framework:** Syncfusion WinUI Controls + Uno.Material
+**Application Framework:** Prism.Uno.WinUI v9.0.537 (Pure MVVM Architecture)
+
+> **⚠️ IMPORTANT: WPF Project Discontinued**  
+> The legacy WPF project (`src/WileyWidget`) has been **permanently removed**.  
+> All development is now on **WileyWidget.Uno** (Uno Platform + WinUI).  
+> WPF code is preserved in Git history for reference if needed.
 
 ---
 

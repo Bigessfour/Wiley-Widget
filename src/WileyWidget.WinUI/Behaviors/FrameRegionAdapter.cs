@@ -1,5 +1,5 @@
 using Microsoft.UI.Xaml.Controls;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 using System;
 
 namespace WileyWidget.WinUI.Behaviors
