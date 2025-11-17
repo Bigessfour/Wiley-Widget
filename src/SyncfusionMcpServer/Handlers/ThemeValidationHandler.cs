@@ -25,10 +25,10 @@ public class ThemeValidationHandler
         // If appXamlPath not provided, try to find it
         if (string.IsNullOrEmpty(appXamlPath))
         {
-            var repoRoot = Environment.GetEnvironmentVariable("WW_REPO_ROOT") ?? 
+            var repoRoot = Environment.GetEnvironmentVariable("WW_REPO_ROOT") ??
                            Directory.GetCurrentDirectory();
             var searchPath = Path.Combine(repoRoot, "src");
-            
+
             if (Directory.Exists(searchPath))
             {
                 var appFiles = Directory.GetFiles(searchPath, "App.xaml.cs", SearchOption.AllDirectories);

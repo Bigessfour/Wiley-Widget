@@ -24,7 +24,7 @@ public class Program
         _serviceProvider = services.BuildServiceProvider();
         _logger = _serviceProvider.GetRequiredService<ILogger<Program>>();
 
-        _logger.LogInformation("Syncfusion MCP Server starting...");
+        _logger!.LogInformation("Syncfusion MCP Server starting...");
 
         try
         {
@@ -97,7 +97,7 @@ public class Program
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing request: {Line}", line);
+                _logger!.LogError(ex, "Error processing request: {Line}", line);
                 var errorResponse = new McpResponse
                 {
                     Id = 0,

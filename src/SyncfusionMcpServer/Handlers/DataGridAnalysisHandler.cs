@@ -34,7 +34,7 @@ public class DataGridAnalysisHandler
         // Resolve relative paths
         if (!Path.IsPathRooted(xamlPath))
         {
-            var repoRoot = Environment.GetEnvironmentVariable("WW_REPO_ROOT") ?? 
+            var repoRoot = Environment.GetEnvironmentVariable("WW_REPO_ROOT") ??
                            Directory.GetCurrentDirectory();
             xamlPath = Path.Combine(repoRoot, xamlPath);
         }

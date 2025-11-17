@@ -38,7 +38,7 @@ public class ReportGeneratorHandler
         // Resolve relative paths
         if (!Path.IsPathRooted(projectPath))
         {
-            var repoRoot = Environment.GetEnvironmentVariable("WW_REPO_ROOT") ?? 
+            var repoRoot = Environment.GetEnvironmentVariable("WW_REPO_ROOT") ??
                            Directory.GetCurrentDirectory();
             projectPath = Path.Combine(repoRoot, projectPath);
         }

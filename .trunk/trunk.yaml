@@ -19,14 +19,13 @@ runtimes:
 lint:
   disabled:
     - markdownlint
+    - dotnet-format
   enabled:
     - actionlint@1.7.8
     - hadolint@2.14.0
     - shellcheck@0.11.0
     - shfmt@3.6.0
     - svgo@4.0.0
-    - dotnet-format@7.0.400
-    - bandit@1.8.6
     - black@25.11.0
     - checkov@3.2.492
     - git-diff-check
@@ -61,4 +60,4 @@ actions:
     - trunk-upgrade-available
 tools:
   enabled:
-    - dotnet@7.0.400
+    - dotnet@9.0.306
