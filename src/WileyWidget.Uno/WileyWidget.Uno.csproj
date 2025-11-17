@@ -1,14 +1,16 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.26100</TargetFramework>
-    <TargetPlatformMinVersion>10.0.26100.0</TargetPlatformMinVersion>
+    <TargetFramework>net9.0-windows10.0.26100.1</TargetFramework>
+    <TargetPlatformMinVersion>10.0.26100.1</TargetPlatformMinVersion>
     <RuntimeIdentifiers>win-x64;win-x86;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <Platforms>x64;x86;ARM64</Platforms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <EnableMsixTooling>true</EnableMsixTooling>
     
+    <!-- Force Windows SDK version to avoid preview dependency -->
+    <WindowsSdkPackageVersion>10.0.26100.1</WindowsSdkPackageVersion>
     <!-- Add explicit WinUI references -->
     <!-- Note: Uno targets net9.0-windows10.0.26100 for .NET 9 compatibility -->
     
@@ -39,7 +41,7 @@
 
   <ItemGroup>
     <!-- Uno Platform Core Packages -->
-    <PackageReference Include="Uno.Extensions.Navigation.Toolkit.WinUI" Version="5.2.0" />
+    <PackageReference Include="Uno.Extensions.Navigation.Toolkit.WinUI" Version="5.2.6" />
 
     <PackageReference Include="Uno.WinUI.RemoteControl" Version="6.0.0-dev.53" Condition="'$(Configuration)'=='Debug'" />
 
@@ -47,17 +49,17 @@
     <PackageReference Include="Uno.Resizetizer" Version="1.5.0" />
     
     <!-- Uno Extensions -->
-    <PackageReference Include="Uno.Extensions.Configuration" Version="5.2.0" />
-    <PackageReference Include="Uno.Extensions.Hosting.WinUI" Version="5.2.0" />
-    <PackageReference Include="Uno.Extensions.Logging.WinUI" Version="5.2.0" />
-    <PackageReference Include="Uno.Extensions.Navigation.WinUI" Version="5.2.0" />
-    <PackageReference Include="Uno.Extensions.Serialization.Http" Version="5.2.0" />
-    <PackageReference Include="Uno.Extensions.Serialization.Refit" Version="5.2.0" />
+    <PackageReference Include="Uno.Extensions.Configuration" Version="5.2.6" />
+    <PackageReference Include="Uno.Extensions.Hosting.WinUI" Version="5.2.6" />
+    <PackageReference Include="Uno.Extensions.Logging.WinUI" Version="5.2.6" />
+    <PackageReference Include="Uno.Extensions.Navigation.WinUI" Version="5.2.6" />
+    <PackageReference Include="Uno.Extensions.Serialization.Http" Version="5.2.6" />
+    <PackageReference Include="Uno.Extensions.Serialization.Refit" Version="5.2.6" />
     
     <!-- Uno Toolkit and Themes -->
-    <PackageReference Include="Uno.Toolkit.WinUI" Version="6.4.0" />
-    <PackageReference Include="Uno.Themes.WinUI.Markup" Version="6.0.0" />
-    <PackageReference Include="Uno.Material.WinUI" Version="6.0.0" />
+    <PackageReference Include="Uno.Toolkit.WinUI" Version="6.4.1" />
+    <PackageReference Include="Uno.Themes.WinUI.Markup" Version="6.0.2" />
+    <PackageReference Include="Uno.Material.WinUI" Version="6.0.2" />
     
     <!-- Community Toolkit -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
@@ -123,9 +125,6 @@
     <!-- QuickBooks SDK -->
     <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
-    
-    <!-- Explicit Windows SDK reference to override Uno SDK preview version -->
-    <PackageReference Include="Microsoft.Windows.SDK.NET.Ref" Version="10.0.26100.1" />
   </ItemGroup>
 
   <!-- Shared Project References (Class Libraries) -->
@@ -144,7 +143,7 @@
   </ItemGroup>
 
   <!-- Manifest for Windows -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0-windows10.0.26100'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0-windows10.0.26100.1'">
     <Manifest Include="app.manifest" />
   </ItemGroup>
   
