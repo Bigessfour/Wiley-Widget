@@ -1,0 +1,11 @@
+# Python dependencies for Wiley Widget project
+# Used by CI/CD pipeline and development tools
+
+# Testing and validation
+pytest>=7.4.0
+
+# Code quality and formatting (managed by Trunk)
+ruff>=0.14.0
+
+# Type checking (managed by Trunk)
+pyright>=1.1.407

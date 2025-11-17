@@ -86,6 +86,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
+        shell: bash
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
             echo "Running restore with EnableWindowsTargeting=true for non-Windows runner"
@@ -95,6 +96,7 @@ jobs:
           fi
 
       - name: Build solution
+        shell: bash
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
             echo "Building on non-Windows runner with EnableWindowsTargeting=true"
@@ -265,11 +267,12 @@ jobs:
           fetch-depth: 0
 
       - name: Run TruffleHog OSS
+        if: github.event.before != '0000000000000000000000000000000000000000'
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: main
-          head: HEAD
+          base: ${{ github.event.before }}
+          head: ${{ github.sha }}
           extra_args: --debug --only-verified
 
   # Phase 7: Deployment Readiness
