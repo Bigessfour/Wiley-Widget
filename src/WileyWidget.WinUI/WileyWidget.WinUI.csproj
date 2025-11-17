@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <WindowsSdkPackageVersion>10.0.19041.41</WindowsSdkPackageVersion>
-    <WindowsSdkVersion>10.0.26100.0</WindowsSdkVersion>
+    <WindowsSdkVersion>10.0.19041.0</WindowsSdkVersion>
     <UseWinUI>true</UseWinUI>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <RootNamespace>WileyWidget.WinUI</RootNamespace>
@@ -30,10 +30,10 @@
 
   <ItemGroup>
     <!-- Windows App SDK and WinUI -->
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.6901" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" />
     <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241106002" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
     
     <!-- Prism for WinUI 3 - REMOVED: Prism.DryIoc.Uno.WinUI is for Uno Platform, not WinUI 3 -->
     <!-- <PackageReference Include="Prism.Core" /> -->
