@@ -4,7 +4,7 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using Microsoft.UI.Xaml;
 global using Microsoft.UI.Xaml.Controls;
-global using Prism.DryIoc.Uno;
+global using Prism.DryIoc.Uno.WinUI;
 global using Prism.Ioc;
 global using Prism.Modularity;
 global using Prism.Mvvm;

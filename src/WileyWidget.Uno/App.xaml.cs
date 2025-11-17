@@ -6,9 +6,9 @@ namespace WileyWidget.Uno;
 
 /// <summary>
 /// WileyWidget Uno Platform application with Prism MVVM framework.
-/// Inherits from PrismApplication (resolved via global using Prism.DryIoc).
+/// Inherits from PrismApplication (resolved via global using Prism.DryIoc.Uno.WinUI).
 /// </summary>
-public sealed partial class App : Prism.DryIoc.Uno.PrismApplication
+public sealed partial class App : Prism.DryIoc.Uno.WinUI.PrismApplication
 {
     /// <summary>
     /// Initializes the singleton application object and sets up Serilog logging.

@@ -85,7 +85,7 @@ public class ReportGeneratorService
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Warning, ex, "Error analyzing file: {File}", xamlFile);
+                    _logger.LogWarning(ex, "Error analyzing file: {File}", xamlFile);
                     report.Summary.TotalErrors++;
                 }
             }
@@ -119,7 +119,7 @@ public class ReportGeneratorService
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Error generating report for: {Path}", projectPath);
+            _logger.LogError(ex, "Error generating report for: {Path}", projectPath);
         }
 
         return report;

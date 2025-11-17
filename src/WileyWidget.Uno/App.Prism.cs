@@ -18,7 +18,7 @@ namespace WileyWidget.Uno;
 /// <summary>
 /// Prism integration partial class for WileyWidget Uno application.
 /// Adapts WPF PrismApplication patterns to Uno Platform.
-/// Uses Prism.DryIoc.PrismApplication (resolved via GlobalUsings.cs).
+/// Uses Prism.DryIoc.Uno.WinUI.PrismApplication (resolved via GlobalUsings.cs).
 /// </summary>
 public sealed partial class App : PrismApplication
 {

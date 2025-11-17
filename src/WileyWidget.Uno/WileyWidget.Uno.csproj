@@ -124,7 +124,7 @@
     <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
     
-    <!-- Explicit Windows SDK reference to override Uno SDK preview version --></parameter
+    <!-- Explicit Windows SDK reference to override Uno SDK preview version -->
     <PackageReference Include="Microsoft.Windows.SDK.NET.Ref" Version="10.0.26100.1" />
   </ItemGroup>
 
