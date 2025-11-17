@@ -4,9 +4,9 @@
     "net9.0-windows10.0.26100": {
       "Prism.Core": {
         "type": "Direct",
-        "requested": "(, )",
-        "resolved": "6.0.0",
-        "contentHash": "g+3ot3wloIAYHJOWDA21SiiUgv0ZNfKlXaq5Tt0xi0C1Faj7UHYSr28cAY+CtVwunItcDjd7ExiUh4C6kNZQdQ=="
+        "requested": "[8.1.97, )",
+        "resolved": "8.1.97",
+        "contentHash": "EP5zrvWddw3eSq25Y7hHnDYdmLZEC2Z/gMrvmHzUuLbitmA1UaS7wQUlSwNr9Km8lzJNCvytFnaGBEFukHgoHg=="
       }
     },
     "net9.0-windows10.0.26100/win-x64": {}
