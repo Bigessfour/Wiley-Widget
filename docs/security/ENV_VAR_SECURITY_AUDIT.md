@@ -1,4 +1,5 @@
 # Environment Variable Security Audit Report
+
 **Project:** Wiley Widget (Prism.DryIoc WPF Application)  
 **Date:** November 12, 2025  
 **Auditor:** GitHub Copilot Security Analysis  
@@ -9,21 +10,22 @@
 ## Executive Summary
 
 The Wiley Widget application successfully resolves critical environment variables via a **multi-tier resolution strategy**:
+
 1. **Secret Vault** (EncryptedLocalSecretVaultService) - AES-256 encrypted storage
 2. **Environment Variables** - Process and user-level variables
 3. **UserSecrets** (Development) - .NET Core user secrets for local dev
 
 ### ✅ VERIFIED RESOLUTIONS (from logs @ 16:16:43.815)
 
-| Variable | Status | Fallback Chain | Production Risk |
-|----------|--------|----------------|-----------------|
-| `QBO_CLIENT_ID` | ✅ Resolved | Vault → Env(Process) → Env(User) | **MEDIUM** - CI/CD must set or fail |
-| `QBO_CLIENT_SECRET` | ✅ Resolved | Vault → Env → Empty String | **HIGH** - Missing fails OAuth |
-| `QBO_ENVIRONMENT` | ✅ Resolved | Vault → Env → Default: "sandbox" | **LOW** - Has safe default |
-| `QBO_REDIRECT_URI` | ✅ Resolved | Vault → Env → Default: Intuit OAuth Playground | **LOW** - Has default |
-| `XAI_API_KEY` | ✅ Resolved | Vault → Env → DevNullAIService stub | **MEDIUM** - AI features disabled w/o key |
-| `SYNCFUSION_LICENSE_KEY` | ✅ Resolved | Env → Vault (migrated) | **LOW** - Dev mode relaxes validation |
-| `BOLD_LICENSE_KEY` | ✅ Inferred | Env → Vault (migrated) | **LOW** - Reporting disabled w/o key |
+| Variable                 | Status      | Fallback Chain                                 | Production Risk                           |
+| ------------------------ | ----------- | ---------------------------------------------- | ----------------------------------------- |
+| `QBO_CLIENT_ID`          | ✅ Resolved | Vault → Env(Process) → Env(User)               | **MEDIUM** - CI/CD must set or fail       |
+| `QBO_CLIENT_SECRET`      | ✅ Resolved | Vault → Env → Empty String                     | **HIGH** - Missing fails OAuth            |
+| `QBO_ENVIRONMENT`        | ✅ Resolved | Vault → Env → Default: "sandbox"               | **LOW** - Has safe default                |
+| `QBO_REDIRECT_URI`       | ✅ Resolved | Vault → Env → Default: Intuit OAuth Playground | **LOW** - Has default                     |
+| `XAI_API_KEY`            | ✅ Resolved | Vault → Env → DevNullAIService stub            | **MEDIUM** - AI features disabled w/o key |
+| `SYNCFUSION_LICENSE_KEY` | ✅ Resolved | Env → Vault (migrated)                         | **LOW** - Dev mode relaxes validation     |
+| `BOLD_LICENSE_KEY`       | ✅ Inferred | Env → Vault (migrated)                         | **LOW** - Reporting disabled w/o key      |
 
 ### 🔴 CRITICAL FINDINGS
 
@@ -63,6 +65,7 @@ var config = new ConfigurationBuilder()
 ### Placeholder Substitution Pattern
 
 **NOT DETECTED** in startup logs. All env vars resolved directly via:
+
 ```csharp
 // QuickBooksService.cs:219-223
 var envClientCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_ID");
@@ -108,6 +111,7 @@ _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _log
 
 **Entry Point:** `QuickBooksService.SyncBudgetsToAppAsync()`  
 **Dependency Chain:**
+
 ```
 QBO_CLIENT_ID missing
   → OAuth2RequestValidator fails
@@ -121,6 +125,7 @@ QBO_CLIENT_ID missing
 ```
 
 **Mitigation (Current):**
+
 - `QuickBooksService.EnsureInitializedAsync()` waits 35s for secrets (lines 198-217)
 - Throws `InvalidOperationException` on timeout (blocks UI)
 - **RECOMMENDATION:** Add retry with exponential backoff + circuit breaker
@@ -132,6 +137,7 @@ QBO_CLIENT_ID missing
 ### ✅ GOOD PRACTICES DETECTED
 
 1. **Multi-Tier Fallback Strategy**
+
    ```csharp
    // QuickBooksService.cs:219-227
    _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _logger)
@@ -156,6 +162,7 @@ QBO_CLIENT_ID missing
 ### ⚠️ ANTI-PATTERNS DETECTED
 
 1. **Silent Fallback to Empty String**
+
    ```csharp
    // QuickBooksService.cs:234
    _clientSecret = await TryGetFromSecretVaultAsync(...)
@@ -163,15 +170,18 @@ QBO_CLIENT_ID missing
                    ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_SECRET")
                    ?? string.Empty;  // ⚠️ Should throw instead
    ```
+
    **Risk:** OAuth fails at runtime with cryptic 401 error instead of clear startup failure.
 
 2. **Reflection-Based Secret Task Wait**
+
    ```csharp
    // QuickBooksService.cs:200-216
    var appType = Type.GetType("WileyWidget.App, WileyWidget");
    var secretsTaskProperty = appType.GetProperty("SecretsInitializationTask",
        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
    ```
+
    **Issue:** Tight coupling to `App` class via reflection. Breaks if property renamed.  
    **Recommendation:** Inject `ISecretVaultService` dependency explicitly.
 
@@ -194,10 +204,12 @@ dotnet run --project src/WileyWidget
 ```
 
 **Result:**
+
 ```
 [ERROR] QuickBooksService initialization failed:
   InvalidOperationException: QBO_CLIENT_ID not found in the secret vault or environment variables.
 ```
+
 **Behavior:** ✅ Fails fast at startup (good).  
 **Log Evidence:** Would see error before "QuickBooks service initialized" log (line logged at 16:16:43.816).
 
@@ -210,12 +222,14 @@ dotnet run --project src/WileyWidget
 ```
 
 **Expected Result:**
+
 ```
 [ERROR] Timeout waiting for secrets initialization - QBO credentials may be incomplete
 InvalidOperationException: Secrets initialization timeout - cannot safely initialize QuickBooks service
 ```
 
 **3rd-Order Impact:**
+
 - QuickBooksViewModel initialization blocked
 - User sees "QuickBooks" menu item disabled
 - Sync operations silently fail (no error UI)
@@ -390,6 +404,7 @@ public class SecureConfigurationHelper
 **Approach:** Use .NET Core user secrets for local development to avoid committing credentials.
 
 **Setup:**
+
 ```bash
 cd src/WileyWidget
 dotnet user-secrets init
@@ -399,6 +414,7 @@ dotnet user-secrets set "XAI:ApiKey" "YOUR_XAI_API_KEY"
 ```
 
 **Integration** (already exists in `StartupOrchestrator.cs` via `.AddUserSecrets<App>()`):
+
 ```csharp
 // File: src/WileyWidget/Startup/StartupOrchestrator.cs:174-175
 .AddJsonFile($"appsettings.{env}.json", optional: true)
@@ -410,13 +426,13 @@ dotnet user-secrets set "XAI:ApiKey" "YOUR_XAI_API_KEY"
 
 ## 6. 3rd-Order Risk Matrix (Production)
 
-| Risk Scenario | Probability | Impact | Mitigation | SigNoz Trace |
-|---------------|-------------|--------|------------|--------------|
-| **QBO Sync Timeout** | 🟡 Medium (15%) | 🔴 High (Compliance) | Increase timeout to 60s, add retry with Polly | Trace span: `QuickBooksService.SyncBudgetsToAppAsync` |
-| **AI Service Stub Enabled** | 🟢 Low (5%) | 🟠 Medium (UX Degradation) | Add UI banner: "AI features unavailable" | Trace span: `XAIService.GetCompletionAsync` → DevNullAIService |
-| **Secret Vault I/O Failure** | 🟢 Low (2%) | 🔴 High (App Crash) | Add fallback to ephemeral cache, retry 3x | Trace span: `EncryptedLocalSecretVaultService.GetSecretAsync` |
-| **SigNoz Unreachable** | 🟡 Medium (20%) | 🟢 Low (No Observability) | Configure fallback to file sink, no-op exporter | Activity: `MCP-TEST-001` span dropped |
-| **CI/CD Missing Env Vars** | 🟡 Medium (10%) | 🔴 High (Deployment Failure) | Add validation step in pipeline (script below) | N/A (pre-deployment) |
+| Risk Scenario                | Probability     | Impact                       | Mitigation                                      | SigNoz Trace                                                   |
+| ---------------------------- | --------------- | ---------------------------- | ----------------------------------------------- | -------------------------------------------------------------- |
+| **QBO Sync Timeout**         | 🟡 Medium (15%) | 🔴 High (Compliance)         | Increase timeout to 60s, add retry with Polly   | Trace span: `QuickBooksService.SyncBudgetsToAppAsync`          |
+| **AI Service Stub Enabled**  | 🟢 Low (5%)     | 🟠 Medium (UX Degradation)   | Add UI banner: "AI features unavailable"        | Trace span: `XAIService.GetCompletionAsync` → DevNullAIService |
+| **Secret Vault I/O Failure** | 🟢 Low (2%)     | 🔴 High (App Crash)          | Add fallback to ephemeral cache, retry 3x       | Trace span: `EncryptedLocalSecretVaultService.GetSecretAsync`  |
+| **SigNoz Unreachable**       | 🟡 Medium (20%) | 🟢 Low (No Observability)    | Configure fallback to file sink, no-op exporter | Activity: `MCP-TEST-001` span dropped                          |
+| **CI/CD Missing Env Vars**   | 🟡 Medium (10%) | 🔴 High (Deployment Failure) | Add validation step in pipeline (script below)  | N/A (pre-deployment)                                           |
 
 ### Production Deployment Checklist
 
@@ -430,6 +446,7 @@ dotnet user-secrets set "XAI:ApiKey" "YOUR_XAI_API_KEY"
 ```
 
 **Script:** `scripts/validate_env_vars.py`
+
 ```python
 #!/usr/bin/env python3
 import os
@@ -439,16 +456,16 @@ import argparse
 def validate_env_vars(required: list[str], optional: list[str]) -> int:
     missing_required = [var for var in required if not os.getenv(var)]
     missing_optional = [var for var in optional if not os.getenv(var)]
-    
+
     if missing_required:
         print(f"❌ Missing REQUIRED environment variables: {', '.join(missing_required)}", file=sys.stderr)
         return 1
-    
+
     print(f"✅ All {len(required)} required environment variables are set")
-    
+
     if missing_optional:
         print(f"⚠️  Missing optional environment variables (features may be degraded): {', '.join(missing_optional)}")
-    
+
     return 0
 
 if __name__ == "__main__":
@@ -456,10 +473,10 @@ if __name__ == "__main__":
     parser.add_argument("--required", type=str, required=True, help="Comma-separated required vars")
     parser.add_argument("--optional", type=str, default="", help="Comma-separated optional vars")
     args = parser.parse_args()
-    
+
     required = [v.strip() for v in args.required.split(",") if v.strip()]
     optional = [v.strip() for v in args.optional.split(",") if v.strip()]
-    
+
     sys.exit(validate_env_vars(required, optional))
 ```
 
@@ -468,6 +485,7 @@ if __name__ == "__main__":
 ## 7. Recommendations
 
 ### Immediate (Sprint 1)
+
 1. ✅ **Replace empty string fallback for `QBO_CLIENT_SECRET`**  
    Change line 234 in `QuickBooksService.cs` to throw instead of returning `string.Empty`.
 
@@ -478,6 +496,7 @@ if __name__ == "__main__":
    Implement `scripts/validate_env_vars.py` (see above).
 
 ### Short-term (Sprint 2)
+
 4. ⏸️ **Remove reflection-based secret task wait**  
    Inject `ISecretVaultService` directly into `QuickBooksService` constructor.
 
@@ -488,6 +507,7 @@ if __name__ == "__main__":
    Show banner in `AIAssistView` when `XAI_API_KEY` missing: "AI features unavailable".
 
 ### Long-term (Sprint 3+)
+
 7. 📝 **Migrate to Azure Key Vault (Production)**  
    Replace `EncryptedLocalSecretVaultService` with Azure Key Vault SDK.
 
@@ -502,11 +522,13 @@ if __name__ == "__main__":
 ## 8. Compliance & Audit Trail
 
 ### GDPR/SOC2 Considerations
+
 - ✅ Secrets encrypted at rest (AES-256)
 - ✅ No secrets in logs (redacted as `<redacted>` in diagnostic output)
 - ⚠️ Secret vault location (`%APPDATA%\WileyWidget\Secrets`) should be documented for backup procedures
 
 ### Audit Log Sample (SigNoz Integration)
+
 ```json
 {
   "timestamp": "2025-11-12T16:16:43.815Z",
@@ -528,21 +550,21 @@ if __name__ == "__main__":
 
 ## Appendix A: Environment Variable Reference
 
-| Variable | Required | Default | Purpose | Vault Key Alias |
-|----------|----------|---------|---------|-----------------|
-| `QBO_CLIENT_ID` | Yes | None | QuickBooks OAuth Client ID | `QBO-CLIENT-ID`, `QuickBooks-ClientId` |
-| `QBO_CLIENT_SECRET` | Yes | "" ⚠️ | QuickBooks OAuth Secret | `QBO-CLIENT-SECRET`, `QuickBooks-ClientSecret` |
-| `QBO_REALM_ID` | No | Auto-detected | QuickBooks Company ID | `QBO-REALM-ID`, `QuickBooks-RealmId` |
-| `QBO_ENVIRONMENT` | No | `sandbox` | QBO API Environment | `QBO-ENVIRONMENT` |
-| `QBO_REDIRECT_URI` | No | Intuit Playground | OAuth callback URL | `QBO-REDIRECT-URI` |
-| `QBO_PRELOGIN_URL` | No | None | Pre-authentication URL | `QBO-PRELOGIN-URL` |
-| `XAI_API_KEY` | No (Recommended) | DevNullAIService | xAI/Grok API Key | N/A (direct env only) |
-| `SYNCFUSION_LICENSE_KEY` | No (Dev) | Dev Mode | Syncfusion license | Migrated to vault |
-| `BOLD_LICENSE_KEY` | No | None | Bold Reports license | Migrated to vault |
-| `WEBHOOKS_PORT` | No | `7207` | Webhooks HTTPS port | N/A |
-| `CLOUDFLARED_EXE` | No | `cloudflared` | Cloudflare tunnel binary | N/A |
-| `WW_SKIP_INTERACTIVE` | No | None | Skip OAuth browser launch (CI) | N/A |
-| `WW_PRINT_AUTH_URL` | No | None | Print OAuth URL to console | N/A |
+| Variable                 | Required         | Default           | Purpose                        | Vault Key Alias                                |
+| ------------------------ | ---------------- | ----------------- | ------------------------------ | ---------------------------------------------- |
+| `QBO_CLIENT_ID`          | Yes              | None              | QuickBooks OAuth Client ID     | `QBO-CLIENT-ID`, `QuickBooks-ClientId`         |
+| `QBO_CLIENT_SECRET`      | Yes              | "" ⚠️             | QuickBooks OAuth Secret        | `QBO-CLIENT-SECRET`, `QuickBooks-ClientSecret` |
+| `QBO_REALM_ID`           | No               | Auto-detected     | QuickBooks Company ID          | `QBO-REALM-ID`, `QuickBooks-RealmId`           |
+| `QBO_ENVIRONMENT`        | No               | `sandbox`         | QBO API Environment            | `QBO-ENVIRONMENT`                              |
+| `QBO_REDIRECT_URI`       | No               | Intuit Playground | OAuth callback URL             | `QBO-REDIRECT-URI`                             |
+| `QBO_PRELOGIN_URL`       | No               | None              | Pre-authentication URL         | `QBO-PRELOGIN-URL`                             |
+| `XAI_API_KEY`            | No (Recommended) | DevNullAIService  | xAI/Grok API Key               | N/A (direct env only)                          |
+| `SYNCFUSION_LICENSE_KEY` | No (Dev)         | Dev Mode          | Syncfusion license             | Migrated to vault                              |
+| `BOLD_LICENSE_KEY`       | No               | None              | Bold Reports license           | Migrated to vault                              |
+| `WEBHOOKS_PORT`          | No               | `7207`            | Webhooks HTTPS port            | N/A                                            |
+| `CLOUDFLARED_EXE`        | No               | `cloudflared`     | Cloudflare tunnel binary       | N/A                                            |
+| `WW_SKIP_INTERACTIVE`    | No               | None              | Skip OAuth browser launch (CI) | N/A                                            |
+| `WW_PRINT_AUTH_URL`      | No               | None              | Print OAuth URL to console     | N/A                                            |
 
 ---
 

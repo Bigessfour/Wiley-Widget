@@ -1,5 +1,5 @@
 name: 🐞 Bug
-title: '[BUG] <title>'
+title: "[BUG] <title>"
 description: File a bug report
 labels: ["bug", "to verify"]
 assignees: []

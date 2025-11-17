@@ -3,21 +3,25 @@
 ## Quick Start
 
 ### 1. Start Database + App
+
 ```bash
 docker-compose up -d db app
 ```
 
 ### 2. Run Unit + Integration Tests
+
 ```bash
 docker-compose run --rm test
 ```
 
 ### 3. Run UI Smoke Tests
+
 ```bash
 docker-compose run --rm ui-test
 ```
 
 ### 4. View Logs
+
 ```bash
 # Database logs
 docker-compose logs -f db
@@ -30,11 +34,13 @@ docker-compose logs test
 ```
 
 ### 5. Stop All Services
+
 ```bash
 docker-compose down
 ```
 
 ### 6. Clean Up (volumes + images)
+
 ```bash
 docker-compose down -v
 docker system prune -f
@@ -45,6 +51,7 @@ docker system prune -f
 ## Daily Development Workflow
 
 ### Morning Startup
+
 ```bash
 # Start DB (wait for healthy)
 docker-compose up -d db
@@ -58,6 +65,7 @@ docker-compose run --rm test
 ```
 
 ### Code → Test Loop
+
 ```bash
 # 1. Make code changes in VS Code
 
@@ -74,6 +82,7 @@ git push
 ```
 
 ### End of Day Cleanup
+
 ```bash
 # Stop services but keep volumes
 docker-compose stop
@@ -87,26 +96,31 @@ docker-compose down
 ## Test Categories
 
 ### Unit Tests (Fast, No DB)
+
 ```bash
 docker-compose run --rm test --filter Category=Unit
 ```
 
 ### Integration Tests (With DB)
+
 ```bash
 docker-compose run --rm test --filter Category=Integration
 ```
 
 ### UI Tests (Playwright)
+
 ```bash
 docker-compose run --rm ui-test
 ```
 
 ### Run Specific Test Class
+
 ```bash
 docker-compose run --rm test --filter FullyQualifiedName~QuickBooksServiceTests
 ```
 
 ### Run with Verbose Output
+
 ```bash
 docker-compose run --rm test -- --logger "console;verbosity=detailed"
 ```
@@ -116,6 +130,7 @@ docker-compose run --rm test -- --logger "console;verbosity=detailed"
 ## Code Coverage
 
 ### Generate Coverage Report
+
 ```bash
 # Run tests with coverage
 docker-compose run --rm test
@@ -148,22 +163,22 @@ test-docker:
   runs-on: ubuntu-latest
   steps:
     - uses: actions/checkout@v4
-    
+
     - name: Start Database
       run: docker-compose up -d db
-    
+
     - name: Wait for DB Healthy
       run: |
         timeout 60 sh -c 'until docker-compose ps db | grep healthy; do sleep 2; done'
-    
+
     - name: Run Tests
       run: docker-compose run --rm test
-    
+
     - name: Upload Coverage
       uses: codecov/codecov-action@v4
       with:
         files: ./coverage/coverage.cobertura.xml
-    
+
     - name: Cleanup
       if: always()
       run: docker-compose down -v
@@ -174,6 +189,7 @@ test-docker:
 ## Troubleshooting
 
 ### Database Won't Start
+
 ```bash
 # Check logs
 docker-compose logs db
@@ -184,6 +200,7 @@ docker-compose up -d db
 ```
 
 ### Tests Fail with Connection Error
+
 ```bash
 # Ensure DB is healthy first
 docker-compose ps db
@@ -196,6 +213,7 @@ docker-compose ps db
 ```
 
 ### App Container Exits Immediately
+
 ```bash
 # Check logs for errors
 docker-compose logs app
@@ -206,6 +224,7 @@ docker-compose up -d app
 ```
 
 ### Coverage Files Missing
+
 ```bash
 # Ensure volume is mounted correctly
 docker-compose run --rm test
@@ -222,6 +241,7 @@ chmod -R 777 coverage/
 ## Advanced Usage
 
 ### Interactive Test Shell
+
 ```bash
 # Start test container with bash
 docker-compose run --rm --entrypoint /bin/bash test
@@ -232,12 +252,14 @@ dotnet test --list-tests
 ```
 
 ### Debug Mode
+
 ```bash
 # Run app with debug port exposed
 docker-compose run --rm -p 5001:5001 app
 ```
 
 ### Custom Connection String
+
 ```bash
 # Override environment variable
 docker-compose run --rm \
@@ -250,6 +272,7 @@ docker-compose run --rm \
 ## Performance Tips
 
 ### Speed Up Builds
+
 ```bash
 # Use BuildKit
 export DOCKER_BUILDKIT=1
@@ -260,6 +283,7 @@ docker-compose build --parallel
 ```
 
 ### Prune Regularly
+
 ```bash
 # Remove unused images
 docker image prune -f
@@ -313,6 +337,7 @@ function dti { docker-compose run --rm test --filter Category=Integration }
 ```
 
 Then just run:
+
 ```bash
 dt                    # All tests
 dtu                   # Unit tests only

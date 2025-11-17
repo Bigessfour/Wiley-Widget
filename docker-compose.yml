@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   # ──────────────────────────────────────────────────────────────
@@ -8,13 +8,26 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: WILEY_DB
     environment:
-      SA_PASSWORD: "WileyWidget!2025"  # Override with secrets in production
+      SA_PASSWORD: "WileyWidget!2025" # Override with secrets in production
       ACCEPT_EULA: "Y"
       MSSQL_PID: "Express"
     ports:
-      - "127.0.0.1:1433:1433"  # Bind to localhost only for security
+      - "127.0.0.1:1433:1433" # Bind to localhost only for security
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-U", "sa", "-P", "WileyWidget!2025", "-Q", "SELECT 1", "-b", "-o", "/dev/null"]
+      test:
+        [
+          "CMD",
+          "/opt/mssql-tools18/bin/sqlcmd",
+          "-U",
+          "sa",
+          "-P",
+          "WileyWidget!2025",
+          "-Q",
+          "SELECT 1",
+          "-b",
+          "-o",
+          "/dev/null",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -56,7 +69,7 @@ services:
       - ConnectionStrings__DefaultConnection=Server=db;Database=WileyWidget;User Id=sa;Password=WileyWidget!2025;TrustServerCertificate=true;
       - DOTNET_USE_POLLING_FILE_WATCHER=true
     ports:
-      - "127.0.0.1:5000:8080"  # HTTP (bind to localhost)
+      - "127.0.0.1:5000:8080" # HTTP (bind to localhost)
     volumes:
       - .:/src
       - ~/.nuget/packages:/root/.nuget/packages:ro
@@ -122,7 +135,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    restart: "no"  # Don't auto-restart tests
+    restart: "no" # Don't auto-restart tests
 
   # ──────────────────────────────────────────────────────────────
   # 4. UI Smoke Test (Playwright + WinAppDriver)

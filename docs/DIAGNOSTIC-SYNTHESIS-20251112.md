@@ -1,6 +1,7 @@
 # Diagnostic Synthesis - 2025-11-12
 
 ## EF Optimization Results
+
 - First MunicipalAccount cold compiled+exec query: 842 ms (<1000 ms target ✅)
 - Warm repeat execution: 37 ms
 - Row count: 72 accounts

@@ -13,6 +13,7 @@
 Wiley Widget WinUI 3 migration is **78% complete** with Phases 0-2 fully implemented. Phase 3 (UI/Navigation) is 40% done, and Phase 4 (Testing) has not started. This roadmap provides a **6-day sprint** to achieve 100% completion with comprehensive testing, CI/CD integration, and production readiness.
 
 ### Critical Gaps Identified
+
 - ❌ **Zero unit test coverage** (61 test files exist but provide 0% coverage)
 - ❌ **No integration tests** with SQL Server/EF Core
 - ❌ **No UI smoke tests** for WinUI navigation
@@ -20,6 +21,7 @@ Wiley Widget WinUI 3 migration is **78% complete** with Phases 0-2 fully impleme
 - ⚠️ **Phase 3 at 40%** (60% UI views remaining)
 
 ### Success Criteria
+
 - ✅ **80%+ code coverage** across all projects
 - ✅ **All unit tests pass** (xUnit + Moq)
 - ✅ **Integration tests** with real SQL Server in Docker
@@ -31,13 +33,13 @@ Wiley Widget WinUI 3 migration is **78% complete** with Phases 0-2 fully impleme
 
 ## Current State Analysis (from `ai-fetchable-manifest.json`)
 
-| Metric | Value | Change | Status |
-|--------|-------|--------|--------|
-| **Total Files** | 1,569 | -271 (cleanup complete) | ✅ |
-| **WinUI LOC** | 10,830 | +3,587 (ported) | ✅ |
-| **Test Files** | 61 | 0% coverage | ❌ |
-| **XAML Files** | 10 | All WinUI (no WPF) | ✅ |
-| **Packages** | 20+ outdated | EF Core, Syncfusion | ⚠️ |
+| Metric          | Value        | Change                  | Status |
+| --------------- | ------------ | ----------------------- | ------ |
+| **Total Files** | 1,569        | -271 (cleanup complete) | ✅     |
+| **WinUI LOC**   | 10,830       | +3,587 (ported)         | ✅     |
+| **Test Files**  | 61           | 0% coverage             | ❌     |
+| **XAML Files**  | 10           | All WinUI (no WPF)      | ✅     |
+| **Packages**    | 20+ outdated | EF Core, Syncfusion     | ⚠️     |
 
 ---
 
@@ -46,15 +48,18 @@ Wiley Widget WinUI 3 migration is **78% complete** with Phases 0-2 fully impleme
 ### **Track A: Testing Implementation (Days 1-6)**
 
 #### **Day 1: Unit Test Foundation**
+
 **Owner:** @bigessfour  
 **Tool:** Docker + xUnit + Moq  
 **Deliverables:**
+
 - `WileyWidget.Tests.WinUI` project created
 - `QuickBooksServiceTests.cs` (3+ test cases, non-whitewash)
 - `DashboardViewModelTests.cs` (command + property tests)
 - `DatabaseInitializerTests.cs` (lifecycle + error handling)
 
 **Tasks:**
+
 ```bash
 # 1. Create test project with Docker
 docker run --rm -it \
@@ -77,6 +82,7 @@ docker run --rm -v "$(pwd):/src" -w /src \
 ```
 
 **Non-Whitewash Checklist:**
+
 - [ ] 3+ test cases per method (happy path, error path, edge case)
 - [ ] Mocked dependencies with `Moq`
 - [ ] Verify call counts (`Times.Once`, `Times.Never`)
@@ -86,9 +92,11 @@ docker run --rm -v "$(pwd):/src" -w /src \
 ---
 
 #### **Day 2: Service Layer Unit Tests**
+
 **Owner:** @bigessfour  
 **Tool:** Docker + xUnit + Moq  
 **Deliverables:**
+
 - `QuickBooksServiceTests.cs` complete (sync, OAuth, error handling)
 - `SecretManagerServiceTests.cs` (DPAPI, validation, rotation)
 - `StartupOrchestratorTests.cs` (health checks, initialization)
@@ -101,6 +109,7 @@ docker run --rm -v "$(pwd):/src" -w /src \
 | SecretManagerService | SaveSecretAsync | 3 | ISecretStore | >80% |
 
 **Commit:**
+
 ```bash
 git add .
 git commit -m "test: add robust service layer unit tests with Moq"
@@ -110,16 +119,19 @@ git push
 ---
 
 #### **Day 3-4: Integration Tests with Docker Compose**
+
 **Owner:** @bigessfour  
 **Tool:** Docker Compose + SQL Server 2022 + EF Core  
 **Deliverables:**
+
 - `docker-compose.yml` with `db`, `app`, `test` services
 - `WileyWidget.Tests.Integration` project
 - Integration tests for EF Core, QuickBooks API, secret storage
 
 **Docker Compose Configuration:**
+
 ```yaml
-version: '3.9'
+version: "3.9"
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -147,6 +159,7 @@ services:
 ```
 
 **Run Integration Tests:**
+
 ```bash
 docker-compose up -d db
 docker-compose build test
@@ -156,24 +169,28 @@ docker-compose run --rm test
 ---
 
 #### **Day 5: UI Smoke Tests**
+
 **Owner:** @bigessfour  
 **Tool:** Playwright + WinAppDriver  
 **Deliverables:**
+
 - Playwright configuration for WinUI
 - `main.spec.ts` (app launch, navigation, license validation)
 - VS Code task for UI test execution
 
 **Playwright Test Example:**
+
 ```typescript
-test('WinUI app launches and navigates to Dashboard', async ({ page }) => {
-  await page.goto('wiley-widget://');
-  await expect(page.locator('text=Dashboard')).toBeVisible();
-  await page.click('text=Manage');
-  await expect(page.locator('text=Municipality Management')).toBeVisible();
+test("WinUI app launches and navigates to Dashboard", async ({ page }) => {
+  await page.goto("wiley-widget://");
+  await expect(page.locator("text=Dashboard")).toBeVisible();
+  await page.click("text=Manage");
+  await expect(page.locator("text=Municipality Management")).toBeVisible();
 });
 ```
 
 **Run UI Tests:**
+
 ```bash
 docker-compose run --rm ui-test
 ```
@@ -181,14 +198,17 @@ docker-compose run --rm ui-test
 ---
 
 #### **Day 6: CI/CD Integration & Coverage Reporting**
+
 **Owner:** @bigessfour  
 **Tool:** GitHub Actions + Codecov  
 **Deliverables:**
+
 - Updated `ci-optimized.yml` with test jobs
 - Codecov integration for coverage reporting
 - Test failure analysis in CI logs
 
 **GitHub Actions Test Job:**
+
 ```yaml
 - name: Run Unit Tests
   run: |
@@ -212,15 +232,17 @@ docker-compose run --rm ui-test
 ### **Track B: Phase 3 Completion (Parallel, Days 1-6)**
 
 #### **Remaining UI Views (60% to Complete)**
-| View | Status | Owner | Deadline |
-|------|--------|-------|----------|
-| `MunicipalityManagementView.xaml` | Not Started | @bigessfour | Day 2 |
-| `BudgetManagementView.xaml` | Not Started | @bigessfour | Day 3 |
-| `ReportsView.xaml` | Not Started | @bigessfour | Day 4 |
-| `SettingsView.xaml` | Not Started | @bigessfour | Day 5 |
-| Navigation integration | Not Started | @bigessfour | Day 6 |
+
+| View                              | Status      | Owner       | Deadline |
+| --------------------------------- | ----------- | ----------- | -------- |
+| `MunicipalityManagementView.xaml` | Not Started | @bigessfour | Day 2    |
+| `BudgetManagementView.xaml`       | Not Started | @bigessfour | Day 3    |
+| `ReportsView.xaml`                | Not Started | @bigessfour | Day 4    |
+| `SettingsView.xaml`               | Not Started | @bigessfour | Day 5    |
+| Navigation integration            | Not Started | @bigessfour | Day 6    |
 
 **Tasks per View:**
+
 1. Create XAML file in `src/WileyWidget.WinUI/Views/`
 2. Create ViewModel in `src/WileyWidget.WinUI/ViewModels/`
 3. Register in `App.xaml.cs` → `RegisterTypes()`
@@ -233,6 +255,7 @@ docker-compose run --rm ui-test
 ### **Track C: Package Updates (Day 1)**
 
 **Outdated Packages to Update:**
+
 ```bash
 # EF Core
 dotnet add package Microsoft.EntityFrameworkCore --version 10.0.0
@@ -338,6 +361,7 @@ namespace WileyWidget.Tests.WinUI.Services
 ## Integration with Existing Tools
 
 ### **Trunk CLI Integration**
+
 ```bash
 # Pre-commit validation (already in workflow)
 trunk fmt --all
@@ -349,6 +373,7 @@ trunk check --filter=coverage --ci
 ```
 
 ### **CSX Test Integration**
+
 Leverage existing CSX tests (20-25, 30-31, 44-52, etc.) as **reference implementations** for new xUnit tests. Example:
 
 ```bash
@@ -362,6 +387,7 @@ docker run --rm -w /app \
 ```
 
 ### **VS Code Tasks**
+
 Add to `.vscode/tasks.json`:
 
 ```json
@@ -383,56 +409,62 @@ Add to `.vscode/tasks.json`:
 
 ## Success Metrics & KPIs
 
-| Metric | Target | Current | Status |
-|--------|--------|---------|--------|
-| **Unit Test Coverage** | 80%+ | 0% | ❌ |
-| **Integration Test Coverage** | 60%+ | 0% | ❌ |
-| **UI Smoke Test Pass Rate** | 100% | N/A | ❌ |
-| **CI Build Success Rate** | 90%+ | ~85% | ⚠️ |
-| **Phase 3 Completion** | 100% | 40% | ⚠️ |
-| **Package Updates** | 100% | 0% | ❌ |
+| Metric                        | Target | Current | Status |
+| ----------------------------- | ------ | ------- | ------ |
+| **Unit Test Coverage**        | 80%+   | 0%      | ❌     |
+| **Integration Test Coverage** | 60%+   | 0%      | ❌     |
+| **UI Smoke Test Pass Rate**   | 100%   | N/A     | ❌     |
+| **CI Build Success Rate**     | 90%+   | ~85%    | ⚠️     |
+| **Phase 3 Completion**        | 100%   | 40%     | ⚠️     |
+| **Package Updates**           | 100%   | 0%      | ❌     |
 
 ---
 
 ## Risk Mitigation
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| **WinUI Container Issues** | High | Use Linux container for dev, build MSIX locally for prod |
-| **Test Flakiness** | Medium | Retry logic in CI, Docker health checks |
-| **EF Core Migration Breaking Changes** | Medium | Test against 10.0.0 in Docker before updating |
-| **CI Pipeline Timeout** | Low | Parallelize test jobs, cache Docker layers |
+| Risk                                   | Impact | Mitigation                                               |
+| -------------------------------------- | ------ | -------------------------------------------------------- |
+| **WinUI Container Issues**             | High   | Use Linux container for dev, build MSIX locally for prod |
+| **Test Flakiness**                     | Medium | Retry logic in CI, Docker health checks                  |
+| **EF Core Migration Breaking Changes** | Medium | Test against 10.0.0 in Docker before updating            |
+| **CI Pipeline Timeout**                | Low    | Parallelize test jobs, cache Docker layers               |
 
 ---
 
 ## Daily Standup Checklist
 
 **Day 1:**
+
 - [ ] `WileyWidget.Tests.WinUI` project created
 - [ ] 3 service tests written (QuickBooks, DatabaseInitializer, DashboardViewModel)
 - [ ] Coverage report generated
 
 **Day 2:**
+
 - [ ] All service layer tests complete (>80% coverage)
 - [ ] Test matrix CSV updated
 - [ ] Commit + push
 
 **Day 3:**
+
 - [ ] `docker-compose.yml` complete
 - [ ] SQL Server healthcheck passing
 - [ ] Integration test project scaffolded
 
 **Day 4:**
+
 - [ ] EF Core integration tests passing
 - [ ] QuickBooks API integration test complete
 - [ ] Coverage >60% for integration layer
 
 **Day 5:**
+
 - [ ] Playwright configured
 - [ ] UI smoke test passing (launch + navigation)
 - [ ] Phase 3 views at 80% complete
 
 **Day 6:**
+
 - [ ] CI pipeline updated with test jobs
 - [ ] Codecov integrated
 - [ ] All tests green in CI
@@ -495,7 +527,8 @@ git push
 
 ---
 
-**Boss, your call:**  
+**Boss, your call:**
+
 - **"Run Day 1 now"** → I'll execute the Docker command and create test files
 - **"Skip to Docker Compose"** → I'll create full `docker-compose.yml` + Dockerfiles
 - **"Review Phase 3 views first"** → I'll analyze remaining UI components

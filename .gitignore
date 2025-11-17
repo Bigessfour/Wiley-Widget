@@ -331,8 +331,10 @@ yarn-error.log*
 tmp/
 temp/
 
-# Generated manifests (optional - remove comment to ignore)
-# ai-fetchable-manifest.json
+# Generated manifests
+ai-fetchable-manifest.json
+.trunk/
+publish/win-x64/
 
 # Prevent ThemeService reintroduction - theme managed globally by SfSkinManager
 **/ThemeService.cs

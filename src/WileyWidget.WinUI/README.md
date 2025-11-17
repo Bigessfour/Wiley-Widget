@@ -76,24 +76,28 @@ dotnet run --project src/WileyWidget.WinUI/WileyWidget.WinUI.csproj
 This project is part of the **WPF to WinUI 3 migration strategy**:
 
 ### Phase 1: Initial Setup ✅
+
 - [x] Create WinUI 3 project structure
 - [x] Add shared project references
 - [x] Configure package manifest
 - [x] Basic window and app lifecycle
 
 ### Phase 2: UI Migration (In Progress)
+
 - [ ] Port existing Views and ViewModels
 - [ ] Adapt XAML to WinUI 3 syntax
 - [ ] Implement navigation framework
 - [ ] Migrate custom controls
 
 ### Phase 3: Integration
+
 - [ ] Wire up services and business logic
 - [ ] Database connectivity
 - [ ] QuickBooks integration
 - [ ] Authentication and authorization
 
 ### Phase 4: Feature Parity
+
 - [ ] Complete feature migration from WPF app
 - [ ] Performance optimization
 - [ ] Testing and validation
@@ -107,14 +111,14 @@ This project is part of the **WPF to WinUI 3 migration strategy**:
 ✅ **Better Performance**: Native Windows rendering, GPU acceleration  
 ✅ **Touch and Pen Support**: Built-in modern input methods  
 ✅ **MSIX Packaging**: Simplified deployment and updates  
-✅ **Windows App SDK**: Regular updates independent of Windows releases  
+✅ **Windows App SDK**: Regular updates independent of Windows releases
 
 ### Migration Considerations
 
 ⚠️ **Namespace Changes**: `System.Windows` → `Microsoft.UI.Xaml`  
 ⚠️ **Control Differences**: Some WPF controls have different names/behavior  
 ⚠️ **Data Binding**: Mostly compatible, but some syntax differences  
-⚠️ **Resources**: Different theme resource keys  
+⚠️ **Resources**: Different theme resource keys
 
 ## Configuration
 

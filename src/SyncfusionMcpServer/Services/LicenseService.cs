@@ -73,7 +73,7 @@ public class LicenseService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error validating license");
+            _logger.Log(LogLevel.Error, ex, "Error validating license");
             result.IsValid = false;
             result.Errors.Add($"Validation error: {ex.Message}");
         }
@@ -114,7 +114,7 @@ public class LicenseService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not parse license key details");
+            _logger.Log(LogLevel.Warning, ex, "Could not parse license key details");
         }
 
         return (version, expirationDate);

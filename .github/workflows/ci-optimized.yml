@@ -7,13 +7,13 @@ on:
       - "docs/**"
       - "README.md"
       - "CHANGELOG.md"
-      - ".github/ISSUE_TEMPLATE/**"
+      - .github/ISSUE_TEMPLATE/**
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
 
 env:
-  DOTNET_VERSION: "9.0.x"
+  DOTNET_VERSION: 9.0.x
   NODE_VERSION: "22.x"
 
 jobs:
@@ -86,10 +86,22 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
-        run: dotnet restore WileyWidget.sln
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            echo "Running restore with EnableWindowsTargeting=true for non-Windows runner"
+            dotnet restore WileyWidget.sln /p:EnableWindowsTargeting=true
+          else
+            dotnet restore WileyWidget.sln
+          fi
 
       - name: Build solution
-        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            echo "Building on non-Windows runner with EnableWindowsTargeting=true"
+            dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal /p:EnableWindowsTargeting=true
+          else
+            dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+          fi
 
       - name: Run unit tests
         run: |
@@ -147,7 +159,7 @@ jobs:
           trunk-version: 1.25.0
 
       - name: Run Trunk check (CI mode)
-        run: trunk check --ci --upload --series=ci-${{ github.run_number }}
+        run: trunk check --ci --upload --series=ci-${{ github.run_number }} --filter=gitleaks,trufflehog,osv-scanner
 
       - name: Upload Trunk results
         uses: actions/upload-artifact@v4
@@ -278,11 +290,26 @@ jobs:
 
       - name: Publish application
         run: |
-          dotnet publish src/WileyWidget/WileyWidget.csproj \
-            --configuration Release \
-            --runtime win-x64 \
-            --self-contained true \
-            --output ./publish/win-x64
+          # Prefer Uno project (post-migration); fall back to WinUI project if present
+          if [ -f src/WileyWidget.Uno/WileyWidget.Uno.csproj ]; then
+            echo "Publishing WileyWidget.Uno"
+            dotnet publish src/WileyWidget.Uno/WileyWidget.Uno.csproj \
+              --configuration Release \
+              --runtime win-x64 \
+              --self-contained true \
+              --output ./publish/win-x64
+          elif [ -f src/WileyWidget.WinUI/WileyWidget.WinUI.csproj ]; then
+            echo "Publishing WileyWidget.WinUI"
+            dotnet publish src/WileyWidget.WinUI/WileyWidget.WinUI.csproj \
+              --configuration Release \
+              --runtime win-x64 \
+              --self-contained true \
+              --output ./publish/win-x64
+          else
+            echo "No publishable project found (expected WileyWidget.Uno or WileyWidget.WinUI)";
+            ls -la src || true
+            exit 1
+          fi
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

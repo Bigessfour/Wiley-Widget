@@ -103,6 +103,7 @@ Prioritize files based on **manifest intelligence**:
 **Duration**: Seconds per test
 
 **Key Features**:
+
 - **Zero Overhead**: No script files - AI executes C# code inline
 - **Instant Feedback**: <1 second execution time
 - **Iterative**: Refine and retest immediately during conversation
@@ -110,6 +111,7 @@ Prioritize files based on **manifest intelligence**:
 - **Context**: Complete conversation history maintained
 
 **Use For**:
+
 - New ViewModel/Service exploration
 - Edge case validation
 - Async pattern testing
@@ -124,12 +126,14 @@ Prioritize files based on **manifest intelligence**:
 **Tools**: xUnit, Moq, FluentAssertions, AutoFixture
 
 **Coverage by Layer**:
+
 - **Models**: Entity validation, property constraints
 - **Data**: Repository operations, query logic
 - **Business**: Service methods, validation rules
 - **ViewModels**: Command execution, property changes
 
 **Testing Patterns**:
+
 - **Arrange-Act-Assert**: Clear test structure
 - **Builder Pattern**: TestDataBuilder for complex objects
 - **Mocking**: External dependencies (database, APIs)

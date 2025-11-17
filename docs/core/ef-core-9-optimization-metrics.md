@@ -11,33 +11,33 @@
 
 ### Core Metrics
 
-| **Metric** | **Before Optimization** | **After Optimization** | **Improvement** | **% Change** |
-|------------|-------------------------|------------------------|-----------------|--------------|
-| **DataReader Disposal Time** | 2149ms | <50ms | 2099ms faster | **-97.7%** ⬇️ |
-| **Entities Tracked** | 72 MunicipalAccount | 0 | 72 entities eliminated | **-100%** ⬇️ |
-| **Change Tracker Overhead** | ~100KB snapshots | 0KB | 100KB saved | **-100%** ⬇️ |
-| **Startup Log Verbosity** | 72 tracking messages | 0 tracking messages | 72 messages eliminated | **-100%** ⬇️ |
-| **Connection Close Time** | 0ms | 0ms | No change | **0%** → |
-| **Query Execution Time** | ~45ms | ~45ms | No change | **0%** → |
-| **Memory Allocation** | ~1.2MB | ~0.5MB | 0.7MB saved | **-58%** ⬇️ |
+| **Metric**                   | **Before Optimization** | **After Optimization** | **Improvement**        | **% Change**  |
+| ---------------------------- | ----------------------- | ---------------------- | ---------------------- | ------------- |
+| **DataReader Disposal Time** | 2149ms                  | <50ms                  | 2099ms faster          | **-97.7%** ⬇️ |
+| **Entities Tracked**         | 72 MunicipalAccount     | 0                      | 72 entities eliminated | **-100%** ⬇️  |
+| **Change Tracker Overhead**  | ~100KB snapshots        | 0KB                    | 100KB saved            | **-100%** ⬇️  |
+| **Startup Log Verbosity**    | 72 tracking messages    | 0 tracking messages    | 72 messages eliminated | **-100%** ⬇️  |
+| **Connection Close Time**    | 0ms                     | 0ms                    | No change              | **0%** →      |
+| **Query Execution Time**     | ~45ms                   | ~45ms                  | No change              | **0%** →      |
+| **Memory Allocation**        | ~1.2MB                  | ~0.5MB                 | 0.7MB saved            | **-58%** ⬇️   |
 
 ### Startup Performance
 
-| **Phase** | **Before** | **After** | **Net Improvement** |
-|-----------|-----------|-----------|---------------------|
-| **AnalyticsViewModel Initialization** | 2149ms (tracking) | <50ms (no tracking) | **~2100ms faster** |
-| **Database Connection** | 0ms (already optimal) | 0ms | No change |
-| **Total EF Core Overhead** | 2194ms | <95ms | **~2100ms saved** |
+| **Phase**                             | **Before**            | **After**           | **Net Improvement** |
+| ------------------------------------- | --------------------- | ------------------- | ------------------- |
+| **AnalyticsViewModel Initialization** | 2149ms (tracking)     | <50ms (no tracking) | **~2100ms faster**  |
+| **Database Connection**               | 0ms (already optimal) | 0ms                 | No change           |
+| **Total EF Core Overhead**            | 2194ms                | <95ms               | **~2100ms saved**   |
 
 ### Repository Method Performance
 
-| **Method** | **Before (Tracking)** | **After (NoTracking)** | **Speedup** |
-|------------|-----------------------|------------------------|-------------|
-| `GetAllAsync()` | 2149ms (72 entities) | ~45ms | **48x faster** |
-| `GetPagedAsync(1, 50)` | ~180ms (50 entities) | ~35ms | **5x faster** |
-| `GetAllWithRelatedAsync()` | ~2500ms (includes) | ~80ms | **31x faster** |
-| `GetByFundAsync()` | ~150ms (filtered) | ~25ms | **6x faster** |
-| `GetByTypeAsync()` | ~140ms (filtered) | ~22ms | **6x faster** |
+| **Method**                 | **Before (Tracking)** | **After (NoTracking)** | **Speedup**    |
+| -------------------------- | --------------------- | ---------------------- | -------------- |
+| `GetAllAsync()`            | 2149ms (72 entities)  | ~45ms                  | **48x faster** |
+| `GetPagedAsync(1, 50)`     | ~180ms (50 entities)  | ~35ms                  | **5x faster**  |
+| `GetAllWithRelatedAsync()` | ~2500ms (includes)    | ~80ms                  | **31x faster** |
+| `GetByFundAsync()`         | ~150ms (filtered)     | ~25ms                  | **6x faster**  |
+| `GetByTypeAsync()`         | ~140ms (filtered)     | ~22ms                  | **6x faster**  |
 
 ---
 
@@ -46,6 +46,7 @@
 ### Change Tracker Memory Impact
 
 **Before Optimization**:
+
 ```
 ChangeTracker State:
   - 72 MunicipalAccount entities tracked
@@ -56,6 +57,7 @@ ChangeTracker State:
 ```
 
 **After Optimization**:
+
 ```
 ChangeTracker State:
   - 0 entities tracked
@@ -69,11 +71,11 @@ ChangeTracker State:
 
 ### GC Pressure Reduction
 
-| **GC Metric** | **Before** | **After** | **Improvement** |
-|---------------|-----------|-----------|-----------------|
-| Gen 0 Collections | High (snapshot objects) | Low | ~40% reduction |
-| Gen 1 Collections | Medium | Low | ~30% reduction |
-| Gen 2 Collections | Low | Minimal | ~15% reduction |
+| **GC Metric**     | **Before**              | **After** | **Improvement** |
+| ----------------- | ----------------------- | --------- | --------------- |
+| Gen 0 Collections | High (snapshot objects) | Low       | ~40% reduction  |
+| Gen 1 Collections | Medium                  | Low       | ~30% reduction  |
+| Gen 2 Collections | Low                     | Minimal   | ~15% reduction  |
 
 ---
 
@@ -81,19 +83,19 @@ ChangeTracker State:
 
 ### Chart Data Loading (AnalyticsViewModel)
 
-| **Chart Component** | **Before** | **After** | **Improvement** |
-|---------------------|-----------|-----------|-----------------|
-| **Budget Overview Chart** | 2150ms | 50ms | **43x faster** |
-| **Revenue/Expense Trends** | 180ms | 35ms | **5x faster** |
-| **Department Comparison** | 140ms | 25ms | **6x faster** |
+| **Chart Component**        | **Before** | **After** | **Improvement** |
+| -------------------------- | ---------- | --------- | --------------- |
+| **Budget Overview Chart**  | 2150ms     | 50ms      | **43x faster**  |
+| **Revenue/Expense Trends** | 180ms      | 35ms      | **5x faster**   |
+| **Department Comparison**  | 140ms      | 25ms      | **6x faster**   |
 
 ### UI Responsiveness
 
-| **UI Metric** | **Before** | **After** | **Improvement** |
-|---------------|-----------|-----------|-----------------|
-| **Startup to First Render** | 5475ms (total) | 3375ms (estimated) | **2100ms faster** |
-| **Chart Render Time** | ~200ms | ~150ms | **25% faster** (reduced GC pauses) |
-| **Main Thread Blocking** | 2149ms | <50ms | **97.7% reduction** |
+| **UI Metric**               | **Before**     | **After**          | **Improvement**                    |
+| --------------------------- | -------------- | ------------------ | ---------------------------------- |
+| **Startup to First Render** | 5475ms (total) | 3375ms (estimated) | **2100ms faster**                  |
+| **Chart Render Time**       | ~200ms         | ~150ms             | **25% faster** (reduced GC pauses) |
+| **Main Thread Blocking**    | 2149ms         | <50ms              | **97.7% reduction**                |
 
 ---
 
@@ -180,12 +182,12 @@ Intel Core i7-12700K, 1 CPU, 20 logical and 12 physical cores
 
 ### Connection Pool Health (Unchanged)
 
-| **Metric** | **Before** | **After** | **Status** |
-|------------|-----------|-----------|------------|
-| **Connection Open Time** | ~5ms | ~5ms | ✅ Optimal |
-| **Connection Close Time** | 0ms | 0ms | ✅ Optimal |
-| **Pool Starvation** | None | None | ✅ Healthy |
-| **Connection Leaks** | None | None | ✅ Healthy |
+| **Metric**                | **Before** | **After** | **Status** |
+| ------------------------- | ---------- | --------- | ---------- |
+| **Connection Open Time**  | ~5ms       | ~5ms      | ✅ Optimal |
+| **Connection Close Time** | 0ms        | 0ms       | ✅ Optimal |
+| **Pool Starvation**       | None       | None      | ✅ Healthy |
+| **Connection Leaks**      | None       | None      | ✅ Healthy |
 
 **Conclusion**: Connection management was already optimal. Issue was **purely change tracking overhead**.
 
@@ -215,11 +217,11 @@ Intel Core i7-12700K, 1 CPU, 20 logical and 12 physical cores
 
 ### Additional Benefits (Estimated)
 
-| **Feature** | **EF 9.0.0 Baseline** | **EF 10.0.0 Expected** | **Additional Gain** |
-|-------------|------------------------|------------------------|---------------------|
-| **Change Detection Algorithm** | Fast (with NoTracking) | Faster (new algorithm) | +10-15% |
-| **SQL Parameter Translation** | JSON arrays | Scalar parameters | +5-10% (better plans) |
-| **Query Compilation Cache** | Standard | Optimized | +5% (cache hits) |
+| **Feature**                    | **EF 9.0.0 Baseline**  | **EF 10.0.0 Expected** | **Additional Gain**   |
+| ------------------------------ | ---------------------- | ---------------------- | --------------------- |
+| **Change Detection Algorithm** | Fast (with NoTracking) | Faster (new algorithm) | +10-15%               |
+| **SQL Parameter Translation**  | JSON arrays            | Scalar parameters      | +5-10% (better plans) |
+| **Query Compilation Cache**    | Standard               | Optimized              | +5% (cache hits)      |
 
 **Net Expected Improvement**: ~15-25% additional speedup on top of current optimizations
 
@@ -229,21 +231,21 @@ Intel Core i7-12700K, 1 CPU, 20 logical and 12 physical cores
 
 ### Unit Test Coverage
 
-| **Test Suite** | **Tests Passed** | **Coverage** | **Status** |
-|----------------|------------------|--------------|------------|
-| MunicipalAccountRepositoryTests | 24/24 | 95% | ✅ Pass |
-| EnterpriseRepositoryTests | 18/18 | 92% | ✅ Pass |
-| BudgetRepositoryTests | 22/22 | 94% | ✅ Pass |
+| **Test Suite**                  | **Tests Passed** | **Coverage** | **Status** |
+| ------------------------------- | ---------------- | ------------ | ---------- |
+| MunicipalAccountRepositoryTests | 24/24            | 95%          | ✅ Pass    |
+| EnterpriseRepositoryTests       | 18/18            | 92%          | ✅ Pass    |
+| BudgetRepositoryTests           | 22/22            | 94%          | ✅ Pass    |
 
 ### Integration Test Results
 
-| **Scenario** | **Result** | **Notes** |
-|--------------|-----------|-----------|
-| Read-only queries return correct data | ✅ Pass | AsNoTracking doesn't affect results |
-| Navigation properties loaded correctly | ✅ Pass | Include() works with AsNoTracking |
-| Write operations succeed (Add/Update/Delete) | ✅ Pass | Tracking automatic for mutations |
-| Concurrent queries isolated | ✅ Pass | Factory pattern ensures isolation |
-| Cache invalidation works | ✅ Pass | No stale data after updates |
+| **Scenario**                                 | **Result** | **Notes**                           |
+| -------------------------------------------- | ---------- | ----------------------------------- |
+| Read-only queries return correct data        | ✅ Pass    | AsNoTracking doesn't affect results |
+| Navigation properties loaded correctly       | ✅ Pass    | Include() works with AsNoTracking   |
+| Write operations succeed (Add/Update/Delete) | ✅ Pass    | Tracking automatic for mutations    |
+| Concurrent queries isolated                  | ✅ Pass    | Factory pattern ensures isolation   |
+| Cache invalidation works                     | ✅ Pass    | No stale data after updates         |
 
 ---
 

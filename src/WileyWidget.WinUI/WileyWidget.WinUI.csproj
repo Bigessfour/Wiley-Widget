@@ -4,6 +4,8 @@
     <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <WindowsSdkPackageVersion>10.0.26100.1</WindowsSdkPackageVersion>
+    <!-- Updated to match Windows App SDK requirements -->
+    <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <WindowsSdkVersion>10.0.26100.0</WindowsSdkVersion>
     <UseWinUI>true</UseWinUI>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
@@ -30,10 +32,10 @@
 
   <ItemGroup>
     <!-- Windows App SDK and WinUI -->
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" />
-    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.1.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />
     
     <!-- Prism for WinUI 3 -->
     <PackageReference Include="Prism.Core" Version="9.0.537" />

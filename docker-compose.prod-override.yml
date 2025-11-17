@@ -5,7 +5,7 @@ version: "3.9"
 #
 # This file provides production-ready security enhancements:
 # - Docker secrets for sensitive data
-# - Stricter resource limits  
+# - Stricter resource limits
 # - Enhanced security options
 # - Internal-only database network (optional)
 
@@ -15,11 +15,11 @@ services:
   # ──────────────────────────────────────────────────────────────
   db:
     environment:
-      SA_PASSWORD_FILE: /run/secrets/sa_password  # Use Docker secret instead
+      SA_PASSWORD_FILE: /run/secrets/sa_password # Use Docker secret instead
     secrets:
       - sa_password
     ports:
-      - "127.0.0.1:1433:1433"  # Keep localhost binding for security
+      - "127.0.0.1:1433:1433" # Keep localhost binding for security
     # Production resource limits
     deploy:
       resources:
@@ -86,14 +86,14 @@ services:
   # ──────────────────────────────────────────────────────────────
   test:
     profiles:
-      - testing  # Only run with --profile testing
+      - testing # Only run with --profile testing
 
   # ──────────────────────────────────────────────────────────────
-  # UI Tests - Disabled in Production  
+  # UI Tests - Disabled in Production
   # ──────────────────────────────────────────────────────────────
   ui-test:
     profiles:
-      - testing  # Only run with --profile testing
+      - testing # Only run with --profile testing
 
 # ──────────────────────────────────────────────────────────────
 # Docker Secrets Configuration
@@ -119,7 +119,7 @@ networks:
       config:
         - subnet: 172.25.0.0/16
           gateway: 172.25.0.1
-    internal: false  # Set to true for completely isolated network
+    internal: false # Set to true for completely isolated network
 
 # ──────────────────────────────────────────────────────────────
 # Volume Configuration - Production Backup Strategy
@@ -131,4 +131,3 @@ volumes:
       com.wileywidget.backup: daily
       com.wileywidget.retention: 30d
       com.wileywidget.env: production
-

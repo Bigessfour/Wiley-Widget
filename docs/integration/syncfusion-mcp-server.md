@@ -36,7 +36,7 @@ Once configured, you can use these commands in Copilot chat:
 
 ```
 @workspace Check if FluentDark theme is configured correctly
-@workspace Analyze the Invoices DataGrid for binding issues  
+@workspace Analyze the Invoices DataGrid for binding issues
 @workspace Validate Syncfusion license
 @workspace Parse DashboardView.xaml for Syncfusion components
 @workspace Generate validation report for the project
@@ -70,6 +70,7 @@ Syncfusion MCP Server (stdio)
 Validates SfSkinManager theme registration and resources.
 
 **Input**:
+
 ```json
 {
   "themeName": "FluentDark",
@@ -79,6 +80,7 @@ Validates SfSkinManager theme registration and resources.
 ```
 
 **Output**:
+
 ```json
 {
   "isValid": true,
@@ -94,6 +96,7 @@ Validates SfSkinManager theme registration and resources.
 Analyzes SfDataGrid configurations for binding issues, performance problems, and best practice violations.
 
 **Input**:
+
 ```json
 {
   "xamlPath": "src/WileyWidget/Views/InvoicesView.xaml",
@@ -103,6 +106,7 @@ Analyzes SfDataGrid configurations for binding issues, performance problems, and
 ```
 
 **Output**:
+
 ```json
 {
   "bindingIssues": [
@@ -125,14 +129,16 @@ Analyzes SfDataGrid configurations for binding issues, performance problems, and
 Validates Syncfusion license registration and status.
 
 **Input**:
+
 ```json
 {
-  "licenseKey": null,  // Reads from SYNCFUSION_LICENSE_KEY env var
+  "licenseKey": null, // Reads from SYNCFUSION_LICENSE_KEY env var
   "expectedVersion": "31.2.5"
 }
 ```
 
 **Output**:
+
 ```json
 {
   "isRegistered": true,
@@ -147,6 +153,7 @@ Validates Syncfusion license registration and status.
 Parses XAML files to extract Syncfusion components, bindings, and namespace declarations.
 
 **Input**:
+
 ```json
 {
   "xamlPath": "src/WileyWidget/Views/DashboardView.xaml",
@@ -156,6 +163,7 @@ Parses XAML files to extract Syncfusion components, bindings, and namespace decl
 ```
 
 **Output**:
+
 ```json
 {
   "componentsFound": [
@@ -178,6 +186,7 @@ Parses XAML files to extract Syncfusion components, bindings, and namespace decl
 Generates comprehensive validation report for CI/CD pipelines.
 
 **Input**:
+
 ```json
 {
   "projectPath": "src/WileyWidget",
@@ -188,6 +197,7 @@ Generates comprehensive validation report for CI/CD pipelines.
 ```
 
 **Output**:
+
 ```json
 {
   "generatedAt": "2025-11-14T12:00:00Z",
@@ -251,6 +261,7 @@ MCP server configuration in VS Code settings:
 ### Integration Testing
 
 The server has been tested with:
+
 - ✅ License validation (31.2.5)
 - ✅ XAML parsing (App.xaml)
 - ✅ Component detection
@@ -341,6 +352,7 @@ $env:SYNCFUSION_LICENSE_KEY
 ## Support
 
 For issues or questions:
+
 - Review logs: VS Code Developer Tools Console
 - Run diagnostics: `.\scripts\tools\test-syncfusion-mcp.ps1`
 - Check design doc: `docs/integration/syncfusion-mcp-server-design.md`

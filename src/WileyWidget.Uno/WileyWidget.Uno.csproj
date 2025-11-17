@@ -1,8 +1,8 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>net9.0-windows10.0.26100.0</TargetFrameworks>
-    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <TargetFramework>net9.0-windows10.0.26100</TargetFramework>
+    <TargetPlatformMinVersion>10.0.26100.0</TargetPlatformMinVersion>
     <RuntimeIdentifiers>win-x64;win-x86;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <Platforms>x64;x86;ARM64</Platforms>
@@ -10,7 +10,7 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     
     <!-- Add explicit WinUI references -->
-    <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
+    <!-- Note: Uno targets net9.0-windows10.0.26100 for .NET 9 compatibility -->
     
     <!-- Fix PRI resource duplication -->
     <EnableDefaultPriItems>false</EnableDefaultPriItems>
@@ -39,32 +39,30 @@
 
   <ItemGroup>
     <!-- Uno Platform Core Packages -->
-    <PackageReference Include="Uno.Extensions.Navigation.Toolkit.WinUI" Version="5.0.2" />
+    <PackageReference Include="Uno.Extensions.Navigation.Toolkit.WinUI" Version="5.2.0" />
 
-    <PackageReference Include="Uno.WinUI.RemoteControl" Version="5.5.37" Condition="'$(Configuration)'=='Debug'" />
+    <PackageReference Include="Uno.WinUI.RemoteControl" Version="6.0.0-dev.53" Condition="'$(Configuration)'=='Debug'" />
 
-    <PackageReference Include="Uno.WinUI.Lottie" Version="6.4.43" />
-    <PackageReference Include="Uno.Resizetizer" Version="1.3.0" />
+    <PackageReference Include="Uno.WinUI.Lottie" Version="6.4.106" />
+    <PackageReference Include="Uno.Resizetizer" Version="1.5.0" />
     
     <!-- Uno Extensions -->
-    <PackageReference Include="Uno.Extensions.Configuration" Version="5.0.2" />
-    <PackageReference Include="Uno.Extensions.Hosting.WinUI" Version="5.0.2" />
-    <PackageReference Include="Uno.Extensions.Logging.WinUI" Version="5.0.2" />
-    <PackageReference Include="Uno.Extensions.Navigation.WinUI" Version="5.0.2" />
-    <PackageReference Include="Uno.Extensions.Serialization.Http" Version="5.0.2" />
-    <PackageReference Include="Uno.Extensions.Serialization.Refit" Version="5.0.2" />
+    <PackageReference Include="Uno.Extensions.Configuration" Version="5.2.0" />
+    <PackageReference Include="Uno.Extensions.Hosting.WinUI" Version="5.2.0" />
+    <PackageReference Include="Uno.Extensions.Logging.WinUI" Version="5.2.0" />
+    <PackageReference Include="Uno.Extensions.Navigation.WinUI" Version="5.2.0" />
+    <PackageReference Include="Uno.Extensions.Serialization.Http" Version="5.2.0" />
+    <PackageReference Include="Uno.Extensions.Serialization.Refit" Version="5.2.0" />
     
     <!-- Uno Toolkit and Themes -->
-    <PackageReference Include="Uno.Toolkit.WinUI" Version="6.3.5" />
-    <PackageReference Include="Uno.Themes.WinUI.Markup" Version="5.3.1" />
-    <PackageReference Include="Uno.Material.WinUI" Version="5.3.1" />
+    <PackageReference Include="Uno.Toolkit.WinUI" Version="6.4.0" />
+    <PackageReference Include="Uno.Themes.WinUI.Markup" Version="6.0.0" />
+    <PackageReference Include="Uno.Material.WinUI" Version="6.0.0" />
     
     <!-- Community Toolkit -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     
-    <!-- Windows App SDK -->
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <!-- Windows App SDK removed from Uno project (WinUI project owns OS-specific packaging) -->
     
     <!-- Prism for Uno Platform with WinUI -->
     <PackageReference Include="Prism.Core" Version="9.0.537" />
@@ -125,6 +123,9 @@
     <!-- QuickBooks SDK -->
     <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
+    
+    <!-- Explicit Windows SDK reference to override Uno SDK preview version --></parameter
+    <PackageReference Include="Microsoft.Windows.SDK.NET.Ref" Version="10.0.26100.1" />
   </ItemGroup>
 
   <!-- Shared Project References (Class Libraries) -->
@@ -143,7 +144,7 @@
   </ItemGroup>
 
   <!-- Manifest for Windows -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0-windows10.0.26100.0'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0-windows10.0.26100'">
     <Manifest Include="app.manifest" />
   </ItemGroup>
   

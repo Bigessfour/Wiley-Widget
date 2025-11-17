@@ -39,6 +39,7 @@ This document now serves as a **completion record and testing guide** for the Wi
 **Objective**: Update `WileyWidget.Uno.csproj` with complete dependency chain
 
 **Tasks**:
+
 - ✅ Add Prism.Uno.WinUI packages (v9.0.537)
 - ✅ Add Syncfusion.WinUI controls (v31.2.5)
 - ✅ Add Entity Framework Core (v9.0.10)
@@ -50,6 +51,7 @@ This document now serves as a **completion record and testing guide** for the Wi
 - ✅ Reference all shared projects (Models, Services, Business, Data, Abstractions)
 
 **Package Alignment**:
+
 ```xml
 <!-- Prism -->
 Prism.Core: 9.0.537
@@ -72,6 +74,7 @@ Syncfusion.TreeView.WinUI: 31.2.5
 **Objective**: Adapt WPF's App.xaml.cs Prism bootstrapping to Uno Platform
 
 **Key Files to Create**:
+
 - `App.Prism.cs` - Prism integration partial class
 - `App.DependencyInjection.cs` - Port DI registrations from WPF
 - `App.Lifecycle.cs` - Port lifecycle management
@@ -80,15 +83,17 @@ Syncfusion.TreeView.WinUI: 31.2.5
 **Critical Adaptations**:
 
 1. **PrismApplication Base Class**:
+
    ```csharp
    // WPF: Prism.DryIoc.PrismApplication
    public partial class App : Prism.DryIoc.PrismApplication
-   
+
    // Uno: Prism.DryIoc.Uno.WinUI.PrismApplication
    public partial class App : Prism.DryIoc.Uno.WinUI.PrismApplication
    ```
 
 2. **Container Creation**:
+
    ```csharp
    protected override IContainerExtension CreateContainerExtension()
    {
@@ -108,6 +113,7 @@ Syncfusion.TreeView.WinUI: 31.2.5
 **Objective**: Port Syncfusion theme configuration to Uno/WinUI
 
 **WPF Theme Setup** (Current):
+
 ```xaml
 <prism:PrismApplication>
   <Application.Resources>
@@ -121,12 +127,14 @@ Syncfusion.TreeView.WinUI: 31.2.5
 ```
 
 **Code-behind** (WPF):
+
 ```csharp
 SfSkinManager.ApplyThemeAsDefaultStyle = true;
 SfSkinManager.ApplicationTheme = new Theme("FluentLight");
 ```
 
 **Uno/WinUI Adaptation**:
+
 ```xaml
 <Application>
   <Application.Resources>
@@ -141,6 +149,7 @@ SfSkinManager.ApplicationTheme = new Theme("FluentLight");
 ```
 
 **Tasks**:
+
 - [ ] Create `Themes/` directory in Uno project
 - [ ] Port `Generic.xaml` resource dictionary
 - [ ] Port `Strings.xaml` localization resources
@@ -149,15 +158,16 @@ SfSkinManager.ApplicationTheme = new Theme("FluentLight");
 
 ### 1.4 Uno Platform Gotchas & Pre-Checks (NEW)
 
-| Issue | Why it matters | Fix / Mitigation |
-|-------|----------------|------------------|
-| **Uno uses `UIElement` as shell** | `CreateShell()` must return a `Page` or `Window` – not a WPF `Window` | Implement `protected override UIElement CreateShell()` and return `Container.Resolve<ShellPage>()` |
-| **WinUI `RequestedTheme` only works on `Application`** | Setting it on a `Page` has no effect | Keep `RequestedTheme="Light"` **only** in `App.xaml` |
-| **Syncfusion WinUI **does NOT ship external theme XAML files** | Your original plan references `FluentLight.xaml` – **they don't exist** | **Remove all `<ResourceDictionary Source="...FluentLight.xaml"/>` lines** |
-| **Prism.Uno.WinUI expects `IHostBuilder`** | DI registration must go through `ConfigureHost()` | Add `protected override void ConfigureHost(IHostBuilder builder)` and move all `services.Add...` calls there |
-| **Uno requires `Uno.UI` NuGet** | Without it, XAML compilation fails on Windows | Add `<PackageReference Include="Uno.UI" Version="5.3.*" />` |
+| Issue                                                            | Why it matters                                                          | Fix / Mitigation                                                                                             |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Uno uses `UIElement` as shell**                                | `CreateShell()` must return a `Page` or `Window` – not a WPF `Window`   | Implement `protected override UIElement CreateShell()` and return `Container.Resolve<ShellPage>()`           |
+| **WinUI `RequestedTheme` only works on `Application`**           | Setting it on a `Page` has no effect                                    | Keep `RequestedTheme="Light"` **only** in `App.xaml`                                                         |
+| **Syncfusion WinUI **does NOT ship external theme XAML files\*\* | Your original plan references `FluentLight.xaml` – **they don't exist** | **Remove all `<ResourceDictionary Source="...FluentLight.xaml"/>` lines**                                    |
+| **Prism.Uno.WinUI expects `IHostBuilder`**                       | DI registration must go through `ConfigureHost()`                       | Add `protected override void ConfigureHost(IHostBuilder builder)` and move all `services.Add...` calls there |
+| **Uno requires `Uno.UI` NuGet**                                  | Without it, XAML compilation fails on Windows                           | Add `<PackageReference Include="Uno.UI" Version="5.3.*" />`                                                  |
 
 **Checklist** (add to end of Phase 1):
+
 - [ ] `dotnet new unoapp -n WileyWidget.Uno --framework net9.0-windows10.0.19041 --presentation Mvvm`
 - [ ] Remove **all** `Syncfusion.*.WPF` packages
 - [ ] Add **only** `Syncfusion.*.WinUI` packages (v31.2.5)
@@ -169,6 +179,7 @@ SfSkinManager.ApplicationTheme = new Theme("FluentLight");
 ### 2.1 Port Core Infrastructure
 
 **Files to Port**:
+
 1. **App.DependencyInjection.cs** (749 LOC)
    - `CreateContainerExtension()` - DryIoc setup
    - `RegisterTypes()` - Service registrations
@@ -188,6 +199,7 @@ SfSkinManager.ApplicationTheme = new Theme("FluentLight");
    - Telemetry integration
 
 **WPF vs Uno Lifecycle Mapping**:
+
 ```csharp
 // WPF
 protected override void OnStartup(StartupEventArgs e)
@@ -205,6 +217,7 @@ protected override void OnLaunched(LaunchActivatedEventArgs args)
 ```
 
 **Container Registration Adaptation**:
+
 - Most registrations can be ported directly
 - Update view/viewmodel registrations for new namespace
 - Adapt platform-specific services (file system, etc.)
@@ -214,11 +227,13 @@ protected override void OnLaunched(LaunchActivatedEventArgs args)
 **WileyWidget.Services** - Can be reused as-is (class library)
 
 **Platform-Specific Adaptations Needed**:
+
 - File system access (use Uno storage APIs)
 - Threading/dispatcher (use Uno dispatcher)
 - Window management (adapt for Uno window model)
 
 **Services to Review**:
+
 - `QuickBooksService` - Likely compatible
 - `DatabaseInitializer` - Should work with EF Core
 - `SettingsService` - May need storage adaptation
@@ -229,6 +244,7 @@ protected override void OnLaunched(LaunchActivatedEventArgs args)
 **WileyWidget.Data** - Can be reused as-is
 
 **EF Core Compatibility**:
+
 - ✅ Same EF Core version (9.0.10)
 - ✅ SQL Server provider compatible
 - ✅ Connection strings portable
@@ -270,12 +286,13 @@ protected override void ConfigureHost(IHostBuilder builder)
 
 **Correct Namespace**: `Prism.Navigation.Regions` (NOT `Prism.Regions`)
 
-| Control | WPF Adapter | Uno Adapter |
-|---------|-------------|-------------|
+| Control      | WPF Adapter               | Uno Adapter                                                                    |
+| ------------ | ------------------------- | ------------------------------------------------------------------------------ |
 | `SfDataGrid` | `SfDataGridRegionAdapter` | `Syncfusion.UI.Xaml.DataGrid` → **use built-in `ContentControlRegionAdapter`** |
-| `SfChart` | Custom | **No custom adapter needed** – bind directly |
+| `SfChart`    | Custom                    | **No custom adapter needed** – bind directly                                   |
 
 **Action**:
+
 - **Delete** any custom `SfDataGridRegionAdapter.cs`
 - Register only standard adapters:
 
@@ -292,15 +309,16 @@ protected override void ConfigureRegionAdapterMappings(RegionAdapterMappings map
 
 ### 2.7 XAML Namespace Conversion Table (NEW)
 
-| WPF XAML | Uno XAML | Action |
-|----------|----------|--------|
-| `xmlns:prism="http://prismlibrary.com/"` | ❌ **DELETE** | Causes XAML compiler errors |
-| `xmlns:prism="clr-namespace:Prism.Regions;assembly=Prism.Wpf"` | `xmlns:prism="using:Prism.Navigation.Regions"` | Convert clr-namespace to using: and correct namespace |
-| `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.Charts;assembly=Syncfusion.SfChart.WPF"` | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.Charts"` | Convert clr-namespace to using: |
-| `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.DataGrid;assembly=Syncfusion.SfDataGrid.WPF"` | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.DataGrid"` | Convert clr-namespace to using: |
-| `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.TreeView;assembly=Syncfusion.SfTreeView.WPF"` | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.TreeView"` | Convert clr-namespace to using: |
+| WPF XAML                                                                                          | Uno XAML                                               | Action                                                |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| `xmlns:prism="http://prismlibrary.com/"`                                                          | ❌ **DELETE**                                          | Causes XAML compiler errors                           |
+| `xmlns:prism="clr-namespace:Prism.Regions;assembly=Prism.Wpf"`                                    | `xmlns:prism="using:Prism.Navigation.Regions"`         | Convert clr-namespace to using: and correct namespace |
+| `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.Charts;assembly=Syncfusion.SfChart.WPF"`      | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.Charts"`   | Convert clr-namespace to using:                       |
+| `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.DataGrid;assembly=Syncfusion.SfDataGrid.WPF"` | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.DataGrid"` | Convert clr-namespace to using:                       |
+| `xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.TreeView;assembly=Syncfusion.SfTreeView.WPF"` | `xmlns:syncfusion="using:Syncfusion.UI.Xaml.TreeView"` | Convert clr-namespace to using:                       |
 
 **PowerShell Script**:
+
 ```powershell
 # Convert all XAML files in src/
 Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
@@ -320,12 +338,14 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 ✅ **REALITY**: Syncfusion WinUI themes are **built-in** to the controls
 
 **What to DELETE from WPF**:
+
 - `Themes/SyncfusionTheme.xaml` (does not exist)
 - `Themes/SyncfusionDataGridTheme.xaml` (does not exist)
 - `Themes/SyncfusionChartTheme.xaml` (does not exist)
 - Any `<ResourceDictionary Source="pack://...">` references
 
 **What to KEEP in Uno**:
+
 - `Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("your-key");`
 - Built-in theme properties on controls:
   ```xaml
@@ -338,14 +358,14 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 
 ### 2.9 Uno Platform Testing Matrix (NEW)
 
-| Test Type | WPF Command | Uno Command | Status |
-|-----------|-------------|-------------|--------|
-| **Unit Tests** | `dotnet test WileyWidget.Tests.csproj` | `dotnet test WileyWidget.Uno.csproj` | ✅ Shared tests work |
-| **UI Tests** | WinAppDriver + Appium | ❌ **No Uno UI testing framework** | ⚠️ Manual testing only |
-| **Integration Tests** | NUnit + Selenium | ❌ **No Uno integration testing** | ⚠️ Manual testing only |
-| **E2E Tests** | SpecFlow + Selenium | ❌ **No Uno E2E testing** | ⚠️ Manual testing only |
-| **Build Tests** | `dotnet build` | `dotnet build` | ✅ Works |
-| **Package Tests** | NuGet validation | NuGet validation | ✅ Works |
+| Test Type             | WPF Command                            | Uno Command                          | Status                 |
+| --------------------- | -------------------------------------- | ------------------------------------ | ---------------------- |
+| **Unit Tests**        | `dotnet test WileyWidget.Tests.csproj` | `dotnet test WileyWidget.Uno.csproj` | ✅ Shared tests work   |
+| **UI Tests**          | WinAppDriver + Appium                  | ❌ **No Uno UI testing framework**   | ⚠️ Manual testing only |
+| **Integration Tests** | NUnit + Selenium                       | ❌ **No Uno integration testing**    | ⚠️ Manual testing only |
+| **E2E Tests**         | SpecFlow + Selenium                    | ❌ **No Uno E2E testing**            | ⚠️ Manual testing only |
+| **Build Tests**       | `dotnet build`                         | `dotnet build`                       | ✅ Works               |
+| **Package Tests**     | NuGet validation                       | NuGet validation                     | ✅ Works               |
 
 **Reality Check**: Uno Platform has **no automated testing frameworks**. All UI/integration testing must be manual.
 
@@ -356,6 +376,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 ### 3.1 Create Shell and Main Layout
 
 **WPF Shell** (Current):
+
 ```xaml
 <Window x:Class="WileyWidget.Views.MainWindow"
         xmlns:prism="http://prismlibrary.com/"
@@ -365,6 +386,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 ```
 
 **Uno Shell** (Target):
+
 ```xaml
 <Page x:Class="WileyWidget.Uno.Views.Shell"
       xmlns:prism="using:Prism.Windows.Mvvm">
@@ -373,6 +395,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 ```
 
 **Key Differences**:
+
 - `Window` → `Page` or `Window` (Uno supports both)
 - Namespace syntax: `xmlns:prism="http://..."` → `using:Prism...`
 - Region management same concept, different implementation
@@ -403,6 +426,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
    - Database configuration
 
 **XAML Conversion Checklist per View**:
+
 - [ ] Update namespace declarations
 - [ ] Convert WPF controls → WinUI controls
 - [ ] Update Syncfusion control names (.WPF → .WinUI)
@@ -415,18 +439,21 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 ### 3.3 XAML Migration Examples
 
 **WPF SfDataGrid**:
+
 ```xaml
 <syncfusion:SfDataGrid xmlns:syncfusion="clr-namespace:Syncfusion.UI.Xaml.Grid;assembly=Syncfusion.SfGrid.WPF"
                        ItemsSource="{Binding Items}" />
 ```
 
 **WinUI SfDataGrid**:
+
 ```xaml
 <syncfusion:SfDataGrid xmlns:syncfusion="using:Syncfusion.UI.Xaml.DataGrid"
                        ItemsSource="{Binding Items}" />
 ```
 
 **WPF SfChart**:
+
 ```xaml
 <syncfusion:SfChart xmlns:syncfusion="http://schemas.syncfusion.com/wpf">
     <syncfusion:ColumnSeries ItemsSource="{Binding Data}" />
@@ -434,6 +461,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 ```
 
 **WinUI SfCartesianChart**:
+
 ```xaml
 <syncfusion:SfCartesianChart xmlns:syncfusion="using:Syncfusion.UI.Xaml.Charts">
     <syncfusion:ColumnSeries ItemsSource="{Binding Data}" />
@@ -445,11 +473,13 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 **Good News**: Most ViewModel code can be reused!
 
 **Minor Adaptations Needed**:
+
 - Update navigation interfaces (Prism.Uno.WinUI)
 - Update dialog service interfaces
 - Platform-specific code (file pickers, etc.)
 
 **ViewModel Compatibility**:
+
 - ✅ Property change notification (same)
 - ✅ Commands (same `ICommand` interface)
 - ✅ Event aggregator (same Prism.Events)
@@ -465,16 +495,17 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 
 **Control Mapping Table**:
 
-| WPF Package | WinUI Package | Status |
-|-------------|---------------|--------|
-| `Syncfusion.SfGrid.WPF` | `Syncfusion.Grid.WinUI` | ✅ Available |
-| `Syncfusion.SfChart.WPF` | `Syncfusion.Chart.WinUI` | ✅ Available |
-| `Syncfusion.SfGauge.WPF` | `Syncfusion.Gauge.WinUI` | ✅ Available |
-| `Syncfusion.SfInput.WPF` | `Syncfusion.Editors.WinUI` | ✅ Available |
-| `Syncfusion.SfTreeView.WPF` | `Syncfusion.TreeView.WinUI` | ✅ Available |
-| `Syncfusion.SfSkinManager.WPF` | Theme resources | ⚠️ Different approach |
+| WPF Package                    | WinUI Package               | Status                |
+| ------------------------------ | --------------------------- | --------------------- |
+| `Syncfusion.SfGrid.WPF`        | `Syncfusion.Grid.WinUI`     | ✅ Available          |
+| `Syncfusion.SfChart.WPF`       | `Syncfusion.Chart.WinUI`    | ✅ Available          |
+| `Syncfusion.SfGauge.WPF`       | `Syncfusion.Gauge.WinUI`    | ✅ Available          |
+| `Syncfusion.SfInput.WPF`       | `Syncfusion.Editors.WinUI`  | ✅ Available          |
+| `Syncfusion.SfTreeView.WPF`    | `Syncfusion.TreeView.WinUI` | ✅ Available          |
+| `Syncfusion.SfSkinManager.WPF` | Theme resources             | ⚠️ Different approach |
 
 **Theme Management Change**:
+
 - WPF uses `SfSkinManager` static class
 - WinUI uses resource dictionary merging
 - Need to adapt theme switching logic
@@ -489,6 +520,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 ```
 
 **Minor Adaptations**:
+
 - OAuth redirect handling (different WebView)
 - Token storage (use secure storage)
 - HTTP client configuration (same Polly policies)
@@ -498,6 +530,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 **Unit Tests**: Reuse existing test projects
 
 **UI Tests**: Need new approach
+
 - WPF uses WinAppDriver
 - Uno can use Uno.UITest framework
 - Consider creating new `WileyWidget.Uno.UITests` project
@@ -557,6 +590,7 @@ Get-ChildItem -Path "src/" -Filter "*.xaml" -Recurse | ForEach-Object {
 ### 5.2 Testing Execution Plan - **IMMEDIATE ACTION ITEMS**
 
 #### Step 1: Build Verification (5-10 minutes)
+
 ```powershell
 # Clean and rebuild solution
 cd c:\Users\biges\Desktop\Wiley_Widget
@@ -568,12 +602,14 @@ dotnet build WileyWidget.sln --configuration Debug --verbosity normal
 ```
 
 **Success Criteria**:
+
 - ✅ Build completes without errors
 - ✅ All NuGet packages restored
 - ✅ XAML files compile successfully
 - ✅ No missing assembly references
 
 #### Step 2: Unit Test Execution (10-15 minutes)
+
 ```powershell
 # Run all unit tests
 dotnet test WileyWidget.sln --configuration Debug --logger "console;verbosity=detailed"
@@ -583,6 +619,7 @@ dotnet test WileyWidget.sln --collect:"XPlat Code Coverage" --results-directory 
 ```
 
 **Tests to Verify**:
+
 - ✅ ViewModel tests (command execution, property changes)
 - ✅ Service layer tests (QuickBooks, Database, Settings)
 - ✅ Business logic tests (validation, calculations)
@@ -591,6 +628,7 @@ dotnet test WileyWidget.sln --collect:"XPlat Code Coverage" --results-directory 
 **Target**: 90% code coverage, 0 failures
 
 #### Step 3: Application Launch Test (2-3 minutes)
+
 ```powershell
 # Launch application
 cd src\WileyWidget.Uno
@@ -600,6 +638,7 @@ dotnet run --configuration Debug
 ```
 
 **Startup Checklist**:
+
 - [ ] Application launches without exceptions
 - [ ] Shell window appears
 - [ ] Prism modules load (check log output)
@@ -609,6 +648,7 @@ dotnet run --configuration Debug
 - [ ] No memory leaks on startup
 
 **Expected Log Output**:
+
 ```
 [INFO] Prism initialization started
 [INFO] Registering services...
@@ -620,6 +660,7 @@ dotnet run --configuration Debug
 #### Step 4: UI Smoke Test (15-20 minutes)
 
 **Dashboard View**:
+
 - [ ] Navigate to Dashboard
 - [ ] Verify charts render with sample data
 - [ ] Verify data grid populates
@@ -627,18 +668,21 @@ dotnet run --configuration Debug
 - [ ] Check responsive layout
 
 **Settings View**:
+
 - [ ] Navigate to Settings
 - [ ] Modify a setting
 - [ ] Verify persistence (restart app)
 - [ ] Test theme switching (if implemented)
 
 **QuickBooks Integration**:
+
 - [ ] Navigate to QuickBooks view
 - [ ] Test OAuth connection flow
 - [ ] Verify API call logging
 - [ ] Test sync operations
 
 **Navigation Testing**:
+
 - [ ] Navigate between all main views
 - [ ] Test back navigation
 - [ ] Verify view state preservation
@@ -647,6 +691,7 @@ dotnet run --configuration Debug
 #### Step 5: Integration Test (10-15 minutes)
 
 **Database Operations**:
+
 ```powershell
 # Run database initializer
 dotnet run --project src\WileyWidget.Uno -- --init-db
@@ -655,6 +700,7 @@ dotnet run --project src\WileyWidget.Uno -- --init-db
 ```
 
 **Integration Checklist**:
+
 - [ ] Database initializes successfully
 - [ ] EF Core migrations apply
 - [ ] CRUD operations work
@@ -665,6 +711,7 @@ dotnet run --project src\WileyWidget.Uno -- --init-db
 #### Step 6: Performance Baseline (5-10 minutes)
 
 **Metrics to Capture**:
+
 ```powershell
 # Monitor with PowerShell
 $process = Get-Process -Name "WileyWidget.Uno" -ErrorAction SilentlyContinue
@@ -675,6 +722,7 @@ if ($process) {
 ```
 
 **Targets**:
+
 - Memory (idle): < 200 MB ✅
 - Memory (with data): < 500 MB ✅
 - Startup time: < 3 seconds ✅
@@ -683,12 +731,14 @@ if ($process) {
 ### 5.3 Performance Optimization
 
 **Key Metrics**:
+
 - Startup time: < 3 seconds
 - Memory usage: < 200 MB idle
 - Navigation responsiveness: < 100ms
 - Data grid rendering: 60 FPS with 10k rows
 
 **Optimization Techniques**:
+
 - Lazy loading of modules
 - Virtualization for large data sets
 - Image and asset optimization
@@ -697,6 +747,7 @@ if ($process) {
 ### 5.3 Deployment Configuration
 
 **Uno Platform Deployment Options**:
+
 - **Windows**: MSIX package or unpackaged
 - **iOS**: App Store package
 - **Android**: APK/AAB package
@@ -704,6 +755,7 @@ if ($process) {
 - **macOS**: App bundle
 
 **For WileyWidget** (Windows-focused):
+
 - Start with MSIX package for Windows
 - Consider WebAssembly for remote access
 - Mobile platforms as future enhancement
@@ -715,12 +767,14 @@ if ($process) {
 **Strategy**: **Complete Uno Platform migration, discontinue WPF maintenance**
 
 **Benefits**:
+
 - **Full Focus**: 100% development effort on modern platform
 - **Simplified Architecture**: Single codebase, no dual maintenance
 - **Faster Progress**: No parallel development overhead
 - **Clear Direction**: Uno Platform as the future
 
 **Project Structure** (Simplified):
+
 ```
 WileyWidget.sln
 ├── src/
@@ -740,16 +794,19 @@ WileyWidget.sln
 ### High Risks
 
 **Risk 1: Syncfusion Control API Differences**
+
 - **Impact**: High - Core functionality
 - **Likelihood**: Medium
 - **Mitigation**: Early prototyping of critical controls, maintain fallback options
 
 **Risk 2: Prism Region Adapters for WinUI**
+
 - **Impact**: High - Navigation broken without
 - **Likelihood**: Low - Prism.Uno.WinUI tested
 - **Mitigation**: Test region adapters early, community support available
 
 **Risk 3: Custom Control Migration**
+
 - **Impact**: Medium - Polish features affected
 - **Likelihood**: Medium
 - **Mitigation**: Identify custom controls early, simplify if needed
@@ -757,11 +814,13 @@ WileyWidget.sln
 ### Medium Risks
 
 **Risk 4: Performance on WebAssembly**
+
 - **Impact**: Medium - If deploying to web
 - **Likelihood**: Medium
 - **Mitigation**: Focus on Windows first, optimize for web later
 
 **Risk 5: Third-Party Dependencies**
+
 - **Impact**: Medium
 - **Likelihood**: Low - Most are .NET Standard
 - **Mitigation**: Verify compatibility early
@@ -769,21 +828,25 @@ WileyWidget.sln
 ### NEW High Risks (Uno Platform Specific)
 
 **Risk 6: XAML Compiler Errors (CRITICAL)**
+
 - **Impact**: **CRITICAL** - Build fails completely
 - **Likelihood**: **HIGH** - Common with namespace issues
 - **Mitigation**: Use `using:` instead of `clr-namespace:`, delete `xmlns:prism="http://prismlibrary.com/"`
 
 **Risk 7: Host Builder Integration Required**
+
 - **Impact**: **HIGH** - DI registrations don't work
 - **Likelihood**: **HIGH** - Uno requires `ConfigureHost()` method
 - **Mitigation**: Move all WPF `services.Add...` calls to `ConfigureHost().ConfigureServices()`
 
 **Risk 8: No Automated UI Testing**
+
 - **Impact**: **HIGH** - No automated testing framework exists
 - **Likelihood**: **CERTAIN** - Uno Platform limitation
 - **Mitigation**: Manual testing only, focus on unit tests for business logic
 
 **Risk 9: Syncfusion Theme Files Don't Exist**
+
 - **Impact**: **MEDIUM** - Build errors from missing theme files
 - **Likelihood**: **HIGH** - Common mistake
 - **Mitigation**: Delete all `Themes/Syncfusion*.xaml` references, use built-in themes
@@ -795,10 +858,12 @@ WileyWidget.sln
 ### Aggressive Schedule (2 weeks)
 
 **Week 1**:
+
 - Days 1-2: Phase 1 (Setup) + Phase 2 (Infrastructure)
 - Days 3-5: Phase 3 (Core Views)
 
 **Week 2**:
+
 - Days 6-8: Phase 3 (Remaining Views) + Phase 4 (Syncfusion)
 - Days 9-10: Phase 5 (Testing & Deployment)
 
@@ -814,6 +879,7 @@ WileyWidget.sln
 **Goal**: Validate core assumptions
 
 **Scope**:
+
 - Prism bootstrapping works
 - One view with Syncfusion grid
 - Data binding functional
@@ -826,11 +892,13 @@ WileyWidget.sln
 ### 2.10 Uno Template One-Liner (NEW)
 
 **One-command Uno project creation**:
+
 ```bash
 dotnet new unoapp -o WileyWidget.Uno --framework net9.0-windows10.0.26100.0 --presentation winui --theme material
 ```
 
 **Then add Prism**:
+
 ```bash
 cd WileyWidget.Uno
 dotnet add package Prism.Uno.WinUI --version 9.0.537
@@ -844,6 +912,7 @@ dotnet add package Prism.DryIoc.Uno.WinUI --version 9.0.537
 ## Success Criteria
 
 ### Technical Criteria
+
 - ✅ **XAML compiles successfully** (no XamlCompiler.exe errors)
 - ✅ **Host builder integration works** (DI registrations functional)
 - ✅ All Prism modules load successfully
@@ -855,12 +924,14 @@ dotnet add package Prism.DryIoc.Uno.WinUI --version 9.0.537
 - ✅ No critical bugs
 
 ### Business Criteria
+
 - ✅ Feature parity with WPF version
 - ✅ User workflows unchanged
 - ✅ Deployment successful
 - ✅ Team trained on Uno Platform
 
 ### NEW Uno-Specific Success Criteria
+
 - ✅ **ConfigureHost() method implemented** with all DI registrations
 - ✅ **XAML namespaces converted** from clr-namespace to using:
 - ✅ **Prism region adapters registered** (ContentControl, ItemsControl only)
@@ -874,25 +945,31 @@ dotnet add package Prism.DryIoc.Uno.WinUI --version 9.0.537
 ### 🚨 IMMEDIATE ACTIONS (Next 30-60 minutes)
 
 1. ✅ **Build Verification** (NOW)
+
    ```powershell
    cd c:\Users\biges\Desktop\Wiley_Widget
    dotnet clean WileyWidget.sln
    dotnet restore WileyWidget.sln --force
    dotnet build WileyWidget.sln --configuration Debug --verbosity normal
    ```
+
    **Expected**: Clean build, 0 errors
 
 2. 📝 **Run Unit Tests** (NEXT)
+
    ```powershell
    dotnet test WileyWidget.sln --configuration Debug --logger "console;verbosity=detailed"
    ```
+
    **Expected**: All tests pass, 90%+ coverage
 
 3. 🚀 **Launch Application** (AFTER TESTS)
+
    ```powershell
    cd src\WileyWidget.Uno
    dotnet run --configuration Debug
    ```
+
    **Expected**: Shell window appears, Prism modules load, < 3s startup
 
 4. 📋 **Document Results**
@@ -929,15 +1006,18 @@ dotnet add package Prism.DryIoc.Uno.WinUI --version 9.0.537
 ## Resources & References
 
 ### Uno Platform Documentation
+
 - [Uno Platform Docs](https://platform.uno/docs/)
 - [Prism for Uno](https://prismlibrary.com/docs/uno-platform.html)
 - [Migrating from WPF](https://platform.uno/docs/articles/guides/migrating-from-wpf.html)
 
 ### Syncfusion WinUI Documentation
+
 - [Syncfusion WinUI Controls](https://help.syncfusion.com/winui/overview)
 - [Migration Guide: WPF to WinUI](https://help.syncfusion.com/winui/migration-guide)
 
 ### Community Resources
+
 - [Uno Platform Discord](https://discord.gg/eBHZSKG)
 - [Prism Library Discussions](https://github.com/PrismLibrary/Prism/discussions)
 
@@ -946,6 +1026,7 @@ dotnet add package Prism.DryIoc.Uno.WinUI --version 9.0.537
 ## Appendix A: File Structure Comparison
 
 ### WPF Project Structure
+
 ```
 WileyWidget/
 ├── App.xaml
@@ -966,6 +1047,7 @@ WileyWidget/
 ```
 
 ### Uno Project Structure (Target)
+
 ```
 WileyWidget.Uno/
 ├── App.xaml
@@ -990,6 +1072,7 @@ WileyWidget.Uno/
 ## Appendix B: Quick Start Commands
 
 ### Build Uno Project
+
 ```bash
 cd src/WileyWidget.Uno
 dotnet restore
@@ -997,11 +1080,13 @@ dotnet build
 ```
 
 ### Run Uno Project (Windows)
+
 ```bash
 dotnet run --project src/WileyWidget.Uno/WileyWidget.Uno.csproj
 ```
 
 ### Update Uno Templates
+
 ```bash
 dotnet new install Uno.Templates
 ```

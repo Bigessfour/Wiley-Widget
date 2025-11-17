@@ -46,6 +46,7 @@ Identified and resolved excessive change tracking overhead in EF Core 9.0.0 caus
 4. Additional methods (GetByFundAsync, GetByTypeAsync, etc.) → No `.AsNoTracking()`
 
 **Impact**: EF Core change tracker creates snapshots of all 72+ entities with:
+
 - Original values for change detection
 - Navigation property tracking (`AccountNumber` owned entity)
 - Memory overhead for ChangeTracker state machine
@@ -55,9 +56,11 @@ Identified and resolved excessive change tracking overhead in EF Core 9.0.0 caus
 ### Connection Health
 
 **CONFIRMED**: Connection handling is **NOT** the issue:
+
 ```log
 Closed connection to database 'WileyWidgetDev' on server '.\SQLEXPRESS' (0ms)
 ```
+
 - 0ms connection close time indicates proper connection pooling
 - Issue is purely change tracking overhead, not connection management
 
@@ -93,6 +96,7 @@ public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
 ```
 
 **Modified Methods**:
+
 - ✅ `GetAllAsync()` - Cached query, now no-tracking
 - ✅ `GetPagedAsync()` - Paging support, now no-tracking
 - ✅ `GetAllWithRelatedAsync()` - Includes navigation properties, now no-tracking
@@ -112,6 +116,7 @@ public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
 - ✅ `GetBudgetAnalysisAsync()` - Budget analysis (overload), now no-tracking
 
 **Write Operations** (unchanged - still use tracking):
+
 - `AddAsync()` - Uses `context.Add()`, tracking required
 - `UpdateAsync()` - Uses `context.Update()`, tracking required
 - `DeleteAsync()` - Uses `context.Remove()`, tracking required
@@ -133,6 +138,7 @@ options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 ```
 
 **Impact**:
+
 - All queries default to no-tracking unless explicitly using `.AsTracking()`
 - Write operations (Add/Update/Delete) still work correctly (use `.AsTracking()` automatically)
 - Provides defense-in-depth against future tracking overhead
@@ -140,12 +146,14 @@ options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 ### 3. Repository Validation Results
 
 **EnterpriseRepository**: ✅ Already optimized
+
 - `GetAllAsync()` → ✅ `.AsNoTracking()`
 - `GetPagedAsync()` → ✅ `.AsNoTracking()`
 - `GetByTypeAsync()` → ✅ `.AsNoTracking()`
 - `GetByIdAsync()` → ✅ `.AsNoTracking()`
 
 **BudgetRepository**: ✅ Already optimized
+
 - `GetByFiscalYearAsync()` → ✅ `.AsNoTracking()`
 - `GetPagedAsync()` → ✅ `.AsNoTracking()`
 - Uses `context.GetBudgetHierarchy()` (AppDbContext method, already has `.AsNoTracking()`)
@@ -156,33 +164,37 @@ options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 
 ## Performance Metrics (Before/After)
 
-| Metric | Before Optimization | After Optimization | Improvement |
-|--------|---------------------|-------------------|-------------|
-| **DataReader Disposal Time** | 2149ms | <50ms (expected) | 97.7% |
-| **Entities Tracked** | 72+ MunicipalAccount | 0 | 100% |
-| **Memory Overhead** | Change tracker snapshots for 72+ entities | None | ~100KB saved |
-| **GC Pressure** | High (snapshot objects) | Low | Significant |
-| **Connection Close Time** | 0ms | 0ms | No change (already optimal) |
-| **Startup Log Verbosity** | 72+ tracking messages | 0 tracking messages | 100% reduction |
+| Metric                       | Before Optimization                       | After Optimization  | Improvement                 |
+| ---------------------------- | ----------------------------------------- | ------------------- | --------------------------- |
+| **DataReader Disposal Time** | 2149ms                                    | <50ms (expected)    | 97.7%                       |
+| **Entities Tracked**         | 72+ MunicipalAccount                      | 0                   | 100%                        |
+| **Memory Overhead**          | Change tracker snapshots for 72+ entities | None                | ~100KB saved                |
+| **GC Pressure**              | High (snapshot objects)                   | Low                 | Significant                 |
+| **Connection Close Time**    | 0ms                                       | 0ms                 | No change (already optimal) |
+| **Startup Log Verbosity**    | 72+ tracking messages                     | 0 tracking messages | 100% reduction              |
 
 ### Estimated Startup Time Impact
 
 **Startup Phase**: `AnalyticsViewModel` initialization (from logs)
 
 **Before**:
+
 ```
 [17:38:31] MunicipalAccount tracking started (72+ entities)
 [17:38:33] DataReader disposed after 2149ms
 [17:38:33] Connection closed (0ms)
 ```
+
 **Total overhead**: ~2149ms
 
 **After** (expected):
+
 ```
 [17:38:31] Query executed with AsNoTracking()
 [17:38:31] DataReader disposed after <50ms
 [17:38:31] Connection closed (0ms)
 ```
+
 **Total overhead**: <50ms
 
 **Net improvement**: ~2100ms (2.1 seconds) faster startup
@@ -196,6 +208,7 @@ options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 **Affected Component**: `AnalyticsViewModel` → `SfChart` controls
 
 **Current Binding Pattern**:
+
 ```csharp
 // AnalyticsViewModel.cs (startup initialization)
 var municipalAccounts = await _municipalAccountRepository.GetAllAsync();
@@ -229,6 +242,7 @@ MunicipalAccounts = new ObservableCollection<MunicipalAccount>(accounts);
 ```
 
 **Why this works**:
+
 - `ObservableCollection<T>` provides UI change notifications
 - EF Core change tracking is NOT required for UI updates
 - ViewModel controls data updates via repository write methods
@@ -250,11 +264,13 @@ MunicipalAccounts = new ObservableCollection<MunicipalAccount>(accounts);
 **EF Core 10.0.0 New Features** (relevant to this optimization):
 
 1. **SQL Server 2025 JSON Type Support** ✅ Already configured
+
    ```csharp
    sqlOptions.UseCompatibilityLevel(170);
    ```
 
 2. **Optimized Parameter Translation** ✅ Ready for upgrade
+
    ```csharp
    // Commented out in DatabaseConfiguration.cs (requires EF Core 10+)
    // sqlOptions.UseParameterTranslationMode(ParameterTranslationMode.Parameter);
@@ -293,6 +309,7 @@ dotnet ef migrations add EFCore10Upgrade --project src/WileyWidget.Data
 ### Unit Test Verification
 
 **Test Files**:
+
 - `tests/WileyWidget.Tests.Data/MunicipalAccountRepositoryTests.cs`
 - `tests/WileyWidget.Tests.Data/EnterpriseRepositoryTests.cs`
 - `tests/WileyWidget.Tests.Data/BudgetRepositoryTests.cs`
@@ -307,6 +324,7 @@ dotnet ef migrations add EFCore10Upgrade --project src/WileyWidget.Data
 ### Startup Log Validation
 
 **Before Optimization**:
+
 ```log
 [17:38:31 DBG] Context 'AppDbContext' started tracking 'MunicipalAccount' entity with key '{Id: 1}'
 [17:38:31 DBG] Context 'AppDbContext' started tracking 'MunicipalAccount' entity with key '{Id: 2}'
@@ -316,6 +334,7 @@ dotnet ef migrations add EFCore10Upgrade --project src/WileyWidget.Data
 ```
 
 **After Optimization** (expected):
+
 ```log
 [17:38:31 DBG] Executing DbCommand [...]
 [17:38:31 DBG] Executed DbCommand (45ms) [...]
@@ -349,6 +368,7 @@ public class MunicipalAccountRepositoryBenchmarks
 ```
 
 **Expected Results**:
+
 ```
 | Method                     | Mean     | Allocated |
 |--------------------------- |---------:|----------:|
@@ -363,6 +383,7 @@ public class MunicipalAccountRepositoryBenchmarks
 ### 1. Repository Method Guidelines
 
 **Read-Only Queries** (always use `.AsNoTracking()`):
+
 ```csharp
 // ✅ GOOD
 public async Task<IEnumerable<Entity>> GetAllAsync()
@@ -380,6 +401,7 @@ public async Task<IEnumerable<Entity>> GetAllAsync()
 ```
 
 **Write Operations** (use tracking explicitly or rely on Add/Update/Delete):
+
 ```csharp
 // ✅ GOOD - Tracking automatic
 public async Task<Entity> AddAsync(Entity entity)
@@ -399,6 +421,7 @@ public async Task<Entity> UpdateAsync(Entity entity)
 ```
 
 **Hybrid Scenarios** (query then update):
+
 ```csharp
 // ✅ GOOD - Explicit tracking for update
 public async Task<Entity> UpdateNameAsync(int id, string newName)
@@ -406,7 +429,7 @@ public async Task<Entity> UpdateNameAsync(int id, string newName)
     var entity = await context.Entities
         .AsTracking() // Explicit tracking for update
         .FirstOrDefaultAsync(e => e.Id == id);
-    
+
     if (entity != null)
     {
         entity.Name = newName;
@@ -419,6 +442,7 @@ public async Task<Entity> UpdateNameAsync(int id, string newName)
 ### 2. DbContext Configuration
 
 **Development** (sensitive data logging):
+
 ```csharp
 if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
 {
@@ -427,6 +451,7 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development
 ```
 
 **Production** (minimal logging):
+
 ```csharp
 // Production: No sensitive data logging
 options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
@@ -439,6 +464,7 @@ options.ConfigureWarnings(warnings =>
 ### 3. Caching Strategy
 
 **Pattern**: Cache no-tracking query results
+
 ```csharp
 const string cacheKey = "MunicipalAccounts_All";
 
@@ -455,6 +481,7 @@ if (!_cache.TryGetValue(cacheKey, out IEnumerable<MunicipalAccount>? accounts))
 ```
 
 **Benefits**:
+
 - No change tracker overhead for cached data
 - Safe to cache no-tracking entities (no stale snapshots)
 - Memory efficient (no ChangeTracker state)
@@ -470,12 +497,14 @@ Successfully optimized EF Core 9.0.0 change tracking overhead by implementing th
 3. ✅ **Validation**: Confirmed other repositories follow best practices
 
 **Impact**:
+
 - 2149ms → <50ms DataReader disposal time (97.7% reduction)
 - Cleaner startup logs (0 tracking messages instead of 72+)
 - Better Syncfusion SfChart performance (faster data loading)
 - Ready for EF Core 10.0.0 upgrade
 
 **Next Steps**:
+
 1. Monitor startup logs to confirm <50ms reader disposal time
 2. Run performance benchmarks to quantify memory savings
 3. Document EF Core 10.0.0 upgrade path

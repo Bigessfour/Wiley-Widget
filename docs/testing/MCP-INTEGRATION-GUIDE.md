@@ -7,13 +7,16 @@ This guide documents how Model Context Protocol (MCP) servers enhance the Wiley 
 ## Current MCP Stack
 
 ### 1. **GitHub MCP** (`mcp/github`)
+
 **Purpose:** Repository management, issue/PR automation, code context  
 **Integration Points:**
+
 - Automated test result reporting via GitHub Issues
 - PR validation with test coverage requirements
 - Code review automation for test quality
 
 **Usage in Testing:**
+
 ```bash
 # Via Docker
 docker run --rm -e GITHUB_TOKEN=$env:GITHUB_TOKEN \
@@ -24,33 +27,39 @@ docker run --rm -e GITHUB_TOKEN=$env:GITHUB_TOKEN \
 ```
 
 **Tasks Integration:**
+
 - `git:update` - Commit test updates
 - `Analyze CI Failures` - Query GitHub Actions logs
 
 ---
 
 ### 2. **Filesystem MCP** (`@modelcontextprotocol/server-filesystem`)
+
 **Purpose:** Secure file operations with git-style diffs  
 **Integration Points:**
+
 - All test file creation/editing
 - Test result parsing
 - Coverage report generation
 
 **Usage in Testing:**
+
 ```javascript
 // Mandatory for all file operations
 mcp_filesystem_write_file({
   path: "c:/path/to/test/file.cs",
-  content: "// Test content"
-})
+  content: "// Test content",
+});
 
 mcp_filesystem_edit_file({
   path: "c:/path/to/file.cs",
-  edits: [{
-    oldText: "old test code",
-    newText: "improved test code"
-  }]
-})
+  edits: [
+    {
+      oldText: "old test code",
+      newText: "improved test code",
+    },
+  ],
+});
 ```
 
 **Enforcement:** See `.vscode/copilot-mcp-rules.md` for mandatory usage rules.
@@ -58,13 +67,16 @@ mcp_filesystem_edit_file({
 ---
 
 ### 3. **C# MCP** (`ghcr.io/infinityflowapp/csharp-mcp:latest`)
+
 **Purpose:** Execute C# scripts for testing and validation  
 **Integration Points:**
+
 - Pre-test validation (syntax, compile checks)
 - Dynamic test generation
 - Test data creation
 
 **Usage in Testing:**
+
 ```bash
 # Run validation script
 docker run --rm \
@@ -77,11 +89,13 @@ docker run --rm \
 ```
 
 **VS Code Tasks:**
+
 - `csx:run-60P-dashboardviewmodel-test`
 - `csx:run-61P-quickbooksservice-test`
 - All `csx:run-*` tasks
 
 **Benefits:**
+
 - ✅ Validate C# test code before xUnit execution
 - ✅ Generate test scaffolding dynamically
 - ✅ Mock data generation for integration tests
@@ -89,13 +103,16 @@ docker run --rm \
 ---
 
 ### 4. **Everything MCP** (`@modelcontextprotocol/server-everything`)
+
 **Purpose:** Full MCP protocol testing and validation  
 **Integration Points:**
+
 - End-to-end test pipeline validation
 - Multi-server integration tests
 - Protocol conformance checks
 
 **Usage in Testing:**
+
 ```bash
 # Test full context pipeline
 npx @modelcontextprotocol/server-everything \
@@ -105,6 +122,7 @@ npx @modelcontextprotocol/server-everything \
 ```
 
 **Use Cases:**
+
 - Validate MCP server health before test runs
 - Test complex workflows (GitHub → Filesystem → C# MCP)
 - Debug MCP integration issues
@@ -112,28 +130,33 @@ npx @modelcontextprotocol/server-everything \
 ---
 
 ### 5. **Sequential Thinking MCP** (`@modelcontextprotocol/server-sequential-thinking`)
+
 **Purpose:** Structured problem-solving for complex test scenarios  
 **Integration Points:**
+
 - Test design and planning
 - Debugging test failures
 - Root cause analysis
 
 **Usage in Testing:**
+
 ```javascript
 mcp_sequential_th_sequentialthinking({
   thought: "Analyzing why QuickBooksService tests are failing...",
   thoughtNumber: 1,
   totalThoughts: 5,
-  nextThoughtNeeded: true
-})
+  nextThoughtNeeded: true,
+});
 ```
 
 **Workflow Integration:**
+
 - Design non-whitewash test cases (3+ scenarios)
 - Break down complex test failures
 - Plan integration test sequences
 
 **Example:**
+
 ```
 Problem: Dashboard navigation test fails intermittently
 → Use Sequential Thinking MCP to analyze:
@@ -151,17 +174,20 @@ Problem: Dashboard navigation test fails intermittently
 
 **Purpose:** Direct SQL Server access for integration testing  
 **Why Needed:**
+
 - Test database initialization (DatabaseInitializer)
 - Validate EF Core migrations
 - Query test data state
 - Performance testing
 
 **Installation:**
+
 ```bash
 npm install -g @modelcontextprotocol/server-mssql
 ```
 
 **Configuration:**
+
 ```json
 {
   "mssql": {
@@ -179,19 +205,21 @@ npm install -g @modelcontextprotocol/server-mssql
 ```
 
 **Usage in Testing:**
+
 ```javascript
 // Query test database state
 mcp_mssql_query({
-  query: "SELECT COUNT(*) FROM Invoices WHERE SyncStatus = 'Pending'"
-})
+  query: "SELECT COUNT(*) FROM Invoices WHERE SyncStatus = 'Pending'",
+});
 
 // Validate migration
 mcp_mssql_query({
-  query: "SELECT * FROM __EFMigrationsHistory ORDER BY MigrationId DESC"
-})
+  query: "SELECT * FROM __EFMigrationsHistory ORDER BY MigrationId DESC",
+});
 ```
 
 **Integration with Docker Compose:**
+
 ```yaml
 # docker-compose.yml already has WILEY_DB
 # SQL Server MCP can connect directly:
@@ -202,16 +230,13 @@ services:
 ```
 
 **Tasks to Add:**
+
 ```json
 {
   "label": "mcp:validate-database",
   "type": "shell",
   "command": "npx",
-  "args": [
-    "@modelcontextprotocol/server-mssql",
-    "--query",
-    "SELECT @@VERSION"
-  ]
+  "args": ["@modelcontextprotocol/server-mssql", "--query", "SELECT @@VERSION"]
 }
 ```
 
@@ -222,11 +247,13 @@ services:
 ### **Day 1-2: Unit Tests**
 
 **MCP Stack:**
+
 - **Filesystem MCP** → Create test files with git diffs
 - **C# MCP** → Validate syntax before xUnit run
 - **Sequential Thinking MCP** → Design 3+ test cases per method
 
 **Workflow:**
+
 1. Use Sequential Thinking to plan test structure
 2. Generate test file with Filesystem MCP (tracked diffs)
 3. Validate with C# MCP before committing
@@ -235,12 +262,14 @@ services:
 ### **Day 3-4: Integration Tests**
 
 **MCP Stack:**
+
 - **SQL Server MCP** (proposed) → Query database state
 - **C# MCP** → Run EF Core validation scripts
 - **Docker Compose** → Spin up WILEY_DB container
 - **Filesystem MCP** → Read/write test data files
 
 **Workflow:**
+
 1. Start Docker Compose database
 2. Use SQL Server MCP to validate connection
 3. Run integration tests with xUnit
@@ -250,11 +279,13 @@ services:
 ### **Day 5: UI Smoke Tests**
 
 **MCP Stack:**
+
 - **Everything MCP** → Full pipeline validation
 - **Filesystem MCP** → Parse Playwright test results
 - **GitHub MCP** → Report UI test failures
 
 **Workflow:**
+
 1. Run Playwright tests via Docker Compose
 2. Parse results with Filesystem MCP
 3. Auto-create GitHub issue if failures (GitHub MCP)
@@ -262,11 +293,13 @@ services:
 ### **Day 6: CI/CD Integration**
 
 **MCP Stack:**
+
 - **GitHub MCP** → Monitor workflow runs
 - **Sequential Thinking MCP** → Analyze CI failures
 - **Filesystem MCP** → Update CI config
 
 **Workflow:**
+
 ```bash
 # Monitor CI via GitHub MCP
 gh run list --workflow=ci-optimized.yml --limit=5
@@ -281,6 +314,7 @@ gh run list --workflow=ci-optimized.yml --limit=5
 ## Security Best Practices
 
 ### **1. Environment Variables**
+
 ```powershell
 # Validate all required env vars
 .\scripts\tools\validate-mcp-setup.ps1
@@ -294,20 +328,24 @@ $env:MSSQL_CONNECTION_STRING = "Server=..."    # SQL Server MCP (proposed)
 ```
 
 ### **2. Filesystem Access Control**
+
 - **Allowed:** `C:\Users\biges\Desktop\Wiley_Widget\**`
-- **Excluded:** 
+- **Excluded:**
   - `secrets/*`
   - `.env`
   - `*.pfx`, `*.p12`
   - `TestResults/` (read-only)
 
 ### **3. GitHub Token Scopes**
+
 **Required:**
+
 - `repo` (full repository access)
 - `workflow` (trigger CI/CD)
 - `read:org` (optional, for team features)
 
 **Validate:**
+
 ```bash
 gh auth status
 ```
@@ -317,6 +355,7 @@ gh auth status
 ## Troubleshooting MCP Issues
 
 ### **Error: "MCP server not responding"**
+
 ```powershell
 # Validate setup
 .\scripts\tools\validate-mcp-setup.ps1 -Verbose
@@ -327,12 +366,14 @@ docker logs WILEY_DB
 ```
 
 ### **Error: "Filesystem access denied"**
+
 ```
 Cause: Path outside allowed directories
 Fix: Ensure path starts with C:\Users\biges\Desktop\Wiley_Widget
 ```
 
 ### **Error: "C# MCP compilation failed"**
+
 ```bash
 # Check script syntax locally
 dotnet-script scripts/examples/csharp/test-file.csx
@@ -342,6 +383,7 @@ cat logs/csx-execution.log
 ```
 
 ### **Error: "GitHub MCP auth failed"**
+
 ```powershell
 # Refresh token
 gh auth refresh -h github.com -s repo,workflow
@@ -355,6 +397,7 @@ $env:GITHUB_TOKEN = (gh auth token)
 ## Performance Optimization
 
 ### **1. Docker Image Caching**
+
 ```bash
 # Pre-pull images before testing
 docker pull ghcr.io/infinityflowapp/csharp-mcp:latest
@@ -362,6 +405,7 @@ docker pull mcp/github
 ```
 
 ### **2. NPM Package Caching**
+
 ```bash
 # Pre-cache MCP packages
 npx --yes @modelcontextprotocol/server-filesystem
@@ -370,10 +414,11 @@ npx --yes @modelcontextprotocol/server-sequential-thinking
 ```
 
 ### **3. Volume Mount Optimization**
+
 ```yaml
 # Use cached volumes for better performance
 volumes:
-  - .:/src:cached  # Instead of :ro
+  - .:/src:cached # Instead of :ro
   - ~/.nuget/packages:/root/.nuget/packages:cached
 ```
 
@@ -428,12 +473,14 @@ volumes:
 From `.vscode/copilot-mcp-rules.md`:
 
 ### **Mandatory MCP Filesystem Usage**
+
 ```
 ✅ ALWAYS use mcp_filesystem_* for file operations
 ❌ NEVER use read_file, grep_search, create_file, replace_string_in_file
 ```
 
 ### **Pre-Flight Checklist (before EVERY file operation)**
+
 ```
 [ ] activate_file_reading_tools()
 [ ] activate_directory_and_file_creation_tools()
@@ -448,18 +495,19 @@ From `.vscode/copilot-mcp-rules.md`:
 
 Track MCP effectiveness in testing:
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| **File Operation Consistency** | 100% MCP usage | Audit git diffs for tool provenance |
-| **C# Pre-validation Success** | >95% pass rate | CSX script execution before xUnit |
-| **Test Generation Speed** | <5 min per service | Time from Sequential Thinking → committed test |
-| **CI/CD Feedback Loop** | <10 min | GitHub MCP query → analysis → fix |
+| Metric                         | Target             | Measurement                                    |
+| ------------------------------ | ------------------ | ---------------------------------------------- |
+| **File Operation Consistency** | 100% MCP usage     | Audit git diffs for tool provenance            |
+| **C# Pre-validation Success**  | >95% pass rate     | CSX script execution before xUnit              |
+| **Test Generation Speed**      | <5 min per service | Time from Sequential Thinking → committed test |
+| **CI/CD Feedback Loop**        | <10 min            | GitHub MCP query → analysis → fix              |
 
 ---
 
 ## Next Steps
 
 1. **Install SQL Server MCP:**
+
    ```bash
    npm install -g @modelcontextprotocol/server-mssql
    ```
@@ -467,11 +515,13 @@ Track MCP effectiveness in testing:
 2. **Update MCP config** to include MSSQL server
 
 3. **Add validation task** to `.vscode/tasks.json`:
+
    ```json
    { "label": "mcp:validate-setup", ... }
    ```
 
 4. **Run validation:**
+
    ```powershell
    .\scripts\tools\validate-mcp-setup.ps1 -FixIssues -UpdateImages
    ```

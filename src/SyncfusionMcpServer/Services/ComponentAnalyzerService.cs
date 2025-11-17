@@ -76,7 +76,7 @@ public class ComponentAnalyzerService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error analyzing DataGrid: {Path}", xamlPath);
+            _logger.Log(LogLevel.Error, ex, "Error analyzing DataGrid: {Path}", xamlPath);
             result.IsValid = false;
             result.Errors.Add($"Analysis error: {ex.Message}");
         }

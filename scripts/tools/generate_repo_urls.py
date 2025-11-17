@@ -1353,13 +1353,13 @@ class RepositoryAnalyzer:
     def _scan_vulnerabilities(self) -> Dict:
         """Scan for package vulnerabilities (disabled - use Trunk for security scanning)."""
         print("Skipping NuGet vulnerability scan (use Trunk for security analysis)")
-        
+
         return {
             "vulnerable_packages": [],
             "outdated_packages": [],
             "secrets_detected": False,
             "last_security_scan": datetime.now().isoformat(),
-            "note": "Vulnerability scanning disabled - use 'trunk check --filter=security' for security analysis"
+            "note": "Vulnerability scanning disabled - use 'trunk check --filter=security' for security analysis",
         }
 
     def _calculate_metrics(self, files_data: List[Dict]) -> Dict:

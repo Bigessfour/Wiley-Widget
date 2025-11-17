@@ -45,12 +45,12 @@ npx @modelcontextprotocol/server-mssql --version
 
 **Connection String Formats:**
 
-| Scenario | Connection String Template |
-|----------|---------------------------|
-| **LocalDB** | `Server=(localdb)\MSSQLLocalDB;Database=WileyWidget;Integrated Security=true` |
-| **SQL Express** | `Server=localhost\SQLEXPRESS;Database=WileyWidget;Integrated Security=true` |
-| **Full SQL Server** | `Server=localhost;Database=WileyWidget;Integrated Security=true` |
-| **SQL Auth** | `Server=localhost;Database=WileyWidget;User Id=sa;Password=<pwd>;Encrypt=true` |
+| Scenario            | Connection String Template                                                     |
+| ------------------- | ------------------------------------------------------------------------------ |
+| **LocalDB**         | `Server=(localdb)\MSSQLLocalDB;Database=WileyWidget;Integrated Security=true`  |
+| **SQL Express**     | `Server=localhost\SQLEXPRESS;Database=WileyWidget;Integrated Security=true`    |
+| **Full SQL Server** | `Server=localhost;Database=WileyWidget;Integrated Security=true`               |
+| **SQL Auth**        | `Server=localhost;Database=WileyWidget;User Id=sa;Password=<pwd>;Encrypt=true` |
 
 ### 3. MCP Configuration
 
@@ -61,18 +61,11 @@ Add to VS Code MCP settings (`cline_mcp_settings.json`):
   "mcpServers": {
     "mssql": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-mssql"
-      ],
+      "args": ["-y", "@modelcontextprotocol/server-mssql"],
       "env": {
         "MSSQL_CONNECTION_STRING": "Server=(localdb)\\MSSQLLocalDB;Database=WileyWidget;Integrated Security=true;TrustServerCertificate=true"
       },
-      "alwaysAllow": [
-        "mssql_list_databases",
-        "mssql_list_tables",
-        "mssql_list_views"
-      ]
+      "alwaysAllow": ["mssql_list_databases", "mssql_list_tables", "mssql_list_views"]
     }
   }
 }
@@ -82,22 +75,22 @@ Add to VS Code MCP settings (`cline_mcp_settings.json`):
 
 ### Database Discovery
 
-| Tool | Purpose | Example |
-|------|---------|---------|
+| Tool                   | Purpose                      | Example                                  |
+| ---------------------- | ---------------------------- | ---------------------------------------- |
 | `mssql_list_databases` | List all databases on server | Query available databases for connection |
-| `mssql_list_schemas` | List schemas in database | Explore database organization |
-| `mssql_list_tables` | List tables with schema info | Find tables for testing |
-| `mssql_list_views` | List views in database | Identify data access patterns |
-| `mssql_list_functions` | List user-defined functions | Review custom logic |
+| `mssql_list_schemas`   | List schemas in database     | Explore database organization            |
+| `mssql_list_tables`    | List tables with schema info | Find tables for testing                  |
+| `mssql_list_views`     | List views in database       | Identify data access patterns            |
+| `mssql_list_functions` | List user-defined functions  | Review custom logic                      |
 
 ### Connection Management
 
-| Tool | Purpose | Example |
-|------|---------|---------|
-| `mssql_connect` | Establish database connection | Connect to WileyWidget DB |
-| `mssql_disconnect` | Close connection | Clean up after tests |
-| `mssql_change_database` | Switch databases | Test multi-database scenarios |
-| `mssql_get_connection_details` | View connection info | Debug connection issues |
+| Tool                           | Purpose                       | Example                       |
+| ------------------------------ | ----------------------------- | ----------------------------- |
+| `mssql_connect`                | Establish database connection | Connect to WileyWidget DB     |
+| `mssql_disconnect`             | Close connection              | Clean up after tests          |
+| `mssql_change_database`        | Switch databases              | Test multi-database scenarios |
+| `mssql_get_connection_details` | View connection info          | Debug connection issues       |
 
 ## Use Cases in Wiley Widget
 
@@ -120,12 +113,13 @@ await connection.OpenAsync();
 ```
 
 **MCP Query:**
+
 ```javascript
 // Use mssql_list_tables to get schema
 mcp_mssql_list_tables({
   connectionId: "<connection-id>",
-  database: "WileyWidget"
-})
+  database: "WileyWidget",
+});
 
 // Expected: Tables with correct schema names (dbo, reporting, etc.)
 ```
@@ -146,6 +140,7 @@ INSERT INTO BudgetPeriods (FiscalYear, StartDate, EndDate) VALUES
 ```
 
 **Automated via CSX:**
+
 ```csharp
 // 85P-database-test-setup.csx
 #r "nuget: Microsoft.Data.SqlClient, 5.2.0"
@@ -162,14 +157,14 @@ INSERT INTO BudgetPeriods (FiscalYear, StartDate, EndDate) VALUES
 // Connect to database
 mcp_mssql_connect({
   serverName: "(localdb)\\MSSQLLocalDB",
-  database: "WileyWidget"
-})
+  database: "WileyWidget",
+});
 
 // List views for query optimization candidates
 mcp_mssql_list_views({
   connectionId: "<id>",
-  database: "WileyWidget"
-})
+  database: "WileyWidget",
+});
 
 // Analyze execution plans (advanced)
 ```
@@ -189,22 +184,22 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup LocalDB
         run: |
           sqllocaldb create MSSQLLocalDB
           sqllocaldb start MSSQLLocalDB
-          
+
       - name: Apply Migrations
         run: |
           dotnet ef database update --project src/WileyWidget
-          
+
       - name: Validate Schema via MCP
         run: |
           npx @modelcontextprotocol/server-mssql --validate
         env:
           MSSQL_CONNECTION_STRING: ${{ secrets.MSSQL_TEST_CONNECTION }}
-          
+
       - name: Run Database Tests
         run: |
           dotnet test tests/WileyWidget.Database.Tests
@@ -215,12 +210,14 @@ jobs:
 ### Connection String Storage
 
 ✅ **DO:**
+
 - Store in environment variables (User/Machine level)
 - Use `secrets/` directory for local development (excluded from git)
 - Use Azure Key Vault or GitHub Secrets for CI/CD
 - Enable `TrustServerCertificate=true` only for local/dev environments
 
 ❌ **DON'T:**
+
 - Hardcode connection strings in source code
 - Commit connection strings to git
 - Use production credentials in development
@@ -244,6 +241,7 @@ GRANT VIEW ANY DEFINITION TO mcp_reader;
 ```
 
 **Connection String:**
+
 ```
 Server=localhost;Database=WileyWidget;User Id=mcp_reader;Password=StrongPassword123!;Encrypt=true
 ```
@@ -253,19 +251,21 @@ Server=localhost;Database=WileyWidget;User Id=mcp_reader;Password=StrongPassword
 ### Unit Tests with MCP Integration
 
 **Test Structure:**
+
 ```
 tests/
   WileyWidget.Database.Tests/
     SchemaValidationTests.cs    # Verify EF migrations
     DataIntegrityTests.cs        # Check constraints, indexes
     QueryPerformanceTests.cs     # Analyze slow queries
-    
+
 scripts/examples/csharp/
   86P-database-schema-validation.csx   # MCP-powered schema checks
   87P-database-migration-test.csx      # Migration rollback testing
 ```
 
 **Example Test (xUnit):**
+
 ```csharp
 using Xunit;
 using Microsoft.Data.SqlClient;
@@ -273,23 +273,23 @@ using Microsoft.Data.SqlClient;
 public class DatabaseSchemaTests
 {
     private readonly string _connectionString;
-    
+
     public DatabaseSchemaTests()
     {
         _connectionString = Environment.GetEnvironmentVariable("MSSQL_CONNECTION_STRING")
             ?? throw new InvalidOperationException("MSSQL_CONNECTION_STRING not set");
     }
-    
+
     [Fact]
     public async Task Database_HasExpectedTables()
     {
         // Arrange
         var expectedTables = new[] { "BudgetEntries", "Departments", "MunicipalAccounts" };
-        
+
         // Act - Use mssql_list_tables via MCP or direct query
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        
+
         var tables = new List<string>();
         using var command = new SqlCommand(
             "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'",
@@ -300,14 +300,14 @@ public class DatabaseSchemaTests
         {
             tables.Add(reader.GetString(0));
         }
-        
+
         // Assert
         foreach (var expected in expectedTables)
         {
             Assert.Contains(expected, tables);
         }
     }
-    
+
     [Fact]
     public async Task BudgetEntries_HasCorrectSchema()
     {
@@ -322,37 +322,49 @@ public class DatabaseSchemaTests
 ### Common Issues
 
 **1. Connection Refused**
+
 ```
 Error: Failed to connect to SQL Server
 ```
+
 **Solution:**
+
 - Verify SQL Server service is running: `Get-Service MSSQL*`
 - Check firewall rules for port 1433
 - Use `(localdb)\MSSQLLocalDB` for LocalDB instances
 
 **2. Authentication Failed**
+
 ```
 Error: Login failed for user 'sa'
 ```
+
 **Solution:**
+
 - Verify SQL Authentication is enabled
 - Check username/password in connection string
 - Use Windows Authentication (`Integrated Security=true`) if available
 
 **3. Database Not Found**
+
 ```
 Error: Cannot open database "WileyWidget"
 ```
+
 **Solution:**
+
 - List available databases: `mssql_list_databases`
 - Apply migrations: `dotnet ef database update`
 - Check database name spelling (case-sensitive on Linux)
 
 **4. MCP Server Not Found**
+
 ```
 Error: Cannot find module '@modelcontextprotocol/server-mssql'
 ```
+
 **Solution:**
+
 ```powershell
 npm install -g @modelcontextprotocol/server-mssql
 npx @modelcontextprotocol/server-mssql --version
@@ -430,7 +442,7 @@ Console.WriteLine("✅ All database schema validations passed");
 - [MCP MSSQL Server Documentation](https://github.com/modelcontextprotocol/servers/tree/main/src/mssql)
 - [SQL Server Connection Strings](https://www.connectionstrings.com/sql-server/)
 - [Entity Framework Core Migrations](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/)
-- [Wiley Widget Database Schema](../../docs/DATABASE.md) *(to be created)*
+- [Wiley Widget Database Schema](../../docs/DATABASE.md) _(to be created)_
 
 ---
 

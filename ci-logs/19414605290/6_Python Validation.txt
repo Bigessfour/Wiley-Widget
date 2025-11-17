@@ -1,0 +1,147 @@
+﻿2025-11-17T00:31:57.9569005Z Current runner version: '2.329.0'
+2025-11-17T00:31:57.9603900Z ##[group]Runner Image Provisioner
+2025-11-17T00:31:57.9605139Z Hosted Compute Agent
+2025-11-17T00:31:57.9606050Z Version: 20251016.436
+2025-11-17T00:31:57.9606973Z Commit: 8ab8ac8bfd662a3739dab9fe09456aba92132568
+2025-11-17T00:31:57.9608504Z Build Date: 2025-10-15T20:44:12Z
+2025-11-17T00:31:57.9609422Z ##[endgroup]
+2025-11-17T00:31:57.9610476Z ##[group]Operating System
+2025-11-17T00:31:57.9611623Z Ubuntu
+2025-11-17T00:31:57.9612378Z 24.04.3
+2025-11-17T00:31:57.9613145Z LTS
+2025-11-17T00:31:57.9614041Z ##[endgroup]
+2025-11-17T00:31:57.9614842Z ##[group]Runner Image
+2025-11-17T00:31:57.9615674Z Image: ubuntu-24.04
+2025-11-17T00:31:57.9616736Z Version: 20251112.124.1
+2025-11-17T00:31:57.9618391Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20251112.124/images/ubuntu/Ubuntu2404-Readme.md
+2025-11-17T00:31:57.9621470Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20251112.124
+2025-11-17T00:31:57.9623036Z ##[endgroup]
+2025-11-17T00:31:57.9625400Z ##[group]GITHUB_TOKEN Permissions
+2025-11-17T00:31:57.9628232Z Contents: read
+2025-11-17T00:31:57.9629008Z Metadata: read
+2025-11-17T00:31:57.9629983Z Packages: read
+2025-11-17T00:31:57.9631151Z ##[endgroup]
+2025-11-17T00:31:57.9634531Z Secret source: Actions
+2025-11-17T00:31:57.9635985Z Prepare workflow directory
+2025-11-17T00:31:58.0187654Z Prepare all required actions
+2025-11-17T00:31:58.0244813Z Getting action download info
+2025-11-17T00:31:58.2964406Z Download action repository 'actions/checkout@v4' (SHA:08eba0b27e820071cde6df949e0beb9ba4906955)
+2025-11-17T00:31:58.4123186Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2025-11-17T00:31:58.5883318Z Complete job name: Python Validation
+2025-11-17T00:31:58.6567515Z ##[group]Run actions/checkout@v4
+2025-11-17T00:31:58.6568364Z with:
+2025-11-17T00:31:58.6568813Z   repository: Bigessfour/Wiley-Widget
+2025-11-17T00:31:58.6569517Z   token: ***
+2025-11-17T00:31:58.6569931Z   ssh-strict: true
+2025-11-17T00:31:58.6570561Z   ssh-user: git
+2025-11-17T00:31:58.6570977Z   persist-credentials: true
+2025-11-17T00:31:58.6571534Z   clean: true
+2025-11-17T00:31:58.6572010Z   sparse-checkout-cone-mode: true
+2025-11-17T00:31:58.6572511Z   fetch-depth: 1
+2025-11-17T00:31:58.6572905Z   fetch-tags: false
+2025-11-17T00:31:58.6573330Z   show-progress: true
+2025-11-17T00:31:58.6573754Z   lfs: false
+2025-11-17T00:31:58.6574137Z   submodules: false
+2025-11-17T00:31:58.6574560Z   set-safe-directory: true
+2025-11-17T00:31:58.6575276Z env:
+2025-11-17T00:31:58.6575674Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:31:58.6576113Z   NODE_VERSION: 22.x
+2025-11-17T00:31:58.6576523Z ##[endgroup]
+2025-11-17T00:31:58.7657199Z Syncing repository: Bigessfour/Wiley-Widget
+2025-11-17T00:31:58.7658981Z ##[group]Getting Git version info
+2025-11-17T00:31:58.7659743Z Working directory is '/home/runner/work/Wiley-Widget/Wiley-Widget'
+2025-11-17T00:31:58.7661119Z [command]/usr/bin/git version
+2025-11-17T00:31:58.9591016Z git version 2.51.2
+2025-11-17T00:31:58.9634251Z ##[endgroup]
+2025-11-17T00:31:58.9653845Z Temporarily overriding HOME='/home/runner/work/_temp/8667f0af-31b8-42c3-a738-4ef524d14733' before making global git config changes
+2025-11-17T00:31:58.9655551Z Adding repository directory to the temporary git global config as a safe directory
+2025-11-17T00:31:58.9671824Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Wiley-Widget/Wiley-Widget
+2025-11-17T00:31:58.9716054Z Deleting the contents of '/home/runner/work/Wiley-Widget/Wiley-Widget'
+2025-11-17T00:31:58.9720658Z ##[group]Initializing the repository
+2025-11-17T00:31:58.9726592Z [command]/usr/bin/git init /home/runner/work/Wiley-Widget/Wiley-Widget
+2025-11-17T00:31:58.9876007Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-11-17T00:31:58.9877717Z hint: is subject to change. To configure the initial branch name to use in all
+2025-11-17T00:31:58.9879442Z hint: of your new repositories, which will suppress this warning, call:
+2025-11-17T00:31:58.9880990Z hint:
+2025-11-17T00:31:58.9881540Z hint: 	git config --global init.defaultBranch <name>
+2025-11-17T00:31:58.9882182Z hint:
+2025-11-17T00:31:58.9882780Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-11-17T00:31:58.9883683Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-11-17T00:31:58.9884402Z hint:
+2025-11-17T00:31:58.9884791Z hint: 	git branch -m <name>
+2025-11-17T00:31:58.9885251Z hint:
+2025-11-17T00:31:58.9885873Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2025-11-17T00:31:58.9887272Z Initialized empty Git repository in /home/runner/work/Wiley-Widget/Wiley-Widget/.git/
+2025-11-17T00:31:58.9894879Z [command]/usr/bin/git remote add origin https://github.com/Bigessfour/Wiley-Widget
+2025-11-17T00:31:58.9934303Z ##[endgroup]
+2025-11-17T00:31:58.9935476Z ##[group]Disabling automatic garbage collection
+2025-11-17T00:31:58.9939047Z [command]/usr/bin/git config --local gc.auto 0
+2025-11-17T00:31:58.9971378Z ##[endgroup]
+2025-11-17T00:31:58.9972135Z ##[group]Setting up auth
+2025-11-17T00:31:58.9982700Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-11-17T00:31:59.0018301Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-11-17T00:31:59.0388117Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-11-17T00:31:59.0421040Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-11-17T00:31:59.0657875Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-11-17T00:31:59.0700710Z ##[endgroup]
+2025-11-17T00:31:59.0708552Z ##[group]Fetching the repository
+2025-11-17T00:31:59.0711186Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +5b9e41b53e0aef49634f5f2811c8835ccbdf73c7:refs/remotes/origin/main
+2025-11-17T00:31:59.9035750Z From https://github.com/Bigessfour/Wiley-Widget
+2025-11-17T00:31:59.9037680Z  * [new ref]         5b9e41b53e0aef49634f5f2811c8835ccbdf73c7 -> origin/main
+2025-11-17T00:31:59.9070582Z ##[endgroup]
+2025-11-17T00:31:59.9071894Z ##[group]Determining the checkout info
+2025-11-17T00:31:59.9073621Z ##[endgroup]
+2025-11-17T00:31:59.9078367Z [command]/usr/bin/git sparse-checkout disable
+2025-11-17T00:31:59.9118356Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-11-17T00:31:59.9147345Z ##[group]Checking out the ref
+2025-11-17T00:31:59.9151034Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2025-11-17T00:32:00.1022042Z Switched to a new branch 'main'
+2025-11-17T00:32:00.1023728Z branch 'main' set up to track 'origin/main'.
+2025-11-17T00:32:00.1033882Z ##[endgroup]
+2025-11-17T00:32:00.1075558Z [command]/usr/bin/git log -1 --format=%H
+2025-11-17T00:32:00.1099890Z 5b9e41b53e0aef49634f5f2811c8835ccbdf73c7
+2025-11-17T00:32:00.1392713Z ##[group]Run actions/setup-python@v5
+2025-11-17T00:32:00.1393810Z with:
+2025-11-17T00:32:00.1394557Z   python-version: 3.10
+2025-11-17T00:32:00.1395384Z   check-latest: false
+2025-11-17T00:32:00.1396500Z   token: ***
+2025-11-17T00:32:00.1397254Z   update-environment: true
+2025-11-17T00:32:00.1398214Z   allow-prereleases: false
+2025-11-17T00:32:00.1399094Z   freethreaded: false
+2025-11-17T00:32:00.1399862Z env:
+2025-11-17T00:32:00.1400640Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:32:00.1401458Z   NODE_VERSION: 22.x
+2025-11-17T00:32:00.1402211Z ##[endgroup]
+2025-11-17T00:32:00.3082384Z ##[group]Installed versions
+2025-11-17T00:32:00.3202865Z Successfully set up CPython (3.10.19)
+2025-11-17T00:32:00.3205526Z ##[endgroup]
+2025-11-17T00:32:00.3344527Z ##[group]Run python -m pip install --upgrade pip
+2025-11-17T00:32:00.3346345Z [36;1mpython -m pip install --upgrade pip[0m
+2025-11-17T00:32:00.3347752Z [36;1mpip install -r requirements.txt[0m
+2025-11-17T00:32:00.3432997Z shell: /usr/bin/bash -e {0}
+2025-11-17T00:32:00.3433900Z env:
+2025-11-17T00:32:00.3434549Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:32:00.3435351Z   NODE_VERSION: 22.x
+2025-11-17T00:32:00.3436373Z   pythonLocation: /opt/hostedtoolcache/Python/3.10.19/x64
+2025-11-17T00:32:00.3438009Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.10.19/x64/lib/pkgconfig
+2025-11-17T00:32:00.3439625Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.19/x64
+2025-11-17T00:32:00.3441332Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.19/x64
+2025-11-17T00:32:00.3442816Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.19/x64
+2025-11-17T00:32:00.3444298Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.10.19/x64/lib
+2025-11-17T00:32:00.3445508Z ##[endgroup]
+2025-11-17T00:32:02.2969671Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.10.19/x64/lib/python3.10/site-packages (25.3)
+2025-11-17T00:32:02.9129342Z ERROR: Could not open requirements file: [Errno 2] No such file or directory: 'requirements.txt'
+2025-11-17T00:32:02.9467742Z ##[error]Process completed with exit code 1.
+2025-11-17T00:32:02.9589264Z Post job cleanup.
+2025-11-17T00:32:03.0528776Z [command]/usr/bin/git version
+2025-11-17T00:32:03.0566128Z git version 2.51.2
+2025-11-17T00:32:03.0610422Z Temporarily overriding HOME='/home/runner/work/_temp/d3dea221-8d7e-407f-ab55-8a1dd3c94602' before making global git config changes
+2025-11-17T00:32:03.0611900Z Adding repository directory to the temporary git global config as a safe directory
+2025-11-17T00:32:03.0623903Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Wiley-Widget/Wiley-Widget
+2025-11-17T00:32:03.0659247Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-11-17T00:32:03.0692518Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-11-17T00:32:03.0927289Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-11-17T00:32:03.0950117Z http.https://github.com/.extraheader
+2025-11-17T00:32:03.0963854Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-11-17T00:32:03.0995563Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-11-17T00:32:03.1332984Z Cleaning up orphan processes

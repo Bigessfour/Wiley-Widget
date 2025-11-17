@@ -1,0 +1,205 @@
+﻿2025-11-17T00:31:58.9326397Z Current runner version: '2.329.0'
+2025-11-17T00:31:58.9351673Z ##[group]Runner Image Provisioner
+2025-11-17T00:31:58.9352417Z Hosted Compute Agent
+2025-11-17T00:31:58.9353050Z Version: 20251016.436
+2025-11-17T00:31:58.9353618Z Commit: 8ab8ac8bfd662a3739dab9fe09456aba92132568
+2025-11-17T00:31:58.9354312Z Build Date: 2025-10-15T20:44:12Z
+2025-11-17T00:31:58.9354916Z ##[endgroup]
+2025-11-17T00:31:58.9355494Z ##[group]Operating System
+2025-11-17T00:31:58.9356026Z Ubuntu
+2025-11-17T00:31:58.9356539Z 24.04.3
+2025-11-17T00:31:58.9357013Z LTS
+2025-11-17T00:31:58.9357434Z ##[endgroup]
+2025-11-17T00:31:58.9357953Z ##[group]Runner Image
+2025-11-17T00:31:58.9358502Z Image: ubuntu-24.04
+2025-11-17T00:31:58.9359003Z Version: 20251112.124.1
+2025-11-17T00:31:58.9359963Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20251112.124/images/ubuntu/Ubuntu2404-Readme.md
+2025-11-17T00:31:58.9361972Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20251112.124
+2025-11-17T00:31:58.9363008Z ##[endgroup]
+2025-11-17T00:31:58.9364130Z ##[group]GITHUB_TOKEN Permissions
+2025-11-17T00:31:58.9366460Z Contents: read
+2025-11-17T00:31:58.9367095Z Metadata: read
+2025-11-17T00:31:58.9367637Z Packages: read
+2025-11-17T00:31:58.9368128Z ##[endgroup]
+2025-11-17T00:31:58.9370562Z Secret source: Actions
+2025-11-17T00:31:58.9371662Z Prepare workflow directory
+2025-11-17T00:31:58.9769474Z Prepare all required actions
+2025-11-17T00:31:58.9808436Z Getting action download info
+2025-11-17T00:31:59.3893328Z Download action repository 'actions/checkout@v4' (SHA:08eba0b27e820071cde6df949e0beb9ba4906955)
+2025-11-17T00:31:59.5169858Z Download action repository 'actions/setup-dotnet@v4' (SHA:67a3573c9a986a3f9c594539f4ab511d57bb3ce9)
+2025-11-17T00:31:59.9749606Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2025-11-17T00:32:00.0697751Z Download action repository 'actions/cache@v4' (SHA:0057852bfaa89a56745cba8c7296529d2fc39830)
+2025-11-17T00:32:00.1809672Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2025-11-17T00:32:00.3062014Z Download action repository 'codecov/codecov-action@v4' (SHA:b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238)
+2025-11-17T00:32:00.7978486Z Complete job name: Build & Test (ubuntu-latest)
+2025-11-17T00:32:00.8763561Z ##[group]Run actions/checkout@v4
+2025-11-17T00:32:00.8764899Z with:
+2025-11-17T00:32:00.8765627Z   fetch-depth: 0
+2025-11-17T00:32:00.8766472Z   repository: Bigessfour/Wiley-Widget
+2025-11-17T00:32:00.8767820Z   token: ***
+2025-11-17T00:32:00.8768576Z   ssh-strict: true
+2025-11-17T00:32:00.8769342Z   ssh-user: git
+2025-11-17T00:32:00.8770134Z   persist-credentials: true
+2025-11-17T00:32:00.8771214Z   clean: true
+2025-11-17T00:32:00.8772021Z   sparse-checkout-cone-mode: true
+2025-11-17T00:32:00.8772969Z   fetch-tags: false
+2025-11-17T00:32:00.8773765Z   show-progress: true
+2025-11-17T00:32:00.8774556Z   lfs: false
+2025-11-17T00:32:00.8775287Z   submodules: false
+2025-11-17T00:32:00.8776115Z   set-safe-directory: true
+2025-11-17T00:32:00.8777225Z env:
+2025-11-17T00:32:00.8777923Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:32:00.8778751Z   NODE_VERSION: 22.x
+2025-11-17T00:32:00.8779547Z ##[endgroup]
+2025-11-17T00:32:01.0008329Z Syncing repository: Bigessfour/Wiley-Widget
+2025-11-17T00:32:01.0013090Z ##[group]Getting Git version info
+2025-11-17T00:32:01.0015645Z Working directory is '/home/runner/work/Wiley-Widget/Wiley-Widget'
+2025-11-17T00:32:01.0019296Z [command]/usr/bin/git version
+2025-11-17T00:32:01.0067520Z git version 2.51.2
+2025-11-17T00:32:01.0096090Z ##[endgroup]
+2025-11-17T00:32:01.0112469Z Temporarily overriding HOME='/home/runner/work/_temp/c46b861f-e7db-4e06-8252-ffb67b95f77a' before making global git config changes
+2025-11-17T00:32:01.0116944Z Adding repository directory to the temporary git global config as a safe directory
+2025-11-17T00:32:01.0129564Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Wiley-Widget/Wiley-Widget
+2025-11-17T00:32:01.0171234Z Deleting the contents of '/home/runner/work/Wiley-Widget/Wiley-Widget'
+2025-11-17T00:32:01.0174951Z ##[group]Initializing the repository
+2025-11-17T00:32:01.0180235Z [command]/usr/bin/git init /home/runner/work/Wiley-Widget/Wiley-Widget
+2025-11-17T00:32:01.0333116Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-11-17T00:32:01.0336448Z hint: is subject to change. To configure the initial branch name to use in all
+2025-11-17T00:32:01.0339776Z hint: of your new repositories, which will suppress this warning, call:
+2025-11-17T00:32:01.0341548Z hint:
+2025-11-17T00:32:01.0342598Z hint: 	git config --global init.defaultBranch <name>
+2025-11-17T00:32:01.0343994Z hint:
+2025-11-17T00:32:01.0345555Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-11-17T00:32:01.0347692Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-11-17T00:32:01.0349530Z hint:
+2025-11-17T00:32:01.0350765Z hint: 	git branch -m <name>
+2025-11-17T00:32:01.0351689Z hint:
+2025-11-17T00:32:01.0352830Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2025-11-17T00:32:01.0354794Z Initialized empty Git repository in /home/runner/work/Wiley-Widget/Wiley-Widget/.git/
+2025-11-17T00:32:01.0357881Z [command]/usr/bin/git remote add origin https://github.com/Bigessfour/Wiley-Widget
+2025-11-17T00:32:01.0386918Z ##[endgroup]
+2025-11-17T00:32:01.0388461Z ##[group]Disabling automatic garbage collection
+2025-11-17T00:32:01.0390077Z [command]/usr/bin/git config --local gc.auto 0
+2025-11-17T00:32:01.0434587Z ##[endgroup]
+2025-11-17T00:32:01.0436669Z ##[group]Setting up auth
+2025-11-17T00:32:01.0458465Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-11-17T00:32:01.0492192Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-11-17T00:32:01.0844700Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-11-17T00:32:01.0878930Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-11-17T00:32:01.1116348Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-11-17T00:32:01.1162077Z ##[endgroup]
+2025-11-17T00:32:01.1164446Z ##[group]Fetching the repository
+2025-11-17T00:32:01.1173446Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2025-11-17T00:32:09.4545101Z From https://github.com/Bigessfour/Wiley-Widget
+2025-11-17T00:32:09.4545747Z  * [new branch]      main       -> origin/main
+2025-11-17T00:32:09.4546257Z  * [new branch]      temp-clean -> origin/temp-clean
+2025-11-17T00:32:09.4585576Z [command]/usr/bin/git branch --list --remote origin/main
+2025-11-17T00:32:09.4609517Z   origin/main
+2025-11-17T00:32:09.4619342Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2025-11-17T00:32:09.4639893Z 5b9e41b53e0aef49634f5f2811c8835ccbdf73c7
+2025-11-17T00:32:09.4645674Z ##[endgroup]
+2025-11-17T00:32:09.4646117Z ##[group]Determining the checkout info
+2025-11-17T00:32:09.4649716Z ##[endgroup]
+2025-11-17T00:32:09.4652755Z [command]/usr/bin/git sparse-checkout disable
+2025-11-17T00:32:09.4692640Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-11-17T00:32:09.4717954Z ##[group]Checking out the ref
+2025-11-17T00:32:09.4722534Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2025-11-17T00:32:09.6709240Z Switched to a new branch 'main'
+2025-11-17T00:32:09.6710772Z branch 'main' set up to track 'origin/main'.
+2025-11-17T00:32:09.6730842Z ##[endgroup]
+2025-11-17T00:32:09.6773708Z [command]/usr/bin/git log -1 --format=%H
+2025-11-17T00:32:09.6803358Z 5b9e41b53e0aef49634f5f2811c8835ccbdf73c7
+2025-11-17T00:32:09.7058713Z ##[group]Run actions/setup-dotnet@v4
+2025-11-17T00:32:09.7058982Z with:
+2025-11-17T00:32:09.7059159Z   dotnet-version: 9.0.x
+2025-11-17T00:32:09.7059353Z   cache: false
+2025-11-17T00:32:09.7059521Z env:
+2025-11-17T00:32:09.7059677Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:32:09.7059873Z   NODE_VERSION: 22.x
+2025-11-17T00:32:09.7060057Z ##[endgroup]
+2025-11-17T00:32:09.8827868Z [command]/home/runner/work/_actions/actions/setup-dotnet/v4/externals/install-dotnet.sh --skip-non-versioned-files --runtime dotnet --channel LTS
+2025-11-17T00:32:10.1908639Z dotnet-install: .NET Core Runtime with version '10.0.0' is already installed.
+2025-11-17T00:32:10.1938758Z [command]/home/runner/work/_actions/actions/setup-dotnet/v4/externals/install-dotnet.sh --skip-non-versioned-files --channel 9.0
+2025-11-17T00:32:10.4791632Z dotnet-install: .NET Core SDK with version '9.0.307' is already installed.
+2025-11-17T00:32:10.4969484Z ##[group]Run actions/setup-node@v4
+2025-11-17T00:32:10.4969750Z with:
+2025-11-17T00:32:10.4969922Z   node-version: 22.x
+2025-11-17T00:32:10.4970108Z   always-auth: false
+2025-11-17T00:32:10.4970294Z   check-latest: false
+2025-11-17T00:32:10.4970850Z   token: ***
+2025-11-17T00:32:10.4971016Z env:
+2025-11-17T00:32:10.4971178Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:32:10.4971368Z   NODE_VERSION: 22.x
+2025-11-17T00:32:10.4971559Z   DOTNET_ROOT: /usr/share/dotnet
+2025-11-17T00:32:10.4971767Z ##[endgroup]
+2025-11-17T00:32:10.6735743Z Found in cache @ /opt/hostedtoolcache/node/22.21.1/x64
+2025-11-17T00:32:10.6742354Z ##[group]Environment details
+2025-11-17T00:32:11.0762039Z node: v22.21.1
+2025-11-17T00:32:11.0762414Z npm: 10.9.4
+2025-11-17T00:32:11.0763027Z yarn: 1.22.22
+2025-11-17T00:32:11.0764194Z ##[endgroup]
+2025-11-17T00:32:11.2294498Z ##[group]Run actions/cache@v4
+2025-11-17T00:32:11.2294752Z with:
+2025-11-17T00:32:11.2294924Z   path: ~/.nuget/packages
+2025-11-17T00:32:11.2295289Z   key: Linux-nuget-f991775e5d7ff61ce6cca63b091c6273ca8c10408a675f94d622a381965869b4
+2025-11-17T00:32:11.2295715Z   restore-keys: Linux-nuget-
+
+2025-11-17T00:32:11.2295951Z   enableCrossOsArchive: false
+2025-11-17T00:32:11.2296174Z   fail-on-cache-miss: false
+2025-11-17T00:32:11.2296379Z   lookup-only: false
+2025-11-17T00:32:11.2296567Z   save-always: false
+2025-11-17T00:32:11.2296737Z env:
+2025-11-17T00:32:11.2296906Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:32:11.2297098Z   NODE_VERSION: 22.x
+2025-11-17T00:32:11.2297298Z   DOTNET_ROOT: /usr/share/dotnet
+2025-11-17T00:32:11.2297510Z ##[endgroup]
+2025-11-17T00:32:11.7216897Z Cache not found for input keys: Linux-nuget-f991775e5d7ff61ce6cca63b091c6273ca8c10408a675f94d622a381965869b4, Linux-nuget-
+2025-11-17T00:32:11.7297951Z ##[group]Run dotnet restore WileyWidget.sln
+2025-11-17T00:32:11.7298318Z [36;1mdotnet restore WileyWidget.sln[0m
+2025-11-17T00:32:11.7343084Z shell: /usr/bin/bash -e {0}
+2025-11-17T00:32:11.7343313Z env:
+2025-11-17T00:32:11.7343487Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:32:11.7343684Z   NODE_VERSION: 22.x
+2025-11-17T00:32:11.7343899Z   DOTNET_ROOT: /usr/share/dotnet
+2025-11-17T00:32:11.7344109Z ##[endgroup]
+2025-11-17T00:32:17.7053747Z /home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.Uno/WileyWidget.Uno.csproj : warning NU1503: Skipping restore for project '/home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.Uno/WileyWidget.Uno.csproj'. The project file may be invalid or missing targets required for restore. [/home/runner/work/Wiley-Widget/Wiley-Widget/WileyWidget.sln]
+2025-11-17T00:32:17.7066299Z   Determining projects to restore...
+2025-11-17T00:32:18.1056555Z ##[error]/usr/share/dotnet/sdk/9.0.307/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets(107,5): error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargeting property to true. [/home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj]
+2025-11-17T00:32:18.1075495Z ##[error]/usr/share/dotnet/sdk/9.0.307/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets(107,5): error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargeting property to true. [/home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.Business/WileyWidget.Business.csproj]
+2025-11-17T00:32:18.1082961Z ##[error]/usr/share/dotnet/sdk/9.0.307/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets(107,5): error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargeting property to true. [/home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.Services.Abstractions/WileyWidget.Services.Abstractions.csproj]
+2025-11-17T00:32:18.1089595Z ##[error]/usr/share/dotnet/sdk/9.0.307/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets(107,5): error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargeting property to true. [/home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.Data/WileyWidget.Data.csproj]
+2025-11-17T00:32:18.1234053Z ##[error]/usr/share/dotnet/sdk/9.0.307/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets(107,5): error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargeting property to true. [/home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.Models/WileyWidget.Models.csproj]
+2025-11-17T00:32:18.1259939Z ##[error]/usr/share/dotnet/sdk/9.0.307/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets(107,5): error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargeting property to true. [/home/runner/work/Wiley-Widget/Wiley-Widget/src/SyncfusionMcpServer/SyncfusionMcpServer.csproj]
+2025-11-17T00:32:18.1301283Z ##[error]/usr/share/dotnet/sdk/9.0.307/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets(107,5): error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargeting property to true. [/home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.Services/WileyWidget.Services.csproj]
+2025-11-17T00:32:18.1582927Z ##[error]/usr/share/dotnet/sdk/9.0.307/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets(107,5): error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargeting property to true. [/home/runner/work/Wiley-Widget/Wiley-Widget/src/WileyWidget.WinUI/WileyWidget.WinUI.csproj]
+2025-11-17T00:32:18.2163849Z ##[error]Process completed with exit code 1.
+2025-11-17T00:32:18.2226396Z ##[group]Run actions/upload-artifact@v4
+2025-11-17T00:32:18.2226666Z with:
+2025-11-17T00:32:18.2226854Z   name: test-results-ubuntu-latest
+2025-11-17T00:32:18.2227093Z   path: TestResults/
+2025-11-17T00:32:18.2227291Z   if-no-files-found: warn
+2025-11-17T00:32:18.2227495Z   compression-level: 6
+2025-11-17T00:32:18.2227701Z   overwrite: false
+2025-11-17T00:32:18.2227885Z   include-hidden-files: false
+2025-11-17T00:32:18.2228091Z env:
+2025-11-17T00:32:18.2228255Z   DOTNET_VERSION: 9.0.x
+2025-11-17T00:32:18.2228442Z   NODE_VERSION: 22.x
+2025-11-17T00:32:18.2228638Z   DOTNET_ROOT: /usr/share/dotnet
+2025-11-17T00:32:18.2228849Z ##[endgroup]
+2025-11-17T00:32:18.5300814Z ##[warning]No files were found with the provided path: TestResults/. No artifacts will be uploaded.
+2025-11-17T00:32:18.5483913Z Post job cleanup.
+2025-11-17T00:32:18.7103636Z [command]/usr/bin/git version
+2025-11-17T00:32:18.7182121Z git version 2.51.2
+2025-11-17T00:32:18.7290919Z Temporarily overriding HOME='/home/runner/work/_temp/77e89ef6-7253-4e3a-b83d-b2d153bdd346' before making global git config changes
+2025-11-17T00:32:18.7292468Z Adding repository directory to the temporary git global config as a safe directory
+2025-11-17T00:32:18.7347265Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Wiley-Widget/Wiley-Widget
+2025-11-17T00:32:18.7587737Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-11-17T00:32:18.7590245Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-11-17T00:32:18.7906978Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-11-17T00:32:18.7959314Z http.https://github.com/.extraheader
+2025-11-17T00:32:18.7981296Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-11-17T00:32:18.8043057Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-11-17T00:32:18.8567976Z Cleaning up orphan processes
+2025-11-17T00:32:18.9053574Z Terminate orphan process: pid (2368) (dotnet)
+2025-11-17T00:32:18.9084056Z Terminate orphan process: pid (2369) (dotnet)
+2025-11-17T00:32:18.9116471Z Terminate orphan process: pid (2370) (dotnet)

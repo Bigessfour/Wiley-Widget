@@ -17,14 +17,14 @@ Detailed database and infrastructure notes live in [Database Setup](../reference
 
 ## Daily Workflow
 
-| Step                 | Command                                                    | Notes                                       |
-| -------------------- | ---------------------------------------------------------- | ------------------------------------------- |
-| 1. Clean environment | `pwsh ./scripts/maintenance/cleanup-dotnet-processes.ps1`  | Clears stale `dotnet` hosts                 |
-| 2. Restore packages  | `dotnet restore WileyWidget.sln`                           | Uses central package management             |
-| 3. Build fast        | `pwsh ./scripts/build/fast-build.ps1 -Configuration Debug` | Wraps `dotnet build` with solution defaults |
-| 4. Run tests         | `dotnet test WileyWidget.sln --no-build`                   | See [Testing Strategy](Testing.md)          |
-| 5. Trunk checks      | `trunk check --ci`                                         | Mirrors the CI pipeline                     |
-| 6. Run local app     | `dotnet run --project src/WileyWidget.WinUI/WileyWidget.WinUI.csproj`  | Launches the WinUI shell                      |
+| Step                 | Command                                                               | Notes                                       |
+| -------------------- | --------------------------------------------------------------------- | ------------------------------------------- |
+| 1. Clean environment | `pwsh ./scripts/maintenance/cleanup-dotnet-processes.ps1`             | Clears stale `dotnet` hosts                 |
+| 2. Restore packages  | `dotnet restore WileyWidget.sln`                                      | Uses central package management             |
+| 3. Build fast        | `pwsh ./scripts/build/fast-build.ps1 -Configuration Debug`            | Wraps `dotnet build` with solution defaults |
+| 4. Run tests         | `dotnet test WileyWidget.sln --no-build`                              | See [Testing Strategy](Testing.md)          |
+| 5. Trunk checks      | `trunk check --ci`                                                    | Mirrors the CI pipeline                     |
+| 6. Run local app     | `dotnet run --project src/WileyWidget.WinUI/WileyWidget.WinUI.csproj` | Launches the WinUI shell                    |
 
 ## Useful References
 
