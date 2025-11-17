@@ -57,7 +57,7 @@ public class XamlParsingService
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Error parsing XAML file: {Path}", xamlPath);
+            _logger.LogError(ex, "Error parsing XAML file: {Path}", xamlPath);
             result.IsValid = false;
             result.Errors.Add($"Parse error: {ex.Message}");
         }

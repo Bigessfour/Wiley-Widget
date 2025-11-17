@@ -32,7 +32,7 @@ public class Program
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Fatal error in MCP server");
+            _logger.LogError(ex, "Fatal error in MCP server");
             Environment.Exit(1);
         }
     }
@@ -97,7 +97,7 @@ public class Program
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error processing request: {Line}", line);
+                _logger.LogError(ex, "Error processing request: {Line}", line);
                 var errorResponse = new McpResponse
                 {
                     Id = 0,

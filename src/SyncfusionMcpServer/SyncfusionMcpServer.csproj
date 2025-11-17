@@ -8,6 +8,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <UseWindowsSDK>true</UseWindowsSDK>
+    <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

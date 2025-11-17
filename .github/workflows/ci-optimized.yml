@@ -132,7 +132,7 @@ jobs:
 
   # Phase 3: Quality Assurance (Trunk)
   quality-assurance:
-    name: "Quality Assurance"
+    name: Quality Assurance
     needs: [health-check, build-and-test]
     if: needs.health-check.outputs.should_skip != 'true' && !failure()
     runs-on: ubuntu-latest
@@ -156,7 +156,7 @@ jobs:
       - name: Setup Trunk
         uses: trunk-io/trunk-action/setup@v1
         with:
-          trunk-version: 1.25.0
+          version: 1.25.0
 
       - name: Run Trunk check (CI mode)
         run: trunk check --ci --upload --series=ci-${{ github.run_number }} --filter=gitleaks,trufflehog,osv-scanner

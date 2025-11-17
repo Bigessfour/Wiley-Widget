@@ -23,7 +23,7 @@
     <!-- Temporarily suppress NU1605 (package downgrade warnings) while migrating legacy
     dependencies.
       TODO: remove NU1605 from NoWarn after resolving old Serilog/DocumentDB transitive deps. -->
-    <NoWarn>$(NoWarn);NETSDK1206;CS0436;NU1605</NoWarn>
+    <NoWarn>$(NoWarn);NU1605;NU1603;NETSDK1206;CS0436</NoWarn>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <RunAnalyzers>false</RunAnalyzers>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>

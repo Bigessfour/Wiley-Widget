@@ -82,7 +82,7 @@ public class ThemeValidationService
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Error validating theme: {Theme}", themeName);
+            _logger.LogError(ex, "Error validating theme: {Theme}", themeName);
             result.IsValid = false;
             result.Errors.Add($"Validation error: {ex.Message}");
         }
@@ -140,7 +140,7 @@ public class ThemeValidationService
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Warning, ex, "Error searching for theme resources in: {Dir}", appDir);
+            _logger.LogWarning(ex, "Error searching for theme resources in: {Dir}", appDir);
         }
 
         await Task.CompletedTask;

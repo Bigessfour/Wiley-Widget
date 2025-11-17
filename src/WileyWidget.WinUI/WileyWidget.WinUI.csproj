@@ -3,7 +3,6 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <WindowsSdkPackageVersion>10.0.26100.1</WindowsSdkPackageVersion>
     <!-- Updated to match Windows App SDK requirements -->
     <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <WindowsSdkVersion>10.0.26100.0</WindowsSdkVersion>
