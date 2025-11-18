@@ -1,37 +1,35 @@
 #nullable enable
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Threading;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Dispatching;
 using Microsoft.Extensions.Logging;
 
 namespace WileyWidget.Services.Threading;
 
 /// <summary>
-/// Implementation of IDispatcherHelper for WPF dispatcher operations
+/// Simplified WinUI dispatcher helper - no STA requirement like WPF
 /// </summary>
 public class DispatcherHelper : IDispatcherHelper
 {
-    private readonly Dispatcher _dispatcher;
+    private readonly DispatcherQueue _dispatcherQueue;
     private readonly ILogger<DispatcherHelper>? _logger;
 
     public DispatcherHelper()
     {
-        // Use Application.Current.Dispatcher to ensure we always get the main UI dispatcher
-        // This is safer than Dispatcher.CurrentDispatcher which depends on which thread creates the instance
-        _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+        // Get the dispatcher queue - WinUI doesn't require STA threading
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
     }
 
-    public DispatcherHelper(Dispatcher dispatcher)
+    public DispatcherHelper(DispatcherQueue dispatcherQueue)
     {
-        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
     }
 
-    public DispatcherHelper(Dispatcher dispatcher, ILogger<DispatcherHelper> logger)
+    public DispatcherHelper(DispatcherQueue dispatcherQueue, ILogger<DispatcherHelper> logger)
     {
-        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
         _logger = logger;
     }
 
@@ -40,116 +38,86 @@ public class DispatcherHelper : IDispatcherHelper
     /// </summary>
     public bool CheckAccess()
     {
-        return _dispatcher.CheckAccess();
-    }
-
-    /// <summary>
-    /// Executes an action on the UI thread synchronously
-    /// </summary>
-    /// <param name="action">The action to execute</param>
-    public void Invoke(Action action)
-    {
-        if (action == null) throw new ArgumentNullException(nameof(action));
-
-        var callingThreadId = Thread.CurrentThread.ManagedThreadId;
-        var uiThreadId = _dispatcher.Thread.ManagedThreadId;
-
-        if (CheckAccess())
-        {
-            _logger?.LogTrace("Dispatcher.Invoke - Already on UI thread (ThreadId: {ThreadId})", callingThreadId);
-            action();
-        }
-        else
-        {
-            _logger?.LogTrace("Dispatcher.Invoke - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}",
-                callingThreadId, uiThreadId);
-            _dispatcher.Invoke(action);
-        }
-    }
-
-    /// <summary>
-    /// Executes a function on the UI thread synchronously and returns the result
-    /// </summary>
-    /// <typeparam name="T">The return type</typeparam>
-    /// <param name="func">The function to execute</param>
-    /// <returns>The result of the function</returns>
-    public T Invoke<T>(Func<T> func)
-    {
-        if (func == null) throw new ArgumentNullException(nameof(func));
-
-        var callingThreadId = Thread.CurrentThread.ManagedThreadId;
-        var uiThreadId = _dispatcher.Thread.ManagedThreadId;
-
-        if (CheckAccess())
-        {
-            _logger?.LogTrace("Dispatcher.Invoke<T> - Already on UI thread (ThreadId: {ThreadId})", callingThreadId);
-            return func();
-        }
-        else
-        {
-            _logger?.LogTrace("Dispatcher.Invoke<T> - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}",
-                callingThreadId, uiThreadId);
-            return _dispatcher.Invoke(func);
-        }
+        return _dispatcherQueue.HasThreadAccess;
     }
 
     /// <summary>
     /// Executes an action on the UI thread asynchronously
+    /// Since WinUI doesn't require STA, this is much simpler than WPF
     /// </summary>
-    /// <param name="action">The action to execute</param>
-    /// <returns>A task representing the async operation</returns>
-    public Task InvokeAsync(Action action)
+    public async Task InvokeAsync(Action action)
     {
-        return InvokeAsync(action, DispatcherPriority.Normal);
+        if (action == null) throw new ArgumentNullException(nameof(action));
+
+        if (CheckAccess())
+        {
+            // Already on UI thread, execute directly
+            _logger?.LogTrace("Already on UI thread, executing directly");
+            action();
+            return;
+        }
+
+        // Need to marshal to UI thread
+        _logger?.LogTrace("Marshalling to UI thread");
+        var tcs = new TaskCompletionSource<bool>();
+
+        var success = _dispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                action();
+                tcs.SetResult(true);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        if (!success)
+        {
+            throw new InvalidOperationException("Failed to enqueue action on dispatcher queue");
+        }
+
+        await tcs.Task;
     }
 
     /// <summary>
     /// Executes a function on the UI thread asynchronously and returns the result
     /// </summary>
-    /// <typeparam name="T">The return type</typeparam>
-    /// <param name="func">The function to execute</param>
-    /// <returns>A task representing the async operation with result</returns>
-    public Task<T> InvokeAsync<T>(Func<T> func)
-    {
-        return InvokeAsync(func, DispatcherPriority.Normal);
-    }
-
-    /// <summary>
-    /// Executes an action on the UI thread asynchronously with priority
-    /// </summary>
-    /// <param name="action">The action to execute</param>
-    /// <param name="priority">The dispatcher priority</param>
-    /// <returns>A task representing the async operation</returns>
-    public Task InvokeAsync(Action action, DispatcherPriority priority)
-    {
-        if (action == null) throw new ArgumentNullException(nameof(action));
-
-        var callingThreadId = Thread.CurrentThread.ManagedThreadId;
-        var uiThreadId = _dispatcher.Thread.ManagedThreadId;
-
-        _logger?.LogTrace("Dispatcher.InvokeAsync - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}",
-            priority, callingThreadId, uiThreadId);
-
-        return _dispatcher.InvokeAsync(action, priority).Task;
-    }
-
-    /// <summary>
-    /// Executes a function on the UI thread asynchronously with priority and returns the result
-    /// </summary>
-    /// <typeparam name="T">The return type</typeparam>
-    /// <param name="func">The function to execute</param>
-    /// <param name="priority">The dispatcher priority</param>
-    /// <returns>A task representing the async operation with result</returns>
-    public Task<T> InvokeAsync<T>(Func<T> func, DispatcherPriority priority)
+    public async Task<T> InvokeAsync<T>(Func<T> func)
     {
         if (func == null) throw new ArgumentNullException(nameof(func));
 
-        var callingThreadId = Thread.CurrentThread.ManagedThreadId;
-        var uiThreadId = _dispatcher.Thread.ManagedThreadId;
+        if (CheckAccess())
+        {
+            // Already on UI thread, execute directly
+            _logger?.LogTrace("Already on UI thread, executing function directly");
+            return func();
+        }
 
-        _logger?.LogTrace("Dispatcher.InvokeAsync<T> - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}",
-            priority, callingThreadId, uiThreadId);
+        // Need to marshal to UI thread
+        _logger?.LogTrace("Marshalling function to UI thread");
+        var tcs = new TaskCompletionSource<T>();
 
-        return _dispatcher.InvokeAsync(func, priority).Task;
+        var success = _dispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                var result = func();
+                tcs.SetResult(result);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        if (!success)
+        {
+            throw new InvalidOperationException("Failed to enqueue function on dispatcher queue");
+        }
+
+        return await tcs.Task;
     }
 }

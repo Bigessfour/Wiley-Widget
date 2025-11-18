@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Workspace = 'C:\\Users\\biges\\Desktop\\Wiley_Widget'
+    [string]$Workspace = 'C:\\Users\\biges\\Desktop\\Wiley-Widget'
 )
 
 Set-StrictMode -Version Latest

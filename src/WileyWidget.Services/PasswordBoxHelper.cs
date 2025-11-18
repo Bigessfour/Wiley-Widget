@@ -1,5 +1,5 @@
-using System.Windows;
-using System.Windows.Controls;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace WileyWidget.Services
 {
@@ -15,6 +15,7 @@ namespace WileyWidget.Services
             if (obj == null) throw new ArgumentNullException(nameof(obj));
             return (string)obj.GetValue(BoundPasswordProperty);
         }
+
         public static void SetBoundPassword(DependencyObject obj, string value)
         {
             if (obj == null) throw new ArgumentNullException(nameof(obj));

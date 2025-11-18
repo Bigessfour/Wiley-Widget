@@ -82,10 +82,10 @@ if ($asyncPattern) {
 Write-Host "Test 6: Verifying build succeeds..." -ForegroundColor Yellow
 # Check if any dependent projects built successfully
 $builtProjects = @(
-    "c:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.Abstractions\bin\Debug\net9.0-windows10.0.19041.0\win-x64\WileyWidget.Abstractions.dll",
-    "c:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.Models\bin\Debug\net9.0-windows10.0.19041.0\win-x64\WileyWidget.Models.dll",
-    "c:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.Services\bin\Debug\net9.0-windows10.0.19041.0\win-x64\WileyWidget.Services.dll",
-    "c:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.UI\bin\Debug\net9.0-windows10.0.19041.0\win-x64\WileyWidget.UI.dll"
+    "c:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Abstractions\bin\Debug\net9.0-windows10.0.19041.0\win-x64\WileyWidget.Abstractions.dll",
+    "c:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Models\bin\Debug\net9.0-windows10.0.19041.0\win-x64\WileyWidget.Models.dll",
+    "c:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Services\bin\Debug\net9.0-windows10.0.19041.0\win-x64\WileyWidget.Services.dll",
+    "c:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.UI\bin\Debug\net9.0-windows10.0.19041.0\win-x64\WileyWidget.UI.dll"
 )
 
 $allBuilt = $true

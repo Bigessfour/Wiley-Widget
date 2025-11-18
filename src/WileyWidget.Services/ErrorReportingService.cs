@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using System.Windows;
+using Microsoft.UI.Xaml;
 using Serilog;
 using Serilog.Events;
 using System.Collections.Generic;

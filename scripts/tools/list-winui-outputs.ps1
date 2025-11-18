@@ -1,4 +1,4 @@
-Set-Location 'C:\Users\biges\Desktop\Wiley_Widget'
+Set-Location 'C:\Users\biges\Desktop\Wiley-Widget'
 Write-Host "Listing WinUI obj win-x64 directory (if present)..."
 $dir = 'src\WileyWidget.WinUI\obj\x64\Debug\net9.0-windows10.0.26100.0\win-x64'
 if (Test-Path $dir) {

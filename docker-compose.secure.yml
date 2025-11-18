@@ -10,14 +10,16 @@ services:
       dockerfile: ./docker/Dockerfile.csx-tests
     container_name: wiley-widget-secure
     volumes:
-      - ./scripts:/workspaces/Wiley_Widget/scripts:ro
-      - ./src:/workspaces/Wiley_Widget/src:ro
-      - ./logs:/workspaces/Wiley_Widget/logs:rw
+      - ./scripts:/workspaces/Wiley-Widget/scripts:ro
+      - ./src:/workspaces/Wiley-Widget/src:ro
+      - ./logs:/workspaces/Wiley-Widget/logs:rw
+      - ./test-logs:/workspaces/Wiley-Widget/test-logs:rw
+      # Named volume for NuGet cache persistence
       - wiley-widget-nuget-cache:/tmp/csharp-mcp-packages
     environment:
-      - WW_REPO_ROOT=/workspaces/Wiley_Widget
-      - WW_LOGS_DIR=/workspaces/Wiley_Widget/logs
-      - CSX_ALLOWED_PATH=/workspaces/Wiley_Widget
+      - WW_REPO_ROOT=/workspaces/Wiley-Widget
+      - WW_LOGS_DIR=/workspaces/Wiley-Widget/logs
+      - CSX_ALLOWED_PATH=/workspaces/Wiley-Widget
       - DOTNET_CLI_TELEMETRY_OPTOUT=1
       - DOTNET_NOLOGO=1
     # Docker secrets for sensitive data
@@ -25,7 +27,7 @@ services:
       - github_token
       - database_password
       - api_keys
-    working_dir: /workspaces/Wiley_Widget
+    working_dir: /workspaces/Wiley-Widget
     command: tail -f /dev/null
     networks:
       - wiley-widget-secure-net

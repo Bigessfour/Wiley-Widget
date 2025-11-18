@@ -1,5 +1,5 @@
 param(
-    [string]$Root = "C:\\Users\\biges\\Desktop\\Wiley_Widget"
+    [string]$Root = "C:\\Users\\biges\\Desktop\\Wiley-Widget"
 )
 
 $paths = @(

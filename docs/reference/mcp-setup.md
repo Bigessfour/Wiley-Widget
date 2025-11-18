@@ -26,7 +26,7 @@ The MCP server is best used through VS Code's MCP integration. Verify `.vscode/m
         "-i",
         "--rm",
         "-v",
-        "C:\\Users\\biges\\Desktop\\Wiley_Widget:/scripts:ro",
+        "C:\\Users\\biges\\Desktop\\Wiley-Widget:/scripts:ro",
         "-e",
         "CSX_ALLOWED_PATH=/scripts",
         "ghcr.io/infinityflowapp/csharp-mcp:latest"
@@ -47,7 +47,7 @@ If you need to test the server manually via command line:
 
 ```powershell
 # Run interactively with stdin
-docker run -i --rm -v "C:\Users\biges\Desktop\Wiley_Widget:/scripts:ro" -e CSX_ALLOWED_PATH=/scripts ghcr.io/infinityflowapp/csharp-mcp:latest
+docker run -i --rm -v "C:\Users\biges\Desktop\Wiley-Widget:/scripts:ro" -e CSX_ALLOWED_PATH=/scripts ghcr.io/infinityflowapp/csharp-mcp:latest
 
 # Send JSON-RPC message (paste and press Enter):
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}

@@ -2,13 +2,13 @@
 # This script removes xmlns:darkTheme declarations and <darkTheme:SfAcrylicPanel> usages
 
 $files = @(
-    'C:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.UI\Views\Dialogs\MunicipalAccountEditDialogView.xaml',
-    'C:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.UI\Views\Main\AIAssistView.xaml',
-    'C:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.UI\Views\Main\DepartmentView.xaml',
-    'C:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.UI\Views\Main\EnterpriseView.xaml',
-    'C:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.UI\Views\Main\MunicipalAccountView.xaml',
-    'C:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.UI\Views\Main\ReportsView.xaml',
-    'C:\Users\biges\Desktop\Wiley_Widget\src\WileyWidget.UI\Views\Panels\SettingsPanelView.xaml'
+    'C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.UI\Views\Dialogs\MunicipalAccountEditDialogView.xaml',
+    'C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.UI\Views\Main\AIAssistView.xaml',
+    'C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.UI\Views\Main\DepartmentView.xaml',
+    'C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.UI\Views\Main\EnterpriseView.xaml',
+    'C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.UI\Views\Main\MunicipalAccountView.xaml',
+    'C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.UI\Views\Main\ReportsView.xaml',
+    'C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.UI\Views\Panels\SettingsPanelView.xaml'
 )
 
 foreach ($file in $files) {

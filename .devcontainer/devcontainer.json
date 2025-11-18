@@ -8,25 +8,25 @@
     "--name",
     "wiley-widget-dev",
     "-e",
-    "WW_REPO_ROOT=/workspaces/Wiley_Widget",
+    "WW_REPO_ROOT=/workspaces/Wiley-Widget",
     "-e",
-    "WW_LOGS_DIR=/workspaces/Wiley_Widget/logs",
+    "WW_LOGS_DIR=/workspaces/Wiley-Widget/logs",
     "-e",
-    "CSX_ALLOWED_PATH=/workspaces/Wiley_Widget"
+    "CSX_ALLOWED_PATH=/workspaces/Wiley-Widget"
   ],
 
   // Mount points for development
   "mounts": [
     "source=wiley-widget-nuget-cache,target=/tmp/csharp-mcp-packages,type=volume",
-    "source=${localWorkspaceFolder}/logs,target=/workspaces/Wiley_Widget/logs,type=bind",
-    "source=${localWorkspaceFolder}/scripts,target=/workspaces/Wiley_Widget/scripts,type=bind",
+    "source=${localWorkspaceFolder}/logs,target=/workspaces/Wiley-Widget/logs,type=bind",
+    "source=${localWorkspaceFolder}/scripts,target=/workspaces/Wiley-Widget/scripts,type=bind",
     // Mount host Docker socket for Docker-from-Docker
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
 
   // Container workspace settings
-  "workspaceFolder": "/workspaces/Wiley_Widget",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/Wiley_Widget,type=bind",
+  "workspaceFolder": "/workspaces/Wiley-Widget",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/Wiley-Widget,type=bind",
 
   // Post-create commands
   "postCreateCommand": "echo 'Setting up Wiley Widget development environment...' && ls -la /tmp/csharp-mcp-packages && dotnet --version && dotnet script --version && echo 'Environment ready for CSX testing!'",

@@ -42,7 +42,7 @@ This document provides a comprehensive summary of all Model Context Protocol (MC
 ```json
 {
   "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\biges\\Desktop\\Wiley_Widget"]
+  "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\biges\\Desktop\\Wiley-Widget"]
 }
 ```
 

@@ -1,23 +1,24 @@
-# WileyWidget
+# Wiley-Widget 🐙
 
-**A Modern Cross-Platform Application for Budget Management and Financial Analysis**
+What started as a humble WinUI 3 desktop widget has... evolved.
 
-[![.NET Version](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/)
-[![Uno Platform](https://img.shields.io/badge/Uno%20Platform-5.5-purple.svg)](https://platform.uno/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
+### Current features (as of the legendary 461-file commit):
 
-**Version:** 1.0.0 - Uno Platform Migration Complete
-**Last Updated:** November 16, 2025
-**Framework:** .NET 9.0 + Uno Platform 5.5
-**UI Framework:** Syncfusion WinUI Controls + Uno.Material
-**Application Framework:** Prism.Uno.WinUI v9.0.537 (Pure MVVM Architecture)
+- A perfectly clean Windows App SDK / WinUI 3 frontend (yes, it still has a window)
+- Full Syncfusion MCP server (because why not)
+- 84 PowerShell automation scripts for reasons
+- 59 C# scripts that definitely do something important
+- Budget importers, AI logging, audit trails, chart series, theme validation...
+- A complete Blazor-ready wwwroot with privacy policy and terms of service that literally nobody asked for but now everyone gets
+- 134 Markdown files (we're basically writing a book at this point)
+- Zero tests, zero chill
 
-> **⚠️ IMPORTANT: WPF Project Discontinued**  
-> The legacy WPF project (`src/WileyWidget`) has been **permanently removed**.  
-> All development is now on **WileyWidget.Uno** (Uno Platform + WinUI).  
-> WPF code is preserved in Git history for reference if needed.
+### Local dev (if you dare)
+
+```bash
+dotnet run
+# or just double-click the .exe once we package this monster
+```
 
 ---
 

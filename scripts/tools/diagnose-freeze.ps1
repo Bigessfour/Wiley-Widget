@@ -5,7 +5,7 @@ param(
     [switch]$AttachToRunning,
     [switch]$MonitorNew,
     [int]$TimeoutSeconds = 300,
-    [string]$DumpPath = "C:\Users\biges\Desktop\Wiley_Widget\diagnostics\dumps"
+    [string]$DumpPath = "C:\Users\biges\Desktop\Wiley-Widget\diagnostics\dumps"
 )
 
 $ErrorActionPreference = "Stop"

@@ -25,6 +25,6 @@ Set-Alias -Name 'cleanup-dotnet' -Value Invoke-CleanupDotnet -Option AllScope -E
 Set-Alias -Name 'load-env' -Value Invoke-LoadEnv -Option AllScope -ErrorAction SilentlyContinue
 
 # Navigate to project root if not already there
-if ($PWD.Path -notlike "*Wiley_Widget*") {
+if ($PWD.Path -notlike "*Wiley-Widget*") {
     Set-Location $PSScriptRoot
 }
