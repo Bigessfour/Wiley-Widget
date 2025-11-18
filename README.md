@@ -72,7 +72,7 @@ WileyWidget is a modern Windows desktop application built with WinUI 3, Syncfusi
 - **Modern UI**: Syncfusion WinUI themes with Windows 11 Fluent Design integration
 - **Secure Secret Management**: DPAPI-encrypted credential storage for API keys and licenses
 - **Comprehensive Testing**: Unit tests, integration tests, and UI tests with >70% coverage
-- **CI/CD Pipeline**: GitHub Actions with Trunk integration (90% success rate target)
+- **CI/CD Pipeline**: Local CI/CD with Trunk integration (90% success rate target)
 - **AI Repository Manifest**: Schema-backed manifest with dependency graphs, git history, and security insights for LLM tooling
 
 ### Project Status
@@ -1206,7 +1206,7 @@ WileyWidget/
 
 **MVVM Framework:** Pure Prism v9.0 (DryIoc container)
 **Theme System:** Syncfusion SfSkinManager (FluentDark/FluentLight)
-**CI/CD:** GitHub Actions + Trunk (90% success rate target)
+**CI/CD:** Local CI/CD + Trunk (90% success rate target)
 
 This layered architecture ensures WileyWidget is maintainable, testable, and ready for enterprise-scale deployment following Microsoft's recommended patterns for modern .NET applications.
 

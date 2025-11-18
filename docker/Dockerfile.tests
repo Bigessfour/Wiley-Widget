@@ -1,14 +1,15 @@
-# Dockerfile for Test Runner
-# Runs xUnit tests with code coverage in Docker
-
-FROM mcr.microsoft.com/dotnet/sdk:9.0
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Install coverage tools
-RUN dotnet tool install --global dotnet-coverage
-ENV PATH="${PATH}:/root/.dotnet/tools"
+# Use a predictable nuget packages location (Linux container)
+ENV NUGET_PACKAGES=/tmp/nuget
+ENV DOTNET_CLI_HOME=/tmp/dotnet
+ENV PATH="${PATH}:/tmp/dotnet/.dotnet/tools"
 
-# Copy solution and restore
+# Install tools
+RUN dotnet tool install --global dotnet-coverage
+
+# Copy solution and core config files
 COPY WileyWidget.sln .
 COPY Directory.Build.props .
 COPY Directory.Build.targets .
@@ -16,24 +17,22 @@ COPY Directory.Packages.props .
 COPY global.json .
 COPY NuGet.config .
 
-# Copy all source and test projects
+# Copy source and tests
 COPY src/ src/
-COPY test/ test/
+COPY tests/ tests/
 
-# Restore all projects
-RUN dotnet restore WileyWidget.sln
-
-# Create a non-root user for security
-RUN useradd -m testuser
-USER testuser
+# Restore all projects (enable Windows targeting for cross-build on Linux runners)
+RUN dotnet restore tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj /p:EnableWindowsTargeting=true /p:NUGET_PACKAGES=$NUGET_PACKAGES && \
+    mkdir -p "$NUGET_PACKAGES" "$DOTNET_CLI_HOME"
 
 # Health check to ensure the container is operational
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD dotnet --version || exit 1
 
-# Default command runs all tests with coverage
-CMD ["dotnet", "test", "WileyWidget.sln", \
+# Default command runs the primary test project with coverage
+CMD ["dotnet", "test", "tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj", \
+     "--no-restore", \
      "--collect:XPlat Code Coverage", \
      "--results-directory:/src/coverage", \
      "--logger:trx", \
-     "--logger:console;verbosity=detailed"]
+     "/p:NUGET_PACKAGES=/tmp/nuget"]

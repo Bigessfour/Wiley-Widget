@@ -52,15 +52,22 @@ git commit -m "feat: added X feature"
 git push
 ```
 
-### CI/CD Integration
+### Local CI/CD Integration
 
-Tests run automatically in GitHub Actions via your existing `ci-optimized.yml`:
+Tests run locally via Trunk CLI and PowerShell scripts:
 
-```yaml
-- name: Build & Test Matrix
-  run: |
-    dotnet build --no-restore
-    dotnet test --no-build --collect:"XPlat Code Coverage"
+```powershell
+# Pre-commit validation
+trunk fmt --all
+trunk check --fix
+trunk check --ci
+
+# Run tests locally
+dotnet build --no-restore
+dotnet test --no-build --collect:"XPlat Code Coverage"
+
+# Or use the validation script
+.\scripts\testing\validate-local-ci.ps1
 ```
 
 ## 🔧 Visual Studio Integration

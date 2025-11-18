@@ -336,5 +336,9 @@ ai-fetchable-manifest.json
 .trunk/
 publish/win-x64/
 
+# NuGet packages directory (global user packages)
+%USERPROFILE%/.nuget/packages/
+%USERPROFILE%\357\201\234.nuget\357\201\234packages/
+
 # Prevent ThemeService reintroduction - theme managed globally by SfSkinManager
 **/ThemeService.cs

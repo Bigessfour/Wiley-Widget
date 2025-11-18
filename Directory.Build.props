@@ -20,6 +20,8 @@
       https://api.nuget.org/v3/index.json</RestoreAdditionalProjectSources>
     <SelfContained>false</SelfContained>
     <Nullable>disable</Nullable>
+    <!-- Clear fallback folders to avoid Windows paths in Linux containers -->
+    <RestoreAdditionalProjectFallbackFolders></RestoreAdditionalProjectFallbackFolders>
     <!-- Temporarily suppress NU1605 (package downgrade warnings) while migrating legacy
     dependencies.
       TODO: remove NU1605 from NoWarn after resolving old Serilog/DocumentDB transitive deps. -->

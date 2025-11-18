@@ -152,36 +152,22 @@ open coverage/html/index.html   # macOS
 
 ---
 
-## CI/CD Integration
+## Local CI/CD Integration
 
-### GitHub Actions (.github/workflows/ci-optimized.yml)
+### Running Docker Tests Locally
 
-Add this job:
+Instead of GitHub Actions, run Docker validation locally:
 
-```yaml
-test-docker:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
+```bash
+# Start database and run tests
+docker-compose -f docker-compose.dev.yml up -d db
+docker-compose -f docker-compose.dev.yml run --rm test
 
-    - name: Start Database
-      run: docker-compose up -d db
+# Or use the PowerShell validation script
+.\scripts\testing\validate-local-ci.ps1 -TestType docker
 
-    - name: Wait for DB Healthy
-      run: |
-        timeout 60 sh -c 'until docker-compose ps db | grep healthy; do sleep 2; done'
-
-    - name: Run Tests
-      run: docker-compose run --rm test
-
-    - name: Upload Coverage
-      uses: codecov/codecov-action@v4
-      with:
-        files: ./coverage/coverage.cobertura.xml
-
-    - name: Cleanup
-      if: always()
-      run: docker-compose down -v
+# Check coverage reports
+open coverage/html/index.html   # Windows
 ```
 
 ---

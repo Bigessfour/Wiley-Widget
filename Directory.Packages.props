@@ -1,0 +1,10 @@
+<Project>
+  <!-- Temporary minimal package versions to satisfy Docker build COPY step.
+       This is a short-term placeholder for running the local pipeline (Option A).
+       Do not treat this as the final centralized package list. -->
+  <ItemGroup>
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageVersion Include="Moq" Version="4.18.6" />
+    <PackageVersion Include="xunit" Version="2.5.3" />
+  </ItemGroup>
+</Project>

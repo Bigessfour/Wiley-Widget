@@ -52,13 +52,16 @@ dotnet test --collect:"XPlat Code Coverage"
 2. Click "Run All" or right-click individual tests
 3. View live results and coverage
 
-### CI/CD Integration
+### Local CI/CD Integration
 
-Tests run automatically in GitHub Actions via `.github/workflows/ci-optimized.yml`:
+Tests run locally via Trunk CLI and can be executed manually:
 
-```yaml
-- name: Run unit tests
-  run: dotnet test --configuration Release --collect:"XPlat Code Coverage"
+```powershell
+# Run all tests
+dotnet test --configuration Release --collect:"XPlat Code Coverage"
+
+# Or use Trunk for comprehensive validation
+trunk check --ci
 ```
 
 ## Test Categories
