@@ -31,6 +31,7 @@
 
   <ItemGroup>
     <!-- Windows App SDK and WinUI -->
+    <!-- Microsoft.Windows.SDK.NET.Ref is automatically imported via WindowsSdkPackageVersion property -->
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
     <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
@@ -39,6 +40,8 @@
     <!-- Prism for WinUI 3 -->
     <PackageReference Include="Prism.Core" Version="9.0.537" />
     <PackageReference Include="Prism.Events" Version="9.0.537" />
+    <PackageReference Include="Prism.Uno.WinUI" Version="9.0.537" />
+    <PackageReference Include="Prism.DryIoc.Uno.WinUI" Version="9.0.537" />
     
     <!-- CommunityToolkit for MVVM and UI -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />

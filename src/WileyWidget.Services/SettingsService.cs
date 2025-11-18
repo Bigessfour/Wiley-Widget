@@ -393,6 +393,18 @@ namespace WileyWidget.Services
             return Current;
         }
 
+        public string GetEnvironmentName() => GetValue("Environment") ?? "Production";
+
+        public string GetValue(string key) => _configuration?[key] ?? _configuration?["AppSettings:" + key] ?? string.Empty;
+
+        public void SetValue(string key, string value)
+        {
+            if (_configuration is IConfigurationRoot root)
+            {
+                root[key] = value;
+            }
+        }
+
         /// <summary>
         /// Resets the settings to defaults. Used primarily for testing.
         /// </summary>

@@ -118,7 +118,7 @@
       },
       "Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization": {
         "type": "Direct",
-        "requested": "[9.0.10, )",
+        "requested": "[9.1.0, )",
         "resolved": "9.1.0",
         "contentHash": "CEBjV6qXRFGCdA5yip5aeZazbpBowOVoqHdnIO8Z+0m6Sw8TSz9tYYwkthNHI+G+tVdMRdwcmuoHtix7vxDvuA==",
         "dependencies": {

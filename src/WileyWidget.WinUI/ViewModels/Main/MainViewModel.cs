@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Prism.Navigation;
 using Prism.Navigation.Regions;
-using WileyWidget.ViewModels.Messages;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
-    public partial class MainViewModel : ObservableRecipient, INavigationAware
+    public partial class MainViewModel : ObservableRecipient
     {
         private readonly ILogger<MainViewModel> _logger;
         private readonly IRegionManager _regionManager;
@@ -62,7 +62,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
         }
     }
 
-    public class MenuItem : ObservableObject
+    public partial class MenuItem : ObservableObject
     {
         [ObservableProperty]
         private string name = string.Empty;

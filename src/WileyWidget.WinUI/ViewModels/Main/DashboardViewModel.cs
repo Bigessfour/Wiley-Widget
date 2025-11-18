@@ -4,17 +4,15 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Prism.Navigation;
 using Prism.Navigation.Regions;
-using WileyWidget.ViewModels.Messages;
-using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
-    public partial class DashboardViewModel : ObservableRecipient, INavigationAware
+    public partial class DashboardViewModel : ObservableRecipient
     {
         private readonly ILogger<DashboardViewModel> _logger;
         private readonly IRegionManager _regionManager;
-        private readonly IDashboardService _dashboardService;
 
         [ObservableProperty]
         private string title = "Dashboard";
@@ -27,12 +25,10 @@ namespace WileyWidget.WinUI.ViewModels.Main
 
         public DashboardViewModel(
             ILogger<DashboardViewModel> logger,
-            IRegionManager regionManager,
-            IDashboardService dashboardService)
+            IRegionManager regionManager)
         {
             _logger = logger;
             _regionManager = regionManager;
-            _dashboardService = dashboardService;
 
             LoadDashboardCommand = new AsyncRelayCommand(LoadDashboardAsync);
         }
@@ -46,13 +42,16 @@ namespace WileyWidget.WinUI.ViewModels.Main
                 IsLoading = true;
                 _logger.LogInformation("Loading dashboard data");
 
-                var items = await _dashboardService.GetDashboardItemsAsync();
+                // Placeholder for dashboard data loading
                 DashboardItems.Clear();
-
-                foreach (var item in items)
+                DashboardItems.Add(new DashboardItem
                 {
-                    DashboardItems.Add(item);
-                }
+                    Title = "Total Budget",
+                    Description = "Annual budget allocation",
+                    Icon = "Money",
+                    Count = 0,
+                    Status = "Active"
+                });
 
                 _logger.LogInformation("Dashboard loaded successfully");
             }

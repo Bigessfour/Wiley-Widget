@@ -31,6 +31,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly ILogger<QuickBooksService> _logger;
     private readonly SettingsService _settings;
     private readonly ISecretVaultService? _secretVault;
+    private readonly IQuickBooksApiClient _apiClient;
 
     // Values loaded lazily from secret vault or environment
     private string? _clientId;
@@ -59,10 +60,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
 
-    public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, HttpClient httpClient, IServiceProvider serviceProvider)
+    public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _secretVault = keyVaultService; // may be null in some test contexts
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));

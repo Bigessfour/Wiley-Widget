@@ -22,10 +22,17 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- Exclude presentation/ViewModel tests that require WinUI types from service test runs -->
+  <ItemGroup>
+    <Compile Remove="ViewModelTests\\**\\*.cs" />
+    <Compile Remove="TestHelpers\\**\\*MockFactory*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
-    <ProjectReference Include="..\..\src\WileyWidget.WinUI\WileyWidget.WinUI.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

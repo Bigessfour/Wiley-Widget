@@ -63,7 +63,7 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// <summary>
     /// Unique identifier for the enterprise
     /// </summary>
-    [Key]
+    [System.ComponentModel.DataAnnotations.Key]
     [GridDisplay(99, 80, Visible = true)] // Put ID at the end
     public int Id { get; set; }
 

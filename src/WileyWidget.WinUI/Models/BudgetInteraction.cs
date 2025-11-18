@@ -12,7 +12,7 @@ public class BudgetInteraction
     /// <summary>
     /// Unique identifier for the budget interaction
     /// </summary>
-    [Key]
+    [System.ComponentModel.DataAnnotations.Key]
     public int Id { get; set; }
 
     /// <summary>

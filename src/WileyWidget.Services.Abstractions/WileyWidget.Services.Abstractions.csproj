@@ -6,6 +6,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Enable WPF APIs (DispatcherPriority etc.) used by some abstractions - only for .NET 8.0 -->
     <UseWPF Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'">true</UseWPF>
   </PropertyGroup>

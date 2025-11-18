@@ -33,6 +33,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly ILogger<QuickBooksService> _logger;
     private readonly SettingsService _settings;
     private readonly ISecretVaultService? _secretVault;
+    private readonly IQuickBooksApiClient _apiClient;
 
     // Values loaded lazily from secret vault or environment
     private string? _clientId;
@@ -61,10 +62,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
 
-    public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, HttpClient httpClient, IServiceProvider serviceProvider)
+    public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _secretVault = keyVaultService; // may be null in some test contexts
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -417,10 +419,12 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
         var oauthValidator = await CreateOAuth2RequestValidatorAsync().ConfigureAwait(false);
 
-        return new ServiceContext(_realmId, IntuitServicesType.QBO, oauthValidator)
+        var serviceContext = new ServiceContext(_realmId, IntuitServicesType.QBO, oauthValidator)
         {
-            MinorVersion = "65" // Use latest minor version for best compatibility
+            MinorVersion = "79" // latest supported
         };
+
+        return serviceContext;
     }
 
     /// <summary>
@@ -430,6 +434,35 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         var serviceContext = await CreateServiceContextAsync().ConfigureAwait(false);
         return new DataService(serviceContext);
+    }
+
+    /// <summary>
+    /// Checks if the service is currently connected
+    /// </summary>
+    /// <returns>True if connected, false otherwise</returns>
+    public async System.Threading.Tasks.Task<bool> IsConnectedAsync()
+    {
+        try
+        {
+            var accessToken = await GetStoredAccessTokenAsync().ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                return false;
+            }
+
+            var tokenExpiry = await GetStoredTokenExpiryAsync().ConfigureAwait(false);
+            if (tokenExpiry.HasValue && tokenExpiry.Value <= DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking connection status");
+            return false;
+        }
     }
 
     /// <summary>
@@ -830,4 +863,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         public long ExpiresIn { get; set; }
         public string XRefreshTokenExpiresIn { get; set; } = string.Empty;
     }
+
+    public record SyncResult(bool Success, string Message, int RecordsImported = 0, string? ErrorMessage = null);
+    public record ImportResult(bool Success, string Message, int RecordsProcessed = 0);
+    public record ConnectionStatus(bool IsConnected, string Environment, string RealmId, string LastChecked, string? ErrorMessage = null);
 }

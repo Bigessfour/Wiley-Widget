@@ -4,11 +4,12 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Prism.Navigation;
 using Prism.Navigation.Regions;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
-    public partial class EnterpriseViewModel : ObservableRecipient, INavigationAware
+    public partial class EnterpriseViewModel : ObservableRecipient
     {
         private readonly ILogger<EnterpriseViewModel> _logger;
 

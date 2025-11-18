@@ -41,36 +41,30 @@ KNOWN_CATEGORIES = {
     "unknown",
 }
 
-# Language detection by extension
+# Language detection by extension - ENHANCED FOR WILEY WIDGET REPO
 LANGUAGE_MAP = {
+    # C# and .NET
     ".cs": "C#",
     ".csproj": "C# Project",
     ".sln": "Visual Studio Solution",
     ".xaml": "XAML",
-    ".json": "JSON",
-    ".yaml": "YAML",
-    ".yml": "YAML",
-    ".md": "Markdown",
-    ".txt": "Text",
-    ".xml": "XML",
-    ".config": "Configuration",
-    ".ps1": "PowerShell",
-    ".psm1": "PowerShell",
-    ".psd1": "PowerShell",
-    ".py": "Python",
-    ".sql": "SQL",
-    ".js": "JavaScript",
-    ".ts": "TypeScript",
-    ".html": "HTML",
-    ".css": "CSS",
-    ".sh": "Shell",
-    ".bat": "Batch",
-    ".toml": "TOML",
     ".csx": "C# Script",
     ".resx": "Resource File",
     ".rdl": "Report Definition",
-    ".gitignore": "Git Configuration",
-    ".gitattributes": "Git Configuration",
+    ".snk": "Strong Name Key",
+    ".winmd": "Windows Metadata",
+    ".mui": "Multi-language User Interface",
+    ".cache": "Build Cache",
+    ".BuildWithSkipAnalyzers": "Build Configuration",
+    # Configuration and Build
+    ".json": "JSON",
+    ".yaml": "YAML",
+    ".yml": "YAML",
+    ".toml": "TOML",
+    ".config": "Configuration",
+    ".xml": "XML",
+    ".props": "MSBuild Properties",
+    ".targets": "MSBuild Targets",
     ".editorconfig": "Editor Configuration",
     ".prettierrc": "Prettier Configuration",
     ".prettierignore": "Prettier Configuration",
@@ -78,10 +72,77 @@ LANGUAGE_MAP = {
     ".dockerignore": "Docker Configuration",
     "dockerfile": "Docker",
     ".lock": "Lock File",
+    ".gitignore": "Git Configuration",
+    ".gitattributes": "Git Configuration",
+    ".gitmodules": "Git Configuration",
+    # Documentation
+    ".md": "Markdown",
+    ".txt": "Text",
+    ".rst": "reStructuredText",
+    ".adoc": "AsciiDoc",
+    # Scripts and Automation
+    ".ps1": "PowerShell",
+    ".psm1": "PowerShell",
+    ".psd1": "PowerShell",
+    ".py": "Python",
+    ".sh": "Shell",
+    ".bat": "Batch",
+    ".cmd": "Batch",
+    ".sql": "SQL",
+    ".js": "JavaScript",
+    ".ts": "TypeScript",
+    ".html": "HTML",
+    ".css": "CSS",
+    ".scss": "SCSS",
+    ".sass": "Sass",
+    # Assets and Media
     ".svg": "SVG",
-    ".props": "MSBuild Properties",
-    ".targets": "MSBuild Targets",
-    ".snk": "Strong Name Key",
+    ".png": "PNG",
+    ".jpg": "JPEG",
+    ".jpeg": "JPEG",
+    ".gif": "GIF",
+    ".ico": "Icon",
+    ".bmp": "Bitmap",
+    ".woff": "Web Font",
+    ".woff2": "Web Font",
+    ".ttf": "TrueType Font",
+    ".eot": "Embedded OpenType",
+    ".otf": "OpenType Font",
+    # Data and Archives
+    ".db": "Database",
+    ".sqlite": "SQLite Database",
+    ".bin": "Binary",
+    ".zip": "Archive",
+    ".7z": "Archive",
+    ".tar": "Archive",
+    ".gz": "Archive",
+    ".pdf": "PDF",
+    ".csv": "CSV",
+    ".log": "Log File",
+    ".tmp": "Temporary File",
+    ".bak": "Backup File",
+    # Certificates and Keys
+    ".pem": "PEM Certificate",
+    ".key": "Private Key",
+    ".p12": "PKCS#12 Certificate",
+    ".pfx": "PFX Certificate",
+    ".crt": "Certificate",
+    ".cer": "Certificate",
+    ".der": "DER Certificate",
+    # Environment and Secrets
+    ".env": "Environment Variables",
+    ".env.example": "Environment Template",
+    ".env.local": "Local Environment",
+    ".secrets": "Secrets File",
+    # Special file types
+    "makefile": "Makefile",
+    "cmakelists.txt": "CMake",
+    "gemfile": "Ruby Gemfile",
+    "guardfile": "Ruby Guard",
+    "rakefile": "Ruby Rakefile",
+    "vagrantfile": "Vagrant",
+    "docker-compose.yml": "Docker Compose",
+    "docker-compose.yaml": "Docker Compose",
 }
 
 # Binary file extensions
@@ -193,7 +254,7 @@ class RepositoryAnalyzer:
 
     def _compile_exclude_patterns(self) -> List[re.Pattern]:
         """Compile exclude patterns from config and defaults."""
-        patterns = DEFAULT_EXCLUDE_PATTERNS.copy()
+        patterns: List[str] = DEFAULT_EXCLUDE_PATTERNS.copy()
         if "exclude_patterns" in self.config:
             patterns.extend(self.config["exclude_patterns"])
         return [re.compile(pattern) for pattern in patterns]
@@ -398,7 +459,7 @@ class RepositoryAnalyzer:
                             return "Shell"
                         elif "pwsh" in first_line or "powershell" in first_line:
                             return "PowerShell"
-            except:
+            except OSError:
                 pass
 
         return "Unknown"
@@ -1856,7 +1917,7 @@ class RepositoryAnalyzer:
         print(
             f"   Metrics: {metrics_info['total_lines_of_code']:,} LOC, {metrics_info['test_count']} tests"
         )
-        print(f"   Security: Scan disabled (use Trunk CLI)")
+        print("   Security: Scan disabled (use Trunk CLI)")
         print(f"   License: {license_info['type']}")
         print(f"   Valid until: {valid_until.strftime('%Y-%m-%d %H:%M')}")
 

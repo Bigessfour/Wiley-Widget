@@ -8,6 +8,11 @@ namespace WileyWidget.Services
         string Get(string key);
         void Set(string key, string value);
 
+        // Simple configuration accessors
+        string GetEnvironmentName();
+        string GetValue(string key);
+        void SetValue(string key, string value);
+
         // AppSettings-backed API used by the application
         AppSettings Current { get; }
 

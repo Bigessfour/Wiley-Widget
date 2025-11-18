@@ -8,6 +8,7 @@
     <Platforms>x64;x86;ARM64</Platforms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     
     <!-- Force Windows SDK version to avoid preview dependency -->
     <WindowsSdkPackageVersion>10.0.26100.1</WindowsSdkPackageVersion>
@@ -46,7 +47,7 @@
     <PackageReference Include="Uno.WinUI.RemoteControl" Version="6.0.0-dev.53" Condition="'$(Configuration)'=='Debug'" />
 
     <PackageReference Include="Uno.WinUI.Lottie" Version="6.4.106" />
-    <PackageReference Include="Uno.Resizetizer" Version="1.5.0" />
+    <PackageReference Include="Uno.Resizetizer" Version="1.5.2" />
     
     <!-- Uno Extensions -->
     <PackageReference Include="Uno.Extensions.Configuration" Version="5.2.6" />

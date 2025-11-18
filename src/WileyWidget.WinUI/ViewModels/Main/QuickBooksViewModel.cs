@@ -4,12 +4,14 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Prism.Navigation;
 using Prism.Navigation.Regions;
-using WileyWidget.Services.Abstractions;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Services;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
-    public partial class QuickBooksViewModel : ObservableRecipient, INavigationAware
+    public partial class QuickBooksViewModel : ObservableRecipient
     {
         private readonly ILogger<QuickBooksViewModel> _logger;
         private readonly IRegionManager _regionManager;
@@ -100,10 +102,16 @@ namespace WileyWidget.WinUI.ViewModels.Main
                 IsLoading = true;
                 ConnectionStatus = "Syncing...";
 
-                await _quickBooksService.SyncAsync();
-                await LoadQuickBooksDataAsync();
-
-                ConnectionStatus = "Synced";
+                var result = await _quickBooksService.SyncDataAsync();
+                if (result.Success)
+                {
+                    await LoadQuickBooksDataAsync();
+                    ConnectionStatus = "Synced";
+                }
+                else
+                {
+                    ConnectionStatus = $"Sync failed: {result.ErrorMessage}";
+                }
             }
             catch (Exception ex)
             {
@@ -120,12 +128,20 @@ namespace WileyWidget.WinUI.ViewModels.Main
         {
             try
             {
-                var items = await _quickBooksService.GetItemsAsync();
+                // Load various QuickBooks data
+                var customers = await _quickBooksService.GetCustomersAsync();
                 QuickBooksItems.Clear();
 
-                foreach (var item in items)
+                foreach (var customer in customers)
                 {
-                    QuickBooksItems.Add(item);
+                    QuickBooksItems.Add(new QuickBooksItem
+                    {
+                        Name = customer.DisplayName ?? "Unknown",
+                        Type = "Customer",
+                        Amount = 0,
+                        LastModified = DateTime.Now,
+                        IsActive = customer.Active
+                    });
                 }
             }
             catch (Exception ex)

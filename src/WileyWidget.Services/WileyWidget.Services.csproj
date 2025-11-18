@@ -15,6 +15,7 @@
       $(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416</NoWarn>
     <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- Disable CPM for consistency with other WPF projects -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
