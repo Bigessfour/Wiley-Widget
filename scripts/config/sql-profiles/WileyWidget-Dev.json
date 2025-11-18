@@ -1,0 +1,8 @@
+{
+  "name": "WileyWidget-Dev",
+  "server": "localhost\\SQLEXPRESS",
+  "connectionTimeout": 30,
+  "authenticationType": "Integrated",
+  "created": "2025-11-14T13:30:29.7187949-07:00",
+  "database": "WileyWidget"
+}

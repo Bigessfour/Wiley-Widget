@@ -1,0 +1,133 @@
+version: "3.9"
+
+# Production-optimized override for docker-compose.yml
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.prod-override.yml up
+#
+# This file provides production-ready security enhancements:
+# - Docker secrets for sensitive data
+# - Stricter resource limits
+# - Enhanced security options
+# - Internal-only database network (optional)
+
+services:
+  # ──────────────────────────────────────────────────────────────
+  # SQL Server - Production Configuration
+  # ──────────────────────────────────────────────────────────────
+  db:
+    environment:
+      SA_PASSWORD_FILE: /run/secrets/sa_password # Use Docker secret instead
+    secrets:
+      - sa_password
+    ports:
+      - "127.0.0.1:1433:1433" # Keep localhost binding for security
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "2.0"
+        reservations:
+          memory: 2g
+          cpus: "1.0"
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    # Enhanced logging
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=database,env=production"
+    restart: always
+    stop_grace_period: 60s
+
+  # ──────────────────────────────────────────────────────────────
+  # Application - Production Configuration
+  # ──────────────────────────────────────────────────────────────
+  app:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection_FILE=/run/secrets/connection_string
+    secrets:
+      - connection_string
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "1.0"
+        reservations:
+          memory: 512m
+          cpus: "0.5"
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Enhanced logging
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=application,env=production"
+    restart: always
+    stop_grace_period: 30s
+
+  # ──────────────────────────────────────────────────────────────
+  # Test Runner - Disabled in Production
+  # ──────────────────────────────────────────────────────────────
+  test:
+    profiles:
+      - testing # Only run with --profile testing
+
+  # ──────────────────────────────────────────────────────────────
+  # UI Tests - Disabled in Production
+  # ──────────────────────────────────────────────────────────────
+  ui-test:
+    profiles:
+      - testing # Only run with --profile testing
+
+# ──────────────────────────────────────────────────────────────
+# Docker Secrets Configuration
+# ──────────────────────────────────────────────────────────────
+secrets:
+  sa_password:
+    file: ./secrets/sa_password.txt
+  connection_string:
+    file: ./secrets/connection_string.txt
+
+# ──────────────────────────────────────────────────────────────
+# Network Configuration - Enhanced Security
+# ──────────────────────────────────────────────────────────────
+networks:
+  wiley-net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: wiley-prod-bridge
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/16
+          gateway: 172.25.0.1
+    internal: false # Set to true for completely isolated network
+
+# ──────────────────────────────────────────────────────────────
+# Volume Configuration - Production Backup Strategy
+# ──────────────────────────────────────────────────────────────
+volumes:
+  db-data:
+    driver: local
+    labels:
+      com.wileywidget.backup: daily
+      com.wileywidget.retention: 30d
+      com.wileywidget.env: production

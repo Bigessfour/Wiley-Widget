@@ -1,0 +1,1297 @@
+{
+  "structure": {
+    "directories": {
+      ".github": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.github?ref=main",
+        "path": ".github"
+      },
+      "Themes": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Themes?ref=main",
+        "path": "Themes"
+      },
+      "DatabaseTest": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DatabaseTest?ref=main",
+        "path": "DatabaseTest"
+      },
+      "WileyWidget.UiTests": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.UiTests?ref=main",
+        "path": "WileyWidget.UiTests"
+      },
+      "docs": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/docs?ref=main",
+        "path": "docs"
+      },
+      "Resources": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Resources?ref=main",
+        "path": "Resources"
+      },
+      "Migrations": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Migrations?ref=main",
+        "path": "Migrations"
+      },
+      ".venv": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.venv?ref=main",
+        "path": ".venv"
+      },
+      "%APPDATA%": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/%25APPDATA%25?ref=main",
+        "path": "%APPDATA%"
+      },
+      "tests": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/tests?ref=main",
+        "path": "tests"
+      },
+      "Data": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Data?ref=main",
+        "path": "Data"
+      },
+      "Configuration": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Configuration?ref=main",
+        "path": "Configuration"
+      },
+      "Services": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Services?ref=main",
+        "path": "Services"
+      },
+      ".vscode": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.vscode?ref=main",
+        "path": ".vscode"
+      },
+      ".trunk": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.trunk?ref=main",
+        "path": ".trunk"
+      },
+      "WileyWidget.Tests": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.Tests?ref=main",
+        "path": "WileyWidget.Tests"
+      },
+      "signing": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/signing?ref=main",
+        "path": "signing"
+      },
+      "ViewModels": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/ViewModels?ref=main",
+        "path": "ViewModels"
+      },
+      "DatabaseSetup": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DatabaseSetup?ref=main",
+        "path": "DatabaseSetup"
+      },
+      "WileyWidget.TestModels": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.TestModels?ref=main",
+        "path": "WileyWidget.TestModels"
+      },
+      "Models": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Models?ref=main",
+        "path": "Models"
+      },
+      "scripts": {
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/scripts?ref=main",
+        "path": "scripts"
+      }
+    },
+    "files": {
+      "TokenCacheHelper.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/TokenCacheHelper.cs?ref=main",
+        "size": 2475,
+        "path": "TokenCacheHelper.cs",
+        "name": "TokenCacheHelper.cs"
+      },
+      "BudgetView.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/BudgetView.xaml?ref=main",
+        "size": 20933,
+        "path": "BudgetView.xaml",
+        "name": "BudgetView.xaml"
+      },
+      ".copilot-instructions.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.copilot-instructions.md?ref=main",
+        "size": 4993,
+        "path": ".copilot-instructions.md",
+        "name": ".copilot-instructions.md"
+      },
+      "BudgetView.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/BudgetView.xaml.cs?ref=main",
+        "size": 3473,
+        "path": "BudgetView.xaml.cs",
+        "name": "BudgetView.xaml.cs"
+      },
+      "CurrencyFormatConverter.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/CurrencyFormatConverter.cs?ref=main",
+        "size": 543,
+        "path": "CurrencyFormatConverter.cs",
+        "name": "CurrencyFormatConverter.cs"
+      },
+      "SplashScreenWindow.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SplashScreenWindow.xaml.cs?ref=main",
+        "size": 13045,
+        "path": "SplashScreenWindow.xaml.cs",
+        "name": "SplashScreenWindow.xaml.cs"
+      },
+      "AZURE_SETUP_COMPLETE.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AZURE_SETUP_COMPLETE.md?ref=main",
+        "size": 3625,
+        "path": "AZURE_SETUP_COMPLETE.md",
+        "name": "AZURE_SETUP_COMPLETE.md"
+      },
+      "AIAssistView.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AIAssistView.xaml.cs?ref=main",
+        "size": 3393,
+        "path": "AIAssistView.xaml.cs",
+        "name": "AIAssistView.xaml.cs"
+      },
+      "App.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/App.xaml?ref=main",
+        "size": 693,
+        "path": "App.xaml",
+        "name": "App.xaml"
+      },
+      ".editorconfig": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.editorconfig?ref=main",
+        "size": 14208,
+        "path": ".editorconfig",
+        "name": ".editorconfig"
+      },
+      "SettingsView.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SettingsView.xaml.cs?ref=main",
+        "size": 3700,
+        "path": "SettingsView.xaml.cs",
+        "name": "SettingsView.xaml.cs"
+      },
+      "get-pip.py": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/get-pip.py?ref=main",
+        "size": 2148833,
+        "path": "get-pip.py",
+        "name": "get-pip.py"
+      },
+      "AZURE_SAFE_SETUP_COMPLETE.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AZURE_SAFE_SETUP_COMPLETE.md?ref=main",
+        "size": 5201,
+        "path": "AZURE_SAFE_SETUP_COMPLETE.md",
+        "name": "AZURE_SAFE_SETUP_COMPLETE.md"
+      },
+      "MainWindow.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/MainWindow.xaml?ref=main",
+        "size": 11024,
+        "path": "MainWindow.xaml",
+        "name": "MainWindow.xaml"
+      },
+      "Fetchability.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Fetchability.md?ref=main",
+        "size": 5050,
+        "path": "Fetchability.md",
+        "name": "Fetchability.md"
+      },
+      "AIAssistView.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AIAssistView.xaml?ref=main",
+        "size": 16266,
+        "path": "AIAssistView.xaml",
+        "name": "AIAssistView.xaml"
+      },
+      "LicenseKey.Private.sample.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/LicenseKey.Private.sample.cs?ref=main",
+        "size": 887,
+        "path": "LicenseKey.Private.sample.cs",
+        "name": "LicenseKey.Private.sample.cs"
+      },
+      "license.sample.key": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/license.sample.key?ref=main",
+        "size": 138,
+        "path": "license.sample.key",
+        "name": "license.sample.key"
+      },
+      "WileyWidget.csproj": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.csproj?ref=main",
+        "size": 4772,
+        "path": "WileyWidget.csproj",
+        "name": "WileyWidget.csproj"
+      },
+      "Directory.Build.targets": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Directory.Build.targets?ref=main",
+        "size": 243,
+        "path": "Directory.Build.targets",
+        "name": "Directory.Build.targets"
+      },
+      "WileyWidget.sln": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.sln?ref=main",
+        "size": 2826,
+        "path": "WileyWidget.sln",
+        "name": "WileyWidget.sln"
+      },
+      "MessageConverters.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/MessageConverters.cs?ref=main",
+        "size": 1801,
+        "path": "MessageConverters.cs",
+        "name": "MessageConverters.cs"
+      },
+      "Directory.Build.props": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Directory.Build.props?ref=main",
+        "size": 389,
+        "path": "Directory.Build.props",
+        "name": "Directory.Build.props"
+      },
+      "fetchability-resources.json": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/fetchability-resources.json?ref=main",
+        "size": 836827,
+        "path": "fetchability-resources.json",
+        "name": "fetchability-resources.json"
+      },
+      "App.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/App.xaml.cs?ref=main",
+        "size": 56913,
+        "path": "App.xaml.cs",
+        "name": "App.xaml.cs"
+      },
+      "EnterpriseView.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/EnterpriseView.xaml?ref=main",
+        "size": 14844,
+        "path": "EnterpriseView.xaml",
+        "name": "EnterpriseView.xaml"
+      },
+      "Directory.Packages.props": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Directory.Packages.props?ref=main",
+        "size": 4579,
+        "path": "Directory.Packages.props",
+        "name": "Directory.Packages.props"
+      },
+      "SettingsView.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SettingsView.xaml?ref=main",
+        "size": 12983,
+        "path": "SettingsView.xaml",
+        "name": "SettingsView.xaml"
+      },
+      "UtilityCustomerView.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/UtilityCustomerView.xaml.cs?ref=main",
+        "size": 2016,
+        "path": "UtilityCustomerView.xaml.cs",
+        "name": "UtilityCustomerView.xaml.cs"
+      },
+      "TESTING_GAPS_ASSESSMENT.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/TESTING_GAPS_ASSESSMENT.md?ref=main",
+        "size": 14403,
+        "path": "TESTING_GAPS_ASSESSMENT.md",
+        "name": "TESTING_GAPS_ASSESSMENT.md"
+      },
+      "CHANGELOG.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/CHANGELOG.md?ref=main",
+        "size": 310,
+        "path": "CHANGELOG.md",
+        "name": "CHANGELOG.md"
+      },
+      "appsettings.Production.json": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/appsettings.Production.json?ref=main",
+        "size": 1330,
+        "path": "appsettings.Production.json",
+        "name": "appsettings.Production.json"
+      },
+      "requirements-test.txt": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/requirements-test.txt?ref=main",
+        "size": 241,
+        "path": "requirements-test.txt",
+        "name": "requirements-test.txt"
+      },
+      "DatabaseConnectionTest.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DatabaseConnectionTest.cs?ref=main",
+        "size": 2598,
+        "path": "DatabaseConnectionTest.cs",
+        "name": "DatabaseConnectionTest.cs"
+      },
+      "SECURITY.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SECURITY.md?ref=main",
+        "size": 1277,
+        "path": "SECURITY.md",
+        "name": "SECURITY.md"
+      },
+      "cicd-results.json": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/cicd-results.json?ref=main",
+        "size": 6628,
+        "path": "cicd-results.json",
+        "name": "cicd-results.json"
+      },
+      "remote-repository-index.json": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/remote-repository-index.json?ref=main",
+        "size": 32104,
+        "path": "remote-repository-index.json",
+        "name": "remote-repository-index.json"
+      },
+      "UtilityCustomerView.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/UtilityCustomerView.xaml?ref=main",
+        "size": 15132,
+        "path": "UtilityCustomerView.xaml",
+        "name": "UtilityCustomerView.xaml"
+      },
+      "AboutWindow.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AboutWindow.xaml.cs?ref=main",
+        "size": 2332,
+        "path": "AboutWindow.xaml.cs",
+        "name": "AboutWindow.xaml.cs"
+      },
+      ".coverage": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.coverage?ref=main",
+        "size": 53248,
+        "path": ".coverage",
+        "name": ".coverage"
+      },
+      "appsettings.json": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/appsettings.json?ref=main",
+        "size": 1291,
+        "path": "appsettings.json",
+        "name": "appsettings.json"
+      },
+      ".env.production.sample": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.env.production.sample?ref=main",
+        "size": 618,
+        "path": ".env.production.sample",
+        "name": ".env.production.sample"
+      },
+      "BudgetProgressConverter.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/BudgetProgressConverter.cs?ref=main",
+        "size": 1340,
+        "path": "BudgetProgressConverter.cs",
+        "name": "BudgetProgressConverter.cs"
+      },
+      "AZURE_SAFETY_INSTITUTIONALIZED.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AZURE_SAFETY_INSTITUTIONALIZED.md?ref=main",
+        "size": 7756,
+        "path": "AZURE_SAFETY_INSTITUTIONALIZED.md",
+        "name": "AZURE_SAFETY_INSTITUTIONALIZED.md"
+      },
+      ".env.example": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.env.example?ref=main",
+        "size": 888,
+        "path": ".env.example",
+        "name": ".env.example"
+      },
+      "coverage.xml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/coverage.xml?ref=main",
+        "size": 45989,
+        "path": "coverage.xml",
+        "name": "coverage.xml"
+      },
+      "DashboardView.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DashboardView.xaml.cs?ref=main",
+        "size": 3930,
+        "path": "DashboardView.xaml.cs",
+        "name": "DashboardView.xaml.cs"
+      },
+      "global.json": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/global.json?ref=main",
+        "size": 49,
+        "path": "global.json",
+        "name": "global.json"
+      },
+      "DashboardView.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DashboardView.xaml?ref=main",
+        "size": 12216,
+        "path": "DashboardView.xaml",
+        "name": "DashboardView.xaml"
+      },
+      "README.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/README.md?ref=main",
+        "size": 30777,
+        "path": "README.md",
+        "name": "README.md"
+      },
+      "OUR_PARTNERSHIP_JOURNEY.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/OUR_PARTNERSHIP_JOURNEY.md?ref=main",
+        "size": 9079,
+        "path": "OUR_PARTNERSHIP_JOURNEY.md",
+        "name": "OUR_PARTNERSHIP_JOURNEY.md"
+      },
+      "CONTRIBUTING.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/CONTRIBUTING.md?ref=main",
+        "size": 6725,
+        "path": "CONTRIBUTING.md",
+        "name": "CONTRIBUTING.md"
+      },
+      "EnterpriseView.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/EnterpriseView.xaml.cs?ref=main",
+        "size": 2805,
+        "path": "EnterpriseView.xaml.cs",
+        "name": "EnterpriseView.xaml.cs"
+      },
+      "pyrightconfig.json": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/pyrightconfig.json?ref=main",
+        "size": 204,
+        "path": "pyrightconfig.json",
+        "name": "pyrightconfig.json"
+      },
+      ".gitignore": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.gitignore?ref=main",
+        "size": 814,
+        "path": ".gitignore",
+        "name": ".gitignore"
+      },
+      "SplashScreenWindow.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SplashScreenWindow.xaml?ref=main",
+        "size": 9869,
+        "path": "SplashScreenWindow.xaml",
+        "name": "SplashScreenWindow.xaml"
+      },
+      "pytest.ini": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/pytest.ini?ref=main",
+        "size": 199,
+        "path": "pytest.ini",
+        "name": "pytest.ini"
+      },
+      "RELEASE_NOTES.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/RELEASE_NOTES.md?ref=main",
+        "size": 616,
+        "path": "RELEASE_NOTES.md",
+        "name": "RELEASE_NOTES.md"
+      },
+      "AzureAdConfig.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AzureAdConfig.cs?ref=main",
+        "size": 810,
+        "path": "AzureAdConfig.cs",
+        "name": "AzureAdConfig.cs"
+      },
+      "MainWindow.xaml.cs": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/MainWindow.xaml.cs?ref=main",
+        "size": 28447,
+        "path": "MainWindow.xaml.cs",
+        "name": "MainWindow.xaml.cs"
+      },
+      "Fetchability-Resources-README.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Fetchability-Resources-README.md?ref=main",
+        "size": 4457,
+        "path": "Fetchability-Resources-README.md",
+        "name": "Fetchability-Resources-README.md"
+      },
+      "AboutWindow.xaml": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AboutWindow.xaml?ref=main",
+        "size": 9502,
+        "path": "AboutWindow.xaml",
+        "name": "AboutWindow.xaml"
+      },
+      "views-completion-assessment.md": {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/views-completion-assessment.md?ref=main",
+        "size": 11017,
+        "path": "views-completion-assessment.md",
+        "name": "views-completion-assessment.md"
+      }
+    },
+    "root_items": [
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/%25APPDATA%25?ref=main",
+        "size": 0,
+        "path": "%APPDATA%",
+        "name": "%APPDATA%"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.copilot-instructions.md?ref=main",
+        "size": 4993,
+        "path": ".copilot-instructions.md",
+        "name": ".copilot-instructions.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.coverage?ref=main",
+        "size": 53248,
+        "path": ".coverage",
+        "name": ".coverage"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.editorconfig?ref=main",
+        "size": 14208,
+        "path": ".editorconfig",
+        "name": ".editorconfig"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.env.example?ref=main",
+        "size": 888,
+        "path": ".env.example",
+        "name": ".env.example"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.env.production.sample?ref=main",
+        "size": 618,
+        "path": ".env.production.sample",
+        "name": ".env.production.sample"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.github?ref=main",
+        "size": 0,
+        "path": ".github",
+        "name": ".github"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.gitignore?ref=main",
+        "size": 814,
+        "path": ".gitignore",
+        "name": ".gitignore"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.trunk?ref=main",
+        "size": 0,
+        "path": ".trunk",
+        "name": ".trunk"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.venv?ref=main",
+        "size": 0,
+        "path": ".venv",
+        "name": ".venv"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/.vscode?ref=main",
+        "size": 0,
+        "path": ".vscode",
+        "name": ".vscode"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AIAssistView.xaml?ref=main",
+        "size": 16266,
+        "path": "AIAssistView.xaml",
+        "name": "AIAssistView.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AIAssistView.xaml.cs?ref=main",
+        "size": 3393,
+        "path": "AIAssistView.xaml.cs",
+        "name": "AIAssistView.xaml.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AZURE_SAFETY_INSTITUTIONALIZED.md?ref=main",
+        "size": 7756,
+        "path": "AZURE_SAFETY_INSTITUTIONALIZED.md",
+        "name": "AZURE_SAFETY_INSTITUTIONALIZED.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AZURE_SAFE_SETUP_COMPLETE.md?ref=main",
+        "size": 5201,
+        "path": "AZURE_SAFE_SETUP_COMPLETE.md",
+        "name": "AZURE_SAFE_SETUP_COMPLETE.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AZURE_SETUP_COMPLETE.md?ref=main",
+        "size": 3625,
+        "path": "AZURE_SETUP_COMPLETE.md",
+        "name": "AZURE_SETUP_COMPLETE.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AboutWindow.xaml?ref=main",
+        "size": 9502,
+        "path": "AboutWindow.xaml",
+        "name": "AboutWindow.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AboutWindow.xaml.cs?ref=main",
+        "size": 2332,
+        "path": "AboutWindow.xaml.cs",
+        "name": "AboutWindow.xaml.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/App.xaml?ref=main",
+        "size": 693,
+        "path": "App.xaml",
+        "name": "App.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/App.xaml.cs?ref=main",
+        "size": 56913,
+        "path": "App.xaml.cs",
+        "name": "App.xaml.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/AzureAdConfig.cs?ref=main",
+        "size": 810,
+        "path": "AzureAdConfig.cs",
+        "name": "AzureAdConfig.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/BudgetProgressConverter.cs?ref=main",
+        "size": 1340,
+        "path": "BudgetProgressConverter.cs",
+        "name": "BudgetProgressConverter.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/BudgetView.xaml?ref=main",
+        "size": 20933,
+        "path": "BudgetView.xaml",
+        "name": "BudgetView.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/BudgetView.xaml.cs?ref=main",
+        "size": 3473,
+        "path": "BudgetView.xaml.cs",
+        "name": "BudgetView.xaml.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/CHANGELOG.md?ref=main",
+        "size": 310,
+        "path": "CHANGELOG.md",
+        "name": "CHANGELOG.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/CONTRIBUTING.md?ref=main",
+        "size": 6725,
+        "path": "CONTRIBUTING.md",
+        "name": "CONTRIBUTING.md"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Configuration?ref=main",
+        "size": 0,
+        "path": "Configuration",
+        "name": "Configuration"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/CurrencyFormatConverter.cs?ref=main",
+        "size": 543,
+        "path": "CurrencyFormatConverter.cs",
+        "name": "CurrencyFormatConverter.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DashboardView.xaml?ref=main",
+        "size": 12216,
+        "path": "DashboardView.xaml",
+        "name": "DashboardView.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DashboardView.xaml.cs?ref=main",
+        "size": 3930,
+        "path": "DashboardView.xaml.cs",
+        "name": "DashboardView.xaml.cs"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Data?ref=main",
+        "size": 0,
+        "path": "Data",
+        "name": "Data"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DatabaseConnectionTest.cs?ref=main",
+        "size": 2598,
+        "path": "DatabaseConnectionTest.cs",
+        "name": "DatabaseConnectionTest.cs"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DatabaseSetup?ref=main",
+        "size": 0,
+        "path": "DatabaseSetup",
+        "name": "DatabaseSetup"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/DatabaseTest?ref=main",
+        "size": 0,
+        "path": "DatabaseTest",
+        "name": "DatabaseTest"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Directory.Build.props?ref=main",
+        "size": 389,
+        "path": "Directory.Build.props",
+        "name": "Directory.Build.props"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Directory.Build.targets?ref=main",
+        "size": 243,
+        "path": "Directory.Build.targets",
+        "name": "Directory.Build.targets"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Directory.Packages.props?ref=main",
+        "size": 4579,
+        "path": "Directory.Packages.props",
+        "name": "Directory.Packages.props"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/EnterpriseView.xaml?ref=main",
+        "size": 14844,
+        "path": "EnterpriseView.xaml",
+        "name": "EnterpriseView.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/EnterpriseView.xaml.cs?ref=main",
+        "size": 2805,
+        "path": "EnterpriseView.xaml.cs",
+        "name": "EnterpriseView.xaml.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Fetchability-Resources-README.md?ref=main",
+        "size": 4457,
+        "path": "Fetchability-Resources-README.md",
+        "name": "Fetchability-Resources-README.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Fetchability.md?ref=main",
+        "size": 5050,
+        "path": "Fetchability.md",
+        "name": "Fetchability.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/LicenseKey.Private.sample.cs?ref=main",
+        "size": 887,
+        "path": "LicenseKey.Private.sample.cs",
+        "name": "LicenseKey.Private.sample.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/MainWindow.xaml?ref=main",
+        "size": 11024,
+        "path": "MainWindow.xaml",
+        "name": "MainWindow.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/MainWindow.xaml.cs?ref=main",
+        "size": 28447,
+        "path": "MainWindow.xaml.cs",
+        "name": "MainWindow.xaml.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/MessageConverters.cs?ref=main",
+        "size": 1801,
+        "path": "MessageConverters.cs",
+        "name": "MessageConverters.cs"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Migrations?ref=main",
+        "size": 0,
+        "path": "Migrations",
+        "name": "Migrations"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Models?ref=main",
+        "size": 0,
+        "path": "Models",
+        "name": "Models"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/OUR_PARTNERSHIP_JOURNEY.md?ref=main",
+        "size": 9079,
+        "path": "OUR_PARTNERSHIP_JOURNEY.md",
+        "name": "OUR_PARTNERSHIP_JOURNEY.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/README.md?ref=main",
+        "size": 30777,
+        "path": "README.md",
+        "name": "README.md"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/RELEASE_NOTES.md?ref=main",
+        "size": 616,
+        "path": "RELEASE_NOTES.md",
+        "name": "RELEASE_NOTES.md"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Resources?ref=main",
+        "size": 0,
+        "path": "Resources",
+        "name": "Resources"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SECURITY.md?ref=main",
+        "size": 1277,
+        "path": "SECURITY.md",
+        "name": "SECURITY.md"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Services?ref=main",
+        "size": 0,
+        "path": "Services",
+        "name": "Services"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SettingsView.xaml?ref=main",
+        "size": 12983,
+        "path": "SettingsView.xaml",
+        "name": "SettingsView.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SettingsView.xaml.cs?ref=main",
+        "size": 3700,
+        "path": "SettingsView.xaml.cs",
+        "name": "SettingsView.xaml.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SplashScreenWindow.xaml?ref=main",
+        "size": 9869,
+        "path": "SplashScreenWindow.xaml",
+        "name": "SplashScreenWindow.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/SplashScreenWindow.xaml.cs?ref=main",
+        "size": 13045,
+        "path": "SplashScreenWindow.xaml.cs",
+        "name": "SplashScreenWindow.xaml.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/TESTING_GAPS_ASSESSMENT.md?ref=main",
+        "size": 14403,
+        "path": "TESTING_GAPS_ASSESSMENT.md",
+        "name": "TESTING_GAPS_ASSESSMENT.md"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/Themes?ref=main",
+        "size": 0,
+        "path": "Themes",
+        "name": "Themes"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/TokenCacheHelper.cs?ref=main",
+        "size": 2475,
+        "path": "TokenCacheHelper.cs",
+        "name": "TokenCacheHelper.cs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/UtilityCustomerView.xaml?ref=main",
+        "size": 15132,
+        "path": "UtilityCustomerView.xaml",
+        "name": "UtilityCustomerView.xaml"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/UtilityCustomerView.xaml.cs?ref=main",
+        "size": 2016,
+        "path": "UtilityCustomerView.xaml.cs",
+        "name": "UtilityCustomerView.xaml.cs"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/ViewModels?ref=main",
+        "size": 0,
+        "path": "ViewModels",
+        "name": "ViewModels"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.TestModels?ref=main",
+        "size": 0,
+        "path": "WileyWidget.TestModels",
+        "name": "WileyWidget.TestModels"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.Tests?ref=main",
+        "size": 0,
+        "path": "WileyWidget.Tests",
+        "name": "WileyWidget.Tests"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.UiTests?ref=main",
+        "size": 0,
+        "path": "WileyWidget.UiTests",
+        "name": "WileyWidget.UiTests"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.csproj?ref=main",
+        "size": 4772,
+        "path": "WileyWidget.csproj",
+        "name": "WileyWidget.csproj"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/WileyWidget.sln?ref=main",
+        "size": 2826,
+        "path": "WileyWidget.sln",
+        "name": "WileyWidget.sln"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/appsettings.Production.json?ref=main",
+        "size": 1330,
+        "path": "appsettings.Production.json",
+        "name": "appsettings.Production.json"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/appsettings.json?ref=main",
+        "size": 1291,
+        "path": "appsettings.json",
+        "name": "appsettings.json"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/cicd-results.json?ref=main",
+        "size": 6628,
+        "path": "cicd-results.json",
+        "name": "cicd-results.json"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/coverage.xml?ref=main",
+        "size": 45989,
+        "path": "coverage.xml",
+        "name": "coverage.xml"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/docs?ref=main",
+        "size": 0,
+        "path": "docs",
+        "name": "docs"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/fetchability-resources.json?ref=main",
+        "size": 836827,
+        "path": "fetchability-resources.json",
+        "name": "fetchability-resources.json"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/get-pip.py?ref=main",
+        "size": 2148833,
+        "path": "get-pip.py",
+        "name": "get-pip.py"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/global.json?ref=main",
+        "size": 49,
+        "path": "global.json",
+        "name": "global.json"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/license.sample.key?ref=main",
+        "size": 138,
+        "path": "license.sample.key",
+        "name": "license.sample.key"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/pyrightconfig.json?ref=main",
+        "size": 204,
+        "path": "pyrightconfig.json",
+        "name": "pyrightconfig.json"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/pytest.ini?ref=main",
+        "size": 199,
+        "path": "pytest.ini",
+        "name": "pytest.ini"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/remote-repository-index.json?ref=main",
+        "size": 32104,
+        "path": "remote-repository-index.json",
+        "name": "remote-repository-index.json"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/requirements-test.txt?ref=main",
+        "size": 241,
+        "path": "requirements-test.txt",
+        "name": "requirements-test.txt"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/scripts?ref=main",
+        "size": 0,
+        "path": "scripts",
+        "name": "scripts"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/signing?ref=main",
+        "size": 0,
+        "path": "signing",
+        "name": "signing"
+      },
+      {
+        "type": "dir",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/tests?ref=main",
+        "size": 0,
+        "path": "tests",
+        "name": "tests"
+      },
+      {
+        "type": "file",
+        "url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/contents/views-completion-assessment.md?ref=main",
+        "size": 11017,
+        "path": "views-completion-assessment.md",
+        "name": "views-completion-assessment.md"
+      }
+    ]
+  },
+  "branches": [
+    {
+      "commit_sha": "8894690b4cc9a7df2319c3aea79c5582fe24a538",
+      "commit_url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/commits/8894690b4cc9a7df2319c3aea79c5582fe24a538",
+      "protected": false,
+      "name": "feature/powershell-best-practices"
+    },
+    {
+      "commit_sha": "fc390ca581208fdea732363c8a444b7722ac6818",
+      "commit_url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/commits/fc390ca581208fdea732363c8a444b7722ac6818",
+      "protected": false,
+      "name": "fix/aad-sql-user-mapping"
+    },
+    {
+      "commit_sha": "4e70c677ea403af5388cd117535e92d74f9341e6",
+      "commit_url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/commits/4e70c677ea403af5388cd117535e92d74f9341e6",
+      "protected": false,
+      "name": "fix-cicd-workflows"
+    },
+    {
+      "commit_sha": "d837039d55e1844f49f50f3456b7d6d832c0c75b",
+      "commit_url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/commits/d837039d55e1844f49f50f3456b7d6d832c0c75b",
+      "protected": false,
+      "name": "main"
+    },
+    {
+      "commit_sha": "deb543559117b49ba7bf88c197b8375bc7999dc1",
+      "commit_url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/commits/deb543559117b49ba7bf88c197b8375bc7999dc1",
+      "protected": false,
+      "name": "python-manifest"
+    },
+    {
+      "commit_sha": "742736d273fdc20db852c91f26e53059e1b093d7",
+      "commit_url": "https://api.github.com/repos/Bigessfour/Wiley-Widget/commits/742736d273fdc20db852c91f26e53059e1b093d7",
+      "protected": false,
+      "name": "temp"
+    }
+  ],
+  "repository": {
+    "stargazers_count": 0,
+    "size_kb": 95314,
+    "description": "AI Enhanced Utility Rate Study Program",
+    "created_at": "2025-07-10T21:47:50Z",
+    "name": "Wiley-Widget",
+    "languages": {
+      "Python": 36492148,
+      "C#": 906503,
+      "PowerShell": 283389,
+      "Cython": 209182,
+      "C++": 103301,
+      "C": 2938,
+      "Batchfile": 2833,
+      "Shell": 1469,
+      "CSS": 1359
+    },
+    "pushed_at": "2025-09-26T00:56:08Z",
+    "has_pages": false,
+    "updated_at": "2025-09-21T21:17:37Z",
+    "has_wiki": true,
+    "watchers_count": 0,
+    "full_name": "Bigessfour/Wiley-Widget",
+    "forks_count": 0,
+    "is_private": false,
+    "has_issues": true,
+    "network_count": 0,
+    "has_projects": true,
+    "default_branch": "main",
+    "subscribers_count": 0,
+    "language": "Python"
+  },
+  "metadata": {
+    "generated_at": "2025-09-25T18:59:20Z",
+    "repository": "Bigessfour/Wiley-Widget",
+    "tool_version": "1.0.0"
+  },
+  "recent_activity": {
+    "last_commit": {
+      "url": "https://github.com/Bigessfour/Wiley-Widget/commit/d837039d55e1844f49f50f3456b7d6d832c0c75b",
+      "author": "bigessfour",
+      "date": "2025-09-21T21:04:32Z",
+      "sha": "d837039d55e1844f49f50f3456b7d6d832c0c75b",
+      "message": "refactor(wpf): harden MainWindow init and auth UI timing; add window-lifetime scope, move auth UI updates to Loaded, use safe FindName lookups for Grid/Buttons; confirm dev-first DB fallback; wire Generic Host already in place; build-only validation"
+    },
+    "recent_commits": [
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/d837039d55e1844f49f50f3456b7d6d832c0c75b",
+        "author": "bigessfour",
+        "date": "2025-09-21T21:04:32Z",
+        "sha": "d837039d55e1844f49f50f3456b7d6d832c0c75b",
+        "message": "refactor(wpf): harden MainWindow init and auth UI timing; add window-lifetime scope, move auth UI updates to Loaded, use safe FindName lookups for Grid/Buttons; confirm dev-first DB fallback; wire Generic Host already in place; build-only validation"
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/2f3202b990565635597a5096df474556b43c106a",
+        "author": "bigessfour",
+        "date": "2025-09-20T01:07:07Z",
+        "sha": "2f3202b990565635597a5096df474556b43c106a",
+        "message": "feat: Major enhancements to Wiley Widget application\n\n≡ƒÄ» Core Functionality Updates:\n- Fixed EnterpriseViewModelTests IsLoading state issues\n- Corrected UtilityCustomer ordering in repository tests\n- Fixed search count expectations in UtilityCustomer tests\n- Enhanced test coverage and reliability\n\n≡ƒÅù∩╕Å New Features & Models:\n- Added MunicipalAccount and UtilityCustomer entities with full CRUD\n- Implemented new database migrations for municipal accounts\n- Created comprehensive repository pattern for new entities\n- Added AI conversation and assistance features\n- Integrated WhatIf scenario engine for advanced calculations\n\n≡ƒôè Repository Analysis Tools:\n- Created enhanced fetchable repository indexing script with parallel processing\n- Added intelligent caching and rate limiting for GitHub API calls\n- Implemented retry logic with exponential backoff\n- Generated comprehensive repository metadata and statistics\n- Added progress indicators and detailed error handling\n\n≡ƒº¬ Testing Infrastructure:\n- Added extensive test coverage for new models and services\n- Created integration tests for municipal account operations\n- Added UI tests for conversation and AI features\n- Enhanced test project configurations and dependencies\n\n≡ƒöº Technical Improvements:\n- Updated project configurations and package references\n- Enhanced VS Code settings and launch configurations\n- Improved build and deployment configurations\n- Added comprehensive error handling and logging\n\n≡ƒôê Performance & Quality:\n- Implemented parallel processing for better performance\n- Added caching mechanisms to reduce API calls\n- Enhanced error handling and retry mechanisms\n- Improved code organization and maintainability\n\nFiles changed: 80+ including new models, services, tests, and tools\nAll tests passing with enhanced coverage and reliability"
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/f5f976f71ba2eef59dc3415f927122cf1def77da",
+        "author": "bigessfour",
+        "date": "2025-09-19T17:30:21Z",
+        "sha": "f5f976f71ba2eef59dc3415f927122cf1def77da",
+        "message": "build: Update project files after successful build"
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/132a3bf248820ed3a72baf996c2d7de1434eb35c",
+        "author": "bigessfour",
+        "date": "2025-09-08T02:10:01Z",
+        "sha": "132a3bf248820ed3a72baf996c2d7de1434eb35c",
+        "message": "Merge branch 'main' of https://github.com/Bigessfour/Wiley-Widget\n# Please enter a commit message to explain why this merge is necessary,\n# especially if it merges an updated upstream into a topic branch.\n#\n# Lines starting with '#' will be ignored, and an empty message aborts\n# the commit."
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/a35235b787687dfceecd434362b4bcdbcb44e068",
+        "author": "bigessfour",
+        "date": "2025-08-29T15:00:34Z",
+        "sha": "a35235b787687dfceecd434362b4bcdbcb44e068",
+        "message": "Fix test project RuntimeIdentifier issues\n\n- Removed win7-x64 RuntimeIdentifier from test projects\n- Allows tests to run on any Windows runtime in CI environment\n- Should resolve test execution failures in GitHub Actions\n- Maintains compatibility with .NET 8.0 target framework"
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/f5ca8754ce1648e13f33b9cef71f49be09288185",
+        "author": "bigessfour",
+        "date": "2025-08-29T15:00:34Z",
+        "sha": "f5ca8754ce1648e13f33b9cef71f49be09288185",
+        "message": "Fix test project RuntimeIdentifier issues\n\n- Removed win7-x64 RuntimeIdentifier from test projects\n- Allows tests to run on any Windows runtime in CI environment\n- Should resolve test execution failures in GitHub Actions\n- Maintains compatibility with .NET 8.0 target framework"
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/7b000667e3f1964bc7c4a60afcb4eae2fa9f7dad",
+        "author": "bigessfour",
+        "date": "2025-08-29T14:54:39Z",
+        "sha": "7b000667e3f1964bc7c4a60afcb4eae2fa9f7dad",
+        "message": "Fix CI/CD workflow .NET version mismatch\n\n- Corrected .NET version from 9.0.x to 8.0.x in ci-new.yml and release-new.yml\n- Aligned with global.json specification (8.0.413) and project target framework (net8.0-windows)\n- Updated release notes template to reflect correct .NET version\n- This should resolve the CI build failures"
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/f26f36c99a4b152c8f3154e24054814d50305635",
+        "author": "bigessfour",
+        "date": "2025-08-29T14:54:39Z",
+        "sha": "f26f36c99a4b152c8f3154e24054814d50305635",
+        "message": "Fix CI/CD workflow .NET version mismatch\n\n- Corrected .NET version from 9.0.x to 8.0.x in ci-new.yml and release-new.yml\n- Aligned with global.json specification (8.0.413) and project target framework (net8.0-windows)\n- Updated release notes template to reflect correct .NET version\n- This should resolve the CI build failures"
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/2976e1dafcc6d33c735e3c3123a0a38c8850a46f",
+        "author": "bigessfour",
+        "date": "2025-08-29T09:42:39Z",
+        "sha": "2976e1dafcc6d33c735e3c3123a0a38c8850a46f",
+        "message": "feat: Integrate automated manifest generation into Git workflow\n\n- Add PowerShell wrapper script for consistent manifest generation\n- Update pre-commit hook to use wrapper script\n- Update CI/CD script to use wrapper script\n- Test pre-commit hook functionality\n- Ensure manifest stays current with repository changes"
+      },
+      {
+        "url": "https://github.com/Bigessfour/Wiley-Widget/commit/e5b549ef8ba82d1a944b1b8c1717771163a0219d",
+        "author": "bigessfour",
+        "date": "2025-08-29T09:42:39Z",
+        "sha": "e5b549ef8ba82d1a944b1b8c1717771163a0219d",
+        "message": "feat: Integrate automated manifest generation into Git workflow\n\n- Add PowerShell wrapper script for consistent manifest generation\n- Update pre-commit hook to use wrapper script\n- Update CI/CD script to use wrapper script\n- Test pre-commit hook functionality\n- Ensure manifest stays current with repository changes"
+      }
+    ]
+  },
+  "statistics": {
+    "total_size_kb": 3433.28,
+    "total_files": 63,
+    "total_directories": 22,
+    "root_items_count": 85,
+    "total_size_bytes": 3515674
+  }
+}

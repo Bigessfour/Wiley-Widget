@@ -1,0 +1,38 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Use a predictable nuget packages location (Linux container)
+ENV NUGET_PACKAGES=/tmp/nuget
+ENV DOTNET_CLI_HOME=/tmp/dotnet
+ENV PATH="${PATH}:/tmp/dotnet/.dotnet/tools"
+
+# Install tools
+RUN dotnet tool install --global dotnet-coverage
+
+# Copy solution and core config files
+COPY WileyWidget.sln .
+COPY Directory.Build.props .
+COPY Directory.Build.targets .
+COPY Directory.Packages.props .
+COPY global.json .
+COPY NuGet.config .
+
+# Copy source and tests
+COPY src/ src/
+COPY tests/ tests/
+
+# Restore all projects (enable Windows targeting for cross-build on Linux runners)
+RUN dotnet restore tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj /p:EnableWindowsTargeting=true /p:NUGET_PACKAGES=$NUGET_PACKAGES && \
+    mkdir -p "$NUGET_PACKAGES" "$DOTNET_CLI_HOME"
+
+# Health check to ensure the container is operational
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD dotnet --version || exit 1
+
+# Default command runs the primary test project with coverage
+CMD ["dotnet", "test", "tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj", \
+     "--no-restore", \
+     "--collect:XPlat Code Coverage", \
+     "--results-directory:/src/coverage", \
+     "--logger:trx", \
+     "/p:NUGET_PACKAGES=/tmp/nuget"]

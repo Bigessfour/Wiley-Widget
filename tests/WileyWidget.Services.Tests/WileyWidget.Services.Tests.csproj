@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Match Windows-targeted TFMs used in solution to avoid NETSDK1136 when referencing windows-specific projects -->
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="FluentAssertions" Version="6.8.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.10" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Exclude presentation/ViewModel tests that require WinUI types from service test runs -->
+  <ItemGroup>
+    <Compile Remove="ViewModelTests\\**\\*.cs" />
+    <Compile Remove="TestHelpers\\**\\*MockFactory*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

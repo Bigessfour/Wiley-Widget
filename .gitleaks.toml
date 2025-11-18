@@ -1,0 +1,105 @@
+# GitLeaks Configuration for Wiley Widget
+# This configuration prevents secrets from being committed to git
+
+[extend]
+# Extend the default GitLeaks config
+useDefault = true
+
+# Additional custom rules for this project
+[[rules]]
+id = "syncfusion-license-key"
+description = "Syncfusion License Key"
+regex = '''([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'''
+tags = ["license", "key"]
+
+[[rules]]
+id = "azure-subscription-id"
+description = "Azure Subscription ID"
+regex = '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'''
+tags = ["azure", "subscription"]
+# Only flag if not using placeholder pattern
+[[rules.allowlist]]
+regex = '''\$\{[A-Z_]+\}'''
+description = "Allow environment variable placeholders"
+
+[[rules]]
+id = "quickbooks-api-keys"
+description = "QuickBooks API Keys"
+regex = '''Q0[A-Za-z0-9]{50,}'''
+tags = ["api", "quickbooks"]
+
+[[rules]]
+id = "email-credentials"
+description = "Email credentials in config"
+regex = '''("Password"\s*:\s*")[^$\{][^"]+'''
+tags = ["email", "password"]
+
+# Allowlist patterns - these are safe to commit
+[allowlist]
+description = "Global allowlist for safe patterns"
+paths = [
+  '''.*\.sample\..*''',
+  '''.*\.example\..*''',
+  '''.*\.template\..*''',
+  '''.*\.md$''',
+  '''.*\.txt$''',
+  '''.*README.*''',
+  '''.*CHANGELOG.*''',
+  '''.*LICENSE.*''',
+]
+
+# Allowlist specific patterns
+regexes = [
+  # Environment variable placeholders (including quotes)
+  '''"?\$\{[A-Z_][A-Z0-9_]*\}"?''',
+  # Sample/placeholder GUIDs
+  '''00000000-0000-0000-0000-000000000000''',
+  # Documentation examples
+  '''YOUR_[A-Z_]+_HERE''',
+  '''REPLACE_WITH_[A-Z_]+''',
+  '''example\.(com|org|net)''',
+  # Base64 in documentation or tests
+  '''[A-Za-z0-9+/]{4}=*\s*(#.*|//.*|\*.*|<!--.*)''',
+  # JWT tokens in logs/documentation (clearly marked)
+  '''eyJ[A-Za-z0-9+/]+=*\s*(#.*|//.*|\*.*|<!--.*|".*error.*")''',
+  # Development placeholders
+  '''Dev[A-Za-z0-9]+Secret''',
+  '''DevQuickBooks[A-Za-z0-9]+''',
+]
+
+# Skip these file types entirely
+[allowlist.files]
+description = "Skip checking these file types"
+paths = [
+  '''.*\.png$''',
+  '''.*\.jpg$''',
+  '''.*\.gif$''',
+  '''.*\.pdf$''',
+  '''.*\.exe$''',
+  '''.*\.dll$''',
+  '''.*\.pdb$''',
+  '''.*\.cache$''',
+  '''.*\.log$''',
+  '''.*\.tmp$''',
+  '''.*\.bak$''',
+  '''.*\.backup$''',
+]
+
+# Skip directories
+[allowlist.paths]
+description = "Skip these directories"
+paths = [
+  '''bin/.*''',
+  '''obj/.*''',
+  '''node_modules/.*''',
+  '''.git/.*''',
+  '''.vs/.*''',
+  '''packages/.*''',
+  '''TestResults/.*''',
+  '''logs/.*''',
+  '''coverage/.*''',
+  '''.venv/.*''',
+  '''venv/.*''',
+  '''__pycache__/.*''',
+  '''.trunk/.*''',
+]

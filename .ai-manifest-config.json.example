@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Configuration for AI-Fetchable Manifest Generator",
+
+  "_comment_exclude": "Patterns to exclude from manifest (regex)",
+  "exclude_patterns": [],
+
+  "_comment_focus": "Only include files with specific extensions when true",
+  "focus_mode": false,
+  "include_only_extensions": [".cs", ".xaml", ".csproj", ".md", ".json"],
+
+  "_comment_performance": "Parallel processing settings",
+  "parallel_workers": 4,
+
+  "_comment_content": "Content analysis limits",
+  "max_file_size_for_summary": 200000,
+  "max_summary_length": 1500,
+  "test_file_summary_length": 50000,
+
+  "_comment_pagination": "Limit files in manifest to prevent oversized outputs",
+  "max_files_in_manifest": null,
+
+  "_comment_git": "Git history integration",
+  "include_git_history": true,
+
+  "_comment_validity": "Manifest freshness tracking (hours)",
+  "manifest_validity_hours": 168,
+
+  "_comment_custom": "Custom categorization rules",
+  "custom_categories": [
+    {
+      "name": "example_category",
+      "sub_category": "example_sub",
+      "patterns": [
+        "custom/path/**/*.ext"
+      ]
+    }
+  ]
+}

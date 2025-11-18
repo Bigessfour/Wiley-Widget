@@ -1,0 +1,66 @@
+-- Insert missing MunicipalAccounts for BudgetEntries
+-- These accounts are referenced in BudgetEntries but don't exist in MunicipalAccounts
+
+INSERT INTO MunicipalAccounts (
+    DepartmentId,
+    ParentAccountId,
+    BudgetPeriodId,
+    Name,
+    Type,
+    Fund,
+    Balance,
+    BudgetAmount,
+    IsActive,
+    QuickBooksId,
+    LastSyncDate,
+    Notes,
+    AccountNumber,
+    FundDescription,
+    TypeDescription
+) VALUES
+-- 200-xxx series (Departmental Expenses)
+(1, NULL, 1, 'Outside Service Lab Fees', 14, 0, 0.00, 700.00, 1, NULL, NULL, NULL, '200-101', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Budget, Audit, Legal', 14, 0, 0.00, 18000.00, 1, NULL, NULL, NULL, '200-102', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Office Supplies/Postage', 14, 0, 0.00, 1800.00, 1, NULL, NULL, NULL, '200-103', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Education', 14, 0, 0.00, 100.00, 1, NULL, NULL, NULL, '200-104', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Dues & Subs', 14, 0, 0.00, 200.00, 1, NULL, NULL, NULL, '200-105', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Lift Station - Utilities', 14, 0, 0.00, 2500.00, 1, NULL, NULL, NULL, '200-106', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Collection Fee', 14, 0, 0.00, 6600.00, 1, NULL, NULL, NULL, '200-107', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Supplies and Expenses', 14, 0, 0.00, 2000.00, 1, NULL, NULL, NULL, '200-108', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Insurance', 14, 0, 0.00, 7500.00, 1, NULL, NULL, NULL, '200-109', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Sewer Cleaning', 14, 0, 0.00, 7600.00, 1, NULL, NULL, NULL, '200-110', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Property Taxes', 14, 0, 0.00, 7.00, 1, NULL, NULL, NULL, '200-111', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Backhoe Repairs', 14, 0, 0.00, 300.00, 1, NULL, NULL, NULL, '200-112', 'General Fund', 'Expense'),
+(1, NULL, 1, 'PU Usage Fee', 14, 0, 0.00, 2400.00, 1, NULL, NULL, NULL, '200-113', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Fuel', 14, 0, 0.00, 2000.00, 1, NULL, NULL, NULL, '200-114', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Capital Outlay', 14, 0, 0.00, 5725427.00, 1, NULL, NULL, NULL, '200-115', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Grant', 14, 0, 0.00, 5725427.00, 1, NULL, NULL, NULL, '200-201', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Sewage Sales', 14, 0, 0.00, 150000.00, 1, NULL, NULL, NULL, '200-202', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Interest on Investments', 14, 0, 0.00, 2100.00, 1, NULL, NULL, NULL, '200-203', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Misc', 14, 0, 0.00, 2000.00, 1, NULL, NULL, NULL, '200-204', 'General Fund', 'Expense'),
+
+-- 300-xxx series (Revenues)
+(1, NULL, 1, 'Charges for Services: WSD Collection Fee', 11, 0, 0.00, 6000.00, 1, NULL, NULL, NULL, '310.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Senior Homestead Exemption', 11, 0, 0.00, 1500.00, 1, NULL, NULL, NULL, '311.20', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Specific Ownership Taxes', 11, 0, 0.00, 5100.00, 1, NULL, NULL, NULL, '312.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Additional MV', 11, 0, 0.00, 1775.00, 1, NULL, NULL, NULL, '313.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Tax A', 11, 0, 0.00, 2500.00, 1, NULL, NULL, NULL, '314.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Franchise Fee', 11, 0, 0.00, 7058.00, 1, NULL, NULL, NULL, '318.20', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Penalties & Interest on Delinquent Taxes', 11, 0, 0.00, 35.00, 1, NULL, NULL, NULL, '319.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Animal Licenses', 11, 0, 0.00, 50.00, 1, NULL, NULL, NULL, '322.70', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Federal: Mineral Lease', 11, 0, 0.00, 360.00, 1, NULL, NULL, NULL, '332.1', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'State: Cigarette Taxes', 11, 0, 0.00, 240.00, 1, NULL, NULL, NULL, '333.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Highways Users', 11, 0, 0.00, 18153.00, 1, NULL, NULL, NULL, '334.31', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Sales Tax', 11, 0, 0.00, 120000.00, 1, NULL, NULL, NULL, '336.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'County Road & Bridge', 11, 0, 0.00, 1460.00, 1, NULL, NULL, NULL, '337.17', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Wiley Hay Days Donations', 11, 0, 0.00, 10000.00, 1, NULL, NULL, NULL, '350.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Miscellaneous Receipts: Interest Earnings', 11, 0, 0.00, 325.00, 1, NULL, NULL, NULL, '361.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Donations', 11, 0, 0.00, 2500.00, 1, NULL, NULL, NULL, '362.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Lease', 11, 0, 0.00, 1100.00, 1, NULL, NULL, NULL, '363.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Dividends', 11, 0, 0.00, 100.00, 1, NULL, NULL, NULL, '365.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Housing Authority Mgt Fee', 11, 0, 0.00, 12000.00, 1, NULL, NULL, NULL, '370.00', 'General Fund', 'Revenue'),
+(1, NULL, 1, 'Pickup Usage Fee', 11, 0, 0.00, 2400.00, 1, NULL, NULL, NULL, '373.00', 'General Fund', 'Revenue'),
+
+-- 400-xxx series (Expenses)
+(1, NULL, 1, 'Road Maintenance', 14, 0, 0.00, 50000.00, 1, NULL, NULL, NULL, '405', 'General Fund', 'Expense'),
+(1, NULL, 1, 'Paving', 14, 0, 0.00, 20000.00, 1, NULL, NULL, NULL, '405.1', 'General Fund', 'Expense');

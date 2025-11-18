@@ -1,0 +1,4 @@
+networks:
+  wiley-widget-net:
+    external:
+      name: wileyci_net

@@ -1,0 +1,21 @@
+{
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "file": ".vscode/copilot-instructions.md"
+    },
+    {
+      "file": ".vscode/copilot-mcp-rules.md"
+    }
+  ],
+  "github.copilot.chat.localeOverride": "en",
+  "github.copilot.advanced": {
+    "debug.overrideEngine": "gpt-4o-2024-11-20",
+    "debug.useNodeFetcher": true
+  },
+  "files.associations": {
+    "*.md": "markdown",
+    "copilot-mcp-rules.md": "markdown"
+  },
+  "github.copilot.chat.welcomeMessage": "first",
+  "github.copilot.editor.enableAutoCompletions": true
+}

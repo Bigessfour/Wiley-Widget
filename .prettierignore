@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+
+# Build outputs
+bin/
+obj/
+build/
+dist/
+publish/
+TestResults/
+coverage/
+htmlcov/
+
+# IDE and tools
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.backup*
+*_backup*
+*_wpftmp.csproj
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Generated files
+*.binlog
+.buildcache/
+.packages.lastmodified
+
+# Config backups
+config_backup/
+env_backup/
+
+# Documentation that should not be auto-formatted
+CHANGELOG.md
+RELEASE_NOTES.md
+
+# Trunk and other tool directories
+.trunk/
+.pytest_cache/
+.coverage
+
+# Assets and data
+assets/
+data/
+tools/
+licenses/

@@ -1,0 +1,139 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AnalysisLevel>6.0</AnalysisLevel>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <RunAnalyzers>false</RunAnalyzers>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
+
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <NoWarn>
+      $(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416</NoWarn>
+    <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Disable CPM for consistency with other WPF projects -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Removed: BoldReports.WPF - service interface removed -->
+    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
+    <!-- MSAL extensions removed (archived). -->
+    <!-- WPF-specific package removed for WinUI compatibility -->
+    <!-- <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" /> -->
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="[1.13.0, 2.0.0)" />
+    <!-- Additional OpenTelemetry packages for SigNoz integration -->
+    <PackageReference Include="OpenTelemetry" Version="[1.13.1, 2.0.0)" />
+    <!-- EntityFrameworkCore instrumentation removed - package not available as stable -->
+    <!-- <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" /> -->
+    <!-- SqlClient instrumentation removed - package not available as stable -->
+    <!-- <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" /> -->
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="[1.13.1, 2.0.0)" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="[1.13.1, 2.0.0)" />
+    <PackageReference Include="Polly.RateLimiting" Version="8.6.4" />
+    <!-- Prism packages - explicit versions for consistency -->
+    <!-- Prism.Core is the only Prism dependency needed in Services layer -->
+    <!-- Platform-specific Prism packages (Wpf/Uno.WinUI) belong in presentation projects -->
+    <PackageReference Include="Prism.Core" Version="9.0.537" />
+    <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.10" />
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
+    <PackageReference Include="Serilog.Sinks.Email" Version="4.1.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Syncfusion.Licensing" Version="31.2.5" />
+    <!-- Platform-agnostic Syncfusion packages (work with both WPF and WinUI) -->
+    <!-- XlsIO for Excel operations (reading/writing Excel files) -->
+    <PackageReference Include="Syncfusion.XlsIO.Net.Core" Version="31.2.5" />
+    <!-- PDF for report generation -->
+    <PackageReference Include="Syncfusion.Pdf.Net.Core" Version="31.2.5" />
+    <!-- All WPF-specific UI control packages removed - UI controls belong in presentation layer -->
+    <!-- Service layer should only contain business logic and data manipulation -->
+    <PackageReference Include="FluentValidation" Version="12.1.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.10.0" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="9.10.0" />
+    <PackageReference Include="System.Management" Version="9.0.10" />
+    <!-- Pin BCL packages to patched versions to address known vulnerabilities -->
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    <PackageReference Include="System.Net.Security" Version="4.3.2" />
+    <PackageReference Include="System.Security.Cryptography.X509Certificates" Version="4.3.2" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="9.0.10" />
+    <PackageReference Include="System.Private.Uri" Version="4.3.2" />
+    <PackageReference Include="Polly" Version="8.6.4" />
+    <!-- AI Integration packages removed from Services project - register per-module when needed -->
+    <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
+    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Remove interface source files since they are now in the Abstractions project -->
+    <Compile Remove="IAILoggingService.cs" />
+    <Compile Remove="IAIService.cs" />
+    <Compile Remove="IAuditService.cs" />
+    <Compile Remove="IBoldReportService.cs" />
+    <Compile Remove="IBudgetImporter.cs" />
+    <Compile Remove="IChargeCalculatorService.cs" />
+    <Compile Remove="IDataAnonymizerService.cs" />
+    <Compile Remove="IDispatcherHelper.cs" />
+    <Compile Remove="IGrokSupercomputer.cs" />
+    <Compile Remove="IMemoryProfiler.cs" />
+    <Compile Remove="Interfaces\IQuickBooksService.cs" />
+    <Compile Remove="Interfaces\IReportExportService.cs" />
+    <Compile Remove="Interfaces\ISecretVaultService.cs" />
+    <Compile Remove="Interfaces\ISettingsService.cs" />
+    <Compile Remove="Interfaces\ISyncfusionLicenseService.cs" />
+    <Compile Remove="Interfaces\IUserContext.cs" />
+    <Compile Remove="Interfaces\IWhatIfScenarioEngine.cs" />
+    <Compile Remove="Interfaces\IWileyWidgetContextService.cs" />
+
+    <!-- Exclude WPF-specific files when building for .NET 9.0 (Uno) -->
+    <Compile Remove="PasswordBoxHelper.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="DialogTrackingService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="SafeResourceDictionaryLoader.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="ErrorReportingService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="BoldReportService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <Compile Remove="Threading\DispatcherExtensions.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
+  </ItemGroup>
+
+  <!-- Removed linked files - now using local copies in WileyWidget.Services/ -->
+  <!--
+  <ItemGroup>
+    <Compile Include="..\src\QuickBooksService.cs" />
+    <Compile Include="..\src\SettingsService.cs" />
+  </ItemGroup>
+  -->
+
+</Project>

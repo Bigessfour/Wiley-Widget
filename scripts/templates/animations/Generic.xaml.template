@@ -1,0 +1,326 @@
+<!--
+    Syncfusion Animation Examples for Wiley Widget
+    
+    This file provides reference implementations for adding animations to 
+    Syncfusion WPF controls. Copy these snippets to src/WileyWidget/Themes/Generic.xaml
+    when animations are needed.
+    
+    Reference: https://help.syncfusion.com/wpf/chart/animations
+               https://help.syncfusion.com/wpf/datagrid/transitions
+-->
+
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:syncfusion="http://schemas.syncfusion.com/wpf">
+
+    <!-- ============================================ -->
+    <!-- BASIC WPF ANIMATIONS -->
+    <!-- ============================================ -->
+    
+    <!-- Fade In Animation (General Purpose) -->
+    <Storyboard x:Key="FadeInAnimation">
+        <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                         From="0" 
+                         To="1" 
+                         Duration="0:0:0.5"
+                         AccelerationRatio="0.3"
+                         DecelerationRatio="0.3"/>
+    </Storyboard>
+    
+    <!-- Fade Out Animation -->
+    <Storyboard x:Key="FadeOutAnimation">
+        <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                         From="1" 
+                         To="0" 
+                         Duration="0:0:0.3"
+                         AccelerationRatio="0.5"/>
+    </Storyboard>
+    
+    <!-- Slide In from Right -->
+    <Storyboard x:Key="SlideInFromRightAnimation">
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" 
+                         From="300" 
+                         To="0" 
+                         Duration="0:0:0.4"
+                         DecelerationRatio="0.5">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut"/>
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+        <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                         From="0" 
+                         To="1" 
+                         Duration="0:0:0.4"/>
+    </Storyboard>
+    
+    <!-- Button Hover Effect -->
+    <Storyboard x:Key="ButtonHoverAnimation">
+        <ColorAnimation Storyboard.TargetProperty="(Button.Background).(SolidColorBrush.Color)"
+                        To="#FF0078D7"
+                        Duration="0:0:0.2"/>
+        <DoubleAnimation Storyboard.TargetProperty="(Button.Effect).(DropShadowEffect.ShadowDepth)"
+                         To="5"
+                         Duration="0:0:0.2"/>
+    </Storyboard>
+    
+    <!-- ============================================ -->
+    <!-- SYNCFUSION DATAGRID ANIMATIONS -->
+    <!-- ============================================ -->
+    
+    <!-- SfDataGrid Row Fade-In Style -->
+    <Style x:Key="SfDataGridRowFadeInStyle" TargetType="syncfusion:GridRowControl">
+        <Style.Triggers>
+            <EventTrigger RoutedEvent="Loaded">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                                         From="0" 
+                                         To="1" 
+                                         Duration="0:0:0.3"/>
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+        </Style.Triggers>
+    </Style>
+    
+    <!-- SfDataGrid with RowTransitionMode (XAML Usage) -->
+    <!--
+    <syncfusion:SfDataGrid x:Name="dataGrid"
+                           ItemsSource="{Binding DataSource}"
+                           RowTransitionMode="Fade"
+                           RowStyle="{StaticResource SfDataGridRowFadeInStyle}">
+    </syncfusion:SfDataGrid>
+    -->
+    
+    <!-- ============================================ -->
+    <!-- SYNCFUSION CHART ANIMATIONS -->
+    <!-- ============================================ -->
+    
+    <!-- SfChart with Animation Enabled (XAML Usage) -->
+    <!--
+    <syncfusion:SfChart x:Name="chart"
+                        EnableAnimation="True"
+                        AnimationDuration="0:0:1.5">
+        <syncfusion:SfChart.PrimaryAxis>
+            <syncfusion:CategoryAxis/>
+        </syncfusion:SfChart.PrimaryAxis>
+        
+        <syncfusion:SfChart.SecondaryAxis>
+            <syncfusion:NumericalAxis/>
+        </syncfusion:SfChart.SecondaryAxis>
+        
+        <syncfusion:ColumnSeries ItemsSource="{Binding Data}" 
+                                 XBindingPath="Category" 
+                                 YBindingPath="Value"
+                                 AnimateOnDataChange="True"
+                                 SeriesAnimationMode="OnDataChanged"/>
+    </syncfusion:SfChart>
+    -->
+    
+    <!-- ============================================ -->
+    <!-- DASHBOARD NAVIGATION TRANSITIONS -->
+    <!-- ============================================ -->
+    
+    <!-- Dashboard View Change Animation -->
+    <Storyboard x:Key="DashboardViewTransition">
+        <!-- Fade out old content -->
+        <DoubleAnimation Storyboard.TargetName="OldContent"
+                         Storyboard.TargetProperty="Opacity" 
+                         From="1" 
+                         To="0" 
+                         Duration="0:0:0.2"/>
+        <!-- Slide in new content -->
+        <DoubleAnimation Storyboard.TargetName="NewContent"
+                         Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" 
+                         From="100" 
+                         To="0" 
+                         Duration="0:0:0.4"
+                         BeginTime="0:0:0.2">
+            <DoubleAnimation.EasingFunction>
+                <QuadraticEase EasingMode="EaseOut"/>
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+        <DoubleAnimation Storyboard.TargetName="NewContent"
+                         Storyboard.TargetProperty="Opacity" 
+                         From="0" 
+                         To="1" 
+                         Duration="0:0:0.4"
+                         BeginTime="0:0:0.2"/>
+    </Storyboard>
+    
+    <!-- ============================================ -->
+    <!-- SETTINGS VIEW ANIMATIONS -->
+    <!-- ============================================ -->
+    
+    <!-- Settings Panel Expand Animation -->
+    <Storyboard x:Key="SettingsPanelExpandAnimation">
+        <DoubleAnimation Storyboard.TargetProperty="Height" 
+                         From="0" 
+                         To="300" 
+                         Duration="0:0:0.3">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut"/>
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+        <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                         From="0" 
+                         To="1" 
+                         Duration="0:0:0.3"/>
+    </Storyboard>
+    
+    <!-- Settings Panel Collapse Animation -->
+    <Storyboard x:Key="SettingsPanelCollapseAnimation">
+        <DoubleAnimation Storyboard.TargetProperty="Height" 
+                         From="300" 
+                         To="0" 
+                         Duration="0:0:0.2">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseIn"/>
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+        <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                         From="1" 
+                         To="0" 
+                         Duration="0:0:0.2"/>
+    </Storyboard>
+    
+    <!-- ============================================ -->
+    <!-- RIBBON CONTROL ANIMATIONS -->
+    <!-- ============================================ -->
+    
+    <!-- Ribbon Tab Fade Animation (SfRibbon) -->
+    <Style x:Key="AnimatedRibbonTabStyle" TargetType="syncfusion:RibbonTab">
+        <Style.Triggers>
+            <EventTrigger RoutedEvent="MouseEnter">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <ColorAnimation Storyboard.TargetProperty="(Control.Background).(SolidColorBrush.Color)"
+                                        To="#1A000000"
+                                        Duration="0:0:0.15"/>
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+            <EventTrigger RoutedEvent="MouseLeave">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <ColorAnimation Storyboard.TargetProperty="(Control.Background).(SolidColorBrush.Color)"
+                                        To="Transparent"
+                                        Duration="0:0:0.15"/>
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+        </Style.Triggers>
+    </Style>
+    
+    <!-- ============================================ -->
+    <!-- QUICKBOOKS INTEGRATION ANIMATIONS -->
+    <!-- ============================================ -->
+    
+    <!-- QuickBooks Sync Status Animation (Spinning Icon) -->
+    <Storyboard x:Key="QuickBooksSyncAnimation" RepeatBehavior="Forever">
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                         From="0"
+                         To="360"
+                         Duration="0:0:1"
+                         RepeatBehavior="Forever"/>
+    </Storyboard>
+    
+    <!-- QuickBooks Data Load Progress Bar -->
+    <Storyboard x:Key="QuickBooksLoadingAnimation" RepeatBehavior="Forever">
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                         From="-100"
+                         To="100"
+                         Duration="0:0:1.5"
+                         RepeatBehavior="Forever"
+                         AutoReverse="True"/>
+    </Storyboard>
+    
+    <!-- ============================================ -->
+    <!-- THEME SWITCHING ANIMATIONS (FluentLight) -->
+    <!-- ============================================ -->
+    
+    <!-- Theme Transition Animation -->
+    <Storyboard x:Key="ThemeSwitchAnimation">
+        <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                         From="1" 
+                         To="0" 
+                         Duration="0:0:0.1"
+                         AutoReverse="True"/>
+    </Storyboard>
+    
+    <!-- ============================================ -->
+    <!-- IMPLEMENTATION NOTES -->
+    <!-- ============================================ -->
+    
+    <!--
+    ## Usage in App.xaml.cs (Apply before InitializeComponent)
+    
+    using Syncfusion.SkinManager;
+    
+    public partial class App : Application
+    {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+            
+            // Apply Syncfusion theme (enables default animations)
+            SfSkinManager.SetTheme(this, new Theme("FluentLight"));
+        }
+    }
+    
+    ## Usage in XAML Views
+    
+    <Window x:Name="MainWindow"
+            xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
+            Loaded="Window_Loaded">
+        <Window.Resources>
+            <ResourceDictionary Source="/WileyWidget;component/Themes/Generic.xaml"/>
+        </Window.Resources>
+        
+        <Window.Triggers>
+            <EventTrigger RoutedEvent="Loaded">
+                <BeginStoryboard Storyboard="{StaticResource FadeInAnimation}"/>
+            </EventTrigger>
+        </Window.Triggers>
+        
+        <!-- Content -->
+    </Window>
+    
+    ## Usage in C# Code-Behind
+    
+    using System.Windows.Media.Animation;
+    
+    private void StartAnimation()
+    {
+        var storyboard = (Storyboard)this.Resources["FadeInAnimation"];
+        Storyboard.SetTarget(storyboard, targetElement);
+        storyboard.Begin();
+    }
+    
+    ## Performance Considerations
+    
+    - Keep animation durations under 500ms for UI responsiveness
+    - Use AccelerationRatio/DecelerationRatio for natural motion
+    - Avoid animating heavy properties (e.g., complex Brushes)
+    - Dispose storyboards after completion to prevent memory leaks
+    - Test on lower-end hardware (e.g., Test 70 Phase 11 Performance Load)
+    
+    ## Startup Impact
+    
+    - Implicit animations (Syncfusion defaults): ~<10ms per control
+    - Custom storyboards: ~<5ms loading time
+    - Total overhead (10 controls): ~<50ms (within Test 70 Phase 11 threshold)
+    
+    ## Validation
+    
+    Run animation_scanner.py to detect all animations:
+    
+    python tools/animation_scanner.py --path src/WileyWidget --verbose
+    
+    Verify in startup logs (no resource warnings):
+    
+    logs/wiley-widget-*.log
+    
+    -->
+
+</ResourceDictionary>

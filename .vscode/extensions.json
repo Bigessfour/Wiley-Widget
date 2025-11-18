@@ -1,0 +1,22 @@
+{
+  "recommendations": [
+    "ms-dotnettools.csharp",
+    "hbenl.vscode-test-explorer",
+    "formulahendry.dotnet-test-explorer",
+    "ms-python.python",
+    "littlefoxteam.vscode-python-test-adapter",
+    "ms-mssql.mssql",
+    "ms-vscode.PowerShell",
+    "ms-dotnettools.vscode-dotnet-runtime",
+    "ms-python.black-formatter",
+    "charliermarsh.ruff",
+    "github.copilot",
+    "usernamehw.errorlens",
+    "aaron-bond.better-comments",
+    "ms-dotnettools.csdevkit",
+    "trunk.io"
+  ],
+  "unwantedRecommendations": [
+    "ms-dotnettools.csharp"
+  ]
+}

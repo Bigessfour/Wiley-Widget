@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Align TFM with solution-wide Windows target to avoid project compatibility (NU1201) -->
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Enable WPF APIs (DispatcherPriority etc.) used by some abstractions - only for .NET 8.0 -->
+    <UseWPF Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'">true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Version managed centrally in Directory.Packages.props -->
+    <PackageReference Include="Microsoft.Extensions.Primitives" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+    <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
+    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Abstractions need model types (Enterprise, BudgetData, ServiceChargeRecommendation, etc.) -->
+    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+  </ItemGroup>
+
+</Project>
