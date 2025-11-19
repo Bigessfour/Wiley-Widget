@@ -2,18 +2,34 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <!-- Updated TFM for SDK 1.5+ compatibility: Win11 22H2 baseline unlocks modern APIs -->
-    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>WileyWidget</RootNamespace>
     <UseWinUI>true</UseWinUI>
     <Nullable>enable</Nullable>
     <WindowsPackageType>None</WindowsPackageType>
     <WarningsNotAsErrors>NU1605</WarningsNotAsErrors>
-    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+    
+    <!-- CRITICAL: Disable all MSIX/packaging functionality -->
     <EnableMsixTooling>false</EnableMsixTooling>
     <AppxPackage>false</AppxPackage>
     <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
     <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
+    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+    <DisableXbfGeneration>false</DisableXbfGeneration>
+    <GenerateProjectPriFile>false</GenerateProjectPriFile>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+    <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
+    <AppxBundle>Never</AppxBundle>
+    <AppxBundlePlatforms></AppxBundlePlatforms>
+    <DisableXbfLineInfo>true</DisableXbfLineInfo>
+    <AppxGeneratePrisForPortableLibraries>false</AppxGeneratePrisForPortableLibraries>
+    <GeneratePrisForMsix>false</GeneratePrisForMsix>
+    <AppxPackageBuildMode>SideloadOnly</AppxPackageBuildMode>
+    
+    <!--  WORKAROUND: Prevent WindowsAppSDK from loading AppxPackage MSBuild task -->
+    <UseSdkBuildToolsPackage>false</UseSdkBuildToolsPackage>
+    
     <Platforms>x64</Platforms>
     <!-- Suppress WindowsAppSDK package-level RuntimeIdentifiers that inject unsupported RIDs.
          Using only RuntimeIdentifiers (plural) bypasses WindowsAppSDK 1.5.x XamlCompiler exit code 1
@@ -30,47 +46,48 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="Assets\\SplashScreen.scale-200.png" />
+    <Content Include="Assets\\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\\StoreLogo.png" />
+    <Content Include="Assets\\Wide310x150Logo.scale-200.png" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Pin to exact SDK 1.5 stable for compatibility; removes NU1603 warning -->
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.241001000" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.11" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="Serilog" Version="4.2.0" />
-    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
-    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <!-- EF/Tools removed from UI project (move to data project) -->
+    <!-- <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" /> -->
+    <!-- <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" /> -->
+    <!-- <PackageReference Include="Microsoft.Extensions.Configuration" /> -->
+    <!-- <PackageReference Include="Microsoft.Extensions.Configuration.Json" /> -->
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Hosting" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="Serilog.Enrichers.Thread" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+    <PackageReference Include="Serilog.Enrichers.Process" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- <ProjectReference Include="src\WileyWidget.Data\WileyWidget.Data.csproj" /> -->
-    <!-- <ProjectReference Include="src\WileyWidget.Services.Uno\WileyWidget.Services.Uno.csproj" /> -->
-    <!-- <ProjectReference Include="src\WileyWidget.Business\WileyWidget.Business.csproj" /> -->
-    <!-- <ProjectReference Include="src\WileyWidget.Models\WileyWidget.Models.csproj" /> -->
-    <!-- <ProjectReference Include="src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" /> -->
+    <!-- <ProjectReference Include="src\\WileyWidget.Data\\WileyWidget.Data.csproj" /> -->
+    <!-- <ProjectReference Include="src\\WileyWidget.Services.Uno\\WileyWidget.Services.Uno.csproj" /> -->
+    <!-- <ProjectReference Include="src\\WileyWidget.Business\\WileyWidget.Business.csproj" /> -->
+    <!-- <ProjectReference Include="src\\WileyWidget.Models\\WileyWidget.Models.csproj" /> -->
+    <!-- <ProjectReference Include="src\\WileyWidget.Services.Abstractions\\WileyWidget.Services.Abstractions.csproj" /> -->
   </ItemGroup>
 
   <!-- Exclude custom projects and tests from main app build -->
   <ItemGroup>
-    <Compile Remove="src\**" />
-    <Compile Remove="tests\**" />
-    <Compile Remove="WileyWidget.Services.UnitTests\**" />
+    <Compile Remove="src\\**" />
+    <Compile Remove="tests\\**" />
+    <Compile Remove="WileyWidget.Services.UnitTests\\**" />
   </ItemGroup>
 
   <!-- Publish Properties -->

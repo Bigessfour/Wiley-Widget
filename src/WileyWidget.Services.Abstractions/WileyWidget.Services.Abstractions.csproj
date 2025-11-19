@@ -14,10 +14,10 @@
 
   <ItemGroup>
     <!-- Version managed centrally in Directory.Packages.props -->
-    <PackageReference Include="Microsoft.Extensions.Primitives" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
-    <PackageReference Include="IppOAuth2PlatformSdk" Version="14.0.0" />
-    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Primitives" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="IppOAuth2PlatformSdk" />
+    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 
   <ItemGroup>
