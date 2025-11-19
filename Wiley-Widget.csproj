@@ -1,14 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.26100</TargetFramework>
+    <!-- Updated TFM for SDK 1.5+ compatibility: Win11 22H2 baseline unlocks modern APIs -->
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>WileyWidget</RootNamespace>
     <UseWinUI>true</UseWinUI>
     <Nullable>enable</Nullable>
     <WindowsPackageType>None</WindowsPackageType>
     <WarningsNotAsErrors>NU1605</WarningsNotAsErrors>
-    <Platforms>x64;ARM64</Platforms>
+    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <AppxPackage>false</AppxPackage>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
+    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
+    <Platforms>x64</Platforms>
+    <!-- Suppress WindowsAppSDK package-level RuntimeIdentifiers that inject unsupported RIDs.
+         Using only RuntimeIdentifiers (plural) bypasses WindowsAppSDK 1.5.x XamlCompiler exit code 1
+         when using explicit RuntimeIdentifier (singular). -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)'=='x64'">
@@ -30,7 +40,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
+    <!-- Pin to exact SDK 1.5 stable for compatibility; removes NU1603 warning -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.241001000" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
@@ -45,13 +56,6 @@
     <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
-    <PackageReference Include="Syncfusion.Licensing" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Core.WinUI" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Grid.WinUI" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Chart.WinUI" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Editors.WinUI" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.TreeView.WinUI" Version="31.2.5" />
-    <PackageReference Include="Syncfusion.Gauge.WinUI" Version="31.2.5" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,8 +1,10 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using WileyWidget.Models;
 using WileyWidget.Services;
 using Serilog;
 
@@ -87,6 +89,9 @@ namespace WileyWidget.ViewModels
 
         [ObservableProperty]
         private DateTime _fiscalYearEnd;
+
+        [ObservableProperty]
+        private ObservableCollection<FinancialMetric> _financialMetrics = new();
 
         public QuickBooksDashboardViewModel(
             QuickBooksService quickBooksService,

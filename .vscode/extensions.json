@@ -14,7 +14,9 @@
     "usernamehw.errorlens",
     "aaron-bond.better-comments",
     "ms-dotnettools.csdevkit",
-    "trunk.io"
+    "trunk.io",
+    "erikkralj.vscode-grok",
+    "rangav.vscode-thunder-client"
   ],
   "unwantedRecommendations": [
     "ms-dotnettools.csharp"

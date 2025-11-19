@@ -291,13 +291,74 @@ All Views and ViewModels follow consistent namespace patterns:
 
 3. **Build and Run**
 
-   ```powershell
-   # Restore dependencies and build
-   dotnet build WileyWidget.csproj
+  ```powershell
+  # Restore dependencies and build
+  dotnet build WileyWidget.csproj
 
-   # Run the application
-   dotnet run --project WileyWidget.csproj
-   ```
+  # Run the application
+  dotnet run --project WileyWidget.csproj
+  ```
+
+  ## **Build & Diagnostics (NETSDK1083 / XAML)**
+
+  - **Problem:** Recent builds may fail with `NETSDK1083: The specified RuntimeIdentifier is not recognized` (examples: `win10-arm`, `win10-x64`) which prevents the XAML compiler from running and hides useful XAML errors.
+  - **Cause:** Starting with .NET 8, the SDK uses a smaller, portable RID graph by default. Some packages or project files still reference older `win10-*` or platform-specific RIDs that are not in the new graph.
+
+  ### Quick (temporary) compatibility fix (applied to this repo)
+
+  - A temporary compatibility property was added to the project to allow the older RID graph to be used so existing Windows App SDK package RIDs resolve on developer machines:
+
+  ```xml
+  <!-- In Wiley-Widget.csproj -->
+  <PropertyGroup>
+    <!-- ... existing properties ... -->
+    <UseRidGraph>true</UseRidGraph> <!-- temporary: allows old win10-* RIDs -->
+  </PropertyGroup>
+  ```
+
+  - This is a short-term fix so the build reaches the XAML compile step. The recommended long-term change is to use portable RIDs (for example, `win-x64`) or explicitly set a single `RuntimeIdentifier` when publishing.
+
+  ### Recommended permanent fixes
+
+  - Replace any `win10-*` RIDs in project files or CI scripts with the portable equivalents (e.g. `win-x64`).
+  - Alternatively, set an explicit `RuntimeIdentifier` on the command line when building locally:
+
+  ```powershell
+  dotnet build Wiley-Widget.csproj /p:RuntimeIdentifier=win-x64 -c Debug /p:Platform=x64
+  ```
+
+  ### Diagnostics I ran (how to reproduce locally)
+
+  1. Add temporary compatibility (already applied to repo): `<UseRidGraph>true</UseRidGraph>` in `Wiley-Widget.csproj`.
+  2. Run a diagnostic build that writes an MSBuild binary log:
+
+  ```powershell
+  dotnet build "c:\Users\biges\Desktop\Wiley-Widget\Wiley-Widget.csproj" --configuration Debug /p:Platform=x64 --no-incremental /bl:build_after_rid_fix.binlog -v:detailed
+  ```
+
+  3. Open the produced `build_after_rid_fix.binlog` in the MSBuild Structured Log viewer (https://msbuildlog.com/) to inspect XAML compiler invocation and stderr output.
+
+  4. If XAML compilation still fails, the structured log contains the `XamlCompiler.exe` call and the paths for `input.json` and `output.json` inside `obj\\x64\\Debug\\net8.0-windows10.0.19041\\`. You can run `XamlCompiler.exe` directly using those files to capture raw stderr.
+
+  ### How to run XamlCompiler manually (advanced)
+
+  1. Locate the XamlCompiler that MSBuild invoked in the structured log; the task entry shows the full path to the tool.
+  2. Use a command similar to:
+
+  ```powershell
+  # Example - adjust the actual path from your build log
+  & "C:\\Program Files\\dotnet\\packs\\Microsoft.NET.Runtime.WindowsDesktop.App.Runtime.win-x64\\XamlXamlCompiler\\XamlCompiler.exe" `
+    "obj\\x64\\Debug\\net8.0-windows10.0.19041\\input.json" `
+    "obj\\x64\\Debug\\net8.0-windows10.0.19041\\output.json"
+  ```
+
+  This often exposes cleaner stderr messages from the XAML tool which are trimmed in msbuild console output.
+
+  ### Revert strategy
+
+  - After migrating to portable RIDs or pinning `RuntimeIdentifier`, remove the temporary `<UseRidGraph>true</UseRidGraph>` line from `Wiley-Widget.csproj`.
+
+  ---
 
 ### First Launch
 
