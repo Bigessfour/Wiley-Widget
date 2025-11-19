@@ -1,4 +1,43 @@
 {
+  // VS Code launch configuration for WinUI 3 app
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Wiley-Widget (WinUI 3)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/x64/Debug/net8.0-windows10.0.26100/Wiley-Widget.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "justMyCode": true,
+      "enableStepFiltering": true,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": true,
+        "searchNugetOrgSymbolServer": true,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Attach to WinUI Process",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    }
+  ]
+}
+{
   "version": "0.2.0",
   "configurations": [
     {

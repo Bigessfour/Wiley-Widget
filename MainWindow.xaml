@@ -3,18 +3,14 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:WileyWidget"
-    xmlns:viewmodels="using:WileyWidget.ViewModels"
+    xmlns:views="using:WileyWidget.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="Wiley-Widget"
-    x:DataType="viewmodels:MainViewModel">
+    Title="Wiley Widget - QuickBooks Dashboard">
 
-    <Window.SystemBackdrop>
-        <MicaBackdrop />
-    </Window.SystemBackdrop>
-
-    <Grid>
-        <Button Content="Do Backend Magic" Click="Button_Click" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <!-- QuickBooks Dashboard is the main content -->
+        <views:DashboardView />
     </Grid>
 </Window>

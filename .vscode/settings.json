@@ -14,8 +14,39 @@
   },
   "files.associations": {
     "*.md": "markdown",
+    "*.xaml": "xml",
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
-  "github.copilot.editor.enableAutoCompletions": true
+  "github.copilot.editor.enableAutoCompletions": true,
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/.vs": true
+  },
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/logs": true,
+    "**/.vs": true
+  },
+  "dotnet.defaultSolution": "Wiley-Widget.slnx",
+  "[csharp]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[xml]": {
+    "editor.formatOnSave": true
+  },
+  "terminal.integrated.env.windows": {
+    "DOTNET_ENVIRONMENT": "Development"
+  },
+  "csharp.debug.logging": {
+    "engineLogging": false,
+    "exceptions": true,
+    "moduleLoad": false,
+    "programOutput": true
+  }
 }

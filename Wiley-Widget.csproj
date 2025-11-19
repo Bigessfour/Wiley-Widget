@@ -8,6 +8,15 @@
     <Nullable>enable</Nullable>
     <WindowsPackageType>None</WindowsPackageType>
     <WarningsNotAsErrors>NU1605</WarningsNotAsErrors>
+    <Platforms>x64;ARM64</Platforms>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='ARM64'">
+    <PlatformTarget>ARM64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,6 +38,20 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageReference Include="Syncfusion.Licensing" Version="31.2.5" />
+    <PackageReference Include="Syncfusion.Core.WinUI" Version="31.2.5" />
+    <PackageReference Include="Syncfusion.Grid.WinUI" Version="31.2.5" />
+    <PackageReference Include="Syncfusion.Chart.WinUI" Version="31.2.5" />
+    <PackageReference Include="Syncfusion.Editors.WinUI" Version="31.2.5" />
+    <PackageReference Include="Syncfusion.TreeView.WinUI" Version="31.2.5" />
+    <PackageReference Include="Syncfusion.Gauge.WinUI" Version="31.2.5" />
   </ItemGroup>
 
   <ItemGroup>

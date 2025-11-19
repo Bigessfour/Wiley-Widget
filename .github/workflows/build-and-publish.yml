@@ -1,0 +1,47 @@
+name: Build Wiley-Widget (the real one)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build Release
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Smoke Test (launch the damn window for 8 seconds)
+        run: |
+          Start-Process "bin\Release\net8.0-windows\Wiley-Widget.exe"
+          Start-Sleep -Seconds 8
+          Get-Process Wiley-Widget -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      - name: Publish single-file self-contained EXE (no installer bullshit)
+        run: |
+          dotnet publish -c Release `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeAllContentForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            --runtime win-x64
+
+      - name: Upload the glorious EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wiley-Widget-Win64-SingleFile
+          path: bin/Release/net8.0-windows/win-x64/publish/Wiley-Widget.exe
+          if-no-files-found: error

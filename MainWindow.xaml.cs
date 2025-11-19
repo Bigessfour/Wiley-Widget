@@ -1,26 +1,14 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using WileyWidget.ViewModels;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using Serilog;
 
 namespace WileyWidget
 {
     /// <summary>
-    /// An empty window that can be used on its own or navigated to within a Frame.
+    /// Main application window hosting the QuickBooks Dashboard.
     /// </summary>
     public sealed partial class MainWindow : Window
     {
@@ -28,14 +16,40 @@ namespace WileyWidget
 
         public MainWindow(MainViewModel vm)
         {
+            ArgumentNullException.ThrowIfNull(vm);
+            
+            Log.Information("MainWindow constructor called");
             ViewModel = vm;
-            InitializeComponent();
-            // DataContext = ViewModel; // Temporarily removed
-        }
-
-        private void Button_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        {
-            ViewModel.TestCommand.Execute(null);
+            Log.Information("ViewModel assigned: {ViewModelType}", vm.GetType().Name);
+            
+            try
+            {
+                Log.Information("Initializing XAML components...");
+                InitializeComponent();
+                Log.Information("XAML components initialized");
+                
+                // Apply Mica backdrop for modern Windows 11 look
+                if (MicaController.IsSupported())
+                {
+                    SystemBackdrop = new MicaBackdrop();
+                    Log.Information("Mica backdrop applied successfully");
+                }
+                else
+                {
+                    Log.Warning("Mica backdrop not supported on this system, using default background");
+                }
+                
+                Log.Information("Setting DataContext on RootGrid...");
+                // Window in WinUI 3 doesn't expose DataContext; set it on the root element instead.
+                RootGrid.DataContext = ViewModel;
+                Log.Information("DataContext set successfully");
+                Log.Information("MainWindow initialized - Dashboard will load automatically");
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Failed to initialize MainWindow");
+                throw;
+            }
         }
     }
 }
