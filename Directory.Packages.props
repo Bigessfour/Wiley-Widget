@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Core WinUI - UPGRADED TO 1.7 for .NET 9 compatibility and unpackaged deployment fixes -->
+    <!-- Core WinUI - Updated to 1.7 for Syncfusion compatibility -->
     <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.7.250831001" />
 
     <!-- MVVM & DI -->
@@ -66,8 +66,7 @@
 
     <!-- Syncfusion -->
     <PackageVersion Include="Syncfusion.Licensing" Version="31.2.5" />
-    <PackageVersion Include="Syncfusion.XlsIO.Net.Core" Version="31.2.5" />
-    <PackageVersion Include="Syncfusion.Pdf.Net.Core" Version="31.2.5" />
+    <PackageVersion Include="Syncfusion.Grid.WinUI" Version="31.2.5" />
 
     <!-- Validation -->
     <PackageVersion Include="FluentValidation" Version="12.1.0" />

@@ -10,6 +10,9 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WarningsNotAsErrors>NU1605</WarningsNotAsErrors>
     
+    <!-- Suppress informational warnings -->
+    <NoWarn>$(NoWarn);MVVMTK0045;CA1001;NETSDK1206</NoWarn>
+    
     <!-- CRITICAL: Disable all MSIX/packaging functionality -->
     <EnableMsixTooling>false</EnableMsixTooling>
     <AppxPackage>false</AppxPackage>
@@ -73,6 +76,9 @@
     <PackageReference Include="Serilog.Enrichers.Thread" />
     <PackageReference Include="Serilog.Enrichers.Environment" />
     <PackageReference Include="Serilog.Enrichers.Process" />
+    <!-- Syncfusion WinUI Controls -->
+    <PackageReference Include="Syncfusion.Licensing" />
+    <PackageReference Include="Syncfusion.Grid.WinUI" />
   </ItemGroup>
 
   <ItemGroup>

@@ -204,6 +204,25 @@
 				"clear": true
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "python:generate-manifest",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"& '${workspaceFolder}/.venv/Scripts/Activate.ps1'; python '${workspaceFolder}/scripts/tools/generate_repo_urls.py' --output '${workspaceFolder}/ai-fetchable-manifest.json' --full-tree"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true,
+				"clear": true
+			},
+			"problemMatcher": []
 		}
 	],
 	"inputs": [

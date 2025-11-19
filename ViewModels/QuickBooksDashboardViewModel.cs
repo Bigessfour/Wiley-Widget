@@ -14,7 +14,7 @@ namespace WileyWidget.ViewModels
     /// ViewModel for the QuickBooks Dashboard landing page.
     /// Displays connection status, company information, and key financial metrics.
     /// </summary>
-    public partial class QuickBooksDashboardViewModel : ObservableRecipient
+    public partial class QuickBooksDashboardViewModel : ObservableRecipient, IDisposable
     {
         private readonly QuickBooksService _quickBooksService;
         private readonly AILoggingService _aiLogger;
@@ -347,6 +347,21 @@ namespace WileyWidget.ViewModels
             Log.Information("Calculated fiscal year: {FiscalYear} (Start: {Start}, End: {End})", 
                 FiscalYear, FiscalYearStart.ToString("d", System.Globalization.CultureInfo.InvariantCulture), 
                 FiscalYearEnd.ToString("d", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _loadCancellationTokenSource?.Cancel();
+                _loadCancellationTokenSource?.Dispose();
+            }
         }
     }
 }

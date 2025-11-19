@@ -1,9 +1,189 @@
 <UserControl
     x:Class="WileyWidget.Views.DashboardView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:datagrid="using:Syncfusion.UI.Xaml.DataGrid"
+    xmlns:progress="using:Microsoft.UI.Xaml.Controls"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="KPICardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="Margin" Value="8" />
+        </Style>
+    </UserControl.Resources>
 
     <Grid>
-        <TextBlock Text="Dashboard" />
+        <!-- Loading State -->
+        <ProgressRing
+            x:Name="LoadingIndicator"
+            Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+            IsActive="True"
+            Width="50"
+            Height="50"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center" />
+
+        <!-- Error State -->
+        <StackPanel
+            x:Name="ErrorPanel"
+            Visibility="{x:Bind ViewModel.HasError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="16">
+            <TextBlock
+                Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                TextWrapping="Wrap"
+                HorizontalAlignment="Center"
+                Foreground="{ThemeResource SystemErrorTextColor}" />
+            <Button
+                Content="Retry"
+                Command="{x:Bind ViewModel.RetryCommand}"
+                HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Main Dashboard Content -->
+        <ScrollViewer
+            x:Name="DashboardContent"
+            Visibility="{x:Bind ViewModel.HasData, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+            ZoomMode="Disabled">
+            <StackPanel Spacing="24" Margin="24">
+
+                <!-- Connection Status Header -->
+                <Border Style="{StaticResource KPICardStyle}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="8" VerticalAlignment="Center">
+                            <TextBlock
+                                Text="QuickBooks Connection"
+                                Style="{ThemeResource TitleTextBlockStyle}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.ConnectionStatusText, Mode=OneWay}"
+                                Foreground="{x:Bind ViewModel.ConnectionStatusColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.CompanyName, Mode=OneWay}"
+                                Style="{ThemeResource BodyTextBlockStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="8" Orientation="Horizontal">
+                            <Button
+                                Content="Connect"
+                                Command="{x:Bind ViewModel.ConnectCommand}"
+                                Visibility="{x:Bind ViewModel.IsConnected, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                            <Button
+                                Content="Sync Now"
+                                Command="{x:Bind ViewModel.SyncNowCommand}"
+                                Visibility="{x:Bind ViewModel.IsSyncing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <ProgressRing
+                                Visibility="{x:Bind ViewModel.IsSyncing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                IsActive="True"
+                                Width="20"
+                                Height="20" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Financial KPIs -->
+                <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto">
+                    <Border Style="{StaticResource KPICardStyle}" Grid.Column="0">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Revenue YTD" Style="{ThemeResource BodyTextBlockStyle}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.RevenueYTDFormatted, Mode=OneWay}"
+                                Style="{ThemeResource TitleTextBlockStyle}"
+                                Foreground="{ThemeResource SystemAccentColor}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource KPICardStyle}" Grid.Column="1">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Net Income YTD" Style="{ThemeResource BodyTextBlockStyle}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.NetIncomeYTDFormatted, Mode=OneWay}"
+                                Style="{ThemeResource TitleTextBlockStyle}"
+                                Foreground="{x:Bind ViewModel.NetIncomeYTD, Mode=OneWay, Converter={StaticResource NumberToColorConverter}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource KPICardStyle}" Grid.Column="2">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="A/R Balance" Style="{ThemeResource BodyTextBlockStyle}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.AccountsReceivableFormatted, Mode=OneWay}"
+                                Style="{ThemeResource TitleTextBlockStyle}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource KPICardStyle}" Grid.Column="3">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="A/P Balance" Style="{ThemeResource BodyTextBlockStyle}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.AccountsPayableFormatted, Mode=OneWay}"
+                                Style="{ThemeResource TitleTextBlockStyle}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Financial Metrics DataGrid -->
+                <Border Style="{StaticResource KPICardStyle}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Financial Metrics" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                        <datagrid:SfDataGrid
+                            ItemsSource="{x:Bind ViewModel.FinancialMetrics, Mode=OneWay}"
+                            AutoGenerateColumns="False"
+                            ColumnWidthMode="Auto"
+                            AllowSorting="True"
+                            AllowFiltering="True">
+                            <datagrid:SfDataGrid.Columns>
+                                <datagrid:GridTextColumn MappingName="Category" HeaderText="Category" />
+                                <datagrid:GridTextColumn MappingName="Metric" HeaderText="Metric" />
+                                <datagrid:GridTextColumn MappingName="FormattedValue" HeaderText="Value" />
+                                <datagrid:GridTextColumn MappingName="Color" HeaderText="Color" />
+                                <datagrid:GridTextColumn MappingName="Icon" HeaderText="Icon" />
+                            </datagrid:SfDataGrid.Columns>
+                        </datagrid:SfDataGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Simple Chart Placeholder -->
+                <Border Style="{StaticResource KPICardStyle}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Revenue Trends" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                        <TextBlock
+                            Text="Chart visualization coming soon..."
+                            HorizontalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Empty State -->
+        <StackPanel
+            x:Name="EmptyStatePanel"
+            Visibility="{x:Bind ViewModel.ShowEmptyState, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="16">
+            <TextBlock
+                Text="No QuickBooks data available"
+                Style="{ThemeResource TitleTextBlockStyle}"
+                HorizontalAlignment="Center" />
+            <TextBlock
+                Text="Connect to QuickBooks to view your financial dashboard"
+                TextWrapping="Wrap"
+                HorizontalAlignment="Center"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Button
+                Content="Connect Now"
+                Command="{x:Bind ViewModel.ConnectCommand}"
+                HorizontalAlignment="Center" />
+        </StackPanel>
+
     </Grid>
 </UserControl>

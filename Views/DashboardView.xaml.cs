@@ -25,7 +25,7 @@ namespace WileyWidget.Views
             // It's possible DI is not configured during diagnostic/minimal runs. Resolve if available, otherwise leave null.
             Log.Information("DashboardView constructor called");
 
-            ViewModel = App.Services?.GetService(typeof(QuickBooksDashboardViewModel)) as QuickBooksDashboardViewModel;
+            ViewModel = App.Services?.GetService(typeof(QuickBooksDashboardViewModel)) as QuickBooksDashboardViewModel ?? null!;
 
             this.InitializeComponent();
 
