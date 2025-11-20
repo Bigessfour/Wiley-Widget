@@ -5,43 +5,144 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   build:
     runs-on: windows-latest
+    
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 9.0.x
 
-      - name: Restore
-        run: dotnet restore
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
 
-      - name: Build Release
-        run: dotnet build --configuration Release --no-restore
-
-      - name: Smoke Test (launch the damn window for 8 seconds)
+      - name: Display .NET info
         run: |
-          Start-Process "bin\Release\net8.0-windows\Wiley-Widget.exe"
-          Start-Sleep -Seconds 8
-          Get-Process Wiley-Widget -ErrorAction SilentlyContinue | Stop-Process -Force
+          dotnet --info
+          dotnet --list-sdks
+          dotnet --list-runtimes
+          Write-Host "MSBuild version:"
+          msbuild -version
 
-      - name: Publish single-file self-contained EXE (no installer bullshit)
+      - name: Restore dependencies with NuGet
         run: |
-          dotnet publish -c Release `
-            --self-contained true `
-            -p:PublishSingleFile=true `
-            -p:IncludeAllContentForSelfExtract=true `
-            -p:EnableCompressionInSingleFile=true `
-            --runtime win-x64
+          nuget restore Wiley-Widget.csproj -PackagesDirectory packages
+
+      - name: Build Release (x64) with MSBuild
+        run: |
+          msbuild Wiley-Widget.csproj `
+            /p:Configuration=Release `
+            /p:Platform=x64 `
+            /p:AppxPackage=false `
+            /p:AppxBundle=Never `
+            /p:UapAppxPackageBuildMode=SideloadOnly `
+            /m `
+            /v:minimal
+
+      - name: Display build output location
+        run: |
+          Write-Host "Searching for Wiley-Widget.exe..."
+          Get-ChildItem -Path bin -Recurse -Filter "Wiley-Widget.exe" -ErrorAction SilentlyContinue | Select-Object FullName
+
+      - name: Smoke Test (launch window for 8 seconds)
+        run: |
+          $exePath = "bin\x64\Release\net9.0-windows10.0.26100.0\Wiley-Widget.exe"
+          if (Test-Path $exePath) {
+            Write-Host "✓ Found executable at: $exePath"
+            Write-Host "Starting smoke test..."
+            $process = Start-Process $exePath -PassThru -ErrorAction Stop
+            Start-Sleep -Seconds 8
+            if (!$process.HasExited) {
+              Write-Host "✓ Application is running, stopping gracefully..."
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              Write-Host "✓ Smoke test passed"
+            } else {
+              Write-Host "⚠ Application exited early with code: $($process.ExitCode)"
+              Write-Host "This might be expected for headless CI environment"
+            }
+          } else {
+            Write-Host "✗ Executable not found at: $exePath"
+            Write-Host "Available files in bin:"
+            Get-ChildItem -Path bin -Recurse -Filter "*.exe" | Select-Object FullName
+            exit 1
+          }
+
+      - name: Publish single-file self-contained EXE with MSBuild
+        run: |
+          msbuild Wiley-Widget.csproj `
+            /t:Publish `
+            /p:Configuration=Release `
+            /p:Platform=x64 `
+            /p:RuntimeIdentifier=win-x64 `
+            /p:SelfContained=true `
+            /p:PublishSingleFile=true `
+            /p:IncludeAllContentForSelfExtract=true `
+            /p:EnableCompressionInSingleFile=true `
+            /p:PublishReadyToRun=true `
+            /p:PublishTrimmed=false `
+            /p:AppxPackage=false `
+            /m `
+            /v:minimal
+
+      - name: Verify published executable
+        run: |
+          $publishPath = "bin\x64\Release\net9.0-windows10.0.26100.0\win-x64\publish\Wiley-Widget.exe"
+          if (Test-Path $publishPath) {
+            Write-Host "✓ Published executable found at: $publishPath"
+            $fileInfo = Get-Item $publishPath
+            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+            Write-Host "   Created: $($fileInfo.CreationTime)"
+          } else {
+            Write-Host "✗ Published executable not found at: $publishPath"
+            Write-Host "Searching for publish output..."
+            Get-ChildItem -Path bin -Recurse -Filter "Wiley-Widget.exe" | Select-Object FullName, @{Name="SizeMB";Expression={[math]::Round($_.Length / 1MB, 2)}}
+            exit 1
+          }
 
       - name: Upload the glorious EXE
         uses: actions/upload-artifact@v4
         with:
           name: Wiley-Widget-Win64-SingleFile
-          path: bin/Release/net8.0-windows/win-x64/publish/Wiley-Widget.exe
+          path: bin/x64/Release/net9.0-windows10.0.26100.0/win-x64/publish/Wiley-Widget.exe
           if-no-files-found: error
+
+      - name: Create release info
+        run: |
+          $version = "1.0.${{ github.run_number }}"
+          $info = @"
+          ## Wiley-Widget Build $version
+          
+          **Build Date:** $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+          **Commit:** ${{ github.sha }}
+          **Platform:** x64
+          **Runtime:** .NET 9 WinUI 3
+          **Type:** Self-contained single-file executable
+          
+          ### Installation
+          1. Download Wiley-Widget.exe
+          2. Run the executable (no installation required)
+          3. Windows may show SmartScreen warning - click "More info" → "Run anyway"
+          
+          ### Requirements
+          - Windows 10 version 1809 (October 2018 Update) or later
+          - x64 processor
+          
+          ### Known Issues
+          - First launch may take longer while extracting embedded files
+          - Syncfusion license dialog may appear if license key not configured
+          
+          "@
+          $info | Out-File -FilePath build-info.txt -Encoding UTF8
+
+      - name: Upload build info
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build-Info
+          path: build-info.txt

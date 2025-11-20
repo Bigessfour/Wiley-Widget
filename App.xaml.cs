@@ -1,8 +1,7 @@
 using System;
 using Microsoft.UI.Xaml;
 using Microsoft.Extensions.DependencyInjection;
-using WileyWidget.Services;
-using WileyWidget.ViewModels;
+using Microsoft.Extensions.Logging;
 
 namespace WileyWidget
 {
@@ -16,9 +15,14 @@ namespace WileyWidget
             this.InitializeComponent();
 
             var services = new ServiceCollection();
-            services.AddSingleton<QuickBooksService>();
-            services.AddSingleton<AILoggingService>();
-            services.AddTransient<QuickBooksDashboardViewModel>();
+            
+            // Add logging
+            services.AddLogging(builder =>
+            {
+                builder.AddDebug();
+                builder.SetMinimumLevel(LogLevel.Information);
+            });
+
             Services = services.BuildServiceProvider();
         }
 
