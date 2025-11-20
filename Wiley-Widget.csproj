@@ -2,16 +2,21 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <!-- Updated TFM for SDK 1.5+ compatibility: Win11 22H2 baseline unlocks modern APIs -->
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>WileyWidget</RootNamespace>
     <UseWinUI>true</UseWinUI>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <WindowsPackageType>None</WindowsPackageType>
-    <WarningsNotAsErrors>NU1605</WarningsNotAsErrors>
+    <WarningsNotAsErrors>NU1605;MSB4062</WarningsNotAsErrors>
+    
+    <!-- Force x64 platform -->
+    <Platform>x64</Platform>
+    <PlatformTarget>x64</PlatformTarget>
     
     <!-- Suppress informational warnings -->
-    <NoWarn>$(NoWarn);MVVMTK0045;CA1001;NETSDK1206</NoWarn>
+    <NoWarn>$(NoWarn);MVVMTK0045;CA1001;NETSDK1206;MSB4062</NoWarn>
     
     <!-- CRITICAL: Disable all MSIX/packaging functionality -->
     <EnableMsixTooling>false</EnableMsixTooling>
@@ -20,6 +25,8 @@
     <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <DisableXbfGeneration>false</DisableXbfGeneration>
+    <MrtCoreDisableAppXGeneration>true</MrtCoreDisableAppXGeneration>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
     <GenerateProjectPriFile>false</GenerateProjectPriFile>
     <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
     <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
@@ -29,6 +36,7 @@
     <AppxGeneratePrisForPortableLibraries>false</AppxGeneratePrisForPortableLibraries>
     <GeneratePrisForMsix>false</GeneratePrisForMsix>
     <AppxPackageBuildMode>SideloadOnly</AppxPackageBuildMode>
+    <ImportWindowsSDKTargets>false</ImportWindowsSDKTargets>
     
     <!--  WORKAROUND: Prevent WindowsAppSDK from loading AppxPackage MSBuild task -->
     <UseSdkBuildToolsPackage>false</UseSdkBuildToolsPackage>
@@ -44,10 +52,6 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Platform)'=='ARM64'">
-    <PlatformTarget>ARM64</PlatformTarget>
-  </PropertyGroup>
-
   <ItemGroup>
     <Content Include="Assets\\SplashScreen.scale-200.png" />
     <Content Include="Assets\\LockScreenLogo.scale-200.png" />
@@ -59,8 +63,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Pin to exact SDK 1.5 stable for compatibility; removes NU1603 warning -->
-    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <!-- Pin to exact SDK 1.7 stable for compatibility; removes NU1603 warning -->
+    <PackageReference Include="Microsoft.WindowsAppSDK">
+      <ExcludeAssets>all</ExcludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <!-- EF/Tools removed from UI project (move to data project) -->
@@ -81,14 +87,6 @@
     <PackageReference Include="Syncfusion.Grid.WinUI" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- <ProjectReference Include="src\\WileyWidget.Data\\WileyWidget.Data.csproj" /> -->
-    <!-- <ProjectReference Include="src\\WileyWidget.Services.Uno\\WileyWidget.Services.Uno.csproj" /> -->
-    <!-- <ProjectReference Include="src\\WileyWidget.Business\\WileyWidget.Business.csproj" /> -->
-    <!-- <ProjectReference Include="src\\WileyWidget.Models\\WileyWidget.Models.csproj" /> -->
-    <!-- <ProjectReference Include="src\\WileyWidget.Services.Abstractions\\WileyWidget.Services.Abstractions.csproj" /> -->
-  </ItemGroup>
-
   <!-- Exclude custom projects and tests from main app build -->
   <ItemGroup>
     <Compile Remove="src\\**" />
@@ -102,5 +100,6 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
 </Project>

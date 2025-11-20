@@ -1,0 +1,31 @@
+<Project>
+  <PropertyGroup>
+    <!-- Disable Appx/MSIX and PRI generation early to avoid missing AppxPackage MSBuild task on developer machines -->
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <AppxPackage>false</AppxPackage>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
+    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
+    <GenerateProjectPriFile>false</GenerateProjectPriFile>
+    <MrtCoreDisableAppXGeneration>true</MrtCoreDisableAppXGeneration>
+    <MrtCoreDisablePriGeneration>true</MrtCoreDisablePriGeneration>
+    <AppxBundle>Never</AppxBundle>
+    <ImportWindowsSDKTargets>false</ImportWindowsSDKTargets>
+    <UseSdkBuildToolsPackage>false</UseSdkBuildToolsPackage>
+    <AppxPackageBuildMode>Never</AppxPackageBuildMode>
+    <!-- Prevent WindowsAppSDK from attempting to run packaging tasks when SDKs are not installed -->
+    <SkipAppxPackageTasks>true</SkipAppxPackageTasks>
+    <!-- Suppress CsWinRT source generator warnings in development builds -->
+    <NoWarn>$(NoWarn);CsWinRT1028</NoWarn>
+  </PropertyGroup>
+  
+  <!-- Wiley Widget: Dev-Friendly Windows App SDK (disables packaging tasks) -->
+  <PropertyGroup Condition="'$(WileyWidgetDevMode)' != 'false'">
+    <WindowsAppSDKExcludeAssets>all</WindowsAppSDKExcludeAssets>
+    <WindowsPackageType>None</WindowsPackageType>
+  </PropertyGroup>
+  
+  <!-- CI/Release Mode Override (full packaging enabled) -->
+  <PropertyGroup Condition="'$(WileyWidgetDevMode)' == 'false'">
+    <WindowsAppSDKExcludeAssets></WindowsAppSDKExcludeAssets>
+  </PropertyGroup>
+</Project>
