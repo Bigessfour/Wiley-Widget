@@ -42,13 +42,16 @@
 			"command": "dotnet",
 			"args": [
 				"build",
-				"${workspaceFolder}/Wiley-Widget.slnx",
-				"--no-restore",
+				"${workspaceFolder}/Wiley-Widget.csproj",
 				"--configuration",
 				"Debug",
+				"/p:Platform=x64",
 				"--verbosity",
-				"minimal",
-				"/p:Platform=x64"
+				"diagnostic",
+				"--no-incremental",
+				"/bl:${workspaceFolder}/xaml-debug.binlog",
+				"/p:XamlDebuggingInformation=true",
+				"/p:GenerateXamlDebuggingInformation=true"
 			],
 			"group": {
 				"kind": "build",
@@ -56,7 +59,9 @@
 			},
 			"presentation": {
 				"reveal": "always",
-				"panel": "shared"
+				"panel": "dedicated",
+				"focus": true,
+				"clear": true
 			},
 			"problemMatcher": "$msCompile",
 			"dependsOn": "clean"
@@ -78,7 +83,7 @@
 		{
 			"label": "run",
 			"type": "shell",
-			"command": "${workspaceFolder}/bin/x64/Debug/net8.0-windows10.0.26100/Wiley-Widget.exe",
+			"command": "${workspaceFolder}/bin/x64/Debug/net8.0-windows10.0.19041.0/Wiley-Widget.exe",
 			"presentation": {
 				"reveal": "always",
 				"panel": "dedicated",
@@ -185,17 +190,15 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "build:diagnostic-xaml",
+			"label": "build:xaml-manual",
 			"type": "shell",
-			"command": "dotnet",
+			"command": "pwsh",
 			"args": [
-				"build",
-				"${workspaceFolder}/Wiley-Widget.csproj",
-				"--configuration",
-				"Debug",
-				"/p:Platform=x64",
-				"--verbosity",
-				"diagnostic"
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"if (Test-Path 'obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\input.json') { & 'C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.7.250909003\\buildTransitive\\..\\tools\\net6.0\\..\\net472\\XamlCompiler.exe' 'obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\input.json' 'obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\output.json' 2>&1 | Tee-Object -FilePath 'xaml-compiler-errors.log' } else { Write-Host 'Run build first to generate input.json' -ForegroundColor Yellow }"
 			],
 			"presentation": {
 				"reveal": "always",
@@ -206,7 +209,7 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "python:generate-manifest",
+			"label": "build:view-binlog",
 			"type": "shell",
 			"command": "pwsh",
 			"args": [
@@ -214,13 +217,11 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-Command",
-				"& '${workspaceFolder}/.venv/Scripts/Activate.ps1'; python '${workspaceFolder}/scripts/tools/generate_repo_urls.py' --output '${workspaceFolder}/ai-fetchable-manifest.json' --full-tree"
+				"if (Test-Path 'xaml-debug.binlog') { Start-Process 'https://msbuildlog.com/?logfile=xaml-debug.binlog' } else { Write-Host 'Run build first to generate the binary log' -ForegroundColor Yellow }"
 			],
 			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"focus": true,
-				"clear": true
+				"reveal": "silent",
+				"panel": "shared"
 			},
 			"problemMatcher": []
 		}

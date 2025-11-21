@@ -16,7 +16,8 @@
     "ms-dotnettools.csdevkit",
     "trunk.io",
     "erikkralj.vscode-grok",
-    "rangav.vscode-thunder-client"
+    "rangav.vscode-thunder-client",
+    "continue.continue"
   ],
   "unwantedRecommendations": [
     "ms-dotnettools.csharp"

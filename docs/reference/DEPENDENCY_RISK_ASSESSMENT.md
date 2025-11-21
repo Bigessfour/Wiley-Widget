@@ -30,7 +30,7 @@ This document provides a comprehensive risk assessment of third-party dependenci
 <!-- Core UI Components -->
 <PackageReference Include="Syncfusion.Licensing" Version="31.1.17" />
 <PackageReference Include="Syncfusion.SfBusyIndicator.WPF" Version="31.1.17" />
-<PackageReference Include="Syncfusion.SfChart.WPF" Version="31.1.17" />
+<PackageReference Include="Syncfusion.UI.Xaml.Charts" Version="31.1.17" />
 <PackageReference Include="Syncfusion.SfChat.WPF" Version="31.1.17" />
 <PackageReference Include="Syncfusion.SfGauge.WPF" Version="31.1.17" />
 <PackageReference Include="Syncfusion.SfGrid.WPF" Version="31.1.17" />

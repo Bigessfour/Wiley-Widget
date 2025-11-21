@@ -46,7 +46,7 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         // Best-effort probe; real adapter tests require full Prism + WPF hosting
         try
         {
-            var xamlWriter = Type.GetType("System.Windows.Markup.XamlWriter, PresentationFramework");
+            var xamlWriter = Type.GetType("System.Windows.Markup.XamlWriter, Microsoft.UI.Xaml");
             if (xamlWriter != null)
             {
                 var saveMethod = xamlWriter.GetMethod("Save", new[] { typeof(object) });

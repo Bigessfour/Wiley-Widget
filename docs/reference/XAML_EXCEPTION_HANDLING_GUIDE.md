@@ -74,7 +74,7 @@ public static class XamlValidator
 ```xml
 <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
 <PackageReference Include="Prism.Core" Version="9.0.537" />
-<PackageReference Include="Prism.Wpf" Version="9.0.537" />
+
 <PackageReference Include="Prism.Container.DryIoc" Version="9.0.107" />
 ```
 
@@ -143,7 +143,7 @@ private void EnsureSyncfusionLicenseRegistered()
 <Window x:Class="WileyWidget.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:prism="http://prismlibrary.com/"
+
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf"
         xmlns:syncfusionskin="clr-namespace:Syncfusion.SfSkinManager;assembly=Syncfusion.SfSkinManager.WPF"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"

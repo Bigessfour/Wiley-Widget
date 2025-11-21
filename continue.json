@@ -1,0 +1,220 @@
+{
+  "enabled": true,
+  "allowAnonymousTelemetry": false,
+  "models": [
+    {
+      "title": "Grok 4.1 Fast (Reasoning) — Best Agentic",
+      "provider": "openai",
+      "model": "grok-4-1-fast-reasoning",
+      "apiKey": "continue.apiKey",
+      "apiBase": "https://api.x.ai/v1",
+      "roles": ["chat", "edit", "apply", "cmd"]
+    },
+    {
+      "title": "Grok 4.1 Fast (Non-Reasoning) — Lightning Speed",
+      "provider": "openai",
+      "model": "grok-4-1-fast-non-reasoning",
+      "apiKey": "continue.apiKey",
+      "apiBase": "https://api.x.ai/v1"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Grok 4.1 Fast Autocomplete",
+    "provider": "openai",
+    "model": "grok-4-1-fast-non-reasoning",
+    "apiKey": "continue.apiKey",
+    "apiBase": "https://api.x.ai/v1"
+  },
+  "systemMessage": "You are Grok 4.1 Fast, the most reliable agentic coding model from xAI. You ALWAYS use tools to edit files directly in the workspace. Never simulate edits or offer snippets unless explicitly asked. Prioritize real file modifications via the edit tool. You are working on Wiley-Widget: pure WinUI 3 + Syncfusion 31.2.12 + CommunityToolkit.Mvvm. NEVER introduce WPF, UseWPF=true, or WebView2.Wpf.",
+  "slashCommands": [
+    {
+      "name": "fixbuild",
+      "description": "Fix dotnet build errors",
+      "prompt": "Analyze and fix this build output from Wiley-Widget (use edit tool directly): {{input}}"
+    },
+    {
+      "name": "newview",
+      "description": "Create new Syncfusion WinUI view + VM",
+      "prompt": "Create a new Page + ViewModel pair in Views/ and ViewModels/. Use SfDataGrid, SfChart, register in DI, add to navigation. Edit files directly."
+    }
+  ],
+  "contextProviders": [
+    { "name": "codebase", "params": {} },
+    { "name": "search", "params": {} },
+    { "name": "file", "params": {} }
+  ],
+  "experimental": {
+    "modelRoles": true,
+    "fastApply": true,
+    "enableAgentMode": true,
+    "streaming": true,
+    "parallelToolCalls": true,
+    "showToolCallProgress": true,
+    "cachePrompts": true
+  },
+  "tools": [
+    {
+      "name": "mcp_filesystem_read_text_file",
+      "description": "Read text files from the filesystem. Returns file contents with optional head/tail filtering.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute path to the file to read"
+          },
+          "head": {
+            "type": "number",
+            "description": "Read only first N lines"
+          },
+          "tail": {
+            "type": "number",
+            "description": "Read only last N lines"
+          }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "mcp_filesystem_read_multiple_files",
+      "description": "Read multiple files in parallel. More efficient than sequential reads.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Array of absolute file paths to read"
+          }
+        },
+        "required": ["paths"]
+      }
+    },
+    {
+      "name": "mcp_filesystem_edit_file",
+      "description": "Edit files with git-style diffs. Returns diff preview of changes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute path to file to edit"
+          },
+          "edits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "oldText": {
+                  "type": "string",
+                  "description": "Exact text to replace (must match precisely)"
+                },
+                "newText": {
+                  "type": "string",
+                  "description": "New text to insert"
+                }
+              },
+              "required": ["oldText", "newText"]
+            },
+            "description": "Array of edit operations to apply"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "Preview changes without applying",
+            "default": false
+          }
+        },
+        "required": ["path", "edits"]
+      }
+    },
+    {
+      "name": "mcp_filesystem_write_file",
+      "description": "Create or overwrite files. Use for new files or complete rewrites.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute path for new/overwritten file"
+          },
+          "content": {
+            "type": "string",
+            "description": "Complete file content"
+          }
+        },
+        "required": ["path", "content"]
+      }
+    },
+    {
+      "name": "mcp_filesystem_search_files",
+      "description": "Search for files and directories by pattern. Returns matching paths.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Directory to search in"
+          },
+          "pattern": {
+            "type": "string",
+            "description": "Glob pattern to match (e.g., *.cs, **/*Test*.cs)"
+          }
+        },
+        "required": ["path", "pattern"]
+      }
+    },
+    {
+      "name": "mcp_csharp-mcp_eval_c_sharp",
+      "description": "Evaluate C# code snippets or .csx files. Returns execution output.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "csx": {
+            "type": "string",
+            "description": "C# script code to execute directly"
+          },
+          "csxFile": {
+            "type": "string",
+            "description": "Path to .csx file to execute"
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "default": 30,
+            "description": "Max execution time in seconds"
+          }
+        }
+      }
+    },
+    {
+      "name": "mcp_sequential_th_sequentialthinking",
+      "description": "Multi-step reasoning for complex problems. Use for architectural decisions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "thought": {
+            "type": "string",
+            "description": "Current reasoning step"
+          },
+          "thoughtNumber": {
+            "type": "integer",
+            "description": "Current step number"
+          },
+          "totalThoughts": {
+            "type": "integer",
+            "description": "Estimated total steps"
+          },
+          "nextThoughtNeeded": {
+            "type": "boolean",
+            "description": "Whether more reasoning is needed"
+          }
+        },
+        "required": [
+          "thought",
+          "thoughtNumber",
+          "totalThoughts",
+          "nextThoughtNeeded"
+        ]
+      }
+    }
+  ]
+}

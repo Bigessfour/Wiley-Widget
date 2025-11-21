@@ -3,5 +3,7 @@
     <!-- PERMA-BAN WPF FOREVER -->
     <UseWPF>false</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>
+    <!-- Suppress RID warning from legacy DocumentDB.Core package until migrated -->
+    <NoWarn>$(NoWarn);NETSDK1206</NoWarn>
   </PropertyGroup>
 </Project>

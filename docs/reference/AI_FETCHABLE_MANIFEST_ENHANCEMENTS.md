@@ -50,7 +50,7 @@ This document describes the comprehensive enhancements made to the `generate_rep
     "projects": {
       "WileyWidget": {
         "path": "src/WileyWidget/WileyWidget.csproj",
-        "nuget_packages": ["Prism.DryIoc", "Syncfusion.SfChart.WPF", "Microsoft.EntityFrameworkCore"],
+        "nuget_packages": ["Prism.DryIoc", "Syncfusion.UI.Xaml.Charts", "Microsoft.EntityFrameworkCore"],
         "project_references": ["WileyWidget.Abstractions", "WileyWidget.Services"]
       }
     },

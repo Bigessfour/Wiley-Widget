@@ -9,7 +9,7 @@ Keep this file in `docs/PRISM_USAGE.md` as the single source of truth for Prism-
 ## Prism version
 
 - Target Prism: Prism 9.0.x
-  - NuGet: `Prism.Wpf` (example pinned version: `9.0.537`)
+  - NuGet: `Prism.Uno.WinUI` (example pinned version: `9.0.537`)
   - DI adapter: `Prism.DryIoc` (use `Prism.DryIoc` / `Prism.DryIoc.Extensions` as needed)
 - Supported frameworks: .NET 6.0+ and compatibility with .NET 8.0 when project SDKs align.
 - Recommendation: Pin package versions in csproj files and update through CI-validated PRs.
@@ -18,7 +18,7 @@ Example package install (run in project folder):
 
 ```powershell
 # Run in PowerShell (pwsh)
-dotnet add package Prism.Wpf --version 9.0.537
+dotnet add package Prism.Uno.WinUI --version 9.0.537
 dotnet add package Prism.DryIoc --version 9.0.537
 ```
 
@@ -29,7 +29,7 @@ dotnet add package Prism.DryIoc --version 9.0.537
 - Prism.Ioc (IContainerRegistry, IContainerProvider)
 - Prism.Modularity (IModule, IModuleCatalog)
 - Prism.Mvvm (BindableBase, ViewModelLocator, DelegateCommand)
-- Prism.Regions (IRegionManager, RegionManager, IRegionBehaviorFactory)
+- Prism.Navigation.Regions (IRegionManager, RegionManager, IRegionBehaviorFactory)
 - Prism.Events (PubSubEvent<T>, IEventAggregator)
 - Prism.DryIoc (DryIoc container extension types)
 - Prism.Navigation (INavigationAware, IRegionNavigationService)
@@ -41,7 +41,7 @@ Avoid legacy/CodePlex-era names such as `Microsoft.Practices.Prism` or XAML URIs
 Use the modern Prism XAML URI:
 
 ```xml
-xmlns:prism="http://prismlibrary.com/"
+
 ```
 
 Example: `<ContentControl prism:RegionManager.RegionName="MainRegion" />`
@@ -60,7 +60,7 @@ Minimal `App.xaml.cs` style example:
 using Prism.Ioc;
 using Prism.Modularity;
 using Prism.Mvvm;
-using Prism.Regions;
+using Prism.Navigation.Regions;
 using Prism.DryIoc;
 
 public partial class App : PrismApplication
@@ -254,7 +254,7 @@ containerRegistry.RegisterSingleton<ISettingsService, SettingsService>();
 
 ## Troubleshooting
 
-- If XAML fails to resolve Prism types: check `xmlns:prism="http://prismlibrary.com/"` and add the Prism.Wpf package to the project.
+- If XAML fails: Ensure Prism.Uno.WinUI is referenced and using: namespaces are correct. to the project.
 - If region navigation throws casting errors when using Syncfusion controls, verify your region adapter maps to the control API rather than inserting UIElements.
 - If memory isn't released after view removal, ensure collection handlers are unsubscribed.
 
@@ -284,7 +284,7 @@ These notes were added after inspecting this repository and the Prism 9.0.537 so
   - NuGet package identifiers may use names like `Prism.Container.DryIoc` while runtime namespaces and types appear under `Prism.DryIoc` / `Prism.DryIoc.Wpf` in the Prism source tree. This can look like a mismatch when updating using directives; prefer to follow the compile-time assemblies referenced by the csproj.
 
 - XAML URI and App bootstrapping guidance (confirmed):
-  - Use the modern Prism XAML URI `xmlns:prism="http://prismlibrary.com/"` in view XAML files.
+  - Use the modern Prism XAML URI `` in view XAML files.
   - To avoid markup compile / wpftmp issues, prefer the standard WPF `<Application>` root in `App.xaml` while keeping the code-behind inheriting `PrismApplication` (this repository follows that pattern).
 
 - References discovered while validating:

@@ -23,7 +23,6 @@ namespace WileyWidget.Services
         private readonly Logger _aiUsageLogger;
         private readonly ConcurrentBag<AILogEntry> _logEntries;
         private readonly object _metricsLock = new object();
-        private readonly ErrorReportingService _errorReportingService;
         private int _todayQueryCount;
         private double _totalResponseTime;
         private int _totalResponses;
@@ -34,11 +33,9 @@ namespace WileyWidget.Services
         /// Initializes a new instance of the AILoggingService.
         /// </summary>
         /// <param name="logger">Standard logger for service operations</param>
-        /// <param name="errorReportingService">Error reporting service for telemetry</param>
-        public AILoggingService(ILogger<AILoggingService> logger, ErrorReportingService errorReportingService)
+        public AILoggingService(ILogger<AILoggingService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _errorReportingService = errorReportingService ?? throw new ArgumentNullException(nameof(errorReportingService));
             _logEntries = new ConcurrentBag<AILogEntry>();
             _lastResetDate = DateTime.UtcNow.Date;
 
@@ -90,15 +87,6 @@ namespace WileyWidget.Services
                     model, query?.Length ?? 0, context?.Length ?? 0, TruncateForLog(query, 200));
 
                 _logger.LogDebug("Logged AI query: Model={Model}, QueryLength={Length}", model, query?.Length ?? 0);
-
-                // Track telemetry event for AI query
-                _errorReportingService.TrackEvent("AI_Query_Logged", new Dictionary<string, object>
-                {
-                    ["Model"] = model,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["ContextLength"] = context?.Length ?? 0,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
             }
             catch (Exception ex)
             {
@@ -138,16 +126,6 @@ namespace WileyWidget.Services
 
                 _logger.LogDebug("Logged AI response: ResponseTime={ResponseTime}ms, TokensUsed={Tokens}",
                     responseTimeMs, tokensUsed);
-
-                // Track telemetry event for AI response
-                _errorReportingService.TrackEvent("AI_Response_Logged", new Dictionary<string, object>
-                {
-                    ["ResponseTimeMs"] = responseTimeMs,
-                    ["TokensUsed"] = tokensUsed,
-                    ["ResponseLength"] = response?.Length ?? 0,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
             }
             catch (Exception ex)
             {
@@ -209,15 +187,6 @@ namespace WileyWidget.Services
                     errorType, TruncateForLog(query, 200), error);
 
                 _logger.LogWarning("Logged AI error: Type={ErrorType}, Query={Query}", errorType, query);
-
-                // Track telemetry event for AI error
-                _errorReportingService.TrackEvent("AI_Error_Logged", new Dictionary<string, object>
-                {
-                    ["ErrorType"] = errorType,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["ErrorMessage"] = error,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
             }
             catch (Exception ex)
             {
@@ -354,6 +323,17 @@ namespace WileyWidget.Services
                 var totalQueries = _todayQueryCount;
                 return totalQueries > 0 ? (_totalErrors * 100.0 / totalQueries) : 0;
             }
+        }
+
+        /// <summary>
+        /// Asynchronously logs a message.
+        /// </summary>
+        /// <param name="message">The message to log</param>
+        /// <returns>A task representing the asynchronous operation</returns>
+        public Task LogAsync(string message)
+        {
+            Log.Information(message);
+            return Task.CompletedTask;
         }
 
         /// <summary>

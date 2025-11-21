@@ -5,9 +5,9 @@
 
 .DESCRIPTION
     Converts WPF-style XAML namespaces to WinUI/Uno compatible format:
-    - Removes xmlns:prism="http://prismlibrary.com/"
+    - Removes 
     - Converts clr-namespace: to using:
-    - Fixes Prism.Regions to Prism.Navigation.Regions
+    - Fixes Prism.Navigation.Regions to Prism.Navigation.Regions
     - Updates Syncfusion WPF schemas to WinUI
 
 .PARAMETER ProjectPath
@@ -66,9 +66,9 @@ try {
         $fileFixed = $false
         $fileFixes = @()
         
-        # Fix 1: Remove xmlns:prism="http://prismlibrary.com/"
-        if ($content -match 'xmlns:prism="http://prismlibrary.com/"') {
-            $content = $content -replace '\s*xmlns:prism="http://prismlibrary.com/"', ''
+        # Fix 1: Remove 
+        if ($content -match '') {
+            $content = $content -replace '\s*', ''
             $fileFixed = $true
             $fileFixes += "Removed WPF Prism namespace"
         }
@@ -81,7 +81,7 @@ try {
             $fileFixes += "Converted clr-namespace to using:"
         }
         
-        # Fix 3: Fix Prism.Regions to Prism.Navigation.Regions
+        # Fix 3: Fix Prism.Navigation.Regions to Prism.Navigation.Regions
         if ($content -match 'using:Prism\.Regions[^.]') {
             $content = $content -replace 'using:Prism\.Regions([^.])', 'using:Prism.Navigation.Regions$1'
             $fileFixed = $true

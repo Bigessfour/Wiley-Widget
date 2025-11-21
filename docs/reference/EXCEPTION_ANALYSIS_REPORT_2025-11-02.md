@@ -156,8 +156,8 @@ catch (Exception ex)
 #### Issues
 
 ```
-Exception thrown: 'System.ArgumentException' in Prism.Wpf.dll
-Exception thrown: 'Prism.Navigation.Regions.RegionCreationException' in Prism.Wpf.dll
+Exception thrown: 'System.ArgumentException' in Prism.Uno.WinUI.dll
+Exception thrown: 'Prism.Navigation.Regions.RegionCreationException' in Prism.Uno.WinUI.dll
 Exception thrown: 'Prism.Navigation.Regions.RegionCreationException' in WindowsBase.dll
 ```
 
@@ -247,7 +247,7 @@ These are **cosmetic warnings** from Syncfusion's FluentDark theme internal temp
 #### Issue
 
 ```
-Exception thrown: 'System.NullReferenceException' in Syncfusion.SfChart.WPF.dll
+Exception thrown: 'System.NullReferenceException' in Syncfusion.UI.Xaml.Charts.dll
 ```
 
 #### Analysis

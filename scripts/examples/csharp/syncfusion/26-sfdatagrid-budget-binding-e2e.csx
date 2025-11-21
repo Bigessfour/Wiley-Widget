@@ -7,7 +7,7 @@
 #load "../../../../tools/csx-helpers.csx" // optional helper; safe if missing
 
 #r "nuget:Prism.DryIocServiceProviderAdapter,8.2.0"
-#r "nuget:Syncfusion.SfDataGrid.WPF,22.4.0.47"
+#r "nuget:Syncfusion.UI.Xaml.DataGrid,22.4.0.47"
 
 using System;
 using System.Linq;
@@ -59,8 +59,8 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
     {
         Console.WriteLine("[26] Running DataGrid control instantiation (Windows).");
         // attempt to use Syncfusion SfDataGrid if available
-        var gridType = Type.GetType("Syncfusion.UI.Xaml.Grid.SfDataGrid, Syncfusion.SfDataGrid.WPF")
-                      ?? Type.GetType("Syncfusion.SfDataGrid.WPF.SfDataGrid, Syncfusion.SfDataGrid.WPF");
+        var gridType = Type.GetType("Syncfusion.UI.Xaml.Grid.SfDataGrid, Syncfusion.UI.Xaml.DataGrid")
+                      ?? Type.GetType("Syncfusion.UI.Xaml.DataGrid.SfDataGrid, Syncfusion.UI.Xaml.DataGrid");
         if (gridType == null) throw new Exception("SfDataGrid type not found in loaded assemblies.");
 
         // create instance via reflection
@@ -84,7 +84,7 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         // Attempt to write a small XAML preview out for inspection if possible
         try
         {
-            var xamlWriter = Type.GetType("System.Windows.Markup.XamlWriter, PresentationFramework");
+            var xamlWriter = Type.GetType("System.Windows.Markup.XamlWriter, Microsoft.UI.Xaml");
             if (xamlWriter != null)
             {
                 var saveMethod = xamlWriter.GetMethod("Save", new[] { typeof(object) });

@@ -1,8 +1,8 @@
 using System;
 using System.Threading.Tasks;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml.Input;
 using WileyWidget.Services;
 
 namespace WileyWidget.ViewModels
@@ -19,7 +19,7 @@ namespace WileyWidget.ViewModels
             TestCommand = new RelayCommand(DoTheThing);
         }
 
-        public ICommand TestCommand { get; }
+        public IRelayCommand TestCommand { get; }
 
         private async void DoTheThing()
         {

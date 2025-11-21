@@ -15,7 +15,7 @@
 Notes (2025-10-19):
 
 - Fixed 23 build errors primarily in `EnterpriseViewModel` due to duplicate command properties and constructors created by WPF temp project caching. Consolidated to a single command set and one constructor, added missing state (`EnterpriseList`, `SelectedEnterprise`, `StatusMessage`, `ErrorMessage`).
-- Implemented IDisposable correctly for `_loadSemaphore` and removed unnecessary `Prism.Regions` usage to resolve namespace errors.
+- Implemented IDisposable correctly for `_loadSemaphore` and removed unnecessary `Prism.Navigation.Regions` usage to resolve namespace errors.
 - Ensured UI-thread-safe collection updates using `DispatcherHelper`; retained Task.Run only for CPU/disk-bound export operations per earlier decision.
 
 - [x] Reviewed `EnterpriseView.xaml.cs` — Task.Run retained for CPU/disk-bound CSV export; UI notifications marshalled via DispatcherHelper.

@@ -1,0 +1,24 @@
+{
+  "models": [
+    {
+      "title": "Grok",
+      "provider": "xai",
+      "model": "grok-beta", // Or "grok-1" if available; check xAI docs for latest
+      "apiKey": "<YOUR_XAI_API_KEY>"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Grok Autocomplete",
+    "provider": "xai",
+    "model": "grok-beta",
+    "apiKey": "<YOUR_XAI_API_KEY>"
+  },
+  "slashCommands": [
+    // Optional: Add custom commands, e.g., for build fixes
+    {
+      "name": "fixbuild",
+      "description": "Suggest fixes for dotnet build errors",
+      "prompt": "Analyze this build error and suggest fixes: {{input}}"
+    }
+  ]
+}

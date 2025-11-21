@@ -43,6 +43,20 @@
   "terminal.integrated.env.windows": {
     "DOTNET_ENVIRONMENT": "Development"
   },
+  "continue.enabled": true,
+  "continue.apiKey": "",
+  "continue.workspaceId": "Wiley-Widget",
+  "continue.configPath": ".vscode/continue.json",
+  "github.copilot.chat.experimental.requiredEditsMode": false,
+  "grok.toolsEnabled": true,
+  "continue.experimental.agenticTools": true,
+  "continue.experimental.parallelToolCalls": true,
+  "continue.streaming": true,
+  "continue.observability.enabled": true,
+  "continue.observability.showToolCalls": true,
+  "continue.observability.showReasoningTokens": true,
+  "github.copilot.chat.experimental.toolEnabled": true,
+  "github.copilot.chat.streaming": true,
   "csharp.debug.logging": {
     "engineLogging": false,
     "exceptions": true,

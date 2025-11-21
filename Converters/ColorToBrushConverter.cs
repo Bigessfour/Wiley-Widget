@@ -9,7 +9,7 @@ namespace WileyWidget.Converters
     /// <summary>
     /// Converts a hex color string (e.g., "#28A745") to a SolidColorBrush.
     /// </summary>
-    public class ColorToBrushConverter : IValueConverter
+    public partial class ColorToBrushConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

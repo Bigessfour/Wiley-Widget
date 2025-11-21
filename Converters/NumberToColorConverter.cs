@@ -9,7 +9,7 @@ namespace WileyWidget.Converters
     /// <summary>
     /// Converts a number to a color brush (positive = green, negative = red, zero = gray).
     /// </summary>
-    public class NumberToColorConverter : IValueConverter
+    public partial class NumberToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

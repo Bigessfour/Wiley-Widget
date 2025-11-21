@@ -6,8 +6,8 @@
     <RunAnalyzers>false</RunAnalyzers>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
-    <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
 
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -37,11 +37,7 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="Polly.RateLimiting" />
-    <!-- Prism packages - explicit versions for consistency -->
-    <!-- Prism.Core is the only Prism dependency needed in Services layer -->
-    <!-- Platform-specific Prism packages (Wpf/Uno.WinUI) belong in presentation projects -->
-    <PackageReference Include="Prism.Core" />
-    <PackageReference Include="Prism.Container.DryIoc" />
+    <!-- Prism removed - deprecated -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">

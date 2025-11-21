@@ -27,8 +27,6 @@ namespace WileyWidget.Views
 
             ViewModel = App.Services?.GetService(typeof(QuickBooksDashboardViewModel)) as QuickBooksDashboardViewModel ?? null!;
 
-            this.InitializeComponent();
-
             if (ViewModel is not null)
             {
                 this.DataContext = ViewModel;

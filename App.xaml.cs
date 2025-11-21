@@ -4,12 +4,18 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Licensing;
 using System.IO;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.EntityFrameworkCore;
+using WileyWidget.Data;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Services;
 
 namespace WileyWidget
 {
     public partial class App : Application
     {
-        public static IServiceProvider Services { get; private set; }
+        public static IServiceProvider? Services { get; private set; }
         private Window? m_window;
 
         public App()
@@ -27,6 +33,39 @@ namespace WileyWidget
                 builder.AddDebug();
                 builder.SetMinimumLevel(LogLevel.Information);
             });
+
+            // Add configuration (appsettings.json optional + environment)
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory ?? Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                .AddEnvironmentVariables()
+                .Build();
+
+            services.AddSingleton<IConfiguration>(configuration);
+
+            // Register UI pages and viewmodels for DI
+            services.AddTransient<Views.BudgetOverviewPage>();
+            services.AddTransient<ViewModels.BudgetOverviewViewModel>();
+
+            // Register memory cache and cache service
+            services.AddWileyMemoryCache();
+
+            // Try to wire backend data services. Use explicit registrations when project assemblies are available.
+            try
+            {
+                // AppDbContextFactory has constructors that accept IConfiguration
+                var dbFactory = new AppDbContextFactory(configuration);
+                services.AddSingleton<IDbContextFactory<AppDbContext>>(dbFactory);
+
+                // Register BudgetRepository
+                services.AddScoped<IBudgetRepository, BudgetRepository>();
+
+                // Register other Data services as needed (Transaction repository, etc.) if present
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Backend registration failed: {ex.Message}");
+            }
 
             Services = services.BuildServiceProvider();
         }

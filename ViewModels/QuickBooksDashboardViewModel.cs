@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -21,77 +22,77 @@ namespace WileyWidget.ViewModels
         private CancellationTokenSource? _loadCancellationTokenSource;
 
         // Connection Status Properties
-        [ObservableProperty]
         private bool _isConnected;
+        public bool IsConnected { get => _isConnected; set => SetProperty(ref _isConnected, value); }
 
-        [ObservableProperty]
         private string _connectionStatusText = "Disconnected";
+        public string ConnectionStatusText { get => _connectionStatusText; set => SetProperty(ref _connectionStatusText, value); }
 
-        [ObservableProperty]
         private string _connectionStatusColor = "#DC3545"; // Red
+        public string ConnectionStatusColor { get => _connectionStatusColor; set => SetProperty(ref _connectionStatusColor, value); }
 
-        [ObservableProperty]
         private string _companyName = "No Company";
+        public string CompanyName { get => _companyName; set => SetProperty(ref _companyName, value); }
 
-        [ObservableProperty]
         private string _fiscalYear = "N/A";
+        public string FiscalYear { get => _fiscalYear; set => SetProperty(ref _fiscalYear, value); }
 
-        [ObservableProperty]
         private string _lastSyncTime = "Never";
+        public string LastSyncTime { get => _lastSyncTime; set => SetProperty(ref _lastSyncTime, value); }
 
         // Financial KPI Properties
-        [ObservableProperty]
         private decimal _revenueYTD;
+        public decimal RevenueYTD { get => _revenueYTD; set => SetProperty(ref _revenueYTD, value); }
 
-        [ObservableProperty]
         private string _revenueYTDFormatted = "$0.00";
+        public string RevenueYTDFormatted { get => _revenueYTDFormatted; set => SetProperty(ref _revenueYTDFormatted, value); }
 
-        [ObservableProperty]
         private decimal _netIncomeYTD;
+        public decimal NetIncomeYTD { get => _netIncomeYTD; set => SetProperty(ref _netIncomeYTD, value); }
 
-        [ObservableProperty]
         private string _netIncomeYTDFormatted = "$0.00";
+        public string NetIncomeYTDFormatted { get => _netIncomeYTDFormatted; set => SetProperty(ref _netIncomeYTDFormatted, value); }
 
-        [ObservableProperty]
         private decimal _accountsReceivableBalance;
+        public decimal AccountsReceivableBalance { get => _accountsReceivableBalance; set => SetProperty(ref _accountsReceivableBalance, value); }
 
-        [ObservableProperty]
         private string _accountsReceivableFormatted = "$0.00";
+        public string AccountsReceivableFormatted { get => _accountsReceivableFormatted; set => SetProperty(ref _accountsReceivableFormatted, value); }
 
-        [ObservableProperty]
         private decimal _accountsPayableBalance;
+        public decimal AccountsPayableBalance { get => _accountsPayableBalance; set => SetProperty(ref _accountsPayableBalance, value); }
 
-        [ObservableProperty]
         private string _accountsPayableFormatted = "$0.00";
+        public string AccountsPayableFormatted { get => _accountsPayableFormatted; set => SetProperty(ref _accountsPayableFormatted, value); }
 
         // UI State Properties
-        [ObservableProperty]
         private bool _isLoading;
+        public bool IsLoading { get => _isLoading; set => SetProperty(ref _isLoading, value); }
 
-        [ObservableProperty]
         private bool _isSyncing;
+        public bool IsSyncing { get => _isSyncing; set => SetProperty(ref _isSyncing, value); }
 
-        [ObservableProperty]
         private bool _hasData;
+        public bool HasData { get => _hasData; set => SetProperty(ref _hasData, value); }
 
-        [ObservableProperty]
         private bool _hasError;
+        public bool HasError { get => _hasError; set => SetProperty(ref _hasError, value); }
 
-        [ObservableProperty]
         private string _errorMessage = string.Empty;
+        public string ErrorMessage { get => _errorMessage; set => SetProperty(ref _errorMessage, value); }
 
-        [ObservableProperty]
         private bool _showEmptyState;
+        public bool ShowEmptyState { get => _showEmptyState; set => SetProperty(ref _showEmptyState, value); }
 
         // Fiscal Year Properties
-        [ObservableProperty]
         private DateTime _fiscalYearStart;
+        public DateTime FiscalYearStart { get => _fiscalYearStart; set => SetProperty(ref _fiscalYearStart, value); }
 
-        [ObservableProperty]
         private DateTime _fiscalYearEnd;
+        public DateTime FiscalYearEnd { get => _fiscalYearEnd; set => SetProperty(ref _fiscalYearEnd, value); }
 
-        [ObservableProperty]
         private ObservableCollection<FinancialMetric> _financialMetrics = new();
+        public ObservableCollection<FinancialMetric> FinancialMetrics { get => _financialMetrics; set => SetProperty(ref _financialMetrics, value); }
 
         public QuickBooksDashboardViewModel(
             QuickBooksService quickBooksService,
@@ -128,7 +129,7 @@ namespace WileyWidget.ViewModels
                 var companyInfo = await _quickBooksService.GetCompanyInfoAsync(cancellationToken);
                 CalculateFiscalYear(companyInfo.FiscalYearStartMonth);
                 
-                LastSyncTime = DateTime.Now.ToString("g", System.Globalization.CultureInfo.InvariantCulture);
+                LastSyncTime = DateTime.Now.ToString("g", CultureInfo.InvariantCulture);
 
                 Log.Information("Connected to QuickBooks successfully");
                 await LoadDashboardDataAsync(cancellationToken);
@@ -149,7 +150,7 @@ namespace WileyWidget.ViewModels
                 // TODO: Replace with actual QuickBooksService.SyncDataAsync() when implemented
                 await Task.Delay(2000, cancellationToken);
 
-                LastSyncTime = DateTime.Now.ToString("g", System.Globalization.CultureInfo.InvariantCulture);
+                LastSyncTime = DateTime.Now.ToString("g", CultureInfo.InvariantCulture);
                 Log.Information("QuickBooks sync completed successfully");
                 
                 await LoadDashboardDataAsync(cancellationToken);
@@ -215,17 +216,17 @@ namespace WileyWidget.ViewModels
 
             // Mock financial data (will be replaced with real QuickBooks data)
             RevenueYTD = 1_250_000.00m;
-            RevenueYTDFormatted = RevenueYTD.ToString("C2", System.Globalization.CultureInfo.CurrentCulture);
+            RevenueYTDFormatted = RevenueYTD.ToString("C2", CultureInfo.CurrentCulture);
 
             var expensesYTD = 850_000.00m;
             NetIncomeYTD = RevenueYTD - expensesYTD;
-            NetIncomeYTDFormatted = NetIncomeYTD.ToString("C2", System.Globalization.CultureInfo.CurrentCulture);
+            NetIncomeYTDFormatted = NetIncomeYTD.ToString("C2", CultureInfo.CurrentCulture);
 
             AccountsReceivableBalance = 185_500.00m;
-            AccountsReceivableFormatted = AccountsReceivableBalance.ToString("C2", System.Globalization.CultureInfo.CurrentCulture);
+            AccountsReceivableFormatted = AccountsReceivableBalance.ToString("C2", CultureInfo.CurrentCulture);
 
             AccountsPayableBalance = 125_750.00m;
-            AccountsPayableFormatted = AccountsPayableBalance.ToString("C2", System.Globalization.CultureInfo.CurrentCulture);
+            AccountsPayableFormatted = AccountsPayableBalance.ToString("C2", CultureInfo.CurrentCulture);
 
             // Populate financial metrics collection for SfDataGrid
             FinancialMetrics.Clear();
@@ -337,7 +338,7 @@ namespace WileyWidget.ViewModels
             // Format fiscal year display
             if (FiscalYearStart.Year == FiscalYearEnd.Year)
             {
-                FiscalYear = FiscalYearStart.Year.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                FiscalYear = FiscalYearStart.Year.ToString(CultureInfo.InvariantCulture);
             }
             else
             {
@@ -345,8 +346,8 @@ namespace WileyWidget.ViewModels
             }
             
             Log.Information("Calculated fiscal year: {FiscalYear} (Start: {Start}, End: {End})", 
-                FiscalYear, FiscalYearStart.ToString("d", System.Globalization.CultureInfo.InvariantCulture), 
-                FiscalYearEnd.ToString("d", System.Globalization.CultureInfo.InvariantCulture));
+                FiscalYear, FiscalYearStart.ToString("d", CultureInfo.InvariantCulture), 
+                FiscalYearEnd.ToString("d", CultureInfo.InvariantCulture));
         }
 
         public void Dispose()

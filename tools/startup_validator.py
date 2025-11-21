@@ -191,8 +191,11 @@ BREAKING_CHANGES = {
 # Assembly dependency requirements
 REQUIRED_DEPENDENCIES = {
     "Syncfusion.SfGrid.WPF": ["Syncfusion.SfGridCommon.WPF", "Syncfusion.Data.WPF"],
-    "Syncfusion.SfChart.WPF": ["Syncfusion.Data.WPF"],
-    "Syncfusion.SfDataGrid.WPF": ["Syncfusion.SfGridCommon.WPF", "Syncfusion.Data.WPF"],
+    "Syncfusion.UI.Xaml.Charts": ["Syncfusion.Data.WPF"],
+    "Syncfusion.UI.Xaml.DataGrid": [
+        "Syncfusion.SfGridCommon.WPF",
+        "Syncfusion.Data.WPF",
+    ],
 }
 
 # License key validation patterns

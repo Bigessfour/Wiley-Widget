@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <AnalysisLevel>6.0</AnalysisLevel>
@@ -6,7 +6,7 @@
     <RunAnalyzers>false</RunAnalyzers>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -50,9 +50,8 @@
   <!-- The Models project should only contain domain models and not have dependencies on
   Business/Data/Services -->
 
-  <!-- Prevent transitive global using injected by Prism.DryIoc package from upstream projects -->
+  <!-- Prism removed - no longer needed -->
   <ItemGroup>
-    <Using Remove="Prism.DryIoc" />
   </ItemGroup>
 
 </Project>

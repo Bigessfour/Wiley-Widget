@@ -6,7 +6,7 @@ namespace WileyWidget.Converters
     /// <summary>
     /// Converts a double to percentage string (e.g., 12.34%).
     /// </summary>
-    public class PercentageConverter : IValueConverter
+    public partial class PercentageConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

@@ -97,7 +97,7 @@ We'll carve this beast into 4 phases, aligned with your repo's scaffold. Each bu
 
 **Technical Implementation Notes:**
 
-- **Syncfusion WPF 30.2.4:** Pin to this version; register license in App.xaml.cs.
+- **Syncfusion WinUI 30.2.4:** Pin to this version; register license in App.xaml.cs.
 - **Testing:** Use NUnit (from your WileyWidget.Tests.csproj) for ViewModel tests; FlaUI for UI smoke.
 
 **Risk Mitigation:**

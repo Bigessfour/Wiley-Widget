@@ -1,147 +1,18 @@
 <Page
     x:Class="WileyWidget.Views.BudgetOverviewPage"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns="using:Microsoft.UI.Xaml"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="using:Microsoft.UI.Xaml"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:chart="using:Syncfusion.UI.Xaml.Charts"
-    xmlns:gauge="using:Syncfusion.UI.Xaml.Gauges"
-    xmlns:progress="using:Syncfusion.UI.Xaml.ProgressBar"
-    xmlns:datagrid="using:Syncfusion.UI.Xaml.DataGrid"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <Page.Resources>
-        <Style x:Key="KPICardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="16" />
-            <Setter Property="Margin" Value="8" />
-        </Style>
-    </Page.Resources>
-
     <Grid>
-        <!-- Busy Indicator Overlay -->
-        <ProgressRing
-            x:Name="BusyIndicator"
-            Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-            IsActive="True"
-            Width="50"
-            Height="50"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center" />
-
-        <!-- Main Content -->
-        <ScrollViewer ZoomMode="Disabled">
-            <StackPanel Spacing="24" Margin="24">
-
-                <!-- Header -->
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="8" VerticalAlignment="Center">
-                        <TextBlock
-                            Text="Budget Overview"
-                            Style="{ThemeResource TitleTextBlockStyle}" />
-                        <TextBlock
-                            Text="Compare budgeted vs actual spending by department"
-                            Style="{ThemeResource BodyTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
-                    <Button
-                        Content="Refresh"
-                        Command="{x:Bind ViewModel.RefreshDataAsyncCommand}"
-                        VerticalAlignment="Center" />
-                </Grid>
-
-                <!-- KPI Cards -->
-                <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto">
-                    <Border Style="{StaticResource KPICardStyle}" Grid.Column="0">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Total Budget" Style="{ThemeResource BodyTextBlockStyle}" />
-                            <TextBlock
-                                Text="{x:Bind ViewModel.TotalBudget, Mode=OneWay, Converter={StaticResource CurrencyConverter}}"
-                                Style="{ThemeResource TitleTextBlockStyle}" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource KPICardStyle}" Grid.Column="1">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Total Actual" Style="{ThemeResource BodyTextBlockStyle}" />
-                            <TextBlock
-                                Text="{x:Bind ViewModel.TotalActual, Mode=OneWay, Converter={StaticResource CurrencyConverter}}"
-                                Style="{ThemeResource TitleTextBlockStyle}" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource KPICardStyle}" Grid.Column="2">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Total Variance" Style="{ThemeResource BodyTextBlockStyle}" />
-                            <TextBlock
-                                Text="{x:Bind ViewModel.TotalVariance, Mode=OneWay, Converter={StaticResource CurrencyConverter}}"
-                                Style="{ThemeResource TitleTextBlockStyle}"
-                                Foreground="{x:Bind ViewModel.TotalVariance, Mode=OneWay, Converter={StaticResource NumberToColorConverter}}" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Budget Health Gauge -->
-                    <Border Style="{StaticResource KPICardStyle}" Grid.Column="3">
-                        <StackPanel Spacing="16">
-                            <TextBlock Text="Budget Health" Style="{ThemeResource BodyTextBlockStyle}" />
-                            <ProgressBar
-                                Value="{x:Bind ViewModel.BudgetHealthPercentage, Mode=OneWay}"
-                                Maximum="100"
-                                Height="20"
-                                CornerRadius="10" />
-                            <TextBlock
-                                Text="{x:Bind ViewModel.BudgetHealthPercentage, Mode=OneWay, Converter={StaticResource PercentageConverter}}"
-                                HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                </Grid>
-
-                <!-- Budget Data Grid -->
-                <Border Style="{StaticResource KPICardStyle}">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="Department Budget Details" Style="{ThemeResource SubtitleTextBlockStyle}" />
-                        <datagrid:SfDataGrid
-                            ItemsSource="{x:Bind ViewModel.BudgetItems, Mode=OneWay}"
-                            AutoGenerateColumns="False"
-                            ColumnWidthMode="Auto"
-                            AllowSorting="True"
-                            AllowFiltering="True">
-                            <datagrid:SfDataGrid.Columns>
-                                <datagrid:GridTextColumn MappingName="Department" HeaderText="Department" />
-                                <datagrid:GridTextColumn
-                                    MappingName="BudgetAmount"
-                                    HeaderText="Budget"
-                                    DisplayBinding="{Binding BudgetAmount, Converter={StaticResource CurrencyConverter}}" />
-                                <datagrid:GridTextColumn
-                                    MappingName="ActualAmount"
-                                    HeaderText="Actual"
-                                    DisplayBinding="{Binding ActualAmount, Converter={StaticResource CurrencyConverter}}" />
-                                <datagrid:GridTextColumn
-                                    MappingName="Variance"
-                                    HeaderText="Variance"
-                                    DisplayBinding="{Binding Variance, Converter={StaticResource CurrencyConverter}}" />
-                                <datagrid:GridTextColumn
-                                    MappingName="VariancePercentage"
-                                    HeaderText="Variance %"
-                                    DisplayBinding="{Binding VariancePercentage, Converter={StaticResource PercentageConverter}}" />
-                            </datagrid:SfDataGrid.Columns>
-                        </datagrid:SfDataGrid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Budget vs Actual Chart -->
-                <Border Style="{StaticResource KPICardStyle}">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="Budget vs Actual Summary" Style="{ThemeResource SubtitleTextBlockStyle}" />
-                        <TextBlock Text="Data displayed in the grid above" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
-                </Border>
-
-            </StackPanel>
-        </ScrollViewer>
+        <StackPanel Spacing="24" Margin="24">
+            <TextBlock Text="Budget Overview" Style="{ThemeResource TitleTextBlockStyle}" />
+            <TextBlock Text="Budget vs actual comparison will appear here" Style="{ThemeResource BodyTextBlockStyle}" />
+        </StackPanel>
     </Grid>
 </Page>

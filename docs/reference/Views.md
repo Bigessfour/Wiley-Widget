@@ -516,7 +516,7 @@ public async Task LoadDataAsync()
 
 ### XAML Integration
 
-1. **xmlns:prism**: Include `xmlns:prism="http://prismlibrary.com/"` in all XAML files
+1. **xmlns:prism**: Include `` in all XAML files
 2. **AutoWireViewModel**: Set `prism:ViewModelLocator.AutoWireViewModel="True"` for views
 3. **Region Names**: Use `prism:RegionManager.RegionName` for region definitions
 4. **Data Binding**: Follow WPF data binding best practices

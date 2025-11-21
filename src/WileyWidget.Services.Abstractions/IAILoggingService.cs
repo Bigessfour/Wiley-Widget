@@ -51,6 +51,13 @@ namespace WileyWidget.Services
         void LogMetric(string metricName, double metricValue, Dictionary<string, object>? metadata = null);
 
         /// <summary>
+        /// Asynchronously logs a message.
+        /// </summary>
+        /// <param name="message">The message to log</param>
+        /// <returns>A task representing the asynchronous operation</returns>
+        Task LogAsync(string message);
+
+        /// <summary>
         /// Gets usage statistics for a specified time period.
         /// </summary>
         /// <param name="startDate">Start date for statistics</param>

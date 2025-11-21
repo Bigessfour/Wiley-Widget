@@ -7,7 +7,7 @@ namespace WileyWidget.Converters
     /// <summary>
     /// Converts a decimal to currency string (e.g., $1,234.56).
     /// </summary>
-    public class CurrencyConverter : IValueConverter
+    public partial class CurrencyConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

@@ -11,12 +11,16 @@ namespace WileyWidget.Views
 
         public BudgetOverviewPage()
         {
-            this.InitializeComponent();
-
             // Get ViewModel from DI
             ViewModel = App.Services?.GetService(typeof(BudgetOverviewViewModel)) as BudgetOverviewViewModel ?? new BudgetOverviewViewModel();
 
             this.DataContext = ViewModel;
+
+            // Trigger initial load if not already loading
+            if (ViewModel.IsLoading == false)
+            {
+                _ = ViewModel.LoadBudgetDataAsyncCommand?.ExecuteAsync(null);
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ namespace WileyWidget.Converters
     /// Converts a decimal amount to a color brush based on positive/negative value.
     /// Positive = Green, Negative = Red.
     /// </summary>
-    public class PositiveNegativeColorConverter : IValueConverter
+    public partial class PositiveNegativeColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

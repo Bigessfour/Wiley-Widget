@@ -107,7 +107,7 @@ Lines 1-207: Hybrid stub with some production code
 #### ❌ CreateShell() - REQUIRED
 
 ```csharp
-protected override Window CreateShell()
+protected override void CreateWindow()
 {
     // STUB: Not implemented
     // Should return main Shell window
@@ -352,7 +352,7 @@ To unblock development immediately:
 ```csharp
 // Add to src/App.xaml.cs:
 
-protected override Window CreateShell()
+protected override void CreateWindow()
 {
     return Container.Resolve<Shell>();
 }

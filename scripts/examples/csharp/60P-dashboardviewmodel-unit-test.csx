@@ -8,7 +8,7 @@
 #r "nuget: Microsoft.Extensions.Logging, 9.0.10"
 #r "nuget: Moq, 4.20.72"
 #r "nuget: Prism.Core, 9.0.537"
-#r "nuget: Prism.Wpf, 9.0.537"
+#r "nuget: Prism.Uno.WinUI, 9.0.537"
 #r "nuget: Prism.Container.DryIoc, 9.0.107"
 #r "nuget: DryIoc, 5.4.3"
 
@@ -32,7 +32,7 @@ using Prism.Navigation.Regions;
 // Test Name: DashboardViewModel Unit Test
 // Category: Unit (ViewModels)
 // Purpose: Validates MVVM patterns, property change notifications, and command execution
-// Dependencies: Prism.Wpf, Moq
+// Dependencies: Prism.Uno.WinUI, Moq
 // Testing: INotifyPropertyChanged, Command bindings, Async data loading, Navigation
 // ========================================
 

@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -118,26 +118,26 @@ jobs:
           $version = "1.0.${{ github.run_number }}"
           $info = @"
           ## Wiley-Widget Build $version
-          
+
           **Build Date:** $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
           **Commit:** ${{ github.sha }}
           **Platform:** x64
           **Runtime:** .NET 9 WinUI 3
           **Type:** Self-contained single-file executable
-          
+
           ### Installation
           1. Download Wiley-Widget.exe
           2. Run the executable (no installation required)
           3. Windows may show SmartScreen warning - click "More info" → "Run anyway"
-          
+
           ### Requirements
           - Windows 10 version 1809 (October 2018 Update) or later
           - x64 processor
-          
+
           ### Known Issues
           - First launch may take longer while extracting embedded files
           - Syncfusion license dialog may appear if license key not configured
-          
+
           "@
           $info | Out-File -FilePath build-info.txt -Encoding UTF8
 

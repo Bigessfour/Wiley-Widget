@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- Align TFM with solution-wide Windows target to avoid project compatibility (NU1201) -->
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
@@ -10,6 +10,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Enable WPF APIs (DispatcherPriority etc.) used by some abstractions - only for .NET 8.0 -->
     <UseWPF Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'">true</UseWPF>
+    <NoWarn>$(NoWarn);NETSDK1206</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

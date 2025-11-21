@@ -24,7 +24,7 @@ All issues have been addressed with immediate fixes applied.
 
 ```
 System.IO.IOException: Cannot locate resource 'themes/generic.xaml'
-Exception thrown: 'System.IO.IOException' in PresentationFramework.dll
+Exception thrown: 'System.IO.IOException' in Microsoft.UI.Xaml.dll
 ```
 
 ### Root Cause

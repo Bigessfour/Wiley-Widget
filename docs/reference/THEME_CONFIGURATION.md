@@ -85,7 +85,7 @@ The following Syncfusion controls require theme support:
 | DoubleTextBox   | Syncfusion.SfInput.WPF         | UpDown/UpDown.xaml             |
 | IntegerTextBox  | Syncfusion.SfInput.WPF         | UpDown/UpDown.xaml             |
 | SfDataGrid      | Syncfusion.SfGrid.WPF          | _Auto-themed by SfSkinManager_ |
-| SfChart         | Syncfusion.SfChart.WPF         | _Auto-themed by SfSkinManager_ |
+| SfChart         | Syncfusion.UI.Xaml.Charts      | _Auto-themed by SfSkinManager_ |
 | SfBusyIndicator | Syncfusion.SfBusyIndicator.WPF | _Auto-themed by SfSkinManager_ |
 
 ## Troubleshooting

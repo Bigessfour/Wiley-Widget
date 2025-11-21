@@ -96,12 +96,10 @@ class TestPatternMatching:
 
     def test_package_ref_pattern(self):
         """Test .csproj PackageReference pattern"""
-        xml = (
-            '<PackageReference Include="Syncfusion.SfDataGrid.WPF" Version="27.1.48" />'
-        )
+        xml = '<PackageReference Include="Syncfusion.UI.Xaml.DataGrid" Version="27.1.48" />'
         match = PACKAGE_REF_PATTERN.search(xml)
         assert match is not None
-        assert match.group(1) == "Syncfusion.SfDataGrid.WPF"
+        assert match.group(1) == "Syncfusion.UI.Xaml.DataGrid"
         assert match.group(2) == "27.1.48"
 
     def test_sf_control_pattern(self):
@@ -237,10 +235,10 @@ class TestVersionParsing:
     def test_is_version_outdated(self):
         """Test version outdated detection"""
         # 27.1.48 is the default minimum
-        assert is_version_outdated("Syncfusion.SfDataGrid.WPF", "26.0.0")
-        assert is_version_outdated("Syncfusion.SfDataGrid.WPF", "27.1.47")
-        assert not is_version_outdated("Syncfusion.SfDataGrid.WPF", "27.1.48")
-        assert not is_version_outdated("Syncfusion.SfDataGrid.WPF", "28.0.0")
+        assert is_version_outdated("Syncfusion.UI.Xaml.DataGrid", "26.0.0")
+        assert is_version_outdated("Syncfusion.UI.Xaml.DataGrid", "27.1.47")
+        assert not is_version_outdated("Syncfusion.UI.Xaml.DataGrid", "27.1.48")
+        assert not is_version_outdated("Syncfusion.UI.Xaml.DataGrid", "28.0.0")
 
     def test_check_breaking_changes_none(self):
         """Test no breaking changes for current versions"""

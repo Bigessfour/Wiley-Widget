@@ -2,45 +2,23 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <!-- Updated TFM for SDK 1.5+ compatibility: Win11 22H2 baseline unlocks modern APIs -->
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>WileyWidget</RootNamespace>
     <UseWinUI>true</UseWinUI>
+    <EnableXamlCompiler>false</EnableXamlCompiler>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <WindowsPackageType>None</WindowsPackageType>
-    <WarningsNotAsErrors>NU1605;MSB4062</WarningsNotAsErrors>
-    
-    <!-- Force x64 platform -->
-    <Platform>x64</Platform>
-    <PlatformTarget>x64</PlatformTarget>
-    
-    <!-- Suppress informational warnings -->
-    <NoWarn>$(NoWarn);MVVMTK0045;CA1001;NETSDK1206;MSB4062</NoWarn>
-    
-    <!-- CRITICAL: Disable all MSIX/packaging functionality -->
-    <EnableMsixTooling>false</EnableMsixTooling>
-    <AppxPackage>false</AppxPackage>
-    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
-    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
-    <GenerateLibraryLayout>true</GenerateLibraryLayout>
-    <DisableXbfGeneration>false</DisableXbfGeneration>
-    <MrtCoreDisableAppXGeneration>true</MrtCoreDisableAppXGeneration>
-    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
-    <GenerateProjectPriFile>false</GenerateProjectPriFile>
+ <AppxPackage>false</AppxPackage>
     <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
-    <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
-    <AppxBundle>Never</AppxBundle>
-    <AppxBundlePlatforms></AppxBundlePlatforms>
-    <DisableXbfLineInfo>true</DisableXbfLineInfo>
-    <AppxGeneratePrisForPortableLibraries>false</AppxGeneratePrisForPortableLibraries>
-    <GeneratePrisForMsix>false</GeneratePrisForMsix>
-    <AppxPackageBuildMode>SideloadOnly</AppxPackageBuildMode>
-    <ImportWindowsSDKTargets>false</ImportWindowsSDKTargets>
-    
-    <!--  WORKAROUND: Prevent WindowsAppSDK from loading AppxPackage MSBuild task -->
-    <UseSdkBuildToolsPackage>false</UseSdkBuildToolsPackage>
-    
+    <GenerateResourceMSBuildArchitecture>x64</GenerateResourceMSBuildArchitecture>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <DefaultResourceLanguage>en-US</DefaultResourceLanguage>
+    <WarningsNotAsErrors>NU1605;MSB4062</WarningsNotAsErrors>
     <Platforms>x64</Platforms>
     <!-- Suppress WindowsAppSDK package-level RuntimeIdentifiers that inject unsupported RIDs.
          Using only RuntimeIdentifiers (plural) bypasses WindowsAppSDK 1.5.x XamlCompiler exit code 1
@@ -52,21 +30,11 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="Assets\\SplashScreen.scale-200.png" />
-    <Content Include="Assets\\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\\StoreLogo.png" />
-    <Content Include="Assets\\Wide310x150Logo.scale-200.png" />
-  </ItemGroup>
 
   <ItemGroup>
     <!-- Pin to exact SDK 1.7 stable for compatibility; removes NU1603 warning -->
-    <PackageReference Include="Microsoft.WindowsAppSDK">
-      <ExcludeAssets>all</ExcludeAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <!-- EF/Tools removed from UI project (move to data project) -->
@@ -84,7 +52,12 @@
     <PackageReference Include="Serilog.Enrichers.Process" />
     <!-- Syncfusion WinUI Controls -->
     <PackageReference Include="Syncfusion.Licensing" />
-    <PackageReference Include="Syncfusion.Grid.WinUI" />
+    <PackageReference Include="Syncfusion.Grid.WinUI" />  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="src\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="src\WileyWidget.Services\WileyWidget.Services.csproj" />
   </ItemGroup>
 
   <!-- Exclude custom projects and tests from main app build -->
@@ -92,6 +65,12 @@
     <Compile Remove="src\\**" />
     <Compile Remove="tests\\**" />
     <Compile Remove="WileyWidget.Services.UnitTests\\**" />
+  </ItemGroup>
+
+  <!-- Exclude XAML files entirely when XAML compiler is disabled -->
+  <ItemGroup>
+    <Page Remove="**\*.xaml" />
+    <None Remove="**\*.xaml" />
   </ItemGroup>
 
   <!-- Publish Properties -->

@@ -1,7 +1,7 @@
 // 27-sfchart-trend-analysis.csx
 // Purpose: test small trend analysis logic and BudgetProgressConverter against a SfChart series
 
-#r "nuget:Syncfusion.SfChart.WPF,22.4.0.47"
+#r "nuget:Syncfusion.UI.Xaml.Charts,22.4.0.47"
 #r "nuget:Prism.DryIocServiceProviderAdapter,8.2.0"
 
 using System;
@@ -45,8 +45,8 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     try
     {
-        var chartType = Type.GetType("Syncfusion.UI.Xaml.Charts.SfChart, Syncfusion.SfChart.WPF")
-                        ?? Type.GetType("Syncfusion.SfChart.WPF.SfChart, Syncfusion.SfChart.WPF");
+        var chartType = Type.GetType("Syncfusion.UI.Xaml.Charts.SfChart, Syncfusion.UI.Xaml.Charts")
+                        ?? Type.GetType("Syncfusion.UI.Xaml.Charts.SfChart, Syncfusion.UI.Xaml.Charts");
         if (chartType == null) throw new Exception("SfChart type not found");
 
         dynamic chart = Activator.CreateInstance(chartType);
@@ -56,7 +56,7 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         // Attempt to write a XAML preview
         try
         {
-            var xamlWriter = Type.GetType("System.Windows.Markup.XamlWriter, PresentationFramework");
+            var xamlWriter = Type.GetType("System.Windows.Markup.XamlWriter, Microsoft.UI.Xaml");
             if (xamlWriter != null)
             {
                 var saveMethod = xamlWriter.GetMethod("Save", new[] { typeof(object) });

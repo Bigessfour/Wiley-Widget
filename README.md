@@ -1602,7 +1602,7 @@ WPF applications, especially those using the temporary markup compilation projec
 <ItemGroup>
   <!-- GeneratePathProperty provides MSBuild variables for package paths -->
   <PackageReference Include="Prism.Core" Version="9.0.537" GeneratePathProperty="true" />
-  <PackageReference Include="Prism.Wpf" Version="9.0.537" GeneratePathProperty="true" />
+  <PackageReference Include="Prism.Uno.WinUI" Version="9.0.537" GeneratePathProperty="true" />
   <PackageReference Include="Prism.DryIoc" Version="9.0.537" GeneratePathProperty="true" />
 </ItemGroup>
 ```
@@ -1685,7 +1685,7 @@ Get-ChildItem -Path ".\bin\Debug\net9.0-windows10.0.19041.0\" -Filter "Prism.*.d
 
 # Should see:
 # Prism.Core.dll
-# Prism.Wpf.dll
+# Prism.Uno.WinUI.dll
 # Prism.DryIoc.dll
 # DryIoc.dll
 ```
@@ -1787,7 +1787,7 @@ WileyWidget/
 
 - **EF Core 9.0.8:** Use for all data operations with SQL Server Express
 - **Prism.Mvvm:** For ViewModel bindings and commands
-- **Syncfusion WPF 31.1.20:** For UI components and theming
+- **Syncfusion WinUI 31.1.20:** For UI components and theming
 - **Serilog 4.3.0:** For structured logging with file and async sinks
 - **No nullable reference types:** Per project guidelines
 - **Repository Pattern:** For data access abstraction

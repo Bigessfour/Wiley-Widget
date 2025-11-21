@@ -18,7 +18,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
-using WileyWidget.Services.Events;
 
 namespace WileyWidget.Services;
 
@@ -567,7 +566,6 @@ public async System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync()
 /// <summary>
 /// Syncs budgets to QuickBooks Online via REST API.
 /// Uses IHttpClientFactory to create named 'QBO' client with proper authentication.
-/// On success, publishes Prism event to refresh UI (e.g., SfDataGrid in SettingsView).
 /// </summary>
 public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default)
 {
@@ -644,21 +642,7 @@ public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnum
 
         stopwatch.Stop();
 
-        // On success: Publish Prism event to refresh UI
-        try
-        {
-            var eventAggregator = _serviceProvider.GetService<Prism.Events.IEventAggregator>();
-            if (eventAggregator != null)
-            {
-                // Publish event to refresh SfDataGrid in SettingsView or other subscribers
-                eventAggregator.GetEvent<WileyWidget.Services.Events.BudgetsSyncedEvent>()?.Publish(syncedCount);
-                _logger.LogDebug("Published BudgetsSyncedEvent with count: {Count}", syncedCount);
-            }
-        }
-        catch (Exception eventEx)
-        {
-            _logger.LogWarning(eventEx, "Failed to publish BudgetsSyncedEvent after sync");
-        }
+        _logger.LogInformation("Budget sync completed successfully. Synced {Count} budgets", syncedCount);
 
         return new SyncResult
         {
@@ -1695,4 +1679,47 @@ public async System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationT
         };
     }
 }
+
+        /// <summary>
+        /// Gets company information from QuickBooks
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token for the operation</param>
+        /// <returns>Company information</returns>
+        public async Task<CompanyInfo> GetCompanyInfoAsync(CancellationToken cancellationToken = default)
+        {
+            await EnsureInitializedAsync();
+
+            try
+            {
+                // TODO: Implement actual QuickBooks API call to get company info
+                // For now, return mock data
+                return new CompanyInfo
+                {
+                    CompanyName = "Demo Company",
+                    Address = "123 Main St, Anytown, USA",
+                    Phone = "(555) 123-4567",
+                    Email = "info@democompany.com",
+                    FiscalYearStartMonth = 1, // January
+                    TaxId = "12-3456789"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get company info from QuickBooks");
+                // Return default company info
+                return new CompanyInfo
+                {
+                    CompanyName = "Demo Company",
+                    FiscalYearStartMonth = 1
+                };
+            }
+        }
+
+        /// <summary>
+        /// Performs a generic operation (placeholder for future functionality)
+        /// </summary>
+        public void DoSomething()
+        {
+            _logger.LogInformation("DoSomething called - placeholder implementation");
+        }
 }

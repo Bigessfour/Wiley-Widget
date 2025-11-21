@@ -7,7 +7,7 @@ namespace WileyWidget.Converters
     /// <summary>
     /// Converts a boolean value to Visibility (true = Visible, false = Collapsed).
     /// </summary>
-    public class BoolToVisibilityConverter : IValueConverter
+    public partial class BoolToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

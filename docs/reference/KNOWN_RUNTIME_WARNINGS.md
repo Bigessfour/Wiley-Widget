@@ -40,7 +40,7 @@ No action required - This is a Syncfusion internal template issue that does not 
 ### Issue
 
 ```
-Exception thrown: 'System.NullReferenceException' in Syncfusion.SfChart.WPF.dll
+Exception thrown: 'System.NullReferenceException' in Syncfusion.UI.Xaml.Charts.dll
 ```
 
 ### Details
@@ -118,8 +118,8 @@ catch (Exception ex)
 ### Issue
 
 ```
-Exception thrown: 'System.ArgumentException' in Prism.Wpf.dll
-Exception thrown: 'Prism.Navigation.Regions.RegionCreationException' in Prism.Wpf.dll
+Exception thrown: 'System.ArgumentException' in Prism.Uno.WinUI.dll
+Exception thrown: 'Prism.Navigation.Regions.RegionCreationException' in Prism.Uno.WinUI.dll
 Exception thrown: 'Prism.Navigation.Regions.RegionCreationException' in WindowsBase.dll
 ```
 

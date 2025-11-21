@@ -78,12 +78,12 @@ Wiley Widget follows a **modular, layered architecture** using Prism 9 framework
 
 - **Prism 9.0.537**
   - `Prism.Core` - Base framework
-  - `Prism.Wpf` - WPF-specific implementations
+  - `Prism.Uno.WinUI` - WPF-specific implementations
   - `Prism.Container.DryIoc 9.0.107` - DI container
 
 ### UI Controls
 
-- **Syncfusion WPF 31.1.17**
+- **Syncfusion WinUI 31.1.17**
   - `SfChart` - Advanced charting
   - `SfDataGrid` - High-performance grids
   - `SfInput` - Enhanced input controls
@@ -275,9 +275,9 @@ public class MunicipalAccount
 
 ```csharp
 // App.xaml.cs
-public partial class App : Prism.Wpf.PrismApplication
+public partial class App : Prism.Uno.WinUI.PrismApplication
 {
-    protected override Window CreateShell()
+    protected override void CreateWindow()
     {
         return Container.Resolve<MainWindow>();
     }
@@ -404,7 +404,7 @@ private static readonly Dictionary<string, string[]> ModuleRegionMap = new()
 
 ```xaml
 <Window x:Class="WileyWidget.Views.Shell"
-        xmlns:prism="http://prismlibrary.com/"
+
         xmlns:syncfusion="http://schemas.syncfusion.com/wpf">
     <Grid>
         <!-- Main content region -->

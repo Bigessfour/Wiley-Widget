@@ -42,6 +42,18 @@ namespace WileyWidget.Services
         System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<ImportResult> ImportChartOfAccountsAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets company information from QuickBooks
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token for the operation</param>
+        /// <returns>Company information</returns>
+        System.Threading.Tasks.Task<CompanyInfo> GetCompanyInfoAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Performs a generic operation (placeholder for future functionality)
+        /// </summary>
+        void DoSomething();
     }
 
     public sealed class UrlAclCheckResult
@@ -78,5 +90,15 @@ namespace WileyWidget.Services
         public string? ErrorMessage { get; set; }
         public TimeSpan Duration { get; set; }
         public List<string>? ValidationErrors { get; set; }
+    }
+
+    public sealed class CompanyInfo
+    {
+        public string? CompanyName { get; set; }
+        public string? Address { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+        public int FiscalYearStartMonth { get; set; } = 1; // Default to January
+        public string? TaxId { get; set; }
     }
 }

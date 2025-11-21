@@ -1,24 +1,31 @@
-- name: Grok-4 Config
-  version: 1.0.0
+- name: Grok-4.1 Config
+  version: 1.2.0
   schema: v1
   models:
-    - name: Grok-4
+    - name: Grok-4.1
       provider: xAI
-      model: grok-4
+      model: grok-4-1-fast-reasoning
       apiKeyEnv: XAI_API_KEY
-      description: Configuration for accessing the Grok-4 model via xAI's paid API. Ensure you have a valid subscription and comply with xAI's terms of service.
+      description: Configuration for Grok 4.1 with enhanced tool calling and parallel processing.
+      contextWindow: 128000
+      parallelTools: true
+      streaming: true
+      caching: true
+      agenticMode: true
+      observability:
+        showToolCalls: true
+        showReasoningTokens: true
+        trackCitations: true
+        trackTokenUsage: true
       usage_instructions: |
         To use this config:
-        1. Integrate with an API client that supports xAI's endpoint (e.g., similar to OpenAI's API structure).
-        2. Example Python usage:
-           import requests
-           url = "https://api.x.ai/v1/chat/completions"  # Replace with actual xAI API endpoint
-           headers = {"Authorization": f"Bearer {apiKey}"}
-           payload = {"model": "grok-4", "messages": [{"role": "user", "content": "Hello"}]}
-           response = requests.post(url, json=payload, headers=headers)
-        3. Note: API endpoints and availability may vary; check xAI documentation for the latest details. Grok-4 may not be publicly available yet—verify with xAI.
+        1. Ensure API key is set in environment.
+        2. Enable agentic mode in continue.json.
+        3. Use tools for file operations and code evaluation.
+        4. Stream responses for real-time observability.
+        5. Monitor reasoning tokens and tool calls in Output.
       license: Proprietary (xAI Paid Access)
-      repository: https://x.ai/ # Official xAI site for more info
+      repository: https://x.ai/
 - name: Open Source Grok Config
   version: 1.0.0
   schema: v1

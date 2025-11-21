@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Application
     x:Class="WileyWidget.App"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns="using:Microsoft.UI.Xaml"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:WileyWidget"
     xmlns:converters="using:WileyWidget.Converters">
@@ -10,7 +10,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Syncfusion WinUI Fluent Theme -->
-                <ResourceDictionary Source="ms-appx:///Syncfusion.Themes.WinUI.WinUI/Generic.xaml" />
+                <ResourceDictionary Source="ms-appx:///Syncfusion.Themes.WinUI.WinUI/Generic.xaml" x:Key="SyncfusionTheme" />
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Value Converters -->

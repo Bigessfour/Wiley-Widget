@@ -6,12 +6,13 @@
     <RunAnalyzers>false</RunAnalyzers>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);NETSDK1206</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -45,9 +46,8 @@
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
   </ItemGroup>
 
-  <!-- Prevent transitive global using injected by Prism.DryIoc from UI layer -->
+  <!-- Prism removed - no longer needed -->
   <ItemGroup>
-    <Using Remove="Prism.DryIoc" />
   </ItemGroup>
 
 </Project>

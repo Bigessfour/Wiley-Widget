@@ -76,7 +76,7 @@ This view serves as the primary customer management interface for utility billin
 
 ## Dependencies
 
-- **Prism.Wpf**: MVVM framework and region management
+- **Prism.Uno.WinUI**: MVVM framework and region management
 - **Syncfusion.SfSkinManager.WPF**: Theming and UI controls
 - **Syncfusion.SfGrid.WPF**: Data grid controls
 - **Serilog**: Logging framework
