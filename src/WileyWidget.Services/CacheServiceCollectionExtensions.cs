@@ -12,10 +12,7 @@ namespace WileyWidget.Services
         /// </summary>
         public static IServiceCollection AddWileyMemoryCache(this IServiceCollection services, Action<MemoryCacheOptions>? configure = null)
         {
-            if (configure != null)
-                services.AddSingleton(new MemoryCacheOptions());
-
-            services.AddMemoryCache(configure);
+            services.AddMemoryCache(configure ?? (options => { }));
             services.AddSingleton<ICacheService, MemoryCacheService>();
             return services;
         }

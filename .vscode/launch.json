@@ -1,56 +1,19 @@
 {
-  "version": "0.2.0",
-  "configurations": [
+  \"version\": \"0.2.0\",
+  \"configurations\": [
     {
-      "name": "Launch Wiley-Widget (WinUI 3)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/x64/Debug/net8.0-windows10.0.26100/Wiley-Widget.exe",
-      "args": [],
-      "cwd": "${workspaceFolder}",
-      "stopAtEntry": false,
-      "console": "integratedTerminal",
-      "env": {
-        "DOTNET_ENVIRONMENT": "Development"
+      \"name\": \".NET Launch (Wiley-Widget x64)\",
+      \"type\": \"coreclr\",
+      \"request\": \"launch\",
+      \"preLaunchTask\": \"build\",
+      \"program\": \"${workspaceFolder}/bin/x64/Debug/net8.0-windows10.0.19041.0/Wiley-Widget.exe\",
+      \"args\": [],
+      \"cwd\": \"${workspaceFolder}\",
+      \"console\": \"externalTerminal\",
+      \"stopAtEntry\": false,
+      \"env\": {
+        \"DOTNET_ENVIRONMENT\": \"Development\"
       }
-    },
-    {
-      "name": "Attach to WinUI Process",
-      "type": "coreclr",
-      "request": "attach",
-      "processId": "${command:pickProcess}"
-    },
-    {
-      "name": ".NET: Launch Wiley-Widget (generic)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/x64/Debug/net8.0-windows10.0.26100/Wiley-Widget.exe",
-      "args": [],
-      "cwd": "${workspaceFolder}",
-      "stopAtEntry": false,
-      "console": "integratedTerminal"
-    },
-    {
-      "name": ".NET: Attach to Process",
-      "type": "coreclr",
-      "request": "attach",
-      "processId": "${command:pickProcess}"
-    },
-    {
-      "name": "PowerShell: Launch Current File",
-      "type": "PowerShell",
-      "request": "launch",
-      "script": "${file}",
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    }
-  ],
-  "compounds": [
-    {
-      "name": "Launch (Build + Run)",
-      "configurations": ["Launch Wiley-Widget (WinUI 3)"]
     }
   ]
 }

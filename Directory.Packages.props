@@ -5,12 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Core WinUI - Upgrade to stable 1.8 servicing release for .NET 9 compatibility -->
-    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
+    <!-- Core WinUI - Using 1.6.x stable to avoid XamlCompiler crash in 1.8.x -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.6.250808007" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.6901" />
 
     <!-- MVVM & DI -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageVersion Include="Uno.Extensions.Navigation" Version="3.2.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.0" />
@@ -55,7 +56,6 @@
     <PackageVersion Include="Syncfusion.BusyIndicator.WinUI" Version="31.2.2" />
     <PackageVersion Include="Syncfusion.Core.WinUI" Version="31.2.2" />
     <PackageVersion Include="Syncfusion.Shared.WinUI" Version="31.2.2" />
-    <PackageVersion Include="Syncfusion.Themes.WinUI" Version="31.2.2" />
     <PackageVersion Include="Syncfusion.XlsIO.Net.Core" Version="31.2.2" />
     <PackageVersion Include="Syncfusion.Pdf.Net.Core" Version="31.2.2" />
 

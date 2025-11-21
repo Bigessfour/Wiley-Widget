@@ -9,17 +9,17 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Syncfusion WinUI Fluent Theme -->
-                <ResourceDictionary Source="ms-appx:///Syncfusion.Themes.WinUI.WinUI/Generic.xaml" x:Key="SyncfusionTheme" />
+                <!-- Syncfusion themes applied via SfSkinManager in App.xaml.cs -->
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Value Converters -->
+            <!-- Temporarily comment out converters to test XamlCompiler
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
             <converters:BoolToVisibilityInverseConverter x:Key="InverseBoolToVisibilityConverter" />
             <converters:StringToBrushConverter x:Key="StringToBrushConverter" />
             <converters:NumberToColorConverter x:Key="NumberToColorConverter" />
             <converters:CurrencyConverter x:Key="CurrencyConverter" />
             <converters:PercentageConverter x:Key="PercentageConverter" />
+            -->
         </ResourceDictionary>
     </Application.Resources>
 </Application>

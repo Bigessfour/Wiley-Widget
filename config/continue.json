@@ -41,7 +41,12 @@
   "contextProviders": [
     { "name": "codebase", "params": {} },
     { "name": "search", "params": {} },
-    { "name": "file", "params": {} }
+    { "name": "file", "params": {} },
+    { "name": "diff", "params": {} },
+    { "name": "open", "params": {} },
+    { "name": "terminal", "params": {} },
+    { "name": "folder", "params": {} },
+    { "name": "tree", "params": {} }
   ],
   "experimental": {
     "modelRoles": true,

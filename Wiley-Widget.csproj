@@ -6,7 +6,9 @@
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>WileyWidget</RootNamespace>
     <UseWinUI>true</UseWinUI>
-    <EnableXamlCompiler>false</EnableXamlCompiler>
+    <EnableXamlCompiler>true</EnableXamlCompiler>
+    <DisableXbfGeneration>false</DisableXbfGeneration>
+    <XamlCompilationOptions>None</XamlCompilationOptions>
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>
@@ -43,6 +45,7 @@
     <!-- <PackageReference Include="Microsoft.Extensions.Configuration" /> -->
     <!-- <PackageReference Include="Microsoft.Extensions.Configuration.Json" /> -->
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Uno.Extensions.Navigation" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="Serilog.Sinks.Console" />
@@ -55,6 +58,7 @@
     <PackageReference Include="Syncfusion.Grid.WinUI" />  </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
     <ProjectReference Include="src\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="src\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="src\WileyWidget.Services\WileyWidget.Services.csproj" />
@@ -67,10 +71,14 @@
     <Compile Remove="WileyWidget.Services.UnitTests\\**" />
   </ItemGroup>
 
-  <!-- Exclude XAML files entirely when XAML compiler is disabled -->
+  <!-- Ensure XAML files are included so the XAML compiler can generate partial classes -->
   <ItemGroup>
-    <Page Remove="**\*.xaml" />
-    <None Remove="**\*.xaml" />
+    <!-- Include all XAML UI files so the XAML compiler generates their partial classes -->
+    <Page Include="App.xaml" />
+    <!-- Temporarily comment out other XAML files for debugging
+    <Page Include="MainWindow.xaml" />
+    <Page Include="Views\**\*.xaml" />
+    -->
   </ItemGroup>
 
   <!-- Publish Properties -->
