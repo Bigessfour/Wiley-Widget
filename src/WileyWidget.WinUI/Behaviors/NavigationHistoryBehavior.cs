@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
-using Prism.Navigation.Regions;
 
 namespace WileyWidget.WinUI.Behaviors
 {
