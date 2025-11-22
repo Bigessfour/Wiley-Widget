@@ -342,3 +342,33 @@ publish/win-x64/
 
 # Prevent ThemeService reintroduction - theme managed globally by SfSkinManager
 **/ThemeService.cs
+
+# ==============================================================================
+# SYNCFUSION & PRISM REMOVAL - Never allow these back (2025-11-21)
+# ==============================================================================
+
+# Syncfusion MCP Server (removed - no longer needed)
+src/SyncfusionMcpServer/
+**/SyncfusionMcpServer/
+*syncfusion-mcp*.ps1
+*syncfusion-mcp*.md
+docs/integration/syncfusion-mcp*.md
+docs/reference/syncfusion-*.md
+docs/reference/SYNCFUSION_*.md
+
+# Docker infrastructure (removed - not needed for WinUI development)
+docker/
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# CSX test suite (removed - obsolete without Syncfusion)
+scripts/examples/csharp/
+**/*.csx
+tests/**/Docker*.cs
+tests/WileyWidget.Docker.Tests/
+
+# Prism region adapters (removed - using CommunityToolkit.Mvvm only)
+**/Behaviors/*Region*.cs
+**/Regions/
+**/*RegionAdapter*.cs
