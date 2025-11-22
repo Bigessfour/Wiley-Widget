@@ -30,7 +30,7 @@ namespace WileyWidget.WinUI.Behaviors
             try
             {
                 // Check if the current view implements IAutoSave
-                if (Region.ActiveViews.Count > 0)
+                if (Region.ActiveViews.Count() > 0)
                 {
                     foreach (var view in Region.ActiveViews)
                     {

@@ -85,7 +85,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
                 // Load settings from service
                 await _settingsService.LoadAsync();
                 var settings = _settingsService.Current;
-                DatabaseConnectionString = settings.DatabaseConnectionString ?? string.Empty;
+                DatabaseConnectionString = $"{settings.DatabaseServer};Database={settings.DatabaseName}" ?? string.Empty;
                 QuickBooksCompanyFile = settings.QuickBooksCompanyFile ?? string.Empty;
                 SelectedTheme = settings.Theme ?? "Light";
 
@@ -111,7 +111,13 @@ namespace WileyWidget.WinUI.ViewModels.Main
                 StatusMessage = "Saving settings...";
 
                 var settings = _settingsService.Current;
-                settings.DatabaseConnectionString = DatabaseConnectionString;
+                // Parse connection string back to server/database components
+                var parts = DatabaseConnectionString.Split(';');
+                if (parts.Length > 0) settings.DatabaseServer = parts[0];
+                if (parts.Length > 1 && parts[1].StartsWith("Database="))
+                {
+                    settings.DatabaseName = parts[1].Substring("Database=".Length);
+                }
                 settings.QuickBooksCompanyFile = QuickBooksCompanyFile;
                 settings.Theme = SelectedTheme;
 

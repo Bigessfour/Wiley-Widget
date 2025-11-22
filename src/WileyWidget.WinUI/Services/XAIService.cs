@@ -922,7 +922,7 @@ public class XAIService : IAIService, IDisposable
                 temperature = 0.7
             };
 
-            var response = await _httpClient.PostAsJsonAsync("chat/completions", cancellationToken: cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {

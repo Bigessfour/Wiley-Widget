@@ -194,7 +194,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         if (_settingsLoaded) return;
 
         // Load settings that don't require async initialization
-        var redirectUri = _settings.GetValue<string>("QuickBooks:RedirectUri");
+        var redirectUri = _settings.Current.QuickBooksRedirectUri;
         if (!string.IsNullOrWhiteSpace(redirectUri))
         {
             _redirectUri = redirectUri;
@@ -339,9 +339,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         else
         {
             // Fallback to settings if no secret vault
-            _settings.SetValue("QuickBooks:AccessToken", tokenResponse.AccessToken);
-            _settings.SetValue("QuickBooks:RefreshToken", tokenResponse.RefreshToken);
-            _settings.SetValue("QuickBooks:TokenExpiry", tokenResponse.ExpiresIn.ToString());
+            _settings.Current.QboAccessToken = tokenResponse.AccessToken;
+            _settings.Current.QboRefreshToken = tokenResponse.RefreshToken;
+            _settings.Current.QboTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+            _settings.Save();
+            await System.Threading.Tasks.Task.CompletedTask;
         }
     }
 
@@ -353,7 +355,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         else
         {
-            return _settings.GetValue<string>("QuickBooks:AccessToken");
+            return _settings.Current.QboAccessToken;
         }
     }
 
@@ -365,28 +367,25 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         else
         {
-            return _settings.GetValue<string>("QuickBooks:RefreshToken");
+            return _settings.Current.QboRefreshToken;
         }
     }
 
     private async System.Threading.Tasks.Task<DateTime?> GetStoredTokenExpiryAsync()
     {
-        string? expiryStr;
         if (_secretVault != null)
         {
-            expiryStr = await _secretVault.GetSecretAsync("QuickBooksTokenExpiry").ConfigureAwait(false);
+            var expiryStr = await _secretVault.GetSecretAsync("QuickBooksTokenExpiry").ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(expiryStr) || !long.TryParse(expiryStr, out var expirySeconds))
+            {
+                return null;
+            }
+            return DateTime.UtcNow.AddSeconds(expirySeconds);
         }
         else
         {
-            expiryStr = _settings.GetValue<string>("QuickBooks:TokenExpiry");
+            return _settings.Current.QboTokenExpiry;
         }
-
-        if (string.IsNullOrWhiteSpace(expiryStr) || !long.TryParse(expiryStr, out var expirySeconds))
-        {
-            return null;
-        }
-
-        return DateTime.UtcNow.AddSeconds(expirySeconds);
     }
 
     /// <summary>
@@ -419,10 +418,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
         var oauthValidator = await CreateOAuth2RequestValidatorAsync().ConfigureAwait(false);
 
-        var serviceContext = new ServiceContext(_realmId, IntuitServicesType.QBO, oauthValidator)
-        {
-            MinorVersion = "79" // latest supported
-        };
+        var serviceContext = new ServiceContext(_realmId, IntuitServicesType.QBO, oauthValidator);
+        // MinorVersion is read-only in this SDK version
 
         return serviceContext;
     }
@@ -523,9 +520,10 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         try
         {
-            using var dataService = await CreateDataServiceAsync().ConfigureAwait(false);
+            var dataService = await CreateDataServiceAsync().ConfigureAwait(false);
+            var serviceContext = await CreateServiceContextAsync().ConfigureAwait(false);
 
-            var queryService = new QueryService<Customer>(dataService.ServiceContext);
+            var queryService = new QueryService<Invoice>(serviceContext);
 
             string query = "SELECT * FROM Invoice";
             if (!string.IsNullOrWhiteSpace(enterprise))
@@ -552,7 +550,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         try
         {
-            using var dataService = await CreateDataServiceAsync().ConfigureAwait(false);
+            var dataService = await CreateDataServiceAsync().ConfigureAwait(false);
 
             var accounts = dataService.FindAll<Account>(new Account()).ToList();
             _logger.LogInformation("Retrieved {Count} accounts from QuickBooks", accounts.Count);
@@ -573,9 +571,9 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         try
         {
-            using var dataService = await CreateDataServiceAsync().ConfigureAwait(false);
+            var serviceContext = await CreateServiceContextAsync().ConfigureAwait(false);
 
-            var queryService = new QueryService<JournalEntry>(dataService.ServiceContext);
+            var queryService = new QueryService<JournalEntry>(serviceContext);
 
             string query = $"SELECT * FROM JournalEntry WHERE TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
 
@@ -598,7 +596,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         try
         {
-            using var dataService = await CreateDataServiceAsync().ConfigureAwait(false);
+            var dataService = await CreateDataServiceAsync().ConfigureAwait(false);
 
             var budgets = dataService.FindAll<Budget>(new Budget()).ToList();
             _logger.LogInformation("Retrieved {Count} budgets from QuickBooks", budgets.Count);

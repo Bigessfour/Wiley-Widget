@@ -30,6 +30,7 @@ public class AppSettings
     public string? QuickBooksCompanyFile { get; set; }
     public bool EnableQuickBooksSync { get; set; } = false;
     public int SyncIntervalMinutes { get; set; } = 30;
+    public string? QuickBooksRedirectUri { get; set; }
 
     // Application settings
     public bool EnableAutoSave { get; set; } = true;
