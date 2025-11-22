@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <PropertyGroup>
-  <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-  <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+  <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+  <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
   <RootNamespace>WileyWidget</RootNamespace>
   <UseWinUI>true</UseWinUI>
   <EnableXamlSourceGenerator>true</EnableXamlSourceGenerator>
@@ -43,11 +43,11 @@
   </PropertyGroup>
 
 <ItemGroup>
-  <PackageReference Include="Microsoft.WindowsAppSDK" />
-  <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
-  <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" />
-  <PackageReference Include="CommunityToolkit.Mvvm" />
-  <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" />
+  <PackageReference Include="Microsoft.WindowsAppSDK" Version="[1.7.250909003, )" />
+  <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="[10.0.26100.1742, )" />
+  <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="[7.1.2, )" />
+  <PackageReference Include="CommunityToolkit.Mvvm" Version="[8.2.2, )" />
+  <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.0-rc2" />
 </ItemGroup>
 
   <ItemGroup>
@@ -64,13 +64,9 @@
     <Compile Remove="WileyWidget.Services.UnitTests\\**" />
   </ItemGroup>
 
-  <!-- Ensure XAML files are included so the XAML compiler can generate partial classes -->
+  <!-- Root project is a library - XAML pages are in WinUI project -->
   <ItemGroup>
-    <!-- Include all XAML UI files so the XAML compiler generates their partial classes -->
-    <!-- Temporarily comment out App.xaml for debugging -->
-    <Page Include="App.xaml" />
-    <Page Include="MainWindow.xaml" />
-    <!-- <Page Include="Views\**\*.xaml" /> -->
+    <!-- No XAML pages in root project - they are in src/WileyWidget.WinUI -->
   </ItemGroup>
 
   <!-- Publish Properties -->

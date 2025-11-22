@@ -4,8 +4,6 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using Prism.Navigation;
-using Prism.Navigation.Regions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services;
 
@@ -14,7 +12,6 @@ namespace WileyWidget.WinUI.ViewModels.Main
     public partial class QuickBooksViewModel : ObservableRecipient
     {
         private readonly ILogger<QuickBooksViewModel> _logger;
-        private readonly IRegionManager _regionManager;
         private readonly IQuickBooksService _quickBooksService;
 
         [ObservableProperty]
@@ -34,11 +31,9 @@ namespace WileyWidget.WinUI.ViewModels.Main
 
         public QuickBooksViewModel(
             ILogger<QuickBooksViewModel> logger,
-            IRegionManager regionManager,
             IQuickBooksService quickBooksService)
         {
             _logger = logger;
-            _regionManager = regionManager;
             _quickBooksService = quickBooksService;
 
             ConnectCommand = new AsyncRelayCommand(ConnectAsync);
@@ -148,21 +143,6 @@ namespace WileyWidget.WinUI.ViewModels.Main
             {
                 _logger.LogError(ex, "Failed to load QuickBooks data");
             }
-        }
-
-        public void OnNavigatedTo(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated to QuickBooks View");
-        }
-
-        public bool IsNavigationTarget(NavigationContext navigationContext)
-        {
-            return true;
-        }
-
-        public void OnNavigatedFrom(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated from QuickBooks View");
         }
     }
 

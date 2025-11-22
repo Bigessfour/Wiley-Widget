@@ -4,8 +4,6 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using Prism.Navigation;
-using Prism.Navigation.Regions;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
@@ -75,22 +73,6 @@ namespace WileyWidget.WinUI.ViewModels.Main
             {
                 IsLoading = false;
             }
-        }
-
-        public void OnNavigatedTo(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated to Budget View");
-            LoadBudgetCommand.Execute(null);
-        }
-
-        public bool IsNavigationTarget(NavigationContext navigationContext)
-        {
-            return true;
-        }
-
-        public void OnNavigatedFrom(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated from Budget View");
         }
     }
 

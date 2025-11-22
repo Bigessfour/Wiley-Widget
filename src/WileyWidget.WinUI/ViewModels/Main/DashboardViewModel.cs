@@ -4,16 +4,12 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using Prism.Navigation;
-using Prism.Navigation.Regions;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
     public partial class DashboardViewModel : ObservableRecipient
     {
         private readonly ILogger<DashboardViewModel> _logger;
-        private readonly IRegionManager _regionManager;
-
         [ObservableProperty]
         private string title = "Dashboard";
 
@@ -24,11 +20,9 @@ namespace WileyWidget.WinUI.ViewModels.Main
         private ObservableCollection<DashboardItem> dashboardItems = new();
 
         public DashboardViewModel(
-            ILogger<DashboardViewModel> logger,
-            IRegionManager regionManager)
+            ILogger<DashboardViewModel> logger)
         {
             _logger = logger;
-            _regionManager = regionManager;
 
             LoadDashboardCommand = new AsyncRelayCommand(LoadDashboardAsync);
         }
@@ -63,22 +57,6 @@ namespace WileyWidget.WinUI.ViewModels.Main
             {
                 IsLoading = false;
             }
-        }
-
-        public void OnNavigatedTo(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated to Dashboard");
-            LoadDashboardCommand.Execute(null);
-        }
-
-        public bool IsNavigationTarget(NavigationContext navigationContext)
-        {
-            return true;
-        }
-
-        public void OnNavigatedFrom(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated from Dashboard");
         }
     }
 

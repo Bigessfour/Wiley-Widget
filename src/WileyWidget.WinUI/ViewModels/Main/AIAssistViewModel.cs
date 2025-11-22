@@ -4,8 +4,6 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using Prism.Navigation;
-using Prism.Navigation.Regions;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
@@ -94,21 +92,6 @@ namespace WileyWidget.WinUI.ViewModels.Main
             ChatHistory.Clear();
             AiResponse = string.Empty;
             _logger.LogInformation("Chat history cleared");
-        }
-
-        public void OnNavigatedTo(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated to AI Assist View");
-        }
-
-        public bool IsNavigationTarget(NavigationContext navigationContext)
-        {
-            return true;
-        }
-
-        public void OnNavigatedFrom(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated from AI Assist View");
         }
     }
 

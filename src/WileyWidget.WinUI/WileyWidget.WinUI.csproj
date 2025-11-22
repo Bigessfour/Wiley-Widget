@@ -21,6 +21,7 @@
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -37,18 +38,12 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250909003" />
     
-    <!-- Prism for WinUI 3 -->
-    <PackageReference Include="Prism.Core" Version="9.0.537" />
-    <PackageReference Include="Prism.Events" Version="9.0.537" />
-    <PackageReference Include="Prism.Uno.WinUI" Version="9.0.537" />
-    <PackageReference Include="Prism.DryIoc.Uno.WinUI" Version="9.0.537" />
-    
     <!-- CommunityToolkit for MVVM and UI -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
     
     <!-- LiveCharts2 for charting (open-source, MIT license) -->
-    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.0-rc4" />
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.0-rc2" />
     
     <!-- Data Access -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />

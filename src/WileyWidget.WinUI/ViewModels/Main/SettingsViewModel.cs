@@ -4,8 +4,6 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using Prism.Navigation;
-using Prism.Navigation.Regions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services;
 
@@ -207,21 +205,6 @@ namespace WileyWidget.WinUI.ViewModels.Main
             {
                 IsLoading = false;
             }
-        }
-
-        public void OnNavigatedTo(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated to Settings");
-        }
-
-        public bool IsNavigationTarget(NavigationContext navigationContext)
-        {
-            return true;
-        }
-
-        public void OnNavigatedFrom(NavigationContext navigationContext)
-        {
-            _logger.LogInformation("Navigated from Settings");
         }
     }
 

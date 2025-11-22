@@ -42,8 +42,10 @@
                         HorizontalAlignment="Left" />
 
                     <TextBlock
-                        Text="{x:Bind ViewModel.DatabaseConnected, Mode=OneWay, Converter={StaticResource BoolToStatusConverter}}"
-                        FontSize="14" />
+                        FontSize="14">
+                        <Run Text="Status: " />
+                        <Run Text="{x:Bind ViewModel.DatabaseConnected, Mode=OneWay}" FontWeight="Bold" />
+                    </TextBlock>
                 </StackPanel>
             </Border>
 
@@ -69,8 +71,10 @@
                         HorizontalAlignment="Left" />
 
                     <TextBlock
-                        Text="{x:Bind ViewModel.QuickBooksConnected, Mode=OneWay, Converter={StaticResource BoolToStatusConverter}}"
-                        FontSize="14" />
+                        FontSize="14">
+                        <Run Text="Status: " />
+                        <Run Text="{x:Bind ViewModel.QuickBooksConnected, Mode=OneWay}" FontWeight="Bold" />
+                    </TextBlock>
                 </StackPanel>
             </Border>
 
@@ -88,7 +92,8 @@
                     <ComboBox
                         Header="Theme"
                         ItemsSource="{x:Bind ViewModel.AvailableThemes, Mode=OneWay}"
-                        SelectedItem="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}" />
+                        SelectedItem="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}"
+                        MinWidth="200" />
                 </StackPanel>
             </Border>
 
