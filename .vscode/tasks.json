@@ -51,8 +51,7 @@
 	// Integration Notes:
 	// ------------------
 	// - Works with Serilog startup diagnostics
-	// - Detects Prism DI resolution failures
-	// - Catches Syncfusion threading issues via type errors
+	// - Detects DI resolution failures
 	// - EF Core N+1 issues appear as CS1061 (missing async methods)
 	// - Vault security leaks show as CS8600/CS8602 (null handling)
 	//
@@ -1530,39 +1529,6 @@
 				"reveal": "always",
 				"panel": "shared"
 			},
-			"group": "test",
-			"problemMatcher": []
-		},
-		{
-			"label": "csx:run-70-sfskinmanager-theme-e2e-test",
-			"type": "shell",
-			"command": "docker",
-			"args": [
-				"run",
-				"--rm",
-				"-w",
-				"/app",
-				"-v",
-				"${workspaceFolder}:/app:ro",
-				"-v",
-				"${workspaceFolder}/logs:/logs:rw",
-				"-e",
-				"WW_REPO_ROOT=/app",
-				"-e",
-				"WW_LOGS_DIR=/logs",
-				"wiley-widget/csx-mcp:local",
-				"scripts/examples/csharp/70-sfskinmanager-theme-e2e-test.csx"
-			],
-			"dependsOn": [
-				"csx:build-image",
-				"ensure-logs-dir"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"focus": true
-			},
-			"isBackground": false,
 			"group": "test",
 			"problemMatcher": []
 		},
