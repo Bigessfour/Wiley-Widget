@@ -30,33 +30,14 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Updates the status bar with current license and connection information.
+    /// Updates the status bar with current application information.
     /// </summary>
     private void UpdateStatus()
     {
         try
         {
-            // Update license status
-            var licenseStatus = App.SyncfusionLicenseStatus switch
-            {
-                App.LicenseRegistrationStatus.Success => "License: ✓ Registered",
-                App.LicenseRegistrationStatus.TrialMode => "License: ⚠ Trial Mode",
-                App.LicenseRegistrationStatus.Failed => "License: ✗ Failed",
-                App.LicenseRegistrationStatus.InvalidKey => "License: ✗ Invalid Key",
-                App.LicenseRegistrationStatus.NetworkError => "License: ⚠ Network Error",
-                _ => "License: Checking..."
-            };
-            
-            LicenseStatusText.Text = licenseStatus;
-            
-            // Update main status
-            StatusText.Text = App.SyncfusionLicenseStatus == App.LicenseRegistrationStatus.Success 
-                ? "Ready" 
-                : "Trial Mode";
-            
-            StatusBarText.Text = "Application initialized - WinUI 3 with Prism";
-            
-            Log.Information("[MAINWINDOW] Status updated - License: {Status}", App.SyncfusionLicenseStatus);
+            // No Syncfusion license checks needed - using open-source components
+            Log.Information("[MAINWINDOW] Status updated - Application ready");
         }
         catch (Exception ex)
         {

@@ -48,6 +48,7 @@ namespace WileyWidget.Services
         {
             try
             {
+                await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
                 return p.Ds.FindAll(new Customer(), 1, 100).ToList();
             }
@@ -62,6 +63,7 @@ namespace WileyWidget.Services
         {
             try
             {
+                await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
                 return p.Ds.FindAll(new Invoice(), 1, 100).ToList();
             }
@@ -133,6 +135,7 @@ namespace WileyWidget.Services
         {
             try
             {
+                await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
 
                 var query = $"SELECT * FROM JournalEntry WHERE TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
@@ -150,6 +153,7 @@ namespace WileyWidget.Services
         {
             try
             {
+                await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
                 return p.Ds.FindAll(new Budget(), 1, 100).ToList();
             }
@@ -164,6 +168,7 @@ namespace WileyWidget.Services
         {
             try
             {
+                await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
                 var customers = p.Ds.FindAll(new Customer(), 1, 1).ToList();
                 return true;

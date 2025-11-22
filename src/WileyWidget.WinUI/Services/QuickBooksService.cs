@@ -617,25 +617,30 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// </summary>
     public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default)
     {
-        var result = new SyncResult();
-
         try
         {
             // Implementation would sync budgets to local database
             // This is a placeholder for the actual sync logic
+            await System.Threading.Tasks.Task.CompletedTask.ConfigureAwait(false);
 
             _logger.LogInformation("Budget sync completed. Processed {Count} budgets", budgets.Count());
-            result.Success = true;
-            result.Message = $"Successfully synced {budgets.Count()} budgets";
+            return new SyncResult
+            {
+                Success = true,
+                RecordsSynced = budgets.Count(),
+                Duration = TimeSpan.Zero
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error syncing budgets to application");
-            result.Success = false;
-            result.Message = ex.Message;
+            return new SyncResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message,
+                Duration = TimeSpan.Zero
+            };
         }
-
-        return result;
     }
 
     /// <summary>
@@ -686,9 +691,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             return new ConnectionStatus
             {
                 IsConnected = isConnected,
-                LastChecked = DateTime.UtcNow,
-                Environment = _environment,
-                RealmId = _realmId
+                LastSyncTime = DateTime.UtcNow.ToString("o"),
+                StatusMessage = $"Connected to {_environment} environment"
             };
         }
         catch (Exception ex)
@@ -697,8 +701,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             return new ConnectionStatus
             {
                 IsConnected = false,
-                LastChecked = DateTime.UtcNow,
-                ErrorMessage = ex.Message
+                StatusMessage = ex.Message
             };
         }
     }
@@ -708,8 +711,6 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// </summary>
     public async System.Threading.Tasks.Task<ImportResult> ImportChartOfAccountsAsync(CancellationToken cancellationToken = default)
     {
-        var result = new ImportResult();
-
         try
         {
             var accounts = await GetChartOfAccountsAsync().ConfigureAwait(false);
@@ -718,18 +719,23 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             // This is a placeholder for the actual import logic
 
             _logger.LogInformation("Chart of accounts import completed. Imported {Count} accounts", accounts.Count);
-            result.Success = true;
-            result.Message = $"Successfully imported {accounts.Count} accounts";
-            result.RecordsImported = accounts.Count;
+            return new ImportResult
+            {
+                Success = true,
+                AccountsImported = accounts.Count,
+                Duration = TimeSpan.Zero
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error importing chart of accounts");
-            result.Success = false;
-            result.Message = ex.Message;
+            return new ImportResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message,
+                Duration = TimeSpan.Zero
+            };
         }
-
-        return result;
     }
 
     /// <summary>
@@ -737,25 +743,30 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// </summary>
     public async System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default)
     {
-        var result = new SyncResult();
-
         try
         {
             // Implementation would sync various data types
             // This is a placeholder for the actual sync logic
+            await System.Threading.Tasks.Task.CompletedTask.ConfigureAwait(false);
 
             _logger.LogInformation("Data sync completed");
-            result.Success = true;
-            result.Message = "Data sync completed successfully";
+            return new SyncResult
+            {
+                Success = true,
+                RecordsSynced = 0,
+                Duration = TimeSpan.Zero
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error syncing data");
-            result.Success = false;
-            result.Message = ex.Message;
+            return new SyncResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message,
+                Duration = TimeSpan.Zero
+            };
         }
-
-        return result;
     }
 
     /// <summary>
@@ -863,8 +874,4 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         public long ExpiresIn { get; set; }
         public string XRefreshTokenExpiresIn { get; set; } = string.Empty;
     }
-
-    public record SyncResult(bool Success, string Message, int RecordsImported = 0, string? ErrorMessage = null);
-    public record ImportResult(bool Success, string Message, int RecordsProcessed = 0);
-    public record ConnectionStatus(bool IsConnected, string Environment, string RealmId, string LastChecked, string? ErrorMessage = null);
 }

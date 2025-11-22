@@ -95,6 +95,20 @@
           "System.Configuration.ConfigurationManager": "4.6.0"
         }
       },
+      "LiveChartsCore.SkiaSharpView.WinUI": {
+        "type": "Direct",
+        "requested": "[2.0.0-rc4, )",
+        "resolved": "2.0.0-rc4",
+        "contentHash": "8Z6UnHkdGJG7Jsxorsp/GWdESXjIbhEPZG8bqLuRPLpAkC2pULmG+dqZMg5N0wfD4CtRMM4GDYgE7d3Np81c0A==",
+        "dependencies": {
+          "LiveChartsCore": "2.0.0-rc4",
+          "LiveChartsCore.Behaviours": "2.0.0-rc4",
+          "LiveChartsCore.SkiaSharpView": "2.0.0-rc4",
+          "Microsoft.Windows.SDK.BuildTools": "10.0.22621.1",
+          "Microsoft.WindowsAppSDK": "1.4.230913002",
+          "SkiaSharp.Views.WinUI": "3.0.0-preview.5.4"
+        }
+      },
       "Microsoft.Data.SqlClient": {
         "type": "Direct",
         "requested": "[6.1.3, )",
@@ -484,82 +498,6 @@
           "Serilog": "4.2.0"
         }
       },
-      "Syncfusion.Chart.WinUI": {
-        "type": "Direct",
-        "requested": "[31.2.10, )",
-        "resolved": "31.2.10",
-        "contentHash": "WrHiSdEstoHcOr7OH28CITKS24OISOkm8jQZJ4kAjWYYbaU3tG4c9aYByo9J9/dnU34YsWRNJ+pR+9//XxLw+g==",
-        "dependencies": {
-          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4188",
-          "Microsoft.WindowsAppSDK": "1.7.250513003",
-          "Syncfusion.Core.WinUI": "31.2.10"
-        }
-      },
-      "Syncfusion.Core.WinUI": {
-        "type": "Direct",
-        "requested": "[31.2.10, )",
-        "resolved": "31.2.10",
-        "contentHash": "wK91vqmjNbh4VmmJB73CzWh4+VUunIGelOsAoVgJF7tTdjA4GR7Gb23WUnSSKRK981SKoW/jwsMwdOHiPxB2fA==",
-        "dependencies": {
-          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4188",
-          "Microsoft.WindowsAppSDK": "1.7.250513003",
-          "Syncfusion.Licensing": "31.2.10"
-        }
-      },
-      "Syncfusion.Editors.WinUI": {
-        "type": "Direct",
-        "requested": "[31.2.10, )",
-        "resolved": "31.2.10",
-        "contentHash": "Ami6l0UbOmkn/SJNkcd4a/9j9p7mufmb+NEUcmLmqJ1LIkZnKghY+Jura26sIYqpOcY6UWXwe9N0D6uFSK39IQ==",
-        "dependencies": {
-          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4188",
-          "Microsoft.WindowsAppSDK": "1.7.250513003",
-          "Syncfusion.Core.WinUI": "31.2.10"
-        }
-      },
-      "Syncfusion.Gauge.WinUI": {
-        "type": "Direct",
-        "requested": "[31.2.10, )",
-        "resolved": "31.2.10",
-        "contentHash": "45UI0eUB7zCt9gIOG4wZMQsRa2A/fnEtDXufpBNx/3GgUPRF3hr2SJG3YFMQG5Ht8KIUNqFrtPcb14tTciIVSw==",
-        "dependencies": {
-          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4188",
-          "Microsoft.WindowsAppSDK": "1.7.250513003",
-          "Syncfusion.Core.WinUI": "31.2.10"
-        }
-      },
-      "Syncfusion.Grid.WinUI": {
-        "type": "Direct",
-        "requested": "[31.2.10, )",
-        "resolved": "31.2.10",
-        "contentHash": "oBfC1PL07HOC9U9Qo/ULcbl42xjNj3mtfSYp2NttCFS5UozDUi7VQnejpMksz2uSUSLYQ7tvTjVUBH2oXY0EkQ==",
-        "dependencies": {
-          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4188",
-          "Microsoft.WindowsAppSDK": "1.7.250513003",
-          "Syncfusion.Calendar.WinUI": "31.2.10",
-          "Syncfusion.Core.WinUI": "31.2.10",
-          "Syncfusion.Editors.WinUI": "31.2.10",
-          "Syncfusion.GridCommon.WinUI": "31.2.10"
-        }
-      },
-      "Syncfusion.Licensing": {
-        "type": "Direct",
-        "requested": "[31.2.10, )",
-        "resolved": "31.2.10",
-        "contentHash": "V3lAPLYP8GFECG5nEeyl8I9KG4yow9zmznN1hJTbPAk2r8o/0HQs5QcsOV/9cyn2CjngFy0PZnEy/B8SvGU1vQ=="
-      },
-      "Syncfusion.TreeView.WinUI": {
-        "type": "Direct",
-        "requested": "[31.2.10, )",
-        "resolved": "31.2.10",
-        "contentHash": "eJP8U3sHqj/ki1tiThMy5Lke0nszVT1Qupah++FwSUg2rs1zNFZGSy9LZwNEpNLjL5ngFeFrFPtHBjO2WU24mw==",
-        "dependencies": {
-          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4188",
-          "Microsoft.WindowsAppSDK": "1.7.250513003",
-          "Syncfusion.Core.WinUI": "31.2.10",
-          "Syncfusion.GridCommon.WinUI": "31.2.10"
-        }
-      },
       "Azure.Core": {
         "type": "Transitive",
         "resolved": "1.47.1",
@@ -702,6 +640,50 @@
         "type": "Transitive",
         "resolved": "5.4.3",
         "contentHash": "yhXOG3SOxeWYxBAWskNRDD8fzw5hriEawv4VN4WKaFHOuubiop4kxe2rkWTEyCnTgRVgxVUSQCDBBkZqwPm1iQ=="
+      },
+      "HarfBuzzSharp": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "0tCd6HyCmNsX/DniCp2b00fo0xPbdNwKOs9BxxyT8oOOuMlWjcSFwzONKyeckCKVBFEsbSmsAHPDTqxoSDwZMg==",
+        "dependencies": {
+          "HarfBuzzSharp.NativeAssets.Win32": "7.3.0.2",
+          "HarfBuzzSharp.NativeAssets.macOS": "7.3.0.2"
+        }
+      },
+      "HarfBuzzSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "nycYH/WLJ6ogm+I+QSFCdPJsdxSb5GANWYbQyp1vsd/KjXN56RVUJWPhbgP2GKb/Y7mrsHM7EProqVXlO/EMsA=="
+      },
+      "HarfBuzzSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "DpF9JBzwws2dupOLnjME65hxQWWbN/GD40AoTkwB4S05WANvxo3n81AnQJKxWDCnrWfWhLPB36OF27TvEqzb/A=="
+      },
+      "LiveChartsCore": {
+        "type": "Transitive",
+        "resolved": "2.0.0-rc4",
+        "contentHash": "fSuoOm6GJ93/iV4AkedDGuh39lJ1T0isXxKiy7Bia6zRvL4ZmRBBiZ22w1lKqcyx48W1pqR/Sslw6oAtYFt4/g=="
+      },
+      "LiveChartsCore.Behaviours": {
+        "type": "Transitive",
+        "resolved": "2.0.0-rc4",
+        "contentHash": "KlCpJIGlyAttZ1Jn75CFvB3Qbj6+V3HbA+VgqOMwBiZ18TNCfi+XaHPieBdrH0oAXzqaWJueKRuUwhbe+eeqcw==",
+        "dependencies": {
+          "LiveChartsCore": "2.0.0-rc4",
+          "Microsoft.Windows.SDK.BuildTools": "10.0.22000.196",
+          "Microsoft.WindowsAppSDK": "1.1.5"
+        }
+      },
+      "LiveChartsCore.SkiaSharpView": {
+        "type": "Transitive",
+        "resolved": "2.0.0-rc4",
+        "contentHash": "Rz2Pj1whyFIQ+FA5lhIQJidLEBZuywAbqrYxHD+NOjBt3HVnJ200PYWhXSqbbp4MBXG/BTB7Bk6M9h+vouV1YQ==",
+        "dependencies": {
+          "LiveChartsCore": "2.0.0-rc4",
+          "SkiaSharp": "2.88.8",
+          "SkiaSharp.HarfBuzz": "2.88.8"
+        }
       },
       "MailKit": {
         "type": "Transitive",
@@ -1555,6 +1537,43 @@
           "Serilog": "2.8.0"
         }
       },
+      "SkiaSharp": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "r7OBa9kSNUvcz4WUGE4UbYnKJgnJRmDuWaHVrEbtEeca33cInDPATSLGbdShjwb/XG6EkTPtRbs+AznMO5YUdA==",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Win32": "3.0.0-preview.5.4"
+        }
+      },
+      "SkiaSharp.HarfBuzz": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "ajSyJ2D17R0kZ4FwKwFrJTsYs3D3Y9iRBLhNecROR7dOxC6VTFaMPXJuwQB8KYpAqgmb2JAJFEgZ3i8MaaIw1g==",
+        "dependencies": {
+          "HarfBuzzSharp": "7.3.0.2",
+          "SkiaSharp": "2.88.8"
+        }
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "5R5mJX7mo0Y7MwDvlrQVEJiCOFYePLbRNzZj2veD0Z5c+kzp8smDfvhfnkAXZsL1VM+GPuusFvSHPGMUBtfdqg=="
+      },
+      "SkiaSharp.NativeAssets.WinUI": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "KEnO2eWh8uS3WRb4VbmQ5VKRm9EPtShlD/3L00i6uMDm/50Bc01G/fTIYzP42qGznm/maJoJ10HAphkJkZ9MdA=="
+      },
+      "SkiaSharp.Views.WinUI": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "wXMTcJJ75s4UkJprf8iOfVrS2P4bL3HDRUAsQy+WtK/oYV2qnWbHd4pYYQZhXPYQDba9zEVcLH1rdJsyD1LxRg==",
+        "dependencies": {
+          "Microsoft.WindowsAppSDK": "1.4.230913002",
+          "SkiaSharp": "3.0.0-preview.5.4",
+          "SkiaSharp.NativeAssets.WinUI": "3.0.0-preview.5.4"
+        }
+      },
       "Sprache": {
         "type": "Transitive",
         "resolved": "2.3.1",
@@ -1567,30 +1586,15 @@
           "System.Text.RegularExpressions": "4.3.0"
         }
       },
-      "Syncfusion.Calendar.WinUI": {
-        "type": "Transitive",
-        "resolved": "31.2.10",
-        "contentHash": "zLd5/cJpI1mTZTp+Ga10T5MfexHrB2M0KcaduV5wI8rYNOBBLpYababTmNlpecuEyMqTn2vzkzp6wTmH4SWhnQ==",
-        "dependencies": {
-          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4188",
-          "Microsoft.WindowsAppSDK": "1.7.250513003",
-          "Syncfusion.Core.WinUI": "31.2.10",
-          "Syncfusion.Editors.WinUI": "31.2.10"
-        }
-      },
       "Syncfusion.Compression.Net.Core": {
         "type": "Transitive",
         "resolved": "31.2.5",
         "contentHash": "ZRLum4c6c+Y/liPfAR9Xxf5UyvNDGGWh+/toYCISKWybTQt/w+1evUZBvJe1842+BKIMu2vA2vfZj+NHue2VYw=="
       },
-      "Syncfusion.GridCommon.WinUI": {
+      "Syncfusion.Licensing": {
         "type": "Transitive",
-        "resolved": "31.2.10",
-        "contentHash": "4PYS0VKYyAcJr/kYOYsPsopaDiRqGxjecVrHZ5OIHOf8OkyPr6Fxw9SSlJG+ifXWj/4UPYWrGe3CGr5AYdDl+w==",
-        "dependencies": {
-          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4188",
-          "Microsoft.WindowsAppSDK": "1.7.250513003"
-        }
+        "resolved": "31.2.5",
+        "contentHash": "2Vc8HETl47XRMfJ5aYmBjSuQvNVW9gnOpFQHUyByjzsfJhlBU+Lz9H4jkDiekG9uHl3sL417aJNeJRvwR4mBOA=="
       },
       "Syncfusion.Pdf.Net.Core": {
         "type": "Transitive",
@@ -3122,6 +3126,16 @@
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
       },
+      "HarfBuzzSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "nycYH/WLJ6ogm+I+QSFCdPJsdxSb5GANWYbQyp1vsd/KjXN56RVUJWPhbgP2GKb/Y7mrsHM7EProqVXlO/EMsA=="
+      },
+      "HarfBuzzSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "DpF9JBzwws2dupOLnjME65hxQWWbN/GD40AoTkwB4S05WANvxo3n81AnQJKxWDCnrWfWhLPB36OF27TvEqzb/A=="
+      },
       "Microsoft.Azure.DocumentDB.Core": {
         "type": "Transitive",
         "resolved": "2.1.2",
@@ -3411,6 +3425,16 @@
         "dependencies": {
           "System.Private.Uri": "4.3.0"
         }
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "5R5mJX7mo0Y7MwDvlrQVEJiCOFYePLbRNzZj2veD0Z5c+kzp8smDfvhfnkAXZsL1VM+GPuusFvSHPGMUBtfdqg=="
+      },
+      "SkiaSharp.NativeAssets.WinUI": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "KEnO2eWh8uS3WRb4VbmQ5VKRm9EPtShlD/3L00i6uMDm/50Bc01G/fTIYzP42qGznm/maJoJ10HAphkJkZ9MdA=="
       },
       "System.Buffers": {
         "type": "Transitive",
@@ -4157,6 +4181,16 @@
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
       },
+      "HarfBuzzSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "nycYH/WLJ6ogm+I+QSFCdPJsdxSb5GANWYbQyp1vsd/KjXN56RVUJWPhbgP2GKb/Y7mrsHM7EProqVXlO/EMsA=="
+      },
+      "HarfBuzzSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "DpF9JBzwws2dupOLnjME65hxQWWbN/GD40AoTkwB4S05WANvxo3n81AnQJKxWDCnrWfWhLPB36OF27TvEqzb/A=="
+      },
       "Microsoft.Azure.DocumentDB.Core": {
         "type": "Transitive",
         "resolved": "2.1.2",
@@ -4446,6 +4480,16 @@
         "dependencies": {
           "System.Private.Uri": "4.3.0"
         }
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "5R5mJX7mo0Y7MwDvlrQVEJiCOFYePLbRNzZj2veD0Z5c+kzp8smDfvhfnkAXZsL1VM+GPuusFvSHPGMUBtfdqg=="
+      },
+      "SkiaSharp.NativeAssets.WinUI": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "KEnO2eWh8uS3WRb4VbmQ5VKRm9EPtShlD/3L00i6uMDm/50Bc01G/fTIYzP42qGznm/maJoJ10HAphkJkZ9MdA=="
       },
       "System.Buffers": {
         "type": "Transitive",
@@ -5192,6 +5236,16 @@
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
       },
+      "HarfBuzzSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "nycYH/WLJ6ogm+I+QSFCdPJsdxSb5GANWYbQyp1vsd/KjXN56RVUJWPhbgP2GKb/Y7mrsHM7EProqVXlO/EMsA=="
+      },
+      "HarfBuzzSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "7.3.0.2",
+        "contentHash": "DpF9JBzwws2dupOLnjME65hxQWWbN/GD40AoTkwB4S05WANvxo3n81AnQJKxWDCnrWfWhLPB36OF27TvEqzb/A=="
+      },
       "Microsoft.Azure.DocumentDB.Core": {
         "type": "Transitive",
         "resolved": "2.1.2",
@@ -5481,6 +5535,16 @@
         "dependencies": {
           "System.Private.Uri": "4.3.0"
         }
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "5R5mJX7mo0Y7MwDvlrQVEJiCOFYePLbRNzZj2veD0Z5c+kzp8smDfvhfnkAXZsL1VM+GPuusFvSHPGMUBtfdqg=="
+      },
+      "SkiaSharp.NativeAssets.WinUI": {
+        "type": "Transitive",
+        "resolved": "3.0.0-preview.5.4",
+        "contentHash": "KEnO2eWh8uS3WRb4VbmQ5VKRm9EPtShlD/3L00i6uMDm/50Bc01G/fTIYzP42qGznm/maJoJ10HAphkJkZ9MdA=="
       },
       "System.Buffers": {
         "type": "Transitive",

@@ -47,14 +47,8 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
     
-    <!-- Syncfusion WinUI Controls -->
-    <PackageReference Include="Syncfusion.Licensing" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Core.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Grid.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Chart.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Gauge.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Editors.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.TreeView.WinUI" Version="31.2.10" />
+    <!-- LiveCharts2 for charting (open-source, MIT license) -->
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.0-rc4" />
     
     <!-- Data Access -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />

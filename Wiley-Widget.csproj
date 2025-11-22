@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup>
+  <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+  <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+  <RootNamespace>WileyWidget</RootNamespace>
+  <UseWinUI>true</UseWinUI>
+  <EnableXamlSourceGenerator>true</EnableXamlSourceGenerator>
+  <EnableDefaultPageItems>false</EnableDefaultPageItems>
+  <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  <Nullable>enable</Nullable>
+  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  <WindowsPackageType>None</WindowsPackageType>
+  <AppxPackage>false</AppxPackage>
+  <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+  <GenerateResourceMSBuildArchitecture>x64</GenerateResourceMSBuildArchitecture>
+  <EnableMsixTooling>true</EnableMsixTooling>
+  <DefaultLanguage>en-US</DefaultLanguage>
+  <DefaultResourceLanguage>en-US</DefaultResourceLanguage>
+  <WarningsNotAsErrors>NU1605;MSB4062</WarningsNotAsErrors>
+  <NoWarn>$(NoWarn);MSB3073;CS8785;SYSLIB0014</NoWarn>
+  <Platforms>x64</Platforms>
+  <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+</PropertyGroup>
+
+  <PropertyGroup>
+    <!-- FORCE the modern .NET 6+ compiler that actually shows errors -->
+    <XamlCompilerExePath Condition="'$(XamlCompilerExePath)' == ''">
+      $(NuGetPackageRoot)microsoft.windowsappsdk\1.6.250108002\tools\net6.0\XamlCompiler.exe
+    </XamlCompilerExePath>
+
+    <!-- Enable verbose output so we can finally see the real problem -->
+    <XamlCompilerArguments>-v</XamlCompilerArguments>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <XamlCompilerExePath>$(NuGetPackageRoot)microsoft.windowsappsdk\1.8.251106002\tools\net472\XamlCompiler.exe</XamlCompilerExePath>
+    <XamlCompilerArguments>-v --verbose</XamlCompilerArguments>
+    <NoWarn>$(NoWarn);MSB3277;MSB3073;NU1605</NoWarn>
+  </PropertyGroup>
+
+<ItemGroup>
+  <PackageReference Include="Microsoft.WindowsAppSDK" />
+  <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+  <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" />
+  <PackageReference Include="CommunityToolkit.Mvvm" />
+  <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" />
+</ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="src\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="src\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="src\WileyWidget.Services\WileyWidget.Services.csproj" />
+  </ItemGroup>
+
+  <!-- Exclude custom projects and tests from main app build -->
+  <ItemGroup>
+    <Compile Remove="src\\**" />
+    <Compile Remove="tests\\**" />
+    <Compile Remove="WileyWidget.Services.UnitTests\\**" />
+  </ItemGroup>
+
+  <!-- Ensure XAML files are included so the XAML compiler can generate partial classes -->
+  <ItemGroup>
+    <!-- Include all XAML UI files so the XAML compiler generates their partial classes -->
+    <!-- Temporarily comment out App.xaml for debugging -->
+    <Page Include="App.xaml" />
+    <Page Include="MainWindow.xaml" />
+    <!-- <Page Include="Views\**\*.xaml" /> -->
+  </ItemGroup>
+
+  <!-- Publish Properties -->
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
+    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+</Project>
