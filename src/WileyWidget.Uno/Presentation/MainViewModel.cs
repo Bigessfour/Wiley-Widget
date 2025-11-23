@@ -14,7 +14,7 @@ public partial class MainViewModel : ObservableObject
     private INavigator _navigator;
 
     [ObservableProperty]
-    public partial string? Name { get; set; }
+    private string? name;
 
     public MainViewModel(
         IOptions<AppConfig> appInfo,
@@ -25,9 +25,10 @@ public partial class MainViewModel : ObservableObject
         Title += $" - {appInfo?.Value?.Environment}";
         GoToSecond = new AsyncRelayCommand(GoToSecondView);
     }
-    public string? Title { get; }
+    [ObservableProperty]
+    private string? title;
 
-    public ICommand GoToSecond { get; }
+    public IAsyncRelayCommand GoToSecond { get; }
 
     private async Task GoToSecondView()
     {

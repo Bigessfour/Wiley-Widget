@@ -1,23 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
   <!--
-    Override Windows App SDK packaging targets to prevent MSB4062 errors
-    when Visual Studio MSIX build tools are not installed.
+    Non-Packaged WinUI Build Configuration
     
-    This allows non-packaged WinUI builds for testing without requiring
-    full Visual Studio installation.
+    Completely bypasses Windows App SDK MSIX packaging system to enable
+    builds without Visual Studio's UWP workload (fixes MSB4062).
+    
+    This configuration:
+    - Disables all MSIX/AppX packaging targets
+    - Prevents loading of Microsoft.Build.AppxPackage.dll
+    - Allows command-line builds with .NET SDK only
+    - Suitable for CI/CD, testing, and development
+    
+    Trade-off: Cannot create MSIX deployment packages from this build.
   -->
-  
+
   <PropertyGroup>
-    <!-- Completely disable MSIX packaging tasks -->
+    <!-- Disable all packaging and PRI generation -->
     <GenerateLibraryLayout>false</GenerateLibraryLayout>
     <NetCoreGeneratePrisForPortableLibraries>false</NetCoreGeneratePrisForPortableLibraries>
+    <GenerateAppxSymbolPackage>false</GenerateAppxSymbolPackage>
+    <AppxGeneratePackageRecipe>false</AppxGeneratePackageRecipe>
+    <AppxSkipUnchangedFiles>true</AppxSkipUnchangedFiles>
   </PropertyGroup>
 
-  <!-- Override targets that try to load missing packaging DLLs -->
+  <!-- Override all Windows App SDK packaging targets to prevent DLL loading -->
   <Target Name="_GetLibrariesToGeneratePrisFor" />
   <Target Name="_GeneratePrisForPortableLibraries" />
   <Target Name="_ComputeAppxPackagePayload" />
   <Target Name="RemovePayloadDuplicates" />
+  <Target Name="_CalculateInputsForGenerateAppxPackageRecipe" />
+  <Target Name="_GenerateAppxPackageRecipe" />
+  <Target Name="_GenerateCurrentProjectAppxManifest" />
+  <Target Name="_CreateAppxPackage" />
+  <Target Name="_CreateAppxBundle" />
+  <Target Name="_ResolveAppxPackageInfo" />
+  <Target Name="_GetResolvedWinMD" />
   
+  <!-- Prevent Windows App SDK from importing packaging targets -->
+  <Target Name="BeforeResolveReferences">
+    <PropertyGroup>
+      <ImportWindowsAppSDKTargets>false</ImportWindowsAppSDKTargets>
+    </PropertyGroup>
+  </Target>
+
 </Project>

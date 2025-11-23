@@ -14,10 +14,14 @@
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <UseWPF>false</UseWPF>
+    <!-- Non-packaged build configuration (no MSIX) -->
     <EnableMsixTooling>false</EnableMsixTooling>
     <SkipPriGeneration>true</SkipPriGeneration>
     <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
     <ShouldComputeInputPris>false</ShouldComputeInputPris>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+    <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
+    <GenerateTestArtifacts>false</GenerateTestArtifacts>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
@@ -120,7 +124,5 @@
     <AppxPackage>true</AppxPackage>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
   </PropertyGroup>
-
-  <!-- WebView2 package already referenced above; duplicate removed -->
 
 </Project>

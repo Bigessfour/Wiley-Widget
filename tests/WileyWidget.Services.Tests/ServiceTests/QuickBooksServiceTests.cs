@@ -19,7 +19,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         public async Task QuickBooksService_GetInvoicesAsync_ReturnsExpectedCount()
         {
             // Arrange
-            var mockSettings = new Mock<SettingsService>();
+            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
             var mockSecretVault = new Mock<ISecretVaultService>();
             var mockLogger = new Mock<ILogger<QuickBooksService>>();
             var mockApiClient = new Mock<IQuickBooksApiClient>();

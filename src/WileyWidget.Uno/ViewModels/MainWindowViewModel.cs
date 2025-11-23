@@ -3,7 +3,7 @@ namespace WileyWidget.Uno.ViewModels;
 public partial class MainWindowViewModel : ObservableObject
 {
     [ObservableProperty]
-    public partial string Title { get; set; } = "Wiley Widget - Uno Platform Migration";
+    private string title = "Wiley Widget - Uno Platform Migration";
 
     public MainWindowViewModel()
     {

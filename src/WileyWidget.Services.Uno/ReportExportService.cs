@@ -266,15 +266,15 @@ public class ReportExportService : IReportExportService
                         column.Item().Text("Violations:").FontSize(14).Bold();
                         if (report.Violations != null && report.Violations.Any())
                         {
-                            foreach (var v in report.Violations)
-                            {
-                                var line = $"[{v.Severity}] {v.Regulation}: {v.Description} | Action: {v.CorrectiveAction}";
-                                column.Item().Text("- " + line).PaddingLeft(10);
-                            }
+                                foreach (var v in report.Violations)
+                                {
+                                    var line = $"[{v.Severity}] {v.Regulation}: {v.Description} | Action: {v.CorrectiveAction}";
+                                    column.Item().Element(c => c.PaddingLeft(10).Text("- " + line));
+                                }
                         }
                         else
                         {
-                            column.Item().Text("No violations.").PaddingLeft(10);
+                            column.Item().Element(c => c.PaddingLeft(10).Text("No violations."));
                         }
                         column.Item().PaddingVertical(10);
 
@@ -282,14 +282,14 @@ public class ReportExportService : IReportExportService
                         column.Item().Text("Recommendations:").FontSize(14).Bold();
                         if (report.Recommendations != null && report.Recommendations.Any())
                         {
-                            foreach (var r in report.Recommendations)
-                            {
-                                column.Item().Text("- " + r).PaddingLeft(10);
-                            }
+                                foreach (var r in report.Recommendations)
+                                {
+                                    column.Item().Element(c => c.PaddingLeft(10).Text("- " + r));
+                                }
                         }
                         else
                         {
-                            column.Item().Text("No recommendations provided.").PaddingLeft(10);
+                            column.Item().Element(c => c.PaddingLeft(10).Text("No recommendations provided."));
                         }
                     });
                 });

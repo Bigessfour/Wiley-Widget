@@ -216,7 +216,19 @@ public class ExcelReaderService : IExcelReaderService
         try
         {
             var cell = worksheet.Cell(row, col);
-            return cell?.Value?.ToString()?.Trim();
+            try
+            {
+                // ClosedXML provides GetString() which safely returns the cell string
+                var s = cell.GetString();
+                return string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+            }
+            catch
+            {
+                // Fall back to raw ToString
+                var v = cell.Value;
+                var s2 = v.ToString();
+                return string.IsNullOrWhiteSpace(s2) ? null : s2.Trim();
+            }
         }
         catch
         {

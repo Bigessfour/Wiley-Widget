@@ -21,23 +21,24 @@ lint:
     - markdownlint
     - dotnet-format
   enabled:
-    - actionlint@1.7.8
+    - bandit@1.9.1
+    - actionlint@1.7.9
     - hadolint@2.14.0
     - shellcheck@0.11.0
     - shfmt@3.6.0
     - svgo@4.0.0
     - black@25.11.0
-    - checkov@3.2.492
+    - checkov@3.2.495
     - git-diff-check
-    - gitleaks@8.29.0
+    - gitleaks@8.29.1
     - isort@7.0.0
-    - osv-scanner@2.2.4
+    - osv-scanner@2.3.0
     - oxipng@9.1.5
     - prettier@3.6.2
     - pyright@1.1.407
-    - ruff@0.14.4
+    - ruff@0.14.6
     - taplo@0.10.0
-    - trufflehog@3.90.13
+    - trufflehog@3.91.1
     - yamllint@1.37.1
   ignore:
     - linters: [pyright]

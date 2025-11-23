@@ -19,8 +19,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinUI", "src\Wi
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Uno", "src\WileyWidget.Uno\WileyWidget.Uno.csproj", "{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Tests", "tests\WileyWidget.Services.Tests\WileyWidget.Services.Tests.csproj", "{311CF718-1154-487F-BB2B-E304301EF5A7}"
@@ -121,18 +119,6 @@ Global
 		{9A1B2C3D-4E5F-6789-0ABC-DEF123456789}.Release|x64.Build.0 = Release|x64
 		{9A1B2C3D-4E5F-6789-0ABC-DEF123456789}.Release|x86.ActiveCfg = Release|x86
 		{9A1B2C3D-4E5F-6789-0ABC-DEF123456789}.Release|x86.Build.0 = Release|x86
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Debug|Any CPU.Build.0 = Debug|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Debug|x64.ActiveCfg = Debug|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Debug|x64.Build.0 = Debug|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Debug|x86.ActiveCfg = Debug|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Debug|x86.Build.0 = Debug|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Release|Any CPU.ActiveCfg = Release|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Release|Any CPU.Build.0 = Release|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Release|x64.ActiveCfg = Release|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Release|x64.Build.0 = Release|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Release|x86.ActiveCfg = Release|x64
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800}.Release|x86.Build.0 = Release|x64
 		{311CF718-1154-487F-BB2B-E304301EF5A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{311CF718-1154-487F-BB2B-E304301EF5A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{311CF718-1154-487F-BB2B-E304301EF5A7}.Debug|x64.ActiveCfg = Debug|x64
@@ -162,7 +148,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{0C7C1D8E-0FBB-4EBD-B3CC-CD16368E4800} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+
 		{311CF718-1154-487F-BB2B-E304301EF5A7} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

@@ -344,12 +344,25 @@ DISPATCHER_DEADLOCK_PATTERNS = [
 # PATTERNS - CONTROL INTEGRATION VALIDATION
 # ============================================================================
 
-# Syncfusion control declarations
+# Syncfusion control declarations (legacy)
 SF_CONTROL_PATTERN = re.compile(
     r"<(?:syncfusion|sf):(\w+)(?:\s+([^/>]+))?", re.IGNORECASE
 )
 
-# Control property binding patterns (ENHANCED)
+# Native / WinUI control detection (new)
+# Detects built-in DataGrid variants and WinUI/MUXC control namespaces
+GENERIC_DATAGRID_PATTERN = re.compile(
+    r"<(?:DataGrid|muxc:DataGrid|controls:DataGrid|winui:DataGrid|Microsoft\.UI\.Xaml\.Controls\.DataGrid)\b",
+    re.IGNORECASE,
+)
+
+# Detect CommunityToolkit.Mvvm usage in ViewModels/commands
+COMMUNITY_TOOLKIT_PATTERN = re.compile(
+    r"CommunityToolkit\.Mvvm|ObservableObject|ObservableRecipient|AsyncRelayCommand|IAsyncRelayCommand|RelayCommand",
+    re.IGNORECASE,
+)
+
+# Control property binding patterns (ENHANCED) for both Syncfusion and generic DataGrid
 SF_CHART_BINDING_PATTERN = re.compile(
     r'<(?:syncfusion|sf):SfChart[^>]*(?:Series|ItemsSource)\s*=\s*["\']?\{Binding\s+([^}]+)\}',
     re.IGNORECASE,
@@ -432,7 +445,7 @@ REGISTER_INSTANCE_PATTERN = re.compile(
 
 # ViewModel class pattern
 VIEWMODEL_CLASS_PATTERN = re.compile(
-    r"class\s+(\w+ViewModel)\s*:\s*(?:BindableBase|ViewModelBase|INotifyPropertyChanged)",
+    r"class\s+(\w+ViewModel)\s*:\s*(?:BindableBase|ViewModelBase|INotifyPropertyChanged|ObservableObject|ObservableRecipient)",
     re.IGNORECASE,
 )
 
@@ -847,13 +860,14 @@ class StartupValidator:
                     print(f"  ⚠️  Error scanning {file_path}: {e}")
 
         # TOUGHER: Check for missing registrations
+        # If no registration is found, this is only a problem if Syncfusion packages are still present.
         if not self.licenses["registrations"] and not self.licenses["env_fallbacks"]:
             self.licenses["missing"].append(
                 {
-                    "issue": "No license registrations found",
-                    "severity": "CRITICAL",
-                    "impact": "Application will show license dialogs on startup",
-                    "recommendation": "Add SfSkinManager.SetLicenseKey() in App.xaml.cs OnStartup or set SYNCFUSION_LICENSE_KEY environment variable",
+                    "issue": "No Syncfusion license registrations found",
+                    "severity": "LOW",
+                    "impact": "Only relevant if Syncfusion controls are present; otherwise expected post-refactor",
+                    "recommendation": "If you still use Syncfusion, register a license or set an environment variable; otherwise this is informational",
                 }
             )
 
@@ -1396,9 +1410,13 @@ class StartupValidator:
     # ========================================================================
 
     def _scan_controls(self):
-        """Scan for Syncfusion control configurations."""
+        """Scan controls and UI control usage.
+
+        This scanner looks for legacy Syncfusion controls (if still present),
+        native/winui DataGrid usage, and general toolkit/command usage.
+        """
         if self.verbose:
-            print("🎮 Scanning Syncfusion controls...")
+            print("🎮 Scanning controls (Syncfusion + native WinUI controls)...")
 
         for file_path in self.root.rglob("*.xaml"):
             if "bin" in str(file_path).lower() or "obj" in str(file_path).lower():
@@ -1409,6 +1427,7 @@ class StartupValidator:
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
 
+                # Legacy Syncfusion controls
                 for match in SF_CONTROL_PATTERN.finditer(content):
                     control_name = match.group(1)
                     attributes = match.group(2) or ""
@@ -1417,13 +1436,13 @@ class StartupValidator:
                     control_info = {
                         "file": str(file_path.relative_to(self.root.parent)),
                         "line": line,
-                        "control": control_name,
+                        "control": f"Syncfusion:{control_name}",
                         "attributes": attributes[:100],  # Truncate
                     }
 
                     self.controls["found"].append(control_info)
 
-                    # Check required properties
+                    # Check required properties for Syncfusion controls
                     if control_name in REQUIRED_CONTROL_PROPS:
                         missing = []
                         for req_prop in REQUIRED_CONTROL_PROPS[control_name]:
@@ -1439,12 +1458,34 @@ class StartupValidator:
                                 }
                             )
 
+                # Detect native/generic DataGrid usage (post-refactor validation)
+                for match in GENERIC_DATAGRID_PATTERN.finditer(content):
+                    line = content[: match.start()].count("\n") + 1
+                    control_info = {
+                        "file": str(file_path.relative_to(self.root.parent)),
+                        "line": line,
+                        "control": "DataGrid",
+                        "attributes": content[match.start() : match.start() + 140],
+                    }
+                    self.controls["found"].append(control_info)
+
             except Exception as e:
                 if self.verbose:
                     print(f"  ⚠️  Error scanning {file_path}: {e}")
 
         if self.verbose:
-            print(f"  ✓ Found {len(self.controls['found'])} Syncfusion controls")
+            syncfusion_count = len(
+                [
+                    c
+                    for c in self.controls["found"]
+                    if str(c.get("control") or "").startswith("Syncfusion:")
+                ]
+            )
+            native_count = len(
+                [c for c in self.controls["found"] if c.get("control") == "DataGrid"]
+            )
+            print(f"  ✓ Found {syncfusion_count} legacy Syncfusion controls (if any)")
+            print(f"  ✓ Found {native_count} native DataGrid usages")
             print(
                 f"  ⚠️  Found {len(self.controls['missing_props'])} controls with missing properties"
             )
@@ -1585,16 +1626,22 @@ class StartupValidator:
             print(f"    - {transient_count} Transient registrations")
             print(f"    - {instance_count} Instance registrations")
 
-        # Validation: Expected at least 2 modules (CoreModule, QuickBooksModule)
-        if len(self.prism["modules"]) < 2:
+        # New: If any Prism modules/registrations exist this is treated as a legacy dependency.
+        # For the refactor path where Prism is being removed, presence of Prism usage is a red flag.
+        if len(self.prism["modules"]) > 0 or any(
+            "Prism." in (r.get("file") or "") for r in self.prism["registrations"]
+        ):
             self.prism["issues"].append(
                 {
                     "severity": "HIGH",
-                    "issue": "Expected at least 2 Prism modules, found "
-                    + str(len(self.prism["modules"])),
-                    "recommendation": "Verify CoreModule and QuickBooksModule are properly defined",
+                    "issue": f"Prism usage detected (modules={len(self.prism['modules'])}, registrations={len(self.prism['registrations'])})",
+                    "recommendation": "Remove Prism references or migrate to CommunityToolkit/Microsoft DI patterns",
                 }
             )
+        else:
+            # No Prism modules found — good for post-refactor validation
+            if self.verbose:
+                print("  ✓ No Prism modules detected — migration likely complete")
 
         # NEW: View Discovery Validation against deprecated configs
         if self.verbose:
@@ -2157,12 +2204,16 @@ class StartupValidator:
 
                 for match in VIEWMODEL_CLASS_PATTERN.finditer(content):
                     vm_name = match.group(1)
-                    self.viewmodels["found"].append(
-                        {
-                            "name": vm_name,
-                            "file": str(file_path.relative_to(self.root.parent)),
-                        }
-                    )
+                    vm_entry = {
+                        "name": vm_name,
+                        "file": str(file_path.relative_to(self.root.parent)),
+                    }
+
+                    # Detect modern CommunityToolkit usage inside the ViewModel
+                    if COMMUNITY_TOOLKIT_PATTERN.search(content):
+                        vm_entry["toolkit"] = "CommunityToolkit.Mvvm"
+
+                    self.viewmodels["found"].append(vm_entry)
 
             except Exception as e:
                 if self.verbose:

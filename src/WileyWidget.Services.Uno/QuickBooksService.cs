@@ -29,7 +29,7 @@ namespace WileyWidget.Services;
 public sealed class QuickBooksService : IQuickBooksService, IDisposable
 {
     private readonly ILogger<QuickBooksService> _logger;
-    private readonly SettingsService _settings;
+    private readonly WileyWidget.Services.ISettingsService _settings;
     private readonly ISecretVaultService? _secretVault;
 
     // Values loaded lazily from secret vault or environment
@@ -59,7 +59,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
 
-    public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, HttpClient httpClient, IServiceProvider serviceProvider)
+    public QuickBooksService(WileyWidget.Services.ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, HttpClient httpClient, IServiceProvider serviceProvider)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -643,12 +643,13 @@ public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnum
         stopwatch.Stop();
 
         // On success: Publish message to refresh UI
-        try
-        {
-            // Publish message to refresh SfDataGrid in SettingsView or other subscribers
-            CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.Send(new WileyWidget.Services.Events.BudgetsSyncedMessage(syncedCount));
-            _logger.LogDebug("Published BudgetsSyncedMessage with count: {Count}", syncedCount);
-        }
+            try
+            {
+                // Publish message to refresh SfDataGrid in SettingsView or other subscribers
+                // Use explicit generic overload with a token for compatibility across toolkit versions
+                CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.Send<WileyWidget.Services.Events.BudgetsSyncedMessage, string>(new WileyWidget.Services.Events.BudgetsSyncedMessage(syncedCount), string.Empty);
+                _logger.LogDebug("Published BudgetsSyncedMessage with count: {Count}", syncedCount);
+            }
         catch (Exception messageEx)
         {
             _logger.LogWarning(messageEx, "Failed to publish BudgetsSyncedMessage after sync");
@@ -1663,6 +1664,39 @@ public async System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationT
 }
 
 /// <summary>
+/// Helper: return stored access token (Uno-specific shim)
+/// </summary>
+private async System.Threading.Tasks.Task<string?> GetStoredAccessTokenAsync()
+{
+    try
+    {
+        var s = EnsureSettingsLoaded();
+        return await System.Threading.Tasks.Task.FromResult(s.QboAccessToken);
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+/// <summary>
+/// Helper: return stored token expiry (Uno-specific shim)
+/// </summary>
+private async System.Threading.Tasks.Task<DateTime?> GetStoredTokenExpiryAsync()
+{
+    try
+    {
+        var s = EnsureSettingsLoaded();
+        if (s.QboTokenExpiry == default(DateTime)) return null;
+        return await System.Threading.Tasks.Task.FromResult((DateTime?)s.QboTokenExpiry);
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+/// <summary>
 /// Checks if the service is currently connected
 /// </summary>
 /// <returns>True if connected, false otherwise</returns>
@@ -1689,6 +1723,5 @@ public async System.Threading.Tasks.Task<bool> IsConnectedAsync()
         _logger.LogError(ex, "Error checking connection status");
         return false;
     }
-}
 }
 }

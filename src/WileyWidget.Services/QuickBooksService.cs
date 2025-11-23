@@ -28,7 +28,7 @@ namespace WileyWidget.Services;
 public sealed class QuickBooksService : IQuickBooksService, IDisposable
 {
     private readonly ILogger<QuickBooksService> _logger;
-    private readonly SettingsService _settings;
+    private readonly WileyWidget.Services.ISettingsService _settings;
     private readonly ISecretVaultService? _secretVault;
     private readonly IQuickBooksApiClient _apiClient;
 
@@ -59,7 +59,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
 
-    public QuickBooksService(SettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider)
+    public QuickBooksService(WileyWidget.Services.ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
