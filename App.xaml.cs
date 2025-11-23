@@ -212,7 +212,7 @@ namespace WileyWidget
                     services.AddSingleton<IMessenger>(provider => WeakReferenceMessenger.Default);
                     // Register DataService which publishes DataMessage<T> via IMessenger
                     services.AddSingleton<DataService>();
-                    services.AddTransient<WileyWidget.ViewModels.MainViewModel>();
+                    services.AddSingleton<WileyWidget.ViewModels.MainViewModel>();
 
                     // UI pages / viewmodels
                     services.AddTransient<Views.BudgetOverviewPage>();

@@ -7,9 +7,18 @@
     mc:Ignorable="d">
 
     <Grid>
-        <StackPanel Spacing="24" Margin="24">
-            <TextBlock Text="Dashboard" Style="{ThemeResource TitleTextBlockStyle}" />
-            <TextBlock Text="Financial metrics will appear here" Style="{ThemeResource BodyTextBlockStyle}" />
-        </StackPanel>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        
+        <TextBlock Grid.Row="0" Text="Dashboard" Style="{ThemeResource TitleTextBlockStyle}" Margin="24,24,24,12" />
+        
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Metrics}" AutoGenerateColumns="False" CanUserSortColumns="True" Margin="24">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Metric" Binding="{Binding Name}" />
+                <DataGridTextColumn Header="Value" Binding="{Binding Value, StringFormat='{}{0:N2}'}" />
+            </DataGrid.Columns>
+        </DataGrid>
     </Grid>
 </UserControl>

@@ -8,9 +8,18 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid>
-        <StackPanel Spacing="24" Margin="24">
-            <TextBlock Text="Budget Overview" Style="{ThemeResource TitleTextBlockStyle}" />
-            <TextBlock Text="Budget vs actual comparison will appear here" Style="{ThemeResource BodyTextBlockStyle}" />
-        </StackPanel>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        
+        <TextBlock Grid.Row="0" Text="Budget Overview" Style="{ThemeResource TitleTextBlockStyle}" Margin="24,24,24,12" />
+        
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Metrics}" AutoGenerateColumns="False" CanUserSortColumns="True" Margin="24">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Category" Binding="{Binding Category}" />
+                <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat='{}{0:C}'}" />
+            </DataGrid.Columns>
+        </DataGrid>
     </Grid>
 </Page>
