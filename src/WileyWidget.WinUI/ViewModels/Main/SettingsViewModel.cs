@@ -31,16 +31,16 @@ namespace WileyWidget.WinUI.ViewModels.Main
         private bool quickBooksConnected;
 
         [ObservableProperty]
-        private string databaseConnectionString;
+        private string databaseConnectionString = string.Empty;
 
         [ObservableProperty]
-        private string quickBooksCompanyFile;
+        private string quickBooksCompanyFile = string.Empty;
 
         [ObservableProperty]
         private ObservableCollection<string> availableThemes = new();
 
         [ObservableProperty]
-        private string selectedTheme;
+        private string selectedTheme = "Light";
 
         public SettingsViewModel(
             ILogger<SettingsViewModel> logger,

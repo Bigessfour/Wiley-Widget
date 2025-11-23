@@ -80,6 +80,14 @@
     <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
 
     <XamlDebuggingInformation Condition="'$(Configuration)' == 'Debug'">false</XamlDebuggingInformation>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
+    <AppxPackage>false</AppxPackage>
+    <SkipPriGeneration>true</SkipPriGeneration>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppContainer>false</WindowsAppContainer>
+    <!-- Fix MSB4062: Point to Visual Studio 2022 Professional MSIX tools -->
+    <AppxMSBuildToolsPath>C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</AppxMSBuildToolsPath>
   </PropertyGroup>
 
   <Target Name="RunAnalyzers" />

@@ -11,7 +11,7 @@ namespace WileyWidget.WinUI.Models
     /// </summary>
     public class KPI : INotifyPropertyChanged
     {
-        private string _name;
+        private string _name = string.Empty;
         private double _value;
 
         /// <summary>

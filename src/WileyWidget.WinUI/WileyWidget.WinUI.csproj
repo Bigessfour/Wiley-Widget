@@ -7,20 +7,30 @@
     <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <WindowsSdkVersion>10.0.26100.0</WindowsSdkVersion>
     <UseWinUI>true</UseWinUI>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
     <RootNamespace>WileyWidget.WinUI</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <UseWPF>false</UseWPF>
-    <EnableMsixTooling>true</EnableMsixTooling>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <SkipPriGeneration>true</SkipPriGeneration>
+    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
+    <ShouldComputeInputPris>false</ShouldComputeInputPris>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AppxPackage>false</AppxPackage>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppContainer>false</WindowsAppContainer>
   </PropertyGroup>
 
   <ItemGroup>
@@ -102,7 +112,7 @@
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-    <ProjectReference Include="..\WileyWidget.Services.Uno\WileyWidget.Services.Uno.csproj" />
+    <!-- Removed reference to WileyWidget.Services.Uno to avoid duplicate SettingsService type conflict -->
   </ItemGroup>
 
   <!-- Unpackaged Mode Support (for debugging without packaging) -->

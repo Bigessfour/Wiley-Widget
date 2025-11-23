@@ -1,12 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project>
-  <Target
-      Name="CleanBuildCache"
-      BeforeTargets="Clean">
-    <Exec
-        Command="if exist $(ProjectDir)\.buildcache rd /s /q $(ProjectDir)\.buildcache"
-        IgnoreExitCode="true" /> <!-- Ignore errors if locked -->
-    <Message
-        Text="Build cache cleaned (or skipped if locked)"
-        Importance="high" />
-  </Target>
+  <!--
+    Override Windows App SDK packaging targets to prevent MSB4062 errors
+    when Visual Studio MSIX build tools are not installed.
+    
+    This allows non-packaged WinUI builds for testing without requiring
+    full Visual Studio installation.
+  -->
+  
+  <PropertyGroup>
+    <!-- Completely disable MSIX packaging tasks -->
+    <GenerateLibraryLayout>false</GenerateLibraryLayout>
+    <NetCoreGeneratePrisForPortableLibraries>false</NetCoreGeneratePrisForPortableLibraries>
+  </PropertyGroup>
+
+  <!-- Override targets that try to load missing packaging DLLs -->
+  <Target Name="_GetLibrariesToGeneratePrisFor" />
+  <Target Name="_GeneratePrisForPortableLibraries" />
+  <Target Name="_ComputeAppxPackagePayload" />
+  <Target Name="RemovePayloadDuplicates" />
+  
 </Project>

@@ -29,9 +29,9 @@ namespace WileyWidget.WinUI.Behaviors
         private void NavigationService_Navigated(object sender, RegionNavigationEventArgs e)
         {
             // Add current navigation to back stack
-            if (Region.NavigationService.Journal?.CurrentEntry?.Uri != null)
+            if (Region.NavigationService.Journal?.CurrentEntry?.Uri is { } uri)
             {
-                _backStack.Push(e.Uri);
+                _backStack.Push(uri);
                 _forwardStack.Clear(); // Clear forward stack when navigating to new location
 
                 _logger.LogDebug("Navigation history updated for region '{RegionName}': Back={BackCount}, Forward={ForwardCount}",
