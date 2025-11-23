@@ -24,7 +24,7 @@ namespace WileyWidget.WinUI.Behaviors
             _logger.LogDebug("AutoSaveBehavior attached to region '{RegionName}'", Region.Name);
         }
 
-        private async void NavigationService_Navigating(object sender, RegionNavigationEventArgs e)
+        private async void NavigationService_Navigating(object? sender, RegionNavigationEventArgs e)
         {
             try
             {

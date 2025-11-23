@@ -28,7 +28,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
 
         public IAsyncRelayCommand LoadDepartmentsCommand { get; }
 
-        private async Task LoadDepartmentsAsync()
+        private Task LoadDepartmentsAsync()
         {
             try
             {
@@ -45,6 +45,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
             {
                 IsLoading = false;
             }
+            return Task.CompletedTask;
         }
     }
 

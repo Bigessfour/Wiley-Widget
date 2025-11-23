@@ -41,7 +41,7 @@
 
                     <ItemsControl ItemsSource="{x:Bind ViewModel.DashboardItems, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:DashboardItem">
+                            <DataTemplate x:DataType="vm:DashboardItemDisplay">
                                 <Border
                                     Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                     CornerRadius="4"

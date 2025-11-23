@@ -1,15 +1,20 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
-    public partial class AIAssistViewModel : ObservableRecipient
+    public partial class AIAssistViewModel : ObservableObject
     {
         private readonly ILogger<AIAssistViewModel> _logger;
+        private readonly IAIService? _aiService;
+        private readonly CancellationTokenSource _cts = new();
 
         [ObservableProperty]
         private string title = "AI Assistant";
@@ -26,9 +31,12 @@ namespace WileyWidget.WinUI.ViewModels.Main
         [ObservableProperty]
         private ObservableCollection<ChatMessage> chatHistory = new();
 
-        public AIAssistViewModel(ILogger<AIAssistViewModel> logger)
+        public AIAssistViewModel(
+            ILogger<AIAssistViewModel> logger,
+            IAIService? aiService = null)
         {
             _logger = logger;
+            _aiService = aiService;
 
             SendQueryCommand = new AsyncRelayCommand(SendQueryAsync, CanSendQuery);
             ClearChatCommand = new AsyncRelayCommand(ClearChatAsync);
@@ -55,25 +63,48 @@ namespace WileyWidget.WinUI.ViewModels.Main
                 // Add user message to chat
                 ChatHistory.Add(new ChatMessage
                 {
-                    Content = query,
+                    Content = query ?? string.Empty,
                     IsUserMessage = true,
                     Timestamp = DateTime.Now
                 });
 
                 _logger.LogInformation("Processing AI query: {Query}", query);
 
-                // Placeholder for AI processing logic
-                AiResponse = $"Processing your query: {query}";
+                // Call actual AI service
+                string aiResponseText;
+                if (_aiService != null)
+                {
+                    try
+                    {
+                        aiResponseText = await _aiService.GetInsightsAsync(
+                            "Wiley Widget AI Assistant",
+                            query!,
+                            _cts.Token);
+                        _logger.LogInformation("AI response received: {Length} characters", aiResponseText?.Length ?? 0);
+                    }
+                    catch (Exception aiEx)
+                    {
+                        _logger.LogWarning(aiEx, "AI service call failed, using fallback");
+                        aiResponseText = "I'm currently experiencing technical difficulties. Please try again later or rephrase your question.";
+                    }
+                }
+                else
+                {
+                    aiResponseText = "AI service is not configured. Please configure the AI API key to enable AI features.";
+                    _logger.LogWarning("AI service not available - returning configuration message");
+                }
+
+                AiResponse = aiResponseText!;
 
                 // Add AI response to chat
                 ChatHistory.Add(new ChatMessage
                 {
-                    Content = AiResponse,
+                    Content = AiResponse ?? string.Empty,
                     IsUserMessage = false,
                     Timestamp = DateTime.Now
                 });
 
-                _logger.LogInformation("AI response generated");
+                _logger.LogInformation("AI response generated and added to chat");
             }
             catch (Exception ex)
             {
@@ -87,11 +118,12 @@ namespace WileyWidget.WinUI.ViewModels.Main
             }
         }
 
-        private async Task ClearChatAsync()
+        private Task ClearChatAsync()
         {
             ChatHistory.Clear();
             AiResponse = string.Empty;
             _logger.LogInformation("Chat history cleared");
+            return Task.CompletedTask;
         }
     }
 

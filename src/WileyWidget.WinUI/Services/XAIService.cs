@@ -65,7 +65,7 @@ public class XAIService : IAIService, IDisposable
     if (httpClientFactory is null) throw new ArgumentNullException(nameof(httpClientFactory));
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
-        _apiKey = configuration["XAI:ApiKey"];
+        _apiKey = configuration["XAI:ApiKey"] ?? throw new InvalidOperationException("XAI API key not configured in appsettings.json");
         if (string.IsNullOrWhiteSpace(_apiKey))
         {
             throw new InvalidOperationException("XAI API key not configured");
@@ -151,8 +151,11 @@ public class XAIService : IAIService, IDisposable
                 OnOpened = args =>
                 {
                     _logger.LogError("xAI API Circuit Breaker OPEN - too many failures");
-                    _telemetryService?.RecordException(args.Outcome.Exception,
-                        ("xai.circuit_breaker", "opened"));
+                    if (args.Outcome.Exception != null)
+                    {
+                        _telemetryService?.RecordException(args.Outcome.Exception,
+                            ("xai.circuit_breaker", "opened"));
+                    }
                     return ValueTask.CompletedTask;
                 },
                 OnClosed = args =>
@@ -274,15 +277,15 @@ public class XAIService : IAIService, IDisposable
             apiCallSpan?.SetTag("ai.question_length", question?.Length ?? 0);
             apiCallSpan?.SetTag("ai.context_length", context?.Length ?? 0);
 
-            // Create cache key from sanitized inputs
-            var cacheKey = $"XAI:{context.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{question.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
+            // Create cache key from sanitized inputs (null-safe)
+            var cacheKey = $"XAI:{(context?.GetHashCode(StringComparison.OrdinalIgnoreCase) ?? 0)}:{(question?.GetHashCode(StringComparison.OrdinalIgnoreCase) ?? 0)}";
 
             // Check cache first
-            if (_memoryCache.TryGetValue(cacheKey, out string cachedResponse))
+            if (_memoryCache.TryGetValue<string>(cacheKey, out var cachedResponse) && cachedResponse != null)
             {
                 Log.Information("Cache hit for XAI query: {Question}", question);
                 apiCallSpan?.SetTag("ai.cache_hit", true);
-                _aiLoggingService.LogQuery(question, context, _configuration["XAI:Model"] ?? "grok-4-0709");
+                _aiLoggingService.LogQuery(question ?? string.Empty, context ?? string.Empty, _configuration["XAI:Model"] ?? "grok-4-0709");
                 return cachedResponse;
             }
 
@@ -297,7 +300,7 @@ public class XAIService : IAIService, IDisposable
             var systemContext = await _contextService.BuildCurrentSystemContextAsync(cancellationToken);
 
             // Log the query
-            _aiLoggingService.LogQuery(question, context, model);
+            _aiLoggingService.LogQuery(question ?? string.Empty, context ?? string.Empty, model);
 
             // Track telemetry for API call start - commented out until Azure is configured
             // _telemetryClient?.TrackEvent("XAIServiceRequest", new Dictionary<string, string>
@@ -313,12 +316,12 @@ public class XAIService : IAIService, IDisposable
                     new
                     {
                         role = "system",
-                        content = $"You are a helpful AI assistant for a municipal utility management application called Wiley Widget. System Context: {systemContext}. Context: {context}"
+                        content = $"You are a helpful AI assistant for a municipal utility management application called Wiley Widget. System Context: {systemContext}. Context: {context ?? string.Empty}"
                     },
                     new
                     {
                         role = "user",
-                        content = question
+                        content = question ?? string.Empty
                     }
                 },
                 model = model,
@@ -337,7 +340,7 @@ public class XAIService : IAIService, IDisposable
                 var status = (int)response.StatusCode;
                 var body = await response.Content.ReadAsStringAsync(cancellationToken);
                 Log.Error("xAI API returned non-success status {Status} with body: {Body}", status, body);
-                _aiLoggingService.LogError(question, body ?? string.Empty, response.StatusCode.ToString());
+                _aiLoggingService.LogError(question ?? string.Empty, body ?? string.Empty, response.StatusCode.ToString());
 
                 if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                 {
@@ -357,7 +360,7 @@ public class XAIService : IAIService, IDisposable
             if (result?.error != null)
             {
                 Log.Error("xAI API error: {ErrorType} - {ErrorMessage}", result.error.type, result.error.message);
-                _aiLoggingService.LogError(question, result.error.message, result.error.type ?? "API Error");
+                _aiLoggingService.LogError(question ?? string.Empty, result.error.message, result.error.type ?? "API Error");
                 return $"API error: {result.error.message}";
             }
 
@@ -367,7 +370,7 @@ public class XAIService : IAIService, IDisposable
                 if (!string.IsNullOrEmpty(content))
                 {
                     var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                    _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+                    _aiLoggingService.LogResponse(question ?? string.Empty, content, responseTimeMs, 0);
 
                     // Track successful response telemetry - commented out until Azure is configured
                     // _telemetryClient?.TrackEvent("XAIServiceSuccess", new Dictionary<string, string>
@@ -397,13 +400,13 @@ public class XAIService : IAIService, IDisposable
             }
 
             Log.Warning("xAI API returned empty or invalid response");
-            _aiLoggingService.LogError(question, "Empty or invalid response from XAI API", "Empty Response");
+            _aiLoggingService.LogError(question ?? string.Empty, "Empty or invalid response from XAI API", "Empty Response");
             return "I apologize, but I received an empty response. Please try rephrasing your question.";
         }
         catch (InvalidOperationException ex)
         {
             Log.Error(ex, "xAI API authentication failed: {Message}", ex.Message);
-            _aiLoggingService.LogError(question, ex);
+            _aiLoggingService.LogError(question ?? string.Empty, ex);
 
             // Track authentication failure telemetry - commented out until Azure is configured
             // _telemetryClient?.TrackEvent("XAIServiceAuthFailure", new Dictionary<string, string>
@@ -417,7 +420,7 @@ public class XAIService : IAIService, IDisposable
         catch (HttpRequestException ex)
         {
             Log.Error(ex, "Network error calling xAI API: {Message}", ex.Message);
-            _aiLoggingService.LogError(question, ex);
+            _aiLoggingService.LogError(question ?? string.Empty, ex);
 
             // Track network error telemetry - commented out until Azure is configured
             // _telemetryClient?.TrackEvent("XAIServiceNetworkError", new Dictionary<string, string>
@@ -432,7 +435,7 @@ public class XAIService : IAIService, IDisposable
         catch (TaskCanceledException ex)
         {
             Log.Error(ex, "xAI API request timed out after {TimeoutSeconds} seconds", _httpClient.Timeout.TotalSeconds);
-            _aiLoggingService.LogError(question, $"Request timed out after {_httpClient.Timeout.TotalSeconds} seconds", "Timeout");
+            _aiLoggingService.LogError(question ?? string.Empty, $"Request timed out after {_httpClient.Timeout.TotalSeconds} seconds", "Timeout");
 
             // Track timeout telemetry - commented out until Azure is configured
             // _telemetryClient?.TrackEvent("XAIServiceTimeout", new Dictionary<string, string>
@@ -446,20 +449,20 @@ public class XAIService : IAIService, IDisposable
         catch (BrokenCircuitException<HttpResponseMessage> ex)
         {
             Log.Warning(ex, "xAI API circuit breaker is open (generic): {Message}", ex.Message);
-            _aiLoggingService.LogError(question, ex.Message, "CircuitBreakerOpen");
+            _aiLoggingService.LogError(question ?? string.Empty, ex.Message, "CircuitBreakerOpen");
             return "error: xAI service circuit breaker is open";
         }
         catch (BrokenCircuitException ex)
         {
             // Circuit breaker is open - fail fast and return an error-like message for tests/consumers
             Log.Warning(ex, "xAI API circuit breaker is open: {Message}", ex.Message);
-            _aiLoggingService.LogError(question, ex.Message, "CircuitBreakerOpen");
+            _aiLoggingService.LogError(question ?? string.Empty, ex.Message, "CircuitBreakerOpen");
             return "error: xAI service circuit breaker is open";
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Unexpected error in xAI service: {Message}", ex.Message);
-            _aiLoggingService.LogError(question, ex);
+            _aiLoggingService.LogError(question ?? string.Empty, ex);
 
             // Track unexpected error telemetry - commented out until Azure is configured
             // _telemetryClient?.TrackEvent("XAIServiceUnexpectedError", new Dictionary<string, string>
@@ -504,7 +507,7 @@ public class XAIService : IAIService, IDisposable
             var cacheKey = $"XAI:{sanitizedContext.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{sanitizedQuestion.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
 
             // Check cache first
-            if (_memoryCache.TryGetValue(cacheKey, out string cachedResponse))
+            if (_memoryCache.TryGetValue<string>(cacheKey, out var cachedResponse) && cachedResponse != null)
             {
                 Log.Information("Cache hit for batched XAI query: {Question}", sanitizedQuestion);
                 results[cacheKey] = cachedResponse;
@@ -614,7 +617,7 @@ public class XAIService : IAIService, IDisposable
         if (result?.error != null)
         {
             Log.Error("xAI API error: {ErrorType} - {ErrorMessage}", result.error.type, result.error.message);
-            _aiLoggingService.LogError(question, result.error.message, result.error.type ?? "API Error");
+            _aiLoggingService.LogError(question ?? string.Empty, result.error.message, result.error.type ?? "API Error");
             return $"API error: {result.error.message}";
         }
 
@@ -624,7 +627,7 @@ public class XAIService : IAIService, IDisposable
             if (!string.IsNullOrEmpty(content))
             {
                 var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+                _aiLoggingService.LogResponse(question ?? string.Empty, content, responseTimeMs, 0);
 
                 Log.Information("Successfully received xAI response for question: {Question}", question);
 
@@ -639,7 +642,7 @@ public class XAIService : IAIService, IDisposable
         }
 
         Log.Warning("xAI API returned empty or invalid response");
-        _aiLoggingService.LogError(question, "Empty or invalid response from XAI API", "Empty Response");
+        _aiLoggingService.LogError(question ?? string.Empty, "Empty or invalid response from XAI API", "Empty Response");
         return "I apologize, but I received an empty response. Please try rephrasing your question.";
     }
 
@@ -688,7 +691,7 @@ public class XAIService : IAIService, IDisposable
             var status = (int)response.StatusCode;
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             Log.Error("xAI API returned non-success status {Status} with body: {Body}", status, body);
-            _aiLoggingService.LogError(question, body ?? string.Empty, response.StatusCode.ToString());
+            _aiLoggingService.LogError(question ?? string.Empty, body ?? string.Empty, response.StatusCode.ToString());
 
             var errorCode = response.StatusCode == System.Net.HttpStatusCode.Forbidden ? "AuthFailure" :
                             response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ? "RateLimited" : "ServerError";
@@ -706,7 +709,7 @@ public class XAIService : IAIService, IDisposable
         if (xaiResponse?.error != null)
         {
             Log.Error("xAI API error: {ErrorType} - {ErrorMessage}", xaiResponse.error.type, xaiResponse.error.message);
-            _aiLoggingService.LogError(question, xaiResponse.error.message, xaiResponse.error.type ?? "API Error");
+            _aiLoggingService.LogError(question ?? string.Empty, xaiResponse.error.message, xaiResponse.error.type ?? "API Error");
             return new AIResponseResult($"API error: {xaiResponse.error.message}", 500, xaiResponse.error.type, xaiResponse.error.message);
         }
 
@@ -825,24 +828,24 @@ public class XAIService : IAIService, IDisposable
     /// </summary>
     private class XAIResponse
     {
-        public Choice[] choices { get; set; }
-        public XAIError error { get; set; }
+        public Choice[]? choices { get; set; }
+        public XAIError? error { get; set; }
 
         public class Choice
         {
-            public Message message { get; set; }
+            public Message message { get; set; } = null!;
         }
 
         public class Message
         {
-            public string content { get; set; }
+            public string content { get; set; } = string.Empty;
         }
 
         public class XAIError
         {
-            public string message { get; set; }
-            public string type { get; set; }
-            public string code { get; set; }
+            public string message { get; set; } = string.Empty;
+            public string type { get; set; } = string.Empty;
+            public string code { get; set; } = string.Empty;
         }
     }
 

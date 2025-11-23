@@ -5,17 +5,12 @@ namespace WileyWidget.WinUI.Views.Main
 {
     public sealed partial class SettingsView : UserControl
     {
-        public SettingsViewModel ViewModel { get; }
+        public SettingsViewModel? ViewModel { get; }
 
-        public SettingsView(SettingsViewModel viewModel)
+        public SettingsView(SettingsViewModel? viewModel = null)
         {
             ViewModel = viewModel;
             this.InitializeComponent();
-        }
-
-        // Parameterless constructor for design-time
-        public SettingsView() : this(null!)
-        {
         }
     }
 }

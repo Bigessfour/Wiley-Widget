@@ -2,7 +2,7 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:WileyWidget">
+    xmlns:local="using:WileyWidget.WinUI">
 
     <!-- =========================================================== -->
     <!--  Global brushes & styles used throughout the app            -->

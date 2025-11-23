@@ -1,1 +1,5 @@
-def validate_winui():\n    \"\"\"Validate WinUI dependencies and configuration.\"\"\"\n    print(\"WinUI validation: OK\")\n    # Add more validation logic here if needed\n    return True
+def validate_winui():
+    """Validate WinUI dependencies and configuration."""
+    print("WinUI validation: OK")
+    # Add more validation logic here if needed
+    return True

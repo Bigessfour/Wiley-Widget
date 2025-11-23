@@ -10,5 +10,6 @@
   "autoSearchPaths": false,
   "reportUnusedVariable": "none",
   "reportUnusedImport": "warning",
-  "reportGeneralTypeIssues": "warning"
+  "reportGeneralTypeIssues": "warning",
+  "reportOperatorIssue": "none"
 }

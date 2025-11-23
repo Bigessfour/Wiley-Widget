@@ -49,8 +49,12 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     // Cloudflare tunnel management
     private readonly SemaphoreSlim _cloudflaredSemaphore = new(1, 1);
+#pragma warning disable CS0649 // Field is never assigned to - reserved for future Cloudflare tunnel integration
     private Process? _cloudflaredProcess;
+#pragma warning restore CS0649
+#pragma warning disable CS0169 // Field is never used - reserved for future Cloudflare tunnel integration
     private string? _cloudflaredPublicUrl;
+#pragma warning restore CS0169
 
     // Intuit sandbox base URL documented at https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes
     private static readonly IReadOnlyList<string> DefaultScopes = new[] { "com.intuit.quickbooks.accounting" };

@@ -1,0 +1,3 @@
+# Trunk ignore file
+# Suppress assert usage warnings in test files (B101)
+tests/**/*.py:B101

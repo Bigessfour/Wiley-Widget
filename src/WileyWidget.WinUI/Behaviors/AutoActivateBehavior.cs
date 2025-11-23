@@ -25,9 +25,9 @@ namespace WileyWidget.WinUI.Behaviors
             _logger.LogDebug("AutoActivateBehavior attached to region '{RegionName}'", Region.Name);
         }
 
-        private void Views_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void Views_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
-            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add)
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add && e.NewItems != null)
             {
                 foreach (var view in e.NewItems)
                 {
@@ -47,7 +47,7 @@ namespace WileyWidget.WinUI.Behaviors
             }
         }
 
-        private void ActiveViews_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void ActiveViews_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             // Optional: Handle deactivation if needed
             if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)

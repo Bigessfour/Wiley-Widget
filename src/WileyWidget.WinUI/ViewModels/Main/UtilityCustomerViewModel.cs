@@ -28,7 +28,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
 
         public IAsyncRelayCommand LoadCustomersCommand { get; }
 
-        private async Task LoadCustomersAsync()
+        private Task LoadCustomersAsync()
         {
             try
             {
@@ -45,6 +45,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
             {
                 IsLoading = false;
             }
+            return Task.CompletedTask;
         }
     }
 

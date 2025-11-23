@@ -42,10 +42,9 @@
                         HorizontalAlignment="Left" />
 
                     <TextBlock
-                        FontSize="14">
-                        <Run Text="Status: " />
-                        <Run Text="{x:Bind ViewModel.DatabaseConnected, Mode=OneWay}" FontWeight="Bold" />
-                    </TextBlock>
+                        Text="{x:Bind ViewModel.DatabaseConnected, Mode=OneWay}"
+                        FontSize="14"
+                        FontWeight="Bold" />
                 </StackPanel>
             </Border>
 
@@ -71,10 +70,9 @@
                         HorizontalAlignment="Left" />
 
                     <TextBlock
-                        FontSize="14">
-                        <Run Text="Status: " />
-                        <Run Text="{x:Bind ViewModel.QuickBooksConnected, Mode=OneWay}" FontWeight="Bold" />
-                    </TextBlock>
+                        Text="{x:Bind ViewModel.QuickBooksConnected, Mode=OneWay}"
+                        FontSize="14"
+                        FontWeight="Bold" />
                 </StackPanel>
             </Border>
 

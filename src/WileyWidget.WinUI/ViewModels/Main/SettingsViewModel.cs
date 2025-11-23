@@ -101,7 +101,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
             }
         }
 
-        private async Task SaveSettingsAsync()
+        private Task SaveSettingsAsync()
         {
             try
             {
@@ -132,6 +132,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
             {
                 IsLoading = false;
             }
+            return Task.CompletedTask;
         }
 
         private async Task ResetSettingsAsync()
@@ -158,7 +159,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
             }
         }
 
-        private async Task TestDatabaseConnectionAsync()
+        private Task TestDatabaseConnectionAsync()
         {
             try
             {
@@ -181,6 +182,7 @@ namespace WileyWidget.WinUI.ViewModels.Main
             {
                 IsLoading = false;
             }
+            return Task.CompletedTask;
         }
 
         private async Task TestQuickBooksConnectionAsync()

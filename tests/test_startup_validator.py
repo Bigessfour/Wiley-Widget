@@ -9,10 +9,15 @@ from pathlib import Path
 
 import pytest
 
-# Add tools directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
+# Add tools directory to path (before imports)  # noqa: E402
+tools_dir = Path(__file__).parent.parent / "tools"
+scripts_tools_dir = Path(__file__).parent.parent / "scripts" / "tools"
+if tools_dir.exists():
+    sys.path.insert(0, str(tools_dir))
+if scripts_tools_dir.exists():
+    sys.path.insert(0, str(scripts_tools_dir))
 
-from startup_validator import (
+from startup_validator import (  # noqa: E402
     BOLD_LICENSE_PATTERN,
     ENV_VAR_ASSIGNMENT_PATTERN,
     MODULE_INIT_PATTERN,
@@ -283,10 +288,16 @@ class TestVersionComparison:
 
     def test_version_tuple_comparison(self):
         """Test tuple comparison for versions"""
-        assert (27, 1, 48) < (28, 0, 0)
-        assert (26, 2, 99) < (27, 0, 0)
-        assert (27, 1, 48) == (27, 1, 48)
-        assert (28, 0, 0) > (27, 9, 99)
+        v1 = (27, 1, 48)
+        v2 = (28, 0, 0)
+        v3 = (26, 2, 99)
+        v4 = (27, 0, 0)
+        v5 = (27, 9, 99)
+
+        assert v1 < v2
+        assert v3 < v4
+        assert v1 == (27, 1, 48)
+        assert v2 > v5
 
 
 class TestIntegration:

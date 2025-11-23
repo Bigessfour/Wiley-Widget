@@ -26,7 +26,7 @@ namespace WileyWidget.WinUI.Behaviors
             _logger.LogDebug("NavigationHistoryBehavior attached to region '{RegionName}'", Region.Name);
         }
 
-        private void NavigationService_Navigated(object sender, RegionNavigationEventArgs e)
+        private void NavigationService_Navigated(object? sender, RegionNavigationEventArgs e)
         {
             // Add current navigation to back stack
             if (Region.NavigationService.Journal?.CurrentEntry?.Uri is { } uri)
