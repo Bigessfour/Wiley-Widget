@@ -102,6 +102,7 @@
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services.Uno\WileyWidget.Services.Uno.csproj" />
   </ItemGroup>
 
   <!-- Unpackaged Mode Support (for debugging without packaging) -->

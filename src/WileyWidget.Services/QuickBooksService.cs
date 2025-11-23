@@ -18,7 +18,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
-using WileyWidget.Services.Events;
 
 namespace WileyWidget.Services;
 
@@ -643,22 +642,6 @@ public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnum
         }
 
         stopwatch.Stop();
-
-        // On success: Publish Prism event to refresh UI
-        try
-        {
-            var eventAggregator = _serviceProvider.GetService<Prism.Events.IEventAggregator>();
-            if (eventAggregator != null)
-            {
-                // Publish event to refresh SfDataGrid in SettingsView or other subscribers
-                eventAggregator.GetEvent<WileyWidget.Services.Events.BudgetsSyncedEvent>()?.Publish(syncedCount);
-                _logger.LogDebug("Published BudgetsSyncedEvent with count: {Count}", syncedCount);
-            }
-        }
-        catch (Exception eventEx)
-        {
-            _logger.LogWarning(eventEx, "Failed to publish BudgetsSyncedEvent after sync");
-        }
 
         return new SyncResult
         {

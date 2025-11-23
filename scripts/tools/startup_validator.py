@@ -1,0 +1,9 @@
+# ...existing imports...
+from winui_validator import validate_winui
+from toolkit_validator import validate_communitytoolkit_mvvm
+
+def run_startup_checks():
+    # ...existing checks...
+    validate_winui()
+    validate_communitytoolkit_mvvm()
+    # ...existing checks...

@@ -10,10 +10,8 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     
-    <!-- Force Windows SDK version to avoid preview dependency -->
-    <WindowsSdkPackageVersion>10.0.26100.1</WindowsSdkPackageVersion>
-    <!-- Add explicit WinUI references -->
-    <!-- Note: Uno targets net9.0-windows10.0.26100 for .NET 9 compatibility -->
+    <!-- Force Windows SDK version to match Windows App SDK 1.7 requirement -->
+    <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     
     <!-- Fix PRI resource duplication -->
     <EnableDefaultPriItems>false</EnableDefaultPriItems>
@@ -34,7 +32,7 @@
     <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <NoWarn>NU1605;NU1603;CA1416;CS0436</NoWarn>
+    <NoWarn>NU1605;NU1603;CA1416;CS0436;MSB3277</NoWarn>
     
     <!-- Package Management -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
@@ -43,12 +41,9 @@
   <ItemGroup>
     <!-- Uno Platform Core Packages -->
     <PackageReference Include="Uno.Extensions.Navigation.Toolkit.WinUI" Version="5.2.6" />
-
     <PackageReference Include="Uno.WinUI.RemoteControl" Version="6.0.0-dev.53" Condition="'$(Configuration)'=='Debug'" />
-
     <PackageReference Include="Uno.WinUI.Lottie" Version="6.4.106" />
-    <PackageReference Include="Uno.Resizetizer" Version="1.5.2" />
-    
+
     <!-- Uno Extensions -->
     <PackageReference Include="Uno.Extensions.Configuration" Version="5.2.6" />
     <PackageReference Include="Uno.Extensions.Hosting.WinUI" Version="5.2.6" />
@@ -62,34 +57,24 @@
     <PackageReference Include="Uno.Themes.WinUI.Markup" Version="6.0.2" />
     <PackageReference Include="Uno.Material.WinUI" Version="6.0.2" />
     
-    <!-- Community Toolkit -->
+    <!-- Community Toolkit for MVVM -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     
-    <!-- Windows App SDK removed from Uno project (WinUI project owns OS-specific packaging) -->
+    <!-- Open-source UI controls (replacing Syncfusion) -->
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.0-rc4" />
+    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
+    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
+    <PackageReference Include="ClosedXML" Version="0.104.1" />
+    <PackageReference Include="QuestPDF" Version="2025.1.4" />
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
     
-    <!-- Prism for Uno Platform with WinUI -->
-    <PackageReference Include="Prism.Core" Version="9.0.537" />
-    <PackageReference Include="Prism.Uno.WinUI" Version="9.0.537" />
-    <PackageReference Include="Prism.DryIoc.Uno.WinUI" Version="9.0.537" />
-    <PackageReference Include="Prism.Events" Version="9.0.537" />
-    <!-- Use DryIoc.dll instead of DryIoc to avoid .NET 9 content file conflicts (Prism #2632) -->
-    <PackageReference Include="DryIoc.dll" Version="5.4.3" />
-    
-    <!-- Syncfusion WinUI Controls (match WPF version 31.2.10) -->
-    <PackageReference Include="Syncfusion.Licensing" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Core.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Grid.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Chart.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Gauge.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.Editors.WinUI" Version="31.2.10" />
-    <PackageReference Include="Syncfusion.TreeView.WinUI" Version="31.2.10" />
-    
-    <!-- Data Access (match shared project versions) -->
+    <!-- Data Access -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
     
-    <!-- Configuration and Hosting (match shared project versions) -->
+    <!-- Configuration and Hosting -->
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
@@ -98,12 +83,11 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.10" />
+<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     
-    <!-- Logging with Serilog (match shared project versions) -->
+    <!-- Logging with Serilog -->
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
@@ -115,12 +99,12 @@
     <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     
-    <!-- Resilience with Polly (match shared project versions) -->
+    <!-- Resilience with Polly -->
     <PackageReference Include="Polly" Version="8.6.4" />
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.10.0" />
     
-    <!-- Validation (match shared project versions) -->
+    <!-- Validation -->
     <PackageReference Include="FluentValidation" Version="12.1.0" />
     
     <!-- QuickBooks SDK -->

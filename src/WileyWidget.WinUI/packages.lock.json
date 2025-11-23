@@ -478,6 +478,24 @@
         "resolved": "2.5.1",
         "contentHash": "zy8TMeTP+1FH2NrLaNZtdRbBdq7u5MI+NFZQOBSM69u5RFkciinwzV2eveY6Kjf5MzgsYvvl6kTStsj3JrXqkg=="
       },
+      "ClosedXML": {
+        "type": "Transitive",
+        "resolved": "0.104.1",
+        "contentHash": "RVm2fUNWJlBJlg07shrfeWzrHPG5ypI/vARqdUOUbUdaog8yBw8l4IbCHf2MXt0AXtzaZqGNqhFaCAHigCBdfw==",
+        "dependencies": {
+          "ClosedXML.Parser": "[1.2.0, 2.0.0)",
+          "DocumentFormat.OpenXml": "[3.0.1, 4.0.0)",
+          "ExcelNumberFormat": "1.1.0",
+          "RBush": "3.2.0",
+          "SixLabors.Fonts": "1.0.0",
+          "System.IO.Packaging": "8.0.0"
+        }
+      },
+      "ClosedXML.Parser": {
+        "type": "Transitive",
+        "resolved": "1.2.0",
+        "contentHash": "w+/0tsxABS3lkSH8EUlA7IGme+mq5T/Puf3DbOiTckmSuUpAUO2LK29oXYByCcWkBv6wcRHxgWlQb1lxkwI0Tw=="
+      },
       "ColorCode.Core": {
         "type": "Transitive",
         "resolved": "2.0.13",
@@ -585,10 +603,39 @@
           "Microsoft.WindowsAppSDK": "1.0.0"
         }
       },
-      "DryIoc.dll": {
+      "DocumentFormat.OpenXml": {
         "type": "Transitive",
-        "resolved": "5.4.3",
-        "contentHash": "yhXOG3SOxeWYxBAWskNRDD8fzw5hriEawv4VN4WKaFHOuubiop4kxe2rkWTEyCnTgRVgxVUSQCDBBkZqwPm1iQ=="
+        "resolved": "3.0.1",
+        "contentHash": "DCK1cwFUJ1FGGyYyo++HWl9H1RkqMWIu+FGOLRy6E4L4y0/HIhlJ7N/n1HKboFfOwKn1cMBRxt1RCuDbIEy5YQ==",
+        "dependencies": {
+          "DocumentFormat.OpenXml.Framework": "3.0.1"
+        }
+      },
+      "DocumentFormat.OpenXml.Framework": {
+        "type": "Transitive",
+        "resolved": "3.0.1",
+        "contentHash": "ifyI7OW7sggz7LQMIAD2aUsY/zVUON9QaHrpZ4MK33iVMeHlTG4uhUE2aLWb31nry+LCs2ALDAwf8OfUJGjgBg==",
+        "dependencies": {
+          "System.IO.Packaging": "8.0.0"
+        }
+      },
+      "ExcelDataReader": {
+        "type": "Transitive",
+        "resolved": "3.7.0",
+        "contentHash": "AMv3oDETRHSRyXC17rBtKH45qIfFyo433LMeaMB3u4RNr/c9Luuc0Z+JMP6+3Cx9n4wXqFqcrEIVxrf/GgYnZg=="
+      },
+      "ExcelDataReader.DataSet": {
+        "type": "Transitive",
+        "resolved": "3.7.0",
+        "contentHash": "zA2/CVzbMspkNg0qf0/Zp+eU6VxYP5PtiJSErLDP46d/Y7F6of/NCcSGeXjs97KDq7UiEf6XJe+89s/92n2GYg==",
+        "dependencies": {
+          "ExcelDataReader": "3.7.0"
+        }
+      },
+      "ExcelNumberFormat": {
+        "type": "Transitive",
+        "resolved": "1.1.0",
+        "contentHash": "R3BVHPs9O+RkExbZYTGT0+9HLbi8ZrNij1Yziyw6znd3J7P3uoIR07uwTLGOogtz1p6+0sna66eBoXu7tBiVQA=="
       },
       "HarfBuzzSharp": {
         "type": "Transitive",
@@ -1095,8 +1142,8 @@
       },
       "Microsoft.NETCore.Platforms": {
         "type": "Transitive",
-        "resolved": "2.0.0",
-        "contentHash": "VdLJOCXhZaEMY7Hm2GKiULmn7IEPFE4XC5LPSfBVCUIA8YLZVh846gtfBJalsPQF2PlzdD7ecX7DZEulJ402ZQ=="
+        "resolved": "1.1.1",
+        "contentHash": "TMBuzAHpTenGbGgk0SMTwyEkyijY/Eae4ZGsFNYJvAr/LDn1ku3Etp3FPxChmDp5HHF3kzJuoaa08N0xjqAJfQ=="
       },
       "Microsoft.NETCore.Targets": {
         "type": "Transitive",
@@ -1235,6 +1282,16 @@
           "OpenTelemetry.Api": "[1.13.1, 2.0.0)"
         }
       },
+      "PdfSharpCore": {
+        "type": "Transitive",
+        "resolved": "1.3.36",
+        "contentHash": "6/a0C3t5UZe/5SURYwSVxAiat2tg61dyzF//fqbB/3R4bC5q5xNtBRymQnBGwLmOGyk6Wyuhbm3tAGyNi56b8w==",
+        "dependencies": {
+          "SharpZipLib": "1.3.3",
+          "SixLabors.Fonts": "1.0.0-beta17",
+          "SixLabors.ImageSharp": "1.0.4"
+        }
+      },
       "Polly.Core": {
         "type": "Transitive",
         "resolved": "8.6.4",
@@ -1259,36 +1316,15 @@
           "System.Threading.RateLimiting": "8.0.0"
         }
       },
-      "Prism.Container.Abstractions": {
+      "QuestPDF": {
         "type": "Transitive",
-        "resolved": "9.0.107",
-        "contentHash": "8ylV3FLCS6x4PJWVfg+3t19gn6CpNi5KoHYzzfaFgRgtHfEXQC3eip/ZOKVIcKpEOCR3VHr6LiiemSSN1EIf4g==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.1"
-        }
+        "resolved": "2025.1.4",
+        "contentHash": "tIFPaFBrT3ki6xr6TzIEleWvXdMh/WBkI2nL7B34pnvYI8/yJGCL834aLIjI7XrKRu08K4EfA3kgnzL0I6BLAQ=="
       },
-      "Prism.Container.DryIoc": {
+      "RBush": {
         "type": "Transitive",
-        "resolved": "9.0.107",
-        "contentHash": "roCETFif0524Ba4GbmUQ0cgrc3aA7PHlwAgVPGrI+mNmHyZnP/G4M/4EIJIlbEr2U0p2NvF0yYeS0Ny2dou/qg==",
-        "dependencies": {
-          "DryIoc.dll": "5.4.3",
-          "Prism.Container.Abstractions": "9.0.107"
-        }
-      },
-      "Prism.Core": {
-        "type": "Transitive",
-        "resolved": "9.0.537",
-        "contentHash": "D7mEqPKLVNrD0g2WHCpC/MOKwn8h7X1liCWyjqjL7NCuxgwuhVLTG85E/ZPBkISrXdwvOQZ+bSY31bvP79FQlg==",
-        "dependencies": {
-          "Prism.Container.Abstractions": "9.0.106",
-          "Prism.Events": "9.0.537"
-        }
-      },
-      "Prism.Events": {
-        "type": "Transitive",
-        "resolved": "9.0.537",
-        "contentHash": "Pzp5MGUuhAyKXZUbHVYNWLGF/eA3sScqDN6VrzbWlKj85R0IS0q+JXe99umynso2xhXAe+1jrQCCkgqmEFCBng=="
+        "resolved": "3.2.0",
+        "contentHash": "ijGh9N0zZ7JfXk3oQkWCwK8SwSSByexbyh/MjbCjNxOft9eG5ZqKC1vdgiYq78h4IZRFmN4s3JZ/b10Jipud5w=="
       },
       "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl": {
         "type": "Transitive",
@@ -1482,6 +1518,21 @@
           "Serilog": "2.8.0"
         }
       },
+      "SharpZipLib": {
+        "type": "Transitive",
+        "resolved": "1.3.3",
+        "contentHash": "N8+hwhsKZm25tDJfWpBSW7EGhH/R7EMuiX+KJ4C4u+fCWVc1lJ5zg1u3S1RPPVYgTqhx/C3hxrqUpi6RwK5+Tg=="
+      },
+      "SixLabors.Fonts": {
+        "type": "Transitive",
+        "resolved": "1.0.0",
+        "contentHash": "LFQsCZlV0xlUyXAOMUo5kkSl+8zAQXXbbdwWchtk0B4o7zotZhQsQOcJUELGHdfPfm/xDAsz6hONAuV25bJaAg=="
+      },
+      "SixLabors.ImageSharp": {
+        "type": "Transitive",
+        "resolved": "1.0.4",
+        "contentHash": "H2rPiEr2ddBOltOuqRYhpLBAsQXDAhbzMMhhuksnBG2oefup1MXMchALe7yYkKJksNbtxbZHKeM6dn/68I75qw=="
+      },
       "SkiaSharp": {
         "type": "Transitive",
         "resolved": "2.88.6",
@@ -1529,35 +1580,6 @@
           "System.Private.Uri": "4.3.2",
           "System.Runtime": "4.3.0",
           "System.Text.RegularExpressions": "4.3.0"
-        }
-      },
-      "Syncfusion.Compression.Net.Core": {
-        "type": "Transitive",
-        "resolved": "31.2.5",
-        "contentHash": "ZRLum4c6c+Y/liPfAR9Xxf5UyvNDGGWh+/toYCISKWybTQt/w+1evUZBvJe1842+BKIMu2vA2vfZj+NHue2VYw=="
-      },
-      "Syncfusion.Licensing": {
-        "type": "Transitive",
-        "resolved": "31.2.5",
-        "contentHash": "2Vc8HETl47XRMfJ5aYmBjSuQvNVW9gnOpFQHUyByjzsfJhlBU+Lz9H4jkDiekG9uHl3sL417aJNeJRvwR4mBOA=="
-      },
-      "Syncfusion.Pdf.Net.Core": {
-        "type": "Transitive",
-        "resolved": "31.2.5",
-        "contentHash": "8fojCAAA2nJDY0KBw4jjmyZUz/o5QWLz69UdezlyNzswQIbibxPloYmPairRMPVU4wuqYqjyiu+hunPUGpxNaA==",
-        "dependencies": {
-          "Syncfusion.Compression.Net.Core": "31.2.5",
-          "Syncfusion.Licensing": "31.2.5",
-          "System.Text.Encoding.CodePages": "4.4.0"
-        }
-      },
-      "Syncfusion.XlsIO.Net.Core": {
-        "type": "Transitive",
-        "resolved": "31.2.5",
-        "contentHash": "ONJK3H7Qc6SFrygu2YfaKyfYbX2m+Y/7t8RJYZFHgAvGDRJOxRNYLUxPNYOBm4EwaoPG5DViYRnxWW6NFVXUyg==",
-        "dependencies": {
-          "Syncfusion.Compression.Net.Core": "31.2.5",
-          "Syncfusion.Licensing": "31.2.5"
         }
       },
       "System.AppContext": {
@@ -1867,6 +1889,11 @@
         "dependencies": {
           "System.Runtime": "4.3.0"
         }
+      },
+      "System.IO.Packaging": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "8g1V4YRpdGAxFcK8v9OjuMdIOJSpF30Zb1JGicwVZhly3I994WFyBdV6mQEo8d3T+URQe55/M0U0eIH0Hts1bg=="
       },
       "System.Linq": {
         "type": "Transitive",
@@ -2525,14 +2552,6 @@
           "System.Runtime": "4.3.0"
         }
       },
-      "System.Text.Encoding.CodePages": {
-        "type": "Transitive",
-        "resolved": "4.4.0",
-        "contentHash": "6JX7ZdaceBiLKLkYt8zJcp4xTJd1uYyXXEkPw6mnlUIjh1gZPIVKPtRXPmY5kLf6DwZmf5YLwR3QUrRonl7l0A==",
-        "dependencies": {
-          "Microsoft.NETCore.Platforms": "2.0.0"
-        }
-      },
       "System.Text.Encoding.Extensions": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -2671,10 +2690,7 @@
         }
       },
       "wileywidget.abstractions": {
-        "type": "Project",
-        "dependencies": {
-          "Prism.Core": "[8.1.97, )"
-        }
+        "type": "Project"
       },
       "wileywidget.business": {
         "type": "Project",
@@ -2756,7 +2772,10 @@
       "wileywidget.services": {
         "type": "Project",
         "dependencies": {
+          "ClosedXML": "[0.104.1, )",
           "DotNetEnv": "[3.1.1, )",
+          "ExcelDataReader": "[3.7.0, )",
+          "ExcelDataReader.DataSet": "[3.7.0, )",
           "FluentValidation": "[12.1.0, )",
           "IppDotNetSdkForQuickBooksApiV3": "[14.7.0.2, )",
           "IppOAuth2PlatformSdk": "[14.0.0, )",
@@ -2777,10 +2796,10 @@
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.13.1, 2.0.0)",
           "OpenTelemetry.Extensions.Hosting": "[1.13.1, 2.0.0)",
           "OpenTelemetry.Instrumentation.Runtime": "[1.13.0, 2.0.0)",
+          "PdfSharpCore": "[1.3.36, )",
           "Polly": "[8.6.4, )",
           "Polly.RateLimiting": "[8.6.4, )",
-          "Prism.Container.DryIoc": "[9.0.107, )",
-          "Prism.Core": "[9.0.537, )",
+          "QuestPDF": "[2025.1.4, )",
           "Serilog": "[4.3.0, )",
           "Serilog.Enrichers.Environment": "[3.0.1, )",
           "Serilog.Enrichers.Process": "[3.0.0, )",
@@ -2789,9 +2808,6 @@
           "Serilog.Sinks.Async": "[2.1.0, )",
           "Serilog.Sinks.Email": "[4.1.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
-          "Syncfusion.Licensing": "[31.2.5, )",
-          "Syncfusion.Pdf.Net.Core": "[31.2.5, )",
-          "Syncfusion.XlsIO.Net.Core": "[31.2.5, )",
           "System.Management": "[9.0.10, )",
           "System.Net.Http": "[4.3.4, )",
           "System.Net.Security": "[4.3.2, )",
@@ -2813,6 +2829,50 @@
           "Microsoft.Extensions.Logging": "[9.0.10, )",
           "Microsoft.Extensions.Primitives": "[9.0.10, )",
           "WileyWidget.Models": "[1.0.0, )"
+        }
+      },
+      "wileywidget.services.uno": {
+        "type": "Project",
+        "dependencies": {
+          "ClosedXML": "[0.104.1, )",
+          "CommunityToolkit.Mvvm": "[8.2.2, )",
+          "DotNetEnv": "[3.1.1, )",
+          "FluentValidation": "[12.1.0, )",
+          "IppDotNetSdkForQuickBooksApiV3": "[14.7.0.2, )",
+          "IppOAuth2PlatformSdk": "[14.0.0, )",
+          "Microsoft.ApplicationInsights": "[2.23.0, )",
+          "Microsoft.Data.SqlClient": "[6.1.2, )",
+          "Microsoft.EntityFrameworkCore": "[9.0.10, )",
+          "Microsoft.EntityFrameworkCore.SqlServer": "[9.0.10, )",
+          "Microsoft.Extensions.Caching.Memory": "[9.0.10, )",
+          "Microsoft.Extensions.Configuration.EnvironmentVariables": "[9.0.10, )",
+          "Microsoft.Extensions.Configuration.UserSecrets": "[9.0.10, )",
+          "Microsoft.Extensions.DependencyInjection": "[9.0.11, )",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.Common": "[9.10.0, )",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization": "[9.10.0, )",
+          "Microsoft.Extensions.Hosting": "[9.0.10, )",
+          "Microsoft.Extensions.Http": "[9.0.10, )",
+          "Microsoft.Extensions.Logging": "[9.0.11, )",
+          "OpenTelemetry": "[1.13.1, 2.0.0)",
+          "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.13.1, 2.0.0)",
+          "OpenTelemetry.Extensions.Hosting": "[1.13.1, 2.0.0)",
+          "OpenTelemetry.Instrumentation.Runtime": "[1.13.0, 2.0.0)",
+          "Polly": "[8.6.4, )",
+          "Polly.RateLimiting": "[8.6.4, )",
+          "QuestPDF": "[2025.1.4, )",
+          "Serilog": "[4.3.0, )",
+          "Serilog.Enrichers.Environment": "[3.0.1, )",
+          "Serilog.Enrichers.Process": "[3.0.0, )",
+          "Serilog.Enrichers.Thread": "[4.0.0, )",
+          "Serilog.Settings.Configuration": "[9.0.0, )",
+          "Serilog.Sinks.Async": "[2.1.0, )",
+          "Serilog.Sinks.File": "[7.0.0, )",
+          "WileyWidget.Abstractions": "[1.0.0, )",
+          "WileyWidget.Business": "[1.0.0, )",
+          "WileyWidget.Data": "[1.0.0, )",
+          "WileyWidget.Models": "[1.0.0, )",
+          "WileyWidget.Services": "[1.0.0, )",
+          "WileyWidget.Services.Abstractions": "[1.0.0, )"
         }
       }
     },
@@ -2903,6 +2963,11 @@
           "System.Runtime": "4.3.0",
           "runtime.win.Microsoft.Win32.Primitives": "4.3.0"
         }
+      },
+      "QuestPDF": {
+        "type": "Transitive",
+        "resolved": "2025.1.4",
+        "contentHash": "tIFPaFBrT3ki6xr6TzIEleWvXdMh/WBkI2nL7B34pnvYI8/yJGCL834aLIjI7XrKRu08K4EfA3kgnzL0I6BLAQ=="
       },
       "runtime.any.System.Collections": {
         "type": "Transitive",
@@ -3815,14 +3880,6 @@
           "Microsoft.NETCore.Targets": "1.1.0",
           "System.Runtime": "4.3.0",
           "runtime.any.System.Text.Encoding": "4.3.0"
-        }
-      },
-      "System.Text.Encoding.CodePages": {
-        "type": "Transitive",
-        "resolved": "4.4.0",
-        "contentHash": "6JX7ZdaceBiLKLkYt8zJcp4xTJd1uYyXXEkPw6mnlUIjh1gZPIVKPtRXPmY5kLf6DwZmf5YLwR3QUrRonl7l0A==",
-        "dependencies": {
-          "Microsoft.NETCore.Platforms": "2.0.0"
         }
       },
       "System.Text.Encoding.Extensions": {
@@ -3959,6 +4016,11 @@
           "runtime.win.Microsoft.Win32.Primitives": "4.3.0"
         }
       },
+      "QuestPDF": {
+        "type": "Transitive",
+        "resolved": "2025.1.4",
+        "contentHash": "tIFPaFBrT3ki6xr6TzIEleWvXdMh/WBkI2nL7B34pnvYI8/yJGCL834aLIjI7XrKRu08K4EfA3kgnzL0I6BLAQ=="
+      },
       "runtime.any.System.Collections": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -4870,14 +4932,6 @@
           "Microsoft.NETCore.Targets": "1.1.0",
           "System.Runtime": "4.3.0",
           "runtime.any.System.Text.Encoding": "4.3.0"
-        }
-      },
-      "System.Text.Encoding.CodePages": {
-        "type": "Transitive",
-        "resolved": "4.4.0",
-        "contentHash": "6JX7ZdaceBiLKLkYt8zJcp4xTJd1uYyXXEkPw6mnlUIjh1gZPIVKPtRXPmY5kLf6DwZmf5YLwR3QUrRonl7l0A==",
-        "dependencies": {
-          "Microsoft.NETCore.Platforms": "2.0.0"
         }
       },
       "System.Text.Encoding.Extensions": {
@@ -5014,6 +5068,11 @@
           "runtime.win.Microsoft.Win32.Primitives": "4.3.0"
         }
       },
+      "QuestPDF": {
+        "type": "Transitive",
+        "resolved": "2025.1.4",
+        "contentHash": "tIFPaFBrT3ki6xr6TzIEleWvXdMh/WBkI2nL7B34pnvYI8/yJGCL834aLIjI7XrKRu08K4EfA3kgnzL0I6BLAQ=="
+      },
       "runtime.any.System.Collections": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -5925,14 +5984,6 @@
           "Microsoft.NETCore.Targets": "1.1.0",
           "System.Runtime": "4.3.0",
           "runtime.any.System.Text.Encoding": "4.3.0"
-        }
-      },
-      "System.Text.Encoding.CodePages": {
-        "type": "Transitive",
-        "resolved": "4.4.0",
-        "contentHash": "6JX7ZdaceBiLKLkYt8zJcp4xTJd1uYyXXEkPw6mnlUIjh1gZPIVKPtRXPmY5kLf6DwZmf5YLwR3QUrRonl7l0A==",
-        "dependencies": {
-          "Microsoft.NETCore.Platforms": "2.0.0"
         }
       },
       "System.Text.Encoding.Extensions": {

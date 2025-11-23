@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
-using Syncfusion.XlsIO;
+using ClosedXML.Excel;
 using WileyWidget.Models.Entities;
 
 namespace WileyWidget.Services.Excel;
@@ -38,11 +38,9 @@ public class ExcelReaderService : IExcelReaderService
             {
                 var budgetEntries = new List<BudgetEntry>();
 
-                using (var excelEngine = new ExcelEngine())
+                using (var workbook = new XLWorkbook(filePath))
                 {
-                    var application = excelEngine.Excel;
-                    var workbook = application.Workbooks.Open(filePath);
-                    var worksheet = workbook.Worksheets[0]; // Assume first worksheet
+                    var worksheet = workbook.Worksheet(1); // Assume first worksheet
 
                     // Find header row
                     int headerRow = FindHeaderRow(worksheet);
@@ -56,7 +54,7 @@ public class ExcelReaderService : IExcelReaderService
 
                     // Read data rows
                     int row = headerRow + 1;
-                    while (row <= worksheet.Rows.Length)
+                    while (row <= worksheet.Rows().Count())
                     {
                         var accountNumber = GetCellValue(worksheet, row, columnMap["AccountNumber"]);
                         if (string.IsNullOrWhiteSpace(accountNumber))
@@ -134,11 +132,9 @@ public class ExcelReaderService : IExcelReaderService
             // Validate structure off the UI thread; no UI mutations here
             return await Task.Run(() =>
             {
-                using (var excelEngine = new ExcelEngine())
+                using (var workbook = new XLWorkbook(filePath))
                 {
-                    var application = excelEngine.Excel;
-                    var workbook = application.Workbooks.Open(filePath);
-                    var worksheet = workbook.Worksheets[0];
+                    var worksheet = workbook.Worksheet(1);
 
                     // Check if we can find required headers
                     int headerRow = FindHeaderRow(worksheet);
@@ -161,11 +157,11 @@ public class ExcelReaderService : IExcelReaderService
     /// <summary>
     /// Find the header row by looking for common budget column names
     /// </summary>
-    private int FindHeaderRow(IWorksheet worksheet)
+    private int FindHeaderRow(IXLWorksheet worksheet)
     {
-        for (int row = 1; row <= Math.Min(10, worksheet.Rows.Length); row++)
+        for (int row = 1; row <= Math.Min(10, worksheet.Rows().Count()); row++)
         {
-            for (int col = 1; col <= Math.Min(10, worksheet.Columns.Length); col++)
+            for (int col = 1; col <= Math.Min(10, worksheet.Columns().Count()); col++)
             {
                 var cellValue = GetCellValue(worksheet, row, col)?.ToLowerInvariant();
                 if (cellValue != null && (cellValue.Contains("account", StringComparison.OrdinalIgnoreCase) || cellValue.Contains("number", StringComparison.OrdinalIgnoreCase) || cellValue.Contains("description", StringComparison.OrdinalIgnoreCase)))
@@ -180,11 +176,11 @@ public class ExcelReaderService : IExcelReaderService
     /// <summary>
     /// Map column names to their indices
     /// </summary>
-    private Dictionary<string, int> MapColumns(IWorksheet worksheet, int headerRow)
+    private Dictionary<string, int> MapColumns(IXLWorksheet worksheet, int headerRow)
     {
         var columnMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        for (int col = 1; col <= worksheet.Columns.Length; col++)
+        for (int col = 1; col <= worksheet.Columns().Count(); col++)
         {
             var headerValue = GetCellValue(worksheet, headerRow, col)?.Trim();
             if (!string.IsNullOrWhiteSpace(headerValue))
@@ -215,11 +211,11 @@ public class ExcelReaderService : IExcelReaderService
     /// <summary>
     /// Get cell value safely
     /// </summary>
-    private string? GetCellValue(IWorksheet worksheet, int row, int col)
+    private string? GetCellValue(IXLWorksheet worksheet, int row, int col)
     {
         try
         {
-            var cell = worksheet.Range[row, col];
+            var cell = worksheet.Cell(row, col);
             return cell?.Value?.ToString()?.Trim();
         }
         catch

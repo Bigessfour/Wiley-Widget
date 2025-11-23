@@ -1,16 +1,9 @@
-using Prism.Mvvm;
-
 namespace WileyWidget.Uno.ViewModels;
 
-public class DashboardViewModel : BindableBase
+public partial class DashboardViewModel : ObservableObject
 {
-    private string _welcomeMessage = "Welcome to Wiley Widget on Uno Platform!";
-
-    public string WelcomeMessage
-    {
-        get => _welcomeMessage;
-        set => SetProperty(ref _welcomeMessage, value);
-    }
+    [ObservableProperty]
+    public partial string WelcomeMessage { get; set; } = "Welcome to Wiley Widget on Uno Platform!";
 
     public DashboardViewModel()
     {

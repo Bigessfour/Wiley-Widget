@@ -1,13 +1,12 @@
 <Page
     x:Class="WileyWidget.Uno.Views.ShellWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:prism="using:Prism.Navigation.Regions">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <!-- Main region for Prism navigation -->
+        <!-- Main content area -->
         <ContentControl
-            prism:RegionManager.RegionName="MainRegion"
+            x:Name="MainContent"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch" />
     </Grid>

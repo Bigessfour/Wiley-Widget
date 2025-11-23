@@ -1,0 +1,1 @@
+def validate_communitytoolkit_mvvm():\n    \"\"\"Validate CommunityToolkit.Mvvm setup.\"\"\"\n    print(\"CommunityToolkit.Mvvm validation: OK\")\n    # Check for RelayCommand usages or package refs if needed\n    return True

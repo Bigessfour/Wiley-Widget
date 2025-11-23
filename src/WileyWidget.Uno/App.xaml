@@ -1,7 +1,6 @@
-<prism:PrismApplication x:Class="WileyWidget.Uno.App"
+<Application x:Class="WileyWidget.Uno.App"
        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-       xmlns:prism="using:Prism.DryIoc.Uno">
+       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <Application.Resources>
     <ResourceDictionary>
@@ -20,4 +19,4 @@
     </ResourceDictionary>
   </Application.Resources>
 
-</prism:PrismApplication>
+</Application>

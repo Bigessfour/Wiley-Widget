@@ -101,17 +101,6 @@ public class DatabaseOptions
 }
 
 /// <summary>
-/// Configuration options for Syncfusion licensing.
-/// </summary>
-public class SyncfusionOptions
-{
-    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Syncfusion.LicenseKey is required for Syncfusion controls")]
-    public string LicenseKey { get; set; } = string.Empty;
-
-    public string KeyVaultSecretName { get; set; } = "Syncfusion-LicenseKey";
-}
-
-/// <summary>
 /// Application settings options loaded from configuration and database
 /// </summary>
 public class AppOptions
@@ -162,12 +151,6 @@ public class AppOptions
     [Display(Name = "Environment")]
     [RegularExpression("^(Sandbox|Production)$", ErrorMessage = "Environment must be either 'Sandbox' or 'Production'")]
     public string QuickBooksEnvironment { get; set; } = "Sandbox";
-
-    // Syncfusion Settings
-    [Category("Syncfusion")]
-    [Display(Name = "License Key")]
-    [Required(ErrorMessage = "Syncfusion license key is required")]
-    public string SyncfusionLicenseKey { get; set; } = string.Empty;
 
     // XAI Settings
     [Category("AI")]

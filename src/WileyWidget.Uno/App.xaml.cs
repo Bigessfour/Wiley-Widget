@@ -5,10 +5,10 @@ using System;
 namespace WileyWidget.Uno;
 
 /// <summary>
-/// WileyWidget Uno Platform application with Prism MVVM framework.
-/// Inherits from PrismApplication (resolved via global using Prism.DryIoc).
+/// WileyWidget Uno Platform application.
+/// Uses CommunityToolkit.Mvvm for MVVM framework.
 /// </summary>
-public sealed partial class App : Prism.DryIoc.WinUI.PrismApplication
+public sealed partial class App : Application
 {
     /// <summary>
     /// Initializes the singleton application object and sets up Serilog logging.
@@ -22,9 +22,6 @@ public sealed partial class App : Prism.DryIoc.WinUI.PrismApplication
         Log.Information("[Startup] WileyWidget Uno application initializing");
         
         this.InitializeComponent();
-        
-        // Register Syncfusion license
-        RegisterSyncfusionLicense();
     }
     
     /// <summary>
@@ -46,42 +43,26 @@ public sealed partial class App : Prism.DryIoc.WinUI.PrismApplication
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
     }
-    
+
     /// <summary>
-    /// Registers Syncfusion license from environment variable.
+    /// Invoked when the application is launched.
     /// </summary>
-    private void RegisterSyncfusionLicense()
+    /// <param name="args">Details about the launch request and process.</param>
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        try
+        Log.Information("[Startup] Application launched");
+        
+#if DEBUG
+        if (System.Diagnostics.Debugger.IsAttached)
         {
-            var syncfusionKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
-            if (!string.IsNullOrWhiteSpace(syncfusionKey))
-            {
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
-                Log.Information("[License] Syncfusion license registered successfully");
-            }
-            else
-            {
-                Log.Warning("[License] SYNCFUSION_LICENSE_KEY not set - running in trial mode");
-            }
+            // this.DebugSettings.EnableFrameRateCounter = true;
         }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[License] Failed to register Syncfusion license");
-        }
+#endif
+
+        m_window = new Views.ShellWindow();
     }
 
-    // Note: OnLaunched is sealed in PrismApplicationBase and cannot be overridden.
-    // Prism.Uno.WinUI handles application launch internally.
-    // Use OnInitialized() in App.Prism.cs for custom initialization logic.
-    
-    /// <summary>
-    /// Called when the application is exiting.
-    /// Ensures proper cleanup of resources.
-    /// </summary>
-    // Note: Prism.Uno.WinUI does not expose OnExit in the same way as WPF.
-    // Cleanup is handled by Serilog sinks and process shutdown, so we avoid overriding OnExit here.
-
+    private Views.ShellWindow? m_window;
 }
 
 // Remove old Uno.Extensions code below

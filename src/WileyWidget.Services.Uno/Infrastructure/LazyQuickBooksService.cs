@@ -4,10 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Messaging;
 using Intuit.Ipp.Data;
 using Microsoft.Extensions.Logging;
-using Prism.Events;
 using Serilog;
+using static Serilog.Log;
 using WileyWidget.Services.Events;
 using QBTask = Intuit.Ipp.Data.Task;
 
@@ -18,34 +19,28 @@ namespace WileyWidget.Services.Infrastructure
     /// Prevents constructor dependency resolution failures in ViewModels (like SettingsViewModel) that depend on IQuickBooksService
     /// but are created before QuickBooksModule initializes.
     ///
-    /// Pattern based on Prism-Samples-Wpf EventAggregator and Lazy&lt;T&gt; patterns:
+    /// Pattern based on CommunityToolkit.Mvvm Messenger and Lazy&lt;T&gt; patterns:
     /// - Registered as singleton in App.RegisterTypes() (before module catalog configuration)
-    /// - Subscribes to ModuleLoadedEvent to detect when QuickBooksModule loads
+    /// - Subscribes to ModuleLoadedMessage to detect when QuickBooksModule loads
     /// - Swaps internal reference to real QuickBooksService on module load
     /// - Provides no-op/stub implementations until real service is available
-    ///
-    /// Reference: https://github.com/PrismLibrary/Prism-Samples-Wpf/tree/master/10-CustomPopupDialogs
     /// </summary>
     public class LazyQuickBooksService : IQuickBooksService
     {
-        private readonly IEventAggregator _eventAggregator;
         private readonly ILogger<LazyQuickBooksService> _logger;
         private IQuickBooksService? _realService;
         private readonly object _swapLock = new object();
         private bool _isSwapped = false;
 
-        public LazyQuickBooksService(
-            IEventAggregator eventAggregator,
-            ILogger<LazyQuickBooksService> logger)
+        public LazyQuickBooksService(ILogger<LazyQuickBooksService> logger)
         {
-            _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            // Subscribe to module loaded event to detect when QuickBooksModule is ready
-            _eventAggregator.GetEvent<ModuleLoadedEvent>().Subscribe(OnModuleLoaded, ThreadOption.PublisherThread);
+            // Subscribe to module loaded message to detect when QuickBooksModule is ready
+            WeakReferenceMessenger.Default.Register<ModuleLoadedMessage>(this, OnModuleLoaded);
 
-            // Subscribe to service ready event (published by QuickBooksModule.OnInitialized)
-            _eventAggregator.GetEvent<QuickBooksServiceReadyEvent>().Subscribe(OnServiceReady, ThreadOption.PublisherThread);
+            // Subscribe to service ready message (published by QuickBooksModule.OnInitialized)
+            WeakReferenceMessenger.Default.Register<QuickBooksServiceReadyMessage>(this, OnServiceReady);
 
             Log.Information("LazyQuickBooksService: Stub instance created (will swap to real service on module load)");
             _logger.LogInformation("LazyQuickBooksService initialized as stub - awaiting QuickBooksModule");
@@ -54,9 +49,9 @@ namespace WileyWidget.Services.Infrastructure
         /// <summary>
         /// Called when any module is loaded. Checks if it's QuickBooksModule.
         /// </summary>
-        private void OnModuleLoaded(ModuleLoadedEventPayload payload)
+        private void OnModuleLoaded(object recipient, ModuleLoadedMessage message)
         {
-            if (payload.ModuleName == "QuickBooksModule")
+            if (message.ModuleName == "QuickBooksModule")
             {
                 Log.Information("LazyQuickBooksService: QuickBooksModule loaded - awaiting service registration");
                 _logger.LogInformation("QuickBooksModule loaded, waiting for IQuickBooksService registration");
@@ -67,7 +62,7 @@ namespace WileyWidget.Services.Infrastructure
         /// Called when the real QuickBooksService is registered and ready.
         /// Swaps the internal reference to delegate all calls to the real implementation.
         /// </summary>
-        private void OnServiceReady(IQuickBooksService realService)
+        private void OnServiceReady(object recipient, QuickBooksServiceReadyMessage message)
         {
             lock (_swapLock)
             {
@@ -77,7 +72,7 @@ namespace WileyWidget.Services.Infrastructure
                     return;
                 }
 
-                _realService = realService ?? throw new ArgumentNullException(nameof(realService));
+                _realService = message.Service ?? throw new ArgumentNullException(nameof(message.Service));
                 _isSwapped = true;
 
                 Log.Information("✓ LazyQuickBooksService: Swapped to real QuickBooksService implementation");
@@ -111,6 +106,18 @@ namespace WileyWidget.Services.Infrastructure
 
             Log.Debug("LazyQuickBooksService.TestConnectionAsync() called before module load - returning false (stub)");
             _logger.LogDebug("TestConnectionAsync called on stub - QuickBooksModule not yet loaded");
+            return await System.Threading.Tasks.Task.FromResult(false);
+        }
+
+        public async Task<bool> IsConnectedAsync()
+        {
+            if (_realService != null)
+            {
+                return await _realService.IsConnectedAsync();
+            }
+
+            Log.Debug("LazyQuickBooksService.IsConnectedAsync() called before module load - returning false (stub)");
+            _logger.LogDebug("IsConnectedAsync called on stub - QuickBooksModule not yet loaded");
             return await System.Threading.Tasks.Task.FromResult(false);
         }
 

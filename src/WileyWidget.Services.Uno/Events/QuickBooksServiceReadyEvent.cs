@@ -1,12 +1,16 @@
-using Prism.Events;
-
 namespace WileyWidget.Services.Events
 {
     /// <summary>
-    /// Event published when the real QuickBooksService is ready.
-    /// LazyQuickBooksService subscribes to this event to swap from stub to real implementation.
+    /// Message published when the real QuickBooksService is ready.
+    /// LazyQuickBooksService subscribes to this message to swap from stub to real implementation.
     /// </summary>
-    public class QuickBooksServiceReadyEvent : PubSubEvent<IQuickBooksService>
+    public class QuickBooksServiceReadyMessage
     {
+        public IQuickBooksService Service { get; }
+        
+        public QuickBooksServiceReadyMessage(IQuickBooksService service)
+        {
+            Service = service;
+        }
     }
 }

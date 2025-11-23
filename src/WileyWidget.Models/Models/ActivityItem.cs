@@ -66,7 +66,7 @@ public class ActivityItem : INotifyPropertyChanged
 
     /// <summary>
     /// Gets or sets the icon identifier for displaying in the UI.
-    /// Should correspond to Syncfusion icon names or custom icon paths.
+    /// Should correspond to icon names or custom icon paths.
     /// </summary>
     public string Icon
     {

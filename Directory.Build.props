@@ -1,4 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project>
+  <PropertyGroup>
+    <!-- Force PlatformTarget to x64 for all projects unless explicitly overridden -->
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Disable preferring 32-bit so x64 is used on 64-bit machines -->
+    <Prefer32Bit>false</Prefer32Bit>
+    <!-- Optional: ensure consistent assembly name behavior when PlatformTarget changes -->
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+  </PropertyGroup>
+
   <!--
     WileyWidget Build Configuration
     See docs/development-guide.md for comprehensive development standards
@@ -7,26 +17,19 @@
   -->
   <PropertyGroup>
     <!-- Fix MSB4184: Hardcode valid MSBuild version for .NET 9 analyzers -->
-    <MSBuildVersionForAnalyzers>17.0</MSBuildVersionForAnalyzers>  <!-- Matches VS2022; adjust to
-    17.10 for VS2022.10+ -->
-    <AnalysisLevel>6.0</AnalysisLevel>  <!-- Use valid numeric value to avoid MSB4184 -->
-    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>  <!-- Reduces noise during build -->
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>  <!-- If not set; enables
-    FluentLight theme -->
-    <WindowsSdkPackageVersion>10.0.26100.81</WindowsSdkPackageVersion>  <!-- Required by WindowsAppSDK 1.7+ -->
+    <MSBuildVersionForAnalyzers>17.0</MSBuildVersionForAnalyzers>
+    <AnalysisLevel>6.0</AnalysisLevel>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <WindowsSdkPackageVersion>10.0.26100.81</WindowsSdkPackageVersion>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
     <UseWPF Condition="'$(MSBuildProjectName)' != 'WileyWidget.WinUI'">true</UseWPF>
-    <WpfTmpProject Condition="'$(WpfTmpProject)' == ''">true</WpfTmpProject>  <!-- WPFTMP opt-in -->
+    <WpfTmpProject Condition="'$(WpfTmpProject)' == ''">true</WpfTmpProject>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <RestoreAdditionalProjectSources Condition="'$(RestoreAdditionalProjectSources)' == ''">
-      https://api.nuget.org/v3/index.json</RestoreAdditionalProjectSources>
+    <RestoreAdditionalProjectSources Condition="'$(RestoreAdditionalProjectSources)' == ''">https://api.nuget.org/v3/index.json</RestoreAdditionalProjectSources>
     <SelfContained>false</SelfContained>
     <Nullable>disable</Nullable>
-    <!-- Clear fallback folders to avoid Windows paths in Linux containers -->
     <RestoreAdditionalProjectFallbackFolders></RestoreAdditionalProjectFallbackFolders>
-    <!-- Temporarily suppress NU1605 (package downgrade warnings) while migrating legacy
-    dependencies.
-      TODO: remove NU1605 from NoWarn after resolving old Serilog/DocumentDB transitive deps. -->
     <NoWarn>$(NoWarn);NU1605;NU1603;NETSDK1206;CS0436</NoWarn>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <RunAnalyzers>false</RunAnalyzers>
@@ -35,72 +38,50 @@
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <EnableNETAnalyzers Condition="'$(EnableNETAnalyzers)' == ''">false</EnableNETAnalyzers>
 
-    <!-- ============================================= -->
-    <!-- AGGRESSIVE BUILD PERFORMANCE OPTIMIZATIONS -->
-    <!-- ============================================= -->
-
-    <!-- Compiler Server & Shared Compilation -->
+    <!-- Aggressive build performance optimizations -->
     <UseSharedCompilation>true</UseSharedCompilation>
     <ProduceReferenceAssemblyInOutDir>true</ProduceReferenceAssemblyInOutDir>
     <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
     <UseCommonOutputDirectory>false</UseCommonOutputDirectory>
 
-    <!-- Incremental Build & Fast Up-to-Date Check -->
     <DisableFastUpToDateCheck>false</DisableFastUpToDateCheck>
     <DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
 
-    <!-- Parallel Build Configuration -->
     <BuildInParallel>true</BuildInParallel>
-    <MaxCpuCount>0</MaxCpuCount> <!-- 0 = use all available CPUs -->
+    <MaxCpuCount>0</MaxCpuCount>
     <ContinueOnError>false</ContinueOnError>
 
-    <!-- NuGet & Restore Optimization -->
     <RestoreUseStaticGraphEvaluation>true</RestoreUseStaticGraphEvaluation>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <!-- Disable RestoreLockedMode for development to allow security package updates -->
-    <RestoreLockedMode Condition="'$(Configuration)' == 'Release' AND Exists('$(MSBuildProjectDirectory)\packages.lock.json')">
-      true</RestoreLockedMode>
+    <RestoreLockedMode Condition="'$(Configuration)' == 'Release' AND Exists('$(MSBuildProjectDirectory)\packages.lock.json')">true</RestoreLockedMode>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
-    <!-- DISABLE ANALYZERS IN DEBUG (HUGE SPEED BOOST) -->
     <RunAnalyzers Condition="'$(Configuration)' == 'Debug'">false</RunAnalyzers>
     <RunAnalyzersDuringBuild Condition="'$(Configuration)' == 'Debug'">false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis Condition="'$(Configuration)' == 'Debug'">false</RunAnalyzersDuringLiveAnalysis>
     <EnableNETAnalyzers Condition="'$(Configuration)' == 'Debug'">false</EnableNETAnalyzers>
 
-    <!-- Disable XML Documentation in Debug -->
     <GenerateDocumentationFile Condition="'$(Configuration)' == 'Debug'">false</GenerateDocumentationFile>
-
-    <!-- Optimize Debug Symbols for Speed -->
     <DebugType Condition="'$(Configuration)' == 'Debug'">embedded</DebugType>
     <DebugSymbols Condition="'$(Configuration)' == 'Debug'">true</DebugSymbols>
     <Optimize Condition="'$(Configuration)' == 'Debug'">false</Optimize>
 
-    <!-- Deterministic Build (helps with caching) -->
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 
-    <!-- Assembly Info Generation -->
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
 
-    <!-- Ensure nested build outputs are never re-included in compilation -->
-    <DefaultItemExcludes>
-      $(DefaultItemExcludes);**\bin\**;**\obj\**;**\node_modules\**;**\.vs\**;**\.vscode\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**\bin\**;**\obj\**;**\node_modules\**;**\.vs\**;**\.vscode\**</DefaultItemExcludes>
 
-    <!-- WPF/XAML: prevent design-time wpftmp temporary projects which sometimes miss
-    PackageReferences -->
     <GenerateTemporaryTargetAssembly>false</GenerateTemporaryTargetAssembly>
     <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
-    <!-- Ensure NuGet PackageReferences are available to the WPF markup compilation (wpftmp) step -->
     <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
 
-    <!-- XAML Build Performance -->
     <XamlDebuggingInformation Condition="'$(Configuration)' == 'Debug'">false</XamlDebuggingInformation>
   </PropertyGroup>
 
-  <!-- Disable problematic analyzers target to fix MSB4184 -->
   <Target Name="RunAnalyzers" />
 
 </Project>

@@ -11,6 +11,41 @@
     Title="Wiley Widget">
 
     <Grid x:Name="RootGrid" Background="Transparent">
-        <lvc:CartesianChart Series="{x:Bind ViewModel.ChartSeries}" />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3*" />
+            <ColumnDefinition Width="2*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Header / Toolbar -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Padding="12">
+            <TextBlock Text="Wiley Widget" FontSize="18" VerticalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Main content frame for navigation (replaces Prism regions) -->
+        <Frame x:Name="ContentFrame" Grid.Row="1" Grid.Column="0" NavigationCacheMode="Required" />
+
+        <!-- Data grid using native WinUI / CommunityToolkit control -->
+        <controls:DataGrid x:Name="DataGrid"
+                           Grid.Row="1"
+                           Grid.Column="1"
+                           ItemsSource="{Binding DataItems, Mode=OneWay}"
+                           AutoGenerateColumns="False"
+                           CanUserReorderColumns="False"
+                           CanUserResizeColumns="True"
+                           IsReadOnly="True">
+            <controls:DataGrid.Columns>
+                <controls:DataGridTextColumn Header="Name" Binding="{Binding Name}" />
+                <controls:DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat='{}{0:C}'}" />
+                <!-- ... add columns as needed ... -->
+            </controls:DataGrid.Columns>
+        </controls:DataGrid>
+
+        <!-- Lightweight chart retained (LiveCharts) — keep small and performant -->
+        <lvc:CartesianChart Grid.Row="1" Grid.Column="0" Series="{x:Bind ViewModel.ChartSeries}" Margin="8" />
+
     </Grid>
 </Window>

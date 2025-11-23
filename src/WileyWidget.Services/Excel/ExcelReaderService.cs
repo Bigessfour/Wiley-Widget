@@ -5,13 +5,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
-using Syncfusion.XlsIO;
+using ExcelDataReader;
 using WileyWidget.Models.Entities;
 
 namespace WileyWidget.Services.Excel;
 
 /// <summary>
-/// Service for reading Excel files and extracting municipal budget data
+/// Service for reading Excel files and extracting municipal budget data.
+/// Uses ExcelDataReader (open-source) instead of Syncfusion.XlsIO.
 /// </summary>
 public class ExcelReaderService : IExcelReaderService
 {
@@ -38,37 +39,38 @@ public class ExcelReaderService : IExcelReaderService
             {
                 var budgetEntries = new List<BudgetEntry>();
 
-                using (var excelEngine = new ExcelEngine())
+                System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+                using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
+                using (var reader = ExcelReaderFactory.CreateReader(stream))
                 {
-                    var application = excelEngine.Excel;
-                    var workbook = application.Workbooks.Open(filePath);
-                    var worksheet = workbook.Worksheets[0]; // Assume first worksheet
+                    var result = reader.AsDataSet();
+                    var table = result.Tables[0]; // Assume first worksheet
 
                     // Find header row
-                    int headerRow = FindHeaderRow(worksheet);
+                    int headerRow = FindHeaderRow(table);
                     if (headerRow == -1)
                     {
                         throw new InvalidOperationException("Could not find header row with budget information");
                     }
 
                     // Map column indices
-                    var columnMap = MapColumns(worksheet, headerRow);
+                    var columnMap = MapColumns(table, headerRow);
 
                     // Read data rows
-                    int row = headerRow + 1;
-                    while (row <= worksheet.Rows.Length)
+                    for (int row = headerRow + 1; row < table.Rows.Count; row++)
                     {
-                        var accountNumber = GetCellValue(worksheet, row, columnMap["AccountNumber"]);
+                        var accountNumber = GetCellValue(table, row, columnMap["AccountNumber"]);
                         if (string.IsNullOrWhiteSpace(accountNumber))
                             break; // End of data
 
                         var budgetEntry = new BudgetEntry
                         {
                             AccountNumber = accountNumber,
-                            Description = GetCellValue(worksheet, row, columnMap["Description"]) ?? $"Account {accountNumber}",
-                            BudgetedAmount = ParseDecimal(GetCellValue(worksheet, row, columnMap["BudgetedAmount"])),
-                            ActualAmount = ParseDecimal(GetCellValue(worksheet, row, columnMap["ActualAmount"])),
-                            FiscalYear = ParseInt(GetCellValue(worksheet, row, columnMap["FiscalYear"])) ?? DateTime.Now.Year,
+                            Description = GetCellValue(table, row, columnMap["Description"]) ?? $"Account {accountNumber}",
+                            BudgetedAmount = ParseDecimal(GetCellValue(table, row, columnMap["BudgetedAmount"])),
+                            ActualAmount = ParseDecimal(GetCellValue(table, row, columnMap["ActualAmount"])),
+                            FiscalYear = ParseInt(GetCellValue(table, row, columnMap["FiscalYear"])) ?? DateTime.Now.Year,
                             SourceFilePath = filePath,
                             SourceRowNumber = row
                         };
@@ -76,7 +78,7 @@ public class ExcelReaderService : IExcelReaderService
                         // Optional fields
                         if (columnMap.ContainsKey("FundType"))
                         {
-                            var fundTypeStr = GetCellValue(worksheet, row, columnMap["FundType"]);
+                            var fundTypeStr = GetCellValue(table, row, columnMap["FundType"]);
                             if (Enum.TryParse<FundType>(fundTypeStr, true, out var fundType))
                             {
                                 budgetEntry.FundType = fundType;
@@ -85,12 +87,12 @@ public class ExcelReaderService : IExcelReaderService
 
                         if (columnMap.ContainsKey("DepartmentId"))
                         {
-                            budgetEntry.DepartmentId = ParseInt(GetCellValue(worksheet, row, columnMap["DepartmentId"])) ?? 1;
+                            budgetEntry.DepartmentId = ParseInt(GetCellValue(table, row, columnMap["DepartmentId"])) ?? 1;
                         }
 
                         if (columnMap.ContainsKey("StartPeriod"))
                         {
-                            var startPeriodStr = GetCellValue(worksheet, row, columnMap["StartPeriod"]);
+                            var startPeriodStr = GetCellValue(table, row, columnMap["StartPeriod"]);
                             if (DateTime.TryParse(startPeriodStr, out var startPeriod))
                             {
                                 budgetEntry.StartPeriod = startPeriod;
@@ -99,7 +101,7 @@ public class ExcelReaderService : IExcelReaderService
 
                         if (columnMap.ContainsKey("EndPeriod"))
                         {
-                            var endPeriodStr = GetCellValue(worksheet, row, columnMap["EndPeriod"]);
+                            var endPeriodStr = GetCellValue(table, row, columnMap["EndPeriod"]);
                             if (DateTime.TryParse(endPeriodStr, out var endPeriod))
                             {
                                 budgetEntry.EndPeriod = endPeriod;
@@ -107,7 +109,6 @@ public class ExcelReaderService : IExcelReaderService
                         }
 
                         budgetEntries.Add(budgetEntry);
-                        row++;
                     }
                 }
 
@@ -134,18 +135,20 @@ public class ExcelReaderService : IExcelReaderService
             // Validate structure off the UI thread; no UI mutations here
             return await Task.Run(() =>
             {
-                using (var excelEngine = new ExcelEngine())
+                System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+                using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
+                using (var reader = ExcelReaderFactory.CreateReader(stream))
                 {
-                    var application = excelEngine.Excel;
-                    var workbook = application.Workbooks.Open(filePath);
-                    var worksheet = workbook.Worksheets[0];
+                    var result = reader.AsDataSet();
+                    var table = result.Tables[0];
 
                     // Check if we can find required headers
-                    int headerRow = FindHeaderRow(worksheet);
+                    int headerRow = FindHeaderRow(table);
                     if (headerRow == -1)
                         return false;
 
-                    var columnMap = MapColumns(worksheet, headerRow);
+                    var columnMap = MapColumns(table, headerRow);
 
                     // Check for required columns
                     return columnMap.ContainsKey("AccountNumber") && columnMap.ContainsKey("Description");
@@ -161,14 +164,16 @@ public class ExcelReaderService : IExcelReaderService
     /// <summary>
     /// Find the header row by looking for common budget column names
     /// </summary>
-    private int FindHeaderRow(IWorksheet worksheet)
+    private int FindHeaderRow(System.Data.DataTable table)
     {
-        for (int row = 1; row <= Math.Min(10, worksheet.Rows.Length); row++)
+        for (int row = 0; row < Math.Min(10, table.Rows.Count); row++)
         {
-            for (int col = 1; col <= Math.Min(10, worksheet.Columns.Length); col++)
+            for (int col = 0; col < Math.Min(10, table.Columns.Count); col++)
             {
-                var cellValue = GetCellValue(worksheet, row, col)?.ToLowerInvariant();
-                if (cellValue != null && (cellValue.Contains("account", StringComparison.OrdinalIgnoreCase) || cellValue.Contains("number", StringComparison.OrdinalIgnoreCase) || cellValue.Contains("description", StringComparison.OrdinalIgnoreCase)))
+                var cellValue = table.Rows[row][col]?.ToString()?.ToLowerInvariant();
+                if (cellValue != null && (cellValue.Contains("account", StringComparison.OrdinalIgnoreCase) ||
+                    cellValue.Contains("number", StringComparison.OrdinalIgnoreCase) ||
+                    cellValue.Contains("description", StringComparison.OrdinalIgnoreCase)))
                 {
                     return row;
                 }
@@ -180,13 +185,13 @@ public class ExcelReaderService : IExcelReaderService
     /// <summary>
     /// Map column names to their indices
     /// </summary>
-    private Dictionary<string, int> MapColumns(IWorksheet worksheet, int headerRow)
+    private Dictionary<string, int> MapColumns(System.Data.DataTable table, int headerRow)
     {
         var columnMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        for (int col = 1; col <= worksheet.Columns.Length; col++)
+        for (int col = 0; col < table.Columns.Count; col++)
         {
-            var headerValue = GetCellValue(worksheet, headerRow, col)?.Trim();
+            var headerValue = table.Rows[headerRow][col]?.ToString()?.Trim();
             if (!string.IsNullOrWhiteSpace(headerValue))
             {
                 // Map common variations to standard names
@@ -215,12 +220,15 @@ public class ExcelReaderService : IExcelReaderService
     /// <summary>
     /// Get cell value safely
     /// </summary>
-    private string? GetCellValue(IWorksheet worksheet, int row, int col)
+    private string? GetCellValue(System.Data.DataTable table, int row, int col)
     {
         try
         {
-            var cell = worksheet.Range[row, col];
-            return cell?.Value?.ToString()?.Trim();
+            if (row >= 0 && row < table.Rows.Count && col >= 0 && col < table.Columns.Count)
+            {
+                return table.Rows[row][col]?.ToString()?.Trim();
+            }
+            return null;
         }
         catch
         {

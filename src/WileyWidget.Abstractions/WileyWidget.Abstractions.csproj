@@ -13,10 +13,10 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Prism.Core" Version="8.1.97" />
   </ItemGroup>
 
 </Project>

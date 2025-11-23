@@ -5,9 +5,10 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Syncfusion.Pdf;
-using Syncfusion.Pdf.Graphics;
-using Syncfusion.XlsIO;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using ClosedXML.Excel;
 using WileyWidget.Models;
 
 namespace WileyWidget.Services;
@@ -32,78 +33,81 @@ public class ReportExportService : IReportExportService
         // Offload PDF generation to a background thread (CPU/disk-bound)
         await Task.Run(() =>
         {
-            using (var document = new PdfDocument())
+            QuestPDF.Settings.License = LicenseType.Community;
+
+            Document.Create(container =>
             {
-                var page = document.Pages.Add();
-                var graphics = page.Graphics;
-
-                // Set up font
-                var font = new PdfStandardFont(PdfFontFamily.Helvetica, 12);
-
-                float yPosition = 10;
-
-                // Handle different data types
-                if (data is IEnumerable<object> enumerableData)
+                container.Page(page =>
                 {
-                    // Tabular data
-                    var items = enumerableData.ToList();
-                    if (items.Any())
+                    page.Size(PageSizes.A4);
+                    page.Margin(1, Unit.Centimetre);
+                    page.PageColor(Colors.White);
+                    page.DefaultTextStyle(x => x.FontSize(12));
+
+                    page.Content().Column(column =>
                     {
-                        // Get properties from first item
-                        var properties = items.First().GetType().GetProperties()
-                            .Where(p => p.CanRead)
-                            .ToArray();
-
-                        // Add headers
-                        float xPosition = 10;
-                        foreach (var prop in properties)
+                        // Handle different data types
+                        if (data is IEnumerable<object> enumerableData)
                         {
-                            graphics.DrawString(prop.Name, font, PdfBrushes.Black, xPosition, yPosition);
-                            xPosition += 100; // Fixed column width
+                            // Tabular data
+                            var items = enumerableData.ToList();
+                            if (items.Any())
+                            {
+                                // Get properties from first item
+                                var properties = items.First().GetType().GetProperties()
+                                    .Where(p => p.CanRead)
+                                    .ToArray();
+
+                                // Create table
+                                column.Item().Table(table =>
+                                {
+                                    // Define columns
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        for (int i = 0; i < properties.Length; i++)
+                                        {
+                                            columns.RelativeColumn();
+                                        }
+                                    });
+
+                                    // Add headers
+                                    table.Header(header =>
+                                    {
+                                        foreach (var prop in properties)
+                                        {
+                                            header.Cell().Element(cell => cell.Border(1).Padding(5).Text(prop.Name).Bold());
+                                        }
+                                    });
+
+                                    // Add data rows
+                                    foreach (var item in items)
+                                    {
+                                        foreach (var prop in properties)
+                                        {
+                                            var value = prop.GetValue(item)?.ToString() ?? "";
+                                            table.Cell().Element(cell => cell.Border(1).Padding(5).Text(value));
+                                        }
+                                    }
+                                });
+                            }
                         }
-                        yPosition += 20;
-
-                        // Add data rows
-                        foreach (var item in items)
+                        else
                         {
-                            xPosition = 10;
+                            // Single object - display properties
+                            var properties = data.GetType().GetProperties()
+                                .Where(p => p.CanRead)
+                                .ToArray();
+
                             foreach (var prop in properties)
                             {
-                                var value = prop.GetValue(item)?.ToString() ?? "";
-                                graphics.DrawString(value, font, PdfBrushes.Black, xPosition, yPosition);
-                                xPosition += 100;
-                            }
-                            yPosition += 15;
-
-                            // Start new page if needed
-                            if (yPosition > page.GetClientSize().Height - 50)
-                            {
-                                page = document.Pages.Add();
-                                graphics = page.Graphics;
-                                yPosition = 10;
+                                var value = prop.GetValue(data)?.ToString() ?? "";
+                                var text = $"{prop.Name}: {value}";
+                                column.Item().Text(text);
                             }
                         }
-                    }
-                }
-                else
-                {
-                    // Single object - display properties
-                    var properties = data.GetType().GetProperties()
-                        .Where(p => p.CanRead)
-                        .ToArray();
-
-                    foreach (var prop in properties)
-                    {
-                        var value = prop.GetValue(data)?.ToString() ?? "";
-                        var text = $"{prop.Name}: {value}";
-                        graphics.DrawString(text, font, PdfBrushes.Black, 10, yPosition);
-                        yPosition += 15;
-                    }
-                }
-
-                // Save the document
-                document.Save(filePath);
-            }
+                    });
+                });
+            }).GeneratePdf(filePath);
         });
     }
 
@@ -115,13 +119,9 @@ public class ReportExportService : IReportExportService
         // Offload Excel generation to a background thread (CPU/disk-bound)
         await Task.Run(() =>
         {
-            using (var excelEngine = new ExcelEngine())
+            using (var workbook = new XLWorkbook())
             {
-                var application = excelEngine.Excel;
-                application.DefaultVersion = ExcelVersion.Excel2016;
-
-                var workbook = application.Workbooks.Create(1);
-                var worksheet = workbook.Worksheets[0];
+                var worksheet = workbook.Worksheets.Add("Data");
 
                 int rowIndex = 1;
 
@@ -140,7 +140,7 @@ public class ReportExportService : IReportExportService
                         // Add headers
                         for (int i = 0; i < properties.Length; i++)
                         {
-                            worksheet.Range[rowIndex, i + 1].Value = properties[i].Name;
+                            worksheet.Cell(rowIndex, i + 1).Value = properties[i].Name;
                         }
                         rowIndex++;
 
@@ -150,7 +150,7 @@ public class ReportExportService : IReportExportService
                             for (int i = 0; i < properties.Length; i++)
                             {
                                 var value = properties[i].GetValue(item)?.ToString() ?? "";
-                                worksheet.Range[rowIndex, i + 1].Value = value;
+                                worksheet.Cell(rowIndex, i + 1).Value = value;
                             }
                             rowIndex++;
                         }
@@ -165,14 +165,14 @@ public class ReportExportService : IReportExportService
 
                     foreach (var prop in properties)
                     {
-                        worksheet.Range[rowIndex, 1].Value = prop.Name;
-                        worksheet.Range[rowIndex, 2].Value = prop.GetValue(data)?.ToString() ?? "";
+                        worksheet.Cell(rowIndex, 1).Value = prop.Name;
+                        worksheet.Cell(rowIndex, 2).Value = prop.GetValue(data)?.ToString() ?? "";
                         rowIndex++;
                     }
                 }
 
                 // Auto-fit columns
-                worksheet.UsedRange.AutofitColumns();
+                worksheet.Columns().AdjustToContents();
 
                 // Save the workbook
                 workbook.SaveAs(filePath);
@@ -226,7 +226,7 @@ public class ReportExportService : IReportExportService
 
     /// <summary>
     /// Exports a ComplianceReport to a well-formatted PDF document.
-    /// Uses Syncfusion.Pdf documented APIs: PdfDocument, PdfPage, PdfGraphics, PdfFont
+    /// Uses QuestPDF fluent API for document generation
     /// </summary>
     public async Task ExportComplianceReportToPdfAsync(ComplianceReport report, string filePath)
     {
@@ -235,73 +235,71 @@ public class ReportExportService : IReportExportService
 
         await Task.Run(() =>
         {
-            using (var document = new PdfDocument())
+            QuestPDF.Settings.License = LicenseType.Community;
+
+            Document.Create(container =>
             {
-                var page = document.Pages.Add();
-                var graphics = page.Graphics;
-                var titleFont = new PdfStandardFont(PdfFontFamily.Helvetica, 18, PdfFontStyle.Bold);
-                var headerFont = new PdfStandardFont(PdfFontFamily.Helvetica, 14, PdfFontStyle.Bold);
-                var bodyFont = new PdfStandardFont(PdfFontFamily.Helvetica, 11);
-
-                float y = 20;
-                graphics.DrawString("Compliance Report", titleFont, PdfBrushes.Black, 20, y); y += 24;
-                graphics.DrawString($"Enterprise ID: {report.EnterpriseId}", bodyFont, PdfBrushes.Black, 20, y); y += 16;
-                graphics.DrawString($"Generated: {report.GeneratedDate:yyyy-MM-dd HH:mm}", bodyFont, PdfBrushes.Black, 20, y); y += 20;
-                graphics.DrawString($"Overall Status: {report.OverallStatus}", headerFont, PdfBrushes.Black, 20, y); y += 18;
-                graphics.DrawString($"Compliance Score: {report.ComplianceScore}", bodyFont, PdfBrushes.Black, 20, y); y += 20;
-
-                // Violations table
-                graphics.DrawString("Violations:", headerFont, PdfBrushes.Black, 20, y); y += 16;
-                if (report.Violations != null && report.Violations.Any())
+                container.Page(page =>
                 {
-                    foreach (var v in report.Violations)
+                    page.Size(PageSizes.A4);
+                    page.Margin(1, Unit.Centimetre);
+                    page.PageColor(Colors.White);
+                    page.DefaultTextStyle(x => x.FontSize(11));
+
+                    page.Content().Column(column =>
                     {
-                        var line = $"- [{v.Severity}] {v.Regulation}: {v.Description} | Action: {v.CorrectiveAction}";
-                        graphics.DrawString(line, bodyFont, PdfBrushes.Black, 25, y);
-                        y += 14;
-                        if (y > page.GetClientSize().Height - 40)
-                        {
-                            page = document.Pages.Add();
-                            graphics = page.Graphics;
-                            y = 20;
-                        }
-                    }
-                }
-                else
-                {
-                    graphics.DrawString("No violations.", bodyFont, PdfBrushes.Black, 25, y); y += 16;
-                }
+                        // Title
+                        column.Item().Text("Compliance Report").FontSize(18).Bold();
+                        column.Item().PaddingVertical(10);
 
-                // Recommendations
-                graphics.DrawString("Recommendations:", headerFont, PdfBrushes.Black, 20, y); y += 16;
-                if (report.Recommendations != null && report.Recommendations.Any())
-                {
-                    foreach (var r in report.Recommendations)
-                    {
-                        graphics.DrawString("- " + r, bodyFont, PdfBrushes.Black, 25, y);
-                        y += 14;
-                        if (y > page.GetClientSize().Height - 40)
-                        {
-                            page = document.Pages.Add();
-                            graphics = page.Graphics;
-                            y = 20;
-                        }
-                    }
-                }
-                else
-                {
-                    graphics.DrawString("No recommendations provided.", bodyFont, PdfBrushes.Black, 25, y); y += 16;
-                }
+                        // Basic info
+                        column.Item().Text($"Enterprise ID: {report.EnterpriseId}");
+                        column.Item().Text($"Generated: {report.GeneratedDate:yyyy-MM-dd HH:mm}");
+                        column.Item().PaddingVertical(5);
 
-                // Save
-                document.Save(filePath);
-            }
+                        // Status
+                        column.Item().Text($"Overall Status: {report.OverallStatus}").FontSize(14).Bold();
+                        column.Item().Text($"Compliance Score: {report.ComplianceScore}");
+                        column.Item().PaddingVertical(10);
+
+                        // Violations
+                        column.Item().Text("Violations:").FontSize(14).Bold();
+                        if (report.Violations != null && report.Violations.Any())
+                        {
+                            foreach (var v in report.Violations)
+                            {
+                                var line = $"[{v.Severity}] {v.Regulation}: {v.Description} | Action: {v.CorrectiveAction}";
+                                column.Item().Text("- " + line).PaddingLeft(10);
+                            }
+                        }
+                        else
+                        {
+                            column.Item().Text("No violations.").PaddingLeft(10);
+                        }
+                        column.Item().PaddingVertical(10);
+
+                        // Recommendations
+                        column.Item().Text("Recommendations:").FontSize(14).Bold();
+                        if (report.Recommendations != null && report.Recommendations.Any())
+                        {
+                            foreach (var r in report.Recommendations)
+                            {
+                                column.Item().Text("- " + r).PaddingLeft(10);
+                            }
+                        }
+                        else
+                        {
+                            column.Item().Text("No recommendations provided.").PaddingLeft(10);
+                        }
+                    });
+                });
+            }).GeneratePdf(filePath);
         });
     }
 
     /// <summary>
     /// Exports a ComplianceReport to an Excel workbook with separate sections.
-    /// Uses Syncfusion.XlsIO documented APIs: ExcelEngine, IWorkbook, IWorksheet
+    /// Uses ClosedXML for Excel generation
     /// </summary>
     public async Task ExportComplianceReportToExcelAsync(ComplianceReport report, string filePath)
     {
@@ -310,63 +308,56 @@ public class ReportExportService : IReportExportService
 
         await Task.Run(() =>
         {
-            using (var engine = new ExcelEngine())
+            using (var workbook = new XLWorkbook())
             {
-                var app = engine.Excel;
-                app.DefaultVersion = ExcelVersion.Excel2016;
-                var wb = app.Workbooks.Create(3);
-
                 // Summary sheet
-                var wsSummary = wb.Worksheets[0];
-                wsSummary.Name = "Summary";
-                wsSummary.Range[1, 1].Text = "Compliance Report";
-                wsSummary.Range[2, 1].Text = "Enterprise ID";
-                wsSummary.Range[2, 2].Number = report.EnterpriseId;
-                wsSummary.Range[3, 1].Text = "Generated";
-                wsSummary.Range[3, 2].DateTime = report.GeneratedDate;
-                wsSummary.Range[4, 1].Text = "Overall Status";
-                wsSummary.Range[4, 2].Text = report.OverallStatus.ToString();
-                wsSummary.Range[5, 1].Text = "Compliance Score";
-                wsSummary.Range[5, 2].Number = report.ComplianceScore;
-                wsSummary.UsedRange.AutofitColumns();
+                var wsSummary = workbook.Worksheets.Add("Summary");
+                wsSummary.Cell(1, 1).Value = "Compliance Report";
+                wsSummary.Cell(2, 1).Value = "Enterprise ID";
+                wsSummary.Cell(2, 2).Value = report.EnterpriseId;
+                wsSummary.Cell(3, 1).Value = "Generated";
+                wsSummary.Cell(3, 2).Value = report.GeneratedDate;
+                wsSummary.Cell(4, 1).Value = "Overall Status";
+                wsSummary.Cell(4, 2).Value = report.OverallStatus.ToString();
+                wsSummary.Cell(5, 1).Value = "Compliance Score";
+                wsSummary.Cell(5, 2).Value = report.ComplianceScore;
+                wsSummary.Columns().AdjustToContents();
 
                 // Violations sheet
-                var wsViolations = wb.Worksheets[1];
-                wsViolations.Name = "Violations";
-                wsViolations.Range[1, 1].Text = "Regulation";
-                wsViolations.Range[1, 2].Text = "Description";
-                wsViolations.Range[1, 3].Text = "Severity";
-                wsViolations.Range[1, 4].Text = "Corrective Action";
+                var wsViolations = workbook.Worksheets.Add("Violations");
+                wsViolations.Cell(1, 1).Value = "Regulation";
+                wsViolations.Cell(1, 2).Value = "Description";
+                wsViolations.Cell(1, 3).Value = "Severity";
+                wsViolations.Cell(1, 4).Value = "Corrective Action";
                 int row = 2;
                 if (report.Violations != null)
                 {
                     foreach (var v in report.Violations)
                     {
-                        wsViolations.Range[row, 1].Text = v.Regulation ?? string.Empty;
-                        wsViolations.Range[row, 2].Text = v.Description ?? string.Empty;
-                        wsViolations.Range[row, 3].Text = v.Severity.ToString();
-                        wsViolations.Range[row, 4].Text = v.CorrectiveAction ?? string.Empty;
+                        wsViolations.Cell(row, 1).Value = v.Regulation ?? string.Empty;
+                        wsViolations.Cell(row, 2).Value = v.Description ?? string.Empty;
+                        wsViolations.Cell(row, 3).Value = v.Severity.ToString();
+                        wsViolations.Cell(row, 4).Value = v.CorrectiveAction ?? string.Empty;
                         row++;
                     }
                 }
-                wsViolations.UsedRange.AutofitColumns();
+                wsViolations.Columns().AdjustToContents();
 
                 // Recommendations sheet
-                var wsReco = wb.Worksheets[2];
-                wsReco.Name = "Recommendations";
-                wsReco.Range[1, 1].Text = "Recommendation";
+                var wsReco = workbook.Worksheets.Add("Recommendations");
+                wsReco.Cell(1, 1).Value = "Recommendation";
                 int rRow = 2;
                 if (report.Recommendations != null)
                 {
                     foreach (var rec in report.Recommendations)
                     {
-                        wsReco.Range[rRow, 1].Text = rec;
+                        wsReco.Cell(rRow, 1).Value = rec;
                         rRow++;
                     }
                 }
-                wsReco.UsedRange.AutofitColumns();
+                wsReco.Columns().AdjustToContents();
 
-                wb.SaveAs(filePath);
+                workbook.SaveAs(filePath);
             }
         });
     }

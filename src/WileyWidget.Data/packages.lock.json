@@ -935,11 +935,6 @@
         "resolved": "8.4.1",
         "contentHash": "bg4kE7mFwXc6FJ8NLknTgVgLAMlbToWC7vpdqAITv8lPzKpp9v7aWJPc04GRoZQaJhVY/tdr8K2/VW2aTmaA1Q=="
       },
-      "Prism.Core": {
-        "type": "Transitive",
-        "resolved": "8.1.97",
-        "contentHash": "EP5zrvWddw3eSq25Y7hHnDYdmLZEC2Z/gMrvmHzUuLbitmA1UaS7wQUlSwNr9Km8lzJNCvytFnaGBEFukHgoHg=="
-      },
       "runtime.native.System": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -2246,10 +2241,7 @@
         }
       },
       "wileywidget.abstractions": {
-        "type": "Project",
-        "dependencies": {
-          "Prism.Core": "[8.1.97, )"
-        }
+        "type": "Project"
       },
       "wileywidget.business": {
         "type": "Project",

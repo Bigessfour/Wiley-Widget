@@ -15,31 +15,36 @@ namespace WileyWidget.Services.UnitTests
         private readonly Mock<ILogger<QuickBooksService>> _loggerMock;
         private readonly Mock<ISettingsService> _settingsMock;
         private readonly Mock<ISecretVaultService> _secretVaultMock;
+        private readonly Mock<IQuickBooksApiClient> _apiClientMock;
+        private readonly Mock<IServiceProvider> _serviceProviderMock;
 
         public QuickBooksServiceTests()
         {
             _loggerMock = new Mock<ILogger<QuickBooksService>>();
             _settingsMock = new Mock<ISettingsService>();
             _secretVaultMock = new Mock<ISecretVaultService>();
+            _apiClientMock = new Mock<IQuickBooksApiClient>();
+            _serviceProviderMock = new Mock<IServiceProvider>();
         }
 
         [Fact]
         public void QuickBooksService_CanBeConstructed()
         {
             // Arrange
-            _settingsMock.Setup(s => s.GetEnvironmentName())
-                        .Returns("sandbox");
+            var configBuilder = new Microsoft.Extensions.Configuration.ConfigurationBuilder();
+            var config = configBuilder.Build();
+            var settingsService = new SettingsService(config, new Mock<ILogger<SettingsService>>().Object);
             _secretVaultMock.Setup(s => s.GetSecretAsync(It.IsAny<string>()))
                            .ReturnsAsync("test-token");
 
             // Act
             var service = new QuickBooksService(
-                _settingsMock.Object,
+                settingsService,
                 _secretVaultMock.Object,
                 _loggerMock.Object,
-                null,
+                _apiClientMock.Object,
                 new System.Net.Http.HttpClient(),
-                null);
+                _serviceProviderMock.Object);
 
             // Assert
             service.Should().NotBeNull();
@@ -47,27 +52,14 @@ namespace WileyWidget.Services.UnitTests
         }
 
         [Fact]
-        public async Task GetInvoicesAsync_MethodExists()
+        public void GetInvoicesAsync_MethodExists()
         {
-            // Arrange
-            _settingsMock.Setup(s => s.GetEnvironmentName())
-                        .Returns("sandbox");
-            _secretVaultMock.Setup(s => s.GetSecretAsync(It.IsAny<string>()))
-                           .ReturnsAsync("test-token");
-
-            var service = new QuickBooksService(
-                _settingsMock.Object,
-                _secretVaultMock.Object,
-                _loggerMock.Object,
-                null,
-                new System.Net.Http.HttpClient(),
-                null);
-
-            // Act & Assert - Just verify the method exists and can be called
-            // (would throw in real scenario due to API dependencies)
+            // Act - Verify the method exists via reflection
             var method = typeof(QuickBooksService).GetMethod("GetInvoicesAsync");
+            
+            // Assert
             method.Should().NotBeNull();
-            method.ReturnType.Should().Be(typeof(Task<List<Intuit.Ipp.Data.Invoice>>));
+            method!.ReturnType.Should().Be(typeof(Task<List<Intuit.Ipp.Data.Invoice>>));
         }
 
         [Fact]

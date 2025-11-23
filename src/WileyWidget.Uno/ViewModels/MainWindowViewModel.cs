@@ -1,27 +1,16 @@
-using Prism.Mvvm;
-using Prism.Commands;
-using System.Windows.Input;
-
 namespace WileyWidget.Uno.ViewModels;
 
-public class MainWindowViewModel : BindableBase
+public partial class MainWindowViewModel : ObservableObject
 {
-    private string _title = "Wiley Widget - Uno Platform Migration";
-
-    public string Title
-    {
-        get => _title;
-        set => SetProperty(ref _title, value);
-    }
-
-    public ICommand NavigateCommand { get; }
+    [ObservableProperty]
+    public partial string Title { get; set; } = "Wiley Widget - Uno Platform Migration";
 
     public MainWindowViewModel()
     {
-        NavigateCommand = new DelegateCommand<string>(OnNavigate);
     }
 
-    private void OnNavigate(string? destination)
+    [RelayCommand]
+    private void Navigate(string? destination)
     {
         // Navigation logic will be added
     }

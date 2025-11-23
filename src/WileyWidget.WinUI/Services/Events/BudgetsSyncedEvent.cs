@@ -1,13 +1,17 @@
-using Prism.Events;
-
 namespace WileyWidget.WinUI.Services.Events
 {
     /// <summary>
-    /// Event published when budgets are successfully synced to QuickBooks Online.
+    /// Message published when budgets are successfully synced to QuickBooks Online.
     /// Payload is the count of budgets synced.
-    /// Subscribers (e.g., SettingsView) can refresh their UI grids upon receiving this event.
+    /// Subscribers (e.g., SettingsView) can refresh their UI grids upon receiving this message.
     /// </summary>
-    public class BudgetsSyncedEvent : PubSubEvent<int>
+    public class BudgetsSyncedMessage
     {
+        public int Count { get; }
+        
+        public BudgetsSyncedMessage(int count)
+        {
+            Count = count;
+        }
     }
 }

@@ -14,7 +14,7 @@ public partial class MainViewModel : ObservableObject
     private INavigator _navigator;
 
     [ObservableProperty]
-    private string? name;
+    public partial string? Name { get; set; }
 
     public MainViewModel(
         IOptions<AppConfig> appInfo,

@@ -642,20 +642,16 @@ public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnum
 
         stopwatch.Stop();
 
-        // On success: Publish Prism event to refresh UI
+        // On success: Publish message to refresh UI
         try
         {
-            var eventAggregator = _serviceProvider.GetService<Prism.Events.IEventAggregator>();
-            if (eventAggregator != null)
-            {
-                // Publish event to refresh SfDataGrid in SettingsView or other subscribers
-                eventAggregator.GetEvent<WileyWidget.Services.Events.BudgetsSyncedEvent>()?.Publish(syncedCount);
-                _logger.LogDebug("Published BudgetsSyncedEvent with count: {Count}", syncedCount);
-            }
+            // Publish message to refresh SfDataGrid in SettingsView or other subscribers
+            CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.Send(new WileyWidget.Services.Events.BudgetsSyncedMessage(syncedCount));
+            _logger.LogDebug("Published BudgetsSyncedMessage with count: {Count}", syncedCount);
         }
-        catch (Exception eventEx)
+        catch (Exception messageEx)
         {
-            _logger.LogWarning(eventEx, "Failed to publish BudgetsSyncedEvent after sync");
+            _logger.LogWarning(messageEx, "Failed to publish BudgetsSyncedMessage after sync");
         }
 
         return new SyncResult
@@ -1664,5 +1660,35 @@ public async System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationT
             Duration = duration
         };
     }
+}
+
+/// <summary>
+/// Checks if the service is currently connected
+/// </summary>
+/// <returns>True if connected, false otherwise</returns>
+public async System.Threading.Tasks.Task<bool> IsConnectedAsync()
+{
+    try
+    {
+        var accessToken = await GetStoredAccessTokenAsync().ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return false;
+        }
+
+        var tokenExpiry = await GetStoredTokenExpiryAsync().ConfigureAwait(false);
+        if (tokenExpiry.HasValue && tokenExpiry.Value <= DateTime.UtcNow)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error checking connection status");
+        return false;
+    }
+}
 }
 }

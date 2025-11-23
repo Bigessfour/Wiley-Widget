@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Syncfusion.XlsIO;
+using ClosedXML.Excel;
 using WileyWidget.Models;
 
 namespace WileyWidget.Services.Export
@@ -54,22 +54,18 @@ namespace WileyWidget.Services.Export
             {
                 try
                 {
-                    using var excelEngine = new ExcelEngine();
-                    var application = excelEngine.Excel;
-                    application.DefaultVersion = ExcelVersion.Xlsx;
-
-                    var workbook = application.Workbooks.Create(1);
-                    var worksheet = workbook.Worksheets[0];
-                    worksheet.Name = "Budget Entries";
+                    using var workbook = new XLWorkbook();
+                    var worksheet = workbook.Worksheets.Add("Budget Entries");
 
                     // Add headers
                     var headers = new[] { "ID", "Account Code", "Description", "Amount", "Date", "Category", "Status" };
                     for (int i = 0; i < headers.Length; i++)
                     {
-                        worksheet[1, i + 1].Text = headers[i];
-                        worksheet[1, i + 1].CellStyle.Font.Bold = true;
-                        worksheet[1, i + 1].CellStyle.Color = System.Drawing.Color.FromArgb(0, 112, 192);
-                        worksheet[1, i + 1].CellStyle.Font.Color = ExcelKnownColors.White;
+                        var cell = worksheet.Cell(1, i + 1);
+                        cell.Value = headers[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Fill.BackgroundColor = XLColor.FromArgb(0, 112, 192);
+                        cell.Style.Font.FontColor = XLColor.White;
                     }
 
                     // Add data
@@ -79,22 +75,22 @@ namespace WileyWidget.Services.Export
                         var entry = entryList[i];
                         int row = i + 2;
 
-                        worksheet[row, 1].Number = entry.Id;
-                        worksheet[row, 2].Text = entry.AccountNumber ?? "";
-                        worksheet[row, 3].Text = entry.Description ?? "";
-                        worksheet[row, 4].Number = (double)entry.BudgetedAmount;
-                        worksheet[row, 4].NumberFormat = "$#,##0.00";
-                        worksheet[row, 5].DateTime = entry.StartPeriod;
-                        worksheet[row, 5].NumberFormat = "mm/dd/yyyy";
-                        worksheet[row, 6].Text = entry.FundType.ToString();
-                        worksheet[row, 7].Text = entry.Department?.Name ?? "";
+                        worksheet.Cell(row, 1).Value = entry.Id;
+                        worksheet.Cell(row, 2).Value = entry.AccountNumber ?? "";
+                        worksheet.Cell(row, 3).Value = entry.Description ?? "";
+                        worksheet.Cell(row, 4).Value = (double)entry.BudgetedAmount;
+                        worksheet.Cell(row, 4).Style.NumberFormat.Format = "$#,##0.00";
+                        worksheet.Cell(row, 5).Value = entry.StartPeriod;
+                        worksheet.Cell(row, 5).Style.NumberFormat.Format = "mm/dd/yyyy";
+                        worksheet.Cell(row, 6).Value = entry.FundType.ToString();
+                        worksheet.Cell(row, 7).Value = entry.Department?.Name ?? "";
                     }
 
                     // Auto-fit columns
-                    worksheet.UsedRange.AutofitColumns();
+                    worksheet.Columns().AdjustToContents();
 
                     // Add filters
-                    worksheet.AutoFilters.FilterRange = worksheet.UsedRange;
+                    worksheet.Range(worksheet.FirstCellUsed(), worksheet.LastCellUsed()).SetAutoFilter();
 
                     // Save the workbook
                     workbook.SaveAs(filePath);
@@ -116,22 +112,18 @@ namespace WileyWidget.Services.Export
             {
                 try
                 {
-                    using var excelEngine = new ExcelEngine();
-                    var application = excelEngine.Excel;
-                    application.DefaultVersion = ExcelVersion.Xlsx;
-
-                    var workbook = application.Workbooks.Create(1);
-                    var worksheet = workbook.Worksheets[0];
-                    worksheet.Name = "Municipal Accounts";
+                    using var workbook = new XLWorkbook();
+                    var worksheet = workbook.Worksheets.Add("Municipal Accounts");
 
                     // Add headers
                     var headers = new[] { "ID", "Account Number", "Name", "Type", "Balance", "Status", "Last Updated" };
                     for (int i = 0; i < headers.Length; i++)
                     {
-                        worksheet[1, i + 1].Text = headers[i];
-                        worksheet[1, i + 1].CellStyle.Font.Bold = true;
-                        worksheet[1, i + 1].CellStyle.Color = System.Drawing.Color.FromArgb(0, 176, 80);
-                        worksheet[1, i + 1].CellStyle.Font.Color = ExcelKnownColors.White;
+                        var cell = worksheet.Cell(1, i + 1);
+                        cell.Value = headers[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Fill.BackgroundColor = XLColor.FromArgb(0, 176, 80);
+                        cell.Style.Font.FontColor = XLColor.White;
                     }
 
                     // Add data
@@ -141,22 +133,22 @@ namespace WileyWidget.Services.Export
                         var account = accountList[i];
                         int row = i + 2;
 
-                        worksheet[row, 1].Number = account.Id;
-                        worksheet[row, 2].Text = account.AccountNumber?.Value ?? "";
-                        worksheet[row, 3].Text = account.Name ?? "";
-                        worksheet[row, 4].Text = account.Type.ToString();
-                        worksheet[row, 5].Number = (double)account.Balance;
-                        worksheet[row, 5].NumberFormat = "$#,##0.00";
-                        worksheet[row, 6].Text = account.IsActive ? "Active" : "Inactive";
-                        worksheet[row, 7].DateTime = DateTime.Now;
-                        worksheet[row, 7].NumberFormat = "mm/dd/yyyy hh:mm:ss";
+                        worksheet.Cell(row, 1).Value = account.Id;
+                        worksheet.Cell(row, 2).Value = account.AccountNumber?.Value ?? "";
+                        worksheet.Cell(row, 3).Value = account.Name ?? "";
+                        worksheet.Cell(row, 4).Value = account.Type.ToString();
+                        worksheet.Cell(row, 5).Value = (double)account.Balance;
+                        worksheet.Cell(row, 5).Style.NumberFormat.Format = "$#,##0.00";
+                        worksheet.Cell(row, 6).Value = account.IsActive ? "Active" : "Inactive";
+                        worksheet.Cell(row, 7).Value = DateTime.Now;
+                        worksheet.Cell(row, 7).Style.NumberFormat.Format = "mm/dd/yyyy hh:mm:ss";
                     }
 
                     // Auto-fit columns
-                    worksheet.UsedRange.AutofitColumns();
+                    worksheet.Columns().AdjustToContents();
 
                     // Add filters
-                    worksheet.AutoFilters.FilterRange = worksheet.UsedRange;
+                    worksheet.Range(worksheet.FirstCellUsed(), worksheet.LastCellUsed()).SetAutoFilter();
 
                     // Save the workbook
                     workbook.SaveAs(filePath);
@@ -196,22 +188,18 @@ namespace WileyWidget.Services.Export
             {
                 try
                 {
-                    using var excelEngine = new ExcelEngine();
-                    var application = excelEngine.Excel;
-                    application.DefaultVersion = ExcelVersion.Xlsx;
-
-                    var workbook = application.Workbooks.Create(1);
-                    var worksheet = workbook.Worksheets[0];
-                    worksheet.Name = worksheetName;
+                    using var workbook = new XLWorkbook();
+                    var worksheet = workbook.Worksheets.Add(worksheetName);
 
                     // Add headers
                     var columnNames = columns.Keys.ToArray();
                     for (int i = 0; i < columnNames.Length; i++)
                     {
-                        worksheet[1, i + 1].Text = columnNames[i];
-                        worksheet[1, i + 1].CellStyle.Font.Bold = true;
-                        worksheet[1, i + 1].CellStyle.Color = System.Drawing.Color.FromArgb(68, 114, 196);
-                        worksheet[1, i + 1].CellStyle.Font.Color = ExcelKnownColors.White;
+                        var cell = worksheet.Cell(1, i + 1);
+                        cell.Value = columnNames[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Fill.BackgroundColor = XLColor.FromArgb(68, 114, 196);
+                        cell.Style.Font.FontColor = XLColor.White;
                     }
 
                     // Add data
@@ -228,29 +216,29 @@ namespace WileyWidget.Services.Export
 
                             if (value is DateTime dateTime)
                             {
-                                worksheet[row, col + 1].DateTime = dateTime;
-                                worksheet[row, col + 1].NumberFormat = "mm/dd/yyyy";
+                                worksheet.Cell(row, col + 1).Value = dateTime;
+                                worksheet.Cell(row, col + 1).Style.NumberFormat.Format = "mm/dd/yyyy";
                             }
                             else if (value is decimal || value is double || value is float)
                             {
-                                worksheet[row, col + 1].Number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                                worksheet.Cell(row, col + 1).Value = Convert.ToDouble(value, CultureInfo.InvariantCulture);
                             }
                             else if (value is int || value is long)
                             {
-                                worksheet[row, col + 1].Number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                                worksheet.Cell(row, col + 1).Value = Convert.ToDouble(value, CultureInfo.InvariantCulture);
                             }
                             else
                             {
-                                worksheet[row, col + 1].Text = value?.ToString() ?? "";
+                                worksheet.Cell(row, col + 1).Value = value?.ToString() ?? "";
                             }
                         }
                     }
 
                     // Auto-fit columns
-                    worksheet.UsedRange.AutofitColumns();
+                    worksheet.Columns().AdjustToContents();
 
                     // Add filters
-                    worksheet.AutoFilters.FilterRange = worksheet.UsedRange;
+                    worksheet.Range(worksheet.FirstCellUsed(), worksheet.LastCellUsed()).SetAutoFilter();
 
                     // Save the workbook
                     workbook.SaveAs(filePath);

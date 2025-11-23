@@ -18,9 +18,28 @@ namespace WileyWidget
             this.InitializeComponent(); // Load XAML - this sets Content to RootGrid with ContentFrame
 
             _serviceProvider = App.Services;
-            
+
+            // Set DataContext from DI (MainViewModel should be registered in App)
+            try
+            {
+                var vm = _serviceProvider?.GetService<WileyWidget.ViewModels.MainViewModel>();
+                if (vm != null)
+                {
+                    this.DataContext = vm;
+                    Log.Debug("MainViewModel resolved from DI and assigned to DataContext");
+                }
+                else
+                {
+                    Log.Warning("MainViewModel not registered in DI container");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to resolve MainViewModel from DI");
+            }
+
             Log.Information("MainWindow constructor started");
-            
+
             try
             {
                 // Now Content should be Grid from XAML
@@ -39,7 +58,7 @@ namespace WileyWidget
 
                 // Defer navigation until after activation to ensure visual tree is ready
                 this.Activated += OnWindowActivated;
-                
+
                 Log.Information("MainWindow initialized successfully (navigation deferred)");
             }
             catch (Exception ex)
@@ -55,7 +74,7 @@ namespace WileyWidget
             Log.Information("Window activated; performing initial navigation");
             NavigateToInitialPage();
         }
-        
+
         private void NavigateToInitialPage()
         {
             if (this.ContentFrame == null)
@@ -77,13 +96,13 @@ namespace WileyWidget
 
                 // Try to navigate to BudgetOverviewPage (registered Page type)
                 var pageType = typeof(BudgetOverviewPage);
-                
+
                 if (typeof(Page).IsAssignableFrom(pageType))
                 {
                     Log.Information("Attempting navigation to {PageType}", pageType.Name);
-                    
+
                     var navigated = this.ContentFrame.Navigate(pageType);
-                    
+
                     if (navigated)
                     {
                         Log.Information("Successfully navigated to {PageType}", pageType.Name);

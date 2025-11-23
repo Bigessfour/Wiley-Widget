@@ -780,11 +780,6 @@
         "resolved": "8.4.1",
         "contentHash": "bg4kE7mFwXc6FJ8NLknTgVgLAMlbToWC7vpdqAITv8lPzKpp9v7aWJPc04GRoZQaJhVY/tdr8K2/VW2aTmaA1Q=="
       },
-      "Prism.Core": {
-        "type": "Transitive",
-        "resolved": "8.1.97",
-        "contentHash": "EP5zrvWddw3eSq25Y7hHnDYdmLZEC2Z/gMrvmHzUuLbitmA1UaS7wQUlSwNr9Km8lzJNCvytFnaGBEFukHgoHg=="
-      },
       "System.ClientModel": {
         "type": "Transitive",
         "resolved": "1.0.0",
@@ -983,10 +978,7 @@
         "contentHash": "zteT+G8xuGu6mS+mzDzYXbzS7rd3K6Fjb9RiZlYlJPam2/hU7JCBZBVEcywNuR+oZ1ncTvc/cq0faRr3P01OVg=="
       },
       "wileywidget.abstractions": {
-        "type": "Project",
-        "dependencies": {
-          "Prism.Core": "[8.1.97, )"
-        }
+        "type": "Project"
       }
     },
     "net9.0-windows10.0.26100/win-x64": {
