@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <XamlDebuggingInformation>Full</XamlDebuggingInformation>
     <!-- Updated to match Windows App SDK requirements -->
@@ -182,9 +182,7 @@
        those tasks a deterministic location to write/read `xaml.json`. -->
   <PropertyGroup>
     <XamlJsonOutputPath>$(OutDir)xaml.json</XamlJsonOutputPath>
-  <PropertyGroup>
     <XamlGenerateCompilerErrorForResourceReference>True</XamlGenerateCompilerErrorForResourceReference>
-  </PropertyGroup>
   </PropertyGroup>
 
   <!-- Optional: run the repository's strict XAML validator. Disabled by default; set
