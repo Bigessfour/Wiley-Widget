@@ -54,6 +54,7 @@ services.AddDbContext<AppDbContext>(options =>
 ```
 
 **Why Scoped?**
+
 - EF Core DbContext is NOT thread-safe
 - Scoped lifetime creates new instance per service scope
 - Prevents concurrent access issues
@@ -72,6 +73,7 @@ private static string GetDefaultConnectionString()
 ```
 
 **Features**:
+
 - Uses `LocalApplicationData` for proper Windows app data storage
 - Environment variable override: `WW_CONNECTION_STRING`
 - Auto-creates directory structure
@@ -97,29 +99,29 @@ var criticalServices = new[]
 
 **Primary Reference**: [Microsoft Learn - Add dependency injection](https://learn.microsoft.com/en-us/windows/apps/tutorials/winui-mvvm-toolkit/dependency-injection)
 
-| Requirement | Status | Implementation |
-|-------------|--------|----------------|
-| Services property | ✅ | `public static IServiceProvider Services` |
-| App.Current accessor | ✅ | `public new static App Current` |
-| DI before XAML | ✅ | `ConfigureServices()` before `InitializeComponent()` |
-| OnLaunched pattern | ✅ | Creates MainWindow and Activates |
-| DbContext registration | ✅ | AddDbContext with Scoped lifetime |
-| ViewModel injection | ✅ | Constructor injection with Transient lifetime |
+| Requirement            | Status | Implementation                                       |
+| ---------------------- | ------ | ---------------------------------------------------- |
+| Services property      | ✅     | `public static IServiceProvider Services`            |
+| App.Current accessor   | ✅     | `public new static App Current`                      |
+| DI before XAML         | ✅     | `ConfigureServices()` before `InitializeComponent()` |
+| OnLaunched pattern     | ✅     | Creates MainWindow and Activates                     |
+| DbContext registration | ✅     | AddDbContext with Scoped lifetime                    |
+| ViewModel injection    | ✅     | Constructor injection with Transient lifetime        |
 
 ---
 
 ## Service Lifetime Reference
 
-| Service | Lifetime | Justification |
-|---------|----------|---------------|
-| **AppDbContext** | Scoped | EF Core best practice, not thread-safe |
-| **ViewModels** | Transient | Fresh state per navigation |
-| **ILogger<T>** | Singleton | Shared logging infrastructure |
-| **ISettingsService** | Singleton | Shared configuration |
-| **IDialogService** | Transient | Requires XamlRoot per dialog |
-| **INavigationService** | Transient | Requires Frame per window |
-| **Cache Services** | Singleton | Shared cache across app |
-| **API Clients** | Singleton | Expensive to create, stateless |
+| Service                | Lifetime  | Justification                          |
+| ---------------------- | --------- | -------------------------------------- |
+| **AppDbContext**       | Scoped    | EF Core best practice, not thread-safe |
+| **ViewModels**         | Transient | Fresh state per navigation             |
+| **ILogger<T>**         | Singleton | Shared logging infrastructure          |
+| **ISettingsService**   | Singleton | Shared configuration                   |
+| **IDialogService**     | Transient | Requires XamlRoot per dialog           |
+| **INavigationService** | Transient | Requires Frame per window              |
+| **Cache Services**     | Singleton | Shared cache across app                |
+| **API Clients**        | Singleton | Expensive to create, stateless         |
 
 ---
 

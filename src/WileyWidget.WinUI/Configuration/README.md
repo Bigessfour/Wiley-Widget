@@ -14,29 +14,33 @@ This directory contains the dependency injection (DI) configuration for the Wile
 
 Following Microsoft's recommendations, services are registered with appropriate lifetimes:
 
-| Lifetime | When to Use | Disposal | Examples |
-|----------|-------------|----------|----------|
-| **Singleton** | Stateless, expensive to create, or globally shared | Disposed when app exits | Settings, Telemetry, API Clients |
-| **Scoped** | Per-request state in web apps (not typically used in desktop apps) | Disposed at end of scope | DbContext in web apps |
-| **Transient** | New instance every time, lightweight objects | Disposed by container | ViewModels, per-operation services |
+| Lifetime      | When to Use                                                        | Disposal                 | Examples                           |
+| ------------- | ------------------------------------------------------------------ | ------------------------ | ---------------------------------- |
+| **Singleton** | Stateless, expensive to create, or globally shared                 | Disposed when app exits  | Settings, Telemetry, API Clients   |
+| **Scoped**    | Per-request state in web apps (not typically used in desktop apps) | Disposed at end of scope | DbContext in web apps              |
+| **Transient** | New instance every time, lightweight objects                       | Disposed by container    | ViewModels, per-operation services |
 
 ### Service Categories
 
 #### 1. Logging Services
+
 - **ILogger<T>** - Serilog integration for structured logging
 - Configured to use Serilog as the backing provider
 
 #### 2. Core Services (Singleton)
+
 - **ISettingsService** - Application configuration and user preferences
 - **ISecretVaultService** - Encrypted storage for sensitive data (connection strings, API keys)
 - **HealthCheckService** - Application health monitoring
 
 #### 3. Data Services (Singleton)
+
 - **IQuickBooksApiClient** - HTTP client for QuickBooks API
 - **IQuickBooksService** - Business logic for QuickBooks integration
 - Uses `AddHttpClient` pattern with 5-minute handler lifetime
 
 #### 4. UI Services (Transient)
+
 - **INavigationService** - Frame-based navigation (requires Frame from MainWindow)
 - **IDialogService** - ContentDialog management (requires XamlRoot per dialog)
 - **IDialogTrackingService** - Tracks open dialogs (Singleton)
@@ -44,11 +48,14 @@ Following Microsoft's recommendations, services are registered with appropriate 
 > **Note**: Navigation and Dialog services are Transient because they need UI context (Frame/XamlRoot) which is only available after window activation.
 
 #### 5. Cache Services (Singleton)
+
 - **ICacheService** - In-memory caching via `AddWileyMemoryCache()` extension
 - Uses Microsoft.Extensions.Caching.Memory
 
 #### 6. Feature Services
+
 **Singletons** (stateless, shared across app):
+
 - **IAIService** - AI/ML integration (X.AI/Grok)
 - **IAILoggingService** - AI operation logging
 - **IAuditService** - User action auditing
@@ -57,18 +64,22 @@ Following Microsoft's recommendations, services are registered with appropriate 
 - **IBoldReportService** - Bold Reports integration
 
 **Transients** (per-operation state):
+
 - **IExcelReaderService** - Excel file reading
 - **IExcelExportService** - Excel export operations
 - **IDataAnonymizerService** - Data anonymization
 - **IChargeCalculatorService** - Utility charge calculations
 
 #### 7. ViewModels (Transient)
+
 All ViewModels are registered as Transient to ensure:
+
 - Fresh state per page navigation
 - Proper disposal after page unload
 - No shared state between instances
 
 Registered ViewModels:
+
 - MainViewModel, DashboardViewModel, BudgetViewModel
 - QuickBooksViewModel, AnalyticsViewModel, ReportsViewModel
 - SettingsViewModel, ToolsViewModel, EnterpriseViewModel
@@ -86,13 +97,13 @@ public App()
 {
     // Configure DI before XAML initialization
     Services = DependencyInjection.ConfigureServices();
-    
+
     // Validate critical dependencies
     if (!DependencyInjection.ValidateDependencies(Services))
     {
         Log.Warning("Some dependencies failed validation");
     }
-    
+
     this.InitializeComponent();
 }
 
@@ -108,11 +119,11 @@ using Microsoft.Extensions.DependencyInjection;
 public sealed partial class BudgetOverviewPage : Page
 {
     private readonly BudgetViewModel _viewModel;
-    
+
     public BudgetOverviewPage()
     {
         this.InitializeComponent();
-        
+
         // Resolve ViewModel from DI container
         _viewModel = App.Current.Services.GetRequiredService<BudgetViewModel>();
         this.DataContext = _viewModel;
@@ -128,7 +139,7 @@ public class DashboardViewModel : ObservableRecipient
     private readonly IQuickBooksService _qbService;
     private readonly ITelemetryService _telemetry;
     private readonly ILogger<DashboardViewModel> _logger;
-    
+
     // Constructor injection - all dependencies automatically resolved
     public DashboardViewModel(
         IQuickBooksService qbService,
@@ -155,6 +166,7 @@ if (!DependencyInjection.ValidateDependencies(Services))
 ```
 
 Validated services:
+
 - ILogger<T>
 - ISettingsService
 - ISecretVaultService
@@ -170,6 +182,7 @@ Validated services:
 ## Special Considerations
 
 ### Navigation Service
+
 The NavigationService requires a Frame instance which is only available after the MainWindow is created. The service is registered with a null Frame and must be properly initialized in MainWindow:
 
 ```csharp
@@ -185,6 +198,7 @@ private void InitializeNavigation()
 ```
 
 ### Dialog Service
+
 The DialogService needs XamlRoot for each dialog, which varies per dialog invocation. It's registered as Transient and XamlRoot should be set when showing dialogs:
 
 ```csharp
@@ -193,7 +207,9 @@ await dialogService.ShowErrorAsync("Error", "Something went wrong");
 ```
 
 ### HttpClient Factory
+
 QuickBooksApiClient uses the recommended `AddHttpClient` pattern:
+
 - Manages HttpClient lifecycle
 - Prevents socket exhaustion
 - 5-minute handler lifetime for connection pooling
@@ -213,10 +229,10 @@ public class DashboardViewModelTests
         var services = new ServiceCollection();
         services.AddSingleton<IQuickBooksService>(new MockQuickBooksService());
         services.AddTransient<DashboardViewModel>();
-        
+
         var provider = services.BuildServiceProvider();
         var viewModel = provider.GetRequiredService<DashboardViewModel>();
-        
+
         // Act & Assert
         Assert.IsNotNull(viewModel);
     }
@@ -226,17 +242,20 @@ public class DashboardViewModelTests
 ## Troubleshooting
 
 ### "Cannot resolve service" errors
+
 1. Check that the service interface and implementation are registered in `DependencyInjection.cs`
 2. Verify the service lifetime (Singleton/Transient) is appropriate
 3. Ensure all constructor dependencies can be resolved
 4. Run `ValidateDependencies()` to identify missing services
 
 ### Memory leaks
+
 - Ensure Transient services don't capture Singleton dependencies
 - Use `IServiceScope` for scoped operations
 - Avoid storing IServiceProvider in long-lived objects
 
 ### Circular dependencies
+
 - Refactor services to remove circular references
 - Use factory patterns: `Func<IServiceA>` instead of `IServiceA`
 - Consider lazy initialization: `Lazy<IServiceA>`

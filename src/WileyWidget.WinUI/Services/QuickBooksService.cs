@@ -396,7 +396,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// <summary>
     /// Creates and configures the QuickBooks OAuth2 client
     /// </summary>
-    private async System.Threading.Tasks.Task<OAuth2RequestValidator> CreateOAuth2RequestValidatorAsync()
+    private async System.Threading.Tasks.Task<OAuthRequestValidator> CreateOAuth2RequestValidatorAsync()
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
 
@@ -406,7 +406,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             throw new InvalidOperationException("No access token available. Please authorize the application first.");
         }
 
-        return new OAuth2RequestValidator(accessToken);
+        return new OAuthRequestValidator(accessToken);
     }
 
     /// <summary>
@@ -594,6 +594,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
+    // TODO: Re-enable when Budget type is available or custom implementation is created
+    /*
     /// <summary>
     /// Gets budgets from QuickBooks
     /// </summary>
@@ -645,6 +647,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             };
         }
     }
+    */
 
     /// <summary>
     /// Connects to the QuickBooks API

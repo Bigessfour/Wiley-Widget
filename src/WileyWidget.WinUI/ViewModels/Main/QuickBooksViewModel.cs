@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.WinUI.Services;
+using WileyWidget.Services;
 
 namespace WileyWidget.WinUI.ViewModels.Main
 {
@@ -129,13 +130,10 @@ namespace WileyWidget.WinUI.ViewModels.Main
 
                 foreach (var customer in customers)
                 {
-                    QuickBooksItems.Add(new QuickBooksItem
+                    QuickBooksItems.Add(new QuickBooksItem(0, DateTime.Now, customer.Active)
                     {
                         Name = customer.DisplayName ?? "Unknown",
-                        Type = "Customer",
-                        Amount = 0,
-                        LastModified = DateTime.Now,
-                        IsActive = customer.Active
+                        Type = "Customer"
                     });
                 }
             }
@@ -146,12 +144,9 @@ namespace WileyWidget.WinUI.ViewModels.Main
         }
     }
 
-    public class QuickBooksItem
+    public record QuickBooksItem(decimal Amount, DateTime LastModified, bool IsActive)
     {
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
-        public DateTime LastModified { get; set; }
-        public bool IsActive { get; set; }
     }
 }

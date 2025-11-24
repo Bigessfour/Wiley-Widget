@@ -123,8 +123,8 @@ if sys.platform == "win32":
             getattr(sys.stdout, "reconfigure", None)
         ):
             # Type checker doesn't recognize reconfigure, but it exists at runtime
-            getattr(sys.stdout, "reconfigure")(encoding="utf-8")  # type: ignore[attr-defined]
-            getattr(sys.stderr, "reconfigure")(encoding="utf-8")  # type: ignore[attr-defined]
+            sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+            sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
         else:
             # Fallback for when reconfigure is not available
             import codecs

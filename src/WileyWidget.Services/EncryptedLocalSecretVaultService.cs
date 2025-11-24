@@ -567,12 +567,12 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         foreach (var envVar in uniqueVars)
         {
             var value = Environment.GetEnvironmentVariable(envVar);
-            if (!string.IsNullOrEmpty(value) && !value.StartsWith("${")) // Skip placeholders
+            if (!string.IsNullOrEmpty(value) && !value.StartsWith("${", StringComparison.Ordinal)) // Skip placeholders
             {
                 await SetSecretAsync(envVar, value);
                 migratedSecrets.Add(envVar);
                 _logger.LogInformation("Migrated secret '{SecretName}' from environment to encrypted vault", envVar);
-            }
+              }
         }
 
         if (migratedSecrets.Any())

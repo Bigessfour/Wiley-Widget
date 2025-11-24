@@ -20,7 +20,7 @@ namespace WileyWidget.WinUI
                 // Calculate logs directory using entry assembly location (more reliable than BaseDirectory)
                 var exePath = Assembly.GetEntryAssembly()?.Location ?? AppContext.BaseDirectory;
                 var exeDir = Path.GetDirectoryName(exePath) ?? Directory.GetCurrentDirectory();
-                
+
                 // Navigate from bin/Debug/net9.0-windows10.0.26100.0/win-x64 to repo root logs folder
                 // Or use absolute path as fallback
                 string logDir;
@@ -34,7 +34,7 @@ namespace WileyWidget.WinUI
                     // Fallback: create logs next to exe
                     logDir = Path.Combine(exeDir, "logs");
                 }
-                
+
                 Directory.CreateDirectory(logDir);
 
                 // Enable Serilog self-log to capture internal errors
@@ -53,8 +53,8 @@ namespace WileyWidget.WinUI
                     .Enrich.WithProperty("AppVersion", Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown")
                     .WriteTo.Console()
                     .WriteTo.File(
-                        Path.Combine(logDir, "startup-.log"), 
-                        rollingInterval: RollingInterval.Day, 
+                        Path.Combine(logDir, "startup-.log"),
+                        rollingInterval: RollingInterval.Day,
                         retainedFileCountLimit: 7,
                         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
                     .CreateLogger();
@@ -64,15 +64,15 @@ namespace WileyWidget.WinUI
             }
             catch (Exception ex)
             {
-                try { 
-                    SelfLog.WriteLine($"[{DateTime.UtcNow:O}] FATAL: Serilog configuration failed: {ex}"); 
+                try {
+                    SelfLog.WriteLine($"[{DateTime.UtcNow:O}] FATAL: Serilog configuration failed: {ex}");
                     Console.WriteLine($"FATAL: Logging configuration failed: {ex}");
                 } catch { }
             }
         }
         public static StartupDiagnostics Diagnostics { get; } = new StartupDiagnostics();
         public static IServiceProvider? Services { get; private set; }
-        
+
         public new static App Current => (App)Application.Current;
 
         public class StartupDiagnostics
@@ -87,28 +87,7 @@ namespace WileyWidget.WinUI
         public App()
         {
             Log.Information("[APP] Constructor start - {Utc}", Diagnostics.UtcStarted);
-
-            // Configure Dependency Injection FIRST (before XAML)
-            try
-            {
-                Log.Information("[APP] Configuring dependency injection");
-                Services = DependencyInjection.ConfigureServices();
-                Log.Information("[APP] Dependency injection configured successfully");
-                
-                // Validate critical dependencies
-                if (!DependencyInjection.ValidateDependencies(Services))
-                {
-                    Log.Warning("[APP] Some dependencies failed validation - check logs");
-                }
-            }
-            catch (Exception ex)
-            {
-                Diagnostics.LastException = ex;
-                Log.Fatal(ex, "[APP] Failed to configure dependency injection");
-                throw;
-            }
-
-            // Initialize XAML
+            // Initialize XAML first so Application resources and merged dictionaries are available
             try
             {
                 this.InitializeComponent();
@@ -135,6 +114,26 @@ namespace WileyWidget.WinUI
                 throw;
             }
 
+            // Configure Dependency Injection AFTER XAML initialization to avoid compile-time/static resource timing issues
+            try
+            {
+                Log.Information("[APP] Configuring dependency injection");
+                Services = DependencyInjection.ConfigureServices();
+                Log.Information("[APP] Dependency injection configured successfully");
+
+                // Validate critical dependencies
+                if (!DependencyInjection.ValidateDependencies(Services))
+                {
+                    Log.Warning("[APP] Some dependencies failed validation - check logs");
+                }
+            }
+            catch (Exception ex)
+            {
+                Diagnostics.LastException = ex;
+                Log.Fatal(ex, "[APP] Failed to configure dependency injection");
+                throw;
+            }
+
             // Add unhandled exception handler
             this.UnhandledException += OnUnhandledException;
         }
@@ -148,7 +147,7 @@ namespace WileyWidget.WinUI
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
             Log.Information("[APP] OnLaunched called - args={Args}", args);
-            
+
             try
             {
                 Log.Information("[APP] Creating MainWindow");

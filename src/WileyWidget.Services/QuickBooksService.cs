@@ -316,6 +316,8 @@ private (ServiceContext Ctx, DataService Ds) GetDataService()
     if (!HasValidAccessToken()) throw new InvalidOperationException("Access token invalid – refresh required.");
     if (string.IsNullOrWhiteSpace(_realmId))
         throw new InvalidOperationException("QuickBooks company (realmId) is not set. Connect to QuickBooks first.");
+
+    // Using OAuth2RequestValidator from Intuit.Ipp.Security (OAuth2 SDK)
     var validator = new OAuth2RequestValidator(s.QboAccessToken);
     var ctx = new ServiceContext(_realmId!, IntuitServicesType.QBO, validator);
     ctx.IppConfiguration.BaseUrl.Qbo = _environment == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
@@ -546,6 +548,8 @@ public async System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAs
     }
 }
 
+// TODO: Re-enable when Budget type is available or custom implementation is created
+/*
 public async System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync()
 {
     try
@@ -562,7 +566,10 @@ public async System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync()
         throw;
     }
 }
+*/
 
+// TODO: Re-enable when Budget type is available or custom implementation is created
+/*
 /// <summary>
 /// Syncs budgets to QuickBooks Online via REST API.
 /// Uses IHttpClientFactory to create named 'QBO' client with proper authentication.
@@ -673,7 +680,10 @@ public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnum
         };
     }
 }
+*/
 
+// TODO: Re-enable when Budget type is available or custom implementation is created
+/*
 /// <summary>
 /// Synchronizes budgets from QuickBooks to the app, handling cancellation gracefully.
 /// </summary>
@@ -758,6 +768,7 @@ public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(List<
         };
     }
 }
+*/
 
 public Task<bool> AuthorizeAsync()
 {

@@ -6,6 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
     mc:Ignorable="d"
+    xmlns:converters="using:WileyWidget.WinUI.Converters"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid>
@@ -15,10 +16,10 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" 
-                   Text="Data Explorer" 
-                   Style="{ThemeResource TitleTextBlockStyle}" 
-                   Margin="24,24,24,12" />
+        <TextBlock Grid.Row="0"
+            Text="Data Explorer"
+            Style="{ThemeResource TitleTextBlockStyle}"
+            Margin="24,24,24,12" />
 
         <Grid Grid.Row="1" Margin="24,0,24,12">
             <Grid.ColumnDefinitions>
@@ -27,55 +28,59 @@
             </Grid.ColumnDefinitions>
 
             <TextBox x:Name="SearchBox"
-                     Grid.Column="0"
-                     PlaceholderText="Search data..."
-                     Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     AutomationProperties.Name="Search Data Input" />
+                Grid.Column="0"
+                PlaceholderText="Search data..."
+                Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                AutomationProperties.Name="Search Data Input" />
 
-            <Button Grid.Column="1" 
-                    Content="Refresh"
-                    Margin="12,0,0,0"
-                    Command="{x:Bind ViewModel.RefreshCommand}"
-                    AutomationProperties.Name="Refresh Data Button" />
+            <Button Grid.Column="1"
+                Content="Refresh"
+                Margin="12,0,0,0"
+                Command="{x:Bind ViewModel.RefreshCommand}"
+                AutomationProperties.Name="Refresh Data Button" />
         </Grid>
 
-        <controls:DataGrid x:Name="DataGridView"
-                          Grid.Row="2"
-                          ItemsSource="{x:Bind ViewModel.DataItems, Mode=OneWay}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          GridLinesVisibility="All"
-                          AlternatingRowBackground="{ThemeResource SystemControlBackgroundListLowBrush}"
-                          CanUserReorderColumns="True"
-                          CanUserResizeColumns="True"
-                          CanUserSortColumns="True"
-                          Margin="24,0,24,24"
-                          AutomationProperties.Name="Data Grid">
-            
-            <controls:DataGrid.Columns>
-                <controls:DataGridTextColumn Header="ID" 
-                                            Binding="{Binding Id}" 
-                                            Width="100" />
-                <controls:DataGridTextColumn Header="Name" 
-                                            Binding="{Binding Name}" 
-                                            Width="*" />
-                <controls:DataGridTextColumn Header="Category" 
-                                            Binding="{Binding Category}" 
-                                            Width="150" />
-                <controls:DataGridTextColumn Header="Amount" 
-                                            Binding="{Binding Amount, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:C}'}" 
-                                            Width="120" />
-                <controls:DataGridTextColumn Header="Date" 
-                                            Binding="{Binding Date, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:d}'}" 
-                                            Width="120" />
-            </controls:DataGrid.Columns>
-        </controls:DataGrid>
+        <Grid Grid.Row="2" Margin="24,0,24,24">
+            <controls:DataGrid x:Name="DataGridView"
+                Panel.ZIndex="0"
+                ItemsSource="{x:Bind ViewModel.DataItems, Mode=OneWay, FallbackValue={x:Null}}"
+                AutoGenerateColumns="False"
+                IsReadOnly="True"
+                GridLinesVisibility="All"
+                AlternatingRowBackground="{ThemeResource SystemControlBackgroundListLowBrush}"
+                CanUserReorderColumns="True"
+                CanUserResizeColumns="True"
+                CanUserSortColumns="True"
+                Margin="0"
+                AutomationProperties.Name="Data Grid">
 
-        <ProgressRing Grid.Row="2"
-                      IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
-                      Width="50"
-                      Height="50"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Center" />
+                <controls:DataGrid.Columns>
+                    <controls:DataGridTextColumn Header="ID"
+                        Binding="{Binding Id}"
+                        Width="100" />
+                    <controls:DataGridTextColumn Header="Name"
+                        Binding="{Binding Name}"
+                        Width="*" />
+                    <controls:DataGridTextColumn Header="Category"
+                        Binding="{Binding Category}"
+                        Width="150" />
+                    <controls:DataGridTextColumn Header="Amount"
+                        Binding="{Binding Amount, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:C}'}"
+                        Width="120" />
+                    <controls:DataGridTextColumn Header="Date"
+                        Binding="{Binding Date, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:d}'}"
+                        Width="120" />
+                </controls:DataGrid.Columns>
+            </controls:DataGrid>
+
+            <ProgressRing
+                Panel.ZIndex="1"
+                Style="{StaticResource OverlayProgressRing}"
+                IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay, FallbackValue=false}"
+                Width="50"
+                Height="50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+        </Grid>
     </Grid>
 </Page>

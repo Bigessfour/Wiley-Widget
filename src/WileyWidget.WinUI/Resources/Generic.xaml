@@ -8,21 +8,31 @@
     <!--  Global brushes & styles used throughout the app            -->
     <!-- =========================================================== -->
 
-    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFF5F5F5"/>
-    <SolidColorBrush x:Key="CardBorderBrush"     Color="#FFCCCCCC"/>
-    <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#FFFFFFFF"/>
-    <SolidColorBrush x:Key="AccentBrush"         Color="#FF0078D4"/>
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFF5F5F5" />
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#FFCCCCCC" />
+    <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#FF0078D4" />
 
     <Thickness x:Key="CardBorderThickness">1</Thickness>
     <CornerRadius x:Key="CardCornerRadius">4</CornerRadius>
 
     <!-- Default card style -->
     <Style TargetType="Border" x:Key="CardStyle">
-        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
-        <Setter Property="BorderThickness" Value="{StaticResource CardBorderThickness}"/>
-        <Setter Property="CornerRadius" Value="{StaticResource CardCornerRadius}"/>
-        <Setter Property="Padding" Value="12"/>
+        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource CardBorderThickness}" />
+        <Setter Property="CornerRadius" Value="{StaticResource CardCornerRadius}" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <!-- Overlay styles: ensure ProgressRing and other overlays render above content -->
+    <Style TargetType="ProgressRing" x:Key="OverlayProgressRing">
+        <Setter Property="Panel.ZIndex" Value="1" />
+    </Style>
+
+    <!-- Default content items should render below overlays -->
+    <Style TargetType="Control" x:Key="ContentBelowOverlay">
+        <Setter Property="Panel.ZIndex" Value="0" />
     </Style>
 
 </ResourceDictionary>

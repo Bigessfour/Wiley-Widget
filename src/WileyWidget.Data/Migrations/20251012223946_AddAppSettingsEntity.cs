@@ -35,10 +35,7 @@ namespace WileyWidget.Data.Migrations
                     QboRefreshToken = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     QboTokenExpiry = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AppSettings", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_AppSettings", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "BudgetPeriods",
@@ -54,10 +51,7 @@ namespace WileyWidget.Data.Migrations
                     EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_BudgetPeriods", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_BudgetPeriods", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "Departments",
@@ -111,10 +105,7 @@ namespace WileyWidget.Data.Migrations
                     DeletedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     DeletedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Enterprises", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_Enterprises", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "FiscalYearSettings",
@@ -127,10 +118,7 @@ namespace WileyWidget.Data.Migrations
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     LastModified = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FiscalYearSettings", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_FiscalYearSettings", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "OverallBudgets",
@@ -147,10 +135,7 @@ namespace WileyWidget.Data.Migrations
                     Notes = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     IsCurrent = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OverallBudgets", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_OverallBudgets", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "UtilityCustomers",
@@ -190,10 +175,7 @@ namespace WileyWidget.Data.Migrations
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UtilityCustomers", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_UtilityCustomers", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "Vendors",
@@ -205,10 +187,7 @@ namespace WileyWidget.Data.Migrations
                     ContactInfo = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Vendors", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_Vendors", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "Widgets",
@@ -227,10 +206,7 @@ namespace WileyWidget.Data.Migrations
                     Category = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     SKU = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Widgets", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_Widgets", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "MunicipalAccounts",
@@ -433,7 +409,7 @@ namespace WileyWidget.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_BudgetPeriods_Year_Status",
                 table: "BudgetPeriods",
-                columns: new[] { "Year", "Status" });
+                columns: ["Year", "Status"]);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Departments_Code",

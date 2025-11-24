@@ -31,6 +31,8 @@ namespace WileyWidget.Services
             if (!HasValidAccessToken(s)) throw new InvalidOperationException("Access token invalid – refresh required.");
             if (string.IsNullOrWhiteSpace(s.QuickBooksRealmId))
                 throw new InvalidOperationException("QuickBooks company (realmId) is not set. Connect to QuickBooks first.");
+
+            // Using OAuth2RequestValidator from Intuit.Ipp.Security (OAuth2 SDK)
             var validator = new OAuth2RequestValidator(s.QboAccessToken);
             var ctx = new ServiceContext(s.QuickBooksRealmId, IntuitServicesType.QBO, validator);
             ctx.IppConfiguration.BaseUrl.Qbo = s.QuickBooksEnvironment == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
@@ -149,6 +151,8 @@ namespace WileyWidget.Services
             }
         }
 
+        // TODO: Re-enable when Budget type is available or custom implementation is created
+        /*
         public async Task<List<Budget>> GetBudgetsAsync()
         {
             try
@@ -163,6 +167,7 @@ namespace WileyWidget.Services
                 throw;
             }
         }
+        */
 
         public async Task<bool> TestConnectionAsync()
         {

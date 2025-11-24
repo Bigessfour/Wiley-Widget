@@ -1,26 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
-<PropertyGroup>
-  <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
-  <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-  <RootNamespace>WileyWidget</RootNamespace>
-  <UseWinUI>true</UseWinUI>
-  <EnableXamlSourceGenerator>true</EnableXamlSourceGenerator>
-  <EnableDefaultPageItems>false</EnableDefaultPageItems>
-  <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-  <Nullable>enable</Nullable>
-  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  <WindowsPackageType>None</WindowsPackageType>
-  <AppxPackage>false</AppxPackage>
-  <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
-  <GenerateResourceMSBuildArchitecture>x64</GenerateResourceMSBuildArchitecture>
-  <EnableMsixTooling>true</EnableMsixTooling>
-  <DefaultLanguage>en-US</DefaultLanguage>
-  <DefaultResourceLanguage>en-US</DefaultResourceLanguage>
-  <WarningsNotAsErrors>NU1605;MSB4062</WarningsNotAsErrors>
-  <NoWarn>$(NoWarn);MSB3073;CS8785;SYSLIB0014</NoWarn>
-  <Platforms>x64</Platforms>
-  <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-</PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>WileyWidget</RootNamespace>
+    <UseWinUI>true</UseWinUI>
+    <EnableXamlSourceGenerator>true</EnableXamlSourceGenerator>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WindowsPackageType>None</WindowsPackageType>
+    <AppxPackage>false</AppxPackage>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+    <GenerateResourceMSBuildArchitecture>x64</GenerateResourceMSBuildArchitecture>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <DefaultResourceLanguage>en-US</DefaultResourceLanguage>
+    <WarningsNotAsErrors>NU1605;MSB4062</WarningsNotAsErrors>
+    <NoWarn>$(NoWarn);MSB3073;CS8785;SYSLIB0014</NoWarn>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
 
   <PropertyGroup>
     <!-- FORCE the modern .NET 6+ compiler that actually shows errors -->
@@ -42,14 +42,14 @@
     <NoWarn>$(NoWarn);MSB3277;MSB3073;NU1605</NoWarn>
   </PropertyGroup>
 
-<ItemGroup>
-  <PackageReference Include="Microsoft.WindowsAppSDK" Version="[1.7.250909003, )" />
-  <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="[10.0.26100.1742, )" />
-  <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="[7.1.2, )" />
-  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-  <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-  <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.0-rc2" />
-</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
@@ -60,9 +60,7 @@
 
   <!-- Exclude custom projects and tests from main app build -->
   <ItemGroup>
-    <Compile Remove="src\\**" />
-    <Compile Remove="tests\\**" />
-    <Compile Remove="WileyWidget.Services.UnitTests\\**" />
+    <!-- Removed file-specific Compile Remove entries: project-level csproj files now control included files -->
   </ItemGroup>
 
   <!-- Root project is a library - XAML pages are in WinUI project -->

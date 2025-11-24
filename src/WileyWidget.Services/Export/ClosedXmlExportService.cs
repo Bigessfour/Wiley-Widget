@@ -267,12 +267,12 @@ namespace WileyWidget.Services.Export
                                 }
                                 else if (value is decimal || value is double || value is float)
                                 {
-                                    cell.Value = Convert.ToDouble(value);
+                                    cell.Value = Convert.ToDouble(value, CultureInfo.InvariantCulture);
                                     cell.Style.NumberFormat.Format = "#,##0.00";
                                 }
                                 else if (value is int || value is long)
                                 {
-                                    cell.Value = Convert.ToInt64(value);
+                                    cell.Value = Convert.ToInt64(value, CultureInfo.InvariantCulture);
                                 }
                                 else
                                 {

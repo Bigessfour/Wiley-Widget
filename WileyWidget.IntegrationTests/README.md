@@ -36,10 +36,10 @@ public class MyServiceIntegrationTests : IntegrationTestBase
         // Arrange - get services from DI container
         var myService = GetService<IMyService>();
         var dbContext = GetDbContext();
-        
+
         // Act
         var result = await myService.DoSomethingAsync();
-        
+
         // Assert
         Assert.NotNull(result);
     }
@@ -69,11 +69,11 @@ public async Task DatabaseTest()
 {
     // Arrange
     var dbContext = GetDbContext();
-    
+
     // Seed test data
     dbContext.Enterprises.Add(new Enterprise { Name = "Test" });
     await dbContext.SaveChangesAsync();
-    
+
     // Act & Assert
     var count = await dbContext.Enterprises.CountAsync();
     Assert.Equal(1, count);
@@ -103,14 +103,14 @@ Tests use `appsettings.test.json` for configuration:
 ✅ **Fast**: In-memory database, no external dependencies  
 ✅ **Isolated**: Each test gets fresh database instance  
 ✅ **Non-Whitewash**: Uses real service implementations (except expensive external calls)  
-✅ **Maintainable**: Follows same patterns as production code  
+✅ **Maintainable**: Follows same patterns as production code
 
 ## Anti-Patterns to Avoid
 
 ❌ **Don't** create manual service instances outside the container  
 ❌ **Don't** mock the entire service container  
 ❌ **Don't** share database state between tests  
-❌ **Don't** make real API calls to external services  
+❌ **Don't** make real API calls to external services
 
 ## Running Tests
 

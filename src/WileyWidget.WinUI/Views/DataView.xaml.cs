@@ -16,12 +16,23 @@ namespace WileyWidget.WinUI.Views
         {
             this.InitializeComponent();
 
-            // Resolve dependencies from DI container
-            _logger = App.Services?.GetRequiredService<ILogger<DataView>>()
-                ?? throw new InvalidOperationException("Logger not available from DI container");
+            // Resolve dependencies from DI container, fallback to safe defaults if DI fails
+            try
+            {
+                _logger = App.Services?.GetService<ILogger<DataView>>();
+            }
+            catch
+            {
+                _logger = null!;
+            }
 
-            ViewModel = App.Services?.GetRequiredService<DataViewModel>()
-                ?? throw new InvalidOperationException("DataViewModel not available from DI container");
+            ViewModel = App.Services?.GetService<DataViewModel>();
+            if (ViewModel == null)
+            {
+                // Log DI resolution failure if logger available, then create a fallback minimal ViewModel
+                try { _logger?.LogError("DataViewModel not available from DI container; using fallback instance"); } catch { }
+                ViewModel = new DataViewModel();
+            }
 
             // Set DataContext for data binding
             this.DataContext = ViewModel;

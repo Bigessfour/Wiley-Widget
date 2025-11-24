@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-
 namespace WileyWidget.Data.Migrations
 {
     /// <inheritdoc />
@@ -563,10 +561,7 @@ namespace WileyWidget.Data.Migrations
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Type = table.Column<int>(type: "int", nullable: false)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Funds", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_Funds", x => x.Id));
 
             migrationBuilder.InsertData(
                 table: "Departments",
@@ -1285,10 +1280,7 @@ namespace WileyWidget.Data.Migrations
                     TotalMonthlyExpenses = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     TotalMonthlyRevenue = table.Column<decimal>(type: "decimal(18,2)", nullable: false)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OverallBudgets", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_OverallBudgets", x => x.Id));
 
             migrationBuilder.CreateTable(
                 name: "Widgets",
@@ -1307,10 +1299,7 @@ namespace WileyWidget.Data.Migrations
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     SKU = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true)
                 },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Widgets", x => x.Id);
-                });
+                constraints: table => table.PrimaryKey("PK_Widgets", x => x.Id));
 
             migrationBuilder.CreateIndex(
                 name: "IX_UtilityCustomers_AccountNumber",

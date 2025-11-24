@@ -1,0 +1,48 @@
+<Window
+    x:Class="WileyWidget.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    mc:Ignorable="d"
+    xmlns:views="using:WileyWidget.Views"
+    Title="Wiley Widget">
+
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <!-- Modern WinUI 3 NavigationView with Frame integration -->
+        <controls:NavigationView x:Name="NavView"
+                                IsBackButtonVisible="Auto"
+                                IsBackEnabled="{x:Bind ContentFrame.CanGoBack, Mode=OneWay}"
+                                BackRequested="NavView_BackRequested"
+                                ItemInvoked="NavView_ItemInvoked"
+                                PaneDisplayMode="Left"
+                                IsSettingsVisible="True"
+                                Header="Wiley Widget">
+            
+            <controls:NavigationView.MenuItems>
+                <controls:NavigationViewItem Content="Budget Overview" 
+                                           Icon="Home" 
+                                           Tag="BudgetOverview"
+                                           AutomationProperties.Name="Budget Overview" />
+                <controls:NavigationViewItem Content="Dashboard" 
+                                           Icon="ViewAll" 
+                                           Tag="Dashboard"
+                                           AutomationProperties.Name="Dashboard" />
+                <controls:NavigationViewItem Content="Data Explorer" 
+                                           Icon="Library" 
+                                           Tag="Data"
+                                           AutomationProperties.Name="Data Explorer" />
+                <controls:NavigationViewItem Content="Charts" 
+                                           Icon="LineChart" 
+                                           Tag="Chart"
+                                           AutomationProperties.Name="Charts" />
+            </controls:NavigationView.MenuItems>
+
+            <!-- Main content frame for navigation -->
+            <Frame x:Name="ContentFrame" 
+                   NavigationCacheMode="Required"
+                   Navigated="ContentFrame_Navigated" />
+        </controls:NavigationView>
+    </Grid>
+</Window>

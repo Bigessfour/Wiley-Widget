@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using System;
 
-namespace WileyWidget
+namespace WileyWidget.WinUI.Converters
 {
     /// <summary>
     /// Converts boolean values to Visibility enum values for WinUI 3.

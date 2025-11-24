@@ -11,14 +11,20 @@ namespace WileyWidget.WinUI.Views.Panels
 
         public DashboardPanelView(DashboardViewModel? viewModel = null)
         {
-            this.InitializeComponent();
+            // Ensure InitializeComponent is available
+            InitializeComponent();
 
-            // Resolve ViewModel from DI if not provided
-            ViewModel = viewModel ?? App.Services?.GetRequiredService<DashboardViewModel>()
-                ?? throw new InvalidOperationException("DashboardViewModel not available from DI container");
+            // Resolve ViewModel from DI if not provided; fallback to a new instance and log
+            ViewModel = viewModel ?? App.Services?.GetService<DashboardViewModel>();
+            if (ViewModel == null)
+            {
+                try { App.Services?.GetService<ILogger<DashboardPanelView>>()?.LogError("DashboardViewModel not available from DI container; using fallback instance"); } catch { }
+                ViewModel = new DashboardViewModel();
+            }
 
             // Set DataContext for data binding
             this.DataContext = ViewModel;
         }
+
     }
 }

@@ -7,9 +7,11 @@ The Legacy Scanner is a comprehensive tool for detecting and exposing Syncfusion
 ## Available Implementations
 
 ### 1. Python Scanner (Recommended)
+
 **Location**: `tools/legacy_scanner.py`
 
 **Features**:
+
 - Cross-platform (runs anywhere Python 3.8+ is available)
 - Threaded scanning for performance
 - JSON report generation
@@ -18,6 +20,7 @@ The Legacy Scanner is a comprehensive tool for detecting and exposing Syncfusion
 - Custom pattern loading
 
 **Usage**:
+
 ```bash
 # Basic scan
 python tools/legacy_scanner.py
@@ -39,9 +42,11 @@ python tools/legacy_scanner.py --output my_scan_report.json
 ```
 
 ### 2. PowerShell Scanner (Windows Native)
+
 **Location**: `scripts/tools/legacy_scanner.ps1`
 
 **Features**:
+
 - Native Windows/PowerShell solution
 - No external dependencies
 - Progress bar for large scans
@@ -49,6 +54,7 @@ python tools/legacy_scanner.py --output my_scan_report.json
 - JSON export capability
 
 **Usage**:
+
 ```powershell
 # Basic scan
 .\scripts\tools\legacy_scanner.ps1
@@ -78,6 +84,7 @@ Four tasks are available via **Terminal > Run Task**:
 ## Detection Patterns
 
 ### Syncfusion Patterns
+
 - **Namespaces**: `using Syncfusion.*`
 - **Controls**: SfDataGrid, SfChart, SfTreeView, SfBusyIndicator, SfEditors, etc.
 - **XAML Tags**: `<syncfusion:SfDataGrid>`, `<SfChart>`, etc.
@@ -86,6 +93,7 @@ Four tasks are available via **Terminal > Run Task**:
 - **Package References**: `<PackageReference Include="Syncfusion.*"`
 
 ### Prism Patterns
+
 - **Namespaces**: `using Prism.*`
 - **Classes/Methods**: BindableBase, DelegateCommand, IEventAggregator, IRegionManager, ContainerLocator, PrismApplication
 - **XAML Regions**: `prism:RegionManager.RegionName`, `prism:ClearChildContent`
@@ -94,6 +102,7 @@ Four tasks are available via **Terminal > Run Task**:
 ## Baseline Scan Results (2025-11-23)
 
 ### Summary
+
 - **Total Hits**: 22 (Prism: 0, Syncfusion: 22)
 - **Affected Files**: 2
 - **Status**: ⚠️ Legacy code detected
@@ -101,7 +110,9 @@ Four tasks are available via **Terminal > Run Task**:
 ### Affected Files
 
 #### 1. `src/WileyWidget.WinUI/Resources/DataTemplates.xaml` (21 hits)
+
 **Issue**: Syncfusion DataGrid still in use
+
 - Multiple `<syncfusion:SfDataGrid>` tags
 - Syncfusion column definitions
 - Legacy control attributes
@@ -109,7 +120,9 @@ Four tasks are available via **Terminal > Run Task**:
 **Action Required**: Replace with native WinUI DataGrid from `Microsoft.UI.Xaml.Controls`
 
 #### 2. `Styles/Generic.xaml` (1 hit)
+
 **Issue**: Syncfusion namespace declaration
+
 - `xmlns:syncfusion="using:Syncfusion.UI.Xaml.Core"`
 
 **Action Required**: Remove unused namespace declaration
@@ -117,10 +130,11 @@ Four tasks are available via **Terminal > Run Task**:
 ## CI Integration
 
 ### GitHub Actions Example
+
 ```yaml
 - name: Scan for Legacy Code
   run: python tools/legacy_scanner.py --fail-on-hits --output scan_report.json
-  
+
 - name: Upload Scan Report
   if: failure()
   uses: actions/upload-artifact@v3
@@ -130,6 +144,7 @@ Four tasks are available via **Terminal > Run Task**:
 ```
 
 ### Pre-commit Hook
+
 ```bash
 #!/bin/bash
 # .git/hooks/pre-commit
@@ -159,12 +174,14 @@ Load with: `python tools/legacy_scanner.py --patterns custom.json`
 ## Output Format
 
 ### Console Output
+
 - Summary statistics (total hits, by category, affected files)
 - Top 3 hits per file with line numbers
 - Refactoring suggestions
 - Next steps guidance
 
 ### JSON Report Structure
+
 ```json
 {
   "summary": {
@@ -199,6 +216,7 @@ Load with: `python tools/legacy_scanner.py --patterns custom.json`
 ## Ignored Directories
 
 The scanner automatically skips:
+
 - Build artifacts: `bin`, `obj`, `packages`
 - Node modules: `node_modules`
 - Version control: `.git`
@@ -216,11 +234,13 @@ The scanner automatically skips:
 2. **Clean Up**: Remove Syncfusion namespace from `Generic.xaml`
 
 3. **Verify**: Re-run scanner to confirm 0 hits
+
    ```bash
    python tools/legacy_scanner.py
    ```
 
 4. **CI Integration**: Add to GitHub Actions workflow
+
    ```yaml
    - name: Legacy Code Check
      run: python tools/legacy_scanner.py --fail-on-hits
@@ -231,11 +251,13 @@ The scanner automatically skips:
 ## Troubleshooting
 
 ### Python Scanner Issues
+
 - **ImportError**: Ensure Python 3.8+ is installed
 - **UnicodeDecodeError**: Files with invalid encoding are automatically skipped
 - **PermissionError**: Run with appropriate file system permissions
 
 ### PowerShell Scanner Issues
+
 - **Execution Policy**: Run with `-ExecutionPolicy Bypass`
 - **Progress Bar**: Disable with `-ProgressPreference SilentlyContinue` if needed
 - **Large Files**: Automatically skipped if >5MB

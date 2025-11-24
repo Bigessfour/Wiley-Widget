@@ -9,7 +9,14 @@ namespace WileyWidget.WinUI.Views.Main
 
         public SettingsView(SettingsViewModel? viewModel = null)
         {
-            ViewModel = viewModel;
+            // Attempt to resolve via DI if not provided
+            ViewModel = viewModel ?? App.Services?.GetService<SettingsViewModel>();
+            if (ViewModel == null)
+            {
+                try { App.Services?.GetService<ILogger<SettingsView>>()?.LogWarning("SettingsViewModel not available from DI; using fallback instance"); } catch { }
+                ViewModel = new SettingsViewModel();
+            }
+
             this.InitializeComponent();
 
             // Set DataContext for data binding

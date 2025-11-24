@@ -31,6 +31,7 @@ namespace WileyWidget.WinUI.Views
             LoadSettings();
         }
 
+
         private void LoadSettings()
         {
             // TODO: Load settings from configuration/database

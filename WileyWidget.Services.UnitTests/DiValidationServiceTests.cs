@@ -128,7 +128,7 @@ namespace WileyWidget.Services.UnitTests
             // Assert
             Assert.NotNull(report);
             Assert.True(report.MissingServices.Count > 0, "Should find missing services in empty container");
-            Assert.Equal(0, report.ResolvedServices.Count);
+                Assert.Empty(report.ResolvedServices);
             Assert.False(report.IsFullyValid);
         }
 

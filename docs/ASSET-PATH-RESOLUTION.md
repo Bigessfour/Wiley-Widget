@@ -20,19 +20,19 @@ src/WileyWidget.WinUI/Assets/
 
 ### ✅ Correct Formats for WinUI 3
 
-| Format | Use Case | Example |
-|--------|----------|---------|
+| Format                  | Use Case                                  | Example                            |
+| ----------------------- | ----------------------------------------- | ---------------------------------- |
 | `ms-appx:///Assets/...` | **PREFERRED** - Absolute app package path | `ms-appx:///Assets/Icons/icon.svg` |
-| `/Assets/...` | Relative to app root | `/Assets/Icons/icon.svg` |
-| `Assets/...` | Relative to current assembly | `Assets/Icons/icon.svg` |
+| `/Assets/...`           | Relative to app root                      | `/Assets/Icons/icon.svg`           |
+| `Assets/...`            | Relative to current assembly              | `Assets/Icons/icon.svg`            |
 
 ### ❌ Formats to Avoid
 
-| Format | Why Avoid | Issue |
-|--------|-----------|-------|
-| `../Assets/...` | Relative navigation | Breaks in different contexts |
+| Format                    | Why Avoid           | Issue                               |
+| ------------------------- | ------------------- | ----------------------------------- |
+| `../Assets/...`           | Relative navigation | Breaks in different contexts        |
 | `C:\Users\...\Assets\...` | Absolute file paths | Not portable, won't work in package |
-| `file:///...` | File scheme | Security restrictions in UWP/WinUI |
+| `file:///...`             | File scheme         | Security restrictions in UWP/WinUI  |
 
 ## 📝 XAML Examples
 
@@ -40,13 +40,13 @@ src/WileyWidget.WinUI/Assets/
 
 ```xml
 <!-- SVG Image -->
-<Image Source="ms-appx:///Assets/Icons/icon.svg" 
-       Width="32" 
+<Image Source="ms-appx:///Assets/Icons/icon.svg"
+       Width="32"
        Height="32" />
 
 <!-- PNG Image with Scale Support -->
-<Image Source="ms-appx:///Assets/Images/logo.png" 
-       Width="64" 
+<Image Source="ms-appx:///Assets/Images/logo.png"
+       Width="64"
        Height="64" />
 ```
 
@@ -56,8 +56,8 @@ src/WileyWidget.WinUI/Assets/
 <Button>
     <Button.Content>
         <StackPanel Orientation="Horizontal" Spacing="8">
-            <Image Source="ms-appx:///Assets/Icons/icon.svg" 
-                   Width="16" 
+            <Image Source="ms-appx:///Assets/Icons/icon.svg"
+                   Width="16"
                    Height="16" />
             <TextBlock Text="Click Me" />
         </StackPanel>
@@ -70,8 +70,8 @@ src/WileyWidget.WinUI/Assets/
 ```xml
 <Image Width="48" Height="48">
     <Image.Source>
-        <BitmapImage UriSource="ms-appx:///Assets/Icons/icon.svg" 
-                     DecodePixelWidth="48" 
+        <BitmapImage UriSource="ms-appx:///Assets/Icons/icon.svg"
+                     DecodePixelWidth="48"
                      DecodePixelHeight="48" />
     </Image.Source>
 </Image>
@@ -104,17 +104,18 @@ Ensure your `WileyWidget.WinUI.csproj` includes:
 ### Build Action Settings
 
 | File Type | Build Action | Copy to Output |
-|-----------|--------------|----------------|
-| `.svg` | Content | PreserveNewest |
-| `.png` | Content | PreserveNewest |
-| `.jpg` | Content | PreserveNewest |
-| `.ico` | Content | PreserveNewest |
+| --------- | ------------ | -------------- |
+| `.svg`    | Content      | PreserveNewest |
+| `.png`    | Content      | PreserveNewest |
+| `.jpg`    | Content      | PreserveNewest |
+| `.ico`    | Content      | PreserveNewest |
 
 ## 🔍 Troubleshooting
 
 ### Issue: Images Don't Display in Preview
 
 **Symptoms:**
+
 - Images show as blank in XAML designer
 - "Asset not found" errors in Output window
 - Images work at runtime but not in preview
@@ -122,16 +123,19 @@ Ensure your `WileyWidget.WinUI.csproj` includes:
 **Solutions:**
 
 1. **Verify Asset Exists:**
+
    ```powershell
    Test-Path "src\WileyWidget.WinUI\Assets\Icons\icon.svg"
    ```
 
 2. **Check .csproj Configuration:**
+
    ```powershell
    Select-String -Path "src\WileyWidget.WinUI\WileyWidget.WinUI.csproj" -Pattern "Assets"
    ```
 
 3. **Rebuild Project:**
+
    ```powershell
    dotnet clean
    dotnet build
@@ -145,12 +149,14 @@ Ensure your `WileyWidget.WinUI.csproj` includes:
 ### Issue: Images Display in Preview but Not at Runtime
 
 **Symptoms:**
+
 - XAML designer shows images correctly
 - Runtime shows blank images or crashes
 
 **Solutions:**
 
 1. **Verify CopyToOutputDirectory:**
+
    ```xml
    <Content Include="Assets\**\*">
        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -158,6 +164,7 @@ Ensure your `WileyWidget.WinUI.csproj` includes:
    ```
 
 2. **Check Output Directory:**
+
    ```powershell
    Get-ChildItem "src\WileyWidget.WinUI\bin\Debug\net9.0-windows10.0.26100.0\win-x64\Assets" -Recurse
    ```
@@ -170,6 +177,7 @@ Ensure your `WileyWidget.WinUI.csproj` includes:
 ### Issue: SVG Files Not Rendering
 
 **Symptoms:**
+
 - PNG files work, but SVG files don't display
 - SVG shows as blank box
 
@@ -180,6 +188,7 @@ Ensure your `WileyWidget.WinUI.csproj` includes:
    - Ensure using Windows App SDK 1.8.3+
 
 2. **Validate SVG Format:**
+
    ```powershell
    Get-Content "src\WileyWidget.WinUI\Assets\Icons\icon.svg" | Select-String "svg"
    ```
@@ -204,7 +213,7 @@ Add this to any XAML page to test all assets:
 ```xml
 <StackPanel Orientation="Horizontal" Spacing="12" Margin="24">
     <TextBlock Text="Asset Test:" VerticalAlignment="Center" FontWeight="SemiBold" />
-    
+
     <!-- Test: icon.svg -->
     <Border BorderBrush="{ThemeResource SystemAccentColor}" BorderThickness="1" Padding="8">
         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -212,7 +221,7 @@ Add this to any XAML page to test all assets:
             <TextBlock Text="icon.svg" VerticalAlignment="Center" FontSize="12" />
         </StackPanel>
     </Border>
-    
+
     <!-- Test: icon_foreground.svg -->
     <Border BorderBrush="{ThemeResource SystemAccentColor}" BorderThickness="1" Padding="8">
         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -220,7 +229,7 @@ Add this to any XAML page to test all assets:
             <TextBlock Text="icon_foreground.svg" VerticalAlignment="Center" FontSize="12" />
         </StackPanel>
     </Border>
-    
+
     <!-- Test: splash_screen.svg -->
     <Border BorderBrush="{ThemeResource SystemAccentColor}" BorderThickness="1" Padding="8">
         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -245,7 +254,7 @@ Write-Host "🔍 Verifying WinUI Asset Configuration" -ForegroundColor Cyan
 $assetsPath = Join-Path $ProjectPath "Assets"
 if (Test-Path $assetsPath) {
     Write-Host "✅ Assets directory found: $assetsPath" -ForegroundColor Green
-    
+
     # List all asset files
     Write-Host "`n📁 Asset Files:" -ForegroundColor Yellow
     Get-ChildItem $assetsPath -Recurse -File | ForEach-Object {
@@ -261,13 +270,13 @@ if (Test-Path $assetsPath) {
 $csprojPath = Join-Path $ProjectPath "WileyWidget.WinUI.csproj"
 if (Test-Path $csprojPath) {
     $csprojContent = Get-Content $csprojPath -Raw
-    
+
     if ($csprojContent -match '<Content Include="Assets\\\*\*\\\*">') {
         Write-Host "`n✅ .csproj includes Assets with wildcard pattern" -ForegroundColor Green
     } else {
         Write-Host "`n⚠️  .csproj may not include all Assets files" -ForegroundColor Yellow
     }
-    
+
     if ($csprojContent -match 'CopyToOutputDirectory.*PreserveNewest') {
         Write-Host "✅ CopyToOutputDirectory is set to PreserveNewest" -ForegroundColor Green
     } else {

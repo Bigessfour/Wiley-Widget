@@ -278,17 +278,22 @@ public class ApplicationMetricsService : IDisposable
         }
     }
 
-    public void Dispose()
+    // Add a protected virtual Dispose(bool) method
+    protected virtual void Dispose(bool disposing)
     {
-        try
+        if (disposing)
         {
+            // Dispose managed resources
             _memoryMonitorTimer?.Dispose();
             _meter?.Dispose();
             _logger.LogInformation("ApplicationMetricsService disposed");
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error disposing ApplicationMetricsService");
-        }
+        // No unmanaged resources to clean up
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

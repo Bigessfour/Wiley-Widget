@@ -1,2 +1,0 @@
-Usage: XamlCompiler.exe <input JSON file> <output JSON file>
-Example: XamlCompiler.exe input.json output.json

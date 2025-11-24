@@ -13,6 +13,7 @@ using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.WinUI.Services;
 using WileyWidget.WinUI.ViewModels;
+using WileyWidget.WinUI.ViewModels.Main;
 
 namespace WileyWidget.WinUI.Configuration
 {

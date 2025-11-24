@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -453,16 +454,17 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
     public async Task<string> GetDiagnosticsAsync()
     {
         var sb = new System.Text.StringBuilder();
+        var culture = CultureInfo.InvariantCulture;
         sb.AppendLine("=== Local Secret Vault Diagnostics ===");
         sb.AppendLine($"Secrets File Path: {_secretsPath}");
-        sb.AppendLine($"Directory Exists: {Directory.Exists(Path.GetDirectoryName(_secretsPath) ?? string.Empty)}");
-        sb.AppendLine($"Secrets File Exists: {File.Exists(_secretsPath)}");
+        sb.AppendLine($"Directory Exists: {Directory.Exists(Path.GetDirectoryName(_secretsPath) ?? string.Empty).ToString(culture)}");
+        sb.AppendLine($"Secrets File Exists: {File.Exists(_secretsPath).ToString(culture)}");
 
         await _fileLock.WaitAsync().ConfigureAwait(false);
         try
         {
             var secrets = await LoadSecretsAsync().ConfigureAwait(false);
-            sb.AppendLine($"Secret Keys Count: {secrets.Count}");
+            sb.AppendLine($"Secret Keys Count: {secrets.Count.ToString(culture)}");
             sb.AppendLine($"Secret Keys: {string.Join(", ", secrets.Keys)}");
 
             // Test write permissions

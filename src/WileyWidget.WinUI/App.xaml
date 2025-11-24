@@ -5,15 +5,25 @@
     xmlns:local="using:WileyWidget.WinUI"
     xmlns:converters="using:WileyWidget.WinUI.Converters"
     RequestedTheme="Light">
+
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- WinUI default theme resources (REQUIRED) -->
+                <!-- WinUI default theme resources (REQUIRED). Keep this entry first. -->
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+
+                <!-- Shared app resource dictionaries. Keep these as merged dictionaries. -->
+                <ResourceDictionary Source="Resources/Generic.xaml" />
+                <ResourceDictionary Source="Resources/DataTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            
-            <!-- Global Converters -->
+
+            <!-- Inline converters (moved here to avoid XAML compiler issues when merging separate files) -->
             <converters:StringFormatConverter x:Key="StringFormatConverter" />
+            <converters:BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <converters:BooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+
+            <!-- Fallback resources -->
+            <SolidColorBrush x:Key="FallbackAccent" Color="Blue" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

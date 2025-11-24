@@ -59,6 +59,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
+
     private void ConfigureWindow()
     {
         try

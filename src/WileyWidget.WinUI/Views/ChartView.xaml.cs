@@ -14,14 +14,25 @@ namespace WileyWidget.WinUI.Views
 
         public ChartView()
         {
+            // Ensure the partial class is generated from ChartView.xaml
             this.InitializeComponent();
 
-            // Resolve dependencies from DI container
-            _logger = App.Services?.GetRequiredService<ILogger<ChartView>>()
-                ?? throw new InvalidOperationException("Logger not available from DI container");
+            // Resolve dependencies from DI container, fallback to safe defaults if DI fails
+            try
+            {
+                _logger = App.Services?.GetService<ILogger<ChartView>>();
+            }
+            catch
+            {
+                _logger = null!;
+            }
 
-            ViewModel = App.Services?.GetRequiredService<ChartViewModel>()
-                ?? throw new InvalidOperationException("ChartViewModel not available from DI container");
+            ViewModel = App.Services?.GetService<ChartViewModel>();
+            if (ViewModel == null)
+            {
+                try { _logger?.LogError("ChartViewModel not available from DI container; using fallback instance"); } catch { }
+                ViewModel = new ChartViewModel();
+            }
 
             // Set DataContext for data binding
             this.DataContext = ViewModel;
@@ -36,5 +47,6 @@ namespace WileyWidget.WinUI.Views
             _logger.LogInformation("ChartView loaded, initializing chart data");
             await ViewModel.LoadChartDataAsync();
         }
+
     }
 }

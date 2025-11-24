@@ -15,42 +15,47 @@ This document outlines the **correct and complete** dependency injection setup f
 According to Microsoft documentation, a proper WinUI 3 App.xaml.cs must include:
 
 ### 1. Services Property
+
 ```csharp
 public static IServiceProvider Services { get; private set; }
 ```
 
 ### 2. App.Current Accessor
+
 ```csharp
 public new static App Current => (App)Application.Current;
 ```
 
 ### 3. Constructor with DI Configuration
+
 ```csharp
 public App()
 {
     // Configure DI FIRST (before InitializeComponent)
     Services = ConfigureServices();
-    
+
     // Then initialize XAML
     this.InitializeComponent();
 }
 ```
 
 ### 4. ConfigureServices Method
+
 ```csharp
 private static IServiceProvider ConfigureServices()
 {
     var services = new ServiceCollection();
-    
+
     // Register services (singletons, scoped, transient)
     services.AddSingleton<IMyService, MyService>();
     services.AddTransient<MyViewModel>();
-    
+
     return services.BuildServiceProvider();
 }
 ```
 
 ### 5. OnLaunched Override
+
 ```csharp
 protected override void OnLaunched(LaunchActivatedEventArgs args)
 {
@@ -74,7 +79,7 @@ public partial class App : Application
 {
     // ✅ Static Services property
     public static IServiceProvider? Services { get; private set; }
-    
+
     // ✅ App.Current accessor
     public new static App Current => (App)Application.Current;
 
@@ -82,7 +87,7 @@ public partial class App : Application
     {
         // ✅ DI configured BEFORE InitializeComponent
         Services = DependencyInjection.ConfigureServices();
-        
+
         // ✅ XAML initialization
         this.InitializeComponent();
     }
@@ -104,21 +109,22 @@ public partial class App : Application
 
 ### Required Service Lifetimes (Per Microsoft Best Practices)
 
-| Service Type | Lifetime | Reason |
-|-------------|----------|--------|
-| **DbContext** | Scoped | Per-request lifecycle, avoid threading issues |
-| **ViewModels** | Transient | Fresh state per navigation |
-| **ISettingsService** | Singleton | Shared configuration |
-| **IDialogService** | Transient | Requires XamlRoot per dialog |
-| **INavigationService** | Transient | Requires Frame per window |
-| **Cache Services** | Singleton | Shared cache across app |
-| **API Clients** | Singleton | Expensive to create, stateless |
+| Service Type           | Lifetime  | Reason                                        |
+| ---------------------- | --------- | --------------------------------------------- |
+| **DbContext**          | Scoped    | Per-request lifecycle, avoid threading issues |
+| **ViewModels**         | Transient | Fresh state per navigation                    |
+| **ISettingsService**   | Singleton | Shared configuration                          |
+| **IDialogService**     | Transient | Requires XamlRoot per dialog                  |
+| **INavigationService** | Transient | Requires Frame per window                     |
+| **Cache Services**     | Singleton | Shared cache across app                       |
+| **API Clients**        | Singleton | Expensive to create, stateless                |
 
 ### 🆕 Missing DbContext Registration (FIXED)
 
 **Issue**: `DashboardViewModel` requires `AppDbContext` but it wasn't registered in DI.
 
 **Fix Applied**:
+
 ```csharp
 services.AddDbContext<AppDbContext>(options =>
 {
@@ -129,6 +135,7 @@ services.AddDbContext<AppDbContext>(options =>
 ```
 
 **Why Scoped?**
+
 - EF Core DbContext is **NOT thread-safe**
 - Scoped lifetime creates new instance per service scope
 - Prevents concurrent access issues
@@ -163,7 +170,7 @@ public class DashboardViewModel : ObservableObject
 protected override void OnNavigatedTo(NavigationEventArgs e)
 {
     base.OnNavigatedTo(e);
-    
+
     // Resolve ViewModel from DI container
     var viewModel = App.Current.Services.GetService<DashboardViewModel>();
     this.DataContext = viewModel;
@@ -184,7 +191,7 @@ public static IServiceProvider ConfigureServices()
 
     // 2. DbContext (Scoped)
     services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlite(connectionString), 
+        options.UseSqlite(connectionString),
         ServiceLifetime.Scoped);
 
     // 3. Core Services (Singleton)
@@ -208,18 +215,21 @@ public static IServiceProvider ConfigureServices()
 ## 🚨 Common Mistakes to Avoid
 
 ### ❌ WRONG: Registering DbContext as Singleton
+
 ```csharp
 // DON'T DO THIS - DbContext is NOT thread-safe
 services.AddSingleton<AppDbContext>();
 ```
 
 ### ❌ WRONG: Creating DbContext with `new`
+
 ```csharp
 // DON'T DO THIS - Bypasses DI and connection management
 var dbContext = new AppDbContext();
 ```
 
 ### ❌ WRONG: Configuring DI after InitializeComponent
+
 ```csharp
 public App()
 {
@@ -229,6 +239,7 @@ public App()
 ```
 
 ### ✅ CORRECT: DI before XAML
+
 ```csharp
 public App()
 {
@@ -272,12 +283,14 @@ Use this checklist to verify proper WinUI 3 DI setup:
 **Root Cause**: `DashboardViewModel` constructor requires `AppDbContext`, but it wasn't registered in `DependencyInjection.ConfigureServices()`.
 
 **Solution Applied**:
+
 1. ✅ Added `AppDbContext` registration with Scoped lifetime
 2. ✅ Configured SQLite connection string with fallback to LocalApplicationData
 3. ✅ Added `AppDbContext` to critical services validation
 4. ✅ Verified App.xaml.cs already follows Microsoft pattern correctly
 
 **Files Modified**:
+
 - `src/WileyWidget.WinUI/Configuration/DependencyInjection.cs` - Added DbContext registration
 
 **Status**: ✅ **RESOLVED** - All services properly registered according to Microsoft documentation.

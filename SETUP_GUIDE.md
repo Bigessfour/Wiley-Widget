@@ -121,7 +121,7 @@ $service = Get-Service -Name 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue
 if ($service) {
     Write-Host "✓ SQL Server Express installed" -ForegroundColor Green
     Write-Host "Status: $($service.Status)" -ForegroundColor Cyan
-    
+
     if ($service.Status -ne 'Running') {
         Start-Service 'MSSQL$SQLEXPRESS'
         Write-Host "✓ SQL Server Express started" -ForegroundColor Green
@@ -179,16 +179,16 @@ sqlcmd -S .\SQLEXPRESS -d WileyWidgetDev -Q "SELECT COUNT(*) FROM BudgetEntries"
 
 After migrations, your database contains:
 
-| Table | Records | Purpose |
-|-------|---------|---------|
-| **BudgetPeriods** | 2 | FY2025 Adopted, FY2026 Proposed |
-| **Departments** | 8 | Admin, Public Works, Utilities, etc. |
-| **Funds** | 6 | General, Enterprise, Utility, etc. |
-| **Vendors** | 3 | Sample vendors for testing |
-| **MunicipalAccounts** | 31 | Conservation Trust Fund chart of accounts |
-| **BudgetEntries** | 20 | FY2026 General Fund revenues |
-| **TaxRevenueSummaries** | 7 | Property tax revenue projections |
-| **AppSettings** | 1 | Default application settings |
+| Table                   | Records | Purpose                                   |
+| ----------------------- | ------- | ----------------------------------------- |
+| **BudgetPeriods**       | 2       | FY2025 Adopted, FY2026 Proposed           |
+| **Departments**         | 8       | Admin, Public Works, Utilities, etc.      |
+| **Funds**               | 6       | General, Enterprise, Utility, etc.        |
+| **Vendors**             | 3       | Sample vendors for testing                |
+| **MunicipalAccounts**   | 31      | Conservation Trust Fund chart of accounts |
+| **BudgetEntries**       | 20      | FY2026 General Fund revenues              |
+| **TaxRevenueSummaries** | 7       | Property tax revenue projections          |
+| **AppSettings**         | 1       | Default application settings              |
 
 ---
 
@@ -295,7 +295,7 @@ Copy-Item "$env:APPDATA\WileyWidget\Secrets\.entropy" -Destination "C:\SecureBac
 2. Click **Create an app** → **QuickBooks Online**
 3. Configure:
    - **App Name**: WileyWidget Development
-   - **Redirect URIs**: 
+   - **Redirect URIs**:
      - `https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl`
      - `http://localhost:8080/callback`
    - **Scopes**: `com.intuit.quickbooks.accounting`
@@ -427,7 +427,7 @@ After completing all setup steps, run this comprehensive verification:
 # [✓] QuickBooks tokens valid
 # [✓] XAI API key configured
 # [✓] Build successful (0 errors)
-# 
+#
 # Setup Status: COMPLETE ✓
 ```
 
@@ -443,15 +443,15 @@ dotnet run --project src/WileyWidget.WinUI --configuration Release --no-build
 
 ### Expected Application State
 
-| Feature | Status | Verification |
-|---------|--------|--------------|
-| **Main Window** | ✅ Loads | Window title shows "Wiley Widget" |
-| **Dashboard** | ✅ Visible | Budget overview panels populate |
-| **Navigation** | ✅ Works | Sidebar navigation switches views |
-| **Database** | ✅ Connected | Budget entries visible in DataGrid |
-| **QuickBooks** | ✅ Integrated | Sync button shows "Connected" status |
-| **AI Assistant** | ✅ Active | Chat input shows Grok model name |
-| **Reports** | ✅ Available | Report menu shows data-driven reports |
+| Feature          | Status        | Verification                          |
+| ---------------- | ------------- | ------------------------------------- |
+| **Main Window**  | ✅ Loads      | Window title shows "Wiley Widget"     |
+| **Dashboard**    | ✅ Visible    | Budget overview panels populate       |
+| **Navigation**   | ✅ Works      | Sidebar navigation switches views     |
+| **Database**     | ✅ Connected  | Budget entries visible in DataGrid    |
+| **QuickBooks**   | ✅ Integrated | Sync button shows "Connected" status  |
+| **AI Assistant** | ✅ Active     | Chat input shows Grok model name      |
+| **Reports**      | ✅ Available  | Report menu shows data-driven reports |
 
 ---
 
@@ -508,6 +508,7 @@ start CoverageReport/index.html
 **Cause**: SQL Server service not running
 
 **Fix**:
+
 ```powershell
 Start-Service 'MSSQL$SQLEXPRESS'
 Get-Service 'MSSQL$SQLEXPRESS' | Select-Object Status, StartType
@@ -518,6 +519,7 @@ Get-Service 'MSSQL$SQLEXPRESS' | Select-Object Status, StartType
 **Cause**: EF Core migrations not applied
 
 **Fix**:
+
 ```powershell
 dotnet ef database update --project src/WileyWidget.Data --startup-project src/WileyWidget.WinUI
 ```
@@ -527,6 +529,7 @@ dotnet ef database update --project src/WileyWidget.Data --startup-project src/W
 **Cause**: Windows Authentication issue
 
 **Fix**:
+
 ```powershell
 # Verify current Windows user
 whoami
@@ -547,6 +550,7 @@ sqlcmd -S .\SQLEXPRESS -E -Q "SELECT SUSER_NAME()"
 **Cause**: Corrupted or missing entropy file
 
 **Fix**:
+
 ```powershell
 # Delete corrupted entropy file
 Remove-Item "$env:APPDATA\WileyWidget\Secrets\.entropy" -Force
@@ -559,6 +563,7 @@ Remove-Item "$env:APPDATA\WileyWidget\Secrets\.entropy" -Force
 **Cause**: Environment variable not migrated
 
 **Fix**:
+
 ```powershell
 # Re-set environment variable
 [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', 'YOUR_KEY', 'User')
@@ -576,6 +581,7 @@ Remove-Item "$env:APPDATA\WileyWidget\settings.json" -Force
 **Cause**: Redirect URI mismatch in Intuit Developer Portal
 
 **Fix**:
+
 1. Check exact redirect URI in setup script output
 2. Add to Intuit Developer Portal → Keys & OAuth → Redirect URIs
 3. Ensure exact match (including trailing slash)
@@ -585,6 +591,7 @@ Remove-Item "$env:APPDATA\WileyWidget\settings.json" -Force
 **Cause**: Token expired or revoked
 
 **Fix**:
+
 ```powershell
 # Delete tokens to force re-authorization
 Remove-Item "$env:APPDATA\WileyWidget\settings.json" -Force
@@ -600,6 +607,7 @@ Remove-Item "$env:APPDATA\WileyWidget\settings.json" -Force
 **Cause**: Orphaned processes holding file locks
 
 **Fix**:
+
 ```powershell
 # Kill all WileyWidget processes
 Get-Process | Where-Object {$_.ProcessName -match 'WileyWidget|testhost|vstest'} | Stop-Process -Force
@@ -617,6 +625,7 @@ dotnet build WileyWidget.sln --configuration Release
 **Cause**: NuGet cache corruption
 
 **Fix**:
+
 ```powershell
 # Clear NuGet caches
 dotnet nuget locals all --clear
@@ -632,6 +641,7 @@ dotnet restore WileyWidget.sln --force
 **Cause**: Assembly binding issue
 
 **Fix**: Already handled by `App.xaml.cs` assembly resolution. If still occurs:
+
 ```powershell
 # Verify CopyLocalLockFileAssemblies
 grep -r "CopyLocalLockFileAssemblies" src/WileyWidget.WinUI/WileyWidget.WinUI.csproj
@@ -644,6 +654,7 @@ grep -r "CopyLocalLockFileAssemblies" src/WileyWidget.WinUI/WileyWidget.WinUI.cs
 **Cause**: Theme not applied before region adapter registration
 
 **Fix**: Already resolved in `App.Lifecycle.cs` (Phase 1 theme application). If still occurs:
+
 ```powershell
 # Check logs for theme errors
 Get-Content "$env:APPDATA\WileyWidget\logs\startup-*.txt" | Select-String "theme|region"
@@ -715,14 +726,14 @@ msbuild src/WileyWidget.WinUI/WileyWidget.WinUI.csproj `
 
 ### Scripts Reference
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/setup-database.ps1` | Automated database setup |
-| `scripts/maintenance/setup-secrets.ps1` | Secrets configuration wizard |
-| `scripts/quickbooks/setup-oauth.ps1` | QuickBooks OAuth setup |
-| `scripts/verify-setup.ps1` | Comprehensive setup verification |
-| `scripts/setup/dev-start.py` | Development environment launcher |
-| `scripts/test-stafact-with-cleanup.ps1` | UI tests with cleanup |
+| Script                                  | Purpose                          |
+| --------------------------------------- | -------------------------------- |
+| `scripts/setup-database.ps1`            | Automated database setup         |
+| `scripts/maintenance/setup-secrets.ps1` | Secrets configuration wizard     |
+| `scripts/quickbooks/setup-oauth.ps1`    | QuickBooks OAuth setup           |
+| `scripts/verify-setup.ps1`              | Comprehensive setup verification |
+| `scripts/setup/dev-start.py`            | Development environment launcher |
+| `scripts/test-stafact-with-cleanup.ps1` | UI tests with cleanup            |
 
 ### Support
 

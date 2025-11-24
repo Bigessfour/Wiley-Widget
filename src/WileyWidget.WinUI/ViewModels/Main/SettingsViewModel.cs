@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Services;
 using WileyWidget.WinUI.Services;
 
 namespace WileyWidget.WinUI.ViewModels.Main

@@ -187,7 +187,7 @@ namespace WileyWidget.WinUI.Services
             // Map page names to types
             return pageName switch
             {
-                "BudgetOverview" => typeof(Views.BudgetOverviewPage),
+                "BudgetOverview" => typeof(Views.DashboardView),
                 "Dashboard" => typeof(Views.DashboardView),
                 "Settings" => typeof(Views.SettingsPage),
                 "Chart" => typeof(Views.ChartView),

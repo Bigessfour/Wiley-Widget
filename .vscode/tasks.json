@@ -140,6 +140,51 @@
 						"endsPattern": "^Build (succeeded|failed)"
 					}
 				}
+					,
+					{
+						"owner": "msbuild",
+						"source": "Build",
+						"fileLocation": ["relative", "${workspaceFolder}"],
+						"pattern": {
+							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
+							"file": 1,
+							"line": 2,
+							"column": 3,
+							"severity": "error",
+							"code": 4,
+							"message": 5
+						}
+					,
+					{
+						"owner": "msbuild",
+						"source": "Build",
+						"fileLocation": ["relative", "${workspaceFolder}"],
+						"pattern": {
+							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
+							"file": 1,
+							"line": 2,
+							"column": 3,
+							"severity": "error",
+							"code": 4,
+							"message": 5
+						}
+					}
+					,
+					{
+						"owner": "msbuild",
+						"source": "Build",
+						"fileLocation": ["relative", "${workspaceFolder}"],
+						"pattern": {
+							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
+							"file": 1,
+							"line": 2,
+							"column": 3,
+							"severity": "error",
+							"code": 4,
+							"message": 5
+						}
+					}
+					}
 			],
 			"dependsOn": "WileyWidget: Clean"
 		},
@@ -1099,20 +1144,12 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "XAML: Diagnose Compilation Errors",
+			"label": "XAML: Diagnose Silent XAML Failures (xaml-strict-validator)",
 			"type": "shell",
-			"command": "pwsh",
+			"command": "python",
 			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/.vscode/diagnose-xaml.ps1",
-				"-CompilerPath",
-				"${config:xamlDiag.compilerPath}",
-				"-ObjDir",
-				"${input:xamlObjDir}",
-				"-Verbose"
+				"${workspaceFolder}/scripts/tools/xaml-strict-validator.py",
+				"${workspaceFolder}/src/WileyWidget.WinUI/${input:xamlObjDir}"
 			],
 			"group": "build",
 			"presentation": {
@@ -1123,100 +1160,32 @@
 				"showReuseMessage": false,
 				"clear": true
 			},
-			"problemMatcher": {
-				"owner": "xaml",
-				"fileLocation": "absolute",
-				"pattern": {
-					"regexp": "^(.+)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(\\w+):\\s+(.+)$",
-					"file": 1,
-					"line": 2,
-					"column": 3,
-					"severity": 4,
-					"code": 5,
-					"message": 6
+			"problemMatcher": [
+				{
+					"owner": "xaml-validator",
+					"fileLocation": ["relative","${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^FAIL\s+(.+?):(\\d+):(\\d+)\s+\[(WMC\\d+)\]\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": "error",
+						"code": 4,
+						"message": 5
+					}
+				},
+				{
+					"owner": "xaml-validator",
+					"fileLocation": ["relative","${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^CRASH\s+(.+?):\\s+(.*)$",
+						"file": 1,
+						"message": 2,
+						"severity": "error"
+					}
 				}
-			},
-			"detail": "Extracts detailed XAML errors from output.json or re-runs XamlCompiler.exe with diagnostics"
-		},
-		{
-			"label": "XAML: Diagnose and Re-run Compiler",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/.vscode/diagnose-xaml.ps1",
-				"-CompilerPath",
-				"${config:xamlDiag.compilerPath}",
-				"-ObjDir",
-				"${input:xamlObjDir}",
-				"-ReRun",
-				"-Verbose"
 			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": true,
-				"panel": "dedicated",
-				"showReuseMessage": false,
-				"clear": true
-			},
-			"problemMatcher": {
-				"owner": "xaml",
-				"fileLocation": "absolute",
-				"pattern": {
-					"regexp": "^(.+)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(\\w+):\\s+(.+)$",
-					"file": 1,
-					"line": 2,
-					"column": 3,
-					"severity": 4,
-					"code": 5,
-					"message": 6
-				}
-			},
-			"detail": "Forces re-run of XamlCompiler.exe to generate fresh diagnostics"
-		},
-		{
-			"label": "XAML: Quick Diagnostic (Current Build)",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/.vscode/diagnose-xaml.ps1",
-				"-CompilerPath",
-				"${config:xamlDiag.compilerPath}",
-				"-ObjDir",
-				"src/WileyWidget.WinUI/obj/Debug/net9.0-windows10.0.19041.0/win-x64"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": true,
-				"panel": "dedicated",
-				"showReuseMessage": false,
-				"clear": true
-			},
-			"problemMatcher": {
-				"owner": "xaml",
-				"fileLocation": "absolute",
-				"pattern": {
-					"regexp": "^(.+)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(\\w+):\\s+(.+)$",
-					"file": 1,
-					"line": 2,
-					"column": 3,
-					"severity": 4,
-					"code": 5,
-					"message": 6
-				}
-			},
-			"detail": "Uses default paths (net9.0-windows10.0.26100.0/win-x64) for quick diagnostics"
+			"detail": "Run xaml-strict-validator when XamlCompiler.exe fails silently (MSB3073) to extract exact XAML errors"
 		}
 	],
 	"inputs": [
