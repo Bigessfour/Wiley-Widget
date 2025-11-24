@@ -2475,30 +2475,7 @@
         "type": "Project"
       },
       "wileywidget.data": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.Data.SqlClient": "[5.2.2, )",
-          "Microsoft.EntityFrameworkCore": "[9.0.10, )",
-          "Microsoft.EntityFrameworkCore.InMemory": "[9.0.10, )",
-          "Microsoft.EntityFrameworkCore.SqlServer": "[9.0.10, )",
-          "Microsoft.Extensions.Caching.Memory": "[9.0.0, )",
-          "Microsoft.Extensions.Configuration.EnvironmentVariables": "[9.0.0, )",
-          "Microsoft.Extensions.Configuration.UserSecrets": "[9.0.0, )",
-          "Microsoft.Extensions.DependencyInjection": "[9.0.0, )",
-          "Microsoft.Extensions.Hosting": "[9.0.0, )",
-          "Microsoft.Extensions.Http": "[9.0.0, )",
-          "Microsoft.Extensions.Logging": "[9.0.0, )",
-          "Polly": "[8.6.5, )",
-          "Serilog": "[4.2.0, )",
-          "Serilog.Enrichers.Environment": "[3.0.1, )",
-          "Serilog.Enrichers.Process": "[3.0.0, )",
-          "Serilog.Enrichers.Thread": "[4.0.0, )",
-          "Serilog.Sinks.Async": "[2.1.0, )",
-          "Serilog.Sinks.File": "[7.0.0, )",
-          "WileyWidget.Business": "[1.0.0, )",
-          "WileyWidget.Models": "[1.0.0, )",
-          "WileyWidget.Services.Abstractions": "[1.0.0, )"
-        }
+        "type": "Project"
       },
       "wileywidget.models": {
         "type": "Project"
@@ -2534,17 +2511,6 @@
           "Microsoft.Extensions.Logging": "9.0.10",
           "Mono.TextTemplating": "3.0.0",
           "System.Text.Json": "9.0.10"
-        }
-      },
-      "Microsoft.EntityFrameworkCore.InMemory": {
-        "type": "CentralTransitive",
-        "requested": "[9.0.10, )",
-        "resolved": "9.0.10",
-        "contentHash": "fRnQ7qcHNINRoErantws9k3CdjcYwvbx+fLB3ZDN/EDC7kt93J3fPB15aEbnum2JiFPbw3fgr9iOGWyxaRXD9Q==",
-        "dependencies": {
-          "Microsoft.EntityFrameworkCore": "9.0.10",
-          "Microsoft.Extensions.Caching.Memory": "9.0.10",
-          "Microsoft.Extensions.Logging": "9.0.10"
         }
       },
       "Microsoft.Extensions.Configuration": {
