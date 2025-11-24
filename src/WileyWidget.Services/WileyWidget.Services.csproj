@@ -71,8 +71,6 @@
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
     <PackageReference Include="System.Management" />
     <!-- Pin BCL packages to patched versions to address known vulnerabilities -->
-    <PackageReference Include="System.Security.Cryptography.Xml" />
-    <PackageReference Include="System.Private.Uri" />
     <PackageReference Include="Polly" />
     <!-- AI Integration packages removed from Services project - register per-module when needed -->
     <PackageReference Include="IppOAuth2PlatformSdk" />
