@@ -7,7 +7,16 @@
     <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <WindowsSdkVersion>10.0.26100.0</WindowsSdkVersion>
     <UseWinUI>true</UseWinUI>
-    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <!-- Self-contained deployment to include all WindowsAppSDK runtime assets -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- DeploymentManager is ONLY for packaged apps - disable for unpackaged -->
+    <WindowsAppSDKDeploymentManagerInitialize>false</WindowsAppSDKDeploymentManagerInitialize>
+    <!-- Bootstrap auto-initializer handles unpackaged app initialization -->
+    <WindowsAppSDKBootstrapInitialize>true</WindowsAppSDKBootstrapInitialize>
+    <WindowsPackageType>None</WindowsPackageType>
+    <!-- Enable XAML metadata generation for unpackaged apps -->
+    <XamlGenerateCompilerDeclarations>true</XamlGenerateCompilerDeclarations>
+    <GenerateXamlSourceInfo>true</GenerateXamlSourceInfo>
     <!-- Workaround for known WindowsAppSDK 1.6.x/1.7.x telemetry assembly issue -->
     <DisableRemovePayloadDuplicatesTask>true</DisableRemovePayloadDuplicatesTask>
     <RootNamespace>WileyWidget.WinUI</RootNamespace>
@@ -18,9 +27,7 @@
     <UseWPF>false</UseWPF>
     <!-- Non-packaged build configuration (no MSIX) -->
     <EnableMsixTooling>false</EnableMsixTooling>
-    <SkipPriGeneration>true</SkipPriGeneration>
-    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
-    <ShouldComputeInputPris>false</ShouldComputeInputPris>
+    <!-- Allow XAML metadata generation even without PRI -->
     <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
     <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
     <GenerateTestArtifacts>false</GenerateTestArtifacts>
@@ -29,7 +36,13 @@
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <!-- Manual AssemblyInfo.cs used for custom attributes -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <!-- Ensure the XAML generator doesn't insert Debugger.Break regardless of configuration -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -39,6 +52,12 @@
     <WindowsAppContainer>false</WindowsAppContainer>
   </PropertyGroup>
 
+  <!-- Disable auto-generated Debugger.Break in XAML-generated code during Debug builds -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
+  </PropertyGroup>
+
+  <!-- XAML Files: Let SDK auto-handle Application and Page includes -->
   <ItemGroup>
     <Content Include="Assets\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -134,5 +153,15 @@
     <AppxPackage>true</AppxPackage>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
   </PropertyGroup>
+
+  <!-- dotnet-watch exclusions: avoid noisy restarts caused by log/bin/obj changes -->
+  <ItemGroup>
+    <Watch Remove="logs\**" />
+    <Watch Remove="bin\**" />
+    <Watch Remove="obj\**" />
+    <Watch Remove=".vs\**" />
+    <Watch Remove="**\*.user" />
+    <Watch Remove="**\*.suo" />
+  </ItemGroup>
 
 </Project>

@@ -25,34 +25,8 @@
         <views:QuickBooksSyncView />
     </DataTemplate> -->
 
-    <!-- Municipal Accounts Grid - DISABLED: Missing ViewModel and Syncfusion namespace -->
-    <!-- <DataTemplate x:Key="MunicipalAccountsTemplate" DataType="vm:MunicipalAccountsViewModel">
-        <syncfusion:SfDataGrid
-            x:Name="MunicipalAccountsGrid"
-            ItemsSource="{Binding Accounts}"
-            AutoGenerateColumns="False"
-            AllowEditing="True">
-            <syncfusion:SfDataGrid.Columns>
-                <syncfusion:GridTextColumn HeaderText="Account ID" MappingName="Id" />
-                <syncfusion:GridTextColumn HeaderText="Name"        MappingName="Name" />
-                <syncfusion:GridTextColumn HeaderText="Balance"    MappingName="Balance" />
-            </syncfusion:SfDataGrid.Columns>
-        </syncfusion:SfDataGrid>
-    </DataTemplate> -->
-
-    <!-- Revenue Chart - DISABLED: Missing ViewModel and Syncfusion namespace -->
-    <!-- <DataTemplate x:Key="RevenueChartTemplate" DataType="vm:RevenueChartViewModel">
-        <sfchart:SfChart>
-            <sfchart:SfChart.PrimaryAxis>
-                <sfchart:CategoryAxis Header="Month"/>
-            </sfchart:SfChart.PrimaryAxis>
-            <sfchart:SfChart.SecondaryAxis>
-                <sfchart:NumericAxis Header="Revenue"/>
-            </sfchart:SfChart.SecondaryAxis>
-            <sfchart:ColumnSeries ItemsSource="{Binding SeriesData}"
-                                 XBindingPath="Month"
-                                 YBindingPath="Amount"/>
-        </sfchart:SfChart>
-    </DataTemplate> -->
+    <!-- Legacy Syncfusion templates removed - migrated to native WinUI controls -->
+    <!-- Municipal Accounts: Use DataGrid (Microsoft.UI.Xaml.Controls) -->
+    <!-- Revenue Chart: Use Windows Community Toolkit LiveCharts or custom charting -->
 
 </ResourceDictionary>

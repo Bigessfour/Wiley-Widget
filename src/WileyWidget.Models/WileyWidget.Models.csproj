@@ -50,9 +50,4 @@
   <!-- The Models project should only contain domain models and not have dependencies on
   Business/Data/Services -->
 
-  <!-- Prevent transitive global using injected by Prism.DryIoc package from upstream projects -->
-  <ItemGroup>
-    <Using Remove="Prism.DryIoc" />
-  </ItemGroup>
-
 </Project>

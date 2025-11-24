@@ -2,6 +2,42 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "WinUI: Launch (Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/WileyWidget.WinUI/bin/Debug/net9.0-windows10.0.26100.0/win-x64/WileyWidget.WinUI.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "preLaunchTask": "WileyWidget: Clean & Build",
+      "postDebugTask": "WileyWidget: Cleanup Processes",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "XAI_API_KEY": "${env:XAI_API_KEY}",
+        "QBO_CLIENT_ID": "${env:QBO_CLIENT_ID}",
+        "QBO_CLIENT_SECRET": "${env:QBO_CLIENT_SECRET}",
+        "QBO_REALM_ID": "${env:QBO_REALM_ID}",
+        "QBO_ENVIRONMENT": "sandbox"
+      },
+      "justMyCode": true,
+      "enableStepFiltering": true,
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": true,
+        "searchNugetOrgSymbolServer": true,
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [
+            "System.*",
+            "Microsoft.*",
+            "WindowsBase",
+            "Microsoft.UI.Xaml.*"
+          ]
+        }
+      }
+    },
+    {
       "name": "WileyWidget: Launch (Debug Startup) - OPTIMIZED",
       "type": "coreclr",
       "request": "launch",

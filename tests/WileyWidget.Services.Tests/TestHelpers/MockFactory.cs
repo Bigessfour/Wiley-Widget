@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Prism.Navigation.Regions;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services.Tests.TestHelpers;
@@ -33,16 +32,6 @@ public static class MockFactory
             .Verifiable();
 
         return mockLogger;
-    }
-
-    /// <summary>
-    /// Creates a mock IRegionManager for Prism navigation testing.
-    /// </summary>
-    public static Mock<IRegionManager> CreateRegionManager()
-    {
-        var mockRegionManager = new Mock<IRegionManager>();
-        // Add common region manager setups as needed
-        return mockRegionManager;
     }
 
     /// <summary>

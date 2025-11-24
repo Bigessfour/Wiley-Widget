@@ -78,8 +78,12 @@
     <GenerateTemporaryTargetAssembly>false</GenerateTemporaryTargetAssembly>
     <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
     <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
+    <!-- Disable XAML-generated Debugger.Break across the solution to avoid auto-breaks on unhandled exceptions during debugger attach -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
 
-    <XamlDebuggingInformation Condition="'$(Configuration)' == 'Debug'">false</XamlDebuggingInformation>
+    <!-- XAML Compilation Settings: Enable for WinUI, disable for WPF to preserve performance -->
+    <XamlDebuggingInformation Condition="'$(Configuration)' == 'Debug' AND '$(MSBuildProjectName)' != 'WileyWidget.WinUI'">false</XamlDebuggingInformation>
+    <XamlDebuggingInformation Condition="'$(MSBuildProjectName)' == 'WileyWidget.WinUI'">true</XamlDebuggingInformation>
     <EnableMsixTooling>false</EnableMsixTooling>
     <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
     <AppxPackage>false</AppxPackage>

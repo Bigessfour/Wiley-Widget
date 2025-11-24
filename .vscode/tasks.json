@@ -1007,6 +1007,216 @@
 				"panel": "dedicated"
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "scan:legacy-code-python",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"${workspaceFolder}/tools/legacy_scanner.py",
+				"--root",
+				"${workspaceFolder}",
+				"--output",
+				"${workspaceFolder}/legacy_scan_report.json"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "scan:legacy-code-python-verbose",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"${workspaceFolder}/tools/legacy_scanner.py",
+				"--root",
+				"${workspaceFolder}",
+				"--verbose",
+				"--output",
+				"${workspaceFolder}/legacy_scan_report_verbose.json"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "scan:legacy-code-powershell",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/legacy_scanner.ps1",
+				"-Root",
+				"${workspaceFolder}",
+				"-OutputJson",
+				"${workspaceFolder}/legacy_scan_report.json"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "scan:legacy-code-ci",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"${workspaceFolder}/tools/legacy_scanner.py",
+				"--root",
+				"${workspaceFolder}",
+				"--fail-on-hits",
+				"--output",
+				"${workspaceFolder}/legacy_scan_ci.json"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "XAML: Diagnose Compilation Errors",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/.vscode/diagnose-xaml.ps1",
+				"-CompilerPath",
+				"${config:xamlDiag.compilerPath}",
+				"-ObjDir",
+				"${input:xamlObjDir}",
+				"-Verbose"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"problemMatcher": {
+				"owner": "xaml",
+				"fileLocation": "absolute",
+				"pattern": {
+					"regexp": "^(.+)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(\\w+):\\s+(.+)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"code": 5,
+					"message": 6
+				}
+			},
+			"detail": "Extracts detailed XAML errors from output.json or re-runs XamlCompiler.exe with diagnostics"
+		},
+		{
+			"label": "XAML: Diagnose and Re-run Compiler",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/.vscode/diagnose-xaml.ps1",
+				"-CompilerPath",
+				"${config:xamlDiag.compilerPath}",
+				"-ObjDir",
+				"${input:xamlObjDir}",
+				"-ReRun",
+				"-Verbose"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"problemMatcher": {
+				"owner": "xaml",
+				"fileLocation": "absolute",
+				"pattern": {
+					"regexp": "^(.+)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(\\w+):\\s+(.+)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"code": 5,
+					"message": 6
+				}
+			},
+			"detail": "Forces re-run of XamlCompiler.exe to generate fresh diagnostics"
+		},
+		{
+			"label": "XAML: Quick Diagnostic (Current Build)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/.vscode/diagnose-xaml.ps1",
+				"-CompilerPath",
+				"${config:xamlDiag.compilerPath}",
+				"-ObjDir",
+				"src/WileyWidget.WinUI/obj/Debug/net9.0-windows10.0.19041.0/win-x64"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"problemMatcher": {
+				"owner": "xaml",
+				"fileLocation": "absolute",
+				"pattern": {
+					"regexp": "^(.+)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(\\w+):\\s+(.+)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"code": 5,
+					"message": 6
+				}
+			},
+			"detail": "Uses default paths (net9.0-windows10.0.26100.0/win-x64) for quick diagnostics"
 		}
 	],
 	"inputs": [
@@ -1051,6 +1261,19 @@
 			"type": "promptString",
 			"description": "CSX test file to run (e.g., 44-xaml-binding-static-analyzer.csx)",
 			"default": "44-xaml-binding-static-analyzer.csx"
+		},
+		{
+			"id": "xamlObjDir",
+			"type": "pickString",
+			"description": "Select obj directory (TFM/RID combination)",
+			"options": [
+				"obj/Debug/net9.0-windows10.0.26100.0/win-x64",
+				"obj/Debug/net9.0-windows10.0.19041.0/win-x64",
+				"obj/Release/net9.0-windows10.0.26100.0/win-x64",
+				"obj/Debug/net9.0-windows10.0.26100.0/win-arm64",
+				"obj/Debug/net8.0-windows10.0.19041.0/win-x64"
+			],
+			"default": "obj/Debug/net9.0-windows10.0.26100.0/win-x64"
 		}
 	]
 }

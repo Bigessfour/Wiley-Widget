@@ -17,5 +17,71 @@
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
-  "github.copilot.editor.enableAutoCompletions": true
+  "github.copilot.editor.enableAutoCompletions": true,
+  // XAML Diagnostics Configuration
+  "xamlDiag.compilerPath": "C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.8.251105000\\tools\\net472\\XamlCompiler.exe",
+  "xamlDiag.autoDetectCompiler": true,
+  "xamlDiag.defaultObjDir": "obj/Debug/net9.0-windows10.0.26100.0/win-x64",
+  // General VS Code Performance
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "editor.minimap.enabled": false,
+  "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bin": true,
+    "**/obj": true,
+    "**/*.nupkg": true
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/bin/**": true,
+    "**/obj/**": true,
+    "**/*.nupkg": true
+  },
+  // C#/.NET/WinUI Specific
+  "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+  "dotnet.completion.showPerProjectDotnetReferences": true,
+  "dotnet.enablePackageRestore": true,
+  "dotnet.defaultSolution": "WileyWidget.sln",
+  "dotnet.server.searchSubdirectoriesForSolution": true,
+  "omnisharp.enableEditorConfigSupport": true,
+  "omnisharp.enableRoslynAnalyzers": true,
+  "omnisharp.projectLoadTimeout": 60000,
+  "omnisharp.sdkIncludePrereleases": false,
+  "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
+  // XAML-Specific (for WinUI 3)
+  "xml.format.enabled": true,
+  "xml.format.splitAttributes": false,
+  "xml.format.preserveSpace": [
+    "*"
+  ],
+  // Debugging for WinUI
+  "debug.toolBarLocation": "docked",
+  "debug.openDebug": "openOnDebugBreak",
+  // Continue/Grok Integration
+  "continue.defaultModel": "grok-beta",
+  "continue.chat.model": "grok-4-0709",
+  "continue.maxTokens": 4096,
+  "continue.temperature": 0.7,
+  "continue.enableExperimentalFeatures": true,
+  "continue.telemetryLevel": "off",
+  "continue.contextProviders.codebase.nRetrieve": 15,
+  "continue.experimental.modelessChat": true,
+  // Performance Tweaks
+  "extensions.autoUpdate": true,
+  "window.restoreWindows": "all",
+  "workbench.editor.highlightModifiedTabs": true,
+  "workbench.editor.limit.enabled": true,
+  "workbench.editor.limit.value": 10,
+  "search.maxResults": 5000,
+  "files.maxMemoryForLargeFilesMB": 8192,
+  "editor.largeFileOptimizations": true
 }

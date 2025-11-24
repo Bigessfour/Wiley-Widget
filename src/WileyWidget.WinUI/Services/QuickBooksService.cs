@@ -22,7 +22,7 @@ using WileyWidget.Business.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.WinUI.Services.Events;
 
-namespace WileyWidget.Services;
+namespace WileyWidget.WinUI.Services;
 
 /// <summary>
 /// QuickBooks service using Intuit SDK with OAuth2 authentication.

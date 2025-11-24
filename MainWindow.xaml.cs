@@ -1,8 +1,9 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Composition.SystemBackdrops;
 using WileyWidget.Views;
+using WileyWidget.Services;
 using System;
 using Serilog;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,39 +13,18 @@ namespace WileyWidget
     public sealed partial class MainWindow : Window
     {
         private readonly IServiceProvider? _serviceProvider;
+        private INavigationService? _navigationService;
 
         public MainWindow()
         {
-            this.InitializeComponent(); // Load XAML - this sets Content to RootGrid with ContentFrame
+            this.InitializeComponent();
 
             _serviceProvider = App.Services;
-
-            // Set DataContext from DI (MainViewModel should be registered in App)
-            try
-            {
-                var vm = _serviceProvider?.GetService<WileyWidget.ViewModels.MainViewModel>();
-                if (vm != null)
-                {
-                    this.DataContext = vm;
-                    Log.Debug("MainViewModel resolved from DI and assigned to DataContext");
-                }
-                else
-                {
-                    Log.Warning("MainViewModel not registered in DI container");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to resolve MainViewModel from DI");
-            }
 
             Log.Information("MainWindow constructor started");
 
             try
             {
-                // Now Content should be Grid from XAML
-                Log.Debug("Using existing Grid and Frame from XAML");
-
                 // Set Mica backdrop
                 try
                 {
@@ -56,10 +36,10 @@ namespace WileyWidget
                     Log.Warning(ex, "Failed to apply Mica backdrop, using default");
                 }
 
-                // Defer navigation until after activation to ensure visual tree is ready
+                // Defer initialization until after activation
                 this.Activated += OnWindowActivated;
 
-                Log.Information("MainWindow initialized successfully (navigation deferred)");
+                Log.Information("MainWindow initialized successfully (initialization deferred)");
             }
             catch (Exception ex)
             {
@@ -71,13 +51,42 @@ namespace WileyWidget
         private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
         {
             this.Activated -= OnWindowActivated; // One-time
-            Log.Information("Window activated; performing initial navigation");
+            Log.Information("Window activated; performing initialization");
+            
+            InitializeNavigation();
             NavigateToInitialPage();
         }
 
-        private void NavigateToInitialPage()
+        private void InitializeNavigation()
         {
-            if (this.ContentFrame == null)
+            try
+            {
+                // Create NavigationService with ContentFrame
+                var logger = _serviceProvider?.GetService<Microsoft.Extensions.Logging.ILogger<DefaultNavigationService>>();
+                
+                if (logger != null && _serviceProvider != null)
+                {
+                    _navigationService = new DefaultNavigationService(
+                        ContentFrame, 
+                        logger,
+                        _serviceProvider);
+                    
+                    Log.Information("NavigationService initialized");
+                }
+                else
+                {
+                    Log.Warning("Failed to initialize NavigationService - missing dependencies");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to initialize NavigationService");
+            }
+        }
+
+        private async void NavigateToInitialPage()
+        {
+            if (ContentFrame == null)
             {
                 Log.Error("ContentFrame is null; cannot navigate");
                 ShowFallbackContent("Frame not initialized");
@@ -86,7 +95,7 @@ namespace WileyWidget
 
             try
             {
-                // Allow tests to opt-out of UI navigation to avoid WinUI issues in headless environments
+                // Allow tests to opt-out of UI navigation
                 var testNoNav = Environment.GetEnvironmentVariable("TEST_NO_NAV");
                 if (!string.IsNullOrEmpty(testNoNav) && testNoNav == "1")
                 {
@@ -94,29 +103,38 @@ namespace WileyWidget
                     return;
                 }
 
-                // Try to navigate to BudgetOverviewPage (registered Page type)
-                var pageType = typeof(BudgetOverviewPage);
-
-                if (typeof(Page).IsAssignableFrom(pageType))
+                // Navigate to BudgetOverviewPage as default
+                if (_navigationService != null)
                 {
-                    Log.Information("Attempting navigation to {PageType}", pageType.Name);
-
-                    var navigated = this.ContentFrame.Navigate(pageType);
-
+                    var navigated = await _navigationService.NavigateToAsync("BudgetOverview");
                     if (navigated)
                     {
-                        Log.Information("Successfully navigated to {PageType}", pageType.Name);
+                        Log.Information("Successfully navigated to BudgetOverview");
+                        
+                        // Select the first nav item
+                        NavView.SelectedItem = NavView.MenuItems[0];
                     }
                     else
                     {
-                        Log.Warning("Navigation to {PageType} returned false", pageType.Name);
+                        Log.Warning("Navigation to BudgetOverview failed");
                         ShowFallbackContent("Navigation failed");
                     }
                 }
                 else
                 {
-                    Log.Error("Invalid page type for navigation: {PageType}", pageType.Name);
-                    ShowFallbackContent("Invalid page type");
+                    // Fallback to direct navigation if service not available
+                    Log.Warning("NavigationService not available, using direct navigation");
+                    var navigated = ContentFrame.Navigate(typeof(BudgetOverviewPage));
+                    
+                    if (navigated)
+                    {
+                        Log.Information("Successfully navigated to BudgetOverviewPage (direct)");
+                        NavView.SelectedItem = NavView.MenuItems[0];
+                    }
+                    else
+                    {
+                        ShowFallbackContent("Navigation failed");
+                    }
                 }
             }
             catch (Exception ex)
@@ -125,7 +143,7 @@ namespace WileyWidget
                 ShowFallbackContent($"Navigation error: {ex.Message}");
             }
         }
-        
+
         private void ShowFallbackContent(string message)
         {
             try
@@ -138,8 +156,8 @@ namespace WileyWidget
                     VerticalAlignment = VerticalAlignment.Center,
                     TextAlignment = TextAlignment.Center
                 };
-                
-                this.ContentFrame.Content = textBlock;
+
+                ContentFrame.Content = textBlock;
                 Log.Information("Fallback content displayed: {Message}", message);
             }
             catch (Exception ex)
@@ -148,21 +166,46 @@ namespace WileyWidget
             }
         }
 
-        private void Nav_SelectionChanged(Microsoft.UI.Xaml.Controls.NavigationView sender, Microsoft.UI.Xaml.Controls.NavigationViewSelectionChangedEventArgs args)
+        private async void NavView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
         {
-            if (args.SelectedItemContainer is Microsoft.UI.Xaml.Controls.NavigationViewItem item && this.ContentFrame != null)
+            if (args.IsSettingsInvoked)
             {
-                var tag = item.Tag as string;
-                if (string.Equals(tag, "BudgetOverview", StringComparison.OrdinalIgnoreCase))
+                Log.Information("Settings navigation invoked");
+                if (_navigationService != null)
                 {
-                    // Navigate using the Frame
-                    this.ContentFrame.Navigate(typeof(BudgetOverviewPage));
+                    await _navigationService.NavigateToAsync("Settings");
                 }
-                else if (string.Equals(tag, "Dashboard", StringComparison.OrdinalIgnoreCase))
+                else
                 {
-                    this.ContentFrame.Navigate(typeof(Views.DashboardView));
+                    ContentFrame.Navigate(typeof(SettingsPage));
                 }
             }
+            else if (args.InvokedItemContainer is NavigationViewItem item)
+            {
+                var tag = item.Tag as string;
+                Log.Information("Navigation invoked: {Tag}", tag);
+
+                if (!string.IsNullOrEmpty(tag) && _navigationService != null)
+                {
+                    await _navigationService.NavigateToAsync(tag);
+                }
+            }
+        }
+
+        private void NavView_BackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args)
+        {
+            if (_navigationService?.CanGoBack == true)
+            {
+                _navigationService.GoBack();
+            }
+        }
+
+        private void ContentFrame_Navigated(object sender, NavigationEventArgs e)
+        {
+            // Update back button state
+            NavView.IsBackEnabled = ContentFrame.CanGoBack;
+            
+            Log.Debug("Navigated to: {PageType}", e.SourcePageType?.Name ?? "<unknown>");
         }
     }
 }

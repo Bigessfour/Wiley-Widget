@@ -41,7 +41,7 @@
 
                     <ItemsControl ItemsSource="{x:Bind ViewModel.DashboardItems, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:DashboardItemDisplay">
+                            <DataTemplate>
                                 <Border
                                     Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                     CornerRadius="4"
@@ -49,21 +49,21 @@
                                     Margin="0,0,0,8">
                                     <StackPanel>
                                         <TextBlock
-                                            Text="{x:Bind Title}"
+                                            Text="{Binding Title}"
                                             FontSize="16"
                                             FontWeight="SemiBold" />
                                         <TextBlock
-                                            Text="{x:Bind Description}"
+                                            Text="{Binding Description}"
                                             FontSize="14"
                                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                             Margin="0,4,0,0" />
                                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                                             <TextBlock
-                                                Text="{x:Bind Status}"
+                                                Text="{Binding Status}"
                                                 FontSize="12"
                                                 Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                             <TextBlock
-                                                Text="{x:Bind Count}"
+                                                Text="{Binding Count}"
                                                 FontSize="12"
                                                 FontWeight="Bold" />
                                         </StackPanel>

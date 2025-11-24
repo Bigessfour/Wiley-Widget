@@ -51,9 +51,4 @@
     <!-- Services reference removed to break circular dependency - use DI and abstractions instead -->
   </ItemGroup>
 
-  <!-- Prevent transitive global using injected by Prism.DryIoc from UI layer -->
-  <ItemGroup>
-    <Using Remove="Prism.DryIoc" />
-  </ItemGroup>
-
 </Project>

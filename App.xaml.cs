@@ -208,18 +208,31 @@ namespace WileyWidget
                     services.AddMemoryCache();
                     services.AddSingleton<ICacheService, MemoryCacheService>();
 
-                    // CommunityToolkit Messenger + ViewModel registrations
+                    // CommunityToolkit Messenger
                     services.AddSingleton<IMessenger>(provider => WeakReferenceMessenger.Default);
-                    // Register DataService which publishes DataMessage<T> via IMessenger
+                    
+                    // DataService which publishes DataMessage<T> via IMessenger
                     services.AddSingleton<DataService>();
+
+                    // ViewModels
                     services.AddSingleton<WileyWidget.ViewModels.MainViewModel>();
-
-                    // UI pages / viewmodels
-                    services.AddTransient<Views.BudgetOverviewPage>();
                     services.AddTransient<ViewModels.BudgetOverviewViewModel>();
+                    services.AddTransient<ViewModels.DashboardViewModel>();
+                    services.AddTransient<ViewModels.DataViewModel>();
+                    services.AddTransient<ViewModels.ChartViewModel>();
 
-                    // Register other services as needed (repositories, db contexts, etc.)
-                    // Note: Keep registrations minimal here to avoid startup failures - register more as needed
+                    // Views/Pages
+                    services.AddTransient<Views.BudgetOverviewPage>();
+                    services.AddTransient<Views.DashboardView>();
+                    services.AddTransient<Views.DataView>();
+                    services.AddTransient<Views.ChartView>();
+                    services.AddTransient<Views.SettingsPage>();
+
+                    // Services
+                    services.AddTransient<Services.IDialogService, Services.DialogService>();
+                    
+                    // Note: NavigationService requires Frame instance, registered in MainWindow
+                    // Note: Keep registrations minimal to avoid startup failures
                 })
                 .Build();
 

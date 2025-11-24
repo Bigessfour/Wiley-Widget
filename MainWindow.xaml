@@ -5,47 +5,44 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
-    xmlns:lvc="using:LiveChartsCore.SkiaSharpView.WinUI"
     mc:Ignorable="d"
     xmlns:views="using:WileyWidget.Views"
     Title="Wiley Widget">
 
-    <Grid x:Name="RootGrid" Background="Transparent">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="3*" />
-            <ColumnDefinition Width="2*" />
-        </Grid.ColumnDefinitions>
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <!-- Modern WinUI 3 NavigationView with Frame integration -->
+        <controls:NavigationView x:Name="NavView"
+                                IsBackButtonVisible="Auto"
+                                IsBackEnabled="{x:Bind ContentFrame.CanGoBack, Mode=OneWay}"
+                                BackRequested="NavView_BackRequested"
+                                ItemInvoked="NavView_ItemInvoked"
+                                PaneDisplayMode="Left"
+                                IsSettingsVisible="True"
+                                Header="Wiley Widget">
+            
+            <controls:NavigationView.MenuItems>
+                <controls:NavigationViewItem Content="Budget Overview" 
+                                           Icon="Home" 
+                                           Tag="BudgetOverview"
+                                           AutomationProperties.Name="Budget Overview" />
+                <controls:NavigationViewItem Content="Dashboard" 
+                                           Icon="ViewAll" 
+                                           Tag="Dashboard"
+                                           AutomationProperties.Name="Dashboard" />
+                <controls:NavigationViewItem Content="Data Explorer" 
+                                           Icon="Library" 
+                                           Tag="Data"
+                                           AutomationProperties.Name="Data Explorer" />
+                <controls:NavigationViewItem Content="Charts" 
+                                           Icon="LineChart" 
+                                           Tag="Chart"
+                                           AutomationProperties.Name="Charts" />
+            </controls:NavigationView.MenuItems>
 
-        <!-- Header / Toolbar -->
-        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Padding="12">
-            <TextBlock Text="Wiley Widget" FontSize="18" VerticalAlignment="Center" />
-        </StackPanel>
-
-        <!-- Main content frame for navigation (replaces Prism regions) -->
-        <Frame x:Name="ContentFrame" Grid.Row="1" Grid.Column="0" NavigationCacheMode="Required" />
-
-        <!-- Data grid using native WinUI / CommunityToolkit control -->
-        <controls:DataGrid x:Name="DataGrid"
-                           Grid.Row="1"
-                           Grid.Column="1"
-                           ItemsSource="{Binding DataItems, Mode=OneWay}"
-                           AutoGenerateColumns="False"
-                           CanUserReorderColumns="False"
-                           CanUserResizeColumns="True"
-                           IsReadOnly="True">
-            <controls:DataGrid.Columns>
-                <controls:DataGridTextColumn Header="Name" Binding="{Binding Name}" />
-                <controls:DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat='{}{0:C}'}" />
-                <!-- ... add columns as needed ... -->
-            </controls:DataGrid.Columns>
-        </controls:DataGrid>
-
-        <!-- Lightweight chart retained (LiveCharts) — keep small and performant -->
-        <lvc:CartesianChart Grid.Row="1" Grid.Column="0" Series="{x:Bind ViewModel.ChartSeries}" Margin="8" />
-
+            <!-- Main content frame for navigation -->
+            <Frame x:Name="ContentFrame" 
+                   NavigationCacheMode="Required"
+                   Navigated="ContentFrame_Navigated" />
+        </controls:NavigationView>
     </Grid>
 </Window>
