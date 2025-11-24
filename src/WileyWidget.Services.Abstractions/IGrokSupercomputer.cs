@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using WileyWidget.Models;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     /// <summary>
     /// Interface for Grok Supercomputer AI services providing municipal utility analytics and compliance reporting.

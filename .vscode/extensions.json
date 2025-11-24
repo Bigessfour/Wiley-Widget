@@ -1,22 +1,77 @@
 {
   "recommendations": [
+    // === Core .NET Development ===
+    "ms-dotnettools.csdevkit",
     "ms-dotnettools.csharp",
+    "ms-dotnettools.vscode-dotnet-runtime",
+    
+    // === Testing & Quality ===
     "hbenl.vscode-test-explorer",
     "formulahendry.dotnet-test-explorer",
-    "ms-python.python",
-    "littlefoxteam.vscode-python-test-adapter",
-    "ms-mssql.mssql",
-    "ms-vscode.PowerShell",
-    "ms-dotnettools.vscode-dotnet-runtime",
-    "ms-python.black-formatter",
-    "charliermarsh.ruff",
-    "github.copilot",
+    "ryanluker.vscode-coverage-gutters",
+    "sonarsource.sonarlint-vscode",
     "usernamehw.errorlens",
+    
+    // === XAML & XML (WinUI 3) ===
+    "redhat.vscode-xml",
+    "dotjoshjohnson.xml",
+    
+    // === Python Support ===
+    "ms-python.python",
+    "ms-python.black-formatter",
+    "ms-python.debugpy",
+    "charliermarsh.ruff",
+    "littlefoxteam.vscode-python-test-adapter",
+    
+    // === Database & SQL ===
+    "ms-mssql.mssql",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-mssql",
+    
+    // === PowerShell & Scripting ===
+    "ms-vscode.PowerShell",
+    
+    // === Git & Version Control ===
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "donjayamanne.githistory",
+    
+    // === AI & Productivity ===
+    "github.copilot",
+    "github.copilot-chat",
     "aaron-bond.better-comments",
-    "ms-dotnettools.csdevkit",
-    "trunk.io"
+    "gruntfuggly.todo-tree",
+    
+    // === Docker & Containers ===
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
+    
+    // === Code Quality & Linting ===
+    "trunk.io",
+    "streetsidesoftware.code-spell-checker",
+    "editorconfig.editorconfig",
+    
+    // === Navigation & Productivity ===
+    "christian-kohler.path-intellisense",
+    "eamodio.toggle-excluded-files",
+    "wayou.vscode-todo-highlight",
+    
+    // === Markdown & Documentation ===
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    
+    // === Code Execution ===
+    "formulahendry.code-runner",
+    
+    // === REST API Testing ===
+    "humao.rest-client",
+    
+    // === File Icons & UI ===
+    "vscode-icons-team.vscode-icons",
+    "pkief.material-icon-theme"
   ],
+  
   "unwantedRecommendations": [
-    "ms-dotnettools.csharp"
+    // csdevkit replaces the old csharp extension
   ]
 }

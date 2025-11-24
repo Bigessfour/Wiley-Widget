@@ -12,7 +12,7 @@
        
        Microsoft Docs: https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management
        ==================================================================== -->
-  
+
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <!-- Central Package Versions are managed here -->
@@ -28,7 +28,8 @@
          Versions 1.6.x and 1.7.x contain a fatal bug (RemovePayloadDuplicates task)
          that causes build failures with telemetry assembly errors.
          
-         Reference: https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/stable-channel#version-183-18251106002
+         Reference:
+    https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/stable-channel#version-183-18251106002
          ==================================================================== -->
     <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.8.251106002" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
@@ -44,13 +45,16 @@
 
     <!-- Microsoft Extensions (9.0.x series) -->
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables"
+      Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="9.10.0" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.1.0" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization"
+      Version="9.1.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.10.0" />
@@ -61,6 +65,7 @@
     <!-- Entity Framework Core -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.3" />
 
     <!-- Serilog -->

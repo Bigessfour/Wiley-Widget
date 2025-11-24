@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinUI.ViewModels;
 using System;
@@ -15,16 +16,17 @@ namespace WileyWidget.WinUI.Views
         {
             this.InitializeComponent();
 
-            _logger = App.Services?.GetService(typeof(ILogger<DataView>)) as ILogger<DataView>
-                ?? throw new InvalidOperationException("Logger not available");
+            // Resolve dependencies from DI container
+            _logger = App.Services?.GetRequiredService<ILogger<DataView>>()
+                ?? throw new InvalidOperationException("Logger not available from DI container");
 
-            ViewModel = App.Services?.GetService(typeof(DataViewModel)) as DataViewModel
-                ?? new DataViewModel(
-                    App.Services?.GetService(typeof(ILogger<DataViewModel>)) as ILogger<DataViewModel>);
+            ViewModel = App.Services?.GetRequiredService<DataViewModel>()
+                ?? throw new InvalidOperationException("DataViewModel not available from DI container");
 
+            // Set DataContext for data binding
             this.DataContext = ViewModel;
 
-            _logger.LogInformation("DataView initialized");
+            _logger.LogInformation("DataView initialized with DataContext");
 
             this.Loaded += DataView_Loaded;
         }

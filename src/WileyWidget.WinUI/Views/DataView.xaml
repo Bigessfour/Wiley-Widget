@@ -63,10 +63,10 @@
                                             Binding="{Binding Category}" 
                                             Width="150" />
                 <controls:DataGridTextColumn Header="Amount" 
-                                            Binding="{Binding Amount, StringFormat='{}{0:C}'}" 
+                                            Binding="{Binding Amount, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:C}'}" 
                                             Width="120" />
                 <controls:DataGridTextColumn Header="Date" 
-                                            Binding="{Binding Date, StringFormat='{}{0:d}'}" 
+                                            Binding="{Binding Date, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:d}'}" 
                                             Width="120" />
             </controls:DataGrid.Columns>
         </controls:DataGrid>

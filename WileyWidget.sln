@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.0.11217.181 d18.0
+VisualStudioVersion = 18.0.11217.181
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Models", "src\WileyWidget.Models\WileyWidget.Models.csproj", "{BF47B6A4-27BF-43FB-B1D9-922A2576268A}"
 EndProject
@@ -24,6 +24,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Tests", "tests\WileyWidget.Services.Tests\WileyWidget.Services.Tests.csproj", "{311CF718-1154-487F-BB2B-E304301EF5A7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.UnitTests", "WileyWidget.Services.UnitTests\WileyWidget.Services.UnitTests.csproj", "{72A88FC3-245B-4577-8388-BA3CB6F58AFA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.IntegrationTests", "WileyWidget.IntegrationTests\WileyWidget.IntegrationTests.csproj", "{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -143,12 +145,23 @@ Global
 		{72A88FC3-245B-4577-8388-BA3CB6F58AFA}.Release|x64.Build.0 = Release|x64
 		{72A88FC3-245B-4577-8388-BA3CB6F58AFA}.Release|x86.ActiveCfg = Release|Any CPU
 		{72A88FC3-245B-4577-8388-BA3CB6F58AFA}.Release|x86.Build.0 = Release|Any CPU
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|Any CPU.Build.0 = Debug|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|x64.ActiveCfg = Debug|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|x64.Build.0 = Debug|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|x86.ActiveCfg = Debug|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|x86.Build.0 = Debug|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|Any CPU.ActiveCfg = Release|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|Any CPU.Build.0 = Release|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|x64.ActiveCfg = Release|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|x64.Build.0 = Release|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|x86.ActiveCfg = Release|x64
+		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-
 		{311CF718-1154-487F-BB2B-E304301EF5A7} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

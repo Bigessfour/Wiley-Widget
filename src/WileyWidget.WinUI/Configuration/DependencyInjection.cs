@@ -12,7 +12,7 @@ using WileyWidget.Services.Telemetry;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.WinUI.Services;
-using WileyWidget.WinUI.ViewModels.Main;
+using WileyWidget.WinUI.ViewModels;
 
 namespace WileyWidget.WinUI.Configuration
 {
@@ -53,10 +53,12 @@ namespace WileyWidget.WinUI.Configuration
             // ===== ViewModels (Transient - new instance per request) =====
             ConfigureViewModels(services);
 
-            // Build and return the service provider
-            var serviceProvider = services.BuildServiceProvider();
+            // Build service provider with validation
+            Log.Information("[DI] Building service provider with {ServiceCount} services", services.Count);
 
-            Log.Information("[DI] Service provider configured successfully with {ServiceCount} services", services.Count);
+            var serviceProvider = BuildServiceProviderWithValidation(services);
+
+            Log.Information("[DI] Service provider configured successfully");
 
             return serviceProvider;
         }
@@ -82,13 +84,13 @@ namespace WileyWidget.WinUI.Configuration
         private static void ConfigureCoreServices(IServiceCollection services)
         {
             // Settings Service - Singleton (shared configuration)
-            services.AddSingleton<WileyWidget.Services.ISettingsService, SettingsService>();
+            services.AddSingleton<WileyWidget.Services.ISettingsService, WileyWidget.Services.SettingsService>();
 
             // Secret Vault Service - Singleton (shared secrets management)
-            services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
+            services.AddSingleton<WileyWidget.Services.ISecretVaultService, WileyWidget.Services.EncryptedLocalSecretVaultService>();
 
             // Health Check Service - Singleton (monitors app health)
-            services.AddSingleton<HealthCheckService>();
+            services.AddSingleton<WileyWidget.Services.HealthCheckService>();
 
             Log.Debug("[DI] Core services configured");
         }
@@ -105,20 +107,18 @@ namespace WileyWidget.WinUI.Configuration
 
             services.AddDbContext<AppDbContext>(options =>
             {
+                // Requires Microsoft.EntityFrameworkCore.Sqlite package in the project
                 options.UseSqlite(connectionString);
                 options.EnableSensitiveDataLogging(); // Only for development
                 options.EnableDetailedErrors();
             }, ServiceLifetime.Scoped);
 
             // HttpClient for QuickBooks API - Singleton
-            services.AddHttpClient<IQuickBooksApiClient, QuickBooksApiClient>()
+            services.AddHttpClient<WileyWidget.Services.IQuickBooksApiClient, WileyWidget.Services.QuickBooksApiClient>()
                 .SetHandlerLifetime(TimeSpan.FromMinutes(5));
 
-            // QuickBooks Service - Singleton (shared API client)
-            services.AddSingleton<IQuickBooksService, WileyWidget.WinUI.Services.QuickBooksService>();
-
-            // Database Context Service - Singleton (EF Core context factory would go here)
-            // services.AddSingleton<IWileyWidgetContextService, WileyWidgetContextService>();
+            // QuickBooks Service - Singleton (shared API client) - implementation lives in WileyWidget.Services
+            services.AddSingleton<WileyWidget.Services.IQuickBooksService, WileyWidget.Services.QuickBooksService>();
 
             Log.Debug("[DI] Data services configured with DbContext");
         }
@@ -131,10 +131,10 @@ namespace WileyWidget.WinUI.Configuration
             // Use application data folder for SQLite database
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var dbPath = Path.Combine(appDataPath, "WileyWidget", "wileywidget.db");
-            
+
             // Ensure directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-            
+
             Log.Information("[DI] Using default SQLite database: {DbPath}", dbPath);
             return $"Data Source={dbPath}";
         }
@@ -150,21 +150,21 @@ namespace WileyWidget.WinUI.Configuration
             // Will be initialized properly in MainWindow after activation
             services.AddTransient<INavigationService>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<DefaultNavigationService>>();
+                var logger = sp.GetRequiredService<ILogger<WileyWidget.WinUI.Services.DefaultNavigationService>>();
                 // Frame will be set by MainWindow after creation
-                return new DefaultNavigationService(null!, logger, sp);
+                return new WileyWidget.WinUI.Services.DefaultNavigationService(null!, logger, sp);
             });
 
             // Dialog Service - Transient (needs XamlRoot per dialog)
             services.AddTransient<IDialogService>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<DialogService>>();
+                var logger = sp.GetRequiredService<ILogger<WileyWidget.WinUI.Services.DialogService>>();
                 // XamlRoot will be set per dialog call
-                return new DialogService(logger, null);
+                return new WileyWidget.WinUI.Services.DialogService(logger, null);
             });
 
-            // Dialog Tracking Service - Singleton
-            services.AddSingleton<IDialogTrackingService, DialogTrackingService>();
+            // Dialog Tracking Service - Singleton (implementation in core services project)
+            services.AddSingleton<IDialogTrackingService, WileyWidget.Services.DialogTrackingService>();
 
             Log.Debug("[DI] UI services configured");
         }
@@ -185,32 +185,32 @@ namespace WileyWidget.WinUI.Configuration
         /// </summary>
         private static void ConfigureFeatureServices(IServiceCollection services)
         {
-            // AI Services - Singleton
-            services.AddSingleton<IAIService, XAIService>();
-            services.AddSingleton<IAILoggingService, AILoggingService>();
+            // AI Services - Singleton (use core implementation that implements IAIService)
+            services.AddSingleton<IAIService, WileyWidget.Services.XAIService>();
+            services.AddSingleton<IAILoggingService, WileyWidget.Services.AILoggingService>();
 
             // Audit Service - Singleton
-            services.AddSingleton<IAuditService, AuditService>();
+            services.AddSingleton<IAuditService, WileyWidget.Services.AuditService>();
 
             // Telemetry Service - Singleton
-            services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
+            services.AddSingleton<ITelemetryService, WileyWidget.Services.Telemetry.SigNozTelemetryService>();
 
             // Report Services - Singleton
-            services.AddSingleton<IReportExportService, ReportExportService>();
-            services.AddSingleton<IBoldReportService, BoldReportService>();
+            services.AddSingleton<IReportExportService, WileyWidget.Services.ReportExportService>();
+            services.AddSingleton<IBoldReportService, WileyWidget.Services.BoldReportService>();
 
             // Excel Services - Transient (new instance per operation)
-            services.AddTransient<IExcelReaderService, ExcelReaderService>();
-            services.AddTransient<IExcelExportService, ExcelExportService>();
+            services.AddTransient<IExcelReaderService, WileyWidget.Services.Excel.ExcelReaderService>();
+            services.AddTransient<IExcelExportService, WileyWidget.Services.Export.ExcelExportService>();
 
             // Data Anonymizer - Transient (per-operation state)
-            services.AddTransient<IDataAnonymizerService, DataAnonymizerService>();
+            services.AddTransient<IDataAnonymizerService, WileyWidget.Services.DataAnonymizerService>();
 
             // Calculator Services - Transient
-            services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
+            services.AddTransient<IChargeCalculatorService, WileyWidget.Services.ServiceChargeCalculatorService>();
 
             // DI Validation Service - Singleton (validates container registrations)
-            services.AddSingleton<IDiValidationService, DiValidationService>();
+            services.AddSingleton<IDiValidationService, WileyWidget.Services.DiValidationService>();
 
             Log.Debug("[DI] Feature services configured");
         }
@@ -243,19 +243,76 @@ namespace WileyWidget.WinUI.Configuration
         }
 
         /// <summary>
-        /// Validates that critical services can be resolved at startup.
-        /// Uses the new IDiValidationService for comprehensive validation.
-        /// Call this after building the service provider to catch configuration errors early.
+        /// Builds the service provider with scope validation and early error detection.
+        /// Enables ValidateScopes in Debug builds to catch lifetime issues during development.
         /// </summary>
-        /// <param name="serviceProvider">The configured service provider to validate</param>
-        /// <returns>True if all critical services are resolvable, false otherwise</returns>
+        /// <param name="services">The configured service collection</param>
+        /// <returns>Built and validated service provider</returns>
+        private static IServiceProvider BuildServiceProviderWithValidation(IServiceCollection services)
+        {
+            try
+            {
+                var options = new ServiceProviderOptions
+                {
+#if DEBUG
+                    // Enable scope validation in Debug builds
+                    // Catches issues like: singleton services depending on scoped services
+                    ValidateScopes = true,
+#endif
+                    // Always validate on build to catch configuration errors early
+                    ValidateOnBuild = true
+                };
+
+                Log.Debug("[DI] Building service provider (ValidateScopes={ValidateScopes}, ValidateOnBuild={ValidateOnBuild})",
+                    options.ValidateScopes, options.ValidateOnBuild);
+
+                var serviceProvider = services.BuildServiceProvider(options);
+
+                // Perform early resolution test on critical services
+                try
+                {
+                    // Test resolve logger (most common dependency)
+                    var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+                    Log.Debug("[DI] Successfully resolved ILoggerFactory");
+
+                    // Test resolve settings service
+                    var settingsService = serviceProvider.GetRequiredService<WileyWidget.Services.ISettingsService>();
+                    Log.Debug("[DI] Successfully resolved ISettingsService");
+
+                    // Test resolve DbContext factory (scoped service)
+                    using (var scope = serviceProvider.CreateScope())
+                    {
+                        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                        Log.Debug("[DI] Successfully resolved AppDbContext in scope");
+                    }
+
+                    Log.Information("[DI] Early resolution validation passed for critical services");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[DI] Early resolution validation failed - configuration error detected");
+                    throw new InvalidOperationException("Service provider validation failed during early resolution test", ex);
+                }
+
+                return serviceProvider;
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "[DI] Failed to build service provider - check service registrations");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Validate registrations using IDiValidationService or fallback to basic validation
+        /// </summary>
         public static bool ValidateDependencies(IServiceProvider serviceProvider)
         {
             try
             {
                 // Use the new DI validation service for comprehensive checking
                 var validator = serviceProvider.GetService<IDiValidationService>();
-                
+
                 if (validator == null)
                 {
                     Log.Warning("[DI] IDiValidationService not registered - falling back to basic validation");
@@ -273,7 +330,7 @@ namespace WileyWidget.WinUI.Configuration
 
                 // Run full validation scan (logs details)
                 var report = validator.ValidateRegistrations();
-                
+
                 Log.Information("[DI] Full validation: {Summary}", report.GetSummary());
 
                 // Log missing services as warnings
@@ -310,12 +367,12 @@ namespace WileyWidget.WinUI.Configuration
                 {
                     typeof(ILogger<>),
                     typeof(WileyWidget.Services.ISettingsService),
-                    typeof(ISecretVaultService),
+                    typeof(WileyWidget.Services.ISecretVaultService),
                     typeof(INavigationService),
                     typeof(IDialogService),
                     typeof(ICacheService),
-                    typeof(IQuickBooksService),
-                    typeof(IAIService),
+                    typeof(WileyWidget.Services.IQuickBooksService),
+                    typeof(WileyWidget.Services.Abstractions.IAIService),
                     typeof(ITelemetryService),
                     typeof(IAuditService),
                     typeof(IDialogTrackingService),

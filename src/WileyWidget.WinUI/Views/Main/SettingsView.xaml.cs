@@ -11,6 +11,9 @@ namespace WileyWidget.WinUI.Views.Main
         {
             ViewModel = viewModel;
             this.InitializeComponent();
+
+            // Set DataContext for data binding
+            this.DataContext = ViewModel;
         }
     }
 }

@@ -1,6 +1,8 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WileyWidget.WinUI.ViewModels.Main;
 using System;
 
 namespace WileyWidget.WinUI.Views
@@ -9,13 +11,23 @@ namespace WileyWidget.WinUI.Views
     {
         private readonly ILogger<SettingsPage> _logger;
 
+        public SettingsViewModel ViewModel { get; }
+
         public SettingsPage()
         {
             this.InitializeComponent();
-            _logger = App.Services?.GetService(typeof(ILogger<SettingsPage>)) as ILogger<SettingsPage>
-                ?? throw new InvalidOperationException("Logger not available");
 
-            _logger.LogInformation("SettingsPage initialized");
+            // Resolve dependencies from DI container
+            _logger = App.Services?.GetRequiredService<ILogger<SettingsPage>>()
+                ?? throw new InvalidOperationException("Logger not available from DI container");
+
+            ViewModel = App.Services?.GetRequiredService<SettingsViewModel>()
+                ?? throw new InvalidOperationException("SettingsViewModel not available from DI container");
+
+            // Set DataContext for data binding
+            this.DataContext = ViewModel;
+
+            _logger.LogInformation("SettingsPage initialized with DataContext");
             LoadSettings();
         }
 

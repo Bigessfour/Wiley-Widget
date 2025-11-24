@@ -14,29 +14,78 @@
   },
   "files.associations": {
     "*.md": "markdown",
+    "*.xaml": "xml",
+    "*.resw": "xml",
+    "*.resx": "xml",
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
   "github.copilot.editor.enableAutoCompletions": true,
-  // XAML Diagnostics Configuration
+  
+  // ============================================================================
+  // XAML & XML Configuration (WinUI 3)
+  // ============================================================================
   "xamlDiag.compilerPath": "C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.8.251105000\\tools\\net472\\XamlCompiler.exe",
   "xamlDiag.autoDetectCompiler": true,
   "xamlDiag.defaultObjDir": "obj/Debug/net9.0-windows10.0.26100.0/win-x64",
-  // General VS Code Performance
-  "files.autoSave": "afterDelay",
-  "files.autoSaveDelay": 1000,
+  "xml.format.enabled": true,
+  "xml.format.splitAttributes": false,
+  "xml.format.maxLineWidth": 120,
+  "xml.format.splitAttributesIndentSize": 2,
+  "xml.format.preserveSpace": ["*"],
+  "xml.codeLens.enabled": true,
+  "xml.validation.enabled": true,
+  "xml.validation.noGrammar": "ignore",
+  "xml.completion.autoCloseTags": true,
+  
+  // ============================================================================
+  // Editor Configuration
+  // ============================================================================
   "editor.formatOnSave": true,
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit"
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
   },
   "editor.minimap.enabled": false,
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
+  "editor.suggestSelection": "first",
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": true
+  },
+  "editor.acceptSuggestionOnCommitCharacter": true,
+  "editor.acceptSuggestionOnEnter": "on",
+  "editor.semanticHighlighting.enabled": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+  "editor.inlineSuggest.enabled": true,
+  
+  // ============================================================================
+  // File Management
+  // ============================================================================
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  "files.maxMemoryForLargeFilesMB": 8192,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/bin": true,
+    "**/obj": true
+  },
   "search.exclude": {
     "**/node_modules": true,
     "**/bin": true,
     "**/obj": true,
-    "**/*.nupkg": true
+    "**/*.nupkg": true,
+    "**/TestResults": true,
+    "**/.venv": true,
+    "**/__pycache__": true
   },
   "files.watcherExclude": {
     "**/.git/objects/**": true,
@@ -44,29 +93,121 @@
     "**/node_modules/**": true,
     "**/bin/**": true,
     "**/obj/**": true,
-    "**/*.nupkg": true
+    "**/*.nupkg": true,
+    "**/TestResults/**": true,
+    "**/.venv/**": true
   },
-  // C#/.NET/WinUI Specific
+  
+  // ============================================================================
+  // .NET & C# Configuration
+  // ============================================================================
   "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
   "dotnet.completion.showPerProjectDotnetReferences": true,
   "dotnet.enablePackageRestore": true,
   "dotnet.defaultSolution": "WileyWidget.sln",
   "dotnet.server.searchSubdirectoriesForSolution": true,
+  "dotnet.unitTests.runTestsInParallel": true,
+  "dotnet.unitTests.showCodeLens": true,
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
   "omnisharp.projectLoadTimeout": 60000,
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
-  // XAML-Specific (for WinUI 3)
-  "xml.format.enabled": true,
-  "xml.format.splitAttributes": false,
-  "xml.format.preserveSpace": [
-    "*"
+  
+  // ============================================================================
+  // Testing Configuration
+  // ============================================================================
+  "testExplorer.useNativeTesting": true,
+  "dotnet-test-explorer.testProjectPath": "**/*Tests.csproj",
+  "dotnet-test-explorer.autoWatch": false,
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.showRulerCoverage": true,
+  
+  // ============================================================================
+  // Git & Version Control
+  // ============================================================================
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "gitlens.codeLens.enabled": true,
+  "gitlens.hovers.currentLine.over": "line",
+  "gitlens.currentLine.enabled": true,
+  "gitlens.statusBar.enabled": true,
+  "gitlens.views.repositories.files.layout": "tree",
+  
+  // ============================================================================
+  // Python Configuration
+  // ============================================================================
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.formatting.provider": "black",
+  "python.linting.enabled": true,
+  "python.linting.ruffEnabled": true,
+  "python.testing.unittestEnabled": true,
+  "python.testing.pytestEnabled": false,
+  
+  // ============================================================================
+  // PowerShell Configuration
+  // ============================================================================
+  "powershell.scriptAnalysis.enable": true,
+  "powershell.codeFormatting.preset": "OTBS",
+  
+  // ============================================================================
+  // SonarLint Configuration
+  // ============================================================================
+  "sonarlint.rules": {
+    "cs:S1135": {
+      "level": "on"
+    }
+  },
+  
+  // ============================================================================
+  // TODO Highlighting
+  // ============================================================================
+  "todo-tree.general.tags": [
+    "BUG",
+    "HACK",
+    "FIXME",
+    "TODO",
+    "XXX",
+    "[ ]",
+    "[x]"
   ],
-  // Debugging for WinUI
+  "todo-tree.highlights.defaultHighlight": {
+    "icon": "alert",
+    "type": "text",
+    "foreground": "#ffffff",
+    "background": "#ff0000",
+    "opacity": 50
+  },
+  
+  // ============================================================================
+  // Spell Checker Configuration
+  // ============================================================================
+  "cSpell.words": [
+    "Wiley",
+    "WileyWidget",
+    "WinUI",
+    "XAML",
+    "dotnet",
+    "csproj",
+    "csdevkit"
+  ],
+  "cSpell.enableFiletypes": [
+    "csharp",
+    "markdown",
+    "xml"
+  ],
+  
+  // ============================================================================
+  // Debugging Configuration
+  // ============================================================================
   "debug.toolBarLocation": "docked",
   "debug.openDebug": "openOnDebugBreak",
+  "debug.internalConsoleOptions": "openOnSessionStart",
+  
+  // ============================================================================
   // Continue/Grok Integration
+  // ============================================================================
   "continue.defaultModel": "grok-beta",
   "continue.chat.model": "grok-4-0709",
   "continue.maxTokens": 4096,
@@ -75,13 +216,39 @@
   "continue.telemetryLevel": "off",
   "continue.contextProviders.codebase.nRetrieve": 15,
   "continue.experimental.modelessChat": true,
-  // Performance Tweaks
+  
+  // ============================================================================
+  // Docker Configuration
+  // ============================================================================
+  "docker.showStartPage": false,
+  
+  // ============================================================================
+  // Performance & UI
+  // ============================================================================
   "extensions.autoUpdate": true,
   "window.restoreWindows": "all",
   "workbench.editor.highlightModifiedTabs": true,
   "workbench.editor.limit.enabled": true,
   "workbench.editor.limit.value": 10,
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.colorTheme": "Default Dark+",
   "search.maxResults": 5000,
-  "files.maxMemoryForLargeFilesMB": 8192,
-  "editor.largeFileOptimizations": true
+  "editor.largeFileOptimizations": true,
+  
+  // ============================================================================
+  // Terminal Configuration
+  // ============================================================================
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "Command Prompt": {
+      "path": [
+        "${env:windir}\\System32\\cmd.exe"
+      ],
+      "icon": "terminal-cmd"
+    }
+  }
 }

@@ -118,14 +118,23 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 # Configure UTF-8 encoding for Windows console
 if sys.platform == "win32":
     try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
-    except AttributeError:
-        # Python < 3.7 doesn't have reconfigure
-        import codecs
+        # Check if reconfigure method exists and is callable
+        if hasattr(sys.stdout, "reconfigure") and callable(
+            getattr(sys.stdout, "reconfigure", None)
+        ):
+            # Type checker doesn't recognize reconfigure, but it exists at runtime
+            getattr(sys.stdout, "reconfigure")(encoding="utf-8")  # type: ignore[attr-defined]
+            getattr(sys.stderr, "reconfigure")(encoding="utf-8")  # type: ignore[attr-defined]
+        else:
+            # Fallback for when reconfigure is not available
+            import codecs
 
-        sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
-        sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
+            if hasattr(sys.stdout, "detach"):
+                sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+                sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
+    except (AttributeError, OSError):
+        # Python < 3.7 doesn't have reconfigure, or stdout is not a real file
+        pass
 
 # ============================================================================
 # PATTERNS - LICENSE VALIDATION
