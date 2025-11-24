@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- Align TFM with solution-wide Windows target to avoid project compatibility (NU1201) -->
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>

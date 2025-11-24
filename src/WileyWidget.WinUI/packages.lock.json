@@ -2601,14 +2601,7 @@
         }
       },
       "wileywidget.services.abstractions": {
-        "type": "Project",
-        "dependencies": {
-          "IppDotNetSdkForQuickBooksApiV3": "[14.7.0.2, )",
-          "IppOAuth2PlatformSdk": "[13.0.0, )",
-          "Microsoft.Extensions.Logging": "[9.0.0, )",
-          "Microsoft.Extensions.Primitives": "[9.0.0, )",
-          "WileyWidget.Models": "[1.0.0, )"
-        }
+        "type": "Project"
       },
       "ClosedXML": {
         "type": "CentralTransitive",
