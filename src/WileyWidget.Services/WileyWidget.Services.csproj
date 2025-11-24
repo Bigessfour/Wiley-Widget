@@ -71,9 +71,6 @@
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
     <PackageReference Include="System.Management" />
     <!-- Pin BCL packages to patched versions to address known vulnerabilities -->
-    <PackageReference Include="System.Net.Http" />
-    <PackageReference Include="System.Net.Security" />
-    <PackageReference Include="System.Security.Cryptography.X509Certificates" />
     <PackageReference Include="System.Security.Cryptography.Xml" />
     <PackageReference Include="System.Private.Uri" />
     <PackageReference Include="Polly" />
