@@ -324,11 +324,6 @@
         "resolved": "7.0.0",
         "contentHash": "3aeMZ1N0lJoSyzqiP03hqemtb1BijhsJADdobn/4nsMJ8V1H+CrpuduUe4hlRdx+ikBQju1VGjMD1GJ3Sk05Eg=="
       },
-      "Microsoft.Bcl.TimeProvider": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "MD+1/wpOQ9XaLPrHDTJTnQ18GjwNF1GqUuAFFhCyIWXtkEpaBY7v+OyPgh1WGeFvbV9gh4jEr95hFIwECrw8TA=="
-      },
       "Microsoft.Build.Framework": {
         "type": "Transitive",
         "resolved": "17.8.3",
@@ -437,15 +432,6 @@
           "Microsoft.Extensions.Primitives": "9.0.0"
         }
       },
-      "Microsoft.Extensions.Compliance.Abstractions": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "Y85iXLdg55OYwJR23KvCYAPDaIa+723vus9WzLROVWMy0sblHlxVtPR01QR+mwVFbYiljqa9NknmELVitzxbXw==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.0",
-          "Microsoft.Extensions.ObjectPool": "9.0.0"
-        }
-      },
       "Microsoft.Extensions.Configuration.Abstractions": {
         "type": "Transitive",
         "resolved": "9.0.10",
@@ -498,14 +484,6 @@
         "resolved": "9.0.0",
         "contentHash": "+6f2qv2a3dLwd5w6JanPIPs47CxRbnk+ZocMJUhv9NxP88VlOcJYZs9jY+MYSjxvady08bUZn6qgiNh7DadGgg=="
       },
-      "Microsoft.Extensions.DependencyInjection.AutoActivation": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "Wv4APocpxkPf0zcEFDwGrdwP6tOOSSQ5ByHUxRYcvXu8CXY0N0Pf95usTVs605jG2txxLOpRESH6ficdPDNiTg==",
-        "dependencies": {
-          "Microsoft.Extensions.Hosting.Abstractions": "9.0.0"
-        }
-      },
       "Microsoft.Extensions.DependencyModel": {
         "type": "Transitive",
         "resolved": "9.0.10",
@@ -528,26 +506,6 @@
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.0",
           "Microsoft.Extensions.Options": "9.0.0"
-        }
-      },
-      "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "H1IbHm/MnUgEV0N07WrkPBIIoX7isP6IPaqUdZ3CwbMcUVDGIu+okamW28kyDRfIiZqbTbyHuNIkr4ZSHPyvDw=="
-      },
-      "Microsoft.Extensions.Diagnostics.ResourceMonitoring": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "2k63HFZssU7TCIwiUoLvsBJhMTEabXbFkUecC6LyEI6ofup+DEFSmLCuiOXxGz9AXWigagRWJrA+KXVwh7B/qQ==",
-        "dependencies": {
-          "Microsoft.Bcl.TimeProvider": "9.0.0",
-          "Microsoft.Extensions.Configuration.Binder": "9.0.0",
-          "Microsoft.Extensions.DependencyInjection.AutoActivation": "9.0.0",
-          "Microsoft.Extensions.Diagnostics": "9.0.0",
-          "Microsoft.Extensions.ObjectPool": "9.0.0",
-          "Microsoft.Extensions.Options.ConfigurationExtensions": "9.0.0",
-          "Microsoft.Extensions.Telemetry.Abstractions": "9.0.0",
-          "System.Diagnostics.PerformanceCounter": "9.0.0"
         }
       },
       "Microsoft.Extensions.FileProviders.Abstractions": {
@@ -634,11 +592,6 @@
           "Microsoft.Extensions.Primitives": "9.0.0"
         }
       },
-      "Microsoft.Extensions.ObjectPool": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "UbsU/gYe4nv1DeqMXIVzDfNNek7Sk2kKuAOXL/Y+sLcAR0HwFUqzg1EPiU88jeHNe0g81aPvvHbvHarQr3r9IA=="
-      },
       "Microsoft.Extensions.Options.ConfigurationExtensions": {
         "type": "Transitive",
         "resolved": "9.0.0",
@@ -649,17 +602,6 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.0",
           "Microsoft.Extensions.Options": "9.0.0",
           "Microsoft.Extensions.Primitives": "9.0.0"
-        }
-      },
-      "Microsoft.Extensions.Telemetry.Abstractions": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "F84i7q3FleH1kjmaSuslZ33yzWtzxZXWjd1ylXcuwM5jNjWN2ifJSO0xQ5c5BYWZA5VeIWWUWupIYr6+3TnDqA==",
-        "dependencies": {
-          "Microsoft.Extensions.Compliance.Abstractions": "9.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.0",
-          "Microsoft.Extensions.ObjectPool": "9.0.0",
-          "Microsoft.Extensions.Options": "9.0.0"
         }
       },
       "Microsoft.Identity.Client": {
@@ -1040,11 +982,11 @@
       },
       "System.Configuration.ConfigurationManager": {
         "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "PdkuMrwDhXoKFo/JxISIi9E8L+QGn9Iquj2OKDWHB6Y/HnUOuBouF7uS3R4Hw3FoNmwwMo6hWgazQdyHIIs27A==",
+        "resolved": "8.0.0",
+        "contentHash": "JlYi9XVvIREURRUlGMr1F6vOFLk7YSY4p1vHo4kX3tQ0AGrjqlRWHDi66ImHhy6qwXBG3BJ6Y1QlYQ+Qz6Xgww==",
         "dependencies": {
-          "System.Diagnostics.EventLog": "9.0.0",
-          "System.Security.Cryptography.ProtectedData": "9.0.0"
+          "System.Diagnostics.EventLog": "8.0.0",
+          "System.Security.Cryptography.ProtectedData": "8.0.0"
         }
       },
       "System.Console": {
@@ -1081,14 +1023,6 @@
         "type": "Transitive",
         "resolved": "9.0.0",
         "contentHash": "qd01+AqPhbAG14KtdtIqFk+cxHQFZ/oqRSCoxU1F+Q6Kv0cl726sl7RzU9yLFGd4BUOKdN4XojXF0pQf/R6YeA=="
-      },
-      "System.Diagnostics.PerformanceCounter": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "1SSqHtWZUdAC0j0UCw2ZWV4iOWB7nPZFkseqPsjdaypVu7ue1xsUJMobXkpHEDFNTrL0DpOdT7k6qDfqmFkQ6g==",
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "9.0.0"
-        }
       },
       "System.Diagnostics.Tools": {
         "type": "Transitive",
@@ -1771,8 +1705,8 @@
       },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "CJW+x/F6fmRQ7N6K8paasTw9PDZp4t7G76UjGNlSDgoHPF0h08vTzLYbLZpOLEJSg35d5wy2jCXGo84EN05DpQ=="
+        "resolved": "8.0.0",
+        "contentHash": "+TUFINV2q2ifyXauQXRwy4CiBhqvDEDZeVJU7qfxya4aRYOKzVBpN+4acx25VcPB9ywUN6C0n8drWl110PhZEg=="
       },
       "System.Security.Permissions": {
         "type": "Transitive",
@@ -1960,40 +1894,8 @@
           "System.Xml.ReaderWriter": "4.0.11"
         }
       },
-      "wileywidget.abstractions": {
-        "type": "Project"
-      },
       "wileywidget.models": {
-        "type": "Project",
-        "dependencies": {
-          "FluentValidation": "[11.10.0, )",
-          "Microsoft.Data.SqlClient": "[5.2.2, )",
-          "Microsoft.EntityFrameworkCore": "[9.0.10, )",
-          "Microsoft.EntityFrameworkCore.SqlServer": "[9.0.10, )",
-          "Microsoft.Extensions.Caching.Memory": "[9.0.0, )",
-          "Microsoft.Extensions.Configuration.EnvironmentVariables": "[9.0.0, )",
-          "Microsoft.Extensions.Configuration.UserSecrets": "[9.0.0, )",
-          "Microsoft.Extensions.DependencyInjection": "[9.0.0, )",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "[9.0.0, )",
-          "Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization": "[9.0.0, )",
-          "Microsoft.Extensions.Hosting": "[9.0.0, )",
-          "Microsoft.Extensions.Http": "[9.0.0, )",
-          "Microsoft.Extensions.Logging": "[9.0.0, )",
-          "Polly": "[8.6.5, )",
-          "Serilog": "[4.2.0, )",
-          "Serilog.Enrichers.Environment": "[3.0.1, )",
-          "Serilog.Enrichers.Process": "[3.0.0, )",
-          "Serilog.Enrichers.Thread": "[4.0.0, )",
-          "Serilog.Sinks.Async": "[2.1.0, )",
-          "Serilog.Sinks.File": "[7.0.0, )",
-          "WileyWidget.Abstractions": "[1.0.0, )"
-        }
-      },
-      "FluentValidation": {
-        "type": "CentralTransitive",
-        "requested": "[11.10.0, )",
-        "resolved": "11.10.0",
-        "contentHash": "qsJGSJDdZ8qiG+lVJ70PZfJHcEdq8UQZ/tZDXoj78/iHKG6lVKtMJsD11zyyv/IPc7rwqGqnFoFLTNzpo3IPYg=="
+        "type": "Project"
       },
       "Microsoft.EntityFrameworkCore.Design": {
         "type": "CentralTransitive",
@@ -2036,29 +1938,6 @@
           "Microsoft.Extensions.Configuration.Abstractions": "9.0.0",
           "Microsoft.Extensions.Configuration.FileExtensions": "9.0.0",
           "Microsoft.Extensions.FileProviders.Abstractions": "9.0.0"
-        }
-      },
-      "Microsoft.Extensions.Diagnostics.HealthChecks": {
-        "type": "CentralTransitive",
-        "requested": "[9.0.0, )",
-        "resolved": "9.0.0",
-        "contentHash": "cxsK9/Dx7Ka9sfiA1nY8XlSzIaWff5FNRw0+ls8yR+aGzmnah5JGKsTHgQrehjMwGAVud/pjiUZ9MWizfUSkTQ==",
-        "dependencies": {
-          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "9.0.0",
-          "Microsoft.Extensions.Hosting.Abstractions": "9.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.0",
-          "Microsoft.Extensions.Options": "9.0.0"
-        }
-      },
-      "Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization": {
-        "type": "CentralTransitive",
-        "requested": "[9.0.0, )",
-        "resolved": "9.0.0",
-        "contentHash": "vJ91BMjnLvOsdouH6deD3YB2ldMPQ+ZjGCR92Yg7/ocThTDUOzWLL7fF3uz/7jW6dR+uZ0IrHpEfM7T0g79EbA==",
-        "dependencies": {
-          "Microsoft.Extensions.Configuration.Binder": "9.0.0",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "9.0.0",
-          "Microsoft.Extensions.Diagnostics.ResourceMonitoring": "9.0.0"
         }
       },
       "Microsoft.Extensions.Logging.Abstractions": {
@@ -2578,14 +2457,6 @@
         "type": "Transitive",
         "resolved": "9.0.0",
         "contentHash": "qd01+AqPhbAG14KtdtIqFk+cxHQFZ/oqRSCoxU1F+Q6Kv0cl726sl7RzU9yLFGd4BUOKdN4XojXF0pQf/R6YeA=="
-      },
-      "System.Diagnostics.PerformanceCounter": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "1SSqHtWZUdAC0j0UCw2ZWV4iOWB7nPZFkseqPsjdaypVu7ue1xsUJMobXkpHEDFNTrL0DpOdT7k6qDfqmFkQ6g==",
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "9.0.0"
-        }
       },
       "System.Diagnostics.Tools": {
         "type": "Transitive",

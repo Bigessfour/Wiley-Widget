@@ -2546,30 +2546,7 @@
         }
       },
       "wileywidget.models": {
-        "type": "Project",
-        "dependencies": {
-          "FluentValidation": "[11.10.0, )",
-          "Microsoft.Data.SqlClient": "[5.2.2, )",
-          "Microsoft.EntityFrameworkCore": "[9.0.10, )",
-          "Microsoft.EntityFrameworkCore.SqlServer": "[9.0.10, )",
-          "Microsoft.Extensions.Caching.Memory": "[9.0.0, )",
-          "Microsoft.Extensions.Configuration.EnvironmentVariables": "[9.0.0, )",
-          "Microsoft.Extensions.Configuration.UserSecrets": "[9.0.0, )",
-          "Microsoft.Extensions.DependencyInjection": "[9.0.0, )",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "[9.0.0, )",
-          "Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization": "[9.0.0, )",
-          "Microsoft.Extensions.Hosting": "[9.0.0, )",
-          "Microsoft.Extensions.Http": "[9.0.0, )",
-          "Microsoft.Extensions.Logging": "[9.0.0, )",
-          "Polly": "[8.6.5, )",
-          "Serilog": "[4.2.0, )",
-          "Serilog.Enrichers.Environment": "[3.0.1, )",
-          "Serilog.Enrichers.Process": "[3.0.0, )",
-          "Serilog.Enrichers.Thread": "[4.0.0, )",
-          "Serilog.Sinks.Async": "[2.1.0, )",
-          "Serilog.Sinks.File": "[7.0.0, )",
-          "WileyWidget.Abstractions": "[1.0.0, )"
-        }
+        "type": "Project"
       },
       "wileywidget.services": {
         "type": "Project",
