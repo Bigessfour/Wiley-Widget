@@ -4,15 +4,15 @@
     "net10.0-windows7.0": {
       "ClosedXML": {
         "type": "Direct",
-        "requested": "[0.102.3, )",
-        "resolved": "0.102.3",
-        "contentHash": "4PN5JZsloPGfV2iSa2g62CSETQAtHELECwo9rzMvOAibe1fsPv0CNTOXXji+ihXOyEZBZDLhkE7s1MhHJzMxIA==",
+        "requested": "[0.105.0, )",
+        "resolved": "0.105.0",
+        "contentHash": "U0hAdnYyPvF7TqHMFloxrS7pmozab79tFFF4c/bgPtqeelUs7ILpUd3r3c7C0a/DXsUZb3k1n4Pf7Q2LMyMQOg==",
         "dependencies": {
-          "DocumentFormat.OpenXml": "[2.16.0, 3.0.0)",
+          "ClosedXML.Parser": "2.0.0",
+          "DocumentFormat.OpenXml": "[3.1.1, 4.0.0)",
           "ExcelNumberFormat": "1.1.0",
-          "SixLabors.Fonts": "1.0.0",
-          "System.IO.Packaging": "6.0.0",
-          "XLParser": "1.5.2"
+          "RBush.Signed": "4.0.0",
+          "SixLabors.Fonts": "1.0.0"
         }
       },
       "DotNetEnv": {
@@ -29,17 +29,17 @@
       },
       "ExcelDataReader": {
         "type": "Direct",
-        "requested": "[3.7.0, )",
-        "resolved": "3.7.0",
-        "contentHash": "AMv3oDETRHSRyXC17rBtKH45qIfFyo433LMeaMB3u4RNr/c9Luuc0Z+JMP6+3Cx9n4wXqFqcrEIVxrf/GgYnZg=="
+        "requested": "[3.8.0, )",
+        "resolved": "3.8.0",
+        "contentHash": "kbUsldc5Fn9IKgzL2nr4VvN/mKqPqn8zGXUZpA7uL6svCA4psF+qMK519EhMvderpU4pAJoqk9DWpiSIkiZtXA=="
       },
       "ExcelDataReader.DataSet": {
         "type": "Direct",
-        "requested": "[3.7.0, )",
-        "resolved": "3.7.0",
-        "contentHash": "zA2/CVzbMspkNg0qf0/Zp+eU6VxYP5PtiJSErLDP46d/Y7F6of/NCcSGeXjs97KDq7UiEf6XJe+89s/92n2GYg==",
+        "requested": "[3.8.0, )",
+        "resolved": "3.8.0",
+        "contentHash": "+eQg5oinHir7ayE/rF4dedvy8J6FBDG8RDyKFQsS/VZG9ygrnNgW6U8JSlrfGfe3DxYgbVoVwYV9Hbk63JQJFQ==",
         "dependencies": {
-          "ExcelDataReader": "3.7.0"
+          "ExcelDataReader": "3.8.0"
         }
       },
       "FluentValidation": {
@@ -331,11 +331,11 @@
       },
       "PdfSharpCore": {
         "type": "Direct",
-        "requested": "[1.3.63, )",
-        "resolved": "1.3.63",
-        "contentHash": "F4k4JCz6PLR+tYL3YpzBwX0B59OarY4wCOb9UhKfmcellc7ZmUmtEszmM5by16Y3zcK6XHMzIKclL/o9h+IQRQ==",
+        "requested": "[1.3.67, )",
+        "resolved": "1.3.67",
+        "contentHash": "6Cvj9nX6RwIJFIQC8eJFCYYUu9Qa2t9LWh4i0SXFi3hqkX/ssUGKfzp+9JZZXbkp0lHeeH/9UYFHelLqIusPrQ==",
         "dependencies": {
-          "SharpZipLib": "1.3.3",
+          "SharpZipLib": "1.4.2",
           "SixLabors.Fonts": "1.0.0-beta17",
           "SixLabors.ImageSharp": "1.0.4"
         }
@@ -361,9 +361,9 @@
       },
       "QuestPDF": {
         "type": "Direct",
-        "requested": "[2024.7.3, )",
-        "resolved": "2024.7.3",
-        "contentHash": "e3M+8ZsTAxhYAEBlELq4q9MFUDK8j/eZeZ9m7C4HT62IGL/VwqoEWjJmbZSJlXj+VNxUwktBI+bJtwqxZeYUJA=="
+        "requested": "[2025.7.4, )",
+        "resolved": "2025.7.4",
+        "contentHash": "XeiWilwLnqP2BIvDG+vh1+fjUoNWczPee5qifw8VppVOH7+vmxgoxG/KANcKftgqAfXiRQ++sXOSLPZRvXxD2g=="
       },
       "Serilog": {
         "type": "Direct",
@@ -467,12 +467,25 @@
           "Microsoft.Identity.Client.Extensions.Msal": "4.73.1"
         }
       },
+      "ClosedXML.Parser": {
+        "type": "Transitive",
+        "resolved": "2.0.0",
+        "contentHash": "ngTqjYreDYNytG1W5d3ewHsw0ukmmrgV7EKnS4/40rXoYZGt07jrBvo+N+GxT49rcageUMUiprV0jYT4nwVBHQ=="
+      },
       "DocumentFormat.OpenXml": {
         "type": "Transitive",
-        "resolved": "2.16.0",
-        "contentHash": "RhpnDgyyx1KjZm98T3w3bSXFHG/7ZNUaVmz4NAUA+jmV3PcVNZeW87Y04CpBNLdDHEMSspirfo0B5kLRaoE97w==",
+        "resolved": "3.1.1",
+        "contentHash": "2z9QBzeTLNNKWM9SaOSDMegfQk/7hDuElOsmF77pKZMkFRP/GHA/W/4yOAQD9kn15N/FsFxHn3QVYkatuZghiA==",
         "dependencies": {
-          "System.IO.Packaging": "4.7.0"
+          "DocumentFormat.OpenXml.Framework": "3.1.1"
+        }
+      },
+      "DocumentFormat.OpenXml.Framework": {
+        "type": "Transitive",
+        "resolved": "3.1.1",
+        "contentHash": "6APEp/ElZV58S/4v8mf4Ke3ONEDORs64MqdD64Z7wWpcHANB9oovQsGIwtqjnKihulOj7T0a6IxHIHOfMqKOng==",
+        "dependencies": {
+          "System.IO.Packaging": "8.0.1"
         }
       },
       "ExcelNumberFormat": {
@@ -511,23 +524,6 @@
         "type": "Transitive",
         "resolved": "2.14.1",
         "contentHash": "lQKvtaTDOXnoVJ20ibTuSIOf2i0uO0MPbDhd1jm238I+U/2ZnRENj0cktKZhtchBMtCUSRQ5v4xBCUbKNmyVMw=="
-      },
-      "Irony.NetCore": {
-        "type": "Transitive",
-        "resolved": "1.0.11",
-        "contentHash": "/2MCkqdhEjPiSTZKYXg6u9AO9o3m68biqcFHAnM28WdnrcZii2vYbmKPzT5ejByyV72FUlygOtHBMt8SLnUyNw==",
-        "dependencies": {
-          "NETStandard.Library": "1.6.1"
-        }
-      },
-      "Microsoft.Azure.DocumentDB.Core": {
-        "type": "Transitive",
-        "resolved": "2.1.2",
-        "contentHash": "xqxk7cjk0bv/L6DSpkavXxUZbnpurSag8DjSkoMES/ZhiqLTbK1qHVluAeY5hkwueFeBYO7HgaBn/xEZKOKHPQ==",
-        "dependencies": {
-          "NETStandard.Library": "1.6.0",
-          "Newtonsoft.Json": "9.0.1"
-        }
       },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "Transitive",
@@ -1035,15 +1031,10 @@
           "OpenTelemetry.Api": "1.9.0"
         }
       },
-      "Serilog.Sinks.AzureDocumentDB": {
+      "RBush.Signed": {
         "type": "Transitive",
         "resolved": "4.0.0",
-        "contentHash": "U/Ctb3O7pzyc/1vm/jaI/fsATqolK8uJckQQRbs4HFUr3RD1MzHTB5Dyg1EnaP4sNYOxdn94JSAf+OIgEi55wg==",
-        "dependencies": {
-          "Microsoft.Azure.DocumentDB.Core": "2.1.2",
-          "Newtonsoft.Json": "11.0.2",
-          "Serilog": "2.7.1"
-        }
+        "contentHash": "aP5KQxL5RnFNGW1f0euYVBfCatkLw5iEzMRJcXKq8LWWP4Cp3+qoSq1tDDL2vvJ2rM0ychmVMa2VaEKLS6uX4w=="
       },
       "Serilog.Sinks.Literate": {
         "type": "Transitive",
@@ -1087,8 +1078,8 @@
       },
       "SharpZipLib": {
         "type": "Transitive",
-        "resolved": "1.3.3",
-        "contentHash": "N8+hwhsKZm25tDJfWpBSW7EGhH/R7EMuiX+KJ4C4u+fCWVc1lJ5zg1u3S1RPPVYgTqhx/C3hxrqUpi6RwK5+Tg=="
+        "resolved": "1.4.2",
+        "contentHash": "yjj+3zgz8zgXpiiC3ZdF/iyTBbz2fFvMxZFEBPUcwZjIvXOf37Ylm+K58hqMfIBt5JgU/Z2uoUS67JmTLe973A=="
       },
       "SixLabors.Fonts": {
         "type": "Transitive",
@@ -1244,15 +1235,6 @@
         "resolved": "9.0.0",
         "contentHash": "U9msthvnH2Fsw7xwAvIhNHOdnIjOQTwOc8Vd0oGOsiRcGMGoBFlUD6qtYawRUoQdKH9ysxesZ9juFElt1Jw/7A=="
       },
-      "XLParser": {
-        "type": "Transitive",
-        "resolved": "1.5.2",
-        "contentHash": "8tnUCmMbn6c/HGuHFyq1sulHym8YReTKDNXFFQk0U8nldNx6RGrwRvLh0+aQjEc7YoC3Q1ztH1npLt7dClKqjw==",
-        "dependencies": {
-          "Irony.NetCore": "1.0.11",
-          "NETStandard.Library": "1.6.1"
-        }
-      },
       "wileywidget.abstractions": {
         "type": "Project"
       },
@@ -1345,7 +1327,7 @@
       },
       "BouncyCastle.Cryptography": {
         "type": "CentralTransitive",
-        "requested": "[2.7.0-beta.98, )",
+        "requested": "[2.6.2, )",
         "resolved": "2.2.1",
         "contentHash": "A6Zr52zVqJKt18ZBsTnX0qhG0kwIQftVAjLmszmkiR/trSp8H+xj1gUOzk7XHwaKgyREMSV1v9XaKrBUeIOdvQ=="
       },
@@ -1356,6 +1338,16 @@
         "contentHash": "jVmB3Nr0JpqhyMiXOGWMin+QvRKpucGpSFBCav9dG6jEJPdBV+yp1RHVpKzxZPfT+0adaBuZlMFdbIciZo1EWA==",
         "dependencies": {
           "MimeKit": "4.3.0"
+        }
+      },
+      "Microsoft.Azure.DocumentDB.Core": {
+        "type": "CentralTransitive",
+        "requested": "[2.22.0, )",
+        "resolved": "2.1.2",
+        "contentHash": "xqxk7cjk0bv/L6DSpkavXxUZbnpurSag8DjSkoMES/ZhiqLTbK1qHVluAeY5hkwueFeBYO7HgaBn/xEZKOKHPQ==",
+        "dependencies": {
+          "NETStandard.Library": "1.6.0",
+          "Newtonsoft.Json": "9.0.1"
         }
       },
       "Microsoft.EntityFrameworkCore.Design": {
@@ -1495,6 +1487,17 @@
           "Serilog": "2.8.0"
         }
       },
+      "Serilog.Sinks.AzureDocumentDB": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.0, )",
+        "resolved": "4.0.0",
+        "contentHash": "U/Ctb3O7pzyc/1vm/jaI/fsATqolK8uJckQQRbs4HFUr3RD1MzHTB5Dyg1EnaP4sNYOxdn94JSAf+OIgEi55wg==",
+        "dependencies": {
+          "Microsoft.Azure.DocumentDB.Core": "2.1.2",
+          "Newtonsoft.Json": "11.0.2",
+          "Serilog": "2.7.1"
+        }
+      },
       "Serilog.Sinks.Console": {
         "type": "CentralTransitive",
         "requested": "[6.0.0, )",
@@ -1522,8 +1525,8 @@
       "System.IO.Packaging": {
         "type": "CentralTransitive",
         "requested": "[10.0.0, )",
-        "resolved": "6.0.0",
-        "contentHash": "C7OkTRIjqIjAKu6ef/fuj8ynCZTPcTYZnvHaq48bniACgXXJogmEoIc56YCDNTc14xhsbLmgpS3KP+evbsUa2g=="
+        "resolved": "8.0.1",
+        "contentHash": "KYkIOAvPexQOLDxPO2g0BVoWInnQhPpkFzRqvNrNrMhVT6kqhVr0zEb6KCHlptLFukxnZrjuMVAnxK7pOGUYrw=="
       },
       "System.Security.Cryptography.Xml": {
         "type": "CentralTransitive",
