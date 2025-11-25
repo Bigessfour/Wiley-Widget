@@ -22,8 +22,7 @@
           "Serilog.Sinks.Debug": "2.0.0",
           "Serilog.Sinks.File": "4.1.0",
           "Serilog.Sinks.Trace": "2.1.0",
-          "SerilogTraceListener": "3.2.0",
-          "System.Configuration.ConfigurationManager": "4.6.0"
+          "SerilogTraceListener": "3.2.0"
         }
       },
       "IppOAuth2PlatformSdk": {
@@ -49,8 +48,7 @@
           "Serilog.Sinks.Literate": "3.0.0",
           "Serilog.Sinks.RollingFile": "3.3.0",
           "Serilog.Sinks.Trace": "2.1.0",
-          "SerilogTraceListener": "3.2.0",
-          "System.Configuration.ConfigurationManager": "4.6.0"
+          "SerilogTraceListener": "3.2.0"
         }
       },
       "Microsoft.Extensions.Logging": {
@@ -197,8 +195,7 @@
         "contentHash": "toCFesKf2KZgRtb6T7tulnJv3IBVL+Gqd4KE3ebQZ20wA2Z5Rp6A44MsRGZ1ollmihzkxxBDavVfgufFeji3Sw==",
         "dependencies": {
           "Microsoft.Extensions.Configuration": "2.2.0",
-          "Microsoft.Extensions.Configuration.FileExtensions": "2.2.0",
-          "System.Security.Cryptography.Xml": "4.5.0"
+          "Microsoft.Extensions.Configuration.FileExtensions": "2.2.0"
         }
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
@@ -258,8 +255,7 @@
           "Microsoft.Extensions.Diagnostics": "10.0.0",
           "Microsoft.Extensions.ObjectPool": "10.0.0",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "10.0.0",
-          "Microsoft.Extensions.Telemetry.Abstractions": "10.0.0",
-          "System.Diagnostics.PerformanceCounter": "10.0.0"
+          "Microsoft.Extensions.Telemetry.Abstractions": "10.0.0"
         }
       },
       "Microsoft.Extensions.FileProviders.Abstractions": {
@@ -330,8 +326,7 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
           "Microsoft.Extensions.Logging": "10.0.0",
           "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
-          "Microsoft.Extensions.Options": "10.0.0",
-          "System.Diagnostics.EventLog": "10.0.0"
+          "Microsoft.Extensions.Options": "10.0.0"
         }
       },
       "Microsoft.Extensions.Logging.EventSource": {
@@ -387,8 +382,7 @@
         "resolved": "4.73.1",
         "contentHash": "xDztAiV2F0wI0W8FLKv5cbaBefyLD6JVaAsvgSN7bjWNCzGYzHbcOEIP5s4TJXUpQzMfUyBsFl1mC6Zmgpz0PQ==",
         "dependencies": {
-          "Microsoft.Identity.Client": "4.73.1",
-          "System.Security.Cryptography.ProtectedData": "4.5.0"
+          "Microsoft.Identity.Client": "4.73.1"
         }
       },
       "Microsoft.IdentityModel.Abstractions": {
@@ -496,28 +490,6 @@
           "System.Memory.Data": "8.0.1"
         }
       },
-      "System.Configuration.ConfigurationManager": {
-        "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "0B+BzJ6pPMrRzJrVsttKf9MfDj6Syw9xoY+agcS9VssYQali1446+jTf5v1K94AMFUBxLXqDZlaTjO5edaI3jA==",
-        "dependencies": {
-          "System.Diagnostics.EventLog": "10.0.0",
-          "System.Security.Cryptography.ProtectedData": "10.0.0"
-        }
-      },
-      "System.Diagnostics.EventLog": {
-        "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "uaFRda9NjtbJRkdx311eXlAA3n2em7223c1A8d1VWyl+4FL9vkG7y2lpPfBU9HYdj/9KgdRNdn1vFK8ZYCYT/A=="
-      },
-      "System.Diagnostics.PerformanceCounter": {
-        "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "ZnhizmMstYa05UNuwiMew7EsGApEy6qBcvBBSxoUcaX8WvkE2pb+iQyRWyQZ8E0mq7PlPBjwVh4+6ie+B6oeZA==",
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "10.0.0"
-        }
-      },
       "System.IdentityModel.Tokens.Jwt": {
         "type": "Transitive",
         "resolved": "7.7.1",
@@ -531,21 +503,6 @@
         "type": "Transitive",
         "resolved": "8.0.1",
         "contentHash": "BVYuec3jV23EMRDeR7Dr1/qhx7369dZzJ9IWy2xylvb4YfXsrUxspWc4UWYid/tj4zZK58uGZqn2WQiaDMhmAg=="
-      },
-      "System.Security.Cryptography.Pkcs": {
-        "type": "Transitive",
-        "resolved": "9.0.4",
-        "contentHash": "cUFTcMlz/Qw9s90b2wnWSCvHdjv51Bau9FQqhsr4TlwSe1OX+7SoXUqphis5G74MLOvMOCghxPPlEqOdCrVVGA=="
-      },
-      "System.Security.Cryptography.ProtectedData": {
-        "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "qy6C3gQRTrfhFfuiIYU1jNwWfFdJpBVo1BARW7jgMm1zTEm3LRzLLyOLJGaAuKE+nZCGkEP71y4rj9NWjqLGdQ=="
-      },
-      "System.Security.Permissions": {
-        "type": "Transitive",
-        "resolved": "4.5.0",
-        "contentHash": "9gdyuARhUR7H+p5CjyUB/zPk7/Xut3wUSP8NJQB6iZr8L3XUXTMdoLeVAg9N4rqF8oIpE7MpdqHdDHQ7XgJe0g=="
       },
       "wileywidget.abstractions": {
         "type": "Project"
@@ -605,9 +562,7 @@
           "Microsoft.Extensions.Caching.Memory": "9.0.4",
           "Microsoft.IdentityModel.JsonWebTokens": "7.7.1",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "7.7.1",
-          "Microsoft.SqlServer.Server": "1.0.0",
-          "System.Configuration.ConfigurationManager": "9.0.4",
-          "System.Security.Cryptography.Pkcs": "9.0.4"
+          "Microsoft.SqlServer.Server": "1.0.0"
         }
       },
       "Microsoft.EntityFrameworkCore": {
@@ -920,16 +875,6 @@
         "contentHash": "fKL7mXv7qaiNBUC71ssvn/dU0k9t0o45+qm2XgKAlSt19xF+ijjxyA3R6HmCgfKEKwfcfkwWjayuQtRueZFkYw==",
         "dependencies": {
           "Serilog": "4.2.0"
-        }
-      },
-      "System.Security.Cryptography.Xml": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.0, )",
-        "resolved": "4.5.0",
-        "contentHash": "i2Jn6rGXR63J0zIklImGRkDIJL4b1NfPSEbIVHBlqoIb12lfXIigCbDRpDmIEzwSo/v1U5y/rYJdzZYSyCWxvg==",
-        "dependencies": {
-          "System.Security.Cryptography.Pkcs": "4.5.0",
-          "System.Security.Permissions": "4.5.0"
         }
       }
     }

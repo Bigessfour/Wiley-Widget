@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <!-- Match Windows-targeted TFMs used in solution to avoid NETSDK1136 when referencing windows-specific projects -->

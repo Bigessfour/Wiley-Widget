@@ -51,8 +51,6 @@
     <PackageVersion Include="Microsoft.Azure.DocumentDB" Version="2.22.0" />
     <PackageVersion Include="Microsoft.Azure.DocumentDB.Core" Version="2.22.0" />
     <PackageVersion Include="Serilog.Settings.Configuration" Version="8.0.4" />
-    <!-- Syncfusion – minor bump (only if you have a valid license) -->
-    <PackageVersion Include="Syncfusion.*.WPF" Version="31.2.10" />
     <!-- Additional packages -->
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.1" />
     <PackageVersion Include="FluentValidation" Version="11.10.0" />

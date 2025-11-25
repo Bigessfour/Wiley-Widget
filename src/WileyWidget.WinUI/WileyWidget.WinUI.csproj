@@ -2,14 +2,21 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.26100.0</TargetPlatformMinVersion>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <!-- WindowsAppSDK 1.8 requires SupportedOSPlatformVersion for proper SDK alignment -->
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <XamlDebuggingInformation>Full</XamlDebuggingInformation>
-    <!-- Prefer the framework-dependent XAML compiler (dotnet) to avoid net472 host issues -->
-    <UseXamlCompilerExecutable>false</UseXamlCompilerExecutable>
     <!-- Updated to match Windows App SDK requirements -->
     <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <WindowsSdkVersion>10.0.26100.0</WindowsSdkVersion>
+    <!-- CRITICAL: UseWinUI must be true BEFORE WindowsAppSDK targets import -->
     <UseWinUI>true</UseWinUI>
+    <!-- Enable XAML source generator for better IntelliSense and build performance -->
+    <EnableXamlSourceGenerator>true</EnableXamlSourceGenerator>
+    <!-- ============================================================
+         CRITICAL WinUI 3 UNPACKAGED CONFIGURATION
+         These properties MUST be set before targets import
+         ============================================================ -->
     <!-- Self-contained deployment to include all WindowsAppSDK runtime assets -->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <!-- DeploymentManager is ONLY for packaged apps - disable for unpackaged -->
@@ -17,12 +24,24 @@
     <!-- Bootstrap auto-initializer handles unpackaged app initialization -->
     <WindowsAppSDKBootstrapInitialize>true</WindowsAppSDKBootstrapInitialize>
     <WindowsPackageType>None</WindowsPackageType>
+    <!-- Unpackaged apps don't use AppX -->
+    <AppxPackage>false</AppxPackage>
+    <WindowsAppContainer>false</WindowsAppContainer>
+    <!-- ============================================================
+         XAML COMPILATION SETTINGS FOR UNPACKAGED WINUI 3
+         These enable proper XAML compilation without MSIX packaging
+         ============================================================ -->
     <!-- Enable XAML metadata generation for unpackaged apps -->
     <XamlGenerateCompilerDeclarations>true</XamlGenerateCompilerDeclarations>
     <!-- Generate library layout and XAML type metadata required for unpackaged apps -->
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <GenerateXamlMetadata>true</GenerateXamlMetadata>
     <GenerateXamlSourceInfo>true</GenerateXamlSourceInfo>
+    <!-- Ensure XAML compiler uses correct targets from WindowsAppSDK -->
+    <XamlSavedStateFileName>"$(IntermediateOutputPath)$(MSBuildProjectName).xamlstate"</XamlSavedStateFileName>
+    <XamlCodeGenerationControlFlags>EnableXBindDiagnostics</XamlCodeGenerationControlFlags>
+    <!-- SO best practice: Ensure proper path handling for spaces in directory names -->
+    <UseCommonOutputDirectory>false</UseCommonOutputDirectory>
     <!-- Workaround for known WindowsAppSDK 1.6.x/1.7.x telemetry assembly issue -->
     <DisableRemovePayloadDuplicatesTask>true</DisableRemovePayloadDuplicatesTask>
     <RootNamespace>WileyWidget.WinUI</RootNamespace>
@@ -47,6 +66,9 @@
     <!-- Manual AssemblyInfo.cs used for custom attributes -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <NoWarn>NU1902;NU1903</NoWarn>
+
+    <!-- Industry best practice: Enable XAML validator to check obj\xaml-validator.log for errors -->
+    <RunXamlValidator>true</RunXamlValidator>
   </PropertyGroup>
 
   <!-- Ensure the XAML generator doesn't insert Debugger.Break regardless of configuration -->
@@ -54,17 +76,8 @@
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <AppxPackage>false</AppxPackage>
-    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
-    <WindowsPackageType>None</WindowsPackageType>
-    <WindowsAppContainer>false</WindowsAppContainer>
-    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
-  </PropertyGroup>
-
-  <!-- Disable auto-generated Debugger.Break in XAML-generated code during Debug builds -->
+  <!-- Debug-specific XAML diagnostics -->
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
     <!-- Enable richer XAML debug info so diagnostics can create input.json/output.json and full trace -->
     <XamlDebuggingInformation>Full</XamlDebuggingInformation>
     <EnableXamlGeneratorDebugging>true</EnableXamlGeneratorDebugging>
@@ -190,6 +203,11 @@
   <PropertyGroup>
     <XamlJsonOutputPath>$(OutDir)xaml.json</XamlJsonOutputPath>
     <XamlGenerateCompilerErrorForResourceReference>True</XamlGenerateCompilerErrorForResourceReference>
+  </PropertyGroup>
+
+  <!-- Enable XAML validation to catch errors early (per industry best practice) -->
+  <PropertyGroup>
+    <RunXamlValidator>true</RunXamlValidator>
   </PropertyGroup>
 
   <!-- Optional: run the repository's strict XAML validator. Disabled by default; set

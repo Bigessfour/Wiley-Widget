@@ -3,5 +3,17 @@
     <!-- Disable RemovePayloadDuplicates task which depends on VisualStudio telemetry assemblies
          that may not be present on CI or machines without full VS/MSBuild components. -->
     <DisableRemovePayloadDuplicatesTask>true</DisableRemovePayloadDuplicatesTask>
+    
+    <!-- ============================================================
+         WINDOWSAPPSDK VERSION RESOLUTION
+         Centralized version management for WindowsAppSDK
+         ============================================================ -->
+    <!-- Read version from Directory.Packages.props -->
+    <MicrosoftWindowsAppSDKVersion Condition="'$(MicrosoftWindowsAppSDKVersion)' == ''">1.8.251106002</MicrosoftWindowsAppSDKVersion>
+    
+    <!-- NuGet package root resolution (for target imports) -->
+    <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == '' and '$(NUGET_PACKAGES)' != ''">$(NUGET_PACKAGES)</NuGetPackageRoot>
+    <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == '' and '$(UserProfile)' != ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+    <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)\.nuget\packages\</NuGetPackageRoot>
   </PropertyGroup>
 </Project>
