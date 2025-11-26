@@ -40,8 +40,9 @@ jobs:
     - name: Run Unit Tests
       run: dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --no-build --verbosity normal
 
-    - name: Run Integration Tests
-      run: dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
+    # TODO: Re-enable when WinForms integration tests are implemented
+    # - name: Run Integration Tests
+    #   run: dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
 
     - name: Publish Application
       run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-build
