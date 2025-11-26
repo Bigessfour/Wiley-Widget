@@ -1,4 +1,4 @@
-name: Deprecated - Build WinForms (noop)
+name: Deprecated - CI Optimized (noop)
 
 on:
   workflow_dispatch: {}

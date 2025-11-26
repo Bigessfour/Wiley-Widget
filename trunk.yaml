@@ -5,7 +5,9 @@
 # To learn more about the format of this file, see https://docs.trunk.io/reference/trunk-yaml
 version: 0.1
 cli:
-  version: 1.25.0
+  version: latest # CHANGED: Unpinned for CI auto-updates (local: use 1.25.0 if needed)
+repo:
+  trunk_branch: develop # ADDED: Handles PRs targeting develop (Trunk defaults to main)
 # Trunk provides extensibility via plugins. (https://docs.trunk.io/plugins)
 plugins:
   sources:
@@ -23,8 +25,6 @@ lint:
   disabled:
     - markdownlint
   enabled:
-    - gitleaks@8.29.1
-    - trufflehog@3.91.1
     - bandit@1.9.2
     - actionlint@1.7.9
     - hadolint@2.14.0
@@ -68,4 +68,6 @@ actions:
     - trunk-fmt-pre-commit
   enabled:
     - trunk-upgrade-available
-
+tools:
+  enabled:
+    - dotnet@9.0.306

@@ -1,0 +1,90 @@
+name: CI (Build, Test, Trunk Checks)
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".vscode/**"
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  trunk-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Trunk
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trunk
+          key: ${{ runner.os }}-trunk-${{ hashFiles('.trunk/trunk.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-trunk-
+
+      - name: Install Trunk CLI
+        run: |
+          curl -sSL https://github.com/trunk-io/cli/releases/download/1.25.0/trunk-linux-amd64 -o trunk
+          chmod +x trunk
+          sudo mv trunk /usr/local/bin/trunk
+
+      - name: Run Trunk Checks
+        run: trunk check --ci
+
+  build-test:
+    runs-on: windows-latest
+    needs: [trunk-check]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+          dotnet-quality: ga
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            %USERPROFILE%\\.nuget\\packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/Directory.Packages.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore WileyWidget.sln
+
+      - name: Build Solution
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --no-build --verbosity normal
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build-test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Publish
+        run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wiley-widget-${{ github.sha }}
+          path: ./publish/
+          retention-days: 30
