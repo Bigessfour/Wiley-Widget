@@ -14,7 +14,7 @@
   },
   "files.associations": {
     "*.md": "markdown",
-    "*.xaml": "xml",
+    "*.designer.cs": "csharp",
     "*.resw": "xml",
     "*.resx": "xml",
     "copilot-mcp-rules.md": "markdown"
@@ -23,20 +23,10 @@
   "github.copilot.editor.enableAutoCompletions": true,
 
   // ============================================================================
-  // XAML & XML Configuration (WinUI 3)
+  // XML Configuration (for .resx resource files)
   // ============================================================================
-  "xamlDiag.compilerPath": "C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.8.251105000\\tools\\net472\\XamlCompiler.exe",
-  "xamlDiag.autoDetectCompiler": true,
-  "xamlDiag.defaultObjDir": "obj/Debug/net9.0-windows10.0.26100.0/win-x64",
   "xml.format.enabled": true,
-  "xml.format.splitAttributes": false,
   "xml.format.maxLineWidth": 120,
-  "xml.format.splitAttributesIndentSize": 2,
-  "xml.format.preserveSpace": ["*"],
-  "xml.codeLens.enabled": true,
-  "xml.validation.enabled": true,
-  "xml.validation.noGrammar": "ignore",
-  "xml.completion.autoCloseTags": true,
 
   // ============================================================================
   // Editor Configuration
@@ -76,7 +66,8 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/bin": true,
-    "**/obj": true
+    "**/obj": true,
+    "**/src/legacy/**": true
   },
   "search.exclude": {
     "**/node_modules": true,
@@ -85,7 +76,8 @@
     "**/*.nupkg": true,
     "**/TestResults": true,
     "**/.venv": true,
-    "**/__pycache__": true
+    "**/__pycache__": true,
+    "**/src/legacy/**": true
   },
   "files.watcherExclude": {
     "**/.git/objects/**": true,
@@ -99,7 +91,7 @@
   },
 
   // ============================================================================
-  // .NET & C# Configuration
+  // .NET & C# Configuration (WinForms + .NET 9)
   // ============================================================================
   "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
   "dotnet.completion.showPerProjectDotnetReferences": true,
@@ -108,11 +100,15 @@
   "dotnet.server.searchSubdirectoriesForSolution": true,
   "dotnet.unitTests.runTestsInParallel": true,
   "dotnet.unitTests.showCodeLens": true,
+  "csharp.semanticHighlighting.enabled": true,
+  "csharp.suppressDotnetRestoreNotification": true,
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
   "omnisharp.projectLoadTimeout": 60000,
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
+  "omnisharp.enableDecompilationSupport": true,
+  "omnisharp.useModernNet": true,
 
   // ============================================================================
   // Testing Configuration
@@ -191,8 +187,9 @@
     "Wiley",
     "WileyWidget",
     "winforms",
-    "WinUI",
-    "XAML"
+    "SfDataGrid",
+    "SfChart",
+    "FormsBorderStyle"
   ],
   "cSpell.enableFiletypes": [
     "csharp",
@@ -201,11 +198,12 @@
   ],
 
   // ============================================================================
-  // Debugging Configuration
+  // Debugging Configuration (WinForms)
   // ============================================================================
-  "debug.toolBarLocation": "docked",
+  "debug.toolBarLocation": "floating",
   "debug.openDebug": "openOnDebugBreak",
   "debug.internalConsoleOptions": "openOnSessionStart",
+  "debug.console.fontSize": 12,
 
   // ============================================================================
   // Continue/Grok Integration
@@ -225,17 +223,18 @@
   "docker.showStartPage": false,
 
   // ============================================================================
-  // Performance & UI
+  // Performance & UI (Optimized for WinForms)
   // ============================================================================
   "extensions.autoUpdate": true,
   "window.restoreWindows": "all",
   "workbench.editor.highlightModifiedTabs": true,
   "workbench.editor.limit.enabled": true,
-  "workbench.editor.limit.value": 10,
+  "workbench.editor.limit.value": 15,
   "workbench.iconTheme": "material-icon-theme",
   "workbench.colorTheme": "Default Dark+",
   "search.maxResults": 5000,
-  "editor.largeFileOptimizations": false,
+  "editor.largeFileOptimizations": true,
+  "files.maxMemoryForLargeFilesMB": 16384,
 
   // ============================================================================
   // Terminal Configuration
@@ -252,5 +251,8 @@
       ],
       "icon": "terminal-cmd"
     }
+  },
+  "terminal.integrated.env.windows": {
+    "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}"
   }
 }
