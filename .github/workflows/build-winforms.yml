@@ -48,7 +48,7 @@ jobs:
     #   run: dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
 
     - name: Publish Application
-      run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-build
+      run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
