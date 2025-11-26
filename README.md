@@ -46,7 +46,17 @@ After 6+ weeks battling silent XamlCompiler crashes ([Microsoft.UI.Xaml #10027](
 
 ## 📋 Overview
 
-WileyWidget is a modern Windows desktop application built with WinUI 3, Syncfusion WinUI controls, and Prism framework, designed for budget management and financial data analysis. The application features a **pure Prism MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
+WileyWidget is a modern Windows desktop application built with **WinForms + .NET 9**, Syncfusion WinForms controls, and Prism framework, designed for budget management and financial data analysis. The application features a **pure Prism MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
+
+### Strategic Pivot: WinUI → WinForms (November 2025)
+
+After extensive testing with WinUI 3 (6+ weeks of XamlCompiler issues, unpackaged deployment complexity, and toolchain instability), we made the strategic decision to pivot to **WinForms for immediate production deployment**:
+
+- **WinForms delivers**: 5-10× faster startup, zero XAML toolchain issues, battle-tested stability
+- **Syncfusion WinForms**: Production-grade grids (SfDataGrid), charts (SfChart), and reporting with full .NET 9 support
+- **Legacy WinUI code**: Archived in `src/legacy/WileyWidget.WinUI` for potential future Syncfusion WinUI retry in 2026
+
+**Timeline**: WinForms v1.0 ships Q4 2025 | Syncfusion WinUI evaluation Q2 2026
 
 ### Recent Updates (November 2025)
 
