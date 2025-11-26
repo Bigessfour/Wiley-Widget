@@ -23,10 +23,10 @@ namespace WileyWidget.Services.Tests.ServiceTests
             var mockSecretVault = new Mock<ISecretVaultService>();
             var mockLogger = new Mock<ILogger<QuickBooksService>>();
             var mockApiClient = new Mock<IQuickBooksApiClient>();
-            var mockHttpClient = new HttpClient();
+            using var mockHttpClient = new HttpClient();
             var mockServiceProvider = new Mock<IServiceProvider>();
 
-            var service = new QuickBooksService(
+            using var service = new QuickBooksService(
                 mockSettings.Object,
                 mockSecretVault.Object,
                 mockLogger.Object,

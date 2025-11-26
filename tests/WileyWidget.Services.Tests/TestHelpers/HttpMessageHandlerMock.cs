@@ -19,6 +19,9 @@ namespace WileyWidget.Services.Tests.TestHelpers
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             var uri = request.RequestUri?.ToString() ?? string.Empty;
             foreach (var (match, response) in _rules)
             {

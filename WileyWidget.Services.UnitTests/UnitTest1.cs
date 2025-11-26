@@ -38,12 +38,13 @@ namespace WileyWidget.Services.UnitTests
                            .ReturnsAsync("test-token");
 
             // Act
-            var service = new QuickBooksService(
+            using var httpClient = new System.Net.Http.HttpClient();
+            using var service = new QuickBooksService(
                 settingsService,
                 _secretVaultMock.Object,
                 _loggerMock.Object,
                 _apiClientMock.Object,
-                new System.Net.Http.HttpClient(),
+                httpClient,
                 _serviceProviderMock.Object);
 
             // Assert

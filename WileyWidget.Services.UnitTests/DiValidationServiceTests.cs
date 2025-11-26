@@ -233,9 +233,9 @@ namespace WileyWidget.Services.UnitTests
             Assert.NotNull(report);
             // Should have recorded the error
             var settingsError = report.Errors.FirstOrDefault(e => 
-                e.ServiceType.Contains("ISettingsService"));
+                e.ServiceType.Contains("ISettingsService", StringComparison.OrdinalIgnoreCase));
             Assert.NotNull(settingsError);
-            Assert.Contains("Simulated dependency failure", settingsError.ErrorMessage);
+            Assert.Contains("Simulated dependency failure", settingsError.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -253,9 +253,9 @@ namespace WileyWidget.Services.UnitTests
 
             // Assert
             Assert.NotEmpty(discoveredInterfaces);
-            Assert.Contains(discoveredInterfaces, name => name.Contains("ISettingsService"));
-            Assert.Contains(discoveredInterfaces, name => name.Contains("IAuditService"));
-            Assert.Contains(discoveredInterfaces, name => name.Contains("ITelemetryService"));
+            Assert.Contains(discoveredInterfaces, name => name.Contains("ISettingsService", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(discoveredInterfaces, name => name.Contains("IAuditService", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(discoveredInterfaces, name => name.Contains("ITelemetryService", StringComparison.OrdinalIgnoreCase));
         }
 
         [Fact]
@@ -273,9 +273,9 @@ namespace WileyWidget.Services.UnitTests
 
             // Assert
             // Should not include framework interfaces
-            Assert.DoesNotContain(discoveredInterfaces, name => name.Contains("IEnumerable"));
-            Assert.DoesNotContain(discoveredInterfaces, name => name.Contains("ICollection"));
-            Assert.DoesNotContain(discoveredInterfaces, name => name.Contains("IDisposable"));
+            Assert.DoesNotContain(discoveredInterfaces, name => name.Contains("IEnumerable", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(discoveredInterfaces, name => name.Contains("ICollection", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(discoveredInterfaces, name => name.Contains("IDisposable", StringComparison.OrdinalIgnoreCase));
         }
 
         [Fact]
@@ -293,10 +293,10 @@ namespace WileyWidget.Services.UnitTests
             var summary = report.GetSummary();
 
             // Assert
-            Assert.Contains("3/4 resolved", summary);
-            Assert.Contains("75.0%", summary);
-            Assert.Contains("1 missing", summary);
-            Assert.Contains("1 errors", summary);
+            Assert.Contains("3/4 resolved", summary, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("75.0%", summary, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("1 missing", summary, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("1 errors", summary, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -359,9 +359,9 @@ namespace WileyWidget.Services.UnitTests
             var result = error.ToString();
 
             // Assert
-            Assert.Contains("ITestService", result);
-            Assert.Contains("Not registered", result);
-            Assert.Contains("Add services.AddSingleton", result);
+            Assert.Contains("ITestService", result, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Not registered", result, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Add services.AddSingleton", result, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
