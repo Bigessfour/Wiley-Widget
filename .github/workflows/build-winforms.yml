@@ -26,8 +26,8 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore WileyWidget.sln
 
-    - name: Build WinForms Application
-      run: dotnet build WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore
+    - name: Build Solution
+      run: dotnet build WileyWidget.sln --configuration Release --no-restore
 
     - name: Run Unit Tests
       run: dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --no-build --verbosity normal
