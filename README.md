@@ -1,23 +1,29 @@
-# WileyWidget
+# Wiley Widget — Municipal Finance Desktop
 
-**A Modern Cross-Platform Application for Budget Management and Financial Analysis**
+**Current production UI: WinForms + .NET 9**
 
 [![.NET Version](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/)
-[![Uno Platform](https://img.shields.io/badge/Uno%20Platform-5.5-purple.svg)](https://platform.uno/)
+[![WinForms](https://img.shields.io/badge/UI-WinForms-blue.svg)](https://docs.microsoft.com/dotnet/desktop/winforms/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml)
+[![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/build-winforms.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/build-winforms.yml)
 
-**Version:** 1.0.0 - Uno Platform Migration Complete
-**Last Updated:** November 16, 2025
-**Framework:** .NET 9.0 + Uno Platform 5.5
-**UI Framework:** Syncfusion WinUI Controls + Uno.Material
-**Application Framework:** Prism.Uno.WinUI v9.0.537 (Pure MVVM Architecture)
+**Version:** 1.0.0-winforms
+**Last Updated:** November 25, 2025
+**Framework:** .NET 9.0
+**UI Framework:** Windows Forms + Syncfusion WinForms Controls
+**Architecture:** MVVM with Prism Framework
 
-> **⚠️ IMPORTANT: WPF Project Discontinued**  
-> The legacy WPF project (`src/WileyWidget`) has been **permanently removed**.  
-> All development is now on **WileyWidget.Uno** (Uno Platform + WinUI).  
-> WPF code is preserved in Git history for reference if needed.
+Fast, stable, zero XAML toolchain issues. Uses Syncfusion WinForms controls for grids, charts, and reporting.
+
+### Why we moved from WinUI 3
+
+After 6+ weeks battling silent XamlCompiler crashes ([Microsoft.UI.Xaml #10027](https://github.com/microsoft/microsoft-ui-xaml/issues/10027)) in the unpackaged Windows App SDK 1.6–1.8 ecosystem on .NET 9, we made the pragmatic call:
+
+- WinUI 3 unpackaged is not production-ready in 2025 for complex LOB apps with native dependencies (LiveCharts/SkiaSharp, Syncfusion, etc.)
+- WinForms + .NET 9 + Syncfusion gives us **5–10× faster load times**, rock-solid data binding, and immediate shipping velocity
+- The WinUI 3 experiment has been **removed** (no archive—preserved in Git history for reference)
+
+**We ship software, not toolchain drama.**
 
 ---
 

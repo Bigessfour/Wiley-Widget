@@ -1,18 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <!-- WindowsAppSDK 1.8 requires SupportedOSPlatformVersion for proper SDK alignment -->
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <!-- WindowsAppSDK 1.6 requires SupportedOSPlatformVersion for proper SDK alignment -->
+    <SupportedOSPlatformVersion>10.0.22621.0</SupportedOSPlatformVersion>
+    <!-- RegFree COM initialization for unpackaged WinUI 3 apps -->
+    <WindowsAppSDKUndockedRegFreeWinRTInitialize>true</WindowsAppSDKUndockedRegFreeWinRTInitialize>
     <XamlDebuggingInformation>Full</XamlDebuggingInformation>
-    <!-- Updated to match Windows App SDK requirements -->
-    <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
-    <WindowsSdkVersion>10.0.26100.0</WindowsSdkVersion>
+    <!-- Updated to match Windows SDK 22621 required by Windows App SDK 1.6 -->
+    <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
+    <WindowsSdkVersion>10.0.22621.0</WindowsSdkVersion>
     <!-- CRITICAL: UseWinUI must be true BEFORE WindowsAppSDK targets import -->
     <UseWinUI>true</UseWinUI>
-    <!-- Enable XAML source generator for better IntelliSense and build performance -->
-    <EnableXamlSourceGenerator>true</EnableXamlSourceGenerator>
+    <!-- DISABLED: EnableXamlSourceGenerator conflicts with PublishAot in .NET 9 unpackaged (falls back to legacy XamlCompiler) -->
+    <EnableXamlSourceGenerator>false</EnableXamlSourceGenerator>
     <!-- ============================================================
          CRITICAL WinUI 3 UNPACKAGED CONFIGURATION
          These properties MUST be set before targets import
@@ -28,6 +30,18 @@
     <AppxPackage>false</AppxPackage>
     <WindowsAppContainer>false</WindowsAppContainer>
     <!-- ============================================================
+         ENHANCED XAML PROJECTION SETTINGS FOR UNPACKAGED APPS
+         These improve XAML compilation and native projection resolution
+         ============================================================ -->
+    <!-- Enable projection generation without full MSIX packaging -->
+    <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
+    <!-- Generate temporary certificate for development signing -->
+    <GenerateTemporaryStoreCertificate>true</GenerateTemporaryStoreCertificate>
+    <!-- Force XBF generation for better diagnostics and error messages -->
+    <DisableXbfGeneration>false</DisableXbfGeneration>
+    <!-- Enhanced XAML compiler logging for troubleshooting -->
+    <XamlCompilerArgs>/verbose /nologo</XamlCompilerArgs>
+    <!-- ============================================================
          XAML COMPILATION SETTINGS FOR UNPACKAGED WINUI 3
          These enable proper XAML compilation without MSIX packaging
          ============================================================ -->
@@ -39,7 +53,8 @@
     <GenerateXamlSourceInfo>true</GenerateXamlSourceInfo>
     <!-- Ensure XAML compiler uses correct targets from WindowsAppSDK -->
     <XamlSavedStateFileName>"$(IntermediateOutputPath)$(MSBuildProjectName).xamlstate"</XamlSavedStateFileName>
-    <XamlCodeGenerationControlFlags>EnableXBindDiagnostics</XamlCodeGenerationControlFlags>
+    <!-- Enable detailed XAML diagnostics and verbose logging -->
+    <XamlCodeGenerationControlFlags>EnableXBindDiagnostics;Verbose</XamlCodeGenerationControlFlags>
     <!-- SO best practice: Ensure proper path handling for spaces in directory names -->
     <UseCommonOutputDirectory>false</UseCommonOutputDirectory>
     <!-- Workaround for known WindowsAppSDK 1.6.x/1.7.x telemetry assembly issue -->
@@ -85,9 +100,24 @@
     <GenerateXamlMetadata>true</GenerateXamlMetadata>
     <!-- New in WinAppSDK / XAML tooling 1.8.x — increases compiler verbosity to Diagnostic -->
     <XamlCompilerVerbosity>Diagnostic</XamlCompilerVerbosity>
+
+    <!-- ENHANCED: Force XamlCompiler error output capture (GitHub issue #10027 workaround) -->
+    <XamlSaveGeneratedSources>true</XamlSaveGeneratedSources>
+    <XamlGeneratedOutputPath>$(IntermediateOutputPath)XamlGenerated\</XamlGeneratedOutputPath>
+    <XamlLogVerbosity>Diagnostic</XamlLogVerbosity>
+    <XamlCodeGenerationControlFlags>EnableXBindDiagnostics;Verbose</XamlCodeGenerationControlFlags>
+    <XamlCompilerStandardErrorImportance>High</XamlCompilerStandardErrorImportance>
+    <XamlCompilerStandardOutputImportance>High</XamlCompilerStandardOutputImportance>
   </PropertyGroup>
 
   <!-- XAML Files: Let SDK auto-handle Application and Page includes -->
+  <ItemGroup>
+    <!-- Include Package.appxmanifest for metadata but don't build it (WindowsPackageType=None) -->
+    <None Include="Package.appxmanifest">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <ItemGroup>
     <Content Include="Assets\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -117,6 +147,9 @@
 
     <!-- LiveCharts2 for charting (open-source, MIT license) -->
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" />
+    <!-- SkiaSharp native assets for proper XAML compilation and native projection resolution -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
+    <PackageReference Include="SkiaSharp.NativeAssets.WinUI" />
 
     <!-- Data Access -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
@@ -234,6 +267,81 @@
   <!-- Provide a backward-compatible MSBuild entry point used by repo scripts/tools. -->
   <Target Name="CompileXaml" DependsOnTargets="MarkupCompilePass1;XamlPreCompile;MarkupCompilePass2">
     <Message Importance="High" Text="CompileXaml: delegated to MarkupCompilePass1/XamlPreCompile/MarkupCompilePass2" />
+  </Target>
+
+  <!-- ============================================================
+       CUSTOM XAML COMPILER WRAPPER WITH ERROR CAPTURE
+       Workaround for GitHub issue microsoft/microsoft-ui-xaml#10027
+       XamlCompiler.exe only writes errors on success, crashes silently on failure
+       ============================================================ -->
+  <Target Name="XamlCompilerPreDiagnostics"
+    BeforeTargets="MarkupCompilePass1;MarkupCompilePass2"
+    Condition="'$(Configuration)' == 'Debug'">
+
+    <Message Importance="High" Text="🔧 [XamlCompilerPreDiagnostics] Preparing diagnostic wrapper" />
+
+    <!-- Create diagnostic log directory -->
+    <PropertyGroup>
+      <XamlDiagnosticDir>$(MSBuildProjectDirectory)\..\..\xaml-logs\</XamlDiagnosticDir>
+      <XamlDiagnosticLog>
+        $(XamlDiagnosticDir)xaml-compiler-$(MSBuildProjectName)-$([System.DateTime]::Now.ToString('yyyyMMdd-HHmmss')).log</XamlDiagnosticLog>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(XamlDiagnosticDir)" />
+
+    <!-- Log compilation parameters -->
+    <WriteLinesToFile
+      File="$(XamlDiagnosticLog)"
+      Lines="=== XAML Compilation Started: $([System.DateTime]::Now) ==="
+      Overwrite="true" />
+    <WriteLinesToFile
+      File="$(XamlDiagnosticLog)"
+      Lines="Configuration: $(Configuration);Platform: $(Platform);TargetFramework: $(TargetFramework);IntermediateOutputPath: $(IntermediateOutputPath)"
+      Overwrite="false" />
+
+    <Message Importance="High" Text="📝 Diagnostic log: $(XamlDiagnosticLog)" />
+  </Target>
+
+  <!-- Capture XamlCompiler failures and run diagnostics -->
+  <Target Name="XamlCompilerPostDiagnostics"
+    AfterTargets="MarkupCompilePass1;MarkupCompilePass2"
+    Condition="'$(Configuration)' == 'Debug'">
+
+    <PropertyGroup>
+      <XamlInputJson>$(IntermediateOutputPath)input.json</XamlInputJson>
+      <XamlOutputJson>$(IntermediateOutputPath)output.json</XamlOutputJson>
+      <XamlCompilerSuccess>true</XamlCompilerSuccess>
+      <XamlCompilerSuccess Condition="!Exists('$(XamlOutputJson)')">false</XamlCompilerSuccess>
+    </PropertyGroup>
+
+    <Message Importance="High" Text="✅ [XamlCompilerPostDiagnostics] XAML compilation succeeded"
+      Condition="'$(XamlCompilerSuccess)' == 'true'" />
+    <Warning Text="❌ [XamlCompilerPostDiagnostics] XAML compilation may have failed - output.json not found"
+      Condition="'$(XamlCompilerSuccess)' == 'false'" />
+
+    <!-- Log result -->
+    <WriteLinesToFile
+      File="$(XamlDiagnosticLog)"
+      Lines="Result: $(XamlCompilerSuccess) at $([System.DateTime]::Now)"
+      Overwrite="false"
+      Condition="Exists('$(XamlDiagnosticLog)')" />
+    <WriteLinesToFile
+      File="$(XamlDiagnosticLog)"
+      Lines="Input JSON: $(XamlInputJson) [Exists: $([System.IO.File]::Exists('$(XamlInputJson)'))]"
+      Overwrite="false"
+      Condition="Exists('$(XamlDiagnosticLog)')" />
+    <WriteLinesToFile
+      File="$(XamlDiagnosticLog)"
+      Lines="Output JSON: $(XamlOutputJson) [Exists: $([System.IO.File]::Exists('$(XamlOutputJson)'))]"
+      Overwrite="false"
+      Condition="Exists('$(XamlDiagnosticLog)')" />
+
+    <!-- Run diagnostic script on failure -->
+    <Exec
+      Command="pwsh -NoProfile -ExecutionPolicy Bypass -Command &quot;if (Test-Path '$(MSBuildProjectDirectory)\..\..\scripts\tools\run-xamlcompiler.ps1') { &amp; '$(MSBuildProjectDirectory)\..\..\scripts\tools\run-xamlcompiler.ps1' -InputPath '$(XamlInputJson)' -OutputPath '$(XamlOutputJson)' -Verbose }&quot;"
+      ContinueOnError="true"
+      IgnoreExitCode="true"
+      Condition="'$(XamlCompilerSuccess)' == 'false' AND Exists('$(XamlInputJson)')" />
   </Target>
 
 </Project>

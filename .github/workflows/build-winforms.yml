@@ -1,0 +1,42 @@
+name: Build WinForms
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore WileyWidget.sln
+
+    - name: Build WinForms Application
+      run: dotnet build WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore
+
+    - name: Run Unit Tests
+      run: dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --no-build --verbosity normal
+
+    - name: Run Integration Tests
+      run: dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
+
+    - name: Publish Application
+      run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-build
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wiley-widget-winforms
+        path: ./publish/
+        retention-days: 30

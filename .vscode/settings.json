@@ -21,7 +21,7 @@
   },
   "github.copilot.chat.welcomeMessage": "first",
   "github.copilot.editor.enableAutoCompletions": true,
-  
+
   // ============================================================================
   // XAML & XML Configuration (WinUI 3)
   // ============================================================================
@@ -37,7 +37,7 @@
   "xml.validation.enabled": true,
   "xml.validation.noGrammar": "ignore",
   "xml.completion.autoCloseTags": true,
-  
+
   // ============================================================================
   // Editor Configuration
   // ============================================================================
@@ -61,7 +61,7 @@
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": true,
   "editor.inlineSuggest.enabled": true,
-  
+
   // ============================================================================
   // File Management
   // ============================================================================
@@ -97,7 +97,7 @@
     "**/TestResults/**": true,
     "**/.venv/**": true
   },
-  
+
   // ============================================================================
   // .NET & C# Configuration
   // ============================================================================
@@ -113,7 +113,7 @@
   "omnisharp.projectLoadTimeout": 60000,
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
-  
+
   // ============================================================================
   // Testing Configuration
   // ============================================================================
@@ -122,7 +122,7 @@
   "dotnet-test-explorer.autoWatch": false,
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
-  
+
   // ============================================================================
   // Git & Version Control
   // ============================================================================
@@ -134,7 +134,7 @@
   "gitlens.currentLine.enabled": true,
   "gitlens.statusBar.enabled": true,
   "gitlens.views.repositories.files.layout": "tree",
-  
+
   // ============================================================================
   // Python Configuration
   // ============================================================================
@@ -144,13 +144,13 @@
   "python.linting.ruffEnabled": true,
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": false,
-  
+
   // ============================================================================
   // PowerShell Configuration
   // ============================================================================
   "powershell.scriptAnalysis.enable": true,
   "powershell.codeFormatting.preset": "OTBS",
-  
+
   // ============================================================================
   // SonarLint Configuration
   // ============================================================================
@@ -159,7 +159,7 @@
       "level": "on"
     }
   },
-  
+
   // ============================================================================
   // TODO Highlighting
   // ============================================================================
@@ -179,32 +179,34 @@
     "background": "#ff0000",
     "opacity": 50
   },
-  
+
   // ============================================================================
   // Spell Checker Configuration
   // ============================================================================
   "cSpell.words": [
+    "csdevkit",
+    "csproj",
+    "dotnet",
+    "Syncfusion",
     "Wiley",
     "WileyWidget",
+    "winforms",
     "WinUI",
-    "XAML",
-    "dotnet",
-    "csproj",
-    "csdevkit"
+    "XAML"
   ],
   "cSpell.enableFiletypes": [
     "csharp",
     "markdown",
     "xml"
   ],
-  
+
   // ============================================================================
   // Debugging Configuration
   // ============================================================================
   "debug.toolBarLocation": "docked",
   "debug.openDebug": "openOnDebugBreak",
   "debug.internalConsoleOptions": "openOnSessionStart",
-  
+
   // ============================================================================
   // Continue/Grok Integration
   // ============================================================================
@@ -216,12 +218,12 @@
   "continue.telemetryLevel": "off",
   "continue.contextProviders.codebase.nRetrieve": 15,
   "continue.experimental.modelessChat": true,
-  
+
   // ============================================================================
   // Docker Configuration
   // ============================================================================
   "docker.showStartPage": false,
-  
+
   // ============================================================================
   // Performance & UI
   // ============================================================================
@@ -233,8 +235,8 @@
   "workbench.iconTheme": "material-icon-theme",
   "workbench.colorTheme": "Default Dark+",
   "search.maxResults": 5000,
-  "editor.largeFileOptimizations": true,
-  
+  "editor.largeFileOptimizations": false,
+
   // ============================================================================
   // Terminal Configuration
   // ============================================================================

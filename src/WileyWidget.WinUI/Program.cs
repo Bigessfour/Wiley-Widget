@@ -53,6 +53,40 @@ namespace WileyWidget.WinUI
                 // Best-effort
             }
 
+            // DispatcherQueue guard for .NET 9 unpackaged (prevents init before thread)
+            // Fix for #10027 - ensures Bootstrap.Initialize doesn't race in unpackaged
+            try
+            {
+                var queue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+                if (queue != null && queue.HasThreadAccess)
+                {
+                    // Re-invoke Bootstrap.Initialize only on UI thread with proper dispatcher
+                    var bootstrapTypeNames = new[]
+                    {
+                        "Microsoft.WindowsAppRuntime.Bootstrap.Net.Bootstrapper, Microsoft.WindowsAppRuntime.Bootstrap.Net",
+                        "Microsoft.WindowsAppRuntime.Bootstrap.Net.Bootstrapper, Microsoft.WindowsAppRuntime",
+                        "Microsoft.WindowsAppRuntime.Bootstrapper, Microsoft.WindowsAppRuntime"
+                    };
+
+                    Type? bootstrapType = null;
+                    foreach (var name in bootstrapTypeNames)
+                    {
+                        bootstrapType = Type.GetType(name, throwOnError: false);
+                        if (bootstrapType != null) break;
+                    }
+
+                    var initMethod = bootstrapType?.GetMethod("Initialize", BindingFlags.Public | BindingFlags.Static);
+                    if (initMethod is not null && initMethod.GetParameters().Length == 0)
+                    {
+                        initMethod.Invoke(null, null);  // Bootstrap only on UI thread
+                    }
+                }
+            }
+            catch
+            {
+                // Best-effort
+            }
+
             // Now start the WinUI application on the STA thread
             // Nothing here - prefer the generated XAML Program.Main to be the process entrypoint.
         }

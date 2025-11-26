@@ -1,12 +1,47 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
+## [1.0.0-winforms] - 2025-11-25
+
+### Strategic Pivot - WinUI 3 → WinForms Production Release
+
+#### Strategic Decision
+
+- **Archived WinUI 3 Experiment**: After 6+ weeks of battling silent XamlCompiler crashes (Microsoft.UI.Xaml #10027) in unpackaged Windows App SDK 1.6–1.8 on .NET 9, we made the strategic decision to pivot to WinForms as the production-ready UI framework.
+- **WinForms as Mainline**: Windows Forms + .NET 9 + Syncfusion WinForms provides 5–10× faster load times, rock-solid data binding, and zero XAML toolchain issues.
+- **No Archive Folder**: WinUI 3 code removed entirely (preserved in Git history). Clean slate for maintainable production codebase.
+
+#### Removed
+
+- **WinUI 3 Project**: Deleted `src/WileyWidget.WinUI/` and all WinUI dependencies
+- **Legacy Folders**: Cleaned up `archive/`, `temp/`, `temp_test/`, `src/WileyWidget.Legacy/`
+- **WinUI Packages**: Removed WinUI-specific packages (Microsoft.WindowsAppSDK, CommunityToolkit.WinUI.UI.Controls, LiveChartsCore.SkiaSharpView.WinUI, etc.)
+
+#### Changed
+
+- **Solution Structure**: Updated `WileyWidget.sln` to remove WinUI project references
+- **README.md**: Complete rewrite with honest WinForms pivot narrative
+- **Package Management**: Cleaned `Directory.Packages.props` of WinUI dependencies
+
+#### Documentation
+
+- **Migration Plan**: See `docs/migration-plan.md` for decision matrix and future re-evaluation criteria
+- **Rationale**: WinUI 3 unpackaged path not production-ready for complex LOB apps in 2025; will revisit in 2026–2027 when Microsoft stabilizes
+
+
+**Tag:** `v1.0-winforms-relaunch`
+
+---
+
 ## [0.5.0] - 2025-11-14
+
 ### WinUI 3 Migration - Platform Modernization
 
 #### Added
+
 - **WinUI 3 Project**: New `WileyWidget.WinUI` project with Microsoft.UI.Xaml
-- **Syncfusion WinUI Controls**: Migrated from Syncfusion WPF to Syncfusion WinUI (https://help.syncfusion.com/winui/overview)
+- **Syncfusion WinUI Controls**: Migrated from Syncfusion WPF to Syncfusion WinUI (<https://help.syncfusion.com/winui/overview>)
 - **Resource Dictionaries**: WinUI-compatible DataTemplates.xaml, Strings.xaml, Generic.xaml
 - **FrameRegionAdapter**: Custom Prism region adapter for WinUI Frame navigation
 - **CSX+xUnit Testing Strategy**: Dual-phase testing approach documented
@@ -14,6 +49,7 @@ All notable changes to this project will be documented in this file.
   - Phase 2: Formalized regression testing with xUnit
 
 #### Changed
+
 - **Platform Migration**: WPF → WinUI 3 (.NET 9.0-windows10.0.19041.0)
 - **UI Framework**: All Syncfusion controls updated to WinUI equivalents
 - **App.xaml.cs**: RegisterTypes() fully adapted for WinUI with IDbContextFactory pattern

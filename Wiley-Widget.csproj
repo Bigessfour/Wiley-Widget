@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>WileyWidget</RootNamespace>
     <!-- CRITICAL: UseWinUI must be true to import WindowsAppSDK XAML targets -->
     <UseWinUI>true</UseWinUI>
-    <EnableXamlSourceGenerator>true</EnableXamlSourceGenerator>
+    <EnableXamlSourceGenerator>false</EnableXamlSourceGenerator>
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>
@@ -29,24 +29,8 @@
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <!-- FORCE the modern .NET 6+ compiler that actually shows errors -->
-    <XamlCompilerExePath Condition="'$(XamlCompilerExePath)' == ''">
-      $(NuGetPackageRoot)microsoft.windowsappsdk\1.6.250108002\tools\net6.0\XamlCompiler.exe
-    </XamlCompilerExePath>
-
-    <!-- Enable verbose output so we can finally see the real problem -->
-    <XamlCompilerArguments>-v</XamlCompilerArguments>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <PlatformTarget>x64</PlatformTarget>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <XamlCompilerExePath>$(NuGetPackageRoot)microsoft.windowsappsdk\1.8.251106002\tools\net472\XamlCompiler.exe</XamlCompilerExePath>
-    <XamlCompilerArguments>-v --verbose</XamlCompilerArguments>
-    <NoWarn>$(NoWarn);MSB3277;MSB3073;NU1605</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -81,6 +65,6 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
-    <PublishAot>true</PublishAot>
+    <PublishAot>false</PublishAot>
   </PropertyGroup>
 </Project>

@@ -159,7 +159,7 @@ class LegacyScanner:
         prism_hits = [h for h in self.hits if "Prism" in h.pattern_type]
         syncfusion_hits = [h for h in self.hits if "Syncfusion" in h.pattern_type]
 
-        report = {
+        report: Dict[str, Any] = {
             "summary": {
                 "total_hits": len(self.hits),
                 "prism_hits": len(prism_hits),
