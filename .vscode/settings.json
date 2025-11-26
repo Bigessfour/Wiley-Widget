@@ -87,7 +87,8 @@
     "**/obj/**": true,
     "**/*.nupkg": true,
     "**/TestResults/**": true,
-    "**/.venv/**": true
+    "**/.venv/**": true,
+    "**/.vs/**": true
   },
 
   // ============================================================================
@@ -109,6 +110,8 @@
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
   "omnisharp.enableDecompilationSupport": true,
   "omnisharp.useModernNet": true,
+  "omnisharp.maxProjectResults": 500,
+  "dotnet.backgroundAnalysis.maxDegreeOfParallelism": 12,
 
   // ============================================================================
   // Testing Configuration
@@ -233,7 +236,7 @@
   "workbench.iconTheme": "material-icon-theme",
   "workbench.colorTheme": "Default Dark+",
   "search.maxResults": 5000,
-  "editor.largeFileOptimizations": true,
+  "editor.largeFileOptimizations": false,
   "files.maxMemoryForLargeFilesMB": 16384,
 
   // ============================================================================
