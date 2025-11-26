@@ -10,24 +10,34 @@ All notable changes to this project will be documented in this file.
 
 - **Archived WinUI 3 Experiment**: After 6+ weeks of battling silent XamlCompiler crashes (Microsoft.UI.Xaml #10027) in unpackaged Windows App SDK 1.6–1.8 on .NET 9, we made the strategic decision to pivot to WinForms as the production-ready UI framework.
 - **WinForms as Mainline**: Windows Forms + .NET 9 + Syncfusion WinForms provides 5–10× faster load times, rock-solid data binding, and zero XAML toolchain issues.
-- **No Archive Folder**: WinUI 3 code removed entirely (preserved in Git history). Clean slate for maintainable production codebase.
+- **Legacy Preservation**: WinUI 3 code archived in `src/legacy/WileyWidget.WinUI/` for potential Syncfusion WinUI retry in Q2 2026.
+
+#### Repository Consolidation (November 25, 2025)
+
+- **Branch Merge**: Merged `upgrade-to-NET10` branch into `main` - consolidated .NET 9 work and WinUI experiments
+- **WinUI Archival**: Moved WinUI project to `src/legacy/WileyWidget.WinUI/` - preserves history while signaling WinForms pivot
+- **Build Artifact Cleanup**: Removed WinUI diagnostic logs (67MB+) and build artifacts
+- **CI/CD Enhancement**: Updated GitHub Actions workflow with path filtering and unique artifact naming
+- **Tagged Release**: Created `v1.0-winforms-stable` tag marking stable WinForms production baseline
 
 #### Removed
 
-- **WinUI 3 Project**: Deleted `src/WileyWidget.WinUI/` and all WinUI dependencies
+- **WinUI Build Artifacts**: Deleted diagnostic logs (`logs/*.log`, `MSBuild_Logs/`)
 - **Legacy Folders**: Cleaned up `archive/`, `temp/`, `temp_test/`, `src/WileyWidget.Legacy/`
-- **WinUI Packages**: Removed WinUI-specific packages (Microsoft.WindowsAppSDK, CommunityToolkit.WinUI.UI.Controls, LiveChartsCore.SkiaSharpView.WinUI, etc.)
+- **Uno Platform**: Removed `src/WileyWidget.Uno/` (early experiment, pre-WinUI pivot)
 
 #### Changed
 
-- **Solution Structure**: Updated `WileyWidget.sln` to remove WinUI project references
-- **README.md**: Complete rewrite with honest WinForms pivot narrative
-- **Package Management**: Cleaned `Directory.Packages.props` of WinUI dependencies
+- **Solution Structure**: Updated `WileyWidget.sln` to focus on WinForms mainline + shared libraries
+- **README.md**: Updated with honest WinForms pivot narrative and legacy WinUI archive location
+- **Package Management**: Maintained .NET 9 packages, prepared for Syncfusion WinForms integration
+- **GitHub Workflow**: Enhanced `build-winforms.yml` with smart path filtering (skip docs-only changes)
 
 #### Documentation
 
-- **Migration Plan**: See `docs/migration-plan.md` for decision matrix and future re-evaluation criteria
-- **Rationale**: WinUI 3 unpackaged path not production-ready for complex LOB apps in 2025; will revisit in 2026–2027 when Microsoft stabilizes
+- **Migration Plan**: See `docs/syncfusion-winforms-migration.md` for WinForms implementation roadmap
+- **Legacy Reference**: WinUI code preserved in Git history + `src/legacy/` for future evaluation
+- **Rationale**: WinUI 3 unpackaged path not production-ready for complex LOB apps in 2025; will revisit in 2026 when Syncfusion stabilizes WinUI support
 
 
 **Tag:** `v1.0-winforms-relaunch`
