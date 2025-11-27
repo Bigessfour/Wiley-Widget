@@ -5,12 +5,7 @@ on:
     branches: [main, develop, feature/dashboard-production-ready]
   pull_request:
     branches: [main, develop]
-  workflow_dispatch:
-    inputs:
-      ui_runner_type:
-        description: 'Type of runner used to execute UI E2E tests (self-hosted recommended). Values: self-hosted | hosted'
-        required: false
-        default: 'self-hosted'
+  workflow_dispatch: {}
 
 jobs:
   workflow-lint:
@@ -63,7 +58,7 @@ jobs:
 
     env:
       COVERAGE_THRESHOLD: 85
-      COVERAGE_FAIL_ON_MISSING: 'false' # Set 'true' to make missing coverage a hard failure
+      COVERAGE_FAIL_ON_MISSING: "false" # Set 'true' to make missing coverage a hard failure
 
     steps:
       - name: Checkout code
@@ -92,7 +87,7 @@ jobs:
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: 9.0.x
 
       - name: Clear NuGet caches (best-effort)
         run: |
@@ -173,6 +168,69 @@ jobs:
               if ($i -eq $maxAttempts) { exit 1 }
               Start-Sleep -Seconds (10 * $i)
             }
+          }
+
+      - name: Ensure .trunk exists and create setup-ci symlink (non-Windows)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Ensure parent dir exists
+          mkdir -p .trunk
+
+          # TRUNK_PATH is expected to be set earlier in the job (logs show TRUNK_PATH env var)
+          if [ -z "${TRUNK_PATH:-}" ]; then
+            echo "ERROR: TRUNK_PATH is not set. Cannot create symlink"
+            exit 1
+          fi
+
+          SRC="$TRUNK_PATH/setup-ci"
+          DEST=".trunk/setup-ci"
+
+          if [ ! -e "$SRC" ]; then
+            echo "ERROR: expected trunk source does not exist: $SRC"
+            ls -la "$TRUNK_PATH" || true
+            exit 1
+          fi
+
+          # Create an idempotent symlink (replace existing link/target)
+          ln -sfn "$SRC" "$DEST"
+          echo "Created symlink: $DEST -> $SRC"
+
+      - name: Ensure .trunk exists and create setup-ci symlink (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # Ensure parent dir exists
+          New-Item -ItemType Directory -Path .trunk -Force | Out-Null
+
+          if (-not $env:TRUNK_PATH) {
+            Write-Error 'ERROR: TRUNK_PATH is not set. Cannot create symlink'
+            exit 1
+          }
+
+          $src = Join-Path $env:TRUNK_PATH 'setup-ci'
+          $dest = Join-Path (Get-Location) '.trunk\setup-ci'
+
+          if (-not (Test-Path $src)) {
+            Write-Error "ERROR: expected trunk source does not exist: $src"
+            Get-ChildItem -Path $env:TRUNK_PATH -Force | Write-Output
+            exit 1
+          }
+
+          # If dest exists, remove it first to allow a clean symlink creation/copy
+          if (Test-Path $dest) { Remove-Item -Path $dest -Force -Recurse }
+
+          try {
+            New-Item -ItemType SymbolicLink -Path $dest -Target $src | Out-Null
+            Write-Host "Created symlink: $dest -> $src"
+          } catch {
+            Write-Warning "Could not create symlink (permission or unsupported). Falling back to copying files: $_"
+            Copy-Item -Path $src -Destination $dest -Recurse -Force
+            Write-Host "Copied $src to $dest"
           }
 
       - name: Trunk validation (CI)
@@ -273,7 +331,7 @@ jobs:
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: 9.0.x
 
       - name: Confirm runner suitability
         shell: powershell

@@ -20,6 +20,7 @@
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
+  "github.copilot.chat.showThoughts": false,
   "github.copilot.editor.enableAutoCompletions": true,
 
   // ============================================================================
@@ -138,6 +139,7 @@
   // Python Configuration
   // ============================================================================
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
   "python.formatting.provider": "black",
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,
@@ -242,10 +244,15 @@
   // ============================================================================
   // Terminal Configuration
   // ============================================================================
-  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.defaultProfile.windows": "PowerShell (venv)",
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "PowerShell (venv)": {
+      "source": "PowerShell",
+      "args": ["-NoExit", "-ExecutionPolicy", "Bypass", "-Command", "& \"${workspaceFolder}\\.venv\\Scripts\\Activate.ps1\""],
       "icon": "terminal-powershell"
     },
     "Command Prompt": {
