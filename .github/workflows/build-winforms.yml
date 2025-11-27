@@ -27,9 +27,9 @@ jobs:
         # Ensure parent dir exists
         mkdir -p .trunk
 
-        # TRUNK_PATH is expected to be set earlier in the job (logs show TRUNK_PATH env var)
+        # TRUNK_PATH should be set to the Trunk CLI installation directory
         if [ -z "${TRUNK_PATH:-}" ]; then
-          echo "ERROR: TRUNK_PATH is not set. Cannot create symlink"
+          echo "ERROR: TRUNK_PATH is not set. Expected path to Trunk CLI installation directory."
           exit 1
         fi
 
@@ -54,8 +54,9 @@ jobs:
 
         New-Item -ItemType Directory -Path .trunk -Force | Out-Null
 
+        # TRUNK_PATH should be set to the Trunk CLI installation directory
         if (-not $env:TRUNK_PATH) {
-          Write-Error 'ERROR: TRUNK_PATH is not set. Cannot create symlink'
+          Write-Error 'ERROR: TRUNK_PATH is not set. Expected path to Trunk CLI installation directory.'
           exit 1
         }
 
@@ -74,7 +75,7 @@ jobs:
           New-Item -ItemType SymbolicLink -Path $dest -Target $src | Out-Null
           Write-Host "Created symlink: $dest -> $src"
         } catch {
-          Write-Warning "Could not create symlink (permission or unsupported). Falling back to copying files: $_"
+          Write-Warning "Failed to create symlink due to insufficient permissions or unsupported filesystem. Falling back to copying files: $_"
           Copy-Item -Path $src -Destination $dest -Recurse -Force
           Write-Host "Copied $src to $dest"
         }
