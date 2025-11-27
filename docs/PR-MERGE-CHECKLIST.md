@@ -3,6 +3,7 @@
 ## Pre-Merge Validation
 
 ### CI/CD Requirements
+
 - [ ] CI pipeline passes with 0 errors (build + test + publish)
 - [ ] All 12 E2E tests passing in CI environment
 - [ ] Build artifacts successfully uploaded (`wiley-widget-winforms.zip`)
@@ -10,6 +11,7 @@
 - [ ] Test coverage report generated (optional but recommended)
 
 ### Code Quality
+
 - [ ] Local build succeeds: `dotnet build WileyWidget.sln --configuration Release`
 - [ ] All unit tests pass: `dotnet test --no-build --configuration Release`
 - [ ] Zero compiler warnings in Release build
@@ -17,6 +19,7 @@
 - [ ] Problems panel shows 0 errors/warnings in VS Code
 
 ### Dashboard Feature Validation
+
 - [ ] DashboardViewModel implements async loading with error handling
 - [ ] DashboardService integrates with repository pattern
 - [ ] E2E tests cover: budget, revenue, expenses, metrics, caching
@@ -25,6 +28,7 @@
 - [ ] Dashboard UI renders without exceptions (manual smoke test)
 
 ### Documentation
+
 - [ ] LICENSE file added (MIT) ✅
 - [ ] README updated with dashboard feature description
 - [ ] CHANGELOG entry for dashboard implementation
@@ -32,12 +36,14 @@
 - [ ] Architecture decision recorded for Syncfusion usage
 
 ### Dependencies & Security
+
 - [ ] No new security vulnerabilities introduced (osv-scanner clean)
 - [ ] Syncfusion license compliance documented
 - [ ] NuGet packages up-to-date (no critical CVEs)
 - [ ] Docker images for MCP servers updated if needed
 
 ### Branch Hygiene
+
 - [ ] Branch rebased on latest `main` (or merge main into feature branch)
 - [ ] Commit messages follow conventional commits format
 - [ ] No merge conflicts with `main`
@@ -55,6 +61,7 @@
 ## Rollback Plan
 
 If issues arise post-merge:
+
 1. **Quick Fix**: Push hotfix commit to main if < 15 min fix
 2. **Revert**: Use `git revert` to rollback merge commit
 3. **New Branch**: Create fix branch from main, re-test, re-merge

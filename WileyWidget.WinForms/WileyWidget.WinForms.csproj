@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>e6f9c3b1-3a5d-4579-9e8d-2a91b5e5a123</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -73,6 +74,12 @@
     <PackageReference Include="Syncfusion.SfInput.WinForms" />
     <PackageReference Include="Syncfusion.Pdf.WinForms" />
     <PackageReference Include="Syncfusion.XlsIO.WinForms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

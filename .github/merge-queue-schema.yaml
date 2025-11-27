@@ -1,0 +1,28 @@
+# Machine-readable Merge Queue configuration for this repository
+# Keep this file in sync with `docs/TRUNK-MERGE-QUEUE.md`.
+# Keys:
+# - name: human label for the queue
+# - repo: repo full name
+# - target_branch: the branch the queue targets (must be a real branch, e.g. `main`)
+# - testing_mode: draft_pr | push
+# - required_status_checks: names of CI checks that must be present in branch protection
+# - required_approving_review_count: number of approvals required (0 if not required)
+# - enforce_admins: whether to enforce protections for admins
+# - allow_force_pushes, allow_deletions: booleans for branch protection
+
+name: Wiley-Widget main
+repo: Bigessfour/Wiley-Widget
+target_branch: main
+testing_mode: draft_pr
+required_status_checks:
+  - build
+required_approving_review_count: 1
+enforce_admins: true
+allow_force_pushes: false
+allow_deletions: false
+required_linear_history: true
+required_conversation_resolution: true
+required_signatures: true
+
+# When updating this file, ensure `docs/TRUNK-MERGE-QUEUE.md` documents the change
+# (human readable) and update any CI or automation that relies on the schema.

@@ -1,0 +1,72 @@
+name: Monitor Trunk Merge Queue (dashboard)
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # run every 30 minutes
+  workflow_dispatch: {}
+
+jobs:
+  trunk-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install trunk CLI
+        run: |
+          set -euo pipefail
+          curl -sSfL https://get.trunk.io | sh -s -- -b $HOME/.local/bin
+          export PATH="$HOME/.local/bin:$PATH"
+          trunk --version || echo 'trunk not installed'
+
+      - name: Trunk: whoami (if token present)
+        env:
+          TRUNK_TOKEN: ${{ secrets.TRUNK_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${TRUNK_TOKEN:-}" ]; then
+            export TRUNK_TOKEN=${TRUNK_TOKEN}
+            trunk whoami || true
+          else
+            echo 'TRUNK_TOKEN not configured - skipping trunk whoami'
+          fi
+
+      - name: Query Trunk queues via API (best-effort)
+        env:
+          TRUNK_TOKEN: ${{ secrets.TRUNK_TOKEN }}
+        run: |
+          set -euo pipefail
+          repo='Bigessfour/Wiley-Widget'
+          endpoints=("https://api.trunk.io/api/v1/queues" "https://app.trunk.io/api/v1/queues")
+          if [ -z "${TRUNK_TOKEN:-}" ]; then
+            echo 'TRUNK_TOKEN not configured - can't query Trunk API programmatically'
+            exit 0
+          fi
+          for ep in "${endpoints[@]}"; do
+            echo "Trying $ep"
+            resp=$(curl -sSf -H "Authorization: Bearer ${TRUNK_TOKEN}" -G --data-urlencode "repo=${repo}" "$ep" || true)
+            if [ -n "$resp" ]; then
+              echo "Received response from $ep"
+              echo "$resp" | jq '.' || echo "$resp" | head -n 30
+              # Check if any queue targets main
+              if echo "$resp" | jq -e --arg repo "$repo" '.[] | select(.repo==($repo) and .target_branch=="main")' >/dev/null 2>&1; then
+                echo 'Trunk: Found queue targeting main' && exit 0
+              fi
+            fi
+          done
+          echo 'Trunk queue for main not found programmatically. Falling back to UI check.'
+          # Bonus: check the public app.trunk.io page (may require login)
+          status=$(curl -sS https://app.trunk.io/gh/Bigessfour/Wiley-Widget/merge/main | head -n 10 || true)
+          echo "Trunk page first lines:\n$status"
+          echo 'If trunk queue exists but is not visible via API, ensure TRUNK_TOKEN secret is valid and has access to the Trunk org.'
+
+      - name: Final check - create a diagnostic issue if the queue was not found
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Queue not found / API returned unexpected response. Creating issue to notify maintainers."
+          curl -sSf -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" \
+            -X POST https://api.github.com/repos/${REPO}/issues -d '{"title":"[Monitoring] Trunk queue or API check failed","body":"Automatic monitor could not find Trunk merge queue for main or RPC returned non-JSON. Please check Trunk dashboard and TRUNK_TOKEN secret."}' || true

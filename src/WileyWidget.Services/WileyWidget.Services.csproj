@@ -31,6 +31,7 @@
     <!-- <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" /> -->
     <!-- SqlClient instrumentation removed - package not available as stable -->
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="Syncfusion.Licensing" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="Polly.RateLimiting" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />

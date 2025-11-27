@@ -31,7 +31,7 @@ namespace WileyWidget.WinForms.Forms
     public partial class AccountsForm : Form
     {
         private readonly AccountsViewModel _viewModel;
-        private DataGridView _dataGrid;  // Changed from SfDataGrid
+        private DataGridView _dataGrid = null!;  // Changed from SfDataGrid, initialize in SetupDataGrid()
 
         public AccountsForm(AccountsViewModel viewModel)
         {

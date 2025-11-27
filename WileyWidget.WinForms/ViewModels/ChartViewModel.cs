@@ -5,13 +5,13 @@ namespace WileyWidget.WinForms.ViewModels
 {
     public class ChartDataPoint
     {
-        public string Month { get; set; }
+        public string Month { get; set; } = string.Empty;
         public double Amount { get; set; }
     }
 
     public class PieDataPoint
     {
-        public string Category { get; set; }
+        public string Category { get; set; } = string.Empty;
         // Use Amount for consistency with ChartDataPoint and the rest of the codebase
         public double Amount { get; set; }
     }

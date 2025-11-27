@@ -84,6 +84,24 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
     }
 
     /// <summary>
+    /// Record a metric value for monitoring and analytics.
+    /// </summary>
+    public void RecordMetric(string metricName, double value, params (string key, object? value)[] additionalTags)
+    {
+        var activity = Activity.Current;
+        if (activity != null)
+        {
+            activity.SetTag($"metric.{metricName}", value);
+            foreach (var (k, v) in additionalTags)
+            {
+                activity.SetTag(k, v?.ToString());
+            }
+        }
+
+        _logger.LogInformation("Metric recorded: {MetricName}={Value}", metricName, value);
+    }
+
+    /// <summary>
     /// Basic connectivity validation (no network calls in fallback implementation).
     /// </summary>
     public bool ValidateConnectivity()

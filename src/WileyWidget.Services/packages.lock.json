@@ -446,6 +446,12 @@
           "Serilog": "4.2.0"
         }
       },
+      "Syncfusion.Licensing": {
+        "type": "Direct",
+        "requested": "[31.2.15, )",
+        "resolved": "31.2.15",
+        "contentHash": "9y2HMFjFT0pBxtl4l+5wcWtyiot+eff8QhVtX1B5Zwe8Y3u8jl9WCIaAgUPsNQr4JarIwqCbJrdiH5Ou0WweLQ=="
+      },
       "System.Management": {
         "type": "Direct",
         "requested": "[10.0.0, )",

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using FluentAssertions;
 using Moq;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
@@ -411,5 +412,29 @@ namespace WileyWidget.Services.UnitTests
             // Assert
             Assert.Equal(expectedRate, actualRate, precision: 1);
         }
+
+        [Fact]
+        public void ServiceProvider_WithCircularDependency_ThrowsOnBuild()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+
+            // Circular dependency: A -> B, B -> A
+            services.AddTransient<A>();
+            services.AddTransient<B>();
+
+            // Act & Assert
+            var act = () => services.BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            });
+
+            // Build-time validation should detect circular dependencies and throw in validated builds
+            act.Should().Throw<InvalidOperationException>();
+        }
+
+        private class A { public A(B b) { } }
+        private class B { public B(A a) { } }
     }
 }

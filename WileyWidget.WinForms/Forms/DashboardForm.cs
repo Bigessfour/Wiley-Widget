@@ -85,12 +85,12 @@ namespace WileyWidget.WinForms.Forms
 
             // Toolbar
             var toolStrip = new ToolStrip();
-            var loadButton = new ToolStripButton(DashboardResources.LoadButton, null, async (s, e) => await LoadDashboard());
-            var refreshButton = new ToolStripButton(DashboardResources.RefreshButton, null, async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null));
-            var exportButton = new ToolStripButton(DashboardResources.ExportButton, null, async (s, e) => await ExportDashboard());
+            var loadButton = new ToolStripButton(DashboardResources.LoadButton, null, async (s, e) => await LoadDashboard()) { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard" }; 
+            var refreshButton = new ToolStripButton(DashboardResources.RefreshButton, null, async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null)) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh" }; 
+            var exportButton = new ToolStripButton(DashboardResources.ExportButton, null, async (s, e) => await ExportDashboard()) { Name = "Toolbar_ExportButton", AccessibleName = "Export" }; 
 
             // Auto-refresh checkbox
-            _autoRefreshCheckbox = new CheckBox { Text = "Auto-refresh (30s)", Checked = true, Padding = new Padding(5, 0, 5, 0) };
+            _autoRefreshCheckbox = new CheckBox { Name = "AutoRefreshCheckbox", Text = "Auto-refresh (30s)", Checked = true, Padding = new Padding(5, 0, 5, 0) };
             _autoRefreshCheckbox.CheckedChanged += (s, e) => ToggleAutoRefresh(_autoRefreshCheckbox.Checked);
             var autoRefreshHost = new ToolStripControlHost(_autoRefreshCheckbox);
 
@@ -111,9 +111,9 @@ namespace WileyWidget.WinForms.Forms
                 BackColor = Color.FromArgb(240, 240, 240)
             };
 
-            _municipalityLabel = new Label { Text = $"{DashboardResources.MunicipalityLabel} Loading...", AutoSize = true, Margin = new Padding(10, 5, 20, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
-            _fiscalYearLabel = new Label { Text = $"{DashboardResources.FiscalYearLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 20, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
-            _lastUpdatedLabel = new Label { Text = $"{DashboardResources.LastUpdatedLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 0, 5), Font = new Font("Segoe UI", 9) };
+            _municipalityLabel = new Label { Name = "MunicipalityLabel", Text = $"{DashboardResources.MunicipalityLabel} Loading...", AutoSize = true, Margin = new Padding(10, 5, 20, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _fiscalYearLabel = new Label { Name = "FiscalYearLabel", Text = $"{DashboardResources.FiscalYearLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 20, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _lastUpdatedLabel = new Label { Name = "LastUpdatedLabel", Text = $"{DashboardResources.LastUpdatedLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 0, 5), Font = new Font("Segoe UI", 9) }; 
 
             headerPanel.Controls.AddRange(new Control[] { _municipalityLabel, _fiscalYearLabel, _lastUpdatedLabel });
             _mainLayout.Controls.Add(headerPanel, 0, 1);
@@ -150,12 +150,14 @@ namespace WileyWidget.WinForms.Forms
             // Metrics Grid using Syncfusion SfDataGrid
             _metricsGrid = new SfDataGrid
             {
+                Name = "MetricsGrid",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = false,
                 AllowFiltering = true,
                 AllowSorting = true,
                 AllowResizingColumns = true,
+                AllowResizingHiddenColumns = true,
                 SelectionMode = GridSelectionMode.Single,
                 NavigationMode = NavigationMode.Row
             };
@@ -171,7 +173,7 @@ namespace WileyWidget.WinForms.Forms
             // Apply modern styling
             _metricsGrid.Style.HeaderStyle.BackColor = Color.FromArgb(0, 120, 215);
             _metricsGrid.Style.HeaderStyle.TextColor = Color.White;
-            _metricsGrid.Style.HeaderStyle.Font.FontFamily = "Segoe UI";
+            _metricsGrid.Style.HeaderStyle.Font.Facename = "Segoe UI";
             _metricsGrid.Style.HeaderStyle.Font.Size = 10;
             _metricsGrid.Style.HeaderStyle.Font.Bold = true;
 
@@ -256,20 +258,16 @@ namespace WileyWidget.WinForms.Forms
                             _metricsGrid.DataSource = _viewModel.Metrics;
                         break;
                     case nameof(_viewModel.TotalBudgetGauge):
-                        if (_budgetGauge != null)
-                            _budgetGauge.Value = (float)_viewModel.TotalBudgetGauge / 1000000; // In millions
+                        UpdateGaugeValueSafely(_budgetGauge, _viewModel.TotalBudgetGauge);
                         break;
                     case nameof(_viewModel.RevenueGauge):
-                        if (_revenueGauge != null)
-                            _revenueGauge.Value = (float)_viewModel.RevenueGauge / 1000000;
+                        UpdateGaugeValueSafely(_revenueGauge, _viewModel.RevenueGauge);
                         break;
                     case nameof(_viewModel.ExpensesGauge):
-                        if (_expensesGauge != null)
-                            _expensesGauge.Value = (float)_viewModel.ExpensesGauge / 1000000;
+                        UpdateGaugeValueSafely(_expensesGauge, _viewModel.ExpensesGauge);
                         break;
                     case nameof(_viewModel.NetPositionGauge):
-                        if (_netPositionGauge != null)
-                            _netPositionGauge.Value = (float)_viewModel.NetPositionGauge / 1000000;
+                        UpdateGaugeValueSafely(_netPositionGauge, _viewModel.NetPositionGauge);
                         break;
                 }
             };
@@ -288,32 +286,136 @@ namespace WileyWidget.WinForms.Forms
             {
                 try
                 {
-                    // Note: Export functionality requires additional Syncfusion assemblies
-                    // For now, provide basic export via screenshot/serialization
-                    if (dialog.FilterIndex == 1) // PDF
+                    if (_metricsGrid == null || _metricsGrid.DataSource == null)
                     {
-                        MessageBox.Show("PDF export requires additional Syncfusion PDF assemblies.\n" +
-                            "To enable PDF export, add:\n" +
-                            "- Syncfusion.Pdf.Base.dll\n" +
-                            "- Syncfusion.Compression.Base.dll\n" +
-                            "- Syncfusion.SfDataGridConverter.WinForms.dll",
-                            "Export Not Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("No data available to export. Please load the dashboard first.",
+                            "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
                     }
-                    else // Excel
+
+                    // Show progress indicator
+                    if (_loadingLabel != null)
                     {
-                        MessageBox.Show("Excel export requires additional Syncfusion Excel assemblies.\n" +
-                            "To enable Excel export, add:\n" +
-                            "- Syncfusion.XlsIO.Base.dll\n" +
-                            "- Syncfusion.Compression.Base.dll\n" +
-                            "- Syncfusion.SfDataGridConverter.WinForms.dll",
-                            "Export Not Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        _loadingLabel.Text = $"Exporting to {(dialog.FilterIndex == 1 ? "PDF" : "Excel")}...";
+                        _loadingLabel.Visible = true;
                     }
+
+                    await Task.Run(() =>
+                    {
+                        if (dialog.FilterIndex == 1) // PDF
+                        {
+                            ExportToPdf(dialog.FileName);
+                        }
+                        else // Excel
+                        {
+                            ExportToExcel(dialog.FileName);
+                        }
+                    });
+
+                    // Hide progress indicator
+                    if (_loadingLabel != null)
+                        _loadingLabel.Visible = false;
+
+                    MessageBox.Show($"Dashboard exported successfully to:\n{dialog.FileName}",
+                        "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (TypeLoadException)
+                {
+                    MessageBox.Show("Export functionality requires additional Syncfusion assemblies:\n\n" +
+                        "For PDF Export:\n" +
+                        "- Syncfusion.Pdf.Base.dll\n" +
+                        "- Syncfusion.Compression.Base.dll\n" +
+                        "- Syncfusion.SfDataGridConverter.WinForms.dll\n\n" +
+                        "For Excel Export:\n" +
+                        "- Syncfusion.XlsIO.Base.dll\n" +
+                        "- Syncfusion.Compression.Base.dll\n" +
+                        "- Syncfusion.SfDataGridConverter.WinForms.dll\n\n" +
+                        "Please add these references to enable export functionality.",
+                        "Missing Dependencies", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Export failed: {ex.Message}\n\nDetails: {ex.InnerException?.Message}",
                         "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
+                finally
+                {
+                    if (_loadingLabel != null)
+                        _loadingLabel.Visible = false;
+                }
+            }
+        }
+
+        private void ExportToPdf(string filePath)
+        {
+            // This method requires:
+            // - Syncfusion.Pdf.Base.dll
+            // - Syncfusion.Compression.Base.dll
+            // - Syncfusion.SfDataGridConverter.WinForms.dll
+            //
+            // Implementation example (requires NuGet packages):
+            // var pdfExporter = new PdfExportingOptions();
+            // pdfExporter.AutoColumnWidth = true;
+            // pdfExporter.AutoRowHeight = true;
+            // pdfExporter.ExportGroups = true;
+            // var document = _metricsGrid.ExportToPdf(pdfExporter);
+            // document.Save(filePath);
+            // document.Close(true);
+
+            throw new TypeLoadException("PDF export assemblies not loaded. See error message for required DLLs.");
+        }
+
+        private void ExportToExcel(string filePath)
+        {
+            // This method requires:
+            // - Syncfusion.XlsIO.Base.dll
+            // - Syncfusion.Compression.Base.dll
+            // - Syncfusion.SfDataGridConverter.WinForms.dll
+            //
+            // Implementation example (requires NuGet packages):
+            // var excelExporter = new ExcelExportingOptions();
+            // excelExporter.ExcelVersion = ExcelVersion.Excel2016;
+            // excelExporter.ExportingEventHandler = ExcelExportingHandler;
+            // var workbook = _metricsGrid.ExportToExcel(_metricsGrid.View, excelExporter);
+            // workbook.SaveAs(filePath);
+
+            throw new TypeLoadException("Excel export assemblies not loaded. See error message for required DLLs.");
+        }
+
+        private void UpdateGaugeValueSafely(RadialGauge? gauge, decimal value)
+        {
+            if (gauge == null)
+                return;
+
+            try
+            {
+                // Convert to millions and ensure within gauge range (0-100)
+                var normalizedValue = (float)(value / 1000000m);
+
+                // Clamp value to gauge's min/max range
+                if (normalizedValue < gauge.MinimumValue)
+                    normalizedValue = gauge.MinimumValue;
+                else if (normalizedValue > gauge.MaximumValue)
+                    normalizedValue = gauge.MaximumValue;
+
+                // Validate for NaN or Infinity
+                if (float.IsNaN(normalizedValue) || float.IsInfinity(normalizedValue))
+                {
+                    normalizedValue = 0F;
+                }
+
+                gauge.Value = normalizedValue;
+            }
+            catch (OverflowException)
+            {
+                // Value too large for float, set to max
+                gauge.Value = gauge.MaximumValue;
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't crash UI
+                System.Diagnostics.Debug.WriteLine($"Gauge update error: {ex.Message}");
+                gauge.Value = 0F;
             }
         }
 

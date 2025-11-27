@@ -1,0 +1,80 @@
+name: Monitor Merge Queue + Branch Protection
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # run hourly
+  workflow_dispatch: {}
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Monitor & Alert
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+import os, yaml, requests, sys
+repo=os.environ['REPO']
+GITHUB_TOKEN=os.environ.get('GITHUB_TOKEN')
+headers={'Accept':'application/vnd.github+json'}
+if GITHUB_TOKEN:
+    headers['Authorization']='Bearer '+GITHUB_TOKEN
+
+schema_path='.github/merge-queue-schema.yaml'
+if not os.path.exists(schema_path):
+    print('No schema file; nothing to monitor')
+    sys.exit(0)
+with open(schema_path,'r',encoding='utf-8') as f:
+    schema=yaml.safe_load(f)
+branch=schema.get('target_branch')
+if not branch:
+    print('No target branch in schema; nothing to monitor')
+    sys.exit(0)
+
+# Check branch-protection
+bp_url=f'https://api.github.com/repos/{repo}/branches/{branch}/protection'
+resp=requests.get(bp_url,headers=headers)
+if resp.status_code==404:
+    print('WARNING: branch protection missing for',branch)
+    # create an issue to notify
+    issue_title=f'Merge-queue monitoring: branch protection missing for {branch}'
+    issue_body=('Automatic monitor detected that branch protection is missing or misconfigured for {branch}. ')
+    r=requests.post(f'https://api.github.com/repos/{repo}/issues', headers=headers, json={'title': issue_title, 'body': issue_body})
+    print('Created issue to notify maintainers, status', r.status_code)
+    sys.exit(0)
+if resp.status_code!=200:
+    print('Failed to fetch branch protection',resp.status_code)
+    sys.exit(1)
+prot=resp.json()
+contexts=prot.get('required_status_checks',{}).get('contexts',[]) if prot.get('required_status_checks') else []
+required = schema.get('required_status_checks', []) or []
+missing=[c for c in required if c not in contexts]
+if missing:
+    print('ERROR: Missing required status checks in branch protection:', missing)
+    # open an issue
+    title=f'Merge-queue monitoring: missing required status checks for {branch}'
+    body=f'The merge-queue schema requires \n\n{required}\n\n but branch protection contexts are \n\n{contexts}\n\nPlease align branch protection with the schema or update the schema.'
+    requests.post(f'https://api.github.com/repos/{repo}/issues', headers=headers, json={'title': title, 'body': body})
+    sys.exit(2)
+
+# Try to verify trunk queue presence (best-effort via Trunk public page)
+queue_url=f'https://app.trunk.io/gh/{repo}/merge/{branch}'
+r=requests.get(queue_url)
+if r.status_code==200:
+    # Presence check: HTML exists. Not fail if Trunk page requires login.
+    print('Trunk merge queue page accessible (may require login).')
+else:
+    print('Trunk merge queue page not reachable or returned', r.status_code)
+
+print('Monitor completed - no problems found')
+PY

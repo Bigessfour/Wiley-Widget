@@ -1,0 +1,44 @@
+name: Validate merge queue schema
+
+on:
+  push:
+    paths:
+      - '.github/merge-queue-schema.yaml'
+  pull_request:
+    paths:
+      - '.github/merge-queue-schema.yaml'
+
+jobs:
+  validate:
+    name: Validate merge-queue schema
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Validate YAML schema
+        run: |
+          python - <<'PY'
+import sys, yaml, os
+path = '.github/merge-queue-schema.yaml'
+if not os.path.exists(path):
+    print('ERROR: schema file not found:', path)
+    sys.exit(2)
+with open(path,'r',encoding='utf-8') as f:
+    data = yaml.safe_load(f)
+required_keys = ['name','repo','target_branch','testing_mode','required_status_checks']
+missing = [k for k in required_keys if k not in data]
+if missing:
+    print('ERROR: schema missing required keys:', missing)
+    sys.exit(2)
+if not isinstance(data['required_status_checks'], list):
+    print('ERROR: required_status_checks must be a list')
+    sys.exit(2)
+print('OK: schema looks valid')
+PY

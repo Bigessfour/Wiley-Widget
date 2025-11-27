@@ -1,0 +1,74 @@
+name: CI - Linux (safe restore)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-linux-safe:
+    name: Build & Test (linux-safe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Determine cross-platform projects (avoid Windows-only)
+        id: choose
+        run: |
+          echo "Finding projects that do NOT target '-windows' ..."
+          mapfile -t projects < <(git ls-files '*.csproj')
+          safe_list=()
+          for p in "${projects[@]}"; do
+            # Check if project contains 'windows' in TargetFramework(s) or RuntimeIdentifiers
+            if grep -qiE 'windows' "$p"; then
+              echo "Skipping windows-targeted project: $p"
+            else
+              echo "Restoring: $p"
+              safe_list+=("$p")
+            fi
+          done
+
+          if [ ${#safe_list[@]} -eq 0 ]; then
+            echo "::warning file=ci-linux-safe::No cross-platform projects detected to restore. Skipping restore." 
+          else
+            # Print and export
+            printf '%s
+' "${safe_list[@]}" > restored-list.txt
+            echo "restored_projects<<EOF" >> $GITHUB_OUTPUT
+            printf '%s
+' "${safe_list[@]}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Restore cross-platform projects
+        if: steps.choose.outputs.restored_projects != ''
+        run: |
+          set -euo pipefail
+          while IFS= read -r proj; do
+            echo "Restoring $proj"
+            dotnet restore "$proj" --verbosity minimal || exit 1
+          done < <(printf '%s
+' "${{ steps.choose.outputs.restored_projects }}")
+
+      - name: Build and run tests for cross-platform test projects
+        if: steps.choose.outputs.restored_projects != ''
+        run: |
+          set -euo pipefail
+          # Run dotnet test only for test projects that don't target windows
+          mapfile -t tests < <(git ls-files '*/tests/**/*.csproj' || git ls-files 'tests/**/*.csproj')
+          for t in "${tests[@]}"; do
+            if grep -qiE 'windows' "$t"; then
+              echo "Skipping windows-targeted test project: $t"
+            else
+              echo "Testing: $t"
+              dotnet test "$t" --configuration Release --no-build || echo "Tests failed for $t" && exit 1
+            fi
+          done

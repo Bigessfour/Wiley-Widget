@@ -1,0 +1,97 @@
+name: Validate trunk config vs merge-queue schema
+
+on:
+  push:
+    paths:
+      - '.trunk/trunk.yaml'
+      - '.github/merge-queue-schema.yaml'
+  pull_request:
+    paths:
+      - '.trunk/trunk.yaml'
+      - '.github/merge-queue-schema.yaml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Validate trunk configuration and branch-protection vs schema
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+import os,sys,yaml,json,requests
+repo = os.environ['REPO']
+print('Repo:', repo)
+
+# Load schema
+s_path = '.github/merge-queue-schema.yaml'
+if not os.path.exists(s_path):
+    print('No schema file found; skipping validation')
+    sys.exit(0)
+with open(s_path,'r',encoding='utf-8') as f:
+    schema = yaml.safe_load(f)
+    print('Loaded schema target_branch:', schema.get('target_branch'))
+
+# Load trunk.yaml (if present)
+t_path = '.trunk/trunk.yaml'
+trunk_cfg = {}
+if os.path.exists(t_path):
+    with open(t_path,'r',encoding='utf-8') as f:
+        trunk_cfg = yaml.safe_load(f) or {}
+
+# Check branch protection via GitHub API for the target branch
+branch = schema.get('target_branch')
+if not branch:
+    print('ERROR: target_branch missing from schema')
+    sys.exit(2)
+
+headers = {'Accept': 'application/vnd.github+json'}
+if os.environ.get('GITHUB_TOKEN'):
+    headers['Authorization'] = 'Bearer ' + os.environ['GITHUB_TOKEN']
+
+url = f'https://api.github.com/repos/{repo}/branches/{branch}/protection'
+resp = requests.get(url, headers=headers)
+if resp.status_code == 404:
+    print('ERROR: Branch protection not found for', branch)
+    sys.exit(2)
+if resp.status_code != 200:
+    print('ERROR: failed to fetch branch protection', resp.status_code, resp.text)
+    sys.exit(2)
+prot = resp.json()
+contexts = []
+if 'required_status_checks' in prot and prot['required_status_checks']:
+    contexts = prot['required_status_checks'].get('contexts', [])
+
+required = schema.get('required_status_checks', []) or []
+missing = [c for c in required if c not in contexts]
+if missing:
+    print('ERROR: Missing required status checks in branch protection for', branch)
+    print('Required in schema:', required)
+    print('Found in branch protection:', contexts)
+    print('Missing:', missing)
+    sys.exit(2)
+
+print('OK: required status checks are present in branch protection for', branch)
+
+# Optionally check trunk.yaml required checks if present
+trunk_required = trunk_cfg.get('required_status_checks')
+if trunk_required:
+    # trunk.yaml may express differently - do a best-effort intersection
+    trunk_contexts = trunk_required.get('contexts') if isinstance(trunk_required, dict) else None
+    if trunk_contexts:
+        diff = [c for c in required if c not in trunk_contexts]
+        if diff:
+            print('WARN: Some schema-required checks are not listed in .trunk/trunk.yaml contexts:', diff)
+            # Not failing - but notify
+
+print('Validation completed successfully')
+PY
