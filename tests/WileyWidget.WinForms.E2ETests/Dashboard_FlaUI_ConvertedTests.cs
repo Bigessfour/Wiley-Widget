@@ -58,7 +58,7 @@ namespace WileyWidget.WinForms.E2ETests
         {
             EnsureInteractiveOrSkip();
             StartApp();
-            using var window = GetMainWindow();
+            var window = GetMainWindow();
 
             Assert.NotNull(window);
             Assert.True(window.Title?.IndexOf("Wiley", StringComparison.OrdinalIgnoreCase) >= 0, "Main window title should contain the app name (Wiley)");
@@ -78,7 +78,7 @@ namespace WileyWidget.WinForms.E2ETests
         {
             EnsureInteractiveOrSkip();
             StartApp();
-            using var window = GetMainWindow();
+            var window = GetMainWindow();
 
             // Find and click Export button
             var exportBtn = window.FindFirstDescendant(cf => cf.ByAutomationId("Toolbar_ExportButton").Or(cf.ByName("Export")))?.AsButton();
@@ -153,7 +153,7 @@ namespace WileyWidget.WinForms.E2ETests
         {
             EnsureInteractiveOrSkip();
             StartApp();
-            using var window = GetMainWindow();
+            var window = GetMainWindow();
 
             // Find the LastUpdated label by automation id
             var lastLabel = window.FindFirstDescendant(cf => cf.ByAutomationId("LastUpdatedLabel").Or(cf.ByName("Last Updated:")))?.AsLabel();
