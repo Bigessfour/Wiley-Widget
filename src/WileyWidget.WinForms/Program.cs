@@ -27,7 +27,7 @@ namespace WileyWidget.WinForms
                 // 🔑 Syncfusion License (check UserSecrets, then env var)
                 builder.Configuration.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly());
                 // Attempt to register license from configuration or environment variable. Do not fail startup when license is absent — allow trial mode.
-                WileyWidget.WinForms.Services.LicenseHelper.TryRegisterSyncfusionLicense(builder.Configuration, Log.Logger);
+                WileyWidget.WinForms.Services.LicenseHelper.TryRegisterSyncfusionLicense(builder.Configuration, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
 
                 // Serilog configuration - read settings from appsettings.json and configuration
                 Log.Logger = new LoggerConfiguration()
