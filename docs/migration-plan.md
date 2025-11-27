@@ -2,26 +2,53 @@
 
 ## Executive Summary
 
-**Decision:** Pivot from WinUI 3 to **WinForms + .NET 9** as the production UI framework for Wiley Widget.
+**Decision:** Pivot from WinUI 3 to **WinForms + .NET 9 + Syncfusion WinForms Controls** as the production UI framework for Wiley Widget.
 
 **Date:** November 25, 2025
 
-**Reason:** WinUI 3 unpackaged apps on .NET 9 exhibit critical XamlCompiler crashes (Microsoft.UI.Xaml #10027) that block production deployment. WinForms provides a stable, proven platform with excellent Syncfusion ecosystem support.
+**Reason:** WinUI 3 unpackaged apps on .NET 9 exhibit critical XamlCompiler crashes (Microsoft.UI.Xaml #10027) that block production deployment. **WinForms + Syncfusion provides a stable, proven platform with excellent ecosystem support.**
 
-**Status:** ✅ Complete — WinUI 3 code removed, WinForms established as mainline
+**Status:** ✅ Complete — WinUI 3 code removed, **Syncfusion WinForms established as mainline**
 
 ---
 
 ## Decision Matrix
 
-| Option | Status | Reason Chosen / Rejected |
-|--------|--------|--------------------------|
-| **WinUI 3** | ❌ **Archived** | Silent XamlCompiler crashes in unpackaged mode, Windows App SDK 1.6–1.8 version hell, no stable unpackaged path in 2025. **6+ weeks lost to toolchain issues** with no resolution. |
-| **WPF** | ❌ **Legacy** | Previously used, works reliably, but Windows-only with heavier footprint. Already migrated away in v0.5.0. |
-| **WinForms** | ✅ **ACTIVE** | **Fastest path to stable .NET 9 desktop** with mature Syncfusion WinForms ecosystem. 5–10× faster load times, zero XAML complexity, rock-solid data binding. **Production-ready today.** |
-| **Avalonia** | 🔮 **Future** | Considered for cross-platform capability. Strong XAML-based framework with growing ecosystem. **Will revisit in 2026** once maturity increases and Syncfusion support expands. |
-| **MAUI** | ⏸️ **Skipped** | Still too immature for complex desktop LOB applications. Mobile-first focus doesn't align with municipal finance desktop requirements. |
-| **Electron/Web** | ⏸️ **Not Evaluated** | Performance concerns, heavyweight runtime, not suitable for data-intensive financial applications. |
+| Option                    | Status               | Reason Chosen / Rejected                                                                                                                                                                                                  |
+| ------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **WinUI 3**               | ❌ **Archived**      | Silent XamlCompiler crashes in unpackaged mode, Windows App SDK 1.6–1.8 version hell, no stable unpackaged path in 2025. **6+ weeks lost to toolchain issues** with no resolution.                                        |
+| **WPF**                   | ❌ **Legacy**        | Previously used, works reliably, but Windows-only with heavier footprint. Already migrated away in v0.5.0.                                                                                                                |
+| **WinForms + Syncfusion** | ✅ **ACTIVE**        | **Fastest path to stable .NET 9 desktop** with **mature Syncfusion WinForms ecosystem** (Grid, Chart, Ribbon, Tools). 5–10× faster load times, zero XAML complexity, rock-solid data binding. **Production-ready today.** |
+| **Avalonia**              | 🔮 **Future**        | Considered for cross-platform capability. Strong XAML-based framework with growing ecosystem. **Will revisit in 2026** once maturity increases and Syncfusion support expands.                                            |
+| **MAUI**                  | ⏸️ **Skipped**       | Still too immature for complex desktop LOB applications. Mobile-first focus doesn't align with municipal finance desktop requirements.                                                                                    |
+| **Electron/Web**          | ⏸️ **Not Evaluated** | Performance concerns, heavyweight runtime, not suitable for data-intensive financial applications.                                                                                                                        |
+
+---
+
+## ✅ Syncfusion WinForms Package Enforcement
+
+**MANDATORY:** Use **only** these Syncfusion WinForms packages (v31.2.2+):
+
+```xml
+<!-- Directory.Packages.props - APPROVED PACKAGES ONLY -->
+<PackageVersion Include="Syncfusion.Grid.Windows" Version="31.2.2" />
+<PackageVersion Include="Syncfusion.Chart.Windows" Version="31.2.2" />
+<PackageVersion Include="Syncfusion.Shared.Base" Version="31.2.2" />
+<PackageVersion Include="Syncfusion.Licensing" Version="31.2.2" />
+<PackageVersion Include="Syncfusion.Tools.Windows" Version="31.2.2" />
+<PackageVersion Include="Syncfusion.Ribbon.Windows" Version="31.2.2" />
+```
+
+**STRICTLY PROHIBITED:**
+
+- ❌ `Syncfusion.WinUI.*` (archived)
+- ❌ `Microsoft.UI.Xaml` (archived)
+- ❌ `WindowsAppSDK` (archived)
+- ❌ `Microsoft.Maui.*` (not evaluated)
+
+**Current Status:** ✅ **Packages already clean** - No WinUI remnants detected.
+
+---
 
 ---
 
@@ -102,7 +129,7 @@ No diagnostic information available.
 
 ### 3. Native Dependency Hell
 
-**LiveCharts2 + SkiaSharp + WinUI 3 Unpackaged = 💥**
+#### LiveCharts2 + SkiaSharp + WinUI 3 Unpackaged = 💥
 
 - SkiaSharp requires `libSkiaSharp.dll` in runtime directory
 - WinUI 3 unpackaged doesn't copy native assets correctly
@@ -139,10 +166,10 @@ No diagnostic information available.
 
 **Startup Time Comparison (measured on production hardware):**
 
-| Framework | Cold Start | Warm Start | First Render |
-|-----------|-----------|------------|--------------|
-| WinUI 3 (unpackaged) | 4.2s | 2.8s | 1.6s |
-| **WinForms** | **0.4s** | **0.2s** | **0.1s** |
+| Framework            | Cold Start | Warm Start | First Render |
+| -------------------- | ---------- | ---------- | ------------ |
+| WinUI 3 (unpackaged) | 4.2s       | 2.8s       | 1.6s         |
+| **WinForms**         | **0.4s**   | **0.2s**   | **0.1s**     |
 
 **10× faster.** Users notice.
 

@@ -1,44 +1,50 @@
-using LiveChartsCore;
-using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.Painting;
-using SkiaSharp;
+using CommunityToolkit.Mvvm.ComponentModel;
+using System.Collections.ObjectModel;
 
 namespace WileyWidget.WinForms.ViewModels
 {
-    public class ChartViewModel
+    public class ChartDataPoint
     {
-        public ISeries[] ChartSeries { get; set; } = Array.Empty<ISeries>();
-        public Axis[] XAxes { get; set; } = Array.Empty<Axis>();
-        public Axis[] YAxes { get; set; } = Array.Empty<Axis>();
-        public ISeries[] PieChartSeries { get; set; } = Array.Empty<ISeries>();
+        public string Month { get; set; }
+        public double Amount { get; set; }
+    }
+
+    public class PieDataPoint
+    {
+        public string Category { get; set; }
+        // Use Amount for consistency with ChartDataPoint and the rest of the codebase
+        public double Amount { get; set; }
+    }
+
+    public partial class ChartViewModel : ObservableObject
+    {
+        [ObservableProperty]
+        private ObservableCollection<ChartDataPoint> monthlyPoints = new();
+
+        [ObservableProperty]
+        private ObservableCollection<PieDataPoint> piePoints = new();
 
         public async Task LoadChartDataAsync()
         {
             // Load your chart data here
             await Task.Delay(100); // Simulate loading
 
-            ChartSeries = new ISeries[]
+            MonthlyPoints = new ObservableCollection<ChartDataPoint>
             {
-                new LineSeries<double>
-                {
-                    Values = new double[] { 2, 1, 3, 5, 3, 4, 6 },
-                    Fill = null
-                }
+                new() { Month = "Jan", Amount = 2 },
+                new() { Month = "Feb", Amount = 1 },
+                new() { Month = "Mar", Amount = 3 },
+                new() { Month = "Apr", Amount = 5 },
+                new() { Month = "May", Amount = 3 },
+                new() { Month = "Jun", Amount = 4 },
+                new() { Month = "Jul", Amount = 6 }
             };
 
-            XAxes = new Axis[]
+            PiePoints = new ObservableCollection<PieDataPoint>
             {
-                new Axis
-                {
-                    Labels = new string[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul" }
-                }
-            };
-
-            PieChartSeries = new ISeries[]
-            {
-                new PieSeries<double> { Values = new double[] { 2 }, Name = "Category 1" },
-                new PieSeries<double> { Values = new double[] { 4 }, Name = "Category 2" },
-                new PieSeries<double> { Values = new double[] { 1 }, Name = "Category 3" }
+                new() { Category = "Category 1", Amount = 2 },
+                new() { Category = "Category 2", Amount = 4 },
+                new() { Category = "Category 3", Amount = 1 }
             };
         }
     }

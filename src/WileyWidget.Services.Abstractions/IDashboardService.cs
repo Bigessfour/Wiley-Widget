@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions
 {
@@ -9,29 +10,18 @@ namespace WileyWidget.Services.Abstractions
     public interface IDashboardService
     {
         /// <summary>
-        /// Gets dashboard data
+        /// Gets dashboard metrics
         /// </summary>
-        Task<IEnumerable<DashboardItem>> GetDashboardDataAsync();
+        Task<IEnumerable<DashboardMetric>> GetDashboardDataAsync();
 
         /// <summary>
-        /// Gets dashboard items for display
+        /// Gets dashboard summary with all data
         /// </summary>
-        Task<IEnumerable<DashboardItem>> GetDashboardItemsAsync();
+        Task<DashboardSummary> GetDashboardSummaryAsync();
 
         /// <summary>
         /// Refreshes dashboard data
         /// </summary>
         Task RefreshDashboardAsync();
-    }
-
-    /// <summary>
-    /// Represents a dashboard item
-    /// </summary>
-    public class DashboardItem
-    {
-        public string Title { get; set; } = string.Empty;
-        public string Value { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
     }
 }

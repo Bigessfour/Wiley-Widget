@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using WileyWidget.WinForms.ViewModels;
+using Syncfusion.Windows.Forms.Tools;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -25,22 +26,36 @@ namespace WileyWidget.WinForms.Forms
 
         private void InitializeComponent()
         {
-            var menu = new MenuStrip();
-            var fileMenu = new ToolStripMenuItem(MainFormResources.FileMenu);
-            var accountsMenu = new ToolStripMenuItem(MainFormResources.AccountsMenu);
-            var chartsMenu = new ToolStripMenuItem(MainFormResources.ChartsMenu);
-            var settingsMenu = new ToolStripMenuItem(MainFormResources.SettingsMenu);
-            var exitItem = new ToolStripMenuItem(MainFormResources.ExitMenu, null, (s, e) => Application.Exit());
+            // Use a lightweight ToolStrip to avoid third-party Ribbon incompatibilities
+            var toolStrip = new ToolStrip { Dock = DockStyle.Top };
 
-            accountsMenu.Click += (s, e) => new AccountsForm(Program.Services.GetRequiredService<AccountsViewModel>()).ShowDialog();
-            chartsMenu.Click += (s, e) => new ChartForm(Program.Services.GetRequiredService<ChartViewModel>()).ShowDialog();
-            settingsMenu.Click += (s, e) => new SettingsForm(Program.Services.GetRequiredService<SettingsViewModel>()).ShowDialog();
+            // File dropdown (simple) with Exit
+            var fileDrop = new ToolStripDropDownButton(MainFormResources.FileMenu);
+            var exitItem = new ToolStripMenuItem(MainFormResources.ExitMenu);
+            exitItem.Click += (s, e) => Application.Exit();
+            fileDrop.DropDownItems.Add(exitItem);
 
-            fileMenu.DropDownItems.Add(exitItem);
-            menu.Items.AddRange(new ToolStripItem[] { fileMenu, accountsMenu, chartsMenu, settingsMenu });
+            // Actions: Accounts, Charts, Settings, Dashboard
+            var accountsBtn = new ToolStripButton(MainFormResources.AccountsMenu);
+            accountsBtn.Click += (s, e) => new AccountsForm(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(Program.Services)).ShowDialog();
 
-            Controls.Add(menu);
-            MainMenuStrip = menu;
+            var chartsBtn = new ToolStripButton(MainFormResources.ChartsMenu);
+            chartsBtn.Click += (s, e) => new ChartForm(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(Program.Services)).ShowDialog();
+
+            var settingsBtn = new ToolStripButton(MainFormResources.SettingsMenu);
+            settingsBtn.Click += (s, e) => new SettingsForm(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(Program.Services)).ShowDialog();
+
+            var dashboardBtn = new ToolStripButton("Dashboard");
+            dashboardBtn.Click += (s, e) => new DashboardForm(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DashboardViewModel>(Program.Services)).ShowDialog();
+
+            toolStrip.Items.Add(fileDrop);
+            toolStrip.Items.Add(new ToolStripSeparator());
+            toolStrip.Items.Add(accountsBtn);
+            toolStrip.Items.Add(chartsBtn);
+            toolStrip.Items.Add(settingsBtn);
+            toolStrip.Items.Add(dashboardBtn);
+
+            Controls.Add(toolStrip);
 
             Size = new Size(1200, 800);
             StartPosition = FormStartPosition.CenterScreen;

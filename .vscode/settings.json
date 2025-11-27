@@ -252,5 +252,40 @@
       ],
       "icon": "terminal-cmd"
     }
-  }
+  },
+
+  // ============================================================================
+  // Microsoft SQL Server Extension Configuration
+  // ============================================================================
+  "mssql.connections": [
+    {
+      "id": "wiley-widget-local-express",
+      "server": "localhost\\SQLEXPRESS",
+      "database": "WileyWidget",
+      "authenticationType": "Integrated",
+      "profileName": "WileyWidget-Local-Express",
+      "encrypt": "optional",
+      "trustServerCertificate": true
+    },
+    {
+      "id": "wiley-widget-local-default",
+      "server": "localhost",
+      "database": "WileyWidget",
+      "authenticationType": "Integrated",
+      "profileName": "WileyWidget-Local-Default",
+      "encrypt": "optional",
+      "trustServerCertificate": true
+    },
+    {
+      "id": "wiley-widget-master",
+      "server": "localhost",
+      "database": "master",
+      "authenticationType": "Integrated",
+      "profileName": "WileyWidget-Master",
+      "encrypt": "optional",
+      "trustServerCertificate": true
+    }
+  ],
+  "mssql.logDebugInfo": false,
+  "mssql.enableConnectionPooling": true
 }

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-// using Syncfusion.WinForms.DataGrid;  // Uncomment when Syncfusion packages are installed
-// using Syncfusion.WinForms.DataGrid.Enums;  // Uncomment when Syncfusion packages are installed
+// using Syncfusion.WinForms.DataGrid;  // Temporarily disabled - namespace issue
+// using Syncfusion.Windows.Forms.Grid;  // Temporarily disabled
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using WileyWidget.WinForms.ViewModels;
@@ -31,8 +31,7 @@ namespace WileyWidget.WinForms.Forms
     public partial class AccountsForm : Form
     {
         private readonly AccountsViewModel _viewModel;
-        // private SfDataGrid _dataGrid;  // Uncomment when Syncfusion packages are installed
-        private DataGridView? _dataGrid;  // Temporary replacement, nullable to fix CS8618
+        private DataGridView _dataGrid;  // Changed from SfDataGrid
 
         public AccountsForm(AccountsViewModel viewModel)
         {
@@ -80,94 +79,85 @@ namespace WileyWidget.WinForms.Forms
             _dataGrid = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                Location = new Point(0, 50), // Below toolbar
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                Location = new Point(0, 50),
+                AutoGenerateColumns = false,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 ReadOnly = true,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false
             };
 
-            // Configure columns
+            // Standard DataGridView columns (replacement for Syncfusion Grid*Column)
             _dataGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "AccountNumber",
-                HeaderText = Resources.AccountNumberHeader,
                 DataPropertyName = "AccountNumber",
+                HeaderText = Resources.AccountNumberHeader,
                 Width = 120
             });
 
             _dataGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Name",
-                HeaderText = Resources.AccountNameHeader,
                 DataPropertyName = "Name",
+                HeaderText = Resources.AccountNameHeader,
                 Width = 200
             });
 
             _dataGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Description",
-                HeaderText = Resources.DescriptionHeader,
                 DataPropertyName = "Description",
+                HeaderText = Resources.DescriptionHeader,
                 Width = 250
             });
 
             _dataGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Type",
-                HeaderText = Resources.TypeHeader,
                 DataPropertyName = "Type",
+                HeaderText = Resources.TypeHeader,
                 Width = 100
             });
 
             _dataGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Fund",
-                HeaderText = Resources.FundHeader,
                 DataPropertyName = "Fund",
+                HeaderText = Resources.FundHeader,
                 Width = 100
             });
 
             _dataGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Balance",
-                HeaderText = Resources.BalanceHeader,
                 DataPropertyName = "Balance",
+                HeaderText = Resources.BalanceHeader,
                 Width = 120,
-                DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                DefaultCellStyle = { Format = "C2" }
             });
 
             _dataGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "BudgetAmount",
-                HeaderText = Resources.BudgetAmountHeader,
                 DataPropertyName = "BudgetAmount",
+                HeaderText = Resources.BudgetAmountHeader,
                 Width = 120,
-                DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                DefaultCellStyle = { Format = "C2" }
             });
 
             _dataGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Department",
-                HeaderText = Resources.DepartmentHeader,
                 DataPropertyName = "Department",
+                HeaderText = Resources.DepartmentHeader,
                 Width = 150
             });
 
             _dataGrid.Columns.Add(new DataGridViewCheckBoxColumn
             {
-                Name = "IsActive",
-                HeaderText = Resources.ActiveHeader,
                 DataPropertyName = "IsActive",
+                HeaderText = Resources.ActiveHeader,
                 Width = 80
             });
 
             _dataGrid.Columns.Add(new DataGridViewCheckBoxColumn
             {
-                Name = "HasParent",
-                HeaderText = Resources.HasParentHeader,
                 DataPropertyName = "HasParent",
+                HeaderText = Resources.HasParentHeader,
                 Width = 100
             });
 
@@ -179,7 +169,7 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
-                _dataGrid!.DataSource = new BindingSource { DataSource = _viewModel.Accounts };
+                _dataGrid.DataSource = _viewModel.Accounts;
             }
             catch (Exception ex)
             {
@@ -199,7 +189,7 @@ namespace WileyWidget.WinForms.Forms
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            // DataGridView handles docking automatically
+            // SfDataGrid handles docking automatically
         }
     }
 }

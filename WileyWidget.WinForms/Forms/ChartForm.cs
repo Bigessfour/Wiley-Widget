@@ -1,4 +1,4 @@
-using LiveChartsCore.SkiaSharpView.WinForms;
+using Syncfusion.Windows.Forms.Chart;
 using System.Diagnostics.CodeAnalysis;
 using WileyWidget.WinForms.ViewModels;
 
@@ -24,24 +24,50 @@ namespace WileyWidget.WinForms.Forms
 
         private void InitializeComponent()
         {
-            var cartesian = new CartesianChart
+            // Create a Syncfusion ChartControl for WinForms and populate it with series
+            var chartControl = new ChartControl
             {
-                Series = _vm.ChartSeries,
-                XAxes = _vm.XAxes,
-                YAxes = _vm.YAxes,
                 Dock = DockStyle.Fill
             };
 
-            var pie = new PieChart
+            // Line series for monthly points
+            var lineSeries = new ChartSeries
             {
-                Series = _vm.PieChartSeries,
+                Name = "Monthly",
+                Type = ChartSeriesType.Line
+            };
+
+            foreach (var p in _vm.MonthlyPoints)
+            {
+                var pt = new ChartPoint { Category = p.Month, YValues = new double[] { p.Amount } };
+                lineSeries.Points.Add(pt);
+            }
+
+            chartControl.Series.Add(lineSeries);
+
+            // Pie series for distribution
+            var pieSeries = new ChartSeries
+            {
+                Name = "Distribution",
+                Type = ChartSeriesType.Pie
+            };
+
+            foreach (var p in _vm.PiePoints)
+            {
+                var pt = new ChartPoint { Category = p.Category, YValues = new double[] { p.Amount } };
+                pieSeries.Points.Add(pt);
+            }
+
+            var pieChart = new ChartControl
+            {
                 Dock = DockStyle.Bottom,
                 Height = 300
             };
+            pieChart.Series.Add(pieSeries);
 
             var split = new SplitContainer { Dock = DockStyle.Fill };
-            split.Panel1.Controls.Add(cartesian);
-            split.Panel2.Controls.Add(pie);
+            split.Panel1.Controls.Add(chartControl);
+            split.Panel2.Controls.Add(pieChart);
 
             Controls.Add(split);
             Size = new Size(1000, 700);
