@@ -157,6 +157,12 @@ jobs:
       - name: Test - Integration Tests (with coverage)
         shell: powershell
         run: |
+          # Guard: integration tests require QuickBooks/3rd-party secrets. If the necessary secrets are not present, skip gracefully in PRs/forks.
+          if (-not $env:QBO_CLIENT_ID -or -not $env:QBO_CLIENT_SECRET) {
+            Write-Warning "Skipping integration tests: required secrets (QBO_CLIENT_ID/QBO_CLIENT_SECRET) not present in environment. Set repository secrets or run from main for integration checks."
+            exit 0
+          }
+
           $maxAttempts=2
           for ($i=1; $i -le $maxAttempts; $i++) {
             try {
