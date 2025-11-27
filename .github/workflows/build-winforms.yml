@@ -22,6 +22,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore WileyWidget.sln
 
+      - name: Restore NuGet Packages
+        run: dotnet restore WileyWidget.sln --configuration Release
+
       - name: Build WinForms Application
         run: dotnet build WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore
 
