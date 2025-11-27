@@ -22,13 +22,14 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
-      - name: Restore dependencies
-        run: dotnet restore WileyWidget.sln
+      - name: Clear NuGet caches
+        run: dotnet nuget locals all --clear
 
-
+      - name: Restore NuGet packages
+        run: dotnet restore ./WileyWidget.sln --verbosity minimal
 
       - name: Build WinForms Application
-        run: dotnet build WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore /p:Platform="Any CPU"
+        run: dotnet build ./WileyWidget.sln --configuration Release --no-restore --verbosity minimal
 
       - name: Run Unit Tests
         run: dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --no-build --verbosity normal
