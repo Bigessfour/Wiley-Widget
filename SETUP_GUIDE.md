@@ -223,6 +223,28 @@ Environment Variables (Migration Source)
 
 ```powershell
 # QuickBooks Integration (Optional)
+
+## CI / GitHub Actions Secrets — quick reference
+
+Some CI jobs and integration tests rely on repository secrets. As a solo developer you can add these to the repo using `gh` (GitHub CLI), or via GitHub → Settings → Secrets → Actions.
+
+The repository expects the following secret names (used throughout tests and startup code):
+
+- `QBO_CLIENT_ID` — QuickBooks OAuth Client ID
+- `QBO_CLIENT_SECRET` — QuickBooks OAuth Client Secret
+- `QBO_REALM_ID` — QuickBooks company/realm id (used when testing API access)
+- `SYNCFUSION_LICENSE_KEY` — Syncfusion license key for WinForms controls (optional for local runs)
+- `XAI_API_KEY` — xAI / Grok API key (optional; null-AI fallbacks exist)
+- `MSSQL_TEST_CONNECTION` — Integration test database connection (only required for integration tests)
+- `WW_CONNECTION_STRING` — Alternative connection string placeholder if used by CI tasks
+
+Notes:
+- For security, avoid placing secrets directly in files or source control.
+- PRs from forks cannot access repository secrets — keep integration tests behind guards or mock external calls when possible.
+
+Local helper: `scripts/setup/add-github-secrets.ps1` — an interactive helper that uses `gh secret set` (recommended) to add these secrets safely.
+
+
 [System.Environment]::SetEnvironmentVariable('QBO_CLIENT_ID', 'YOUR_CLIENT_ID', 'User')
 [System.Environment]::SetEnvironmentVariable('QBO_CLIENT_SECRET', 'YOUR_CLIENT_SECRET', 'User')
 [System.Environment]::SetEnvironmentVariable('QBO_REDIRECT_URI', 'http://localhost:8080/callback', 'User')
