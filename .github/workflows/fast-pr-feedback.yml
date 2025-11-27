@@ -1,0 +1,50 @@
+name: Fast PR Feedback
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  fast-check:
+    name: Fast PR checks (lint, trunk, quick-tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trunk check (fast)
+        uses: trunk-io/trunk-action@v1
+        with:
+          arguments: --ci --no-upload --focus=lint
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: dotnet format (whitespace only)
+        run: dotnet format --verify-no-changes || true
+
+      - name: Restore (fast)
+        run: dotnet restore WileyWidget.sln --verbosity minimal -clp:Summary
+
+      - name: Quick build (core libraries only)
+        run: dotnet build src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj --no-restore --verbosity minimal
+
+      - name: Quick unit tests
+        run: dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --no-build --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+
+      - name: Upload quick-test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fast-pr-results
+          path: ./TestResults || .
+          retention-days: 3
+
+      - name: Optional: run additional static checks
+        run: |
+          # can add quick static checks or script analyzers
+          echo "No additional fast checks configured; customize as needed"
