@@ -97,6 +97,8 @@
     <PackageVersion Include="Syncfusion.WinForms.DataGrid" Version="27.2.2" />
     <PackageVersion Include="Syncfusion.WinForms.Gauge" Version="27.2.2" />
     <PackageVersion Include="Syncfusion.WinForms.Input" Version="27.2.2" />
+    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="27.2.2" />
+    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="27.2.2" />
     <!-- Other safe ones you probably have -->
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
