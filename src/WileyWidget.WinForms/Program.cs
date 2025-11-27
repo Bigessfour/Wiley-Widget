@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Serilog;
+using Serilog.Extensions.Logging;
 using Syncfusion.Licensing;
 using System;
 using System.Windows.Forms;
@@ -37,8 +38,8 @@ namespace WileyWidget.WinForms
                 // Attach Serilog to DI so DI-resolved loggers are wired up
                 // HostApplicationBuilder doesn't expose .Host in this runtime; add Serilog through AddLogging
                 // Attach Serilog to the host so DI-resolved loggers are wired up and Serilog is the primary logger
-                // Using Host.UseSerilog is safer here than calling AddSerilog on the logging builder.
-                builder.Host.UseSerilog(Log.Logger, dispose: true);
+                // Use a Serilog logger provider on the ILoggingBuilder - avoids Host/HostApplicationBuilder differences across SDKs
+                builder.Services.AddLogging(lb => lb.AddProvider(new SerilogLoggerProvider(Log.Logger, dispose: true)));
 
                 // 💉 DI - ✅ MCP-validated patterns
                 // Use existing DependencyInjection configuration
