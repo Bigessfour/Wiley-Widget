@@ -14,7 +14,7 @@ namespace WileyWidget.Services.Tests.Integration;
 /// <summary>
 /// Integration tests for dashboard E2E flow: Repository → Service → ViewModel
 /// </summary>
-public class DashboardE2ETests : IDisposable
+sealed public class DashboardE2ETests : IDisposable
 {
     private readonly AppDbContext _context;
     private readonly IDashboardRepository _repository;
