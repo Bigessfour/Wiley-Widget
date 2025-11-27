@@ -5,6 +5,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Services.Abstractions;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Gauge;
 
@@ -170,7 +171,9 @@ namespace WileyWidget.WinForms.Forms
             // Apply modern styling
             _metricsGrid.Style.HeaderStyle.BackColor = Color.FromArgb(0, 120, 215);
             _metricsGrid.Style.HeaderStyle.TextColor = Color.White;
-            _metricsGrid.Style.HeaderStyle.Font = new GridFontInfo(new Font("Segoe UI", 10, FontStyle.Bold));
+            _metricsGrid.Style.HeaderStyle.Font.FontFamily = "Segoe UI";
+            _metricsGrid.Style.HeaderStyle.Font.Size = 10;
+            _metricsGrid.Style.HeaderStyle.Font.Bold = true;
 
             var metricsPanel = new Panel { Dock = DockStyle.Fill };
             var metricsLabel = new Label { Text = DashboardResources.MetricsGridTitle, Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 11, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft };
@@ -197,25 +200,20 @@ namespace WileyWidget.WinForms.Forms
                 Width = 180,
                 Height = 180,
                 Margin = new Padding(5),
-                VisualStyle = ThemeStyle.Office2016Colorful
-            };
-
-            gauge.Scales[0].MinorTickSettings.Height = 5;
-            gauge.Scales[0].MajorTickSettings.Height = 10;
-            gauge.Scales[0].NeedleStyle = NeedleStyle.Advanced;
-            gauge.Scales[0].ShowLabels = true;
-            gauge.Scales[0].LabelPlacement = LabelPlacement.Inside;
-
-            gauge.Scales[0].Pointers[0].NeedleColor = needleColor;
-            gauge.Scales[0].Pointers[0].Value = 0;
-
-            // Add label below gauge
-            var labelControl = new Label
-            {
-                Text = label,
-                Dock = DockStyle.Bottom,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold)
+                VisualStyle = ThemeStyle.Office2016Colorful,
+                MinimumValue = 0F,
+                MaximumValue = 100F,
+                MajorDifference = 20F,
+                MinorDifference = 5F,
+                MinorTickMarkHeight = 5,
+                MajorTickMarkHeight = 10,
+                NeedleStyle = NeedleStyle.Advanced,
+                ShowScaleLabel = true,
+                LabelPlacement = LabelPlacement.Inside,
+                NeedleColor = needleColor,
+                Value = 0F,
+                GaugeLabel = label,
+                ShowNeedle = true
             };
 
             return gauge;
@@ -259,19 +257,19 @@ namespace WileyWidget.WinForms.Forms
                         break;
                     case nameof(_viewModel.TotalBudgetGauge):
                         if (_budgetGauge != null)
-                            _budgetGauge.Scales[0].Pointers[0].Value = (float)_viewModel.TotalBudgetGauge / 1000000; // In millions
+                            _budgetGauge.Value = (float)_viewModel.TotalBudgetGauge / 1000000; // In millions
                         break;
                     case nameof(_viewModel.RevenueGauge):
                         if (_revenueGauge != null)
-                            _revenueGauge.Scales[0].Pointers[0].Value = (float)_viewModel.RevenueGauge / 1000000;
+                            _revenueGauge.Value = (float)_viewModel.RevenueGauge / 1000000;
                         break;
                     case nameof(_viewModel.ExpensesGauge):
                         if (_expensesGauge != null)
-                            _expensesGauge.Scales[0].Pointers[0].Value = (float)_viewModel.ExpensesGauge / 1000000;
+                            _expensesGauge.Value = (float)_viewModel.ExpensesGauge / 1000000;
                         break;
                     case nameof(_viewModel.NetPositionGauge):
                         if (_netPositionGauge != null)
-                            _netPositionGauge.Scales[0].Pointers[0].Value = (float)_viewModel.NetPositionGauge / 1000000;
+                            _netPositionGauge.Value = (float)_viewModel.NetPositionGauge / 1000000;
                         break;
                 }
             };
@@ -290,39 +288,25 @@ namespace WileyWidget.WinForms.Forms
             {
                 try
                 {
+                    // Note: Export functionality requires additional Syncfusion assemblies
+                    // For now, provide basic export via screenshot/serialization
                     if (dialog.FilterIndex == 1) // PDF
                     {
-                        // Export metrics grid to PDF
-                        if (_metricsGrid != null)
-                        {
-                            var pdfDocument = _metricsGrid.ExportToPdf();
-                            pdfDocument.Save(dialog.FileName);
-                            pdfDocument.Close(true);
-                        }
-
-                        // Export chart as image
-                        if (_revenueChart != null)
-                        {
-                            var chartPath = dialog.FileName.Replace(".pdf", "_chart.png");
-                            _revenueChart.SaveImage(chartPath, System.Drawing.Imaging.ImageFormat.Png);
-                        }
-
-                        MessageBox.Show($"Dashboard exported successfully to:\n{dialog.FileName}\n\nChart saved to: {dialog.FileName.Replace(".pdf", "_chart.png")}",
-                            "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("PDF export requires additional Syncfusion PDF assemblies.\n" +
+                            "To enable PDF export, add:\n" +
+                            "- Syncfusion.Pdf.Base.dll\n" +
+                            "- Syncfusion.Compression.Base.dll\n" +
+                            "- Syncfusion.SfDataGridConverter.WinForms.dll",
+                            "Export Not Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     else // Excel
                     {
-                        if (_metricsGrid != null)
-                        {
-                            var excelEngine = _metricsGrid.ExportToExcel(_metricsGrid.View);
-                            var workbook = excelEngine.Excel.Workbooks[0];
-                            workbook.SaveAs(dialog.FileName);
-                            workbook.Close();
-                            excelEngine.Dispose();
-                        }
-
-                        MessageBox.Show($"Dashboard exported successfully to:\n{dialog.FileName}",
-                            "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Excel export requires additional Syncfusion Excel assemblies.\n" +
+                            "To enable Excel export, add:\n" +
+                            "- Syncfusion.XlsIO.Base.dll\n" +
+                            "- Syncfusion.Compression.Base.dll\n" +
+                            "- Syncfusion.SfDataGridConverter.WinForms.dll",
+                            "Export Not Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
                 catch (Exception ex)

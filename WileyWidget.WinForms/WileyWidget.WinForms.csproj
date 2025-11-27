@@ -63,9 +63,6 @@
     <PackageReference Include="Polly" />
     <PackageReference Include="IppOAuth2PlatformSdk" />
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Syncfusion.Grid.Windows" />
     <PackageReference Include="Syncfusion.Chart.Windows" />
     <PackageReference Include="Syncfusion.Shared.Base" />
