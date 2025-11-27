@@ -71,9 +71,9 @@
     <PackageReference Include="Syncfusion.Shared.Base" />
     <PackageReference Include="Syncfusion.Licensing" />
     <PackageReference Include="Syncfusion.Tools.Windows" />
-    <PackageReference Include="Syncfusion.WinForms.DataGrid" />
-    <PackageReference Include="Syncfusion.WinForms.Gauge" />
-    <PackageReference Include="Syncfusion.WinForms.Input" />
+    <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
+    <PackageReference Include="Syncfusion.Gauge.Windows" />
+    <PackageReference Include="Syncfusion.SfInput.WinForms" />
     <PackageReference Include="Syncfusion.Pdf.WinForms" />
     <PackageReference Include="Syncfusion.XlsIO.WinForms" />
   </ItemGroup>

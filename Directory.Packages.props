@@ -94,9 +94,9 @@
     <PackageVersion Include="Syncfusion.Shared.Base" Version="27.2.2" />
     <PackageVersion Include="Syncfusion.Licensing" Version="27.2.2" />
     <PackageVersion Include="Syncfusion.Tools.Windows" Version="27.2.2" />
-    <PackageVersion Include="Syncfusion.WinForms.DataGrid" Version="27.2.2" />
-    <PackageVersion Include="Syncfusion.WinForms.Gauge" Version="27.2.2" />
-    <PackageVersion Include="Syncfusion.WinForms.Input" Version="27.2.2" />
+    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="27.2.2" />
+    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="27.2.2" />
+    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="27.2.2" />
     <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="27.2.2" />
     <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="27.2.2" />
     <!-- Other safe ones you probably have -->
