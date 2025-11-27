@@ -87,11 +87,24 @@
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="FluentAssertions" Version="7.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+
+    <!-- UI Automation (FlaUI) packages -->
+    <PackageVersion Include="FlaUI.Core" Version="4.1.0" />
+    <PackageVersion Include="FlaUI.UIA3" Version="4.1.0" />
+
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-    <PackageVersion Include="LiveChartsCore.SkiaSharpView.WinForms" Version="2.0.0-rc2" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="3.116.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.WinUI" Version="3.116.1" />
+    <!-- Syncfusion WinForms packages v31.2.15 (public NuGet) -->
+    <PackageVersion Include="Syncfusion.Grid.Windows" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.Chart.Windows" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.Shared.Base" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.Tools.Windows" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="31.2.15" />
     <!-- Other safe ones you probably have -->
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
