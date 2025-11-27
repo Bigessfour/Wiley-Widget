@@ -26,10 +26,12 @@ jobs:
         run: dotnet nuget locals all --clear
 
       - name: Restore NuGet packages
-        run: dotnet restore ./WileyWidget.sln --verbosity minimal
+        run: dotnet restore WileyWidget.sln --verbosity minimal
+        working-directory: ${{ github.workspace }}
 
       - name: Build WinForms Application
-        run: dotnet build ./WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+        working-directory: ${{ github.workspace }}
 
       - name: Run Unit Tests
         run: dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --no-build --verbosity normal
