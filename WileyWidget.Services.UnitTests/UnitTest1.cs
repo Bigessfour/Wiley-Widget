@@ -57,7 +57,7 @@ namespace WileyWidget.Services.UnitTests
         {
             // Act - Verify the method exists via reflection
             var method = typeof(QuickBooksService).GetMethod("GetInvoicesAsync");
-            
+
             // Assert
             method.Should().NotBeNull();
             method!.ReturnType.Should().Be(typeof(Task<List<Intuit.Ipp.Data.Invoice>>));
