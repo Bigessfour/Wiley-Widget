@@ -57,7 +57,11 @@ jobs:
       - name: Clear NuGet caches (best-effort)
         run: |
           # Clearing caches sometimes fails if disk locked — ignore failures
-          dotnet nuget locals all --clear || Write-Host 'clear caches failed - continuing'
+          try {
+            dotnet nuget locals all --clear
+          } catch {
+            Write-Host 'clear caches failed - continuing'
+          }
 
       - name: Restore NuGet packages (retry)
         shell: powershell
@@ -67,9 +71,14 @@ jobs:
           do {
             $attempt++
             Write-Host "dotnet restore attempt $attempt"
-            dotnet restore WileyWidget.sln --verbosity minimal -clp:PerformanceSummary && break
+            dotnet restore WileyWidget.sln --verbosity minimal -clp:PerformanceSummary
+            if ($LASTEXITCODE -eq 0) { break }
             Start-Sleep -Seconds (5 * $attempt)
           } while ($attempt -lt $maxAttempts)
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "dotnet restore failed after $attempt attempts"
+            exit 1
+          }
 
       - name: Build WinForms Application
         run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
@@ -129,7 +138,8 @@ jobs:
         shell: powershell
         run: |
           # Install reportgenerator in a non-interactive way and ensure it's available in PATH
-          dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.1.23 || Write-Host 'reportgenerator already installed'
+          dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.1.23
+          if ($LASTEXITCODE -ne 0) { Write-Host 'reportgenerator already installed' }
           $toolsPath = "$env:USERPROFILE\.dotnet\tools"
           $env:PATH = "$toolsPath;$env:PATH"
 
