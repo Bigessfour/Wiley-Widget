@@ -13,6 +13,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
@@ -23,10 +26,10 @@ jobs:
         run: dotnet restore WileyWidget.sln
 
       - name: Restore NuGet Packages
-        run: dotnet restore WileyWidget.sln --configuration Release
+        run: dotnet restore WileyWidget.sln
 
       - name: Build WinForms Application
-        run: dotnet build WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore
+        run: dotnet build WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore /p:Platform="Any CPU"
 
       - name: Run Unit Tests
         run: dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --no-build --verbosity normal
