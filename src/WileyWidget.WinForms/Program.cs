@@ -38,8 +38,9 @@ namespace WileyWidget.WinForms
                 // Attach Serilog to DI so DI-resolved loggers are wired up
                 // HostApplicationBuilder doesn't expose .Host in this runtime; add Serilog through AddLogging
                 // Attach Serilog to the host so DI-resolved loggers are wired up and Serilog is the primary logger
-                // Use a Serilog logger provider on the ILoggingBuilder - avoids Host/HostApplicationBuilder differences across SDKs
-                builder.Services.AddLogging(lb => lb.AddProvider(new SerilogLoggerProvider(Log.Logger, dispose: true)));
+                // NOTE: intentionally not attaching Serilog as a DI logging provider here to avoid SDK/API conflicts
+                // If you want DI-resolved Microsoft.Extensions logging backed by Serilog, enable UseSerilog / AddSerilog after checking runtime SDK compatibility.
+                // For CI and tests we rely on `Log.Logger` for structured logging instead of wiring the provider here.
 
                 // 💉 DI - ✅ MCP-validated patterns
                 // Use existing DependencyInjection configuration
