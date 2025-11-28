@@ -150,6 +150,11 @@
   // PowerShell Configuration
   // ============================================================================
   "powershell.scriptAnalysis.enable": true,
+
+  // Wiley-Widget: enable Copilot/MCP terminal sentinel for this workspace (opt-in)
+  // Set to true to add an environment variable in terminals which will enable the
+  // sentinel loader in `.vscode/profile.ps1`.
+  "wileywidget.enableCopilotSentinel": false,
   "powershell.codeFormatting.preset": "OTBS",
 
   // ============================================================================
@@ -185,16 +190,24 @@
   // Spell Checker Configuration
   // ============================================================================
   "cSpell.words": [
+    "Argb",
+    "AUTOCONSTRUCT",
+    "CONNECTIONSTRING",
     "csdevkit",
     "csproj",
     "dotnet",
+    "FormsBorderStyle",
+    "GASB",
+    "OPTOUT",
+    "Payables",
+    "Segoe",
+    "SfChart",
+    "SfDataGrid",
+    "sqlsrv",
     "Syncfusion",
     "Wiley",
     "WileyWidget",
-    "winforms",
-    "SfDataGrid",
-    "SfChart",
-    "FormsBorderStyle"
+    "winforms"
   ],
   "cSpell.enableFiletypes": [
     "csharp",
@@ -242,9 +255,9 @@
   "files.maxMemoryForLargeFilesMB": 16384,
 
   // ============================================================================
-  // Terminal Configuration
+  // Terminal Configuration — enhanced profiles for development
   // ============================================================================
-  "terminal.integrated.defaultProfile.windows": "PowerShell (venv)",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "source": "PowerShell",
@@ -252,8 +265,58 @@
     },
     "PowerShell (venv)": {
       "source": "PowerShell",
-      "args": ["-NoExit", "-ExecutionPolicy", "Bypass", "-Command", "& \"${workspaceFolder}\\.venv\\Scripts\\Activate.ps1\""],
+      "args": [
+        "-NoExit",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\.vscode\\startup.ps1"
+      ],
       "icon": "terminal-powershell"
+    },
+    "PowerShell Dev": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell",
+      "args": [
+        "-NoExit",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\.vscode\\startup.ps1"
+      ]
+    },
+    "PowerShell Dev (venv)": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell",
+      "args": [
+        "-NoExit",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\.vscode\\startup.ps1"
+      ]
+    },
+    "Python Dev": {
+      "source": "PowerShell",
+      "icon": "terminal-python",
+      "args": [
+        "-NoExit",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "if (Test-Path \"${workspaceFolder}\\.venv\\Scripts\\Activate.ps1\") { & \"${workspaceFolder}\\.venv\\Scripts\\Activate.ps1\" } ; Write-Host \"Python dev terminal: venv activated (if available)\""
+      ]
+    },
+    "Docker PS": {
+      "source": "PowerShell",
+      "icon": "beaker",
+      "args": [
+        "-NoExit",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Write-Host \"Docker dev terminal (attach to containers or run docker commands)\""
+      ]
     },
     "Command Prompt": {
       "path": [
@@ -263,6 +326,31 @@
     }
   },
   "terminal.integrated.env.windows": {
-    "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}"
+    "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
+    "NODE_ENV": "development",
+    // Workspace toggle value is mapped into this env var so an opt-in is easy.
+    // When `wileywidget.enableCopilotSentinel` is true this will be set to "true".
+    "WW_COPILOT_ENABLE": "${config:wileywidget.enableCopilotSentinel}"
+  },
+  "terminal.integrated.automationProfile.windows": {
+    "source": "PowerShell",
+    "args": [
+      "-NoExit",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      "if (Test-Path \"${workspaceFolder}\\.vscode\\profile.ps1\") { . \"${workspaceFolder}\\.vscode\\profile.ps1\" }"
+    ]
+  },
+  "terminal.integrated.gpuAcceleration": "auto",
+  "terminal.integrated.fontFamily": "Cascadia Code, Consolas, 'Courier New', monospace",
+  "terminal.integrated.scrollback": 5000,
+  "chat.mcp.serverSampling": {
+    "Wiley-Widget/.vscode/mcp.json: syncfusion-docs": {
+      "allowedModels": [
+        "copilot/claude-sonnet-4.5",
+        "xai/grok-4-1-fast-reasoning"
+      ]
+    }
   }
 }

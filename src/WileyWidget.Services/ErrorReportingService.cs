@@ -332,12 +332,12 @@ public class ErrorReportingService
     /// </summary>
     public void ReportWarning(string message, string context = null, string correlationId = null)
     {
-          if (message is null) throw new ArgumentNullException(nameof(message));
-          correlationId ??= Guid.NewGuid().ToString();
+        if (message is null) throw new ArgumentNullException(nameof(message));
+        correlationId ??= Guid.NewGuid().ToString();
 
-          Log.ForContext("CorrelationId", correlationId)
-              .ForContext("Context", context ?? "Unknown")
-              .Warning("Warning in {Context}: {Message}", context, message);
+        Log.ForContext("CorrelationId", correlationId)
+            .ForContext("Context", context ?? "Unknown")
+            .Warning("Warning in {Context}: {Message}", context, message);
     }
 
     /// <summary>

@@ -2411,6 +2411,32 @@ Diagnostics & common gotchas:
 
 ## Contributing & Workflow (Single-Dev Friendly)
 
+### Script Verification Protocol
+
+This repository enforces the canonical scripting decision tree and verification guidelines found in `.continue/rules/scripting-language-decision-tree.md`. All scripts (any `**/*.py` and `**/*.ps1` files, and scripts under `scripts/`) MUST include the verification block described in that rule before being executed or merged.
+
+Quick checklist (must be included within the script via a prominent comment block and validated in CI / pre-commit):
+
+1. Lint/Analyze: provide analyzer command (e.g., `pylint script.py` or `Invoke-ScriptAnalyzer script.ps1`).
+2. Dry-Run: implement a `--dry-run` flag (Python) or call with `-WhatIf` / `-Confirm` (PowerShell) to simulate behavior.
+3. Tests: include unit or smoke tests (pytest for Python / Pester for PowerShell) alongside the script or in `scripts/tests`.
+4. Manual Verification: provide example inputs and expected outputs and a short checklist for any reviewer.
+
+Sample verification header (copy into new scripts):
+
+```
+# Verification Required Before Running:
+# 1. Lint/Analyze: pylint scripts/my_script.py
+# 2. Dry-Run: python scripts/my_script.py --dry-run /path/to/example
+# 3. Tests: python -m pytest scripts/tests/test_my_script.py
+# 4. Confirm: verify dry-run output & no destructive changes before running for real
+# Do NOT run in production without completing these steps.
+```
+
+Why this matters: automated verification reduces the "worked on my machine / broke in CI/production" risk, ensures scripts are safe to run (especially those that modify files or systems), and gives reviewers concrete test artifacts to validate during reviews.
+
+(See `.continue/rules/scripting-language-decision-tree.md` for the full canonical decision tree and enforcement guidance.)
+
 Even as a solo developer, a light process keeps history clean and releases reproducible.
 
 Branching (Simple)

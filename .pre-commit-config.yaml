@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: verify-script-header
+        name: Verify script verification header
+        entry: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/hooks/verify-script-header.ps1
+        language: system
+        files: ^(scripts\/.*\.(py|ps1)|.*\.(py|ps1))$
+        stages: [commit]

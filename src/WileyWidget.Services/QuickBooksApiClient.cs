@@ -8,6 +8,7 @@ using Intuit.Ipp.DataService;
 using Intuit.Ipp.QueryFilter;
 using Intuit.Ipp.Security;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Services.Abstractions.Models;
 
 namespace WileyWidget.Services
 {
@@ -151,15 +152,69 @@ namespace WileyWidget.Services
             }
         }
 
-        // TODO: Re-enable when Budget type is available or custom implementation is created
-        /*
-        public async Task<List<Budget>> GetBudgetsAsync()
+        /// <summary>
+        /// Fetch budgets from QuickBooks and convert them to app-friendly DTOs.
+        /// This avoids a hard dependency on Intuit's Budget type and provides a stable surface area for the app.
+        /// </summary>
+        public async Task<List<QuickBooksBudget>> GetBudgetsAsync()
         {
             try
             {
                 await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
-                return p.Ds.FindAll(new Budget(), 1, 100).ToList();
+
+                // Use QueryService<object> to retrieve budget objects and map them via reflection to our DTO
+                var qs = new QueryService<object>(p.Ctx);
+                var raw = qs.ExecuteIdsQuery("SELECT * FROM Budget").ToList();
+
+                var results = new List<QuickBooksBudget>();
+                foreach (var item in raw)
+                {
+                    if (item == null) continue;
+                    try
+                    {
+                        var t = item.GetType();
+                        string? id = t.GetProperty("Id")?.GetValue(item)?.ToString()
+                                     ?? t.GetProperty("BudgetId")?.GetValue(item)?.ToString();
+                        string? name = t.GetProperty("Name")?.GetValue(item)?.ToString();
+
+                        DateTime? start = null;
+                        var startProp = t.GetProperty("StartDate") ?? t.GetProperty("Start");
+                        if (startProp?.GetValue(item) is DateTime sd) start = sd;
+                        else if (startProp?.GetValue(item) is string sdStr && DateTime.TryParse(sdStr, out var sdParsed)) start = sdParsed;
+
+                        DateTime? end = null;
+                        var endProp = t.GetProperty("EndDate") ?? t.GetProperty("End");
+                        if (endProp?.GetValue(item) is DateTime ed) end = ed;
+                        else if (endProp?.GetValue(item) is string edStr && DateTime.TryParse(edStr, out var edParsed)) end = edParsed;
+
+                        decimal? total = null;
+                        var amountProp = t.GetProperty("TotalAmount") ?? t.GetProperty("Amount") ?? t.GetProperty("BudgetAmount");
+                        if (amountProp?.GetValue(item) is decimal d) total = d;
+                        else if (amountProp?.GetValue(item) is double dd) total = Convert.ToDecimal(dd);
+                        else if (amountProp?.GetValue(item) is string s && decimal.TryParse(s, out var dp)) total = dp;
+
+                        var notesProp = t.GetProperty("Notes") ?? t.GetProperty("Description");
+                        var notes = notesProp?.GetValue(item)?.ToString();
+
+                        results.Add(new QuickBooksBudget
+                        {
+                            Id = id,
+                            Name = name,
+                            StartDate = start,
+                            EndDate = end,
+                            TotalAmount = total,
+                            Notes = notes
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse a budget object from QBO — continuing with next item");
+                    }
+                }
+
+                _logger.LogInformation("Fetched {Count} budgets from QBO (mapped)", results.Count);
+                return results;
             }
             catch (Exception ex)
             {
@@ -167,7 +222,6 @@ namespace WileyWidget.Services
                 throw;
             }
         }
-        */
 
         public async Task<bool> TestConnectionAsync()
         {

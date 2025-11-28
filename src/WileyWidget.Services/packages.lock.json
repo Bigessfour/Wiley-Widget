@@ -537,6 +537,27 @@
         "resolved": "2.14.1",
         "contentHash": "lQKvtaTDOXnoVJ20ibTuSIOf2i0uO0MPbDhd1jm238I+U/2ZnRENj0cktKZhtchBMtCUSRQ5v4xBCUbKNmyVMw=="
       },
+      "Microsoft.Azure.DocumentDB.Core": {
+        "type": "Transitive",
+        "resolved": "2.1.2",
+        "contentHash": "xqxk7cjk0bv/L6DSpkavXxUZbnpurSag8DjSkoMES/ZhiqLTbK1qHVluAeY5hkwueFeBYO7HgaBn/xEZKOKHPQ==",
+        "dependencies": {
+          "NETStandard.Library": "1.6.0",
+          "Newtonsoft.Json": "9.0.1",
+          "System.Collections.NonGeneric": "4.0.1",
+          "System.Collections.Specialized": "4.0.1",
+          "System.Diagnostics.TraceSource": "4.0.0",
+          "System.Dynamic.Runtime": "4.0.11",
+          "System.Linq.Queryable": "4.0.1",
+          "System.Net.NameResolution": "4.0.0",
+          "System.Net.NetworkInformation": "4.1.0",
+          "System.Net.Requests": "4.0.11",
+          "System.Net.Security": "4.0.0",
+          "System.Net.WebHeaderCollection": "4.0.1",
+          "System.Runtime.Serialization.Primitives": "4.1.1",
+          "System.Security.SecureString": "4.0.0"
+        }
+      },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "Transitive",
         "resolved": "10.0.0",
@@ -1182,6 +1203,17 @@
         "type": "Transitive",
         "resolved": "4.3.2",
         "contentHash": "leXiwfiIkW7Gmn7cgnNcdtNAU70SjmKW3jxGj1iKHOvdn0zRWsgv/l2OJUO5zdGdiv2VRFnAsxxhDgMzofPdWg=="
+      },
+      "Serilog.Sinks.AzureDocumentDB": {
+        "type": "Transitive",
+        "resolved": "4.0.0",
+        "contentHash": "U/Ctb3O7pzyc/1vm/jaI/fsATqolK8uJckQQRbs4HFUr3RD1MzHTB5Dyg1EnaP4sNYOxdn94JSAf+OIgEi55wg==",
+        "dependencies": {
+          "Microsoft.Azure.DocumentDB.Core": "2.1.2",
+          "Microsoft.CSharp": "4.5.0",
+          "Newtonsoft.Json": "11.0.2",
+          "Serilog": "2.7.1"
+        }
       },
       "Serilog.Sinks.Literate": {
         "type": "Transitive",
@@ -2517,28 +2549,6 @@
           "MimeKit": "4.3.0"
         }
       },
-      "Microsoft.Azure.DocumentDB.Core": {
-        "type": "CentralTransitive",
-        "requested": "[2.22.0, )",
-        "resolved": "2.1.2",
-        "contentHash": "xqxk7cjk0bv/L6DSpkavXxUZbnpurSag8DjSkoMES/ZhiqLTbK1qHVluAeY5hkwueFeBYO7HgaBn/xEZKOKHPQ==",
-        "dependencies": {
-          "NETStandard.Library": "1.6.0",
-          "Newtonsoft.Json": "9.0.1",
-          "System.Collections.NonGeneric": "4.0.1",
-          "System.Collections.Specialized": "4.0.1",
-          "System.Diagnostics.TraceSource": "4.0.0",
-          "System.Dynamic.Runtime": "4.0.11",
-          "System.Linq.Queryable": "4.0.1",
-          "System.Net.NameResolution": "4.0.0",
-          "System.Net.NetworkInformation": "4.1.0",
-          "System.Net.Requests": "4.0.11",
-          "System.Net.Security": "4.0.0",
-          "System.Net.WebHeaderCollection": "4.0.1",
-          "System.Runtime.Serialization.Primitives": "4.1.1",
-          "System.Security.SecureString": "4.0.0"
-        }
-      },
       "Microsoft.EntityFrameworkCore.Design": {
         "type": "CentralTransitive",
         "requested": "[9.0.0, )",
@@ -2679,18 +2689,6 @@
         "dependencies": {
           "Microsoft.Extensions.Logging": "2.0.0",
           "Serilog": "2.8.0"
-        }
-      },
-      "Serilog.Sinks.AzureDocumentDB": {
-        "type": "CentralTransitive",
-        "requested": "[4.0.0, )",
-        "resolved": "4.0.0",
-        "contentHash": "U/Ctb3O7pzyc/1vm/jaI/fsATqolK8uJckQQRbs4HFUr3RD1MzHTB5Dyg1EnaP4sNYOxdn94JSAf+OIgEi55wg==",
-        "dependencies": {
-          "Microsoft.Azure.DocumentDB.Core": "2.1.2",
-          "Microsoft.CSharp": "4.5.0",
-          "Newtonsoft.Json": "11.0.2",
-          "Serilog": "2.7.1"
         }
       },
       "Serilog.Sinks.Console": {

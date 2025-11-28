@@ -27,7 +27,7 @@ namespace WileyWidget.Services.Abstractions
         /// Comprehensive validation report with resolved/missing services and any resolution errors.
         /// </returns>
         DiValidationReport ValidateRegistrations(
-            IEnumerable<System.Reflection.Assembly>? assembliesToScan = null, 
+            IEnumerable<System.Reflection.Assembly>? assembliesToScan = null,
             bool includeGenerics = false);
 
         /// <summary>
@@ -83,8 +83,8 @@ namespace WileyWidget.Services.Abstractions
         /// <summary>
         /// Percentage of services successfully resolved (0-100).
         /// </summary>
-        public double ValidationSuccessRate => TotalServices > 0 
-            ? (ResolvedServices.Count / (double)TotalServices) * 100.0 
+        public double ValidationSuccessRate => TotalServices > 0
+            ? (ResolvedServices.Count / (double)TotalServices) * 100.0
             : 100.0;
 
         /// <summary>
@@ -124,7 +124,7 @@ namespace WileyWidget.Services.Abstractions
 
         public override string ToString()
         {
-            return $"{ServiceType}: {ErrorMessage}" + 
+            return $"{ServiceType}: {ErrorMessage}" +
                    (SuggestedFix != null ? $" - {SuggestedFix}" : "");
         }
     }

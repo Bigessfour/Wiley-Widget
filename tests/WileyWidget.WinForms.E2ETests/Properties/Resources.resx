@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="http://www.w3.org/2001/XMLSchema" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, ...</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, ...</value>
+  </resheader>
+
+  <data name="NotInteractiveSkip" xml:space="preserve">
+    <value>E2E UI test skipped: not an interactive runner and WILEYWIDGET_UI_TESTS not set.</value>
+  </data>
+  <data name="ProcessStartedNoWindow" xml:space="preserve">
+    <value>E2E UI test: process started but main window handle not found within timeout</value>
+  </data>
+  <data name="CouldNotAttachMainWindow" xml:space="preserve">
+    <value>E2E UI test skipped: could not attach to main window</value>
+  </data>
+  <data name="RequiredToolbarMissing" xml:space="preserve">
+    <value>E2E UI test: Required toolbar controls missing after retry. Dumping top-level windows for diagnostics...</value>
+  </data>
+  <data name="CouldNotFindOrAttachMainWindow" xml:space="preserve">
+    <value>E2E UI test skipped: could not find or attach to main window (check interactive session / automation availability).</value>
+  </data>
+  <data name="CouldNotAttachAutoRefresh" xml:space="preserve">
+    <value>E2E UI test skipped: could not attach to main window for auto-refresh test</value>
+  </data>
+  <data name="LastUpdatedLabelMissing" xml:space="preserve">
+    <value>E2E UI test: LastUpdated label not found; dumping window tree for diagnostics.</value>
+  </data>
+  <data name="RefreshButtonMissing" xml:space="preserve">
+    <value>E2E UI test: Refresh button not found after retries; dumping window tree for diagnostics.</value>
+  </data>
+  <data name="DiagnosticsTopLevel" xml:space="preserve">
+    <value>--- DIAGNOSTIC: Top-level windows on desktop ---</value>
+  </data>
+  <data name="DiagnosticsSubtree" xml:space="preserve">
+    <value>--- DIAGNOSTIC: Main window subtree (first 200 elements) ---</value>
+  </data>
+  <data name="CouldNotAttachExport" xml:space="preserve">
+    <value>E2E UI test skipped: could not attach to main window for Export test</value>
+  </data>
+  <data name="ExportButtonMissing" xml:space="preserve">
+    <value>E2E UI test: Export button not found; dumping window tree for diagnostics.</value>
+  </data>
+</root>

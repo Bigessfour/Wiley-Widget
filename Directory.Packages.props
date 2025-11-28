@@ -47,10 +47,8 @@
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageVersion Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageVersion Include="Serilog.Sinks.AzureDocumentDB" Version="4.0.0" />
+
     <PackageVersion Include="Serilog.Extensions.Hosting" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.Azure.DocumentDB" Version="2.22.0" />
-    <PackageVersion Include="Microsoft.Azure.DocumentDB.Core" Version="2.22.0" />
     <PackageVersion Include="Serilog.Settings.Configuration" Version="8.0.4" />
     <!-- Additional packages -->
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.1" />
@@ -89,8 +87,8 @@
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
 
     <!-- UI Automation (FlaUI) packages -->
-    <PackageVersion Include="FlaUI.Core" Version="4.1.0" />
-    <PackageVersion Include="FlaUI.UIA3" Version="4.1.0" />
+    <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
+    <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
 
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.3.2" />
@@ -112,5 +110,6 @@
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageVersion Include="System.IO.Packaging" Version="10.0.0" />
+    <!-- Removed WinUI/WindowsAppSDK packages during scrub (project is Windows Forms only) -->
   </ItemGroup>
 </Project>

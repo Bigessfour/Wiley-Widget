@@ -218,7 +218,7 @@ namespace WileyWidget.Services.Export
                             var value = columns[columnName](item);
 
                             var cell = worksheet.Cell(row, col + 1);
-                            
+
                             if (value is DateTime dateTime)
                             {
                                 cell.Value = dateTime;

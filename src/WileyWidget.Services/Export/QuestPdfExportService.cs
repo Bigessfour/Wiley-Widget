@@ -22,7 +22,7 @@ namespace WileyWidget.Services.Export
         public QuestPdfExportService(ILogger<QuestPdfExportService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             // Configure QuestPDF license
             QuestPDF.Settings.License = LicenseType.Community;
         }

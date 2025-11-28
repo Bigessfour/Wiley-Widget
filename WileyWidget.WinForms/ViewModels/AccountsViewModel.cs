@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Data;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Models;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -24,6 +26,15 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private ObservableCollection<MunicipalAccountDisplay> accounts = new();
+
+        // Keep a full list of rows returned from DB so we can re-filter in-memory quickly without re-querying unless caller asks for full reload
+        private List<MunicipalAccountDisplay> _allAccounts = new();
+
+        [ObservableProperty]
+        private List<MunicipalFundType>? availableFunds;
+
+        [ObservableProperty]
+        private List<AccountType>? availableAccountTypes;
 
         [ObservableProperty]
         private MunicipalFundType? selectedFund;
@@ -45,10 +56,63 @@ namespace WileyWidget.WinForms.ViewModels
             _dbContext = dbContext;
             LoadAccountsCommand = new AsyncRelayCommand(LoadAccountsAsync);
             FilterAccountsCommand = new AsyncRelayCommand(FilterAccountsAsync);
+
+            // Startup: populate selection lists and load accounts (fire-and-forget so UI can construct quickly)
+#pragma warning disable CS4014
+            InitializeAsync();
+#pragma warning restore CS4014
+        }
+
+        private async Task InitializeAsync()
+        {
+            try
+            {
+                IsLoading = true;
+                await PopulateAvailableFiltersAsync();
+                await LoadAccountsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize Accounts view model");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private async Task PopulateAvailableFiltersAsync()
+        {
+            try
+            {
+                var funds = await _dbContext.MunicipalAccounts
+                    .Select(a => a.Fund)
+                    .Distinct()
+                    .ToListAsync();
+
+                AvailableFunds = funds.OrderBy(f => f.ToString()).ToList();
+
+                var types = await _dbContext.MunicipalAccounts
+                    .Select(a => a.Type)
+                    .Distinct()
+                    .ToListAsync();
+
+                AvailableAccountTypes = types.OrderBy(t => t.ToString()).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load AvailableFunds or AvailableAccountTypes");
+                AvailableFunds = new List<MunicipalFundType>();
+                AvailableAccountTypes = new List<AccountType>();
+            }
         }
 
         public IAsyncRelayCommand LoadAccountsCommand { get; }
         public IAsyncRelayCommand FilterAccountsCommand { get; }
+
+        // Summary calculators (exposed so UI/frameworks can reuse them)
+        public TotalBalanceTableSummaryCalculator TotalBalanceCalculator { get; } = new TotalBalanceTableSummaryCalculator();
+        public ActiveAccountCountTableSummaryCalculator ActiveAccountCountCalculator { get; } = new ActiveAccountCountTableSummaryCalculator();
 
         private async Task LoadAccountsAsync()
         {
@@ -79,28 +143,24 @@ namespace WileyWidget.WinForms.ViewModels
                     .OrderBy(a => a.AccountNumber_Value)
                     .ToListAsync();
 
-                Accounts.Clear();
-
-                foreach (var account in accountsList)
+                // Convert to lightweight display models and cache full collection
+                _allAccounts = accountsList.Select(account => new MunicipalAccountDisplay
                 {
-                    Accounts.Add(new MunicipalAccountDisplay
-                    {
-                        Id = account.Id,
-                        AccountNumber = account.AccountNumber?.Value ?? "N/A",
-                        Name = account.Name,
-                        Description = account.FundDescription ?? string.Empty,
-                        Type = account.Type.ToString(),
-                        Fund = account.Fund.ToString(),
-                        Balance = account.Balance,
-                        BudgetAmount = account.BudgetAmount,
-                        Department = account.Department?.Name ?? "N/A",
-                        IsActive = account.IsActive,
-                        HasParent = account.ParentAccountId.HasValue
-                    });
-                }
+                    AccountNumber = account.AccountNumber?.Value ?? "N/A",
+                    AccountName = account.Name,
+                    DepartmentName = account.Department?.Name ?? "N/A",
+                    FundType = account.Fund.ToString(),
+                    AccountType = account.Type.ToString(),
+                    CurrentBalance = account.Balance,
+                    BudgetAmount = account.BudgetAmount,
+                    IsActive = account.IsActive
+                }).ToList();
 
-                TotalBalance = Accounts.Sum(a => a.Balance);
-                ActiveAccountCount = Accounts.Count;
+                // Apply any in-memory filter (SelectedFund / SelectedAccountType)
+                ApplyFiltersToAccounts();
+
+                TotalBalance = TotalBalanceCalculator.Calculate(Accounts);
+                ActiveAccountCount = ActiveAccountCountCalculator.Calculate(Accounts);
 
                 _logger.LogInformation("Municipal accounts loaded successfully: {Count} accounts, Total Balance: {Balance:C}",
                     ActiveAccountCount, TotalBalance);
@@ -119,25 +179,60 @@ namespace WileyWidget.WinForms.ViewModels
         private Task FilterAccountsAsync()
         {
             _logger.LogInformation("Applying filters - Fund: {Fund}, Type: {Type}", SelectedFund, SelectedAccountType);
-            return LoadAccountsAsync();
+
+            try
+            {
+                ApplyFiltersToAccounts();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to filter accounts in-memory");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private void ApplyFiltersToAccounts()
+        {
+            var filtered = _allAccounts.AsEnumerable();
+
+            if (SelectedFund.HasValue)
+            {
+                var fundString = SelectedFund.Value.ToString();
+                filtered = filtered.Where(a => string.Equals(a.FundType, fundString, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (SelectedAccountType.HasValue)
+            {
+                var typeString = SelectedAccountType.Value.ToString();
+                filtered = filtered.Where(a => string.Equals(a.AccountType, typeString, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var filteredList = filtered.ToList();
+
+            // Update observable collection in a simple and safe way
+            Accounts.Clear();
+            foreach (var row in filteredList)
+            {
+                Accounts.Add(row);
+            }
+
+            // Update summaries
+            TotalBalance = TotalBalanceCalculator.Calculate(Accounts);
+            ActiveAccountCount = ActiveAccountCountCalculator.Calculate(Accounts);
+        }
+
+        partial void OnSelectedFundChanged(MunicipalFundType? value)
+        {
+            // When the selected fund changes, refresh in-memory filter for a responsive UI
+            _ = FilterAccountsCommand.ExecuteAsync(null);
+        }
+
+        partial void OnSelectedAccountTypeChanged(AccountType? value)
+        {
+            _ = FilterAccountsCommand.ExecuteAsync(null);
         }
     }
 
-    /// <summary>
-    /// Display model for municipal accounts
-    /// </summary>
-    public class MunicipalAccountDisplay
-    {
-        public int Id { get; set; }
-        public string AccountNumber { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string Fund { get; set; } = string.Empty;
-        public decimal Balance { get; set; }
-        public decimal BudgetAmount { get; set; }
-        public string Department { get; set; } = string.Empty;
-        public bool IsActive { get; set; }
-        public bool HasParent { get; set; }
-    }
+
 }

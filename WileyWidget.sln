@@ -20,9 +20,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Tests", "tests\WileyWidget.Services.Tests\WileyWidget.Services.Tests.csproj", "{311CF718-1154-487F-BB2B-E304301EF5A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.UnitTests", "WileyWidget.Services.UnitTests\WileyWidget.Services.UnitTests.csproj", "{72A88FC3-245B-4577-8388-BA3CB6F58AFA}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.IntegrationTests", "WileyWidget.IntegrationTests\WileyWidget.IntegrationTests.csproj", "{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Data.Tests", "tests\WileyWidget.Data.Tests\WileyWidget.Data.Tests.csproj", "{D0E8CFE9-8A2B-4E8A-B6A6-9A1C2B3D4E5F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinForms.E2ETests", "tests\WileyWidget.WinForms.E2ETests\WileyWidget.WinForms.E2ETests.csproj", "{A9F12B3C-4ACD-4F77-BD2E-9B7C3C6D9870}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -58,20 +60,26 @@ Global
 		{311CF718-1154-487F-BB2B-E304301EF5A7}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
 		{311CF718-1154-487F-BB2B-E304301EF5A7}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
 		{311CF718-1154-487F-BB2B-E304301EF5A7}.Release|AnyCPU.Build.0 = Release|AnyCPU
-		{72A88FC3-245B-4577-8388-BA3CB6F58AFA}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
-		{72A88FC3-245B-4577-8388-BA3CB6F58AFA}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
-		{72A88FC3-245B-4577-8388-BA3CB6F58AFA}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
-		{72A88FC3-245B-4577-8388-BA3CB6F58AFA}.Release|AnyCPU.Build.0 = Release|AnyCPU
 		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
 		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
 		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
 		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|AnyCPU.Build.0 = Release|AnyCPU
+		{D0E8CFE9-8A2B-4E8A-B6A6-9A1C2B3D4E5F}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
+		{D0E8CFE9-8A2B-4E8A-B6A6-9A1C2B3D4E5F}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
+		{D0E8CFE9-8A2B-4E8A-B6A6-9A1C2B3D4E5F}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
+		{D0E8CFE9-8A2B-4E8A-B6A6-9A1C2B3D4E5F}.Release|AnyCPU.Build.0 = Release|AnyCPU
+		{A9F12B3C-4ACD-4F77-BD2E-9B7C3C6D9870}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
+		{A9F12B3C-4ACD-4F77-BD2E-9B7C3C6D9870}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
+		{A9F12B3C-4ACD-4F77-BD2E-9B7C3C6D9870}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
+		{A9F12B3C-4ACD-4F77-BD2E-9B7C3C6D9870}.Release|AnyCPU.Build.0 = Release|AnyCPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{311CF718-1154-487F-BB2B-E304301EF5A7} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{D0E8CFE9-8A2B-4E8A-B6A6-9A1C2B3D4E5F} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{A9F12B3C-4ACD-4F77-BD2E-9B7C3C6D9870} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B6553EBE-4849-48A5-A07C-4316F199058A}

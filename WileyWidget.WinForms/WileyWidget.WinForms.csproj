@@ -19,10 +19,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
+    <PackageReference Include="Syncfusion.Shared.Base" />
+    <PackageReference Include="Syncfusion.SfInput.WinForms" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinForms" />
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="OpenTelemetry" />

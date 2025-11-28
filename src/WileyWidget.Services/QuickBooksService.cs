@@ -19,6 +19,8 @@ using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
+using WileyWidget.Services.Abstractions.Models;
+
 namespace WileyWidget.Services;
 
 /// <summary>
@@ -32,10 +34,12 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly ISecretVaultService? _secretVault;
     private readonly IQuickBooksApiClient _apiClient;
 
-    // Values loaded lazily from secret vault or environment
+    private const string JsonMediaType = "application/json";
+    private const string RefreshTokenKey = "refresh_token";
+    private const string RefreshTokenExpiresKey = "x_refresh_token_expires_in";
     private string? _clientId;
     private string? _clientSecret;
-    private string _redirectUri = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl";
+    private string _redirectUri;
     private string? _realmId;
     private string _environment = "sandbox";
     private string? _intuitPreLoginUrl; // optional convenience URL to pre-authenticate account
@@ -127,7 +131,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         try
         {
             var v = Environment.GetEnvironmentVariable(name);
-            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable('{name}') => { (v == null ? "<null>" : "<redacted>") }");
+            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable('{name}') => {(v == null ? "<null>" : "<redacted>")}");
             if (!string.IsNullOrWhiteSpace(v)) return v;
         }
         catch { /* ignore */ }
@@ -143,495 +147,462 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     }
 
     private async System.Threading.Tasks.Task EnsureInitializedAsync()
-{
-    if (_initialized) return;
-    await _initSemaphore.WaitAsync().ConfigureAwait(false);
-    try
     {
         if (_initialized) return;
-
-        // CRITICAL: Wait for deferred secrets initialization from App startup to complete
-        // This ensures the secret vault is fully populated before we attempt to load QBO credentials
+        await _initSemaphore.WaitAsync().ConfigureAwait(false);
         try
         {
-            _logger.LogInformation("[SECURITY] Waiting for application secrets initialization to complete...");
+            if (_initialized) return;
 
-            // Access the SecretsInitializationTask via reflection since we can't directly reference App class
-            var appType = Type.GetType("WileyWidget.App, WileyWidget");
-            if (appType != null)
+            // CRITICAL: Wait for deferred secrets initialization from App startup to complete
+            // This ensures the secret vault is fully populated before we attempt to load QBO credentials
+            try
             {
-                var secretsTaskProperty = appType.GetProperty("SecretsInitializationTask",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                _logger.LogInformation("[SECURITY] Waiting for application secrets initialization to complete...");
 
-                if (secretsTaskProperty?.GetValue(null) is System.Threading.Tasks.Task secretsTask)
+                // Access the SecretsInitializationTask via reflection since we can't directly reference App class
+                var appType = Type.GetType("WileyWidget.App, WileyWidget");
+                if (appType != null)
                 {
-                    // Wait with timeout to prevent indefinite blocking
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(35));
-                    await secretsTask.WaitAsync(cts.Token).ConfigureAwait(false);
-                    _logger.LogInformation("✓ [SECURITY] Secrets initialization completed, proceeding with QBO initialization");
-                }
-                else
-                {
-                    _logger.LogWarning("[SECURITY] Could not access SecretsInitializationTask - proceeding without wait");
-                }
-            }
-        }
-        catch (TimeoutException)
-        {
-            _logger.LogError("[SECURITY] Timeout waiting for secrets initialization - QBO credentials may be incomplete");
-            throw new InvalidOperationException("Secrets initialization timeout - cannot safely initialize QuickBooks service");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SECURITY] Secrets initialization failed - QBO credentials may be unavailable");
-            // Continue anyway, but credentials may not be available
-        }
+                    var secretsTaskProperty = appType.GetProperty("SecretsInitializationTask",
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
 
-        // Load QBO credentials from secret vault with fallback to environment variables
-        // Prefer secrets from vault, then check process-level env vars (container-friendly),
-        // then fall back to user-level environment variables on Windows if present.
-        var envClientCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_ID");
-        if (!string.IsNullOrWhiteSpace(envClientCandidate))
-        {
-            _logger.LogInformation("QBO_CLIENT_ID found in environment (process/user). Using env value for initialization.");
-        }
-        else
-        {
-            _logger.LogDebug("QBO_CLIENT_ID not set in environment");
-        }
-
-        _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _logger).ConfigureAwait(false)
-                    ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientId", _logger).ConfigureAwait(false)
-                    ?? envClientCandidate
-                    ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_ID")
-                    ?? throw new InvalidOperationException("QBO_CLIENT_ID not found in the secret vault or environment variables.");
-
-        var envSecretCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_SECRET");
-        if (!string.IsNullOrWhiteSpace(envSecretCandidate))
-        {
-            _logger.LogInformation("QBO_CLIENT_SECRET found in environment (process/user). Using env value for initialization.");
-        }
-
-        _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
-                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientSecret", _logger).ConfigureAwait(false)
-                        ?? envSecretCandidate
-                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_SECRET")
-                        ?? string.Empty;
-
-        var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID") ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REALM_ID");
-        if (!string.IsNullOrWhiteSpace(envRealmCandidate))
-        {
-            _logger.LogInformation("QBO_REALM_ID found in environment (process/user). Using env value for initialization.");
-        }
-
-        _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)
-                   ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
-                   ?? envRealmCandidate;
-
-        // Redirect URI is configurable; fall back to default local listener
-    var redirectFromVault = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
-                ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI");
-        if (!string.IsNullOrWhiteSpace(redirectFromVault))
-        {
-            _redirectUri = redirectFromVault!;
-        }
-
-    _environment = await TryGetFromSecretVaultAsync(_secretVault, "QBO-ENVIRONMENT", _logger).ConfigureAwait(false)
-               ?? GetEnvironmentVariableAnyScope("QBO_ENVIRONMENT")
-               ?? _environment;
-
-        // Optional pre-login URL to smooth user sign-in; can be provided via secret or env var
-    _intuitPreLoginUrl = await TryGetFromSecretVaultAsync(_secretVault, "QBO-PRELOGIN-URL", _logger).ConfigureAwait(false)
-                 ?? GetEnvironmentVariableAnyScope("QBO_PRELOGIN_URL");
-
-        _logger.LogInformation("QuickBooks service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}",
-            _clientId.Substring(0, Math.Min(8, _clientId.Length)), _realmId, _environment);
-
-        _initialized = true;
-    }
-    finally
-    {
-        _initSemaphore.Release();
-    }
-}
-
-public bool HasValidAccessToken()
-{
-    var s = EnsureSettingsLoaded();
-    // Consider token valid if set and expires more than 60s from now (renew early to avoid edge expiry in-flight)
-    if (string.IsNullOrWhiteSpace(s.QboAccessToken)) return false;
-    // Default(DateTime) means 'unset'
-    if (s.QboTokenExpiry == default) return false;
-    return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(60);
-}
-
-public async System.Threading.Tasks.Task RefreshTokenIfNeededAsync()
-{
-    await EnsureInitializedAsync().ConfigureAwait(false);
-    var s = EnsureSettingsLoaded();
-    if (HasValidAccessToken()) return;
-
-    if (string.IsNullOrWhiteSpace(s.QboRefreshToken))
-    {
-        var acquired = await AcquireTokensInteractiveAsync().ConfigureAwait(false);
-        if (!acquired)
-        {
-            throw new InvalidOperationException("QuickBooks authorization was not completed.");
-        }
-        return;
-    }
-
-    await RefreshTokenAsync();
-}
-
-public async System.Threading.Tasks.Task RefreshTokenAsync()
-{
-    await EnsureInitializedAsync().ConfigureAwait(false);
-    var s = EnsureSettingsLoaded();
-
-    try
-    {
-        var result = await RefreshAccessTokenAsync(s.QboRefreshToken!).ConfigureAwait(false);
-        s.QboAccessToken = result.AccessToken;
-        s.QboRefreshToken = result.RefreshToken;
-        s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
-        _settings.Save();
-        Serilog.Log.Information("QBO token refreshed successfully (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
-    }
-    catch (Exception ex)
-    {
-        Serilog.Log.Error(ex, "Failed to refresh QBO access token");
-        // Clear invalid tokens to force re-authorization
-        s.QboAccessToken = null;
-        s.QboRefreshToken = null;
-        s.QboTokenExpiry = default;
-        _settings.Save();
-        throw new InvalidOperationException("QuickBooks token refresh failed. Please re-authorize the application.", ex);
-    }
-}
-
-private (ServiceContext Ctx, DataService Ds) GetDataService()
-{
-    var s = EnsureSettingsLoaded();
-    if (!HasValidAccessToken()) throw new InvalidOperationException("Access token invalid – refresh required.");
-    if (string.IsNullOrWhiteSpace(_realmId))
-        throw new InvalidOperationException("QuickBooks company (realmId) is not set. Connect to QuickBooks first.");
-
-    // Using OAuth2RequestValidator from Intuit.Ipp.Security (OAuth2 SDK)
-    var validator = new OAuth2RequestValidator(s.QboAccessToken);
-    var ctx = new ServiceContext(_realmId!, IntuitServicesType.QBO, validator);
-    ctx.IppConfiguration.BaseUrl.Qbo = _environment == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
-    return (ctx, new DataService(ctx));
-}
-
-public async System.Threading.Tasks.Task<bool> TestConnectionAsync()
-{
-    await EnsureInitializedAsync().ConfigureAwait(false);
-    try
-    {
-        await RefreshTokenIfNeededAsync();
-        var p = GetDataService();
-        // Try to fetch a small amount of data to test the connection
-        var customers = p.Ds.FindAll(new Customer(), 1, 1).ToList();
-        return true;
-    }
-    catch (Exception ex)
-    {
-        Serilog.Log.Error(ex, "QBO connection test failed");
-        return false;
-    }
-}
-
-public async System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null)
-{
-    await EnsureInitializedAsync().ConfigureAwait(false);
-    var prefix = redirectUri ?? _redirectUri;
-    if (!prefix.EndsWith("/", StringComparison.Ordinal))
-        prefix += "/";
-
-    // netsh requires http scheme
-    if (!prefix.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-    {
-        // If HTTPS or custom, we can't check via netsh easily; return guidance
-        return new UrlAclCheckResult
-        {
-            IsReady = false,
-            ListenerPrefix = prefix,
-            Guidance = "The redirect URI is not using HTTP. For local dev with HttpListener, use http://localhost:PORT/ and run: netsh http add urlacl url=http://localhost:PORT/ user=%USERNAME%"
-        };
-    }
-
-    try
-    {
-        using var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "netsh",
-                Arguments = "http show urlacl",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
-        };
-
-        process.Start();
-        var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-        var error = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-        await process.WaitForExitAsync().ConfigureAwait(false);
-
-        // Look for an entry matching our prefix
-        // Example line:    Reserved URL            : http://localhost:8080/
-        var isPresent = output?.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0;
-        string? owner = null;
-        if (isPresent)
-        {
-            // Try to capture owner following the prefix block
-            // Owner: S-1-5-32-545\User or similar
-            var prefixIndex = output!.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
-            if (prefixIndex >= 0)
-            {
-                var tail = output.Substring(prefixIndex, Math.Min(500, output.Length - prefixIndex));
-                var ownerIdx = tail.IndexOf("Owner:", StringComparison.OrdinalIgnoreCase);
-                if (ownerIdx >= 0)
-                {
-                    var line = tail.Substring(ownerIdx).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-                    if (line != null)
+                    if (secretsTaskProperty?.GetValue(null) is System.Threading.Tasks.Task secretsTask)
                     {
-                        var parts = line.Split(':');
-                        if (parts.Length > 1) owner = parts[1].Trim();
+                        // Wait with timeout to prevent indefinite blocking
+                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(35));
+                        await secretsTask.WaitAsync(cts.Token).ConfigureAwait(false);
+                        _logger.LogInformation("✓ [SECURITY] Secrets initialization completed, proceeding with QBO initialization");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[SECURITY] Could not access SecretsInitializationTask - proceeding without wait");
                     }
                 }
             }
-        }
-
-        return new UrlAclCheckResult
-        {
-            IsReady = isPresent,
-            ListenerPrefix = prefix,
-            Owner = owner,
-            RawNetshOutput = output,
-            Guidance = isPresent
-                ? "URL ACL is configured. You should be able to complete OAuth sign-in."
-                : $"URL ACL not found. Run as admin: netsh http add urlacl url={prefix} user=%USERNAME%"
-        };
-    }
-    catch (Exception ex)
-    {
-        _logger.LogWarning(ex, "Failed to check URL ACL via netsh");
-        return new UrlAclCheckResult
-        {
-            IsReady = false,
-            ListenerPrefix = prefix,
-            Guidance = $"Couldn't verify URL ACL automatically. Try running as admin: netsh http add urlacl url={prefix} user=%USERNAME%"
-        };
-    }
-}
-
-public async System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync()
-{
-    try
-    {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-        var p = GetDataService();
-        // Fetch customers from QuickBooks
-        return p.Ds.FindAll(new Customer(), 1, 100).ToList();
-    }
-    catch (Exception ex)
-    {
-        Serilog.Log.Error(ex, "QBO customers fetch failed");
-        throw;
-    }
-}
-
-public async System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null)
-{
-    try
-    {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-        var p = GetDataService();
-        if (string.IsNullOrWhiteSpace(enterprise))
-            return p.Ds.FindAll(new Invoice(), 1, 100).ToList();
-        var query = $"SELECT * FROM Invoice WHERE Metadata.CustomField['Enterprise'] = '{enterprise}'";
-        var qs = new QueryService<Invoice>(p.Ctx);
-        return qs.ExecuteIdsQuery(query).ToList();
-    }
-    catch (Exception ex)
-    {
-        Serilog.Log.Error(ex, "QBO invoices fetch failed");
-        throw;
-    }
-}
-
-public async System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync()
-{
-    try
-    {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-
-        var allAccounts = new List<Account>();
-        const int pageSize = 500; // QuickBooks recommended page size
-        int startPosition = 1;
-        int maxPages = 10; // Safety limit to prevent infinite loops
-        int pageCount = 0;
-
-        _logger.LogInformation("Starting batch fetch of chart of accounts");
-
-        while (pageCount < maxPages)
-        {
-            var p = GetDataService();
-            var pageAccounts = p.Ds.FindAll(new Account(), startPosition, pageSize).ToList();
-
-            if (pageAccounts == null || pageAccounts.Count == 0)
+            catch (TimeoutException ex)
             {
-                _logger.LogInformation("No more accounts found at position {Position}, ending fetch", startPosition);
-                break;
+                _logger.LogError(ex, "[SECURITY] Timeout waiting for secrets initialization - QBO credentials may be incomplete");
+                throw new InvalidOperationException("Secrets initialization timeout - cannot safely initialize QuickBooks service");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[SECURITY] Secrets initialization failed - QBO credentials may be unavailable");
+                // Continue anyway, but credentials may not be available
             }
 
-            allAccounts.AddRange(pageAccounts);
-            _logger.LogInformation("Fetched page {Page} with {Count} accounts (total: {Total})",
-                pageCount + 1, pageAccounts.Count, allAccounts.Count);
-
-            // If we got fewer than pageSize, we've reached the end
-            if (pageAccounts.Count < pageSize)
+            // Load QBO credentials from secret vault with fallback to environment variables
+            // Prefer secrets from vault, then check process-level env vars (container-friendly),
+            // then fall back to user-level environment variables on Windows if present.
+            var envClientCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_ID");
+            if (!string.IsNullOrWhiteSpace(envClientCandidate))
             {
-                break;
+                _logger.LogInformation("QBO_CLIENT_ID found in environment (process/user). Using env value for initialization.");
+            }
+            else
+            {
+                _logger.LogDebug("QBO_CLIENT_ID not set in environment");
             }
 
-            startPosition += pageSize;
-            pageCount++;
+            _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _logger).ConfigureAwait(false)
+                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientId", _logger).ConfigureAwait(false)
+                        ?? envClientCandidate
+                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_ID")
+                        ?? throw new InvalidOperationException("QBO_CLIENT_ID not found in the secret vault or environment variables.");
 
-            // Small delay between pages to be respectful to the API
-            if (pageCount < maxPages)
+            var envSecretCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_SECRET");
+            if (!string.IsNullOrWhiteSpace(envSecretCandidate))
             {
-                await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(false);
+                _logger.LogInformation("QBO_CLIENT_SECRET found in environment (process/user). Using env value for initialization.");
             }
+
+            _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
+                            ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientSecret", _logger).ConfigureAwait(false)
+                            ?? envSecretCandidate
+                            ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_SECRET")
+                            ?? string.Empty;
+
+            var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID") ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REALM_ID");
+            if (!string.IsNullOrWhiteSpace(envRealmCandidate))
+            {
+                _logger.LogInformation("QBO_REALM_ID found in environment (process/user). Using env value for initialization.");
+            }
+
+            _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)
+                       ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
+                       ?? envRealmCandidate;
+
+            // Redirect URI is configurable; fall back to default local listener
+            var redirectFromVault = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
+                        ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI");
+            if (!string.IsNullOrWhiteSpace(redirectFromVault))
+            {
+                _redirectUri = redirectFromVault!;
+            }
+            else
+            {
+                _redirectUri = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl";
+            }
+
+            _environment = await TryGetFromSecretVaultAsync(_secretVault, "QBO-ENVIRONMENT", _logger).ConfigureAwait(false)
+                       ?? GetEnvironmentVariableAnyScope("QBO_ENVIRONMENT")
+                       ?? _environment;
+
+            // Optional pre-login URL to smooth user sign-in; can be provided via secret or env var
+            _intuitPreLoginUrl = await TryGetFromSecretVaultAsync(_secretVault, "QBO-PRELOGIN-URL", _logger).ConfigureAwait(false)
+                         ?? GetEnvironmentVariableAnyScope("QBO_PRELOGIN_URL");
+
+            _logger.LogInformation("QuickBooks service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}",
+                _clientId.Substring(0, Math.Min(8, _clientId.Length)), _realmId, _environment);
+
+            _initialized = true;
         }
-
-        if (pageCount >= maxPages)
+        finally
         {
-            _logger.LogWarning("Reached maximum page limit ({MaxPages}) for chart of accounts fetch. Total accounts: {Total}",
-                maxPages, allAccounts.Count);
+            _initSemaphore.Release();
         }
-
-        _logger.LogInformation("Chart of accounts fetch completed. Total accounts: {Total}", allAccounts.Count);
-        return allAccounts;
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "QBO chart of accounts batch fetch failed");
-        throw;
-    }
-}
-
-public async System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate)
-{
-    try
-    {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-        var p = GetDataService();
-
-        // Query journal entries within date range
-        var query = $"SELECT * FROM JournalEntry WHERE TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
-        var qs = new QueryService<JournalEntry>(p.Ctx);
-        return qs.ExecuteIdsQuery(query).ToList();
-    }
-    catch (Exception ex)
-    {
-        Serilog.Log.Error(ex, "QBO journal entries fetch failed");
-        throw;
-    }
-}
-
-// TODO: Re-enable when Budget type is available or custom implementation is created
-/*
-public async System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync()
-{
-    try
-    {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-        var p = GetDataService();
-        // Fetch budgets from QuickBooks
-        return p.Ds.FindAll(new Budget(), 1, 100).ToList();
-    }
-    catch (Exception ex)
-    {
-        Serilog.Log.Error(ex, "QBO budgets fetch failed");
-        throw;
-    }
-}
-*/
-
-// TODO: Re-enable when Budget type is available or custom implementation is created
-/*
-/// <summary>
-/// Syncs budgets to QuickBooks Online via REST API.
-/// Uses IHttpClientFactory to create named 'QBO' client with proper authentication.
-/// On success, publishes Prism event to refresh UI (e.g., SfDataGrid in SettingsView).
-/// </summary>
-public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default)
-{
-    if (budgets == null)
-    {
-        throw new ArgumentNullException(nameof(budgets));
     }
 
-    var stopwatch = Stopwatch.StartNew();
-    try
+    public bool HasValidAccessToken()
     {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-
-        // Use configured realmId if available; otherwise fall back to settings (legacy) or allow empty to support test harnesses
-        var realmId = _realmId ?? _settings.Current.QuickBooksRealmId ?? _settings.Current.QuickBooksRealmId;
-
         var s = EnsureSettingsLoaded();
-        if (!HasValidAccessToken())
+        // Consider token valid if set and expires more than 60s from now (renew early to avoid edge expiry in-flight)
+        if (string.IsNullOrWhiteSpace(s.QboAccessToken)) return false;
+        // Default(DateTime) means 'unset'
+        if (s.QboTokenExpiry == default) return false;
+        return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(60);
+    }
+
+    public async System.Threading.Tasks.Task RefreshTokenIfNeededAsync()
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        var s = EnsureSettingsLoaded();
+        if (HasValidAccessToken()) return;
+
+        if (string.IsNullOrWhiteSpace(s.QboRefreshToken))
         {
-            return new SyncResult
+            var acquired = await AcquireTokensInteractiveAsync().ConfigureAwait(false);
+            if (!acquired)
             {
-                Success = false,
-                ErrorMessage = "Access token invalid – refresh required.",
-                Duration = stopwatch.Elapsed
+                throw new InvalidOperationException("QuickBooks authorization was not completed.");
+            }
+            return;
+        }
+
+        await RefreshTokenAsync();
+    }
+
+    public async System.Threading.Tasks.Task RefreshTokenAsync()
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        var s = EnsureSettingsLoaded();
+
+        try
+        {
+            var result = await RefreshAccessTokenAsync(s.QboRefreshToken!).ConfigureAwait(false);
+            s.QboAccessToken = result.AccessToken;
+            s.QboRefreshToken = result.RefreshToken;
+            s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
+            _settings.Save();
+            Serilog.Log.Information("QBO token refreshed successfully (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to refresh QBO access token");
+            // Clear invalid tokens to force re-authorization
+            s.QboAccessToken = null;
+            s.QboRefreshToken = null;
+            s.QboTokenExpiry = default;
+            _settings.Save();
+            throw new InvalidOperationException("QuickBooks token refresh failed. Please re-authorize the application.", ex);
+        }
+    }
+
+    private (ServiceContext Ctx, DataService Ds) GetDataService()
+    {
+        var s = EnsureSettingsLoaded();
+        if (!HasValidAccessToken()) throw new InvalidOperationException("Access token invalid – refresh required.");
+        if (string.IsNullOrWhiteSpace(_realmId))
+            throw new InvalidOperationException("QuickBooks company (realmId) is not set. Connect to QuickBooks first.");
+
+        // Using OAuth2RequestValidator from Intuit.Ipp.Security (OAuth2 SDK)
+        var validator = new OAuth2RequestValidator(s.QboAccessToken);
+        var ctx = new ServiceContext(_realmId!, IntuitServicesType.QBO, validator);
+        ctx.IppConfiguration.BaseUrl.Qbo = _environment == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
+        return (ctx, new DataService(ctx));
+    }
+
+    public async System.Threading.Tasks.Task<bool> TestConnectionAsync()
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        try
+        {
+            await RefreshTokenIfNeededAsync();
+            var p = GetDataService();
+            // Try to fetch a small amount of data to test the connection
+            p.Ds.FindAll(new Customer(), 1, 1).ToList();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "QBO connection test failed");
+            return false;
+        }
+    }
+
+    public async System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null)
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        var prefix = redirectUri ?? _redirectUri;
+        if (!prefix.EndsWith("/", StringComparison.Ordinal))
+            prefix += "/";
+
+        // netsh requires http scheme
+        if (!prefix.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        {
+            // If HTTPS or custom, we can't check via netsh easily; return guidance
+            return new UrlAclCheckResult
+            {
+                IsReady = false,
+                ListenerPrefix = prefix,
+                Guidance = "The redirect URI is not using HTTP. For local dev with HttpListener, use http://localhost:PORT/ and run: netsh http add urlacl url=http://localhost:PORT/ user=%USERNAME%"
             };
         }
 
-        // Use IHttpClientFactory to get named 'QBO' client
-        var httpClientFactory = _serviceProvider.GetService<IHttpClientFactory>();
-        if (httpClientFactory == null)
+        try
         {
-            _logger.LogError("IHttpClientFactory not available - cannot sync budgets to QBO");
-            return new SyncResult
+            using var process = new Process
             {
-                Success = false,
-                ErrorMessage = "IHttpClientFactory not registered in DI container",
-                Duration = stopwatch.Elapsed
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "netsh",
+                    Arguments = "http show urlacl",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
+
+            // Look for an entry matching our prefix
+            // Example line:    Reserved URL            : http://localhost:8080/
+            var isPresent = output?.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0;
+            string? owner = null;
+            if (isPresent)
+            {
+                // Try to capture owner following the prefix block
+                // Owner: S-1-5-32-545\User or similar
+                var prefixIndex = output!.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
+                if (prefixIndex >= 0)
+                {
+                    var tail = output.Substring(prefixIndex, Math.Min(500, output.Length - prefixIndex));
+                    var ownerIdx = tail.IndexOf("Owner:", StringComparison.OrdinalIgnoreCase);
+                    if (ownerIdx >= 0)
+                    {
+                        var line = tail.Substring(ownerIdx).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                        if (line != null)
+                        {
+                            var parts = line.Split(':');
+                            if (parts.Length > 1) owner = parts[1].Trim();
+                        }
+                    }
+                }
+            }
+
+            return new UrlAclCheckResult
+            {
+                IsReady = isPresent,
+                ListenerPrefix = prefix,
+                Owner = owner,
+                RawNetshOutput = output,
+                Guidance = isPresent
+                    ? "URL ACL is configured. You should be able to complete OAuth sign-in."
+                    : $"URL ACL not found. Run as admin: netsh http add urlacl url={prefix} user=%USERNAME%"
             };
         }
-
-    // Prefer the HttpClient injected into the service (tests pass a configured client).
-    // Fall back to a named client from the factory when an injected client is not present.
-    var client = _httpClient ?? httpClientFactory?.CreateClient("QBO");
-        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", s.QboAccessToken);
-        client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-
-        int syncedCount = 0;
-        foreach (var budget in budgets)
+        catch (Exception ex)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // QBO API: POST /v3/company/{realmId}/budget
-            var endpoint = $"v3/company/{realmId}/budget";
-            var json = System.Text.Json.JsonSerializer.Serialize(budget);
-
-            using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
+            _logger.LogWarning(ex, "Failed to check URL ACL via netsh");
+            return new UrlAclCheckResult
             {
+                IsReady = false,
+                ListenerPrefix = prefix,
+                Guidance = $"Couldn't verify URL ACL automatically. Try running as admin: netsh http add urlacl url={prefix} user=%USERNAME%"
+            };
+        }
+    }
+
+    public async System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync()
+    {
+        try
+        {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+            var p = GetDataService();
+            // Fetch customers from QuickBooks
+            return p.Ds.FindAll(new Customer(), 1, 100).ToList();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "QBO customers fetch failed");
+            throw;
+        }
+    }
+
+    public async System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null)
+    {
+        try
+        {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+            var p = GetDataService();
+            if (string.IsNullOrWhiteSpace(enterprise))
+                return p.Ds.FindAll(new Invoice(), 1, 100).ToList();
+            var query = $"SELECT * FROM Invoice WHERE Metadata.CustomField['Enterprise'] = '{enterprise}'";
+            var qs = new QueryService<Invoice>(p.Ctx);
+            return qs.ExecuteIdsQuery(query).ToList();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "QBO invoices fetch failed");
+            throw;
+        }
+    }
+
+    public async System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync()
+    {
+        try
+        {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+
+            var allAccounts = new List<Account>();
+            const int pageSize = 500; // QuickBooks recommended page size
+            int startPosition = 1;
+            int maxPages = 10; // Safety limit to prevent infinite loops
+            int pageCount = 0;
+
+            _logger.LogInformation("Starting batch fetch of chart of accounts");
+
+            while (pageCount < maxPages)
+            {
+                var p = GetDataService();
+                var pageAccounts = p.Ds.FindAll(new Account(), startPosition, pageSize).ToList();
+
+                if (pageAccounts == null || pageAccounts.Count == 0)
+                {
+                    _logger.LogInformation("No more accounts found at position {Position}, ending fetch", startPosition);
+                    break;
+                }
+
+                allAccounts.AddRange(pageAccounts);
+                _logger.LogInformation("Fetched page {Page} with {Count} accounts (total: {Total})",
+                    pageCount + 1, pageAccounts.Count, allAccounts.Count);
+
+                // If we got fewer than pageSize, we've reached the end
+                if (pageAccounts.Count < pageSize)
+                {
+                    break;
+                }
+
+                startPosition += pageSize;
+                pageCount++;
+
+                // Small delay between pages to be respectful to the API
+                if (pageCount < maxPages)
+                {
+                    await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(false);
+                }
+            }
+
+            if (pageCount >= maxPages)
+            {
+                _logger.LogWarning("Reached maximum page limit ({MaxPages}) for chart of accounts fetch. Total accounts: {Total}",
+                    maxPages, allAccounts.Count);
+            }
+
+            _logger.LogInformation("Chart of accounts fetch completed. Total accounts: {Total}", allAccounts.Count);
+            return allAccounts;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "QBO chart of accounts batch fetch failed");
+            throw;
+        }
+    }
+
+    public async System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate)
+    {
+        try
+        {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+            var p = GetDataService();
+
+            // Query journal entries within date range
+            var query = $"SELECT * FROM JournalEntry WHERE TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
+            var qs = new QueryService<JournalEntry>(p.Ctx);
+            return qs.ExecuteIdsQuery(query).ToList();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "QBO journal entries fetch failed");
+            throw;
+        }
+    }
+
+    public async System.Threading.Tasks.Task<List<QuickBooksBudget>> GetBudgetsAsync()
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        await RefreshTokenIfNeededAsync();
+
+        // Delegate to the light-weight API client that maps QBO budget objects to our app DTO
+        return await _apiClient.GetBudgetsAsync().ConfigureAwait(false);
+    }
+
+    public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<QuickBooksBudget> budgets, CancellationToken cancellationToken = default)
+    {
+        if (budgets == null) throw new ArgumentNullException(nameof(budgets));
+
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+
+            var realmId = _realmId ?? _settings.Current.QuickBooksRealmId ?? string.Empty;
+
+            var s = EnsureSettingsLoaded();
+            if (!HasValidAccessToken())
+            {
+                return new SyncResult { Success = false, ErrorMessage = "Access token invalid – refresh required.", Duration = stopwatch.Elapsed };
+            }
+
+            var httpClientFactory = _serviceProvider.GetService<IHttpClientFactory>();
+            var client = _httpClient ?? httpClientFactory?.CreateClient("QBO");
+            if (client == null)
+            {
+                _logger.LogError("No HttpClient available to sync budgets to QBO");
+                return new SyncResult { Success = false, ErrorMessage = "No HttpClient available", Duration = stopwatch.Elapsed };
+            }
+
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", s.QboAccessToken);
+            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue(JsonMediaType));
+
+            int syncedCount = 0;
+            foreach (var budget in budgets)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // QBO REST endpoint expects a full budget object. We send the DTO as-is and allow the QBO endpoint to ignore unknown fields.
+                var endpoint = $"v3/company/{realmId}/budget";
+                var json = System.Text.Json.JsonSerializer.Serialize(budget);
+
+                using var content = new StringContent(json, Encoding.UTF8, JsonMediaType);
                 var endpointUri = new Uri(endpoint, UriKind.Relative);
                 var response = await client.PostAsync(endpointUri, content, cancellationToken).ConfigureAwait(false);
                 if (response.IsSuccessStatusCode)
@@ -642,333 +613,226 @@ public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnum
                 else
                 {
                     var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    _logger.LogWarning("Failed to sync budget {BudgetId} to QBO: {StatusCode} - {Error}",
-                        budget.Id, response.StatusCode, errorBody);
+                    _logger.LogWarning("Failed to sync budget {BudgetId} to QBO: {StatusCode} - {Error}", budget.Id, response.StatusCode, errorBody);
                 }
             }
+
+            stopwatch.Stop();
+            return new SyncResult { Success = true, RecordsSynced = syncedCount, Duration = stopwatch.Elapsed };
         }
-
-        stopwatch.Stop();
-
-        return new SyncResult
+        catch (OperationCanceledException ex)
         {
-            Success = true,
-            RecordsSynced = syncedCount,
-            Duration = stopwatch.Elapsed
-        };
-    }
-    catch (OperationCanceledException)
-    {
-        stopwatch.Stop();
-        _logger.LogInformation("Budget sync to QBO was cancelled");
-        return new SyncResult
-        {
-            Success = false,
-            ErrorMessage = "Operation cancelled",
-            Duration = stopwatch.Elapsed
-        };
-    }
-    catch (Exception ex)
-    {
-        stopwatch.Stop();
-        Serilog.Log.Error(ex, "QBO budget sync failed");
-        return new SyncResult
-        {
-            Success = false,
-            ErrorMessage = ex.Message,
-            Duration = stopwatch.Elapsed
-        };
-    }
-}
-*/
-
-// TODO: Re-enable when Budget type is available or custom implementation is created
-/*
-/// <summary>
-/// Synchronizes budgets from QuickBooks to the app, handling cancellation gracefully.
-/// </summary>
-public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(List<Intuit.Ipp.Data.Budget> budgets, CancellationToken cancellationToken = default)
-{
-    var startTime = DateTime.UtcNow;
-    try
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Reuse HTTP-based sync logic for Intuit budget objects so unit tests that pass Intuit types exercise the same code path.
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-
-        var s = EnsureSettingsLoaded();
-        if (!HasValidAccessToken())
-        {
-            return new SyncResult
-            {
-                Success = false,
-                ErrorMessage = "Access token invalid – refresh required.",
-                Duration = DateTime.UtcNow - startTime
-            };
-        }
-
-        var httpClientFactory = _serviceProvider.GetService<IHttpClientFactory>();
-        var client = _httpClient ?? httpClientFactory?.CreateClient("QBO");
-        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", s.QboAccessToken);
-        client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-
-        int syncedCount = 0;
-        var realmId = _realmId ?? _settings.Current.QuickBooksRealmId ?? _settings.Current.QuickBooksRealmId;
-
-        foreach (var budget in budgets)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var endpoint = $"v3/company/{realmId}/budget";
-            var json = System.Text.Json.JsonSerializer.Serialize(budget);
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var endpointUri = new Uri(endpoint, UriKind.Relative);
-            var response = await client.PostAsync(endpointUri, content, cancellationToken).ConfigureAwait(false);
-            if (response.IsSuccessStatusCode)
-            {
-                syncedCount++;
-                _logger.LogInformation("Successfully synced budget {BudgetId} to QBO", budget.Id);
-            }
-            else
-            {
-                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                _logger.LogWarning("Failed to sync budget {BudgetId} to QBO: {StatusCode} - {Error}", budget.Id, response.StatusCode, errorBody);
-            }
-        }
-
-        return new SyncResult
-        {
-            Success = true,
-            RecordsSynced = syncedCount,
-            Duration = DateTime.UtcNow - startTime
-        };
-    }
-    catch (OperationCanceledException)
-    {
-        var duration = DateTime.UtcNow - startTime;
-        _logger.LogInformation("Budget sync was cancelled after {Duration}", duration);
-        return new SyncResult
-        {
-            Success = false,
-            ErrorMessage = "Budget sync cancelled by user request.",
-            Duration = duration
-        };
-    }
-    catch (Exception ex)
-    {
-        var duration = DateTime.UtcNow - startTime;
-        _logger.LogError(ex, "Budget sync failed after {Duration}", duration);
-        return new SyncResult
-        {
-            Success = false,
-            ErrorMessage = ex.Message,
-            Duration = duration
-        };
-    }
-}
-*/
-
-public Task<bool> AuthorizeAsync()
-{
-    // Expose the interactive OAuth flow to the UI
-    return AcquireTokensInteractiveAsync();
-}
-
-private WileyWidget.Models.AppSettings EnsureSettingsLoaded()
-{
-    if (_settingsLoaded) return _settings.Current;
-
-    // Use LoadAsync synchronously - called from constructor context where async is not available
-    _settings.LoadAsync().GetAwaiter().GetResult();
-    _settingsLoaded = true;
-    return _settings.Current;
-}
-
-private async Task<bool> AcquireTokensInteractiveAsync()
-{
-    await EnsureInitializedAsync().ConfigureAwait(false);
-    // Test harness / CI: support two related environment flags:
-    // - WW_SKIP_INTERACTIVE: skip launching a browser / interactive flow (used by automated tests)
-    // - WW_PRINT_AUTH_URL: print the exact authorization URL to the console so a developer can
-    //   copy/paste it into Intuit's developer portal for Redirect URI verification. When both
-    //   are set, we will print the URL and then skip launching the browser (return true for tests).
-    var skipInteractive = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WW_SKIP_INTERACTIVE"));
-    var printAuthUrl = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WW_PRINT_AUTH_URL"));
-
-    // If tests request skip interactive and do not need the printed auth URL, return early.
-    if (skipInteractive && !printAuthUrl)
-    {
-        _logger.LogInformation("WW_SKIP_INTERACTIVE set - skipping interactive OAuth flow for tests/CI");
-        return true;
-    }
-    if (!HttpListener.IsSupported)
-    {
-        _logger.LogError("HttpListener is not supported on this platform; cannot perform QuickBooks OAuth authorization.");
-        return false;
-    }
-
-    var s = EnsureSettingsLoaded();
-    var listenerPrefix = _redirectUri.EndsWith("/", StringComparison.Ordinal) ? _redirectUri : _redirectUri + "/";
-    using var listener = new HttpListener();
-    const string fallbackPrefix = "http://localhost:8080/";
-    var prefixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { fallbackPrefix, listenerPrefix };
-    foreach (var prefix in prefixes)
-    {
-        listener.Prefixes.Add(prefix);
-    }
-
-    // Ensure URL ACL exists for our chosen prefix, then ensure Cloudflare tunnel is up for OAuth redirect
-    try
-    {
-        var acl = await CheckUrlAclAsync(listenerPrefix).ConfigureAwait(false);
-        if (!acl.IsReady)
-        {
-            var ensured = await TryEnsureUrlAclAsync(listenerPrefix).ConfigureAwait(false);
-            _logger.LogInformation("URL ACL ensure attempted for {Prefix} (success={Success}).", listenerPrefix, ensured);
-        }
-    }
-    catch (Exception ex)
-    {
-        _logger.LogDebug(ex, "URL ACL ensure step encountered an issue; proceeding to start listener.");
-    }
-
-    // Try to ensure a Cloudflare tunnel is available to reach our localhost callback (optional for local dev)
-    try
-    {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var tunnelReady = await EnsureCloudflaredTunnelAsync(cts.Token).ConfigureAwait(false);
-        if (tunnelReady)
-        {
-            _logger.LogInformation("Cloudflare tunnel ready{Url}.", string.IsNullOrWhiteSpace(_cloudflaredPublicUrl) ? string.Empty : $" at {_cloudflaredPublicUrl}");
-        }
-    }
-    catch (Exception ex)
-    {
-        _logger.LogDebug(ex, "Cloudflare tunnel step is optional and failed; continuing with local OAuth callback.");
-    }
-
-    try
-    {
-        listener.Start();
-    }
-    catch (HttpListenerException ex)
-    {
-        var command = $"netsh http add urlacl url={listenerPrefix} user=%USERNAME%";
-        _logger.LogError(ex, "Failed to start OAuth callback listener on {Prefix}. Run '{Command}' or restart with elevated privileges.", listenerPrefix, command);
-        return false;
-    }
-
-    // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
-    var state = Guid.NewGuid().ToString("N");
-    var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
-    // If requested, print the exact authorization URL so it can be copied into the Intuit
-    // developer app Redirect URI list for diagnosis or portal registration.
-    if (printAuthUrl)
-    {
-        _logger.LogInformation("WW_PRINT_AUTH_URL set - printing QuickBooks authorization URL to console");
-        try
-        {
-            Console.WriteLine(authUrl);
-        }
-        catch
-        {
-            // best-effort printing; do not fail if console isn't available
-        }
-        if (skipInteractive)
-        {
-            _logger.LogInformation("WW_SKIP_INTERACTIVE also set - printed auth URL and skipping browser launch.");
-            return true;
-        }
-    }
-    _logger.LogWarning("Launching QuickBooks OAuth flow. Complete sign-in for realm {RealmId}.", _realmId);
-    // If provided, launch pre-login URL to ensure correct account context, then launch OAuth
-    if (!string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
-    {
-        try
-        {
-            LaunchOAuthBrowser(_intuitPreLoginUrl);
+            stopwatch.Stop();
+            _logger.LogInformation(ex, "Budget sync to QBO was cancelled");
+            return new SyncResult { Success = false, ErrorMessage = "Operation cancelled", Duration = stopwatch.Elapsed };
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to open Intuit pre-login URL; continuing with OAuth");
+            stopwatch.Stop();
+            Serilog.Log.Error(ex, "QBO budget sync failed");
+            return new SyncResult { Success = false, ErrorMessage = ex.Message, Duration = stopwatch.Elapsed };
         }
     }
-    LaunchOAuthBrowser(authUrl);
 
-    HttpListenerContext? context = null;
-    try
+    public Task<bool> AuthorizeAsync()
     {
-        var timeoutTask = System.Threading.Tasks.Task.Delay(TimeSpan.FromMinutes(5));
-        var contextTask = listener.GetContextAsync();
-        var completed = await System.Threading.Tasks.Task.WhenAny(contextTask, timeoutTask).ConfigureAwait(false);
-        if (completed != contextTask)
+        // Expose the interactive OAuth flow to the UI
+        return AcquireTokensInteractiveAsync();
+    }
+
+    private WileyWidget.Models.AppSettings EnsureSettingsLoaded()
+    {
+        if (_settingsLoaded) return _settings.Current;
+
+        // Use LoadAsync synchronously - called from constructor context where async is not available
+        _settings.LoadAsync().GetAwaiter().GetResult();
+        _settingsLoaded = true;
+        return _settings.Current;
+    }
+
+    private async Task<bool> AcquireTokensInteractiveAsync()
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+        // Test harness / CI: support two related environment flags:
+        // - WW_SKIP_INTERACTIVE: skip launching a browser / interactive flow (used by automated tests)
+        // - WW_PRINT_AUTH_URL: print the exact authorization URL to the console so a developer can
+        //   copy/paste it into Intuit's developer portal for Redirect URI verification. When both
+        //   are set, we will print the URL and then skip launching the browser (return true for tests).
+        var skipInteractive = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WW_SKIP_INTERACTIVE"));
+        var printAuthUrl = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WW_PRINT_AUTH_URL"));
+
+        // If tests request skip interactive and do not need the printed auth URL, return early.
+        if (skipInteractive && !printAuthUrl)
         {
-            _logger.LogWarning("OAuth callback listener timed out waiting for Intuit redirect.");
+            _logger.LogInformation("WW_SKIP_INTERACTIVE set - skipping interactive OAuth flow for tests/CI");
+            return true;
+        }
+        if (!HttpListener.IsSupported)
+        {
+            _logger.LogError("HttpListener is not supported on this platform; cannot perform QuickBooks OAuth authorization.");
             return false;
         }
 
-        context = contextTask.Result;
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Failed while awaiting QuickBooks OAuth callback.");
-        return false;
-    }
-    finally
-    {
-        listener.Stop();
-    }
-
-    var request = context.Request;
-    var response = context.Response;
-    var query = request.QueryString;
-    var returnedState = query["state"];
-    var code = query["code"];
-    var realmIdFromCallback = query["realmId"]; // provided by Intuit on success
-    var error = query["error"];
-    var success = !string.IsNullOrWhiteSpace(code) && string.Equals(state, returnedState, StringComparison.Ordinal);
-
-    if (!string.IsNullOrWhiteSpace(error))
-    {
-        _logger.LogWarning("QuickBooks OAuth returned error {Error}", error);
-        success = false;
-    }
-
-    if (!success)
-    {
-        await WriteCallbackResponseAsync(response, "Authorization failed. You can close this window and return to Wiley Widget.").ConfigureAwait(false);
-        return false;
-    }
-
-    try
-    {
-        var tokenResponse = await ExchangeAuthorizationCodeForTokensAsync(code).ConfigureAwait(false);
-        s.QboAccessToken = tokenResponse.AccessToken;
-        s.QboRefreshToken = tokenResponse.RefreshToken;
-        s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
-
-        // Capture realmId automatically if provided
-        if (!string.IsNullOrWhiteSpace(realmIdFromCallback))
+        var s = EnsureSettingsLoaded();
+        var listenerPrefix = _redirectUri.EndsWith("/", StringComparison.Ordinal) ? _redirectUri : _redirectUri + "/";
+        using var listener = new HttpListener();
+        const string fallbackPrefix = "http://localhost:8080/";
+        var prefixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { fallbackPrefix, listenerPrefix };
+        foreach (var prefix in prefixes)
         {
-            _realmId = realmIdFromCallback;
-            // Persist realmId for future runs if a secret vault is available
-            try
-            {
-                if (_secretVault != null)
-                    await _secretVault.SetSecretAsync("QBO-REALM-ID", _realmId).ConfigureAwait(false);
-            }
-            catch { }
+            listener.Prefixes.Add(prefix);
         }
-        else if (string.IsNullOrWhiteSpace(_realmId) && !string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
+
+        // Ensure URL ACL exists for our chosen prefix, then ensure Cloudflare tunnel is up for OAuth redirect
+        try
         {
-            // As a safety, detect account_id_hint from pre-login URL if user provided one
+            var acl = await CheckUrlAclAsync(listenerPrefix).ConfigureAwait(false);
+            if (!acl.IsReady)
+            {
+                var ensured = await TryEnsureUrlAclAsync(listenerPrefix).ConfigureAwait(false);
+                _logger.LogInformation("URL ACL ensure attempted for {Prefix} (success={Success}).", listenerPrefix, ensured);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "URL ACL ensure step encountered an issue; proceeding to start listener.");
+        }
+
+        // Try to ensure a Cloudflare tunnel is available to reach our localhost callback (optional for local dev)
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var tunnelReady = await EnsureCloudflaredTunnelAsync(cts.Token).ConfigureAwait(false);
+            if (tunnelReady)
+            {
+                _logger.LogInformation("Cloudflare tunnel ready{Url}.", string.IsNullOrWhiteSpace(_cloudflaredPublicUrl) ? string.Empty : $" at {_cloudflaredPublicUrl}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Cloudflare tunnel step is optional and failed; continuing with local OAuth callback.");
+        }
+
+        try
+        {
+            listener.Start();
+        }
+        catch (HttpListenerException ex)
+        {
+            var command = $"netsh http add urlacl url={listenerPrefix} user=%USERNAME%";
+            _logger.LogError(ex, "Failed to start OAuth callback listener on {Prefix}. Run '{Command}' or restart with elevated privileges.", listenerPrefix, command);
+            return false;
+        }
+
+        // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
+        var state = Guid.NewGuid().ToString("N");
+        var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
+        // If requested, print the exact authorization URL so it can be copied into the Intuit
+        // developer app Redirect URI list for diagnosis or portal registration.
+        if (printAuthUrl)
+        {
+            _logger.LogInformation("WW_PRINT_AUTH_URL set - printing QuickBooks authorization URL to console");
             try
             {
-                var uri = new Uri(_intuitPreLoginUrl);
-                var qs = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                var hint = qs["account_id_hint"];
+                Console.WriteLine(authUrl);
+            }
+            catch
+            {
+                // best-effort printing; do not fail if console isn't available
+            }
+            if (skipInteractive)
+            {
+                _logger.LogInformation("WW_SKIP_INTERACTIVE also set - printed auth URL and skipping browser launch.");
+                return true;
+            }
+        }
+        _logger.LogWarning("Launching QuickBooks OAuth flow. Complete sign-in for realm {RealmId}.", _realmId);
+        // If provided, launch pre-login URL to ensure correct account context, then launch OAuth
+        if (!string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
+        {
+            try
+            {
+                LaunchOAuthBrowser(_intuitPreLoginUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to open Intuit pre-login URL; continuing with OAuth");
+            }
+        }
+        LaunchOAuthBrowser(authUrl);
+
+        HttpListenerContext? context = null;
+        try
+        {
+            var timeoutTask = System.Threading.Tasks.Task.Delay(TimeSpan.FromMinutes(5));
+            var contextTask = listener.GetContextAsync();
+            var completed = await System.Threading.Tasks.Task.WhenAny(contextTask, timeoutTask).ConfigureAwait(false);
+            if (completed != contextTask)
+            {
+                _logger.LogWarning("OAuth callback listener timed out waiting for Intuit redirect.");
+                return false;
+            }
+
+            context = contextTask.Result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed while awaiting QuickBooks OAuth callback.");
+            return false;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+
+        var request = context.Request;
+        var response = context.Response;
+        var query = request.QueryString;
+        var returnedState = query["state"];
+        var code = query["code"];
+        var realmIdFromCallback = query["realmId"]; // provided by Intuit on success
+        var error = query["error"];
+        var success = !string.IsNullOrWhiteSpace(code) && string.Equals(state, returnedState, StringComparison.Ordinal);
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            _logger.LogWarning("QuickBooks OAuth returned error {Error}", error);
+            success = false;
+        }
+
+        if (!success)
+        {
+            await WriteCallbackResponseAsync(response, "Authorization failed. You can close this window and return to Wiley Widget.").ConfigureAwait(false);
+            return false;
+        }
+
+        try
+        {
+            var tokenResponse = await ExchangeAuthorizationCodeForTokensAsync(code).ConfigureAwait(false);
+            s.QboAccessToken = tokenResponse.AccessToken;
+            s.QboRefreshToken = tokenResponse.RefreshToken;
+            s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+
+            // Capture realmId automatically if provided
+            if (!string.IsNullOrWhiteSpace(realmIdFromCallback))
+            {
+                _realmId = realmIdFromCallback;
+                // Persist realmId for future runs if a secret vault is available
+                try
+                {
+                    if (_secretVault != null)
+                        await _secretVault.SetSecretAsync("QBO-REALM-ID", _realmId).ConfigureAwait(false);
+                }
+                catch { } // Ignore if persisting realmId fails
+            }
+            else if (string.IsNullOrWhiteSpace(_realmId) && !string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
+            {
+                // As a safety, detect account_id_hint from pre-login URL if user provided one
+                try
+                {
+                    var uri = new Uri(_intuitPreLoginUrl);
+                    var qs = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                    var hint = qs["account_id_hint"];
                     if (!string.IsNullOrWhiteSpace(hint))
                     {
                         _realmId = hint;
@@ -977,716 +841,714 @@ private async Task<bool> AcquireTokensInteractiveAsync()
                             if (_secretVault != null)
                                 await _secretVault.SetSecretAsync("QBO-REALM-ID", _realmId).ConfigureAwait(false);
                         }
-                        catch { }
+                        catch { } // Ignore if persisting realmId fails
                         _logger.LogInformation("Captured realmId from account_id_hint: {RealmId}", _realmId);
                     }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to parse account_id_hint from Intuit pre-login URL");
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to parse account_id_hint from Intuit pre-login URL");
-            }
+            _settings.Save();
+            Serilog.Log.Information("QBO tokens acquired interactively (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
+            await WriteCallbackResponseAsync(response, "Authorization complete. You may close this tab and return to Wiley Widget.").ConfigureAwait(false);
+            return true;
         }
-        _settings.Save();
-        Serilog.Log.Information("QBO tokens acquired interactively (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
-        await WriteCallbackResponseAsync(response, "Authorization complete. You may close this tab and return to Wiley Widget.").ConfigureAwait(false);
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to exchange authorization code for tokens.");
+            await WriteCallbackResponseAsync(response, "Authorization encountered an error. Check application logs for details.").ConfigureAwait(false);
+            return false;
+        }
     }
-    catch (Exception ex)
+
+    private string BuildAuthorizationUrl(IReadOnlyList<string> scopes, string state)
     {
-        _logger.LogError(ex, "Failed to exchange authorization code for tokens.");
-        await WriteCallbackResponseAsync(response, "Authorization encountered an error. Check application logs for details.").ConfigureAwait(false);
-        return false;
+        // space-delimited scope string must be URL-encoded
+        var scopeParam = Uri.EscapeDataString(string.Join(' ', scopes));
+        var redirectParam = Uri.EscapeDataString(_redirectUri);
+        var clientIdParam = Uri.EscapeDataString(_clientId!);
+        var stateParam = Uri.EscapeDataString(state);
+        var url = $"{AuthorizationEndpoint}?client_id={clientIdParam}&response_type=code&scope={scopeParam}&redirect_uri={redirectParam}&state={stateParam}";
+        return url;
     }
-}
 
-private string BuildAuthorizationUrl(IReadOnlyList<string> scopes, string state)
-{
-    // space-delimited scope string must be URL-encoded
-    var scopeParam = Uri.EscapeDataString(string.Join(' ', scopes));
-    var redirectParam = Uri.EscapeDataString(_redirectUri);
-    var clientIdParam = Uri.EscapeDataString(_clientId!);
-    var stateParam = Uri.EscapeDataString(state);
-    var url = $"{AuthorizationEndpoint}?client_id={clientIdParam}&response_type=code&scope={scopeParam}&redirect_uri={redirectParam}&state={stateParam}";
-    return url;
-}
+    private sealed record TokenResult(string AccessToken, string RefreshToken, int ExpiresIn, int RefreshTokenExpiresIn);
 
-private sealed record TokenResult(string AccessToken, string RefreshToken, int ExpiresIn, int RefreshTokenExpiresIn);
-
-private async Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code)
-{
-    using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
-    var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
-    req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
-    req.Headers.Accept.ParseAdd("application/json");
-    var form = new List<KeyValuePair<string, string>>
+    private async Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
+        var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
+        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
+        req.Headers.Accept.ParseAdd(JsonMediaType);
+        var form = new List<KeyValuePair<string, string>>
         {
             new("grant_type", "authorization_code"),
             new("code", code),
             new("redirect_uri", _redirectUri)
         };
-    req.Content = new FormUrlEncodedContent(form);
-    using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
-    var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
-    if (!resp.IsSuccessStatusCode)
-    {
-        throw new InvalidOperationException($"Intuit token exchange failed ({(int)resp.StatusCode}): {json}");
+        req.Content = new FormUrlEncodedContent(form);
+        using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
+        var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Intuit token exchange failed ({(int)resp.StatusCode}): {json}");
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var access = root.GetProperty("access_token").GetString()!;
+        var refresh = root.GetProperty(RefreshTokenKey).GetString()!;
+        var expires = root.GetProperty("expires_in").GetInt32();
+        var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) ? x.GetInt32() : 0;
+        return new TokenResult(access, refresh, expires, refreshExpires);
     }
 
-    using var doc = JsonDocument.Parse(json);
-    var root = doc.RootElement;
-    var access = root.GetProperty("access_token").GetString()!;
-    var refresh = root.GetProperty("refresh_token").GetString()!;
-    var expires = root.GetProperty("expires_in").GetInt32();
-    var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) ? x.GetInt32() : 0;
-    return new TokenResult(access, refresh, expires, refreshExpires);
-}
-
-private async Task<TokenResult> RefreshAccessTokenAsync(string refreshToken)
-{
-    const int maxRetries = 3;
-    var lastException = (Exception?)null;
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++)
+    private async Task<TokenResult> RefreshAccessTokenAsync(string refreshToken)
     {
-        var json = string.Empty;
-        try
+        const int maxRetries = 3;
+        var lastException = (Exception?)null;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
-            var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
-            req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
-            req.Headers.Accept.ParseAdd("application/json");
-
-            var form = new List<KeyValuePair<string, string>>
-                {
-                    new("grant_type", "refresh_token"),
-                    new("refresh_token", refreshToken)
-                };
-            req.Content = new FormUrlEncodedContent(form);
-
-            using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
-            json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                var error = $"Intuit token refresh failed ({(int)resp.StatusCode}): {json}";
-                _logger.LogWarning("Token refresh attempt {Attempt}/{MaxRetries} failed: {Error}", attempt, maxRetries, error);
-
-                // Check if it's a permanent failure (400 Bad Request usually means invalid refresh token)
-                if (resp.StatusCode == HttpStatusCode.BadRequest)
-                {
-                    throw new InvalidOperationException($"Refresh token is invalid or expired: {json}");
-                }
-
-                lastException = new HttpRequestException(error);
-                if (attempt < maxRetries)
-                {
-                    await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))).ConfigureAwait(false);
-                    continue;
-                }
-                throw lastException;
-            }
-
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            if (!root.TryGetProperty("access_token", out var accessTokenProp) || accessTokenProp.GetString() is not string access)
-            {
-                throw new InvalidOperationException("Invalid token response: missing access_token");
-            }
-
-            var refresh = root.TryGetProperty("refresh_token", out var refreshTokenProp)
-                ? refreshTokenProp.GetString() ?? refreshToken
-                : refreshToken;
-
-            if (!root.TryGetProperty("expires_in", out var expiresProp) || !expiresProp.TryGetInt32(out var expires))
-            {
-                throw new InvalidOperationException("Invalid token response: missing or invalid expires_in");
-            }
-
-            var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) && x.TryGetInt32(out var xVal) ? xVal : 0;
-
-            _logger.LogInformation("Token refresh successful on attempt {Attempt}", attempt);
-            return new TokenResult(access, refresh, expires, refreshExpires);
-        }
-        catch (JsonException ex)
-        {
-            lastException = new InvalidOperationException($"Invalid JSON response from token endpoint: {json}", ex);
-            _logger.LogWarning(ex, "JSON parsing failed on attempt {Attempt}", attempt);
-        }
-        catch (HttpRequestException ex)
-        {
-            lastException = ex;
-            _logger.LogWarning(ex, "HTTP request failed on attempt {Attempt}", attempt);
-        }
-        catch (Exception ex)
-        {
-            lastException = ex;
-            _logger.LogError(ex, "Unexpected error during token refresh on attempt {Attempt}", attempt);
-        }
-
-        if (attempt < maxRetries)
-        {
-            var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
-            _logger.LogInformation("Retrying token refresh in {Delay}", delay);
-            await System.Threading.Tasks.Task.Delay(delay).ConfigureAwait(false);
-        }
-    }
-
-    throw new InvalidOperationException($"Token refresh failed after {maxRetries} attempts", lastException);
-}
-
-private static async System.Threading.Tasks.Task WriteCallbackResponseAsync(HttpListenerResponse response, string message)
-{
-    var html = $"<html><body><h2>Wiley Widget - QuickBooks</h2><p>{WebUtility.HtmlEncode(message)}</p></body></html>";
-    var payload = Encoding.UTF8.GetBytes(html);
-    response.ContentType = "text/html";
-    response.ContentEncoding = Encoding.UTF8;
-    response.ContentLength64 = payload.Length;
-    await response.OutputStream.WriteAsync(payload, 0, payload.Length).ConfigureAwait(false);
-    response.OutputStream.Close();
-}
-
-private void LaunchOAuthBrowser(string authUrl)
-{
-    try
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = authUrl,
-            UseShellExecute = true
-        };
-        Process.Start(psi);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Failed to launch browser for QuickBooks OAuth flow. Navigate manually to {AuthUrl}.", authUrl);
-    }
-}
-
-/// <summary>
-/// Ensures a Cloudflare tunnel is running that forwards the local redirect URI port, starting one if needed.
-/// Uses 'cloudflared tunnel --url http://localhost:PORT' and waits for readiness indicated by a public URL in stdout.
-/// This is optional for local development but helps when a public callback URL is required.
-/// For webhooks, we need to tunnel to the webhooks server port, not the main app port.
-/// </summary>
-private async Task<bool> EnsureCloudflaredTunnelAsync(CancellationToken cancellationToken)
-{
-    await EnsureInitializedAsync().ConfigureAwait(false);
-
-    // If already running, assume good
-    if (_cloudflaredProcess is { HasExited: false }) return true;
-
-    await _cloudflaredSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-    try
-    {
-        if (_cloudflaredProcess is { HasExited: false }) return true;
-
-        // For webhooks, we need to tunnel to the webhooks server, not the main app
-        // Use environment variable or default to webhooks HTTPS port
-        var webhooksPort = Environment.GetEnvironmentVariable("WEBHOOKS_PORT", EnvironmentVariableTarget.User)
-                          ?? Environment.GetEnvironmentVariable("WEBHOOKS_PORT", EnvironmentVariableTarget.Process)
-                          ?? "7207"; // Default to webhooks HTTPS port
-
-        var targetUrl = $"https://localhost:{webhooksPort}";
-
-        var exe = Environment.GetEnvironmentVariable("CLOUDFLARED_EXE", EnvironmentVariableTarget.User)
-                  ?? Environment.GetEnvironmentVariable("CLOUDFLARED_EXE", EnvironmentVariableTarget.Process)
-                  ?? "cloudflared"; // rely on PATH
-
-        var extraArgs = Environment.GetEnvironmentVariable("CLOUDFLARED_ARGS", EnvironmentVariableTarget.User)
-                       ?? Environment.GetEnvironmentVariable("CLOUDFLARED_ARGS", EnvironmentVariableTarget.Process)
-                       ?? string.Empty;
-
-        var args = $"tunnel --no-autoupdate --loglevel info --url {targetUrl} {extraArgs}".Trim();
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = exe,
-            Arguments = args,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        Process? process = null;
-        try
-        {
-            process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            var readyTcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var urlRegex = new Regex(@"https?://[\w\-\.]+\.trycloudflare\.com", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-            process.OutputDataReceived += (s, e) =>
-            {
-                if (e.Data is null) return;
-                var m = urlRegex.Match(e.Data);
-                if (m.Success && !readyTcs.Task.IsCompleted)
-                {
-                    readyTcs.TrySetResult(m.Value);
-                }
-            };
-            process.ErrorDataReceived += (s, e) =>
-            {
-                if (e.Data is null) return;
-                // Surface obvious failures quickly
-                if (e.Data.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 && !readyTcs.Task.IsCompleted)
-                {
-                    readyTcs.TrySetException(new InvalidOperationException($"cloudflared error: {e.Data}"));
-                }
-            };
-
-            if (!process.Start())
-            {
-                _logger.LogWarning("Failed to start cloudflared process (FileName={Exe}).", exe);
-                process.Dispose();
-                return false;
-            }
-
-            _cloudflaredProcess = process;
-            process = null; // Ownership transferred, prevent double dispose
-            _cloudflaredProcess.BeginOutputReadLine();
-            _cloudflaredProcess.BeginErrorReadLine();
-
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            linkedCts.CancelAfter(TimeSpan.FromSeconds(25));
-
+            var json = string.Empty;
             try
             {
-                var url = await readyTcs.Task.WaitAsync(linkedCts.Token).ConfigureAwait(false);
-                _cloudflaredPublicUrl = url;
-                _logger.LogInformation("cloudflared tunnel established for webhooks: {Url} -> {Target}", url, targetUrl);
-                return true;
+                using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
+                var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
+                req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
+                req.Headers.Accept.ParseAdd(JsonMediaType);
+
+                var form = new List<KeyValuePair<string, string>>
+                {
+                    new("grant_type", "refresh_token"),
+                    new(RefreshTokenKey, refreshToken)
+                };
+                req.Content = new FormUrlEncodedContent(form);
+
+                using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
+                json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var error = $"Intuit token refresh failed ({(int)resp.StatusCode}): {json}";
+                    _logger.LogWarning("Token refresh attempt {Attempt}/{MaxRetries} failed: {Error}", attempt, maxRetries, error);
+
+                    // Check if it's a permanent failure (400 Bad Request usually means invalid refresh token)
+                    if (resp.StatusCode == HttpStatusCode.BadRequest)
+                    {
+                        throw new InvalidOperationException($"Refresh token is invalid or expired: {json}");
+                    }
+
+                    lastException = new HttpRequestException(error);
+                    if (attempt < maxRetries)
+                    {
+                        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))).ConfigureAwait(false);
+                        continue;
+                    }
+                    throw lastException;
+                }
+
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                if (!root.TryGetProperty("access_token", out var accessTokenProp) || accessTokenProp.GetString() is not string access)
+                {
+                    throw new InvalidOperationException("Invalid token response: missing access_token");
+                }
+
+                var refresh = root.TryGetProperty(RefreshTokenKey, out var refreshTokenProp)
+                    ? refreshTokenProp.GetString() ?? refreshToken
+                    : refreshToken;
+
+                if (!root.TryGetProperty("expires_in", out var expiresProp) || !expiresProp.TryGetInt32(out var expires))
+                {
+                    throw new InvalidOperationException("Invalid token response: missing or invalid expires_in");
+                }
+
+                var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) && x.TryGetInt32(out var xVal) ? xVal : 0;
+
+                _logger.LogInformation("Token refresh successful on attempt {Attempt}", attempt);
+                return new TokenResult(access, refresh, expires, refreshExpires);
             }
-            catch (OperationCanceledException)
+            catch (JsonException ex)
             {
-                _logger.LogWarning("Timed out waiting for cloudflared tunnel readiness.");
-                return false;
+                lastException = new InvalidOperationException($"Invalid JSON response from token endpoint: {json}", ex);
+                _logger.LogWarning(ex, "JSON parsing failed on attempt {Attempt}", attempt);
             }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "HTTP request failed on attempt {Attempt}", attempt);
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                _logger.LogError(ex, "Unexpected error during token refresh on attempt {Attempt}", attempt);
+            }
+
+            if (attempt < maxRetries)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                _logger.LogInformation("Retrying token refresh in {Delay}", delay);
+                await System.Threading.Tasks.Task.Delay(delay).ConfigureAwait(false);
+            }
+        }
+
+        throw new InvalidOperationException($"Token refresh failed after {maxRetries} attempts", lastException);
+    }
+
+    private static async System.Threading.Tasks.Task WriteCallbackResponseAsync(HttpListenerResponse response, string message)
+    {
+        var html = $"<html><body><h2>Wiley Widget - QuickBooks</h2><p>{WebUtility.HtmlEncode(message)}</p></body></html>";
+        var payload = Encoding.UTF8.GetBytes(html);
+        response.ContentType = "text/html";
+        response.ContentEncoding = Encoding.UTF8;
+        response.ContentLength64 = payload.Length;
+        await response.OutputStream.WriteAsync(payload, 0, payload.Length).ConfigureAwait(false);
+        response.OutputStream.Close();
+    }
+
+    private void LaunchOAuthBrowser(string authUrl)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = authUrl,
+                UseShellExecute = true
+            };
+            Process.Start(psi);
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "cloudflared start failed. Is it installed and on PATH?");
-            return false;
+            _logger.LogError(ex, "Failed to launch browser for QuickBooks OAuth flow. Navigate manually to {AuthUrl}.", authUrl);
+        }
+    }
+
+    /// <summary>
+    /// Ensures a Cloudflare tunnel is running that forwards the local redirect URI port, starting one if needed.
+    /// Uses 'cloudflared tunnel --url http://localhost:PORT' and waits for readiness indicated by a public URL in stdout.
+    /// This is optional for local development but helps when a public callback URL is required.
+    /// For webhooks, we need to tunnel to the webhooks server port, not the main app port.
+    /// </summary>
+    private async Task<bool> EnsureCloudflaredTunnelAsync(CancellationToken cancellationToken)
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+
+        // If already running, assume good
+        if (_cloudflaredProcess is { HasExited: false }) return true;
+
+        await _cloudflaredSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cloudflaredProcess is { HasExited: false }) return true;
+
+            // For webhooks, we need to tunnel to the webhooks server, not the main app
+            // Use environment variable or default to webhooks HTTPS port
+            var webhooksPort = Environment.GetEnvironmentVariable("WEBHOOKS_PORT", EnvironmentVariableTarget.User)
+                              ?? Environment.GetEnvironmentVariable("WEBHOOKS_PORT", EnvironmentVariableTarget.Process)
+                              ?? "7207"; // Default to webhooks HTTPS port
+
+            var targetUrl = $"https://localhost:{webhooksPort}";
+
+            var exe = Environment.GetEnvironmentVariable("CLOUDFLARED_EXE", EnvironmentVariableTarget.User)
+                      ?? Environment.GetEnvironmentVariable("CLOUDFLARED_EXE", EnvironmentVariableTarget.Process)
+                      ?? "cloudflared"; // rely on PATH
+
+            var extraArgs = Environment.GetEnvironmentVariable("CLOUDFLARED_ARGS", EnvironmentVariableTarget.User)
+                           ?? Environment.GetEnvironmentVariable("CLOUDFLARED_ARGS", EnvironmentVariableTarget.Process)
+                           ?? string.Empty;
+
+            var args = $"tunnel --no-autoupdate --loglevel info --url {targetUrl} {extraArgs}".Trim();
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = exe,
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            Process? process = null;
+            try
+            {
+                process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+                var readyTcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var urlRegex = new Regex(@"https?://[\w\-\.]+\.trycloudflare\.com", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+                process.OutputDataReceived += (s, e) =>
+                {
+                    if (e.Data is null) return;
+                    var m = urlRegex.Match(e.Data);
+                    if (m.Success && !readyTcs.Task.IsCompleted)
+                    {
+                        readyTcs.TrySetResult(m.Value);
+                    }
+                };
+                process.ErrorDataReceived += (s, e) =>
+                {
+                    if (e.Data is null) return;
+                    // Surface obvious failures quickly
+                    if (e.Data.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 && !readyTcs.Task.IsCompleted)
+                    {
+                        readyTcs.TrySetException(new InvalidOperationException($"cloudflared error: {e.Data}"));
+                    }
+                };
+
+                if (!process.Start())
+                {
+                    _logger.LogWarning("Failed to start cloudflared process (FileName={Exe}).", exe);
+                    process.Dispose();
+                    return false;
+                }
+
+                _cloudflaredProcess = process;
+                process = null; // Ownership transferred, prevent double dispose
+                _cloudflaredProcess.BeginOutputReadLine();
+                _cloudflaredProcess.BeginErrorReadLine();
+
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                linkedCts.CancelAfter(TimeSpan.FromSeconds(25));
+
+                try
+                {
+                    var url = await readyTcs.Task.WaitAsync(linkedCts.Token).ConfigureAwait(false);
+                    _cloudflaredPublicUrl = url;
+                    _logger.LogInformation("cloudflared tunnel established for webhooks: {Url} -> {Target}", url, targetUrl);
+                    return true;
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning("Timed out waiting for cloudflared tunnel readiness.");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "cloudflared start failed. Is it installed and on PATH?");
+                return false;
+            }
+            finally
+            {
+                process?.Dispose();
+            }
         }
         finally
         {
-            process?.Dispose();
+            _cloudflaredSemaphore.Release();
         }
     }
-    finally
-    {
-        _cloudflaredSemaphore.Release();
-    }
-}
 
-private async Task<bool> TryEnsureUrlAclAsync(string? redirectUri = null)
-{
-    var prefix = redirectUri ?? _redirectUri;
-    if (!prefix.EndsWith("/", StringComparison.Ordinal))
-        prefix += "/";
-    if (!prefix.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-        return false; // only supported for HTTP
-
-    try
+    private async Task<bool> TryEnsureUrlAclAsync(string? redirectUri = null)
     {
-        var psi = new ProcessStartInfo
+        var prefix = redirectUri ?? _redirectUri;
+        if (!prefix.EndsWith("/", StringComparison.Ordinal))
+            prefix += "/";
+        if (!prefix.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+            return false; // only supported for HTTP
+
+        try
         {
-            FileName = "netsh",
-            Arguments = $"http add urlacl url={prefix} user=%USERNAME%",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        using var p = Process.Start(psi);
-        if (p == null) return false;
-        var output = await p.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-        var error = await p.StandardError.ReadToEndAsync().ConfigureAwait(false);
-        await p.WaitForExitAsync().ConfigureAwait(false);
-        var success = p.ExitCode == 0 || (output?.IndexOf("exists", StringComparison.OrdinalIgnoreCase) >= 0);
-        if (!success)
-        {
-            _logger.LogDebug("netsh add urlacl failed (code {Code}). Error: {Error}", p.ExitCode, string.IsNullOrWhiteSpace(error) ? output : error);
+            var psi = new ProcessStartInfo
+            {
+                FileName = "netsh",
+                Arguments = $"http add urlacl url={prefix} user=%USERNAME%",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var p = Process.Start(psi);
+            if (p == null) return false;
+            var output = await p.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            var error = await p.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await p.WaitForExitAsync().ConfigureAwait(false);
+            var success = p.ExitCode == 0 || (output?.IndexOf("exists", StringComparison.OrdinalIgnoreCase) >= 0);
+            if (!success)
+            {
+                _logger.LogDebug("netsh add urlacl failed (code {Code}). Error: {Error}", p.ExitCode, string.IsNullOrWhiteSpace(error) ? output : error);
+            }
+            return success;
         }
-        return success;
-    }
-    catch (Exception ex)
-    {
-        _logger.LogDebug(ex, "Unable to run netsh add urlacl; may require elevation.");
-        return false;
-    }
-}
-
-/// <summary>
-/// Connects to QuickBooks by ensuring valid tokens and testing the connection.
-/// </summary>
-public async System.Threading.Tasks.Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
-{
-    try
-    {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Ensure we have valid tokens
-        await RefreshTokenIfNeededAsync();
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Test the connection
-        var testResult = await TestConnectionAsync();
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (testResult)
+        catch (Exception ex)
         {
-            _logger.LogInformation("Successfully connected to QuickBooks");
-            return true;
-        }
-        else
-        {
-            _logger.LogWarning("Connection test failed");
+            _logger.LogDebug(ex, "Unable to run netsh add urlacl; may require elevation.");
             return false;
         }
     }
-    catch (OperationCanceledException)
-    {
-        _logger.LogInformation("QuickBooks connection was cancelled");
-        throw;
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Failed to connect to QuickBooks");
-        return false;
-    }
-}
 
-/// <summary>
-/// Checks if the service is currently connected to QuickBooks.
-/// </summary>
-public async System.Threading.Tasks.Task<bool> IsConnectedAsync()
-{
-    try
+    /// <summary>
+    /// Connects to QuickBooks by ensuring valid tokens and testing the connection.
+    /// </summary>
+    public async System.Threading.Tasks.Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-
-        // Check if we have valid tokens
-        var settings = EnsureSettingsLoaded();
-        if (string.IsNullOrEmpty(settings.QboAccessToken) ||
-            string.IsNullOrEmpty(settings.QboRefreshToken) ||
-            settings.QboTokenExpiry <= DateTime.Now)
+        try
         {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Ensure we have valid tokens
+            await RefreshTokenIfNeededAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Test the connection
+            var testResult = await TestConnectionAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (testResult)
+            {
+                _logger.LogInformation("Successfully connected to QuickBooks");
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning("Connection test failed");
+                return false;
+            }
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogInformation(ex, "QuickBooks connection was cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect to QuickBooks");
             return false;
         }
-
-        // Test the connection
-        return await TestConnectionAsync();
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Failed to check QuickBooks connection status");
-        return false;
-    }
-}
-
-/// <summary>
-/// Disconnects from QuickBooks by clearing tokens and connection state.
-/// </summary>
-public System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
-{
-    try
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var s = EnsureSettingsLoaded();
-        s.QboAccessToken = null;
-        s.QboRefreshToken = null;
-        s.QboTokenExpiry = default(DateTime);
-        _settings.Save();
-
-        // Clear cached realm ID
-        _realmId = null;
-
-        _logger.LogInformation("Successfully disconnected from QuickBooks");
-    }
-    catch (OperationCanceledException)
-    {
-        _logger.LogInformation("QuickBooks disconnection was cancelled");
-        throw;
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Failed to disconnect from QuickBooks");
-        throw;
     }
 
-    return System.Threading.Tasks.Task.CompletedTask;
-}
-
-/// <summary>
-/// Gets the current connection status of the QuickBooks service.
-/// </summary>
-public async System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default)
-{
-    try
+    /// <summary>
+    /// Checks if the service is currently connected to QuickBooks.
+    /// </summary>
+    public async System.Threading.Tasks.Task<bool> IsConnectedAsync()
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var s = EnsureSettingsLoaded();
-        var hasTokens = !string.IsNullOrEmpty(s.QboAccessToken) && !string.IsNullOrEmpty(s.QboRefreshToken);
-        var isExpired = s.QboTokenExpiry != default(DateTime) && s.QboTokenExpiry <= DateTime.UtcNow;
-
-        if (!hasTokens)
+        try
         {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+
+            // Check if we have valid tokens
+            var settings = EnsureSettingsLoaded();
+            if (string.IsNullOrEmpty(settings.QboAccessToken) ||
+                string.IsNullOrEmpty(settings.QboRefreshToken) ||
+                settings.QboTokenExpiry <= DateTime.Now)
+            {
+                return false;
+            }
+
+            // Test the connection
+            return await TestConnectionAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check QuickBooks connection status");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Disconnects from QuickBooks by clearing tokens and connection state.
+    /// </summary>
+    public System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var s = EnsureSettingsLoaded();
+            s.QboAccessToken = null;
+            s.QboRefreshToken = null;
+            s.QboTokenExpiry = default(DateTime);
+            _settings.Save();
+
+            // Clear cached realm ID
+            _realmId = null;
+
+            _logger.LogInformation("Successfully disconnected from QuickBooks");
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogInformation(ex, "QuickBooks disconnection was cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to disconnect from QuickBooks");
+            throw;
+        }
+
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Gets the current connection status of the QuickBooks service.
+    /// </summary>
+    public async System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var s = EnsureSettingsLoaded();
+            var hasTokens = !string.IsNullOrEmpty(s.QboAccessToken) && !string.IsNullOrEmpty(s.QboRefreshToken);
+            var isExpired = s.QboTokenExpiry != default(DateTime) && s.QboTokenExpiry <= DateTime.UtcNow;
+
+            if (!hasTokens)
+            {
+                return new ConnectionStatus
+                {
+                    IsConnected = false,
+                    StatusMessage = "Not connected - no tokens available"
+                };
+            }
+
+            if (isExpired)
+            {
+                return new ConnectionStatus
+                {
+                    IsConnected = false,
+                    StatusMessage = "Not connected - tokens expired"
+                };
+            }
+
+            // Try to test the connection
+            var testResult = await TestConnectionAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (testResult)
+            {
+                return new ConnectionStatus
+                {
+                    IsConnected = true,
+                    CompanyName = _realmId,
+                    StatusMessage = "Connected and ready"
+                };
+            }
+            else
+            {
+                return new ConnectionStatus
+                {
+                    IsConnected = false,
+                    StatusMessage = "Connection test failed"
+                };
+            }
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogInformation(ex, "Connection status check was cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get connection status");
             return new ConnectionStatus
             {
                 IsConnected = false,
-                StatusMessage = "Not connected - no tokens available"
-            };
-        }
-
-        if (isExpired)
-        {
-            return new ConnectionStatus
-            {
-                IsConnected = false,
-                StatusMessage = "Not connected - tokens expired"
-            };
-        }
-
-        // Try to test the connection
-        var testResult = await TestConnectionAsync();
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (testResult)
-        {
-            return new ConnectionStatus
-            {
-                IsConnected = true,
-                CompanyName = _realmId,
-                StatusMessage = "Connected and ready"
-            };
-        }
-        else
-        {
-            return new ConnectionStatus
-            {
-                IsConnected = false,
-                StatusMessage = "Connection test failed"
+                StatusMessage = $"Error: {ex.Message}"
             };
         }
     }
-    catch (OperationCanceledException)
+
+    /// <summary>
+    /// Imports chart of accounts from QuickBooks into the local database.
+    /// This is a production-ready implementation that validates data integrity
+    /// and provides comprehensive error reporting.
+    /// </summary>
+    public async System.Threading.Tasks.Task<ImportResult> ImportChartOfAccountsAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Connection status check was cancelled");
-        throw;
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Failed to get connection status");
-        return new ConnectionStatus
+        var startTime = DateTime.UtcNow;
+        var validationErrors = new List<string>();
+
+        try
         {
-            IsConnected = false,
-            StatusMessage = $"Error: {ex.Message}"
-        };
-    }
-}
+            cancellationToken.ThrowIfCancellationRequested();
 
-/// <summary>
-/// Imports chart of accounts from QuickBooks into the local database.
-/// This is a production-ready implementation that validates data integrity
-/// and provides comprehensive error reporting.
-/// </summary>
-public async System.Threading.Tasks.Task<ImportResult> ImportChartOfAccountsAsync(CancellationToken cancellationToken = default)
-{
-    var startTime = DateTime.UtcNow;
-    var validationErrors = new List<string>();
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+            cancellationToken.ThrowIfCancellationRequested();
 
-    try
-    {
-        cancellationToken.ThrowIfCancellationRequested();
+            // Fetch chart of accounts from QuickBooks using paginated batch fetch
+            var qbAccounts = await GetChartOfAccountsAsync().ConfigureAwait(false);
 
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-        cancellationToken.ThrowIfCancellationRequested();
+            if (qbAccounts == null || qbAccounts.Count == 0)
+            {
+                _logger.LogWarning("No accounts found in QuickBooks chart of accounts");
+                return new ImportResult
+                {
+                    Success = false,
+                    ErrorMessage = "No accounts found in QuickBooks",
+                    Duration = DateTime.UtcNow - startTime
+                };
+            }
 
-        _logger.LogInformation("Starting chart of accounts import from QuickBooks");
+            _logger.LogInformation("Retrieved {Count} accounts from QuickBooks", qbAccounts.Count);
 
-        // Fetch chart of accounts from QuickBooks using paginated batch fetch
-        var qbAccounts = await GetChartOfAccountsAsync().ConfigureAwait(false);
+            // Validate chart structure before import
+            var validationResult = ValidateChartOfAccounts(qbAccounts);
+            if (!validationResult.IsValid)
+            {
+                validationErrors.AddRange(validationResult.Errors);
+                _logger.LogWarning("Chart validation failed with {ErrorCount} errors", validationResult.Errors.Count);
 
-        if (qbAccounts == null || qbAccounts.Count == 0)
+                // For production, we might want to fail on validation errors
+                // For now, we'll log warnings but continue
+                foreach (var error in validationResult.Errors)
+                {
+                    _logger.LogWarning("Chart validation error: {Error}", error);
+                }
+            }
+
+            // Import accounts using the repository
+            using var scope = _serviceProvider.CreateScope();
+            var municipalAccountRepository = scope.ServiceProvider.GetRequiredService<IMunicipalAccountRepository>();
+            await municipalAccountRepository.ImportChartOfAccountsAsync(qbAccounts);
+
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Chart of accounts import completed successfully. Imported {Count} accounts in {Duration}",
+                qbAccounts.Count, duration);
+
+            return new ImportResult
+            {
+                Success = true,
+                AccountsImported = qbAccounts.Count,
+                AccountsUpdated = 0, // This would need to be tracked in the repository
+                AccountsSkipped = 0, // This would need to be tracked in the repository
+                Duration = duration,
+                ValidationErrors = validationErrors.Any() ? validationErrors : null
+            };
+        }
+        catch (OperationCanceledException ex)
         {
-            _logger.LogWarning("No accounts found in QuickBooks chart of accounts");
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogInformation(ex, "Chart import was cancelled after {Duration}", duration);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogError(ex, "Chart of accounts import failed after {Duration}", duration);
             return new ImportResult
             {
                 Success = false,
-                ErrorMessage = "No accounts found in QuickBooks",
-                Duration = DateTime.UtcNow - startTime
+                ErrorMessage = ex.Message,
+                Duration = duration,
+                ValidationErrors = validationErrors.Any() ? validationErrors : null
             };
         }
+    }
 
-        _logger.LogInformation("Retrieved {Count} accounts from QuickBooks", qbAccounts.Count);
+    /// <summary>
+    /// Validates the chart of accounts structure before import.
+    /// </summary>
+    private static (bool IsValid, List<string> Errors) ValidateChartOfAccounts(List<Account> accounts)
+    {
+        var errors = new List<string>();
 
-        // Validate chart structure before import
-        var validationResult = ValidateChartOfAccounts(qbAccounts);
-        if (!validationResult.IsValid)
+        if (accounts == null || accounts.Count == 0)
         {
-            validationErrors.AddRange(validationResult.Errors);
-            _logger.LogWarning("Chart validation failed with {ErrorCount} errors", validationResult.Errors.Count);
-
-            // For production, we might want to fail on validation errors
-            // For now, we'll log warnings but continue
-            foreach (var error in validationResult.Errors)
-            {
-                _logger.LogWarning("Chart validation error: {Error}", error);
-            }
+            errors.Add("No accounts provided for validation");
+            return (false, errors);
         }
 
-        // Import accounts using the repository
-        using var scope = _serviceProvider.CreateScope();
-        var municipalAccountRepository = scope.ServiceProvider.GetRequiredService<IMunicipalAccountRepository>();
-        await municipalAccountRepository.ImportChartOfAccountsAsync(qbAccounts);
+        // Check for duplicate account numbers
+        var accountNumbers = accounts
+            .Where(a => !string.IsNullOrEmpty(a.AcctNum))
+            .GroupBy(a => a.AcctNum)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
 
-        var duration = DateTime.UtcNow - startTime;
-        _logger.LogInformation("Chart of accounts import completed successfully. Imported {Count} accounts in {Duration}",
-            qbAccounts.Count, duration);
-
-        return new ImportResult
+        if (accountNumbers.Any())
         {
-            Success = true,
-            AccountsImported = qbAccounts.Count,
-            AccountsUpdated = 0, // This would need to be tracked in the repository
-            AccountsSkipped = 0, // This would need to be tracked in the repository
-            Duration = duration,
-            ValidationErrors = validationErrors.Any() ? validationErrors : null
-        };
-    }
-    catch (OperationCanceledException)
-    {
-        var duration = DateTime.UtcNow - startTime;
-        _logger.LogInformation("Chart import was cancelled after {Duration}", duration);
-        throw;
-    }
-    catch (Exception ex)
-    {
-        var duration = DateTime.UtcNow - startTime;
-        _logger.LogError(ex, "Chart of accounts import failed after {Duration}", duration);
-        return new ImportResult
+            errors.Add($"Duplicate account numbers found: {string.Join(", ", accountNumbers)}");
+        }
+
+        // Check for accounts without account numbers
+        var accountsWithoutNumbers = accounts.Count(a => string.IsNullOrEmpty(a.AcctNum));
+        if (accountsWithoutNumbers > 0)
         {
-            Success = false,
-            ErrorMessage = ex.Message,
-            Duration = duration,
-            ValidationErrors = validationErrors.Any() ? validationErrors : null
-        };
-    }
-}
+            errors.Add($"{accountsWithoutNumbers} accounts found without account numbers");
+        }
 
-/// <summary>
-/// Validates the chart of accounts structure before import.
-/// </summary>
-private (bool IsValid, List<string> Errors) ValidateChartOfAccounts(List<Account> accounts)
-{
-    var errors = new List<string>();
-
-    if (accounts == null || accounts.Count == 0)
-    {
-        errors.Add("No accounts provided for validation");
-        return (false, errors);
-    }
-
-    // Check for duplicate account numbers
-    var accountNumbers = accounts
-        .Where(a => !string.IsNullOrEmpty(a.AcctNum))
-        .GroupBy(a => a.AcctNum)
-        .Where(g => g.Count() > 1)
-        .Select(g => g.Key)
-        .ToList();
-
-    if (accountNumbers.Any())
-    {
-        errors.Add($"Duplicate account numbers found: {string.Join(", ", accountNumbers)}");
-    }
-
-    // Check for accounts without account numbers
-    var accountsWithoutNumbers = accounts.Count(a => string.IsNullOrEmpty(a.AcctNum));
-    if (accountsWithoutNumbers > 0)
-    {
-        errors.Add($"{accountsWithoutNumbers} accounts found without account numbers");
-    }
-
-    // Check for accounts without names
-    var accountsWithoutNames = accounts.Count(a => string.IsNullOrEmpty(a.Name));
-    if (accountsWithoutNames > 0)
-    {
-        errors.Add($"{accountsWithoutNames} accounts found without names");
-    }
-
-    // Validate account type consistency - AccountType is not nullable in Intuit SDK
-    // All accounts should have a valid AccountType by definition
-
-    return (errors.Count == 0, errors);
-}
-
-/// <summary>
-/// Synchronizes data from QuickBooks.
-/// </summary>
-public async System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default)
-{
-    var startTime = DateTime.UtcNow;
-    try
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        await RefreshTokenIfNeededAsync();
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var p = GetDataService();
-        var totalRecords = 0;
-
-        // Sync customers
-        cancellationToken.ThrowIfCancellationRequested();
-        var customers = p.Ds.FindAll(new Customer(), 1, 100).ToList();
-        totalRecords += customers.Count;
-        _logger.LogInformation("Synced {Count} customers", customers.Count);
-
-        // Sync invoices
-        cancellationToken.ThrowIfCancellationRequested();
-        var invoices = p.Ds.FindAll(new Invoice(), 1, 100).ToList();
-        totalRecords += invoices.Count;
-        _logger.LogInformation("Synced {Count} invoices", invoices.Count);
-
-        // Sync accounts
-        cancellationToken.ThrowIfCancellationRequested();
-        var accounts = p.Ds.FindAll(new Account(), 1, 100).ToList();
-        totalRecords += accounts.Count;
-        _logger.LogInformation("Synced {Count} accounts", accounts.Count);
-
-        var duration = DateTime.UtcNow - startTime;
-        _logger.LogInformation("Data sync completed successfully. Total records: {TotalRecords}, Duration: {Duration}", totalRecords, duration);
-
-        return new SyncResult
+        // Check for accounts without names
+        var accountsWithoutNames = accounts.Count(a => string.IsNullOrEmpty(a.Name));
+        if (accountsWithoutNames > 0)
         {
-            Success = true,
-            RecordsSynced = totalRecords,
-            Duration = duration
-        };
+            errors.Add($"{accountsWithoutNames} accounts found without names");
+        }
+
+        // Validate account type consistency - AccountType is not nullable in Intuit SDK
+        // All accounts should have a valid AccountType by definition
+
+        return (errors.Count == 0, errors);
     }
-    catch (OperationCanceledException)
+
+    /// <summary>
+    /// Synchronizes data from QuickBooks.
+    /// </summary>
+    public async System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default)
     {
-        var duration = DateTime.UtcNow - startTime;
-        _logger.LogInformation("Data sync was cancelled after {Duration}", duration);
-        throw;
-    }
-    catch (Exception ex)
-    {
-        var duration = DateTime.UtcNow - startTime;
-        _logger.LogError(ex, "Data sync failed after {Duration}", duration);
-        return new SyncResult
+        var startTime = DateTime.UtcNow;
+        try
         {
-            Success = false,
-            RecordsSynced = 0,
-            ErrorMessage = ex.Message,
-            Duration = duration
-        };
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var p = GetDataService();
+            var totalRecords = 0;
+
+            // Sync customers
+            cancellationToken.ThrowIfCancellationRequested();
+            var customers = p.Ds.FindAll(new Customer(), 1, 100).ToList();
+            totalRecords += customers.Count;
+            _logger.LogInformation("Synced {Count} customers", customers.Count);
+
+            // Sync invoices
+            cancellationToken.ThrowIfCancellationRequested();
+            var invoices = p.Ds.FindAll(new Invoice(), 1, 100).ToList();
+            totalRecords += invoices.Count;
+            _logger.LogInformation("Synced {Count} invoices", invoices.Count);
+
+            // Sync accounts
+            cancellationToken.ThrowIfCancellationRequested();
+            var accounts = p.Ds.FindAll(new Account(), 1, 100).ToList();
+            totalRecords += accounts.Count;
+            _logger.LogInformation("Synced {Count} accounts", accounts.Count);
+
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Data sync completed successfully. Total records: {TotalRecords}, Duration: {Duration}", totalRecords, duration);
+
+            return new SyncResult
+            {
+                Success = true,
+                RecordsSynced = totalRecords,
+                Duration = duration
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Data sync was cancelled after {Duration}", duration);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogError(ex, "Data sync failed after {Duration}", duration);
+            return new SyncResult
+            {
+                Success = false,
+                RecordsSynced = 0,
+                ErrorMessage = ex.Message,
+                Duration = duration
+            };
+        }
     }
-}
 }

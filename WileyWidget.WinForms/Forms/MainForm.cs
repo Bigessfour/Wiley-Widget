@@ -32,9 +32,12 @@ namespace WileyWidget.WinForms.Forms
             var settingsMenu = new ToolStripMenuItem(MainFormResources.SettingsMenu);
             var exitItem = new ToolStripMenuItem(MainFormResources.ExitMenu, null, (s, e) => Application.Exit());
 
-            accountsMenu.Click += (s, e) => new AccountsForm(Program.Services.GetRequiredService<AccountsViewModel>()).ShowDialog();
-            chartsMenu.Click += (s, e) => new ChartForm(Program.Services.GetRequiredService<ChartViewModel>()).ShowDialog();
-            settingsMenu.Click += (s, e) => new SettingsForm(Program.Services.GetRequiredService<SettingsViewModel>()).ShowDialog();
+            accountsMenu.Click += menuAccounts_Click; // use named handler so we can resolve form/viewmodel via DI
+
+            // named handler defined below
+
+            chartsMenu.Click += (s, e) => new ChartForm(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(Program.Services)).ShowDialog();
+            settingsMenu.Click += (s, e) => new SettingsForm(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(Program.Services)).ShowDialog();
 
             fileMenu.DropDownItems.Add(exitItem);
             menu.Items.AddRange(new ToolStripItem[] { fileMenu, accountsMenu, chartsMenu, settingsMenu });
@@ -44,6 +47,26 @@ namespace WileyWidget.WinForms.Forms
 
             Size = new Size(1200, 800);
             StartPosition = FormStartPosition.CenterScreen;
+        }
+
+        private void menuAccounts_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                using var scope = Program.Services.CreateScope();
+                var provider = scope.ServiceProvider;
+                var accountsForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsForm>(provider);
+                accountsForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    var reporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.ErrorReportingService>(Program.Services);
+                    reporting?.ReportError(ex, "Failed to open Accounts form", showToUser: true);
+                }
+                catch { }
+            }
         }
     }
 }

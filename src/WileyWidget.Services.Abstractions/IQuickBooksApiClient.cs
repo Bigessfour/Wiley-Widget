@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Intuit.Ipp.Data;
+using WileyWidget.Services.Abstractions.Models;
 
 namespace WileyWidget.Services
 {
@@ -14,8 +15,7 @@ namespace WileyWidget.Services
         Task<List<Invoice>> GetInvoicesAsync();
         Task<List<Account>> GetChartOfAccountsAsync();
         Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate);
-        // TODO: Re-enable when Budget type is available or custom implementation is created
-        // Task<List<Budget>> GetBudgetsAsync();
+        Task<List<QuickBooksBudget>> GetBudgetsAsync(); // Stable app DTO for budgets - avoids direct Intuit SDK type dependency
         Task<bool> TestConnectionAsync();
     }
 }

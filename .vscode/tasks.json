@@ -288,6 +288,27 @@
 			"problemMatcher": []
 		},
 		{
+			"label": "mcp:start-github-server",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/start-wiley-gh-mcp.ps1",
+				"-Background"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared",
+				"focus": false
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
 			"label": "mcp:start-csharp-mcp",
 			"type": "shell",
 			"command": "docker",
@@ -357,6 +378,45 @@
 			},
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "psscriptanalyze: profile",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"if (Get-Command Invoke-ScriptAnalyzer -ErrorAction SilentlyContinue) { Invoke-ScriptAnalyzer -Path '${workspaceFolder}/.vscode/profile.ps1' -Recurse } else { Write-Host 'PSScriptAnalyzer not available — run Install-Module -Name PSScriptAnalyzer' }"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Open PowerShell Dev Terminal",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-NoExit",
+				"-Command",
+				"if (Test-Path '${workspaceFolder}\\.venv\\Scripts\\Activate.ps1') { & '${workspaceFolder}\\.venv\\Scripts\\Activate.ps1' }; if (Test-Path '${workspaceFolder}\\.vscode\\profile.ps1') { . '${workspaceFolder}\\.vscode\\profile.ps1' }; Write-Host 'PowerShell Dev Terminal Ready'"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "new"
+			},
+			"problemMatcher": [],
+			"group": "none",
+			"isBackground": true
 		},
 		{
 			"label": "pwsh: safe-run",

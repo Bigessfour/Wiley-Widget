@@ -102,7 +102,7 @@ public class AccountTypeValidator
     /// <param name="accountType">The account type to validate</param>
     /// <param name="accountNumber">The account number</param>
     /// <returns>True if the account type is valid for the account number, false otherwise</returns>
-    public bool ValidateAccountTypeForNumber(AccountType accountType, string accountNumber)
+    public static bool ValidateAccountTypeForNumber(AccountType accountType, string accountNumber)
     {
         if (!TryGetAccountRootValue(accountNumber, out var accountRoot))
             return false;

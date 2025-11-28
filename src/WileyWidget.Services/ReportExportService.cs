@@ -253,7 +253,7 @@ public class ReportExportService : IReportExportService
             {
                 var page = document.AddPage();
                 var gfx = XGraphics.FromPdfPage(page);
-                
+
                 var titleFont = new XFont("Arial", 18, XFontStyle.Bold);
                 var headerFont = new XFont("Arial", 14, XFontStyle.Bold);
                 var bodyFont = new XFont("Arial", 11, XFontStyle.Regular);
@@ -271,7 +271,7 @@ public class ReportExportService : IReportExportService
                 y += lineHeight;
                 gfx.DrawString($"Generated: {report.GeneratedDate:yyyy-MM-dd HH:mm}", bodyFont, XBrushes.Black, leftMargin, y);
                 y += lineHeight + 5;
-                
+
                 gfx.DrawString($"Overall Status: {report.OverallStatus}", headerFont, XBrushes.Black, leftMargin, y);
                 y += lineHeight + 5;
                 gfx.DrawString($"Compliance Score: {report.ComplianceScore:F2}", bodyFont, XBrushes.Black, leftMargin, y);
@@ -280,7 +280,7 @@ public class ReportExportService : IReportExportService
                 // Violations section
                 gfx.DrawString("Violations:", headerFont, XBrushes.Black, leftMargin, y);
                 y += lineHeight;
-                
+
                 if (report.Violations != null && report.Violations.Any())
                 {
                     foreach (var v in report.Violations)
@@ -289,7 +289,7 @@ public class ReportExportService : IReportExportService
                         if (line.Length > 100) line = line.Substring(0, 97) + "...";
                         gfx.DrawString(line, bodyFont, XBrushes.Black, leftMargin + 10, y);
                         y += lineHeight;
-                        
+
                         var actionLine = $"  Action: {v.CorrectiveAction}";
                         if (actionLine.Length > 100) actionLine = actionLine.Substring(0, 97) + "...";
                         gfx.DrawString(actionLine, bodyFont, XBrushes.DarkGray, leftMargin + 10, y);
@@ -315,7 +315,7 @@ public class ReportExportService : IReportExportService
                 // Recommendations section
                 gfx.DrawString("Recommendations:", headerFont, XBrushes.Black, leftMargin, y);
                 y += lineHeight;
-                
+
                 if (report.Recommendations != null && report.Recommendations.Any())
                 {
                     foreach (var r in report.Recommendations)
@@ -362,21 +362,21 @@ public class ReportExportService : IReportExportService
                 wsSummary.Cell(1, 1).Value = "Compliance Report";
                 wsSummary.Cell(1, 1).Style.Font.Bold = true;
                 wsSummary.Cell(1, 1).Style.Font.FontSize = 16;
-                
+
                 wsSummary.Cell(2, 1).Value = "Enterprise ID";
                 wsSummary.Cell(2, 2).Value = report.EnterpriseId;
-                
+
                 wsSummary.Cell(3, 1).Value = "Generated";
                 wsSummary.Cell(3, 2).Value = report.GeneratedDate;
                 wsSummary.Cell(3, 2).Style.DateFormat.Format = "yyyy-MM-dd HH:mm:ss";
-                
+
                 wsSummary.Cell(4, 1).Value = "Overall Status";
                 wsSummary.Cell(4, 2).Value = report.OverallStatus.ToString();
-                
+
                 wsSummary.Cell(5, 1).Value = "Compliance Score";
                 wsSummary.Cell(5, 2).Value = report.ComplianceScore;
                 wsSummary.Cell(5, 2).Style.NumberFormat.Format = "0.00";
-                
+
                 wsSummary.Columns().AdjustToContents();
 
                 // Violations sheet
@@ -385,11 +385,11 @@ public class ReportExportService : IReportExportService
                 wsViolations.Cell(1, 2).Value = "Description";
                 wsViolations.Cell(1, 3).Value = "Severity";
                 wsViolations.Cell(1, 4).Value = "Corrective Action";
-                
+
                 // Style headers
                 wsViolations.Row(1).Style.Font.Bold = true;
                 wsViolations.Row(1).Style.Fill.BackgroundColor = XLColor.LightBlue;
-                
+
                 int row = 2;
                 if (report.Violations != null)
                 {
@@ -409,7 +409,7 @@ public class ReportExportService : IReportExportService
                 wsReco.Cell(1, 1).Value = "Recommendation";
                 wsReco.Row(1).Style.Font.Bold = true;
                 wsReco.Row(1).Style.Fill.BackgroundColor = XLColor.LightBlue;
-                
+
                 int rRow = 2;
                 if (report.Recommendations != null)
                 {

@@ -1,12 +1,14 @@
-using LiveChartsCore.SkiaSharpView.WinForms;
 using System.Diagnostics.CodeAnalysis;
 using WileyWidget.WinForms.ViewModels;
+using System.Windows.Forms;
+using System.Drawing;
 
 namespace WileyWidget.WinForms.Forms
 {
     internal static class ChartFormResources
     {
         public const string FormTitle = "Budget Analytics";
+        public const string DisabledMessage = "Charts are currently disabled in this build. Use the Analytics module or Syncfusion charts for reporting.";
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
@@ -24,27 +26,17 @@ namespace WileyWidget.WinForms.Forms
 
         private void InitializeComponent()
         {
-            var cartesian = new CartesianChart
+            var label = new Label
             {
-                Series = _vm.ChartSeries,
-                XAxes = _vm.XAxes,
-                YAxes = _vm.YAxes,
-                Dock = DockStyle.Fill
+                Text = ChartFormResources.DisabledMessage,
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font(FontFamily.GenericSansSerif, 12, FontStyle.Regular)
             };
 
-            var pie = new PieChart
-            {
-                Series = _vm.PieChartSeries,
-                Dock = DockStyle.Bottom,
-                Height = 300
-            };
-
-            var split = new SplitContainer { Dock = DockStyle.Fill };
-            split.Panel1.Controls.Add(cartesian);
-            split.Panel2.Controls.Add(pie);
-
-            Controls.Add(split);
-            Size = new Size(1000, 700);
+            Controls.Add(label);
+            Size = new Size(800, 400);
             StartPosition = FormStartPosition.CenterParent;
         }
     }

@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Serilog;
 
 namespace WileyWidget.Models;
@@ -228,112 +231,122 @@ public class HealthCheckReport
 
 /// <summary>
 /// Circuit breaker for health checks to prevent cascading failures
-/// Tuned for startup resilience: 3 failures, 2 minute recovery for critical services
+/// Tuned for startup resilience: default 3 failures, 2 minute recovery for critical services.
+/// The default service identity is derived from the current process (name + id) when not provided.
 /// </summary>
-public class HealthCheckCircuitBreaker
+public sealed class CircuitBreaker
 {
     private readonly object _lock = new();
-    private CircuitBreakerState _state = CircuitBreakerState.Closed;
     private int _failureCount;
-    private DateTime _lastFailureTime;
+    private DateTime? _openUntilUtc;
     private readonly int _failureThreshold;
-    private readonly TimeSpan _timeoutPeriod;
-    private readonly object /* ApplicationMetricsService */? _metricsService;
-    private readonly string _serviceName;
+    private readonly TimeSpan _openPeriod;
+    private readonly string _serviceIdentity;
+    private readonly ILogger _logger = Log.Logger;
 
-    public HealthCheckCircuitBreaker(int failureThreshold = 3, TimeSpan timeoutPeriod = default,
-        object /* ApplicationMetricsService */? metricsService = null, string serviceName = "unknown")
+    /// <summary>
+    /// Creates a new circuit breaker.
+    /// </summary>
+    /// <param name="failureThreshold">Number of failures required to open the circuit (default 3).</param>
+    /// <param name="openPeriod">How long the circuit stays open after tripping (defaults to 2 minutes).</param>
+    /// <param name="serviceName">Optional explicit service identity; if null the current process name+id is used.</param>
+    public CircuitBreaker(int failureThreshold = 3, TimeSpan? openPeriod = null, string? serviceName = null)
     {
-        _failureThreshold = failureThreshold;
-        _timeoutPeriod = timeoutPeriod == default ? TimeSpan.FromMinutes(2) : timeoutPeriod; // Reduced from 5 minutes for faster recovery
-        _metricsService = metricsService;
-        _serviceName = serviceName;
+        _failureThreshold = Math.Max(1, failureThreshold);
+        _openPeriod = openPeriod ?? TimeSpan.FromMinutes(2);
+        var p = Process.GetCurrentProcess();
+        _serviceIdentity = !string.IsNullOrWhiteSpace(serviceName) ? serviceName : $"{p.ProcessName}-{p.Id}";
     }
 
-    public enum CircuitBreakerState
+    /// <summary>
+    /// Returns true if the circuit is currently open.
+    /// </summary>
+    public bool IsOpen
     {
-        Closed,      // Normal operation
-        Open,        // Circuit is open, failing fast
-        HalfOpen     // Testing if service recovered
+        get
+        {
+            lock (_lock)
+            {
+                if (_openUntilUtc.HasValue && DateTime.UtcNow < _openUntilUtc.Value)
+                {
+                    return true;
+                }
+
+                if (_openUntilUtc.HasValue && DateTime.UtcNow >= _openUntilUtc.Value)
+                {
+                    // reset after open period elapses
+                    _openUntilUtc = null;
+                    _failureCount = 0;
+                }
+
+                return false;
+            }
+        }
     }
 
-    public CircuitBreakerState State => _state;
-
-    public async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Records a failure and opens the circuit if the threshold is reached.
+    /// </summary>
+    public void RecordFailure(Exception? ex = null)
     {
-        if (operation == null) throw new ArgumentNullException(nameof(operation));
-
         lock (_lock)
         {
-            if (_state == CircuitBreakerState.Open)
+            _failureCount++;
+            _logger.Warning("CircuitBreaker {Service} failure #{FailureCount}: {Exception}", _serviceIdentity, _failureCount, ex);
+            if (_failureCount >= _failureThreshold)
             {
-                if (DateTime.UtcNow - _lastFailureTime > _timeoutPeriod)
-                {
-                    _state = CircuitBreakerState.HalfOpen;
-                }
-                else
-                {
-                    throw new CircuitBreakerOpenException("Circuit breaker is open");
-                }
+                _openUntilUtc = DateTime.UtcNow.Add(_openPeriod);
+                _logger.Error("CircuitBreaker {Service} opened until {OpenUntilUtc} after {FailureCount} failures", _serviceIdentity, _openUntilUtc, _failureCount);
             }
+        }
+    }
+
+    /// <summary>
+    /// Resets the circuit breaker (close and reset counters).
+    /// </summary>
+    public void Reset()
+    {
+        lock (_lock)
+        {
+            _failureCount = 0;
+            _openUntilUtc = null;
+            _logger.Information("CircuitBreaker {Service} reset", _serviceIdentity);
+        }
+    }
+
+    /// <summary>
+    /// Executes an asynchronous operation under the circuit-breaker; throws CircuitBreakerOpenException if open.
+    /// </summary>
+    public async Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
+    {
+        if (action is null) throw new ArgumentNullException(nameof(action));
+
+        if (IsOpen)
+        {
+            var message = $"Circuit breaker for {_serviceIdentity} is open until {_openUntilUtc}";
+            _logger.Error(message);
+            throw new CircuitBreakerOpenException(message);
         }
 
         try
         {
-            var result = await operation();
-            OnSuccess();
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            if (timeout.HasValue && timeout.Value > TimeSpan.Zero)
+            {
+                cts.CancelAfter(timeout.Value);
+            }
+
+            var result = await action(cts.Token).ConfigureAwait(false);
+
+            // on success, reset the counter
+            lock (_lock) { _failureCount = 0; }
+
             return result;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Circuit breaker operation failed");
-            OnFailure();
+            RecordFailure(ex);
             throw;
-        }
-    }
-
-    private void OnSuccess()
-    {
-        CircuitBreakerState previousState;
-        lock (_lock)
-        {
-            previousState = _state;
-            _failureCount = 0;
-            _state = CircuitBreakerState.Closed;
-        }
-
-        // Record state transition if it changed
-        if (previousState != CircuitBreakerState.Closed)
-        {
-            // _metricsService?.RecordCircuitBreakerTransition(
-            //     previousState.ToString(),
-            //     CircuitBreakerState.Closed.ToString(),
-            //     _serviceName);
-        }
-    }
-
-    private void OnFailure()
-    {
-        CircuitBreakerState previousState;
-        lock (_lock)
-        {
-            previousState = _state;
-            _failureCount++;
-            _lastFailureTime = DateTime.UtcNow;
-
-            if (_failureCount >= _failureThreshold)
-            {
-                _state = CircuitBreakerState.Open;
-            }
-        }
-
-        // Record state transition if it changed
-        if (previousState != _state)
-        {
-            // _metricsService?.RecordCircuitBreakerTransition(
-            //     previousState.ToString(),
-            //     _state.ToString(),
-            //     _serviceName);
         }
     }
 }

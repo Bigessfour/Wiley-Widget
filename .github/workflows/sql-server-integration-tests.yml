@@ -1,0 +1,107 @@
+name: SQL Server Integration Tests
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  sql-integration-tests:
+    name: SQL Server (SQL Express mode) integration tests
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Validate credentials / decide to run
+        shell: pwsh
+        run: |
+          if (-not $env:MSSQL_SA_PASSWORD -and -not $env:TEST_SQL_CONNECTIONSTRING) {
+            Write-Warning 'No MSSQL_SA_PASSWORD secret or TEST_SQL_CONNECTIONSTRING provided — skipping SQL Server integration tests.'
+            Exit 78 # Neutral exit so PRs don't fail when not configured
+          }
+
+      - name: Start SQL Server container (mcr.microsoft.com/mssql/server:2019-latest)
+        shell: pwsh
+        env:
+          SA_PASS: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          if (-not $env:SA_PASS) { Write-Host 'Using TEST_SQL_CONNECTIONSTRING directly; skipping container start'; exit 0 }
+
+          Write-Host 'Starting SQL Server container (2019-latest) for integration tests'
+          docker pull mcr.microsoft.com/mssql/server:2019-latest
+          docker run --name sqlsrv_integration_test -e 'ACCEPT_EULA=Y' -e "MSSQL_SA_PASSWORD=$env:SA_PASS" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
+
+          # Wait for readiness by scanning the container logs for the readiness message
+          $ready = $false
+          for ($i=0; $i -lt 60; $i++) {
+            $logs = (docker logs sqlsrv_integration_test 2>&1) -join "\n"
+            if ($logs -match 'SQL Server is now ready for client connections') { $ready = $true; break }
+            Start-Sleep -Seconds 5
+          }
+
+          if (-not $ready) {
+            Write-Error 'SQL Server container did not become ready in time. Docker logs:'
+            docker logs sqlsrv_integration_test | Write-Output
+            exit 1
+          }
+
+      - name: Build solution
+        shell: pwsh
+        run: |
+          dotnet restore WileyWidget.sln --verbosity minimal
+          dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+
+      - name: Run SQL integration tests (Category=Database.SqlExpress)
+        shell: pwsh
+        env:
+          TEST_SQL_CONNECTIONSTRING: ${{ secrets.TEST_SQL_CONNECTIONSTRING }}
+          # If user didn't provide a TEST_SQL_CONNECTIONSTRING secret, construct one from MSSQL_SA_PASSWORD
+          TEST_SQL_AUTOCONSTRUCT: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          # prefer an explicit connection string provided via secret
+          if ($env:TEST_SQL_CONNECTIONSTRING) {
+            $conn = $env:TEST_SQL_CONNECTIONSTRING
+          } elseif ($env:TEST_SQL_AUTOCONSTRUCT) {
+            $pwd = $env:TEST_SQL_AUTOCONSTRUCT
+            $conn = "Server=127.0.0.1,1433;Initial Catalog=WileyWidgetIntegrationTest;User Id=sa;Password=$pwd;TrustServerCertificate=True;"
+            Write-Host 'Using auto-constructed TEST_SQL_CONNECTIONSTRING from MSSQL_SA_PASSWORD secret.'
+          } else {
+            Write-Warning 'No TEST_SQL_CONNECTIONSTRING or MSSQL_SA_PASSWORD — skipping tests'
+            exit 78
+          }
+
+          Write-Host "Using connection string: [hidden] (server portion: $($conn.Split(';')[0]))"
+
+          # Export for the test process
+          $env:TEST_SQL_CONNECTIONSTRING = $conn
+
+          # Run the integration tests with category filter to limit only SQL integration tests
+          dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj --configuration Release --filter "Category=Database.SqlExpress" --verbosity minimal
+
+      - name: Stop and cleanup SQL Server container
+        if: always()
+        shell: pwsh
+        env:
+          SA_PASS: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          if (docker ps -a --format "{{.Names}}" | Select-String -Pattern "sqlsrv_integration_test") {
+            Write-Host 'Stopping and removing SQL Server container'
+            docker rm -f sqlsrv_integration_test || Write-Host 'Container cleanup failed (already removed or not running)'
+          } else {
+            Write-Host 'No container to remove'
+          }

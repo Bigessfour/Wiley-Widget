@@ -1,45 +1,13 @@
-using LiveChartsCore;
-using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.Painting;
-using SkiaSharp;
+using System.Threading.Tasks;
 
 namespace WileyWidget.WinForms.ViewModels
 {
+    // Charting is disabled in this WinForms build (LiveCharts/Skia removed).
+    // Keep a lightweight view model for DI and the UI to show a placeholder.
     public class ChartViewModel
     {
-        public ISeries[] ChartSeries { get; set; } = Array.Empty<ISeries>();
-        public Axis[] XAxes { get; set; } = Array.Empty<Axis>();
-        public Axis[] YAxes { get; set; } = Array.Empty<Axis>();
-        public ISeries[] PieChartSeries { get; set; } = Array.Empty<ISeries>();
+        public string Message => "Charts are currently disabled. Use Syncfusion charts if you need advanced rendering.";
 
-        public async Task LoadChartDataAsync()
-        {
-            // Load your chart data here
-            await Task.Delay(100); // Simulate loading
-
-            ChartSeries = new ISeries[]
-            {
-                new LineSeries<double>
-                {
-                    Values = new double[] { 2, 1, 3, 5, 3, 4, 6 },
-                    Fill = null
-                }
-            };
-
-            XAxes = new Axis[]
-            {
-                new Axis
-                {
-                    Labels = new string[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul" }
-                }
-            };
-
-            PieChartSeries = new ISeries[]
-            {
-                new PieSeries<double> { Values = new double[] { 2 }, Name = "Category 1" },
-                new PieSeries<double> { Values = new double[] { 4 }, Name = "Category 2" },
-                new PieSeries<double> { Values = new double[] { 1 }, Name = "Category 3" }
-            };
-        }
+        public Task LoadChartDataAsync() => Task.CompletedTask;
     }
 }

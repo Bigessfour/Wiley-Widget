@@ -3,24 +3,13 @@
     <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>WileyWidget</RootNamespace>
-    <!-- CRITICAL: UseWinUI must be true to import WindowsAppSDK XAML targets -->
-    <UseWinUI>true</UseWinUI>
+    <!-- Removed stale WinUI setting: this root project is Windows Forms, not WinUI -->
     <EnableXamlSourceGenerator>false</EnableXamlSourceGenerator>
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- ============================================================
-         UNPACKAGED WINUI 3 CONFIGURATION
-         ============================================================ -->
-    <WindowsPackageType>None</WindowsPackageType>
-    <AppxPackage>false</AppxPackage>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <WindowsAppSDKBootstrapInitialize>true</WindowsAppSDKBootstrapInitialize>
-    <WindowsAppSDKDeploymentManagerInitialize>false</WindowsAppSDKDeploymentManagerInitialize>
-    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
-    <GenerateResourceMSBuildArchitecture>x64</GenerateResourceMSBuildArchitecture>
-    <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- WinUI/Windows packaging settings removed from root project - this is not an unpackaged WinUI 3 application. UI projects (WinUI/UWP/etc.) should carry their own packaging settings. -->
     <DefaultLanguage>en-US</DefaultLanguage>
     <DefaultResourceLanguage>en-US</DefaultResourceLanguage>
     <WarningsNotAsErrors>NU1605;MSB4062</WarningsNotAsErrors>

@@ -223,7 +223,8 @@ namespace WileyWidget.Services
             // Validate that the date can be constructed
             try
             {
-                _ = new DateTime(DateTime.Now.Year, month, day);
+                // Specify DateTimeKind explicitly to satisfy compiler and avoid ambiguity.
+                _ = DateTime.SpecifyKind(new DateTime(DateTime.Now.Year, month, day), DateTimeKind.Unspecified);
             }
             catch (ArgumentOutOfRangeException ex)
             {
@@ -240,10 +241,11 @@ namespace WileyWidget.Services
                 // Update the formatted strings
                 var monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
                 Current.FiscalYearStart = $"{monthName} {day}";
-
                 // Calculate fiscal year end (previous day of start date, next year)
-                var fiscalYearEnd = new DateTime(DateTime.Now.Year + 1, month, day).AddDays(-1);
+                // Specify DateTimeKind explicitly to avoid implicit kind warnings.
+                var fiscalYearEnd = DateTime.SpecifyKind(new DateTime(DateTime.Now.Year + 1, month, day), DateTimeKind.Unspecified).AddDays(-1);
                 var endMonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(fiscalYearEnd.Month);
+                Current.FiscalYearEnd = $"{endMonthName} {fiscalYearEnd.Day}";
                 Current.FiscalYearEnd = $"{endMonthName} {fiscalYearEnd.Day}";
 
                 // Persist to disk

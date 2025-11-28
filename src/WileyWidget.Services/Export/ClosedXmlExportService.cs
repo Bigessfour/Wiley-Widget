@@ -58,7 +58,7 @@ namespace WileyWidget.Services.Export
                         worksheet.Cell(row, 5).Value = entry.StartPeriod;
                         worksheet.Cell(row, 5).Style.DateFormat.Format = "mm/dd/yyyy";
                         worksheet.Cell(row, 6).Value = entry.FundType.ToString();
-                        worksheet.Cell(row, 7).Value = entry.Department?.Name ?? ""; 
+                        worksheet.Cell(row, 7).Value = entry.Department?.Name ?? "";
                     }
 
                     // Auto-fit columns
@@ -119,11 +119,11 @@ namespace WileyWidget.Services.Export
                         worksheet.Cell(row, 4).Style.NumberFormat.Format = "$#,##0.00";
                         worksheet.Cell(row, 5).Value = (double)account.BudgetAmount;
                         worksheet.Cell(row, 5).Style.NumberFormat.Format = "$#,##0.00";
-                        
+
                         var variance = account.BudgetAmount - account.Balance;
                         worksheet.Cell(row, 6).Value = (double)variance;
                         worksheet.Cell(row, 6).Style.NumberFormat.Format = "$#,##0.00";
-                        
+
                         // Color code the variance
                         if (variance < 0)
                         {
@@ -195,7 +195,7 @@ namespace WileyWidget.Services.Export
                         {
                             var value = properties[j].GetValue(item);
                             var cell = worksheet.Cell(row, j + 1);
-                            
+
                             if (value != null)
                             {
                                 cell.Value = value.ToString();
@@ -256,7 +256,7 @@ namespace WileyWidget.Services.Export
                         {
                             var value = columnList[j].Value(item);
                             var cell = worksheet.Cell(row, j + 1);
-                            
+
                             if (value != null)
                             {
                                 // Handle different types

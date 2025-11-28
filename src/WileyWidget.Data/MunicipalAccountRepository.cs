@@ -192,14 +192,14 @@ namespace WileyWidget.Data
             return list;
         }
 
-    public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund)
+        public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
             var list = CQ_GetByFund(context, fund);
             return list;
         }
 
-    public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type)
+        public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
             var list = CQ_GetByType(context, type);
@@ -362,7 +362,8 @@ namespace WileyWidget.Data
                 await RepositoryConcurrencyHelper.HandleAsync(ex, nameof(MunicipalAccount)).ConfigureAwait(false);
             }
             return account;
-        }        public async Task<MunicipalAccount> UpdateAsync(MunicipalAccount account)
+        }
+        public async Task<MunicipalAccount> UpdateAsync(MunicipalAccount account)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             context.MunicipalAccounts.Update(account);
@@ -492,11 +493,11 @@ namespace WileyWidget.Data
         public async Task SyncFromQuickBooksAsync(List<Intuit.Ipp.Data.Account> qbAccounts)
         {
             if (qbAccounts == null)
-    {
-        throw new ArgumentNullException(nameof(qbAccounts));
-    }
+            {
+                throw new ArgumentNullException(nameof(qbAccounts));
+            }
 
-    using var context = await _contextFactory.CreateDbContextAsync();
+            using var context = await _contextFactory.CreateDbContextAsync();
             foreach (var qbAccount in qbAccounts)
             {
                 var existingAccount = await context.MunicipalAccounts
@@ -505,17 +506,17 @@ namespace WileyWidget.Data
                 if (existingAccount == null)
                 {
                     // Create new account
-                        var newAccount = new MunicipalAccount
-                        {
-                            AccountNumber = new AccountNumber(qbAccount.AcctNum ?? $"QB-{qbAccount.Id}"),
-                            Name = qbAccount.Name,
-                            Type = MapQuickBooksAccountType(qbAccount.AccountType),
-                            Fund = DetermineFundFromAccount(qbAccount),
-                            Balance = qbAccount.CurrentBalance,
-                            QuickBooksId = qbAccount.Id,
-                            LastSyncDate = DateTime.UtcNow,
-                            IsActive = qbAccount.Active
-                        };
+                    var newAccount = new MunicipalAccount
+                    {
+                        AccountNumber = new AccountNumber(qbAccount.AcctNum ?? $"QB-{qbAccount.Id}"),
+                        Name = qbAccount.Name,
+                        Type = MapQuickBooksAccountType(qbAccount.AccountType),
+                        Fund = DetermineFundFromAccount(qbAccount),
+                        Balance = qbAccount.CurrentBalance,
+                        QuickBooksId = qbAccount.Id,
+                        LastSyncDate = DateTime.UtcNow,
+                        IsActive = qbAccount.Active
+                    };
                     await AddAsync(newAccount);
                 }
                 else
