@@ -47,24 +47,38 @@ namespace WileyWidget.WinForms.Forms
 
         public AccountsForm(AccountsViewModel viewModel)
         {
-            _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-
-            // Keep a DataContext reference (DI / service-locator style)
-            DataContext = viewModel; // or: DataContext = Program.Services.GetRequiredService<AccountsViewModel>();
-
-            InitializeComponent();
-            SetupUI();
-            BindViewModel();
-
-            // Explicitly bind grid data source to the view model's Accounts collection
             try
             {
+                _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+
+                // Keep a DataContext reference (DI / service-locator style)
+                DataContext = viewModel; // or: DataContext = Program.Services.GetRequiredService<AccountsViewModel>();
+
+                InitializeComponent();
+                SetupUI();
+                BindViewModel();
+
+                // Explicitly bind grid data source to the view model's Accounts collection
                 if (gridAccounts != null)
                 {
                     gridAccounts.DataSource = viewModel.Accounts;
                 }
+
+                Serilog.Log.Information("AccountsForm initialized with {Count} accounts", viewModel.Accounts?.Count ?? 0);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Log and show an actionable message — fail fast to surface the issue to the caller
+                Serilog.Log.Error(ex, "Failed to initialize AccountsForm");
+
+                System.Windows.Forms.MessageBox.Show(
+                    $"Error loading accounts form:\n\n{ex.Message}\n\nCheck logs at: logs/wileywidget-{DateTime.UtcNow:yyyyMMdd}.log",
+                    Resources.ErrorTitle,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                throw;
+            }
         }
 
         private void InitializeComponent()

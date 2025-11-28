@@ -1,8 +1,13 @@
+using System;
+using System.Linq;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
-using WileyWidget.WinForms.Configuration;  // You'll create this in a sec
+using WileyWidget.WinForms.Configuration;  // DI + DemoDataSeeder
 using WileyWidget.WinForms.Forms;
-// using Syncfusion.Licensing; // Uncomment when you have a license key
+using WileyWidget.Data;
 
 namespace WileyWidget.WinForms
 {
@@ -13,51 +18,107 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main()
         {
-            ApplicationConfiguration.Initialize();
+            // Build configuration — read appsettings + environment
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production"}.json", optional: true)
+                .AddEnvironmentVariables()
+                .Build();
 
-            // Configure DI first (we may fetch license from secret vault)
-            Services = DependencyInjection.ConfigureServices();
+            // Initialize Serilog early so any startup logs have a sink
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(configuration)
+                .Enrich.FromLogContext()
+                .CreateLogger();
 
-            // Register Syncfusion license KEY per official guidance BEFORE any Syncfusion control is created
-            // Source: https://help.syncfusion.com/windowsforms/licensing/how-to-register-in-an-application
-            var loggerFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Logging.ILoggerFactory>(Services);
-            // Use a non-generic logger name — Program is a static class, static types cannot be used as generic type arguments.
-            var logger = loggerFactory?.CreateLogger("Program");
-
-            string? licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
-            if (string.IsNullOrWhiteSpace(licenseKey))
+            try
             {
+                Log.Information("=== Wiley Widget WinForms Starting ===");
+                Log.Information("Environment: {Environment}", Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production");
+
+                ApplicationConfiguration.Initialize();
+
+                // Configure DI with configuration
+                Services = DependencyInjection.ConfigureServices(configuration);
+
+                // Register Syncfusion license KEY per official guidance BEFORE any Syncfusion control is created
+                var loggerFactory = Services.GetService(typeof(ILoggerFactory)) as ILoggerFactory;
+                var logger = loggerFactory?.CreateLogger("Program");
+
+                string? licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+                if (string.IsNullOrWhiteSpace(licenseKey))
+                {
+                    try
+                    {
+                        var vault = Services.GetService(typeof(WileyWidget.Services.ISecretVaultService)) as WileyWidget.Services.ISecretVaultService;
+                        licenseKey = vault?.GetSecret("SyncfusionLicenseKey");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogDebug(ex, "Secret vault lookup for Syncfusion license key failed (non-fatal).");
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(licenseKey))
+                {
+                    try
+                    {
+                        Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                        logger?.LogInformation("Syncfusion license registered successfully.");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogWarning(ex, "Failed to register Syncfusion license key (controls may throw licensing warnings).");
+                    }
+                }
+                else
+                {
+                    logger?.LogInformation("No Syncfusion license key found (env: SYNCFUSION_LICENSE_KEY or secret 'SyncfusionLicenseKey'). Running without registration.");
+                }
+
+                // Ensure DB is migrated and seeded
                 try
                 {
-                    var vault = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.ISecretVaultService>(Services);
-                    licenseKey = vault?.GetSecret("SyncfusionLicenseKey");
+                    using var scope = Services.CreateScope();
+                    var db = scope.ServiceProvider.GetService(typeof(AppDbContext)) as AppDbContext;
+                    if (db != null)
+                    {
+                        Log.Information("Checking database state and applying migrations (if any)...");
+                        db.Database.Migrate();
+
+                        if (!db.MunicipalAccounts.Any())
+                        {
+                            Log.Warning("Database appears empty — seeding demo data for development/testing.");
+                            DemoDataSeeder.SeedDemoData(db);
+                        }
+
+                        Log.Information("Database ready — accounts: {count}", db.MunicipalAccounts.Count());
+                    }
+                    else
+                    {
+                        Log.Warning("AppDbContext not registered; skipping DB migration/seed.");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    // Fallback: ignore detailed debug if generic logger
-                    if (logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger as Microsoft.Extensions.Logging.ILogger, ex, "Secret vault lookup for Syncfusion license key failed (non-fatal)." );
+                    Log.Error(ex, "Database initialization failed. Application will continue if possible.");
                 }
-            }
 
-            if (!string.IsNullOrWhiteSpace(licenseKey))
-            {
-                try
-                {
-                    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-                    if (logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger as Microsoft.Extensions.Logging.ILogger, "Syncfusion license registered successfully.");
-                }
-                catch (Exception ex)
-                {
-                    if (logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(logger as Microsoft.Extensions.Logging.ILogger, ex, "Failed to register Syncfusion license key (controls may throw licensing warnings).");
-                }
+                // Launch main form
+                var mainForm = Services.GetService(typeof(MainForm)) as MainForm;
+                if (mainForm == null) throw new InvalidOperationException("MainForm not found in IServiceProvider");
+                Application.Run(mainForm);
             }
-            else
+            catch (Exception ex)
             {
-                if (logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger as Microsoft.Extensions.Logging.ILogger, "No Syncfusion license key found (env: SYNCFUSION_LICENSE_KEY or secret 'SyncfusionLicenseKey'). Running without registration.");
+                Log.Fatal(ex, "Application terminated unexpectedly");
+                System.Windows.Forms.MessageBox.Show($"Fatal error: {ex.Message}", "Startup Error", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
             }
-
-            // Launch main form
-            Application.Run(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services));
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
     }
 }

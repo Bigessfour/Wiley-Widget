@@ -21,6 +21,10 @@ namespace WileyWidget.WinForms.Forms
         {
             InitializeComponent();
             Text = MainFormResources.FormTitle;
+
+            // Global handlers to surface UI-thread and domain unhandled exceptions
+            Application.ThreadException += Application_ThreadException;
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         }
 
         private void InitializeComponent()
@@ -66,6 +70,32 @@ namespace WileyWidget.WinForms.Forms
                     reporting?.ReportError(ex, "Failed to open Accounts form", showToUser: true);
                 }
                 catch { }
+            }
+        }
+
+        private void Application_ThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)
+        {
+            // Log the exception and notify the user
+            Serilog.Log.Error(e.Exception, "Unhandled UI thread exception");
+            MessageBox.Show(
+                $"An error occurred:\n\n{e.Exception.Message}\n\nCheck logs for details.",
+                "Application Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            var ex = e.ExceptionObject as Exception;
+            Serilog.Log.Fatal(ex, "Unhandled domain exception (IsTerminating: {IsTerminating})", e.IsTerminating);
+
+            if (e.IsTerminating)
+            {
+                MessageBox.Show(
+                    $"Fatal error:\n\n{ex?.Message ?? "Unknown error"}\n\nApplication will close.",
+                    "Fatal Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Stop);
             }
         }
     }
