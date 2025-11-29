@@ -12,6 +12,8 @@ on:
 
 jobs:
   sql-integration-tests:
+    # Only run this job when integration secrets are available (avoid failing PRs)
+    if: ${{ secrets.MSSQL_SA_PASSWORD != '' || secrets.TEST_SQL_CONNECTIONSTRING != '' }}
     name: SQL Server (SQL Express mode) integration tests
     runs-on: windows-latest
     timeout-minutes: 60
