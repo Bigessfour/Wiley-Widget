@@ -17,7 +17,8 @@ jobs:
       - name: Run Trunk check (fast)
         uses: trunk-io/trunk-action@v1
         with:
-          arguments: --ci --no-upload --focus=lint
+          # trunk-action does not accept some flags in this environment; keep minimal
+          arguments: --ci
 
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
