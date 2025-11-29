@@ -11,10 +11,10 @@ Supported flags (non-exhaustive):
 This implementation avoids using Path.relative_to directly and uses os.path.relpath
 against an absolute base to avoid "is not in the subpath" errors on Windows.
 """
-import sys
 import argparse
-from pathlib import Path
 import os
+import sys
+from pathlib import Path
 
 
 def safe_relpath(target: Path, base: Path) -> str:
@@ -41,7 +41,7 @@ def find_resources(paths, verbose=False):
             path = (cwd / path).resolve()
 
         if path.exists():
-            matches = list(path.rglob('*.*'))
+            matches = list(path.rglob("*.*"))
             if matches:
                 rels = [safe_relpath(m, cwd) for m in matches]
                 found.extend(rels)
@@ -57,35 +57,42 @@ def find_resources(paths, verbose=False):
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description='Resource scanner (enhanced) — robust stub')
-    parser.add_argument('--paths', type=str, help='Comma separated paths to scan', default='resources,Styles,src,tools')
-    parser.add_argument('-v', '--verbose', action='store_true')
+    parser = argparse.ArgumentParser(
+        description="Resource scanner (enhanced) — robust stub"
+    )
+    parser.add_argument(
+        "--paths",
+        type=str,
+        help="Comma separated paths to scan",
+        default="resources,Styles,src,tools",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
-    input_paths = [p.strip() for p in args.paths.split(',') if p.strip()]
+    input_paths = [p.strip() for p in args.paths.split(",") if p.strip()]
     if args.verbose:
-        print('Scanning paths:', ', '.join(input_paths))
+        print("Scanning paths:", ", ".join(input_paths))
 
     found = find_resources(input_paths, verbose=args.verbose)
 
-    print('\nResource scanner (enhanced) summary:')
+    print("\nResource scanner (enhanced) summary:")
     if found:
-        print(f'  Total files discovered: {len(found)}')
+        print(f"  Total files discovered: {len(found)}")
         # show a small sample
         for f in found[:20]:
-            print('   -', f)
+            print("   -", f)
         if len(found) > 20:
-            print(f'   ...and {len(found)-20} more')
+            print(f"   ...and {len(found)-20} more")
     else:
-        print('  No resource-like files discovered (this may be ok)')
+        print("  No resource-like files discovered (this may be ok)")
 
     # Return 0 to signal success
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv[1:]))
     except Exception as e:
-        print('ERROR: resource_scanner_enhanced failed:', e)
+        print("ERROR: resource_scanner_enhanced failed:", e)
         sys.exit(2)

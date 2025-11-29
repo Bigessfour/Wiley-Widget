@@ -13,7 +13,8 @@
     <WindowsSdkVersion>10.0.22621.0</WindowsSdkVersion>
     <!-- CRITICAL: UseWinUI must be true BEFORE WindowsAppSDK targets import -->
     <UseWinUI>true</UseWinUI>
-    <!-- DISABLED: EnableXamlSourceGenerator conflicts with PublishAot in .NET 9 unpackaged (falls back to legacy XamlCompiler) -->
+    <!-- DISABLED: EnableXamlSourceGenerator conflicts with PublishAot in .NET 9 unpackaged (falls
+    back to legacy XamlCompiler) -->
     <EnableXamlSourceGenerator>false</EnableXamlSourceGenerator>
     <!-- ============================================================
          CRITICAL WinUI 3 UNPACKAGED CONFIGURATION
@@ -80,7 +81,7 @@
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <!-- Manual AssemblyInfo.cs used for custom attributes -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <NoWarn>NU1902;NU1903</NoWarn>
+    <NoWarn>$(NoWarn);NU1902;NU1903</NoWarn>
 
     <!-- Industry best practice: Enable XAML validator to check obj\xaml-validator.log for errors -->
     <RunXamlValidator>true</RunXamlValidator>
@@ -93,7 +94,8 @@
 
   <!-- Debug-specific XAML diagnostics -->
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <!-- Enable richer XAML debug info so diagnostics can create input.json/output.json and full trace -->
+    <!-- Enable richer XAML debug info so diagnostics can create input.json/output.json and full
+    trace -->
     <XamlDebuggingInformation>Full</XamlDebuggingInformation>
     <EnableXamlGeneratorDebugging>true</EnableXamlGeneratorDebugging>
     <!-- For unpackaged runs we still want generated metadata available -->
@@ -206,15 +208,18 @@
   <ItemGroup>
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
-    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference
+      Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-    <!-- Removed reference to WileyWidget.Services.Uno to avoid duplicate SettingsService type conflict -->
+    <!-- Removed reference to WileyWidget.Services.Uno to avoid duplicate SettingsService type
+    conflict -->
   </ItemGroup>
 
   <!-- Unpackaged Mode Support (for debugging without packaging) -->
-  <PropertyGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+  <PropertyGroup
+    Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <AppxPackage>true</AppxPackage>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
   </PropertyGroup>
@@ -247,12 +252,14 @@
        RunXamlValidator=true to enable during local investigation. Validator runs after
        `CompileXaml` so it can inspect finalized XAML sources. Output is written to
        $(OutDir)xaml-validator.log and $(OutDir)xaml.json. -->
-  <Target Name="RunXamlValidator" AfterTargets="MarkupCompilePass2;Build" Condition="'$(RunXamlValidator)' == 'true'">
+  <Target Name="RunXamlValidator" AfterTargets="MarkupCompilePass2;Build"
+    Condition="'$(RunXamlValidator)' == 'true'">
     <Message Importance="High" Text="Running xaml-strict-validator.py (RunXamlValidator=true)" />
     <Exec
       Command="python &quot;$(MSBuildProjectDirectory)\..\..\scripts\tools\xaml-strict-validator.py&quot; &quot;$(MSBuildProjectDirectory)\**\*.xaml&quot; --fix &gt; &quot;$(OutDir)xaml-validator.log&quot; 2&gt;&amp;1"
       ContinueOnError="true" />
-    <Copy SourceFiles="$(OutDir)xaml-validator.log" DestinationFolder="$(OutDir)" ContinueOnError="true" />
+    <Copy SourceFiles="$(OutDir)xaml-validator.log" DestinationFolder="$(OutDir)"
+      ContinueOnError="true" />
   </Target>
 
   <!-- Exclude legacy/duplicate XAML files that live outside the src/ folder
@@ -266,7 +273,8 @@
 
   <!-- Provide a backward-compatible MSBuild entry point used by repo scripts/tools. -->
   <Target Name="CompileXaml" DependsOnTargets="MarkupCompilePass1;XamlPreCompile;MarkupCompilePass2">
-    <Message Importance="High" Text="CompileXaml: delegated to MarkupCompilePass1/XamlPreCompile/MarkupCompilePass2" />
+    <Message Importance="High"
+      Text="CompileXaml: delegated to MarkupCompilePass1/XamlPreCompile/MarkupCompilePass2" />
   </Target>
 
   <!-- ============================================================
@@ -316,7 +324,8 @@
 
     <Message Importance="High" Text="✅ [XamlCompilerPostDiagnostics] XAML compilation succeeded"
       Condition="'$(XamlCompilerSuccess)' == 'true'" />
-    <Warning Text="❌ [XamlCompilerPostDiagnostics] XAML compilation may have failed - output.json not found"
+    <Warning
+      Text="❌ [XamlCompilerPostDiagnostics] XAML compilation may have failed - output.json not found"
       Condition="'$(XamlCompilerSuccess)' == 'false'" />
 
     <!-- Log result -->

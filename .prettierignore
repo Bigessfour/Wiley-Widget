@@ -1,64 +1,16 @@
-# Dependencies
-node_modules/
-.venv/
-venv/
-__pycache__/
+node_modules
+**/bin
+**/obj
+.vscode
+.trunk
+coverage-report
+publish
+**/*.png
+**/*.jpg
+**/*.gif
+**/*-lock.json
+**/*.min.*
 
-# Build outputs
-bin/
-obj/
-build/
-dist/
-publish/
-TestResults/
-coverage/
-htmlcov/
-
-# IDE and tools
-.vs/
-.vscode/
-.idea/
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# Logs
-logs/
-*.log
-
-# Temporary files
-*.tmp
-*.bak
-*.backup*
-*_backup*
-*_wpftmp.csproj
-
-# Database files
-*.db
-*.db-shm
-*.db-wal
-
-# Generated files
-*.binlog
-.buildcache/
-.packages.lastmodified
-
-# Config backups
-config_backup/
-env_backup/
-
-# Documentation that should not be auto-formatted
-CHANGELOG.md
-RELEASE_NOTES.md
-
-# Trunk and other tool directories
-.trunk/
-.pytest_cache/
-.coverage
-
-# Assets and data
-assets/
-data/
-tools/
-licenses/
+# Workflows sometimes include non-YAML constructs or code fences that Prettier's YAML parser can choke on.
+# We previously excluded workflow files to work around parse errors — now we want to enable them.
+# (Removed excludes for .github/workflows so Prettier will check/format workflow YAML files.)

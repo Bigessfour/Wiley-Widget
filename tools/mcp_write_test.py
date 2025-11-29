@@ -16,7 +16,7 @@ def attempt_write(target: Path, cycles: int = 1000, delay: float = 0.01):
     failures = 0
     errors = {}
     target = target.resolve()
-    tmp = target.parent / (target.name + '.tmp')
+    tmp = target.parent / (target.name + ".tmp")
 
     for i in range(cycles):
         try:
@@ -39,24 +39,31 @@ def attempt_write(target: Path, cycles: int = 1000, delay: float = 0.01):
 
 def main(argv):
     p = argparse.ArgumentParser()
-    p.add_argument('--target', type=str, default='tools/test-output.tmp', help='target file to repeatedly write/replace')
-    p.add_argument('--cycles', type=int, default=1000)
-    p.add_argument('--delay', type=float, default=0.001)
+    p.add_argument(
+        "--target",
+        type=str,
+        default="tools/test-output.tmp",
+        help="target file to repeatedly write/replace",
+    )
+    p.add_argument("--cycles", type=int, default=1000)
+    p.add_argument("--delay", type=float, default=0.001)
     args = p.parse_args(argv)
 
     target = Path(args.target)
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    print('Starting write/replace test: target=', target, 'cycles=', args.cycles)
+    print("Starting write/replace test: target=", target, "cycles=", args.cycles)
     s, f, errors = attempt_write(target, cycles=args.cycles, delay=args.delay)
-    print('done. success=', s, 'failures=', f)
-    print('errors summary:', errors)
+    print("done. success=", s, "failures=", f)
+    print("errors summary:", errors)
     return 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import sys
+
     try:
         sys.exit(main(sys.argv[1:]))
     except Exception as e:
-        print('Test failed:', e)
+        print("Test failed:", e)
         sys.exit(2)

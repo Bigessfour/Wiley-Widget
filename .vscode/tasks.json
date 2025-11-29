@@ -139,52 +139,49 @@
 						"beginsPattern": "^Build started",
 						"endsPattern": "^Build (succeeded|failed)"
 					}
+				},
+				{
+					"owner": "msbuild",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(MSB3073):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					}
+				},
+				{
+					"owner": "msbuild",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(MSB3073):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					}
+				},
+				{
+					"owner": "msbuild",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": "error",
+						"code": 4,
+						"message": 5
+					}
 				}
-					,
-					{
-						"owner": "msbuild",
-						"source": "Build",
-						"fileLocation": ["relative", "${workspaceFolder}"],
-						"pattern": {
-							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
-							"file": 1,
-							"line": 2,
-							"column": 3,
-							"severity": "error",
-							"code": 4,
-							"message": 5
-						}
-					,
-					{
-						"owner": "msbuild",
-						"source": "Build",
-						"fileLocation": ["relative", "${workspaceFolder}"],
-						"pattern": {
-							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
-							"file": 1,
-							"line": 2,
-							"column": 3,
-							"severity": "error",
-							"code": 4,
-							"message": 5
-						}
-					}
-					,
-					{
-						"owner": "msbuild",
-						"source": "Build",
-						"fileLocation": ["relative", "${workspaceFolder}"],
-						"pattern": {
-							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
-							"file": 1,
-							"line": 2,
-							"column": 3,
-							"severity": "error",
-							"code": 4,
-							"message": 5
-						}
-					}
-					}
 			],
 			"dependsOn": "WileyWidget: Clean"
 		},
@@ -668,8 +665,7 @@
 				"-File",
 				"${workspaceFolder}/scripts/run-tests-verbose.ps1",
 				"-TestType",
-				"all",
-				"-Verbose"
+				"all"
 			],
 			"presentation": {
 				"echo": true,
@@ -1225,7 +1221,7 @@
 					"owner": "xaml-validator",
 					"fileLocation": ["relative","${workspaceFolder}"],
 					"pattern": {
-						"regexp": "^FAIL\s+(.+?):(\\d+):(\\d+)\s+\[(WMC\\d+)\]\s+(.*)$",
+						"regexp": "^FAIL\\s+(.+?):(\\d+):(\\d+)\\s+\\[(WMC\\d+)\\]\\s+(.*)$",
 						"file": 1,
 						"line": 2,
 						"column": 3,
@@ -1238,7 +1234,7 @@
 					"owner": "xaml-validator",
 					"fileLocation": ["relative","${workspaceFolder}"],
 					"pattern": {
-						"regexp": "^CRASH\s+(.+?):\\s+(.*)$",
+						"regexp": "^CRASH\\s+(.+?):\\s+(.*)$",
 						"file": 1,
 						"message": 2,
 						"severity": "error"

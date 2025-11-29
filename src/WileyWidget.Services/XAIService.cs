@@ -15,6 +15,7 @@ using Serilog;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Telemetry;
+using WileyWidget.Services.Startup;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
@@ -47,14 +48,15 @@ public class XAIService : IAIService, IDisposable
     /// Constructor with dependency injection
     /// </summary>
     public XAIService(
-        IHttpClientFactory httpClientFactory,
-        IConfiguration configuration,
-        ILogger<XAIService> logger,
-        IWileyWidgetContextService contextService,
-        IAILoggingService aiLoggingService,
-        IMemoryCache memoryCache,
-        SigNozTelemetryService? telemetryService = null
-        // TelemetryClient telemetryClient = null // Commented out until Azure is configured
+    IHttpClientFactory httpClientFactory,
+    IConfiguration configuration,
+    ILogger<XAIService> logger,
+    IWileyWidgetContextService contextService,
+    IAILoggingService aiLoggingService,
+    IMemoryCache memoryCache,
+    SigNozTelemetryService? telemetryService = null,
+    XaiPipelineHolder? xaiPipelineHolder = null
+    // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -113,9 +115,8 @@ public class XAIService : IAIService, IDisposable
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
         }
 
-        // Create Polly v8 resilience pipeline with modern API
-        // Following Microsoft's recommended patterns for resilience
-        _httpPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+        // Prefer the DI-registered pipeline when available, otherwise build a local fallback pipeline
+        _httpPipeline = xaiPipelineHolder?.Pipeline ?? new ResiliencePipelineBuilder<HttpResponseMessage>()
             // 1. RATE LIMITER - Prevent client-side throttling (50 requests/minute)
             .AddRateLimiter(new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
             {

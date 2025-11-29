@@ -12,25 +12,25 @@ from pathlib import Path
 
 def check_licenses():
     # simple heuristic: look for LICENSE or licenses/ folder
-    files = list(Path('.').rglob('LICENSE*'))
-    files += list(Path('licenses').glob('*')) if Path('licenses').exists() else []
+    files = list(Path(".").rglob("LICENSE*"))
+    files += list(Path("licenses").glob("*")) if Path("licenses").exists() else []
     return files
 
 
 def check_resources():
     # reuse simple resource scanning
-    found = list(Path('resources').rglob('*')) if Path('resources').exists() else []
-    found += list(Path('Styles').rglob('*')) if Path('Styles').exists() else []
+    found = list(Path("resources").rglob("*")) if Path("resources").exists() else []
+    found += list(Path("Styles").rglob("*")) if Path("Styles").exists() else []
     return found
 
 
 def check_prism():
     # look for Prism in csproj or packages
-    matches = list(Path('.').rglob('*.csproj'))
+    matches = list(Path(".").rglob("*.csproj"))
     prism_found = False
     for p in matches:
-        txt = p.read_text(encoding='utf-8', errors='ignore')
-        if 'Prism' in txt or 'DryIoc' in txt:
+        txt = p.read_text(encoding="utf-8", errors="ignore")
+        if "Prism" in txt or "DryIoc" in txt:
             prism_found = True
             break
     return prism_found
@@ -39,47 +39,53 @@ def check_prism():
 def check_deprecated():
     # scan for words marked deprecated in docs
     matches = []
-    for p in Path('.').rglob('*.md'):
-        text = p.read_text(encoding='utf-8', errors='ignore')
-        if 'DEPRECATED' in text or 'deprecated' in text:
+    for p in Path(".").rglob("*.md"):
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        if "DEPRECATED" in text or "deprecated" in text:
             matches.append(str(p))
     return matches
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description='Startup validator (lightweight stub)')
-    parser.add_argument('--focus', type=str, help='Comma-separated list of checks (licenses,resources,prism,deprecated)', default='licenses,resources')
-    parser.add_argument('-v', '--verbose', action='store_true')
+    parser = argparse.ArgumentParser(description="Startup validator (lightweight stub)")
+    parser.add_argument(
+        "--focus",
+        type=str,
+        help="Comma-separated list of checks (licenses,resources,prism,deprecated)",
+        default="licenses,resources",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
-    focus = [f.strip().lower() for f in args.focus.split(',') if f.strip()]
+    focus = [f.strip().lower() for f in args.focus.split(",") if f.strip()]
 
-    print('Startup validator - running checks:', ', '.join(focus))
+    print("Startup validator - running checks:", ", ".join(focus))
 
     overall_ok = True
 
-    if 'licenses' in focus:
+    if "licenses" in focus:
         lic = check_licenses()
-        print('  licenses: found', len(lic))
+        print("  licenses: found", len(lic))
 
-    if 'resources' in focus:
+    if "resources" in focus:
         res = check_resources()
-        print('  resources: found', len(res))
+        print("  resources: found", len(res))
 
-    if 'prism' in focus:
+    if "prism" in focus:
         prism_ok = check_prism()
-        print('  prism present:', prism_ok)
+        print("  prism present:", prism_ok)
 
-    if 'deprecated' in focus:
+    if "deprecated" in focus:
         depr = check_deprecated()
-        print('  deprecated mentions:', len(depr))
+        print("  deprecated mentions:", len(depr))
 
     # This script intentionally does not fail the CI unless critical -- return success
     return 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv[1:]))
     except Exception as e:
-        print('ERROR: startup_validator failed:', e)
+        print("ERROR: startup_validator failed:", e)
         sys.exit(2)

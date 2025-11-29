@@ -62,7 +62,7 @@ function extractMarkdown(html, sourceUrl) {
   const h2Match = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
   const pMatch = html.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
 
-  const title = stripHtmlAndCollapse(titleMatch ? titleMatch[1] : (h1Match ? h1Match[1] : (h2Match ? h2Match[1] : '')));
+  const title = stripHtmlAndCollapse(titleMatch ? titleMatch[1] : h1Match ? h1Match[1] : h2Match ? h2Match[1] : '');
   const firstParagraph = stripHtmlAndCollapse(pMatch ? pMatch[1] : '');
 
   let md = '';

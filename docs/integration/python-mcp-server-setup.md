@@ -209,7 +209,7 @@ Alternative YAML-based configuration (for Continue.dev compatibility):
 ```yaml
 name: wiley-widget-gh
 command:
-  - "C:/Users/biges/Desktop/Wiley-Widget/.continue/venv/Scripts/python.exe"
+  - 'C:/Users/biges/Desktop/Wiley-Widget/.continue/venv/Scripts/python.exe'
   - wiley-widget-gh-mcp.py
 workingDirectory: .continue/mcpServers
 ```

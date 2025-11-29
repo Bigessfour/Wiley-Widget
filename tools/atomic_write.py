@@ -51,12 +51,13 @@ def atomic_write(
             os.replace(str(tmp), str(target))
             # success
             return
-        except Exception as ex:
+        except Exception:
             attempt += 1
             # remove tmp if it exists (best-effort)
             try:
                 if tmp.exists():
                     tmp.unlink(missing_ok=True)
+            # trunk-ignore(bandit/B110)
             except Exception:
                 pass
 

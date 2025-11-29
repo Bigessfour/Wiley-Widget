@@ -51,6 +51,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
             // Avoid calling live QuickBooks APIs during unit tests. Instead, verify token validity.
             var hasToken = service.HasValidAccessToken();
 
+            await Task.CompletedTask;
             // Assert
             Assert.True(hasToken, "Expected QuickBooks service to report a valid access token from mocked settings.");
         }

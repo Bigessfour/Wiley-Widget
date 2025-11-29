@@ -3,6 +3,7 @@
 Place workspace-specific helper tools here.
 
 Recommended:
+
 - Put `mcp-csharp.exe` (pinned version) at `./tools/mcp-csharp.exe` so the workspace wrapper (`scripts/tools/run-mcp.ps1`) will pick it up.
 - Install PSScriptAnalyzer locally for the user:
 
@@ -13,6 +14,7 @@ Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
 This workspace enforces PowerShell 7.5.2 or newer for running scripts and uses `scripts/ps-runner.ps1` to analyze scripts prior to execution.
 
 ## New reliability helpers
+
 We've added a few tools to make file I/O and diagnostics more robust when running automation from the agent:
 
 - `atomic_write.py` — atomic write helper with retry/backoff (use this from Python scripts when writing files that may be concurrently accessed).

@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using ClosedXML.Excel;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
+using Polly;
+using WileyWidget.Services.Startup;
 
 namespace WileyWidget.Services.Export
 {
@@ -17,10 +19,12 @@ namespace WileyWidget.Services.Export
     public class ClosedXmlExportService : IExcelExportService
     {
         private readonly ILogger<ClosedXmlExportService> _logger;
+        private readonly FileIoPipelineHolder? _fileIoPipeline;
 
-        public ClosedXmlExportService(ILogger<ClosedXmlExportService> logger)
+        public ClosedXmlExportService(ILogger<ClosedXmlExportService> logger, FileIoPipelineHolder? fileIoPipeline = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _fileIoPipeline = fileIoPipeline;
         }
 
         public async Task<string> ExportBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string filePath)
@@ -69,7 +73,14 @@ namespace WileyWidget.Services.Export
                     range.SetAutoFilter();
 
                     // Save the workbook
-                    workbook.SaveAs(filePath);
+                    if (_fileIoPipeline?.Pipeline != null)
+                    {
+                        _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx => { workbook.SaveAs(filePath); return new ValueTask<bool>(true); }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workbook.SaveAs(filePath);
+                    }
 
                     _logger.LogInformation("Exported {Count} budget entries to {FilePath}", entryList.Count, filePath);
                     return filePath;
@@ -143,7 +154,14 @@ namespace WileyWidget.Services.Export
                     range.SetAutoFilter();
 
                     // Save the workbook
-                    workbook.SaveAs(filePath);
+                    if (_fileIoPipeline?.Pipeline != null)
+                    {
+                        _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx => { workbook.SaveAs(filePath); return new ValueTask<bool>(true); }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workbook.SaveAs(filePath);
+                    }
 
                     _logger.LogInformation("Exported {Count} municipal accounts to {FilePath}", accountList.Count, filePath);
                     return filePath;
@@ -211,7 +229,14 @@ namespace WileyWidget.Services.Export
                     range.SetAutoFilter();
 
                     // Save the workbook
-                    workbook.SaveAs(filePath);
+                    if (_fileIoPipeline?.Pipeline != null)
+                    {
+                        _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx => { workbook.SaveAs(filePath); return new ValueTask<bool>(true); }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workbook.SaveAs(filePath);
+                    }
 
                     _logger.LogInformation("Exported {Count} items to {FilePath}", dataList.Count, filePath);
                     return filePath;
@@ -290,7 +315,14 @@ namespace WileyWidget.Services.Export
                     range.SetAutoFilter();
 
                     // Save the workbook
-                    workbook.SaveAs(filePath);
+                    if (_fileIoPipeline?.Pipeline != null)
+                    {
+                        _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx => { workbook.SaveAs(filePath); return new ValueTask<bool>(true); }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workbook.SaveAs(filePath);
+                    }
 
                     _logger.LogInformation("Exported {Count} items to {FilePath} (worksheet: {WorksheetName})", dataList.Count, filePath, worksheetName);
                     return filePath;

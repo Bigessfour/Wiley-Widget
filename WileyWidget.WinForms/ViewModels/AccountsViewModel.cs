@@ -99,6 +99,19 @@ namespace WileyWidget.WinForms.ViewModels
 
                 AvailableAccountTypes = types.OrderBy(t => t.ToString()).ToList();
             }
+            catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (sqlEx.Number == 4060)
+            {
+                // Login / database not found (Error 4060) — fall back to empty lists for UI continuity
+                _logger.LogWarning(sqlEx, "DB login/database not found (4060) while loading filters — using empty filter lists.");
+                AvailableFunds = new List<MunicipalFundType>();
+                AvailableAccountTypes = new List<AccountType>();
+            }
+            catch (Exception retryEx) when (retryEx.GetType().Name == "RetryLimitExceededException")
+            {
+                _logger.LogError(retryEx, "DB retry limit exceeded while loading filters; returning empty lists.");
+                AvailableFunds = new List<MunicipalFundType>();
+                AvailableAccountTypes = new List<AccountType>();
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to load AvailableFunds or AvailableAccountTypes");
@@ -164,6 +177,16 @@ namespace WileyWidget.WinForms.ViewModels
 
                 _logger.LogInformation("Municipal accounts loaded successfully: {Count} accounts, Total Balance: {Balance:C}",
                     ActiveAccountCount, TotalBalance);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (sqlEx.Number == 4060)
+            {
+                _logger.LogWarning(sqlEx, "DB login/database not found (4060) while loading accounts — showing empty results.");
+                Accounts.Clear();
+            }
+            catch (Exception retryEx) when (retryEx.GetType().Name == "RetryLimitExceededException")
+            {
+                _logger.LogError(retryEx, "DB retry limit exceeded while loading accounts; returning empty results.");
+                Accounts.Clear();
             }
             catch (Exception ex)
             {

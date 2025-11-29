@@ -156,14 +156,17 @@ namespace WileyWidget.WinForms.Forms
                 {
                     if (_viewModel.FilterAccountsCommand != null)
                     {
-#pragma warning disable CS4014
-                        _viewModel.FilterAccountsCommand.ExecuteAsync(null);
-#pragma warning restore CS4014
+                        await _viewModel.FilterAccountsCommand.ExecuteAsync(null);
                     }
                 }
                 catch (Exception ex)
                 {
-                    try { var reporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.ErrorReportingService>(Program.Services); reporting?.ReportError(ex, "Error running FilterAccountsCommand", showToUser: false); } catch { }
+                    try
+                    {
+                        var reporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.ErrorReportingService>(Program.Services);
+                        reporting?.ReportError(ex, "Error running FilterAccountsCommand", showToUser: false);
+                    }
+                    catch { }
                 }
             };
 
@@ -396,9 +399,23 @@ namespace WileyWidget.WinForms.Forms
             if (comboFund != null && _viewModel.AvailableFunds != null)
             {
                 comboFund.DataSource = null; // Clear first to avoid binding issues
-                comboFund.DataSource = _viewModel.AvailableFunds;
-                comboFund.DisplayMember = "DisplayName";
-                comboFund.ValueMember = "DisplayName"; // Explicit ValueMember
+                // If the items are simple enums (MunicipalFundType), do not set DisplayMember/ValueMember which expect property names on reference types.
+                var firstFund = _viewModel.AvailableFunds.FirstOrDefault();
+                if (firstFund != null && firstFund.GetType().IsEnum)
+                {
+                    comboFund.DataSource = _viewModel.AvailableFunds;
+                }
+                else
+                {
+                    comboFund.DataSource = _viewModel.AvailableFunds;
+                    comboFund.DisplayMember = "DisplayName";
+                    try
+                    {
+                        comboFund.ValueMember = "DisplayName"; // Explicit ValueMember when items are object-like
+                    }
+                    catch (ArgumentException) { /* ValueMember can't be set when items lack property - ignore to remain resilient */ }
+                }
+
                 if (_viewModel.SelectedFund != null)
                 {
                     comboFund.SelectedItem = _viewModel.SelectedFund;
@@ -408,9 +425,22 @@ namespace WileyWidget.WinForms.Forms
             if (comboAccountType != null && _viewModel.AvailableAccountTypes != null)
             {
                 comboAccountType.DataSource = null; // Clear first to avoid binding issues
-                comboAccountType.DataSource = _viewModel.AvailableAccountTypes;
-                comboAccountType.DisplayMember = "DisplayName";
-                comboAccountType.ValueMember = "DisplayName"; // Explicit ValueMember
+                var firstType = _viewModel.AvailableAccountTypes.FirstOrDefault();
+                if (firstType != null && firstType.GetType().IsEnum)
+                {
+                    comboAccountType.DataSource = _viewModel.AvailableAccountTypes;
+                }
+                else
+                {
+                    comboAccountType.DataSource = _viewModel.AvailableAccountTypes;
+                    comboAccountType.DisplayMember = "DisplayName";
+                    try
+                    {
+                        comboAccountType.ValueMember = "DisplayName"; // Explicit ValueMember when items are object-like
+                    }
+                    catch (ArgumentException) { /* ignore */ }
+                }
+
                 if (_viewModel.SelectedAccountType != null)
                 {
                     comboAccountType.SelectedItem = _viewModel.SelectedAccountType;

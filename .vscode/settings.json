@@ -1,356 +1,44 @@
 {
-  "github.copilot.chat.codeGeneration.instructions": [
-    {
-      "file": ".vscode/copilot-instructions.md"
-    },
-    {
-      "file": ".vscode/copilot-mcp-rules.md"
-    }
-  ],
-  "github.copilot.chat.localeOverride": "en",
-  "github.copilot.advanced": {
-    "debug.overrideEngine": "gpt-4o-2024-11-20",
-    "debug.useNodeFetcher": true
-  },
-  "files.associations": {
-    "*.md": "markdown",
-    "*.designer.cs": "csharp",
-    "*.resw": "xml",
-    "*.resx": "xml",
-    "copilot-mcp-rules.md": "markdown"
-  },
-  "github.copilot.chat.welcomeMessage": "first",
-  "github.copilot.chat.showThoughts": false,
-  "github.copilot.editor.enableAutoCompletions": true,
-
-  // ============================================================================
-  // XML Configuration (for .resx resource files)
-  // ============================================================================
-  "xml.format.enabled": true,
-  "xml.format.maxLineWidth": 120,
-
-  // ============================================================================
-  // Editor Configuration
-  // ============================================================================
   "editor.formatOnSave": true,
-  "editor.formatOnPaste": false,
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.organizeImports": "explicit"
-  },
-  "editor.minimap.enabled": false,
-  "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
-  "editor.suggestSelection": "first",
-  "editor.quickSuggestions": {
-    "other": true,
-    "comments": false,
-    "strings": true
-  },
-  "editor.acceptSuggestionOnCommitCharacter": true,
-  "editor.acceptSuggestionOnEnter": "on",
-  "editor.semanticHighlighting.enabled": true,
-  "editor.bracketPairColorization.enabled": true,
-  "editor.guides.bracketPairs": true,
-  "editor.inlineSuggest.enabled": true,
+  "files.eol": "\n",
+  "prettier.requireConfig": false,
+  "prettier.ignorePath": ".prettierignore",
 
-  // ============================================================================
-  // File Management
-  // ============================================================================
-  "files.autoSave": "afterDelay",
-  "files.autoSaveDelay": 1000,
-  "files.maxMemoryForLargeFilesMB": 8192,
-  "files.exclude": {
-    "**/.git": true,
-    "**/.svn": true,
-    "**/.hg": true,
-    "**/CVS": true,
-    "**/.DS_Store": true,
-    "**/Thumbs.db": true,
-    "**/bin": true,
-    "**/obj": true,
-    "**/src/legacy/**": true
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/bin": true,
-    "**/obj": true,
-    "**/*.nupkg": true,
-    "**/TestResults": true,
-    "**/.venv": true,
-    "**/__pycache__": true,
-    "**/src/legacy/**": true
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "files.watcherExclude": {
-    "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
-    "**/node_modules/**": true,
-    "**/bin/**": true,
-    "**/obj/**": true,
-    "**/*.nupkg": true,
-    "**/TestResults/**": true,
-    "**/.venv/**": true,
-    "**/.vs/**": true
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[yml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
 
-  // ============================================================================
-  // .NET & C# Configuration (WinForms + .NET 9)
-  // ============================================================================
-  "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
-  "dotnet.completion.showPerProjectDotnetReferences": true,
-  "dotnet.enablePackageRestore": true,
-  "dotnet.defaultSolution": "WileyWidget.sln",
-  "dotnet.server.searchSubdirectoriesForSolution": true,
-  "dotnet.unitTests.runTestsInParallel": true,
-  "dotnet.unitTests.showCodeLens": true,
-  "csharp.semanticHighlighting.enabled": true,
-  "csharp.suppressDotnetRestoreNotification": true,
-  "omnisharp.enableEditorConfigSupport": true,
-  "omnisharp.enableRoslynAnalyzers": true,
-  "omnisharp.projectLoadTimeout": 60000,
-  "omnisharp.sdkIncludePrereleases": false,
-  "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
-  "omnisharp.enableDecompilationSupport": true,
-  "omnisharp.useModernNet": true,
-  "omnisharp.maxProjectResults": 500,
-  "dotnet.backgroundAnalysis.maxDegreeOfParallelism": 12,
-
-  // ============================================================================
-  // Testing Configuration
-  // ============================================================================
-  "testExplorer.useNativeTesting": true,
-  "dotnet-test-explorer.testProjectPath": "**/*Tests.csproj",
-  "dotnet-test-explorer.autoWatch": false,
-  "coverage-gutters.showLineCoverage": true,
-  "coverage-gutters.showRulerCoverage": true,
-
-  // ============================================================================
-  // Git & Version Control
-  // ============================================================================
-  "git.autofetch": true,
-  "git.confirmSync": false,
-  "git.enableSmartCommit": true,
-  "gitlens.codeLens.enabled": true,
-  "gitlens.hovers.currentLine.over": "line",
-  "gitlens.currentLine.enabled": true,
-  "gitlens.statusBar.enabled": true,
-  "gitlens.views.repositories.files.layout": "tree",
-
-  // ============================================================================
-  // Python Configuration
-  // ============================================================================
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-  "python.terminal.activateEnvironment": true,
-  "python.formatting.provider": "black",
-  "python.linting.enabled": true,
-  "python.linting.ruffEnabled": true,
-  "python.testing.unittestEnabled": true,
-  "python.testing.pytestEnabled": false,
-
-  // ============================================================================
-  // PowerShell Configuration
-  // ============================================================================
-  "powershell.scriptAnalysis.enable": true,
-
-  // Wiley-Widget: enable Copilot/MCP terminal sentinel for this workspace (opt-in)
-  // Set to true to add an environment variable in terminals which will enable the
-  // sentinel loader in `.vscode/profile.ps1`.
-  "wileywidget.enableCopilotSentinel": false,
-  "powershell.codeFormatting.preset": "OTBS",
-
-  // ============================================================================
-  // SonarLint Configuration
-  // ============================================================================
-  "sonarlint.rules": {
-    "cs:S1135": {
-      "level": "on"
-    }
+  "[csharp]": {
+    "editor.defaultFormatter": "ms-dotnettools.csharp"
   },
-
-  // ============================================================================
-  // TODO Highlighting
-  // ============================================================================
-  "todo-tree.general.tags": [
-    "BUG",
-    "HACK",
-    "FIXME",
-    "TODO",
-    "XXX",
-    "[ ]",
-    "[x]"
-  ],
-  "todo-tree.highlights.defaultHighlight": {
-    "icon": "alert",
-    "type": "text",
-    "foreground": "#ffffff",
-    "background": "#ff0000",
-    "opacity": 50
-  },
-
-  // ============================================================================
-  // Spell Checker Configuration
-  // ============================================================================
   "cSpell.words": [
-    "Argb",
-    "AUTOCONSTRUCT",
-    "CONNECTIONSTRING",
-    "csdevkit",
-    "csproj",
-    "dotnet",
-    "FormsBorderStyle",
-    "GASB",
-    "OPTOUT",
-    "Payables",
-    "Segoe",
-    "SfChart",
-    "SfDataGrid",
-    "sqlsrv",
-    "Syncfusion",
-    "Wiley",
-    "WileyWidget",
-    "winforms"
-  ],
-  "cSpell.enableFiletypes": [
-    "csharp",
-    "markdown",
-    "xml"
-  ],
-
-  // ============================================================================
-  // Debugging Configuration (WinForms)
-  // ============================================================================
-  "debug.toolBarLocation": "floating",
-  "debug.openDebug": "openOnDebugBreak",
-  "debug.internalConsoleOptions": "openOnSessionStart",
-  "debug.console.fontSize": 12,
-
-  // ============================================================================
-  // Continue/Grok Integration
-  // ============================================================================
-  "continue.defaultModel": "grok-beta",
-  "continue.chat.model": "grok-4-0709",
-  "continue.maxTokens": 4096,
-  "continue.temperature": 0.7,
-  "continue.enableExperimentalFeatures": true,
-  "continue.telemetryLevel": "off",
-  "continue.contextProviders.codebase.nRetrieve": 15,
-  "continue.experimental.modelessChat": true,
-
-  // ============================================================================
-  // Docker Configuration
-  // ============================================================================
-  "docker.showStartPage": false,
-
-  // ============================================================================
-  // Performance & UI (Optimized for WinForms)
-  // ============================================================================
-  "extensions.autoUpdate": true,
-  "window.restoreWindows": "all",
-  "workbench.editor.highlightModifiedTabs": true,
-  "workbench.editor.limit.enabled": true,
-  "workbench.editor.limit.value": 15,
-  "workbench.iconTheme": "material-icon-theme",
-  "workbench.colorTheme": "Default Dark+",
-  "search.maxResults": 5000,
-  "editor.largeFileOptimizations": false,
-  "files.maxMemoryForLargeFilesMB": 16384,
-
-  // ============================================================================
-  // Terminal Configuration — enhanced profiles for development
-  // ============================================================================
-  "terminal.integrated.defaultProfile.windows": "PowerShell",
-  "terminal.integrated.profiles.windows": {
-    "PowerShell": {
-      "source": "PowerShell",
-      "icon": "terminal-powershell"
-    },
-    "PowerShell (venv)": {
-      "source": "PowerShell",
-      "args": [
-        "-NoExit",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceFolder}\\.vscode\\startup.ps1"
-      ],
-      "icon": "terminal-powershell"
-    },
-    "PowerShell Dev": {
-      "source": "PowerShell",
-      "icon": "terminal-powershell",
-      "args": [
-        "-NoExit",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceFolder}\\.vscode\\startup.ps1"
-      ]
-    },
-    "PowerShell Dev (venv)": {
-      "source": "PowerShell",
-      "icon": "terminal-powershell",
-      "args": [
-        "-NoExit",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceFolder}\\.vscode\\startup.ps1"
-      ]
-    },
-    "Python Dev": {
-      "source": "PowerShell",
-      "icon": "terminal-python",
-      "args": [
-        "-NoExit",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        "if (Test-Path \"${workspaceFolder}\\.venv\\Scripts\\Activate.ps1\") { & \"${workspaceFolder}\\.venv\\Scripts\\Activate.ps1\" } ; Write-Host \"Python dev terminal: venv activated (if available)\""
-      ]
-    },
-    "Docker PS": {
-      "source": "PowerShell",
-      "icon": "beaker",
-      "args": [
-        "-NoExit",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        "Write-Host \"Docker dev terminal (attach to containers or run docker commands)\""
-      ]
-    },
-    "Command Prompt": {
-      "path": [
-        "${env:windir}\\System32\\cmd.exe"
-      ],
-      "icon": "terminal-cmd"
-    }
-  },
-  "terminal.integrated.env.windows": {
-    "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
-    "NODE_ENV": "development",
-    // Workspace toggle value is mapped into this env var so an opt-in is easy.
-    // When `wileywidget.enableCopilotSentinel` is true this will be set to "true".
-    "WW_COPILOT_ENABLE": "${config:wileywidget.enableCopilotSentinel}"
-  },
-  "terminal.integrated.automationProfile.windows": {
-    "source": "PowerShell",
-    "args": [
-      "-NoExit",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-Command",
-      "if (Test-Path \"${workspaceFolder}\\.vscode\\profile.ps1\") { . \"${workspaceFolder}\\.vscode\\profile.ps1\" }"
-    ]
-  },
-  "terminal.integrated.gpuAcceleration": "auto",
-  "terminal.integrated.fontFamily": "Cascadia Code, Consolas, 'Courier New', monospace",
-  "terminal.integrated.scrollback": 5000,
-  "chat.mcp.serverSampling": {
-    "Wiley-Widget/.vscode/mcp.json: syncfusion-docs": {
-      "allowedModels": [
-        "copilot/claude-sonnet-4.5",
-        "xai/grok-4-1-fast-reasoning"
-      ]
-    }
-  }
+    "Syncfusion"
+  ]
 }

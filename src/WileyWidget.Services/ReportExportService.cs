@@ -6,10 +6,10 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ClosedXML.Excel;
-using PdfSharpCore;
-using PdfSharpCore.Drawing;
-using PdfSharpCore.Pdf;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Models;
+using Polly;
+using WileyWidget.Services.Startup;
 
 namespace WileyWidget.Services;
 
@@ -20,10 +20,14 @@ namespace WileyWidget.Services;
 public class ReportExportService : IReportExportService
 {
     private readonly ILogger<ReportExportService> _logger;
+    private readonly FileIoPipelineHolder? _fileIoPipeline;
+    private readonly IPdfService _pdfService;
 
-    public ReportExportService(ILogger<ReportExportService> logger)
+    public ReportExportService(ILogger<ReportExportService> logger, IPdfService pdfService, FileIoPipelineHolder? fileIoPipeline = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _pdfService = pdfService ?? throw new ArgumentNullException(nameof(pdfService));
+        _fileIoPipeline = fileIoPipeline;
     }
 
     /// <summary>
@@ -31,92 +35,49 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToPdfAsync(object data, string filePath)
     {
-        await Task.Run(() =>
+        // Use IPdfService to create a simple table-based PDF
+        byte[] bytes = await _pdfService.CreatePdfAsync(builder =>
         {
-            using (var document = new PdfDocument())
+            if (data is IEnumerable<object> enumerable)
             {
-                var page = document.AddPage();
-                var gfx = XGraphics.FromPdfPage(page);
-                var font = new XFont("Arial", 12, XFontStyle.Regular);
-                var headerFont = new XFont("Arial", 14, XFontStyle.Bold);
-
-                double yPosition = 40;
-                double leftMargin = 40;
-                double lineHeight = 20;
-
-                // Handle different data types
-                if (data is IEnumerable<object> enumerableData)
+                var list = enumerable.ToList();
+                if (!list.Any())
                 {
-                    // Tabular data
-                    var items = enumerableData.ToList();
-                    if (items.Any())
-                    {
-                        // Get properties from first item
-                        var properties = items.First().GetType().GetProperties()
-                            .Where(p => p.CanRead)
-                            .ToArray();
-
-                        // Add headers
-                        double xPosition = leftMargin;
-                        double columnWidth = 100;
-                        foreach (var prop in properties)
-                        {
-                            gfx.DrawString(prop.Name, headerFont, XBrushes.Black, xPosition, yPosition);
-                            xPosition += columnWidth;
-                        }
-                        yPosition += lineHeight + 5;
-
-                        // Add data rows
-                        foreach (var item in items)
-                        {
-                            xPosition = leftMargin;
-                            foreach (var prop in properties)
-                            {
-                                var value = prop.GetValue(item)?.ToString() ?? "";
-                                if (value.Length > 20) value = value.Substring(0, 17) + "...";
-                                gfx.DrawString(value, font, XBrushes.Black, xPosition, yPosition);
-                                xPosition += columnWidth;
-                            }
-                            yPosition += lineHeight;
-
-                            // Start new page if needed
-                            if (yPosition > page.Height - 100)
-                            {
-                                page = document.AddPage();
-                                gfx = XGraphics.FromPdfPage(page);
-                                yPosition = 40;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    // Single object - display properties
-                    var properties = data.GetType().GetProperties()
-                        .Where(p => p.CanRead)
-                        .ToArray();
-
-                    foreach (var prop in properties)
-                    {
-                        var value = prop.GetValue(data)?.ToString() ?? "";
-                        var text = $"{prop.Name}: {value}";
-                        gfx.DrawString(text, font, XBrushes.Black, leftMargin, yPosition);
-                        yPosition += lineHeight;
-
-                        // Start new page if needed
-                        if (yPosition > page.Height - 100)
-                        {
-                            page = document.AddPage();
-                            gfx = XGraphics.FromPdfPage(page);
-                            yPosition = 40;
-                        }
-                    }
+                    builder.AddPage();
+                    builder.DrawText("No data", 50, 50);
+                    return Task.CompletedTask;
                 }
 
-                // Save the document
-                document.Save(filePath);
+                var props = list.First().GetType().GetProperties().Where(p => p.CanRead).ToList();
+                var rows = new List<IEnumerable<string>> { props.Select(p => p.Name) };
+                rows.AddRange(list.Select(item => props.Select(p => p.GetValue(item)?.ToString() ?? string.Empty)));
+
+                builder.AddPage();
+                builder.AddTable(rows, 40, 80);
             }
+            else
+            {
+                var props = data.GetType().GetProperties().Where(p => p.CanRead).ToList();
+                var rows = props.Select(p => new[] { p.Name, p.GetValue(data)?.ToString() ?? string.Empty }.AsEnumerable());
+                builder.AddPage();
+                builder.AddTable(rows, 40, 80);
+            }
+
+            return Task.CompletedTask;
         });
+
+        if (_fileIoPipeline?.Pipeline != null)
+        {
+            _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx =>
+            {
+                File.WriteAllBytes(filePath, bytes);
+                return new ValueTask<bool>(true);
+            }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+        }
+        else
+        {
+            File.WriteAllBytes(filePath, bytes);
+        }
     }
 
     /// <summary>
@@ -190,7 +151,14 @@ public class ReportExportService : IReportExportService
                 }
 
                 // Save the workbook
-                workbook.SaveAs(filePath);
+                if (_fileIoPipeline?.Pipeline != null)
+                {
+                    _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx => { workbook.SaveAs(filePath); return new ValueTask<bool>(true); }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    workbook.SaveAs(filePath);
+                }
             }
         });
     }
@@ -202,33 +170,68 @@ public class ReportExportService : IReportExportService
     {
         await Task.Run(() =>
         {
-            var items = data.ToList();
-            if (!items.Any()) return;
+        var items = data.ToList();
+        if (!items.Any()) return;
 
-            using (var writer = new StreamWriter(filePath))
-            {
+        if (_fileIoPipeline?.Pipeline != null)
+        {
+        // Execute CSV write inside file I/O pipeline
+        _fileIoPipeline.Pipeline.ExecuteAsync(ctx =>
+        {
+        using (var writer = new StreamWriter(filePath))
+                        {
                 // Get properties from first item
                 var properties = items.First().GetType().GetProperties()
                     .Where(p => p.CanRead)
-                    .ToArray();
+                                .ToArray();
 
                 // Write headers
                 var headers = string.Join(",", properties.Select(p => EscapeCsvValue(p.Name)));
-                writer.WriteLine(headers);
+            writer.WriteLine(headers);
 
-                // Write data rows
-                foreach (var item in items)
+        // Write data rows
+        foreach (var item in items)
+            {
+                var values = properties.Select(p =>
                 {
-                    var values = properties.Select(p =>
-                    {
                         var value = p.GetValue(item)?.ToString() ?? "";
-                        return EscapeCsvValue(value);
-                    });
-                    var line = string.Join(",", values);
-                    writer.WriteLine(line);
+                            return EscapeCsvValue(value);
+                            });
+                                var line = string.Join(",", values);
+                                writer.WriteLine(line);
+                            }
+                        }
+
+                        return new ValueTask<bool>(true);
+                    }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
                 }
-            }
-        });
+                else
+                {
+                    using (var writer = new StreamWriter(filePath))
+                    {
+                        // Get properties from first item
+                        var properties = items.First().GetType().GetProperties()
+                            .Where(p => p.CanRead)
+                            .ToArray();
+
+                        // Write headers
+                        var headers = string.Join(",", properties.Select(p => EscapeCsvValue(p.Name)));
+                        writer.WriteLine(headers);
+
+                        // Write data rows
+                        foreach (var item in items)
+                        {
+                            var values = properties.Select(p =>
+                            {
+                                var value = p.GetValue(item)?.ToString() ?? "";
+                                return EscapeCsvValue(value);
+                            });
+                            var line = string.Join(",", values);
+                            writer.WriteLine(line);
+                        }
+                    }
+                }
+            });
     }
 
     /// <summary>
@@ -247,102 +250,46 @@ public class ReportExportService : IReportExportService
         if (report == null) throw new ArgumentNullException(nameof(report));
         if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
 
-        await Task.Run(() =>
+        var rows = new List<IEnumerable<string>>
         {
-            using (var document = new PdfDocument())
+            new[] { "Field", "Value" }
+        };
+
+        rows.Add(new[] { "Enterprise ID", report.EnterpriseId.ToString() });
+        rows.Add(new[] { "Generated", report.GeneratedDate.ToString("yyyy-MM-dd HH:mm") });
+        rows.Add(new[] { "Overall Status", report.OverallStatus.ToString() });
+        rows.Add(new[] { "Compliance Score", report.ComplianceScore.ToString("F2") });
+
+        if (report.Violations != null && report.Violations.Any())
+        {
+            rows.Add(new[] { "Violations", report.Violations.Count().ToString() });
+            foreach (var v in report.Violations)
             {
-                var page = document.AddPage();
-                var gfx = XGraphics.FromPdfPage(page);
-
-                var titleFont = new XFont("Arial", 18, XFontStyle.Bold);
-                var headerFont = new XFont("Arial", 14, XFontStyle.Bold);
-                var bodyFont = new XFont("Arial", 11, XFontStyle.Regular);
-
-                double y = 40;
-                double leftMargin = 40;
-                double lineHeight = 20;
-
-                // Title
-                gfx.DrawString("Compliance Report", titleFont, XBrushes.Black, leftMargin, y);
-                y += 30;
-
-                // Report details
-                gfx.DrawString($"Enterprise ID: {report.EnterpriseId}", bodyFont, XBrushes.Black, leftMargin, y);
-                y += lineHeight;
-                gfx.DrawString($"Generated: {report.GeneratedDate:yyyy-MM-dd HH:mm}", bodyFont, XBrushes.Black, leftMargin, y);
-                y += lineHeight + 5;
-
-                gfx.DrawString($"Overall Status: {report.OverallStatus}", headerFont, XBrushes.Black, leftMargin, y);
-                y += lineHeight + 5;
-                gfx.DrawString($"Compliance Score: {report.ComplianceScore:F2}", bodyFont, XBrushes.Black, leftMargin, y);
-                y += lineHeight + 10;
-
-                // Violations section
-                gfx.DrawString("Violations:", headerFont, XBrushes.Black, leftMargin, y);
-                y += lineHeight;
-
-                if (report.Violations != null && report.Violations.Any())
-                {
-                    foreach (var v in report.Violations)
-                    {
-                        var line = $"- [{v.Severity}] {v.Regulation}: {v.Description}";
-                        if (line.Length > 100) line = line.Substring(0, 97) + "...";
-                        gfx.DrawString(line, bodyFont, XBrushes.Black, leftMargin + 10, y);
-                        y += lineHeight;
-
-                        var actionLine = $"  Action: {v.CorrectiveAction}";
-                        if (actionLine.Length > 100) actionLine = actionLine.Substring(0, 97) + "...";
-                        gfx.DrawString(actionLine, bodyFont, XBrushes.DarkGray, leftMargin + 10, y);
-                        y += lineHeight;
-
-                        // Check for new page
-                        if (y > page.Height - 100)
-                        {
-                            page = document.AddPage();
-                            gfx = XGraphics.FromPdfPage(page);
-                            y = 40;
-                        }
-                    }
-                }
-                else
-                {
-                    gfx.DrawString("No violations.", bodyFont, XBrushes.Black, leftMargin + 10, y);
-                    y += lineHeight;
-                }
-
-                y += 10;
-
-                // Recommendations section
-                gfx.DrawString("Recommendations:", headerFont, XBrushes.Black, leftMargin, y);
-                y += lineHeight;
-
-                if (report.Recommendations != null && report.Recommendations.Any())
-                {
-                    foreach (var r in report.Recommendations)
-                    {
-                        var recText = $"- {r}";
-                        if (recText.Length > 100) recText = recText.Substring(0, 97) + "...";
-                        gfx.DrawString(recText, bodyFont, XBrushes.Black, leftMargin + 10, y);
-                        y += lineHeight;
-
-                        // Check for new page
-                        if (y > page.Height - 100)
-                        {
-                            page = document.AddPage();
-                            gfx = XGraphics.FromPdfPage(page);
-                            y = 40;
-                        }
-                    }
-                }
-                else
-                {
-                    gfx.DrawString("No recommendations provided.", bodyFont, XBrushes.Black, leftMargin + 10, y);
-                }
-
-                // Save document
-                document.Save(filePath);
+                rows.Add(new[] { $"Violation ({v.Severity})", $"{v.Regulation}: {v.Description}" });
             }
+        }
+        else
+        {
+            rows.Add(new[] { "Violations", "None" });
+        }
+
+        if (report.Recommendations != null && report.Recommendations.Any())
+        {
+            rows.Add(new[] { "Recommendations", string.Join("; ", report.Recommendations) });
+        }
+        else
+        {
+            rows.Add(new[] { "Recommendations", "None" });
+        }
+
+        var bytes = await _pdfService.CreatePdfAsync(builder =>
+        {
+            builder.AddPage();
+            builder.AddTable(rows, 40, 60);
+            return Task.CompletedTask;
         });
+
+        File.WriteAllBytes(filePath, bytes);
     }
 
     /// <summary>

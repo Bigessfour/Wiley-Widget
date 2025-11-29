@@ -1,8 +1,8 @@
 # WileyWidget - Complete Setup Guide
 
-> **Last Updated**: November 23, 2025  
-> **Version**: 1.0.0  
-> **Target Framework**: .NET 9.0 + WinUI 3  
+> **Last Updated**: November 23, 2025
+> **Version**: 1.0.0
+> **Target Framework**: .NET 9.0 + WinUI 3
 > **Status**: ✅ Build Verified | ⚠️ Requires Database + Secrets Setup
 
 ---
@@ -79,6 +79,8 @@ dotnet run --project src/WileyWidget.WinUI --configuration Release --no-build
 ---
 
 ## 🔧 Full Setup (45 Minutes)
+
+> Troubleshooting: Common database startup issues are covered in the Troubleshooting section below. Our app now includes a safe development fallback (in-memory DB) when a LocalDB/SQL server cannot be reached or your EF model has pending changes — see Troubleshooting for details.
 
 Complete setup with database, secrets, and external API integrations.
 
@@ -545,6 +547,28 @@ Get-Service 'MSSQL$SQLEXPRESS' | Select-Object Status, StartType
 ```powershell
 dotnet ef database update --project src/WileyWidget.Data --startup-project src/WileyWidget.WinUI
 ```
+
+##### Error: "The model for context 'AppDbContext' has pending changes" (PendingModelChangesWarning)
+
+**Cause**: Your EF model was changed without adding a new migration (the model snapshot does not match the migrations history).
+
+**Why this matters**: Calling `Database.Migrate()` at runtime will fail when EF detects model differences that are not represented by migrations. This is deliberate — runtime auto-migration cannot safely generate design-time artifacts.
+
+**Fix (developer)**:
+
+```powershell
+# From repository root — create a new migration capturing your model changes
+dotnet ef migrations add <DescriptiveName> --project src/WileyWidget.Data --startup-project WileyWidget.WinForms
+
+# Apply the migration locally
+dotnet ef database update --project src/WileyWidget.Data --startup-project WileyWidget.WinForms
+```
+
+**Temporary local recovery (development only)**
+
+If you just need the UI to run for local debugging and your DB is not available, the app will now automatically fall back to an in-memory database in Development mode. This is not intended for production.
+
+---
 
 #### Error: "Login failed for user"
 

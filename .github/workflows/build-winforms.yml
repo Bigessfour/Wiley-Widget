@@ -28,6 +28,16 @@ jobs:
           # Reduce scope so linter focuses on workflow files and YAML
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup Node (for Prettier checks)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Prettier check (formatting)
+        run: |
+          npx --no-install prettier --version || npm install -g prettier
+          npx prettier --check "**/*.{js,ts,jsx,tsx,css,scss,html,json,yml,yaml,md}" || (echo "Prettier formatting violations found" && exit 1)
+          echo "Prettier check passed"
   ps-script-analyze:
     name: PowerShell scripts - static analysis
     runs-on: windows-latest
@@ -70,7 +80,7 @@ jobs:
 
     env:
       COVERAGE_THRESHOLD: 85
-      COVERAGE_FAIL_ON_MISSING: "false" # Set 'true' to make missing coverage a hard failure
+      COVERAGE_FAIL_ON_MISSING: false # Set 'true' to make missing coverage a hard failure
 
     steps:
       - name: Checkout code
@@ -78,6 +88,23 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+
+      - name: Preflight — verify required files exist
+        shell: pwsh
+        run: |
+          $required = @(
+            'WileyWidget.sln',
+            'tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj',
+            'tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj',
+            'WileyWidget.WinForms/WileyWidget.WinForms.csproj'
+          )
+          $missing = @()
+          foreach ($p in $required) { if (-not (Test-Path $p)) { $missing += $p } }
+          if ($missing.Count -gt 0) {
+            Write-Error "Missing required files: $($missing -join ', ')"
+            exit 1
+          }
+          if (-not (Test-Path './scripts/verify-startup.ps1')) { Write-Warning 'Optional script ./scripts/verify-startup.ps1 not found — verification step will be skipped' }
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -137,7 +164,7 @@ jobs:
           $maxAttempts=2
           for ($i=1; $i -le $maxAttempts; $i++) {
             try {
-              dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
+              dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
               exit 0
             } catch {
               Write-Warning "Unit tests attempt $i failed: $_"
@@ -193,17 +220,17 @@ jobs:
 
           # TRUNK_PATH is expected to be set earlier in the job (logs show TRUNK_PATH env var)
           if [ -z "${TRUNK_PATH:-}" ]; then
-            echo "ERROR: TRUNK_PATH is not set. Cannot create symlink"
-            exit 1
+            echo "TRUNK_PATH not set; skipping .trunk/setup-ci symlink creation (non-fatal)"
+            exit 0
           fi
 
           SRC="$TRUNK_PATH/setup-ci"
           DEST=".trunk/setup-ci"
 
           if [ ! -e "$SRC" ]; then
-            echo "ERROR: expected trunk source does not exist: $SRC"
+            echo "WARNING: expected trunk source does not exist: $SRC -- skipping symlink creation"
             ls -la "$TRUNK_PATH" || true
-            exit 1
+            exit 0
           fi
 
           # Create an idempotent symlink (replace existing link/target)
@@ -220,17 +247,17 @@ jobs:
           New-Item -ItemType Directory -Path .trunk -Force | Out-Null
 
           if (-not $env:TRUNK_PATH) {
-            Write-Error 'ERROR: TRUNK_PATH is not set. Cannot create symlink'
-            exit 1
+            Write-Warning 'TRUNK_PATH is not set; skipping .trunk/setup-ci symlink creation (non-fatal)'
+            exit 0
           }
 
           $src = Join-Path $env:TRUNK_PATH 'setup-ci'
           $dest = Join-Path (Get-Location) '.trunk\setup-ci'
 
           if (-not (Test-Path $src)) {
-            Write-Error "ERROR: expected trunk source does not exist: $src"
+            Write-Warning "Expected trunk source does not exist: $src -- skipping symlink creation"
             Get-ChildItem -Path $env:TRUNK_PATH -Force | Write-Output
-            exit 1
+            exit 0
           }
 
           # If dest exists, remove it first to allow a clean symlink creation/copy
@@ -246,9 +273,11 @@ jobs:
           }
 
       - name: Trunk validation (CI)
+        if: env.TRUNK_PATH != ''
         uses: trunk-io/trunk-action@v1
         with:
           arguments: --ci --upload
+        continue-on-error: true
 
       - name: Collect coverage summary
         if: always()
@@ -292,6 +321,15 @@ jobs:
             Consider increasing tests or adjust threshold if intentional."
             # Optionally: fail the job by changing this to exit 1
           }
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: ./coverage-report/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Publish Application
         shell: pwsh

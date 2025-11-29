@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **PDF generation:** Migrated PDF generation and manipulation to Syncfusion (`Syncfusion.Pdf.WinForms`). Added `IPdfService` and `SyncfusionPdfService` implementations, DI registration, and unit tests under `tests/WileyWidget.Services.Tests`.
+- **CI:** Add test workflow guidance to expose `SYNCFUSION_LICENSE_KEY` as a secret so CI can register Syncfusion license during test runs.
+
 ## [1.0.0-winforms] - 2025-11-25
 
 ### Strategic Pivot - WinUI 3 → WinForms Production Release
@@ -39,7 +46,6 @@ All notable changes to this project will be documented in this file.
 - **Legacy Reference**: WinUI code preserved in Git history + `src/legacy/` for future evaluation
 - **Rationale**: WinUI 3 unpackaged path not production-ready for complex LOB apps in 2025; will revisit in 2026 when Syncfusion stabilizes WinUI support
 
-
 **Tag:** `v1.0-winforms-relaunch`
 
 ---
@@ -67,6 +73,7 @@ All notable changes to this project will be documented in this file.
 - **Testing Documentation**: Added comprehensive CSX+xUnit dual testing strategy guide
 
 #### Removed
+
 - **Legacy WPF Documentation**: Deleted WPF-specific integration guides
   - `docs/integration/syncfusion-logging-bridge-integration.md`
   - `docs/research/syncfusion-prism-logging-gap-analysis.md`
@@ -74,6 +81,7 @@ All notable changes to this project will be documented in this file.
 - **Temporary Migration Files**: Cleaned up `temp-wiley-mig/` directory
 
 #### Documentation Updates
+
 - README.md: Updated to reflect WinUI 3 platform
 - CHANGELOG.md: Added WinUI migration entry
 - docs/core/Architecture.md: WPF → WinUI 3 references
@@ -84,9 +92,11 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## [0.4.0] - 2025-11-09
+
 ### Major Bootstrapper Refactor - Phase 0-1 Complete
 
 #### Removed (Phase 0: Dead Code Cleanup)
+
 - **11 Dead Modules**: Deleted DashboardModule, MunicipalAccountModule, PanelModule, ReportsModule, ToolsModule, ThrowingModule, UtilityCustomerModule, AIAssistModule, BudgetModule, EnterpriseModule, SettingsModule
 - **Active Modules**: Only CoreModule and QuickBooksModule remain (2 of original 16)
 - **Dead Services**: Removed XamlDiagnosticsService, HealthCheckHostedService
@@ -98,6 +108,7 @@ All notable changes to this project will be documented in this file.
 - **LOC Reduction**: ~12,000+ lines removed
 
 #### Added (Phase 1: Critical Fixes & Partial Class Split)
+
 - **Partial Class Structure**: Split App.xaml.cs into 6 maintainable files (~2,000 LOC total):
   - `App.xaml.cs` (555 LOC): Main entry, assembly resolution, helpers
   - `App.DependencyInjection.cs` (749 LOC): DI container, Prism config, registration methods
@@ -117,6 +128,7 @@ All notable changes to this project will be documented in this file.
 - **Configuration Caching**: BuildConfiguration() now caches IConfiguration to eliminate duplicate calls
 
 #### Changed
+
 - **Module Registration**: Hardcoded CoreModule and QuickBooksModule in ConfigureModuleCatalog (no longer config-driven)
 - **Configuration Cleanup**: appsettings.json Modules:Order and Modules:Regions reduced to 2 active modules
 - **Bootstrapper Inlining**: Moved config/logging/HTTP setup from Bootstrapper.cs into App.DependencyInjection.cs
@@ -125,6 +137,7 @@ All notable changes to this project will be documented in this file.
 - **ViewModel Count**: Only SettingsViewModel active per manifest analysis
 
 #### Fixed
+
 - **Stale Module References**: Removed 10 deleted module names from appsettings.json (DashboardModule, etc.)
 - **Unused Config Loading**: Eliminated ModuleOrder/ModuleRegionMap config loading (modules now hardcoded)
 - **DI Registration Issues**: Fixed HealthCheckHostedService stale registration (2nd order effect)
@@ -132,11 +145,13 @@ All notable changes to this project will be documented in this file.
 - **Build Errors**: Resolved WPFTMP-related compilation errors through complete removal of conditional support
 
 #### Documentation
+
 - **Partial Class Navigation**: Added comprehensive structure map in App.xaml.cs header (developer reference)
 - **Audit Report**: Created BOOTSTRAPPER_AUDIT_2025-11-09.md with phase completion status
 - **README Update**: Scrubbed legacy items, documented new bootstrapper architecture
 
 #### Validation Results
+
 - ✅ Zero compilation errors in core App files
 - ✅ All Phase 0-1 acceptance criteria met
 - ✅ Theme registration aligned with Syncfusion WPF docs
@@ -145,6 +160,7 @@ All notable changes to this project will be documented in this file.
 - ✅ SettingsViewModel fully resolves with all dependencies
 
 #### Performance Impact
+
 - **Startup Simplification**: Reduced from 12-module to 2-module initialization
 - **Memory Footprint**: Smaller surface area from deleted services/modules
 - **Configuration Overhead**: Eliminated duplicate BuildConfiguration() calls via caching
@@ -152,7 +168,9 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## [0.3.0] - 2025-11-08
+
 ### Added
+
 - AI manifest schema (`schemas/ai-manifest-schema.json`) with validation guidance
 - `.ai-manifest-config.json.example` for customizable manifest generation
 - Reference guide `docs/reference/AI_FETCHABLE_MANIFEST_ENHANCEMENTS.md`
@@ -166,6 +184,7 @@ All notable changes to this project will be documented in this file.
   - Comprehensive logging for troubleshooting assembly load issues
 
 ### Changed
+
 - Upgraded Syncfusion WPF controls to 31.2.5 and BoldReports WPF to 11.1.18
 - Updated Serilog.Sinks.File to 7.0.0 and FluentValidation to 12.1.0
 - Raised Microsoft.Extensions.Http.Resilience to 9.10.0 and QuickBooks SDK to 14.7.0.2
@@ -173,11 +192,13 @@ All notable changes to this project will be documented in this file.
 - Expanded `generate_repo_urls.py` with dependency graphs, git history, license detection, security scans, and metrics
 
 ### Fixed
+
 - **Resolved NuGet Package Reference Issues**: Eliminated CS0246/CS0115 errors from wpftmp compilation
 - **Assembly Loading Reliability**: Prevented runtime `FileNotFoundException` and `TypeLoadException` for NuGet packages
 - **Prism Type Resolution**: Fixed PrismApplication and DryIoc container resolution in various environments
 
 ### Documentation
+
 - Refreshed README with November 2025 release highlights and AI manifest usage
 - Documented manifest workflow in reference docs and linked sample configuration
 - Added comprehensive NuGet resolution documentation with implementation details and troubleshooting guide
@@ -185,19 +206,21 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## [0.2.0] - 2025-10-28
+
 ### Major Architecture Cleanup & Standardization
 
 #### Removed
-  - Syncfusion migration scripts (7 files)
-  - Architecture migration scripts (5 files)
-  - XAML conversion scripts (6 files)
-  - Build error scripts (4 files)
-  - Cloudflared/infrastructure scripts (9 files)
-  - Production DB scripts (4 files)
-  - Test/debug scripts (12 files)
-  - Environment setup scripts (8 files)
-  - Profile optimization scripts (6 files)
-  - Misc utility scripts (10+ files)
+
+- Syncfusion migration scripts (7 files)
+- Architecture migration scripts (5 files)
+- XAML conversion scripts (6 files)
+- Build error scripts (4 files)
+- Cloudflared/infrastructure scripts (9 files)
+- Production DB scripts (4 files)
+- Test/debug scripts (12 files)
+- Environment setup scripts (8 files)
+- Profile optimization scripts (6 files)
+- Misc utility scripts (10+ files)
 
 #### Standardized
 
@@ -210,6 +233,7 @@ All notable changes to this project will be documented in this file.
 ## 2025-10-22
 
 ### Navigation Refactor: Removed Legacy Navigation Services
+
 - **Removed**: `INavigationService`, `NavigationService`, `IRegionNavigationService`, `RegionNavigationService`, `IScopedRegionService`, `ScopedRegionService`
 - **Standardized**: All navigation now uses Prism `IRegionManager.RequestNavigate()` exclusively per Prism documentation
 - **Updated**: ViewModels implement `INavigationAware` for lifecycle management (OnNavigatedTo/From)
@@ -218,6 +242,7 @@ All notable changes to this project will be documented in this file.
 - **Result**: Cleaner architecture aligned with Prism best practices; eliminated tight coupling and legacy code
 
 ### Threading Cleanup Across UI
+
 - Replaced Task.Run wrappers around UI mutations with DispatcherHelper.Invoke/InvokeAsync
 - Ensured ObservableCollection updates and selection changes occur on the UI thread
 - Removed blocking .Wait()/.Result on UI paths; switched to async/await where applicable
@@ -228,7 +253,9 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## [0.1.0] - 2025-08-12
+
 ### Added
+
 - Initial WPF scaffold with Syncfusion controls
 - MVVM integration
 - Unit tests + coverage
@@ -239,6 +266,7 @@ All notable changes to this project will be documented in this file.
 ## 2025-10-22
 
 ### Navigation Refactor: Removed Legacy Navigation Services
+
 - **Removed**: `INavigationService`, `NavigationService`, `IRegionNavigationService`, `RegionNavigationService`, `IScopedRegionService`, `ScopedRegionService`
 - **Standardized**: All navigation now uses Prism `IRegionManager.RequestNavigate()` exclusively per Prism documentation
 - **Updated**: ViewModels implement `INavigationAware` for lifecycle management (OnNavigatedTo/From)
@@ -247,6 +275,7 @@ All notable changes to this project will be documented in this file.
 - **Result**: Cleaner architecture aligned with Prism best practices; eliminated tight coupling and legacy code
 
 ### Threading cleanup across UI
+
 - Replaced Task.Run wrappers around UI mutations with DispatcherHelper.Invoke/InvokeAsync.
 - Ensured ObservableCollection updates and selection changes occur on the UI thread.
 - Removed blocking .Wait()/.Result on UI paths; switched to async/await where applicable.

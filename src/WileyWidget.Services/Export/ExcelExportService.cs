@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ClosedXML.Excel;
 using WileyWidget.Models;
+using Polly;
+using WileyWidget.Services.Startup;
 
 namespace WileyWidget.Services.Export
 {
@@ -43,10 +45,12 @@ namespace WileyWidget.Services.Export
     public class ExcelExportService : IExcelExportService
     {
         private readonly ILogger<ExcelExportService> _logger;
+        private readonly FileIoPipelineHolder? _fileIoPipeline;
 
-        public ExcelExportService(ILogger<ExcelExportService> logger)
+        public ExcelExportService(ILogger<ExcelExportService> logger, FileIoPipelineHolder? fileIoPipeline = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _fileIoPipeline = fileIoPipeline;
         }
 
         public async Task<string> ExportBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string filePath)
@@ -95,7 +99,14 @@ namespace WileyWidget.Services.Export
                     dataRange.SetAutoFilter();
 
                     // Save the workbook
-                    workbook.SaveAs(filePath);
+                    if (_fileIoPipeline?.Pipeline != null)
+                    {
+                        _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx => { workbook.SaveAs(filePath); return new ValueTask<bool>(true); }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workbook.SaveAs(filePath);
+                    }
 
                     _logger.LogInformation("Exported {Count} budget entries to {FilePath}", entryList.Count, filePath);
                     return filePath;
@@ -154,7 +165,14 @@ namespace WileyWidget.Services.Export
                     dataRange.SetAutoFilter();
 
                     // Save the workbook
-                    workbook.SaveAs(filePath);
+                    if (_fileIoPipeline?.Pipeline != null)
+                    {
+                        _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx => { workbook.SaveAs(filePath); return new ValueTask<bool>(true); }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workbook.SaveAs(filePath);
+                    }
 
                     _logger.LogInformation("Exported {Count} municipal accounts to {FilePath}", accountList.Count, filePath);
                     return filePath;
@@ -248,7 +266,14 @@ namespace WileyWidget.Services.Export
                     dataRange.SetAutoFilter();
 
                     // Save the workbook
-                    workbook.SaveAs(filePath);
+                    if (_fileIoPipeline?.Pipeline != null)
+                    {
+                        _fileIoPipeline.Pipeline.ExecuteAsync<bool>(ctx => { workbook.SaveAs(filePath); return new ValueTask<bool>(true); }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workbook.SaveAs(filePath);
+                    }
 
                     _logger.LogInformation("Exported {Count} records to {FilePath}", dataList.Count, filePath);
                     return filePath;

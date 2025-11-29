@@ -337,17 +337,6 @@
           "OpenTelemetry.Api": "[1.9.0, 2.0.0)"
         }
       },
-      "PdfSharpCore": {
-        "type": "Direct",
-        "requested": "[1.3.67, )",
-        "resolved": "1.3.67",
-        "contentHash": "6Cvj9nX6RwIJFIQC8eJFCYYUu9Qa2t9LWh4i0SXFi3hqkX/ssUGKfzp+9JZZXbkp0lHeeH/9UYFHelLqIusPrQ==",
-        "dependencies": {
-          "SharpZipLib": "1.4.2",
-          "SixLabors.Fonts": "1.0.0-beta17",
-          "SixLabors.ImageSharp": "1.0.4"
-        }
-      },
       "Polly": {
         "type": "Direct",
         "requested": "[8.6.5, )",
@@ -366,12 +355,6 @@
           "Polly.Core": "8.6.5",
           "System.Threading.RateLimiting": "8.0.0"
         }
-      },
-      "QuestPDF": {
-        "type": "Direct",
-        "requested": "[2025.7.4, )",
-        "resolved": "2025.7.4",
-        "contentHash": "XeiWilwLnqP2BIvDG+vh1+fjUoNWczPee5qifw8VppVOH7+vmxgoxG/KANcKftgqAfXiRQ++sXOSLPZRvXxD2g=="
       },
       "Serilog": {
         "type": "Direct",
@@ -444,6 +427,31 @@
         "contentHash": "fKL7mXv7qaiNBUC71ssvn/dU0k9t0o45+qm2XgKAlSt19xF+ijjxyA3R6HmCgfKEKwfcfkwWjayuQtRueZFkYw==",
         "dependencies": {
           "Serilog": "4.2.0"
+        }
+      },
+      "Syncfusion.Licensing": {
+        "type": "Direct",
+        "requested": "[31.2.15, )",
+        "resolved": "31.2.15",
+        "contentHash": "9y2HMFjFT0pBxtl4l+5wcWtyiot+eff8QhVtX1B5Zwe8Y3u8jl9WCIaAgUPsNQr4JarIwqCbJrdiH5Ou0WweLQ=="
+      },
+      "Syncfusion.Pdf.WinForms": {
+        "type": "Direct",
+        "requested": "[31.2.15, )",
+        "resolved": "31.2.15",
+        "contentHash": "We1G6le1N4Uxiv5bxk2E6KnqsdnKRwJo/AgNfBmvGjlZWAPobOJLZEv2g8y+kQup1tdzqmVw/77fH9Z1eF7JDw==",
+        "dependencies": {
+          "Syncfusion.Compression.Base": "31.2.15",
+          "Syncfusion.Licensing": "31.2.15"
+        }
+      },
+      "System.Drawing.Common": {
+        "type": "Direct",
+        "requested": "[9.0.0, )",
+        "resolved": "9.0.0",
+        "contentHash": "uoozjI3+dlgKh2onFJcz8aNLh6TRCPlLSh8Dbuljc8CdvqXrxHOVysJlrHvlsOCqceqGBR1wrMPxlnzzhynktw==",
+        "dependencies": {
+          "Microsoft.Win32.SystemEvents": "9.0.0"
         }
       },
       "System.Management": {
@@ -998,6 +1006,11 @@
           "System.Runtime": "4.3.0"
         }
       },
+      "Microsoft.Win32.SystemEvents": {
+        "type": "Transitive",
+        "resolved": "9.0.0",
+        "contentHash": "z8FfGIaoeALdD+KF44A2uP8PZIQQtDGiXsOLuN8nohbKhkyKt7zGaZb+fKiCxTuBqG22Q7myIAioSWaIcOOrOw=="
+      },
       "Mono.TextTemplating": {
         "type": "Transitive",
         "resolved": "3.0.0",
@@ -1261,11 +1274,6 @@
           "Serilog": "2.8.0"
         }
       },
-      "SharpZipLib": {
-        "type": "Transitive",
-        "resolved": "1.4.2",
-        "contentHash": "yjj+3zgz8zgXpiiC3ZdF/iyTBbz2fFvMxZFEBPUcwZjIvXOf37Ylm+K58hqMfIBt5JgU/Z2uoUS67JmTLe973A=="
-      },
       "SixLabors.Fonts": {
         "type": "Transitive",
         "resolved": "1.0.0",
@@ -1282,6 +1290,11 @@
           "System.Runtime": "4.3.0",
           "System.Text.RegularExpressions": "4.3.0"
         }
+      },
+      "Syncfusion.Compression.Base": {
+        "type": "Transitive",
+        "resolved": "31.2.15",
+        "contentHash": "3mXu/J6rw5LxQVChY7hypMAhz/Uc/twguABLh1RV7u5vhJKooUqpc3rd8LBoZ3MtrO4cFVBQluOjznX5qFz2yQ=="
       },
       "System.AppContext": {
         "type": "Transitive",
@@ -2711,12 +2724,6 @@
         "dependencies": {
           "Serilog": "2.10.0"
         }
-      },
-      "SixLabors.ImageSharp": {
-        "type": "CentralTransitive",
-        "requested": "[3.1.12, )",
-        "resolved": "1.0.4",
-        "contentHash": "H2rPiEr2ddBOltOuqRYhpLBAsQXDAhbzMMhhuksnBG2oefup1MXMchALe7yYkKJksNbtxbZHKeM6dn/68I75qw=="
       },
       "System.Buffers": {
         "type": "CentralTransitive",

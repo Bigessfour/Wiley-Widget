@@ -1,8 +1,8 @@
-name: Fast PR Feedback
-
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   fast-check:
@@ -34,17 +34,18 @@ jobs:
         run: dotnet build src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj --no-restore --verbosity minimal
 
       - name: Quick unit tests
-        run: dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --no-build --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+        run: dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --no-build --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
 
       - name: Upload quick-test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: fast-pr-results
-          path: ./TestResults || .
+          path: ./TestResults
+          if-no-files-found: ignore
           retention-days: 3
 
-      - name: Optional: run additional static checks
+      - name: "Optional: run additional static checks"
         run: |
           # can add quick static checks or script analyzers
           echo "No additional fast checks configured; customize as needed"

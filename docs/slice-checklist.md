@@ -16,5 +16,6 @@ Use this checklist for each slice prior to opening a PR. Keep PRs focused, descr
 - [ ] PR description includes screenshots, test steps, and rollback plan where applicable
 
 Notes:
+
 - If any step is blocked (e.g., requires QuickBooks secrets), add a clear note in the Issue and PR and mark integration tests as "skipped in PRs" with rationale.
 - For large changes, break up into smaller slices and use feature flags if necessary.

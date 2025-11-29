@@ -1,0 +1,34 @@
+name: PDF Service Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore WileyWidget.sln
+
+      - name: Build
+        run: dotnet build WileyWidget.sln --no-restore --configuration Debug --verbosity minimal
+
+      - name: Run PDF service tests
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+        run: |
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --no-build --logger "trx;LogFileName=pdf-service-tests.trx"

@@ -11,12 +11,15 @@ using Intuit.Ipp.Core;
 using Intuit.Ipp.Data;
 using Intuit.Ipp.DataService;
 using Intuit.Ipp.Security;
+using Polly;
+
 using Intuit.Ipp.QueryFilter;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Services.Startup;
 using Microsoft.Extensions.DependencyInjection;
 
 using WileyWidget.Services.Abstractions.Models;
@@ -62,9 +65,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
+    private readonly QuickBooksPipelineHolder? _pipelineHolder;
 
-    public QuickBooksService(WileyWidget.Services.ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider)
+    public QuickBooksService(WileyWidget.Services.ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider, QuickBooksPipelineHolder? pipelineHolder = null)
     {
+        _pipelineHolder = pipelineHolder;
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
@@ -889,7 +894,16 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             new("redirect_uri", _redirectUri)
         };
         req.Content = new FormUrlEncodedContent(form);
-        using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
+        HttpResponseMessage respMsg;
+        if (_pipelineHolder?.Pipeline != null)
+        {
+            respMsg = await _pipelineHolder.Pipeline.ExecuteAsync(async ctx => await _httpClient.SendAsync(req, ctx.CancellationToken).ConfigureAwait(false), ResilienceContextPool.Shared.Get()).ConfigureAwait(false);
+        }
+        else
+        {
+            respMsg = await _httpClient.SendAsync(req).ConfigureAwait(false);
+        }
+        using var resp = respMsg;
         var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
         {
@@ -927,7 +941,16 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 };
                 req.Content = new FormUrlEncodedContent(form);
 
-                using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
+                HttpResponseMessage respMsg;
+                if (_pipelineHolder?.Pipeline != null)
+                {
+                    respMsg = await _pipelineHolder.Pipeline.ExecuteAsync(async ctx => await _httpClient.SendAsync(req, ctx.CancellationToken).ConfigureAwait(false), ResilienceContextPool.Shared.Get()).ConfigureAwait(false);
+                }
+                else
+                {
+                    respMsg = await _httpClient.SendAsync(req).ConfigureAwait(false);
+                }
+                using var resp = respMsg;
                 json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                 if (!resp.IsSuccessStatusCode)

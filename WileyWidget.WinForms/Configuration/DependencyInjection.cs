@@ -2,11 +2,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Serilog;
 using WileyWidget.Data;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Excel;
+using WileyWidget.Services.Telemetry;
+using WileyWidget.Services.Startup; // central resilience pipeline registration helpers
 using WileyWidget.Services.Export;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
@@ -15,7 +18,12 @@ namespace WileyWidget.WinForms.Configuration
 {
     public static class DependencyInjection
     {
-        public static IServiceProvider ConfigureServices(IConfiguration configuration)
+        /// <summary>
+        /// Configure application services.
+        /// </summary>
+        /// <param name="configuration">Configuration instance</param>
+        /// <param name="forceInMemory">When true the AppDbContext will be configured with an in-memory provider instead of SQL Server. Use for developer fallback scenarios.</param>
+        public static IServiceProvider ConfigureServices(IConfiguration configuration, bool forceInMemory = false)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
@@ -33,20 +41,48 @@ namespace WileyWidget.WinForms.Configuration
 
             // Database registration: prefer configured connection string, fallback to in-memory
             var connectionString = configuration.GetConnectionString("WileyWidgetDb");
-            if (!string.IsNullOrWhiteSpace(connectionString))
+
+            if (forceInMemory)
+            {
+                Log.Warning("DependencyInjection configured to use InMemory DB via forceInMemory flag.");
+                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("WileyWidget_InMemory"));
+                services.AddDbContextFactory<AppDbContext>(options => options.UseInMemoryDatabase("WileyWidget_InMemory"));
+            }
+            else if (!string.IsNullOrWhiteSpace(connectionString))
             {
                 services.AddDbContext<AppDbContext>(options =>
                 {
                     options.UseSqlServer(connectionString, sqlOptions =>
                     {
-                        sqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorNumbersToAdd: null);
+                        sqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay: TimeSpan.FromSeconds(30),
+                            errorNumbersToAdd: new int[] { 4060, 18456 });
                     });
+
+                    // Log EF Core "pending model changes" warnings instead of allowing stricter diagnostics to bubble as errors.
+                    options.ConfigureWarnings(warnings =>
+                    {
+                        warnings.Log(RelationalEventId.PendingModelChangesWarning);
+                    });
+
                     options.EnableDetailedErrors();
                     options.EnableSensitiveDataLogging(false);
                 });
 
                 // Also register the factory for scoped consumer scenarios
-                services.AddDbContextFactory<AppDbContext>(options => options.UseSqlServer(connectionString));
+                services.AddDbContextFactory<AppDbContext>(options =>
+                {
+                    options.UseSqlServer(connectionString, sqlOptions =>
+                    {
+                        sqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay: TimeSpan.FromSeconds(30),
+                            errorNumbersToAdd: new int[] { 4060, 18456 });
+                    });
+
+                    options.ConfigureWarnings(warnings => warnings.Log(RelationalEventId.PendingModelChangesWarning));
+                });
             }
             else
             {
@@ -60,6 +96,17 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<ISettingsService, SettingsService>();
             services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
             services.AddSingleton<HealthCheckService>();
+
+            // Telemetry & diagnostics
+            // Register a lightweight telemetry service (SigNoz fallback) and a central ErrorReportingService.
+            services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
+            services.AddSingleton<ErrorReportingService>();
+
+            // Register centralized resilience pipelines (HTTP: XAI, QuickBooks)
+            services.AddWileyResiliencePolicies(configuration);
+
+            // Ensure IHttpClientFactory is available for services that rely on named clients
+            services.AddHttpClient();
 
             // Data Services
             services.AddSingleton<IQuickBooksService, QuickBooksService>();

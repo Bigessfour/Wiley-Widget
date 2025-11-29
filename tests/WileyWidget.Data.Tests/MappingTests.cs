@@ -21,7 +21,7 @@ public class MappingTests
     {
         using var ctx = CreateInMemoryContext("dept_unique_index");
 
-        var entityType = ctx.Model.FindEntityType(typeof(Department));
+        var entityType = ctx.Model.FindEntityType(typeof(Department))!;
         entityType.Should().NotBeNull();
 
         var indexes = entityType.GetIndexes();
@@ -32,7 +32,7 @@ public class MappingTests
     public void BudgetEntry_Has_Unique_Index_On_AccountNumber_And_FiscalYear()
     {
         using var ctx = CreateInMemoryContext("budgetentry_unique_idx");
-        var entityType = ctx.Model.FindEntityType(typeof(WileyWidget.Models.BudgetEntry));
+        var entityType = ctx.Model.FindEntityType(typeof(WileyWidget.Models.BudgetEntry))!;
         entityType.Should().NotBeNull();
 
         var indexes = entityType.GetIndexes();
@@ -43,10 +43,10 @@ public class MappingTests
     public void MunicipalAccount_Has_Owned_AccountNumber()
     {
         using var ctx = CreateInMemoryContext("municipal_owned");
-        var entityType = ctx.Model.FindEntityType(typeof(WileyWidget.Models.MunicipalAccount));
+        var entityType = ctx.Model.FindEntityType(typeof(WileyWidget.Models.MunicipalAccount))!;
         entityType.Should().NotBeNull();
 
-        var owned = entityType.GetOwnedTypes().Any(o => o.ClrType.Name.Contains("AccountNumber", StringComparison.OrdinalIgnoreCase));
+        var owned = ctx.Model.GetEntityTypes().Where(et => et.IsOwned()).Any(o => o.ClrType != null && o.ClrType.Name.Contains("AccountNumber", StringComparison.OrdinalIgnoreCase));
         owned.Should().BeTrue("MunicipalAccount should own the AccountNumber value object");
     }
 }

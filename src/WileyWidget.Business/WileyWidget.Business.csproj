@@ -43,6 +43,15 @@
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 
+  <!-- Exclude runtime/native assets brought in transitively by some QuickBooks/Intuit packages
+       (not used by our runtime) to avoid version-specific RID runtime assets like win7-x64
+       which trigger NETSDK1206 warnings on .NET 8+/9+. This keeps compile-time/compile
+       assets available while removing problematic native runtime targets. -->
+  <ItemGroup>
+    <PackageReference Update="Serilog.Sinks.AzureDocumentDb" ExcludeAssets="runtime" />
+    <PackageReference Update="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="runtime" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
   </ItemGroup>

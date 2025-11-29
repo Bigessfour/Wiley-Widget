@@ -1,4 +1,4 @@
-# Testing & Database Integration Guide
+# Testing
 
 ## WinForms UI E2E tests (interactive)
 
@@ -7,17 +7,16 @@
 
 When you need to run these tests locally or in CI, pick one of the following flows:
 
-1) Run against a published WinForms executable
+1. Run against a published WinForms executable
    - Build & publish the WinForms app (recommended):
 
      dotnet publish WileyWidget.WinForms\WileyWidget.WinForms.csproj --configuration Debug --framework net9.0-windows --output ./publish
 
    - Point tests at the published exe:
-
      - E2ETests reads environment variable INTEGRATION_EXE_PATH (preferred) — set it to the absolute path of the published exe (for example: C:\work\Wiley-Widget\WileyWidget.WinForms\publish\WileyWidget.WinForms.exe).
      - Dashboard-style tests look at WILEYWIDGET_EXE — set this to the published exe path.
 
-2) Run interactively on a self-hosted runner (CI)
+2. Run interactively on a self-hosted runner (CI)
    - CI jobs that run interactive UI tests must run on a self-hosted Windows runner that can display UI (or an equivalent interactive runner).
    - The test run will skip UI tests unless explicitly opted in. To opt in in CI, set the env var:
 
@@ -26,13 +25,12 @@ When you need to run these tests locally or in CI, pick one of the following flo
    - If you want a single variable to override the executable path in CI, set INTEGRATION_EXE_PATH to the published exe path.
 
 Notes, troubleshooting and facts
+
 - If the test runner cannot find the executable it will instruct you to either build/publish the WinForms app or set the env var INTEGRATION_EXE_PATH/WILEYWIDGET_EXE.
 - Launch failures (Win32Exception) can happen on non-interactive runners; those will also be skipped when configured to do so.
 - For CI: prefer a dedicated, interactive self-hosted runner for these tests — public shared hosted runners cannot run interactive UI tests safely.
 
 ---
-
-
 
 This document describes how the test projects are organized and how to run the SQL Server / SQL Express integration tests locally and in CI.
 
@@ -47,7 +45,7 @@ This document describes how the test projects are organized and how to run the S
 
 By default the integration project `WileyWidget.IntegrationTests` uses `appsettings.test.json` which points to `InMemory`. To enable the SQL Server / SQL Express tests you have two options:
 
-1) Provide a `TEST_SQL_CONNECTIONSTRING` environment variable pointing to a reachable SQL Server instance.
+1. Provide a `TEST_SQL_CONNECTIONSTRING` environment variable pointing to a reachable SQL Server instance.
 
    Example (PowerShell):
 
@@ -56,7 +54,7 @@ By default the integration project `WileyWidget.IntegrationTests` uses `appsetti
    dotnet test WileyWidget.IntegrationTests\WileyWidget.IntegrationTests.csproj --filter Category=Database.SqlExpress
    ```
 
-2) Start a SQL Server container (suitable for CI) and point tests at it. Example using SQL Server 2022 container:
+2. Start a SQL Server container (suitable for CI) and point tests at it. Example using SQL Server 2022 container:
 
    ```powershell
    docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Passw0rd" -p 1433:1433 --name wiley-sql -d mcr.microsoft.com/mssql/server:2022-latest
@@ -66,6 +64,7 @@ By default the integration project `WileyWidget.IntegrationTests` uses `appsetti
    ```
 
 Notes:
+
 - The integration test will early-return if the connection string looks like an in-memory sentinel (e.g. "InMemoryDb").
 - The test will attempt to run EF migrations (idempotent) against the provided database and perform a small CRUD flow. Ensure a test database name is used, or let the script create a new test DB.
 

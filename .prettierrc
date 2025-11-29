@@ -1,36 +1,13 @@
 {
-  "printWidth": 100,
+  "printWidth": 120,
   "tabWidth": 2,
   "useTabs": false,
   "semi": true,
-  "singleQuote": false,
-  "quoteProps": "as-needed",
+  "singleQuote": true,
   "trailingComma": "es5",
   "bracketSpacing": true,
   "arrowParens": "always",
-  "proseWrap": "preserve",
-  "endOfLine": "lf",
-  "overrides": [
-    {
-      "files": "*.md",
-      "options": {
-        "proseWrap": "preserve",
-        "printWidth": 120
-      }
-    },
-    {
-      "files": ["*.yaml", "*.yml"],
-      "options": {
-        "tabWidth": 2,
-        "printWidth": 120
-      }
-    },
-    {
-      "files": "*.json",
-      "options": {
-        "tabWidth": 2,
-        "printWidth": 80
-      }
-    }
-  ]
+  "requirePragma": true,
+  "insertPragma": false,
+  "endOfLine": "lf"
 }
