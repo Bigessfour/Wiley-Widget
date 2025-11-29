@@ -276,7 +276,8 @@ jobs:
         if: env.TRUNK_PATH != ''
         uses: trunk-io/trunk-action@v1
         with:
-          arguments: --ci --upload
+          # Keep Trunk invocation minimal in CI to avoid unsupported flags on some runners
+          arguments: --ci
         continue-on-error: true
 
       - name: Collect coverage summary
