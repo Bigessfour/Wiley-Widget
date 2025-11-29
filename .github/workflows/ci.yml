@@ -1,0 +1,46 @@
+# .github/workflows/ci.yml  (only one file!)
+name: CI
+
+on:
+  push:
+    # allow pushes to main and the current working branch for CI test runs
+    branches: [ main, fix/workflows-ci-lint ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9 (or 10 when you upgrade)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+
+      - name: Restore & Build
+        run: |
+          dotnet restore WileyWidget.sln
+          dotnet build WileyWidget.sln --configuration Release --no-restore
+
+      - name: Run fast tests (everything except slow SQL/QBO)
+        run: dotnet test --no-build --configuration Release --filter "FullyQualifiedName!~Integration"
+
+      - name: Publish executable
+        run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish
+
+      - name: Upload artifact (one-click install for you)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wiley-Widget-Latest
+          path: ./publish/
