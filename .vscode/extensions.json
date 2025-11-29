@@ -1,7 +1,11 @@
 {
+  // Recommended extensions for this workspace
   "recommendations": [
+    "GitHub.vscode-actions",
+    "GitHub.vscode-pull-request-github",
     "esbenp.prettier-vscode",
     "editorconfig.editorconfig",
     "ms-dotnettools.csharp"
-  ]
+  ],
+  "unwantedRecommendations": []
 }
