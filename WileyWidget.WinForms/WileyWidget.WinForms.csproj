@@ -9,13 +9,13 @@
   </PropertyGroup>
 
 
-
   <ItemGroup>
     <ProjectReference Include="..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
     <ProjectReference Include="..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference
+      Include="..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
     <ProjectReference Include="..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
   </ItemGroup>
 
@@ -67,10 +67,8 @@
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="ClosedXML" />
-    <PackageReference Include="QuestPDF" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
-    <PackageReference Include="PdfSharpCore" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
