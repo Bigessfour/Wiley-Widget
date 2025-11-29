@@ -4,6 +4,10 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   fast-check:
     name: Fast PR checks (lint, trunk, quick-tests)
