@@ -106,15 +106,24 @@ jobs:
           }
           if (-not (Test-Path './scripts/verify-startup.ps1')) { Write-Warning 'Optional script ./scripts/verify-startup.ps1 not found — verification step will be skipped' }
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
+      - name: Check for packages.lock.json files (diagnostic)
+        shell: pwsh
+        run: |
+          Write-Host 'Searching for packages.lock.json files in the repo (helps NuGet caching be deterministic)'
+          $files = Get-ChildItem -Path . -Recurse -Filter 'packages.lock.json' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+          if (!$files) {
+            Write-Error "No packages.lock.json files found. NuGet cache keys will be ineffective and restores may be flaky."
+            Write-Error "To fix: run 'dotnet restore --use-lock-file' for your projects/solution and commit the resulting packages.lock.json files."
+            exit 1
+          }
+          Write-Host "Found packages.lock.json files:"
+          $files | ForEach-Object { Write-Host " - $_" }
+
+      - name: Cache + optional retry helper (dotnet-cache-retry)
+        uses: ./.github/actions/dotnet-cache-retry
         with:
-          path: |
-            ~/.nuget/packages
-            ~/.local/share/NuGet
-          key: nuget-packages-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
-          restore-keys: |
-            nuget-packages-${{ runner.os }}-
+          lockfile-globs: '**/packages.lock.json'
+          key-prefix: build-winforms-nuget
 
       - name: Cache dotnet tools
         uses: actions/cache@v4
@@ -138,25 +147,15 @@ jobs:
           }
 
       - name: Restore NuGet packages (retry)
-        shell: powershell
-        run: |
-          $maxAttempts = 3
-          $attempt = 0
-          do {
-            $attempt++
-            Write-Host "dotnet restore attempt $attempt"
+        uses: ./.github/actions/dotnet-cache-retry
+        with:
+          run-command: |
             dotnet restore WileyWidget.sln --verbosity minimal -clp:PerformanceSummary
-            if ($LASTEXITCODE -eq 0) { break }
-            Start-Sleep -Seconds (5 * $attempt)
-          } while ($attempt -lt $maxAttempts)
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "dotnet restore failed after $attempt attempts"
-            exit 1
-          }
+          attempts: '3'
 
       - name: Build WinForms Application
         shell: pwsh
-        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal /m
 
       - name: Test - Unit Tests (with coverage)
         shell: powershell
@@ -278,7 +277,9 @@ jobs:
         with:
           # Keep Trunk invocation minimal in CI to avoid unsupported flags on some runners
           arguments: --ci
-        continue-on-error: true
+        # Previously this was continue-on-error: true which masked trunk failures.
+        # Fail the job if Trunk reports issues so CI surfaces quality problems.
+        continue-on-error: false
 
       - name: Collect coverage summary
         if: always()
@@ -334,7 +335,7 @@ jobs:
 
       - name: Publish Application
         shell: pwsh
-        run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-restore
+        run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-restore /m
 
       - name: Verify startup smoke test (best-effort)
         continue-on-error: true

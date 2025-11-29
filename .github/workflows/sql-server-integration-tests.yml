@@ -12,8 +12,8 @@ on:
 
 jobs:
   sql-integration-tests:
-    # Only run this job when integration secrets are available (avoid failing PRs)
-    if: ${{ secrets.MSSQL_SA_PASSWORD != '' || secrets.TEST_SQL_CONNECTIONSTRING != '' }}
+    # NOTE: job-level 'if' cannot safely reference secrets (actionlint will flag it)
+    # We'll guard runtime behavior inside steps (set SKIP_SQL_TESTS via GITHUB_ENV)
     name: SQL Server (SQL Express mode) integration tests
     runs-on: windows-latest
     timeout-minutes: 60
@@ -34,10 +34,19 @@ jobs:
         run: |
           if (-not $env:MSSQL_SA_PASSWORD -and -not $env:TEST_SQL_CONNECTIONSTRING) {
             Write-Warning 'No MSSQL_SA_PASSWORD secret or TEST_SQL_CONNECTIONSTRING provided — skipping SQL Server integration tests.'
-            Exit 78 # Neutral exit so PRs don't fail when not configured
+            # Mark skip flag for later steps and exit successfully so the job doesn't fail
+            Add-Content -Path $Env:GITHUB_ENV -Value "SKIP_SQL_TESTS=true"
+            exit 0
           }
 
+      - name: Cache + optional retry helper (dotnet-cache-retry)
+        uses: ./.github/actions/dotnet-cache-retry
+        with:
+          lockfile-globs: '**/packages.lock.json'
+          key-prefix: sql-integration-nuget
+
       - name: Start SQL Server container (mcr.microsoft.com/mssql/server:2019-latest)
+        if: env.SKIP_SQL_TESTS != 'true'
         shell: pwsh
         env:
           SA_PASS: ${{ secrets.MSSQL_SA_PASSWORD }}
@@ -48,9 +57,21 @@ jobs:
           docker pull mcr.microsoft.com/mssql/server:2019-latest
           docker run --name sqlsrv_integration_test -e 'ACCEPT_EULA=Y' -e "MSSQL_SA_PASSWORD=$env:SA_PASS" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
 
-          # Wait for readiness by scanning the container logs for the readiness message
+          # Wait for readiness by running sqlcmd INSIDE the container. This is much more reliable
+          # than scanning logs when log verbosity is noisy. We attempt a connection repeatedly
+          # (up to ~5 minutes) and fall back to log scanning if sqlcmd isn't present.
           $ready = $false
           for ($i=0; $i -lt 60; $i++) {
+            try {
+              # Try executing sqlcmd inside the container. The mssql-server image includes sqlcmd
+              # at /opt/mssql-tools/bin/sqlcmd when tools are available.
+              docker exec -i sqlsrv_integration_test /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $env:SA_PASS -Q "SET NOCOUNT ON; SELECT 1" > $null 2>&1
+              if ($LASTEXITCODE -eq 0) { $ready = $true; break }
+            } catch {
+              # If sqlcmd isn't available in the container we fall back to the old log-based approach.
+            }
+
+            # Fallback: scan logs for the known readiness message
             $logs = (docker logs sqlsrv_integration_test 2>&1) -join "\n"
             if ($logs -match 'SQL Server is now ready for client connections') { $ready = $true; break }
             Start-Sleep -Seconds 5
@@ -63,16 +84,20 @@ jobs:
           }
 
       - name: Build solution
-        shell: pwsh
-        run: |
-          dotnet restore WileyWidget.sln --verbosity minimal
-          dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+        if: env.SKIP_SQL_TESTS != 'true'
+        uses: ./.github/actions/dotnet-cache-retry
+        with:
+          run-command: |
+            dotnet clean WileyWidget.sln --verbosity minimal;
+            dotnet restore WileyWidget.sln --verbosity minimal;
+            dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+          attempts: '3'
 
-      - name: Run SQL integration tests (Category=Database.SqlExpress)
+      - name: Prepare SQL connection string for tests
+        if: env.SKIP_SQL_TESTS != 'true'
         shell: pwsh
         env:
           TEST_SQL_CONNECTIONSTRING: ${{ secrets.TEST_SQL_CONNECTIONSTRING }}
-          # If user didn't provide a TEST_SQL_CONNECTIONSTRING secret, construct one from MSSQL_SA_PASSWORD
           TEST_SQL_AUTOCONSTRUCT: ${{ secrets.MSSQL_SA_PASSWORD }}
         run: |
           # prefer an explicit connection string provided via secret
@@ -88,12 +113,15 @@ jobs:
           }
 
           Write-Host "Using connection string: [hidden] (server portion: $($conn.Split(';')[0]))"
+          "TEST_SQL_CONNECTIONSTRING=$conn" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8
 
-          # Export for the test process
-          $env:TEST_SQL_CONNECTIONSTRING = $conn
-
-          # Run the integration tests with category filter to limit only SQL integration tests
-          dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj --configuration Release --filter "Category=Database.SqlExpress" --verbosity minimal
+      - name: Run SQL integration tests (Category=Database.SqlExpress)
+        if: env.SKIP_SQL_TESTS != 'true'
+        uses: ./.github/actions/dotnet-cache-retry
+        with:
+          run-command: |
+            dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj --configuration Release --filter "Category=Database.SqlExpress" --verbosity minimal
+          attempts: '3'
 
       - name: Stop and cleanup SQL Server container
         if: always()

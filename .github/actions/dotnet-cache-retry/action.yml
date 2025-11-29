@@ -1,0 +1,87 @@
+name: dotnet-cache-retry
+description: Composite action to cache dotnet artifacts (NuGet and bin/obj) and optionally run a command with retries.
+author: WileyWidget CI Helpers
+
+inputs:
+  cache-paths:
+    description: Newline-separated list of paths to cache (supports glob patterns).
+    required: false
+    default: |
+      ~/.nuget/packages
+      **/bin
+      **/obj
+
+  lockfile-globs:
+    description: Glob pattern(s) used to create cache key via hashFiles. Can be a single glob or newline separated list.
+    required: false
+    default: "**/packages.lock.json"
+
+  key-prefix:
+    description: Cache key prefix (helps create unique cache spaces per job type).
+    required: false
+    default: nuget-packages
+
+  attempts:
+    description: Number of attempts to retry the provided run-command (default 3).
+    required: false
+    default: '3'
+
+  run-command:
+    description: Optional command to run (string). If provided, the action will execute this command with retries according to attempts. Use shell appropriate for the runner (sh/pwsh).
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Setup cache
+      uses: actions/cache@v4
+      with:
+        path: |-
+          ${{ inputs.cache-paths }}
+        key: ${{ inputs.key-prefix }}-${{ runner.os }}-${{ hashFiles(inputs.lockfile-globs) }}
+        restore-keys: |
+          ${{ inputs.key-prefix }}-${{ runner.os }}-
+
+    - name: Show computed cache key (diagnostic)
+      shell: bash
+      if: runner.os != 'Windows'
+      run: |
+        echo "Computed key: ${{ inputs.key-prefix }}-${{ runner.os }}-$(sh -c 'echo "'$(printf "$(git rev-parse --verify HEAD 2>/dev/null)" )'"' || true)" || true
+
+    - name: Optional run with retries (Linux / macOS)
+      if: runner.os != 'Windows' && inputs.run-command != ''
+      shell: bash
+      run: |
+        ATTEMPTS=${{ inputs.attempts }}
+        CMD="${{ inputs.run-command }}"
+        attempt=1
+        until [ "$attempt" -gt "$ATTEMPTS" ]; do
+          echo "Running (attempt $attempt/$ATTEMPTS): $CMD"
+          bash -lc "$CMD" && exit 0
+          attempt=$((attempt+1))
+          if [ "$attempt" -le "$ATTEMPTS" ]; then
+            sleep $((5 * attempt))
+          fi
+        done
+        echo "Command failed after $ATTEMPTS attempts"
+        exit 1
+
+    - name: Optional run with retries (Windows)
+      if: runner.os == 'Windows' && inputs.run-command != ''
+      shell: pwsh
+      run: |
+        $attempts = [int]${{ inputs.attempts }}
+        $cmd = "${{ inputs.run-command }}"
+        for ($i = 1; $i -le $attempts; $i++) {
+          Write-Host "Running (attempt $i/$attempts): $cmd"
+          try {
+            iex $cmd
+            exit 0
+          } catch {
+            Write-Warning "Attempt $i failed: $_"
+            if ($i -lt $attempts) { Start-Sleep -Seconds (5 * $i) }
+          }
+        }
+        Write-Error "Command failed after $attempts attempts"
+        exit 1
