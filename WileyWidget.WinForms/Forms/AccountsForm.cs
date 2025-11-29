@@ -400,8 +400,10 @@ namespace WileyWidget.WinForms.Forms
             {
                 comboFund.DataSource = null; // Clear first to avoid binding issues
                 // If the items are simple enums (MunicipalFundType), do not set DisplayMember/ValueMember which expect property names on reference types.
-                var firstFund = _viewModel.AvailableFunds.FirstOrDefault();
-                if (firstFund != null && firstFund.GetType().IsEnum)
+                // FirstOrDefault will return a default value for value types (enums), so checking
+                // for null is incorrect and triggers CS0472. Use Any() to determine if there are
+                // items and then inspect the runtime type of the first item.
+                if (_viewModel.AvailableFunds != null && _viewModel.AvailableFunds.Any() && _viewModel.AvailableFunds.First().GetType().IsEnum)
                 {
                     comboFund.DataSource = _viewModel.AvailableFunds;
                 }
@@ -425,8 +427,7 @@ namespace WileyWidget.WinForms.Forms
             if (comboAccountType != null && _viewModel.AvailableAccountTypes != null)
             {
                 comboAccountType.DataSource = null; // Clear first to avoid binding issues
-                var firstType = _viewModel.AvailableAccountTypes.FirstOrDefault();
-                if (firstType != null && firstType.GetType().IsEnum)
+                if (_viewModel.AvailableAccountTypes != null && _viewModel.AvailableAccountTypes.Any() && _viewModel.AvailableAccountTypes.First().GetType().IsEnum)
                 {
                     comboAccountType.DataSource = _viewModel.AvailableAccountTypes;
                 }

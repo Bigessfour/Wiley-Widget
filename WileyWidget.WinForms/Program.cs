@@ -214,7 +214,7 @@ namespace WileyWidget.WinForms
 
                                 Log.Information("Database ready — accounts: {count}", db.MunicipalAccounts.Count());
                             }
-                            catch (InvalidOperationException invEx) when (invEx.Message?.Contains("PendingModelChangesWarning") == true || invEx.Message?.IndexOf("pending changes", StringComparison.OrdinalIgnoreCase) >= 0)
+                            catch (InvalidOperationException invEx) when ((invEx.Message != null && invEx.Message.IndexOf("PendingModelChangesWarning", StringComparison.OrdinalIgnoreCase) >= 0) || invEx.Message?.IndexOf("pending changes", StringComparison.OrdinalIgnoreCase) >= 0)
                             {
                                 // Clear guidance for contributors and allow dev fallback.
                                 Log.Error(invEx, "Detected model snapshot mismatch (pending EF model changes) — automatic migration cannot be applied at runtime.");
