@@ -77,7 +77,12 @@
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
     <PackageVersion Include="ExcelDataReader" Version="3.8.0" />
     <PackageVersion Include="ExcelDataReader.DataSet" Version="3.8.0" />
-    <!-- QuestPDF and PdfSharpCore removed in favor of Syncfusion PDF (commercial, enterprise-grade) -->
+    <!-- QuestPDF and PdfSharpCore removed in favor of Syncfusion PDF (commercial, enterprise-grade)
+          However some projects still reference QuestPDF/PdfSharpCore — provide central versions
+          here so older projects and tests can restore cleanly. These can be removed when
+          all projects migrate to Syncfusion or the references are removed. -->
+    <!-- Legacy QuestPDF and PdfSharpCore central entries removed — Syncfusion PDF packages (e.g.
+    Syncfusion.Pdf.WinForms) are used instead. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     <PackageVersion Include="System.Management" Version="10.0.0" />
     <!-- System.* packages removed where functionality is provided by .NET 10 framework -->

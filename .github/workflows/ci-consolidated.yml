@@ -1,0 +1,114 @@
+name: Consolidated CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  checks: write
+
+env:
+  MCP_ENDPOINT: ${{ secrets.MCP_ENDPOINT }}
+  MCP_TOKEN: ${{ secrets.MCP_TOKEN }}
+
+jobs:
+  lint:
+    name: Trunk & quick lint checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trunk check (CI)
+        uses: trunk-io/trunk-action@v1
+        with:
+          arguments: --ci --no-upload --focus=lint
+
+      - name: Upload trunk output (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trunk-output
+          path: ./TestResults
+          if-no-files-found: ignore
+
+  build-windows:
+    name: Build + unit tests (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    needs: [lint]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore packages
+        shell: pwsh
+        run: dotnet restore WileyWidget.sln --verbosity minimal -clp:PerformanceSummary
+
+      - name: Build solution
+        shell: pwsh
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+
+      - name: Run Unit Tests
+        shell: pwsh
+        run: |
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=unittests-trx.trx" --results-directory ./TestResults/UnitTests || exit 1
+
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: ./TestResults/UnitTests
+          if-no-files-found: ignore
+
+  post-report:
+    name: "Optional: report CI run to MCP server"
+    runs-on: ubuntu-latest
+    needs: [lint, build-windows]
+    if: ${{ secrets.MCP_ENDPOINT != '' }}
+    steps:
+      - name: Checkout (light)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Show environment (redact secrets)
+        run: |
+          echo "GITHUB_RUN_ID=${{ github.run_id }}"
+          echo "GITHUB_RUN_NUMBER=${{ github.run_number }}"
+          echo "GITHUB_WORKFLOW=${{ github.workflow }}"
+
+      - name: Call MCP reporting endpoint (PowerShell)
+        shell: pwsh
+        run: |
+          # Example: call the MCP endpoint; the secrets are redacted in logs.
+          # Uncomment and customize the following if you want an actual call:
+          # Invoke-RestMethod -Uri $env:MCP_ENDPOINT -Method Post -Headers @{ Authorization = "Bearer $env:MCP_TOKEN" } -Body (ConvertTo-Json @{ run_id = $env:GITHUB_RUN_ID })
+          Write-Output "MCP reporting would run here (endpoint redacted)."
+
+      - name: Post run summary as comment (optional)
+        if: ${{ secrets.GITHUB_TOKEN != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # When a PR is present, add a small comment linking the run + MCP status (non-blocking)
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            PR_NUMBER=$(jq -r .pull_request.number < $GITHUB_EVENT_PATH || echo '')
+            if [ -n "$PR_NUMBER" ]; then
+              echo "Posting comment to PR #${PR_NUMBER} with run info"
+              gh pr comment $PR_NUMBER --body "CI run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (MCP reporting enabled)" || true
+            fi
+          fi
