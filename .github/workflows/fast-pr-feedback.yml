@@ -23,6 +23,11 @@ jobs:
           # persist credentials so the workflow can push back to branches in the same repo
           persist-credentials: true
 
+      - name: Install jq
+        # jq is required by some scripts that parse GitHub payloads or produce annotations.
+        # Install it on Ubuntu runners prior to any steps that may rely on it.
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Run Trunk check (fast)
         uses: trunk-io/trunk-action@v1
         with:

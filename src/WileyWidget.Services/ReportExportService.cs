@@ -170,49 +170,20 @@ public class ReportExportService : IReportExportService
     {
         await Task.Run(() =>
         {
-        var items = data.ToList();
-        if (!items.Any()) return;
+            var items = data.ToList();
+            if (!items.Any()) return;
 
-        if (_fileIoPipeline?.Pipeline != null)
-        {
-        // Execute CSV write inside file I/O pipeline
-        _fileIoPipeline.Pipeline.ExecuteAsync(ctx =>
-        {
-        using (var writer = new StreamWriter(filePath))
-                        {
-                // Get properties from first item
-                var properties = items.First().GetType().GetProperties()
-                    .Where(p => p.CanRead)
-                                .ToArray();
-
-                // Write headers
-                var headers = string.Join(",", properties.Select(p => EscapeCsvValue(p.Name)));
-            writer.WriteLine(headers);
-
-        // Write data rows
-        foreach (var item in items)
+            if (_fileIoPipeline?.Pipeline != null)
             {
-                var values = properties.Select(p =>
-                {
-                        var value = p.GetValue(item)?.ToString() ?? "";
-                            return EscapeCsvValue(value);
-                            });
-                                var line = string.Join(",", values);
-                                writer.WriteLine(line);
-                            }
-                        }
-
-                        return new ValueTask<bool>(true);
-                    }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
-                }
-                else
+                // Execute CSV write inside file I/O pipeline
+                _fileIoPipeline.Pipeline.ExecuteAsync(ctx =>
                 {
                     using (var writer = new StreamWriter(filePath))
                     {
                         // Get properties from first item
                         var properties = items.First().GetType().GetProperties()
                             .Where(p => p.CanRead)
-                            .ToArray();
+                                        .ToArray();
 
                         // Write headers
                         var headers = string.Join(",", properties.Select(p => EscapeCsvValue(p.Name)));
@@ -222,16 +193,45 @@ public class ReportExportService : IReportExportService
                         foreach (var item in items)
                         {
                             var values = properties.Select(p =>
-                            {
-                                var value = p.GetValue(item)?.ToString() ?? "";
-                                return EscapeCsvValue(value);
-                            });
+                    {
+                        var value = p.GetValue(item)?.ToString() ?? "";
+                        return EscapeCsvValue(value);
+                    });
                             var line = string.Join(",", values);
                             writer.WriteLine(line);
                         }
                     }
+
+                    return new ValueTask<bool>(true);
+                }, ResilienceContextPool.Shared.Get()).GetAwaiter().GetResult();
+            }
+            else
+            {
+                using (var writer = new StreamWriter(filePath))
+                {
+                    // Get properties from first item
+                    var properties = items.First().GetType().GetProperties()
+                        .Where(p => p.CanRead)
+                        .ToArray();
+
+                    // Write headers
+                    var headers = string.Join(",", properties.Select(p => EscapeCsvValue(p.Name)));
+                    writer.WriteLine(headers);
+
+                    // Write data rows
+                    foreach (var item in items)
+                    {
+                        var values = properties.Select(p =>
+                        {
+                            var value = p.GetValue(item)?.ToString() ?? "";
+                            return EscapeCsvValue(value);
+                        });
+                        var line = string.Join(",", values);
+                        writer.WriteLine(line);
+                    }
                 }
-            });
+            }
+        });
     }
 
     /// <summary>

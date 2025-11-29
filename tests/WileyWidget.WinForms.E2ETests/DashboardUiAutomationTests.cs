@@ -25,7 +25,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             // This test is a scaffold showing how to start the app with FlaUI.
-            var exePath = Path.Combine("..","..","..","WileyWidget.WinForms","bin","Debug","net9.0-windows","WileyWidget.WinForms.exe");
+            var exePath = Path.Combine("..", "..", "..", "WileyWidget.WinForms", "bin", "Debug", "net9.0-windows", "WileyWidget.WinForms.exe");
             if (!File.Exists(exePath))
             {
                 Console.WriteLine($"E2E UI test: exe not found at '{exePath}'");

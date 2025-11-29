@@ -43,74 +43,74 @@ public sealed class E2ETests : IDisposable
 
         // Try multiple strategies to find an attached main window while handling intermittent COM errors
         try
+        {
+            var result = FlaUI.Core.Tools.Retry.WhileNull(() =>
             {
-                var result = FlaUI.Core.Tools.Retry.WhileNull(() =>
+                try
                 {
+                    // Prefer desktop scan to find windows owned by the app process or matching title
                     try
                     {
-                        // Prefer desktop scan to find windows owned by the app process or matching title
-                        try
+                        var desktop = automation.GetDesktop();
+                        var all = desktop.FindAllChildren();
+                        var candidate = all.FirstOrDefault(w =>
                         {
-                            var desktop = automation.GetDesktop();
-                            var all = desktop.FindAllChildren();
-                            var candidate = all.FirstOrDefault(w =>
+                            try
                             {
-                                try
-                                {
-                                    var pidProp = w.Properties.ProcessId;
-                                    if (pidProp?.Value is int pid && pid == app.ProcessId) return true;
-                                }
-                                catch { }
-                                return !string.IsNullOrWhiteSpace(w.Name) && w.Name.IndexOf("Wiley", StringComparison.OrdinalIgnoreCase) >= 0;
-                            });
+                                var pidProp = w.Properties.ProcessId;
+                                if (pidProp?.Value is int pid && pid == app.ProcessId) return true;
+                            }
+                            catch { }
+                            return !string.IsNullOrWhiteSpace(w.Name) && w.Name.IndexOf("Wiley", StringComparison.OrdinalIgnoreCase) >= 0;
+                        });
 
-                            if (candidate != null) return candidate.AsWindow();
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Desktop scan failed while finding windows: {ex.Message}");
-                        }
-
-                        // Fall back to GetMainWindow (may throw System.ComponentModel.Win32Exception or COMException)
-                        try
-                        {
-                            return app.GetMainWindow(automation);
-                        }
-                        catch (System.ComponentModel.Win32Exception wx)
-                        {
-                            Console.WriteLine($"Win32Exception while attaching to main window: {wx.Message}");
-                            return null;
-                        }
-                        catch (COMException cex)
-                        {
-                            Console.WriteLine($"COM exception while attaching to main window: {cex.Message}");
-                            return null;
-                        }
+                        if (candidate != null) return candidate.AsWindow();
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Unexpected error finding main window: {ex.Message}");
+                        Console.WriteLine($"Desktop scan failed while finding windows: {ex.Message}");
+                    }
+
+                    // Fall back to GetMainWindow (may throw System.ComponentModel.Win32Exception or COMException)
+                    try
+                    {
+                        return app.GetMainWindow(automation);
+                    }
+                    catch (System.ComponentModel.Win32Exception wx)
+                    {
+                        Console.WriteLine($"Win32Exception while attaching to main window: {wx.Message}");
                         return null;
                     }
-                }, TimeSpan.FromSeconds(timeoutSeconds));
+                    catch (COMException cex)
+                    {
+                        Console.WriteLine($"COM exception while attaching to main window: {cex.Message}");
+                        return null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Unexpected error finding main window: {ex.Message}");
+                    return null;
+                }
+            }, TimeSpan.FromSeconds(timeoutSeconds));
 
-                return result.Result;
-            }
-            catch (System.ComponentModel.Win32Exception wx)
-            {
-                Console.WriteLine($"Retry failed with Win32Exception: {wx.Message}");
-                return null;
-            }
-            catch (COMException cex)
-            {
-                Console.WriteLine($"Retry failed with COM exception: {cex.Message}");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"GetMainWindow retry aborted: {ex.Message}");
-                return null;
-            }
+            return result.Result;
+        }
+        catch (System.ComponentModel.Win32Exception wx)
+        {
+            Console.WriteLine($"Retry failed with Win32Exception: {wx.Message}");
+            return null;
+        }
+        catch (COMException cex)
+        {
+            Console.WriteLine($"Retry failed with COM exception: {cex.Message}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetMainWindow retry aborted: {ex.Message}");
+            return null;
+        }
     }
 
     [Fact]

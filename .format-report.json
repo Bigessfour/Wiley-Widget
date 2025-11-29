@@ -1,0 +1,32 @@
+[
+  {
+    "DocumentId": {
+      "ProjectId": {
+        "Id": "ec0332e8-6983-4d48-b9a9-5968f0c68269"
+      },
+      "Id": "1a4d1d96-6fc8-48d0-be59-e52a3aa3980e"
+    },
+    "FileName": "ReportExportService.cs",
+    "FilePath": "C:\\Users\\biges\\Desktop\\Wiley-Widget\\src\\WileyWidget.Services\\ReportExportService.cs",
+    "FileChanges": [
+      {
+        "LineNumber": 197,
+        "CharNumber": 25,
+        "DiagnosticId": "WHITESPACE",
+        "FormatDescription": "Fix whitespace formatting. Delete 4 characters."
+      },
+      {
+        "LineNumber": 198,
+        "CharNumber": 25,
+        "DiagnosticId": "WHITESPACE",
+        "FormatDescription": "Fix whitespace formatting. Delete 4 characters."
+      },
+      {
+        "LineNumber": 199,
+        "CharNumber": 21,
+        "DiagnosticId": "WHITESPACE",
+        "FormatDescription": "Fix whitespace formatting. Delete 4 characters."
+      }
+    ]
+  }
+]
