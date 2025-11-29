@@ -12,7 +12,7 @@ TestResults/
 *.nupkg
 *.snupkg
 packages/
-**/packages.lock.json
+
 
 # Logs / diagnostics
 logs/
