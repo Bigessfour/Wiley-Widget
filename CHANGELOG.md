@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - **PDF generation:** Migrated PDF generation and manipulation to Syncfusion (`Syncfusion.Pdf.WinForms`). Added `IPdfService` and `SyncfusionPdfService` implementations, DI registration, and unit tests under `tests/WileyWidget.Services.Tests`.
 - **CI:** Add test workflow guidance to expose `SYNCFUSION_LICENSE_KEY` as a secret so CI can register Syncfusion license during test runs.
 
+### Removed
+
+- Archived `src/WileyWidget.Facade` and `src/WileyWidget.Webhooks` into `src/archived/2025-11-29/` as a reversible cleanup. These projects were not referenced by the solution and appeared unused; keeping in git history for rollback or later review.
 ## [1.0.0-winforms] - 2025-11-25
 
 ### Strategic Pivot - WinUI 3 → WinForms Production Release
