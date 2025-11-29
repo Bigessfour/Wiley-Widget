@@ -34,16 +34,24 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: dotnet format (whitespace only)
-        run: dotnet format --verify-no-changes || true
+        # Make dotnet format target the solution explicitly so it doesn't
+        # error when both a solution and a project file are present in the
+        # repo root on the runner ("Specify which to use with the <workspace> argument").
+        run: dotnet format WileyWidget.sln --verify-no-changes || true
 
       - name: Restore (fast)
-        run: dotnet restore WileyWidget.sln --verbosity minimal -clp:Summary
+        # Some projects in the repo target Windows (WinForms/test infra). Restore
+        # on Linux can fail unless EnableWindowsTargeting is explicitly set.
+        # Passing the MSBuild property avoids restore errors on linux runners.
+        run: dotnet restore WileyWidget.sln --verbosity minimal -clp:Summary -p:EnableWindowsTargeting=true
 
       - name: Quick build (core libraries only)
         run: dotnet build src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj --no-restore --verbosity minimal
 
-      - name: Quick unit tests
-        run: dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --no-build --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+      - name: Quick unit tests (cross-platform)
+        # Run cross-platform unit tests for quick PR feedback. WinForms tests require
+        # Windows-hosted runners and can fail on ubuntu runners; run Services tests here.
+        run: dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --no-build --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
 
       - name: Upload quick-test results
         if: always()
