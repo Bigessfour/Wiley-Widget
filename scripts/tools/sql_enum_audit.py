@@ -3,9 +3,9 @@
 Scan repository SQL files for INSERT/MERGE statements that include string literals for columns commonly mapped to enums (Type, Fund, Status).
 Writes a simple JSON report and prints results to stdout.
 """
+import json
 import re
 from pathlib import Path
-import json
 
 
 def find_repo_root(start: Path, markers=None, max_up=6) -> Path:

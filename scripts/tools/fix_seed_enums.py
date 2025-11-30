@@ -4,12 +4,11 @@ Fix seed SQL files by converting textual enum strings to numeric values using ma
 
 This script edits files in-place and creates a .bak file as backup.
 """
+import argparse
 import json
 import re
 import sys
 from pathlib import Path
-
-import argparse
 
 parser = argparse.ArgumentParser(
     description="Fix seed SQL files by converting textual enum strings to numeric values."

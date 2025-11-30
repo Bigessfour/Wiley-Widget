@@ -1,6 +1,6 @@
 import json
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 from scripts.tools import sql_enum_audit_v2 as audit
 

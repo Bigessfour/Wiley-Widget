@@ -6,8 +6,8 @@ logs/audit_after_fix/unresolved_summary.md with counts, top values by column
 and sample file listings to help triage and mapping decisions.
 """
 import json
-from pathlib import Path
 from collections import Counter, defaultdict
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 audit_path = ROOT / "logs" / "audit_after_fix" / "sql_enum_audit_v2.json"

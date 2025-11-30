@@ -1,6 +1,6 @@
 import json
-import shutil
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -85,5 +85,9 @@ def test_bulk_fix_and_audit(tmp_path: Path):
     # There should be numeric Type/Fund tuples in the seed file —
     # e.g. (123, 0, 1, ...) or (123, 0, 0, ...). Ensure at least one
     # numeric tuple for Type (0 or 1) exists and that expense (1) tuples appear.
-    assert re.search(r"\(\d+,\s*\d+,\s*1,", seed_text), "No Expense (Type=1) numeric tuple found"
-    assert re.search(r"\(\d+,\s*\d+,\s*[01],", seed_text), "No numeric Type/Fund tuple found"
+    assert re.search(
+        r"\(\d+,\s*\d+,\s*1,", seed_text
+    ), "No Expense (Type=1) numeric tuple found"
+    assert re.search(
+        r"\(\d+,\s*\d+,\s*[01],", seed_text
+    ), "No numeric Type/Fund tuple found"
