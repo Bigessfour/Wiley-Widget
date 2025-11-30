@@ -1,14 +1,18 @@
 """
-Generate a rich ai-fetchable-manifest.json for the repository.
-This improved generator includes file-level metadata to help AI agents locate and fetch files:
-- file path, size, partial+full SHA1, MIME type
-- language (best-effort), category (heuristic), line counts and short snippet for text files
-- raw fetchable URL (raw.githubusercontent.com) when git remote + commit/branch available
+Wiley Widget Manifest Generator v3.14 (π Edition)
+──────────────────────────────────────────────────
+Generates a rich, AI-fetchable repository manifest with:
+  • raw.githubusercontent.com URLs
+  • full SHA1 + head fingerprint
+  • language detection, MIME, snippets, line counts
+  • smart categorization (MVVM-aware!)
+  • git metadata + clean/dirty status
+  • valid_until + schema reference
+
+Now with 3.14% more precision, 100% more π.
 
 Usage:
-  python scripts/tools/generate_repo_manifest.py -o ../ai-fetchable-manifest.json
-
-By default it writes to <workspace root>/ai-fetchable-manifest.json
+  python scripts/tools/generate_repo_manifest.py -o ai-fetchable-manifest.json
 """
 
 from __future__ import annotations
@@ -17,181 +21,126 @@ import argparse
 import json
 import mimetypes
 import subprocess
-import sys
 from datetime import datetime, timedelta
 from hashlib import sha1
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import Any
+# typing.Optional not required in this file
 
-
-class RepoGitInfo(TypedDict):
-    remote_url: Optional[str]
-    owner_repo: Optional[str]
-    branch: Optional[str]
-    commit_hash: Optional[str]
-    is_dirty: Optional[bool]
-
-
+# ──────────────────────────────────────────────────────────────
+# Configuration (3.14 Edition)
+# ──────────────────────────────────────────────────────────────
 EXCLUDE_DIRS = {
-    ".git",
-    "node_modules",
-    "bin",
-    "obj",
-    ".venv",
-    "__pycache__",
-    "TestResults",
-    "logs",
-    "xaml-logs",
-    ".vs",
-}
-TEXT_EXTS = {
-    ".md",
-    ".txt",
-    ".json",
-    ".yaml",
-    ".yml",
-    ".py",
-    ".ps1",
-    ".cs",
-    ".csproj",
-    ".sln",
-    ".xml",
-    ".xaml",
-    ".sql",
-    ".sh",
-    ".psd1",
-    ".psm1",
-    ".gitignore",
-    ".gitattributes",
-    ".editorconfig",
-    ".toml",
-    ".html",
-    ".htm",
-    ".csv",
-}
-LANG_BY_EXT = {
-    ".py": "python",
-    ".ps1": "powershell",
-    ".psm1": "powershell",
-    ".psd1": "powershell",
-    ".cs": "csharp",
-    ".csproj": "xml",
-    ".sln": "plaintext",
-    ".js": "javascript",
-    ".ts": "typescript",
-    ".java": "java",
-    ".html": "html",
-    ".htm": "html",
-    ".css": "css",
-    ".md": "markdown",
-    ".markdown": "markdown",
-    ".json": "json",
-    ".yml": "yaml",
-    ".yaml": "yaml",
-    ".xml": "xml",
-    ".txt": "text",
-    ".sh": "shell",
-    ".sql": "sql",
-    ".toml": "toml",
-    ".csv": "csv",
+    ".git", "node_modules", "bin", "obj", ".vs", ".venv", "__pycache__",
+    "TestResults", "logs", "xaml-logs", "artifacts", "packages"
 }
 
-# Heuristic hints (substring, category) for quick categorization of files and dirs.
+TEXT_EXTS = {
+    ".cs", ".xaml", ".json", ".yaml", ".yml", ".xml", ".md", ".txt",
+    ".py", ".ps1", ".psm1", ".psd1", ".sql", ".sh", ".toml", ".html",
+    ".htm", ".css", ".js", ".ts", ".csproj", ".sln", ".config", ".props"
+}
+
+LANG_BY_EXT = {
+    ".cs": "C#",
+    ".xaml": "XAML",
+    ".csproj": "C# Project",
+    ".sln": "Solution",
+    ".py": "Python",
+    ".ps1": "PowerShell",
+    ".psm1": "PowerShell",
+    ".psd1": "PowerShell",
+    ".md": "Markdown",
+    ".json": "JSON",
+    ".yaml": "YAML",
+    ".yml": "YAML",
+    ".xml": "XML",
+    ".html": "HTML",
+    ".htm": "HTML",
+    ".sql": "SQL",
+    ".sh": "Shell",
+    ".toml": "TOML",
+    ".config": "XML",
+    ".props": "MSBuild Properties",
+}
+
+# MVVM-aware category hints (Wiley Widget special sauce)
 CATEGORY_HINTS = [
-    ("test", "tests"),
-    ("tests", "tests"),
-    ("doc", "documentation"),
-    ("docs", "documentation"),
-    ("example", "examples"),
-    ("examples", "examples"),
-    ("sample", "examples"),
-    ("script", "scripts"),
-    ("build", "build"),
-    ("ci", "ci"),
-    ("config", "configuration"),
-    ("configs", "configuration"),
-    ("bin", "build"),
-    ("lib", "library"),
-    ("src", "source_code"),
-    ("source", "source_code"),
-    ("resources", "assets"),
-    ("assets", "assets"),
+    ("viewmodels", "viewmodels"), ("viewmodel", "viewmodels"),
+    ("views", "views"), ("view", "views"),
+    ("models", "models"), ("model", "models"),
+    ("services", "services"), ("service", "services"),
+    ("src", "source_code"), ("source", "source_code"),
+    ("tests", "test"), ("test", "test"),
+    ("docs", "documentation"), ("doc", "documentation"),
+    ("scripts", "automation"), ("tools", "automation"),
+    ("assets", "assets"), ("resources", "assets"),
+    ("wwwroot", "web"), ("privacy.html", "legal"), ("terms.html", "legal")
 ]
 
+MANIFEST_SCHEMA = (
+    "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget"
+    "/main/schemas/ai-fetchable-manifest.json"
+)
 
-def repo_git_info(root: Path) -> RepoGitInfo:
-    data: RepoGitInfo = {
-        "remote_url": None,
-        "owner_repo": None,
-        "branch": None,
-        "commit_hash": None,
-        "is_dirty": None,
+
+# ──────────────────────────────────────────────────────────────
+# Core Functions
+# ──────────────────────────────────────────────────────────────
+def repo_git_info(root: Path) -> dict[str, Any]:
+    info: dict[str, Any] = {
+        "remote_url": None, "owner_repo": None, "branch": None,
+        "commit_hash": None, "is_dirty": None
     }
-    # Only try if .git exists
-    if (root / ".git").exists():
 
-        def run_git(args):
-            try:
-                # trunk-ignore(bandit/B603)
-                out = subprocess.check_output(
-                    ["git", "-C", str(root)] + args, stderr=subprocess.DEVNULL
-                )
-                return out.decode("utf-8", errors="replace").strip()
-            except Exception:
-                return None
+    if not (root / ".git").exists():
+        return info
 
-        remote = run_git(["config", "--get", "remote.origin.url"])
-        branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"])
-        commit = run_git(["rev-parse", "HEAD"])
-        dirty = run_git(["status", "--porcelain"])
+    def git(*args):
+        try:
+            return subprocess.check_output(
+                ["git", "-C", str(root)] + list(args),
+                stderr=subprocess.DEVNULL
+            ).decode("utf-8", errors="replace").strip()
+        except Exception:
+            return None
 
-        data["remote_url"] = remote
-        if remote:
-            cleaned = remote
-            # normalize common patterns like git@github.com:owner/repo.git to https://raw.githubusercontent.com/owner/repo/
-            if cleaned.startswith("git@"):
-                cleaned = cleaned.replace(":", "/").replace("git@", "https://")
-            if cleaned.endswith(".git"):
-                cleaned = cleaned[:-4]
-            try:
-                owner_repo = "/".join(cleaned.split("/")[-2:])
-                data["owner_repo"] = owner_repo
-            except Exception:
-                data["owner_repo"] = None
-        data["branch"] = branch
-        data["commit_hash"] = commit
-        data["is_dirty"] = bool(dirty)
+    remote = git("config", "--get", "remote.origin.url")
+    info["remote_url"] = remote
+    if remote:
+        cleaned = remote
+        if cleaned.startswith("git@"):
+            cleaned = "https://" + cleaned.replace(":", "/")
+            cleaned = cleaned.replace("git@", "")
+        if cleaned.endswith(".git"):
+            cleaned = cleaned[:-4]
+        try:
+            info["owner_repo"] = "/".join(cleaned.split("/")[-2:])
+        except Exception:
+            pass
 
-    return data
+    info["branch"] = git("rev-parse", "--abbrev-ref", "HEAD") or "HEAD"
+    info["commit_hash"] = git("rev-parse", "HEAD")
+    info["is_dirty"] = bool(git("status", "--porcelain"))
+
+    return info
 
 
-def safe_hash(path: Path, max_bytes=8192) -> str:
-    """Return a short SHA1 hash of the first max_bytes of a file to give a stable fingerprint."""
-    # Use SHA1 for non-security fingerprinting purposes and mark it explicitly
-    # to avoid security lint warnings (usedforsecurity=False).
+def fingerprint_head(path: Path, bytes: int = 8192) -> str:
     h = sha1(usedforsecurity=False)
     try:
         with path.open("rb") as f:
-            chunk = f.read(max_bytes)
-            if chunk:
-                h.update(chunk)
-            else:
-                return ""
+            h.update(f.read(bytes))
     except Exception:
         return ""
     return h.hexdigest()
 
 
-def full_sha1(path: Path) -> str:
-    # Use SHA1 for non-security full-file fingerprinting and mark explicitly
-    # usedforsecurity=False to suppress security warnings where appropriate.
+def fingerprint_full(path: Path) -> str:
     h = sha1(usedforsecurity=False)
     try:
-        with path.open("rb") as fh:
-            while True:
-                chunk = fh.read(8192)
-                if not chunk:
-                    break
+        with path.open("rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
                 h.update(chunk)
     except Exception:
         return ""
@@ -199,219 +148,199 @@ def full_sha1(path: Path) -> str:
 
 
 def make_fetch_url(
-    owner_repo: str | None, commit: str | None, branch: str | None, relpath: str
+    owner_repo: str | None,
+    commit: str | None,
+    branch: str | None,
+    path: str,
 ) -> str | None:
     if not owner_repo:
         return None
     ref = commit or branch or "main"
-    # ensure forward slashes and no leading slashes
-    path = relpath.replace("\\", "/").lstrip("/")
-    return f"https://raw.githubusercontent.com/{owner_repo}/{ref}/{path}"
+    clean_path = path.replace("\\", "/").lstrip("/")
+    return f"https://raw.githubusercontent.com/{owner_repo}/{ref}/{clean_path}"
 
 
-def scan_files(
-    root: Path, include_snippets=True, compute_full_hash=True, max_files=10000
+def detect_category(rel_path: str) -> str:
+    parts = [p.lower() for p in Path(rel_path).parts]
+    path_str = rel_path.lower()
+
+    for hint, cat in CATEGORY_HINTS:
+        if any(hint in p for p in parts) or hint in path_str:
+            return cat
+
+    # Fallback heuristics
+    if rel_path.lower().endswith((".md", ".markdown")):
+        return "documentation"
+    if (
+        Path(rel_path).suffix.lower()
+        in {".json", ".yaml", ".yml", ".xml", ".config"}
+    ):
+        return "configuration"
+    if Path(rel_path).suffix.lower() in {".cs", ".py", ".ps1", ".sh"}:
+        return "source_code"
+    if "wwwroot" in parts:
+        return "web"
+    return "unknown"
+
+
+def scan_repository(
+    root: Path,
+    max_files: int = 15_000,
 ) -> tuple[list[dict], dict]:
     files = []
     totals = {"total_files": 0, "total_size": 0, "by_ext": {}}
+
     for p in root.rglob("*"):
+        if len(files) >= max_files:
+            break
+        if p.is_dir():
+            if p.name in EXCLUDE_DIRS:
+                continue
+            continue
+
+        rel = p.relative_to(root)
+        if any(part in EXCLUDE_DIRS for part in rel.parts):
+            continue
+        if str(rel).endswith("ai-fetchable-manifest.json"):
+            continue
+
         try:
-            if p.is_dir():
-                # skip common large dirs
-                if p.name in EXCLUDE_DIRS:
-                    # skip walking into dir
-                    continue
-                # else continue
-            elif p.is_file():
-                rel = p.relative_to(root)
-                # skip files in excluded paths
-                if any(part in EXCLUDE_DIRS for part in rel.parts):
-                    continue
-                # skip generated manifest itself
-                if str(rel).endswith("ai-fetchable-manifest.json"):
-                    continue
-                size = p.stat().st_size
-                totals["total_files"] += 1
-                totals["total_size"] += size
-                ext = p.suffix or "NOEXT"
-                totals["by_ext"].setdefault(ext, 0)
-                totals["by_ext"][ext] += 1
+            stat = p.stat()
+            size = stat.st_size
+            ext = p.suffix.lower() or "NOEXT"
+            totals["total_files"] += 1
+            totals["total_size"] += size
+            totals["by_ext"][ext] = totals["by_ext"].get(ext, 0) + 1
 
-                is_text = ext.lower() in TEXT_EXTS
-                mime, _ = mimetypes.guess_type(str(p))
-                language = LANG_BY_EXT.get(ext.lower())
+            is_text = ext in TEXT_EXTS
+            mime, _ = mimetypes.guess_type(str(p))
+            language = LANG_BY_EXT.get(ext)
 
-                # read a short snippet for text files
-                snippet = None
-                lines = None
-                sha1_full = ""
+            snippet = lines = None
+            if is_text:
                 try:
-                    if is_text and include_snippets:
-                        with p.open("rb") as fh:
-                            preview = fh.read(4096)
-                        try:
-                            snippet = preview.decode("utf-8", errors="replace")[:2048]
-                            lines = snippet.count("\n") + 1
-                        except Exception:
-                            snippet = None
-                            lines = None
-                    if compute_full_hash:
-                        sha1_full = full_sha1(p)
+                    preview = p.read_bytes()[:4096]
+                    text = preview.decode("utf-8", errors="replace")
+                    snippet = text[:2048]
+                    lines = text.count("\n") + (
+                        0 if text.endswith("\n") else 1
+                    )
                 except Exception:
-                    snippet = None
-                    lines = None
-                    sha1_full = ""
+                    # ignore non-decodable preview
+                    pass
 
-                # category heuristic
-                cat = "unknown"
-                lower_parts = [p_.lower() for p_ in rel.parts]
-                for hint, cname in CATEGORY_HINTS:
-                    if (
-                        any(hint in part for part in lower_parts)
-                        or hint.lower() in str(rel).lower()
-                        or ext.lower().strip(".") == hint
-                    ):
-                        cat = cname
-                        break
-                if cat == "unknown":
-                    if ext.lower() in {".md", ".markdown"}:
-                        cat = "documentation"
-                    elif ext.lower() in {".json", ".yaml", ".yml", ".xml"}:
-                        cat = "configuration"
-                    elif ext.lower() in {
-                        ".cs",
-                        ".py",
-                        ".sh",
-                        ".ps1",
-                        ".java",
-                        ".ts",
-                        ".js",
-                    }:
-                        cat = "source_code"
+            entry = {
+                "path": str(rel).replace("\\", "/"),
+                "size": size,
+                "last_modified": datetime.fromtimestamp(
+                    stat.st_mtime
+                ).isoformat(),
+                "extension": ext,
+                "sha1_head": fingerprint_head(p),
+                "sha1": fingerprint_full(p) if size < 5_000_000 else "",
+                "is_text": is_text,
+                "mime_type": mime or "application/octet-stream",
+                "language": language,
+                "lines": lines,
+                "snippet": snippet,
+                "category": detect_category(str(rel)),
+            }
 
-                files.append(
-                    {
-                        "path": str(rel).replace("\\", "/"),
-                        "size": size,
-                        "sha1_head": safe_hash(p),
-                        "sha1": sha1_full,
-                        "is_text": bool(is_text),
-                        "mime_type": mime,
-                        "language": language,
-                        "lines": lines,
-                        "snippet": snippet,
-                        "category": cat,
-                    }
-                )
+            git_info = repo_git_info(root)
+            entry["fetch_url"] = make_fetch_url(
+                git_info.get("owner_repo"),
+                git_info.get("commit_hash"),
+                git_info.get("branch"),
+                entry["path"]
+            )
 
-                if len(files) >= max_files:
-                    break
-        except PermissionError:
+            files.append(entry)
+
+        except (PermissionError, OSError):
             continue
         except Exception:
+            # ignore unexpected single-file errors and continue
             continue
+
     return files, totals
 
 
-def build_manifest(
-    root: Path,
-    out: Path,
-    include_snippets=True,
-    compute_full_hash=True,
-    max_files=10000,
-) -> dict:
-    now = datetime.utcnow().isoformat()
+# ──────────────────────────────────────────────────────────────
+# Manifest Builder v3.14
+# ──────────────────────────────────────────────────────────────
+def build_manifest_v314(root: Path, output_path: Path) -> dict:
+    now = datetime.utcnow()
     git = repo_git_info(root)
-    files, totals = scan_files(
-        root,
-        include_snippets=include_snippets,
-        compute_full_hash=compute_full_hash,
-        max_files=max_files,
-    )
-
-    # enhance files with fetch_url when possible
-    for f in files:
-        f["fetch_url"] = make_fetch_url(
-            git.get("owner_repo"), git.get("commit_hash"), git.get("branch"), f["path"]
-        )
+    files, totals = scan_repository(root)
 
     manifest = {
-        "$schema": "../schemas/ai-fetchable-manifest.json",
+        "$schema": MANIFEST_SCHEMA,
+        "generator": "Wiley Widget Manifest Generator v3.14 (π Edition)",
+        "generated_at": now.isoformat() + "Z",
+        "valid_until": (now + timedelta(days=7)).isoformat() + "Z",
         "repository": {
-            "remote_url": git.get("remote_url"),
-            "owner_repo": git.get("owner_repo"),
-            "branch": git.get("branch"),
-            "commit_hash": git.get("commit_hash"),
-            "is_dirty": git.get("is_dirty"),
-            "generated_at": now,
-            "valid_until": (datetime.utcnow() + timedelta(days=7)).isoformat(),
+            "remote_url": git["remote_url"],
+            "owner_repo": git["owner_repo"],
+            "branch": git["branch"],
+            "commit_hash": git["commit_hash"],
+            "is_dirty": git["is_dirty"],
         },
         "summary": {
-            "total_files": totals["total_files"],
+            "total_files_scanned": totals["total_files"],
             "files_in_manifest": len(files),
-            "files_truncated": len(files) >= max_files,
-            "total_size": totals["total_size"],
-            "categories": {},
-            "languages": {k: v for k, v in totals["by_ext"].items()},
+            "total_size_bytes": totals["total_size"],
+            "languages": totals["by_ext"],
         },
         "files": files,
-        "notes": "This manifest contains fetchable URLs when git remote + commit/branch are present. Use for AI agents to fetch repository files quickly.",
+        "note": (
+            "Upgraded to 3.14 — now with more precision,"
+            " better MVVM detection,"
+            " and a hint of irrational excellence."
+        ),
     }
+
+    output_path.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(f"Manifest v3.14 generated: {output_path}")
+    commit_short = (git.get("commit_hash") or "")[:10]
+    print(
+        "   Files: {} | Size: {:,} bytes | Commit: {}".format(
+            len(files), totals["total_size"], commit_short
+        )
+    )
+
     return manifest
 
 
-def main(argv=None):
+# ──────────────────────────────────────────────────────────────
+# CLI
+# ──────────────────────────────────────────────────────────────
+def main():
     parser = argparse.ArgumentParser(
-        description="Generate rich ai-fetchable-manifest.json for repo"
+        description=(
+            "Wiley Widget Manifest Generator v3.14 "
+            "— AI-ready repo manifest"
+        )
     )
     parser.add_argument(
         "-o",
         "--output",
         default="ai-fetchable-manifest.json",
-        help="Output file path (relative to repo root)",
+        help="Output path",
     )
     parser.add_argument(
-        "-r", "--root", default=".", help="Repository root path (default: .)"
+        "-r",
+        "--root",
+        default=".",
+        help="Repository root",
     )
-    parser.add_argument(
-        "--no-snippets",
-        dest="snippets",
-        action="store_false",
-        help="Do not include text snippets in manifest",
-    )
-    parser.add_argument(
-        "--no-full-hash",
-        dest="fullhash",
-        action="store_false",
-        help="Do not compute full SHA1 hashes",
-    )
-    parser.add_argument(
-        "--max-files",
-        dest="max_files",
-        type=int,
-        default=10000,
-        help="Maximum files to include in manifest",
-    )
-    args = parser.parse_args(argv)
+    args = parser.parse_args()
 
-    repo_root = Path(args.root).resolve()
-    out_path = (repo_root / args.output).resolve()
+    root = Path(args.root).resolve()
+    out = (root / args.output).resolve()
 
-    print(f"Scanning repo: {repo_root}")
-    manifest = build_manifest(
-        repo_root,
-        out_path,
-        include_snippets=args.snippets,
-        compute_full_hash=args.fullhash,
-        max_files=args.max_files,
-    )
-
-    try:
-        out_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-        print(f"Wrote manifest: {out_path} (files={len(manifest['files'])})")
-    except Exception as e:
-        print("Failed to write manifest:", e, file=sys.stderr)
-        sys.exit(2)
+    build_manifest_v314(root, out)
 
 
 if __name__ == "__main__":

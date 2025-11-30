@@ -698,7 +698,7 @@
 		{
 			"label": "generate-ai-fetchable-manifest",
 			"type": "shell",
-			"command": "C:/Users/biges/AppData/Local/Microsoft/WindowsApps/python3.11.exe",
+			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
 			"args": [
 				"${workspaceFolder}/scripts/tools/generate_repo_urls.py",
 				"-o",
