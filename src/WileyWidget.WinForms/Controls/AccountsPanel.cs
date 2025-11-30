@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Extensions;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Styles;
@@ -71,6 +72,10 @@ namespace WileyWidget.WinForms.Controls
         private Button? btnAdd;
         private Button? btnEdit;
         private Button? btnDelete;
+        private Syncfusion.WinForms.Controls.SfButton? btnExportExcel;
+        private Syncfusion.WinForms.Controls.SfButton? btnExportPdf;
+        private EventHandler<AppTheme>? _btnExportExcelThemeChangedHandler;
+        private EventHandler<AppTheme>? _btnExportPdfThemeChangedHandler;
         private Panel? topPanel;
         // Summary UI (bottom): displays total balance and active account count
         private Panel? summaryPanel;
@@ -99,7 +104,9 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         /// <param name="viewModel">The accounts view model providing data and commands.</param>
         /// <exception cref="ArgumentNullException">Thrown when viewModel is null.</exception>
-        public AccountsPanel(AccountsViewModel viewModel)
+        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
+
+        public AccountsPanel(AccountsViewModel viewModel, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
         {
             try
             {
@@ -118,6 +125,8 @@ namespace WileyWidget.WinForms.Controls
                 {
                     gridAccounts.DataSource = viewModel.Accounts;
                 }
+
+                _dispatcherHelper = dispatcherHelper;
 
                 // Apply current theme
                 ApplyCurrentTheme();
@@ -322,7 +331,11 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        if (btnRefresh.InvokeRequired)
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => btnRefresh.Image = iconService?.GetIcon("refresh", t, 16));
+                        }
+                        else if (btnRefresh.InvokeRequired)
                         {
                             btnRefresh.Invoke(() => btnRefresh.Image = iconService?.GetIcon("refresh", t, 16));
                         }
@@ -383,7 +396,11 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        if (btnAdd.InvokeRequired)
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => btnAdd.Image = iconService?.GetIcon("add", t, 14));
+                        }
+                        else if (btnAdd.InvokeRequired)
                         {
                             btnAdd.Invoke(() => btnAdd.Image = iconService?.GetIcon("add", t, 14));
                         }
@@ -425,7 +442,11 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        if (btnEdit.InvokeRequired)
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => btnEdit.Image = iconService?.GetIcon("edit", t, 14));
+                        }
+                        else if (btnEdit.InvokeRequired)
                         {
                             btnEdit.Invoke(() => btnEdit.Image = iconService?.GetIcon("edit", t, 14));
                         }
@@ -466,7 +487,11 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        if (btnDelete.InvokeRequired)
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => btnDelete.Image = iconService?.GetIcon("delete", t, 14));
+                        }
+                        else if (btnDelete.InvokeRequired)
                         {
                             btnDelete.Invoke(() => btnDelete.Image = iconService?.GetIcon("delete", t, 14));
                         }
@@ -481,6 +506,115 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
             btnDelete.Click += BtnDelete_Click;
+
+            // Export buttons (Excel / PDF)
+            btnExportExcel = new Syncfusion.WinForms.Controls.SfButton
+            {
+                Text = "Export Excel",
+                Name = "btnExportExcel",
+                Width = 100,
+                Height = 32,
+                Margin = new Padding(6, 10, 6, 6),
+                AccessibleName = "Export grid to Excel",
+                AccessibleDescription = "Export the accounts grid to an Excel file"
+            };
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var theme = ThemeManager.CurrentTheme;
+                btnExportExcel.Image = iconService?.GetIcon("excel", theme, 14);
+                btnExportExcel.ImageAlign = ContentAlignment.MiddleLeft;
+                btnExportExcel.TextImageRelation = TextImageRelation.ImageBeforeText;
+                _btnExportExcelThemeChangedHandler = (s, t) =>
+                {
+                    try
+                    {
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => btnExportExcel.Image = iconService?.GetIcon("excel", t, 14));
+                        }
+                        else if (btnExportExcel.InvokeRequired)
+                        {
+                            btnExportExcel.Invoke(() => btnExportExcel.Image = iconService?.GetIcon("excel", t, 14));
+                        }
+                        else
+                        {
+                            btnExportExcel.Image = iconService?.GetIcon("excel", t, 14);
+                        }
+                    }
+                    catch { }
+                };
+                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnExportExcelThemeChangedHandler;
+            }
+            catch { }
+            btnExportExcel.Click += async (s, e) =>
+            {
+                try
+                {
+                    using var sfd = new SaveFileDialog { Filter = "Excel Workbook|*.xlsx", DefaultExt = "xlsx", FileName = "accounts.xlsx" };
+                    if (sfd.ShowDialog() != DialogResult.OK) return;
+                    await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(gridAccounts, sfd.FileName);
+                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            btnExportPdf = new Syncfusion.WinForms.Controls.SfButton
+            {
+                Text = "Export PDF",
+                Name = "btnExportPdf",
+                Width = 100,
+                Height = 32,
+                Margin = new Padding(6, 10, 6, 6),
+                AccessibleName = "Export grid to PDF",
+                AccessibleDescription = "Export the accounts grid to a PDF file"
+            };
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var theme = ThemeManager.CurrentTheme;
+                btnExportPdf.Image = iconService?.GetIcon("pdf", theme, 14);
+                btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
+                btnExportPdf.TextImageRelation = TextImageRelation.ImageBeforeText;
+                _btnExportPdfThemeChangedHandler = (s, t) =>
+                {
+                    try
+                    {
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14));
+                        }
+                        else if (btnExportPdf.InvokeRequired)
+                        {
+                            btnExportPdf.Invoke(() => btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14));
+                        }
+                        else
+                        {
+                            btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14);
+                        }
+                    }
+                    catch { }
+                };
+                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnExportPdfThemeChangedHandler;
+            }
+            catch { }
+            btnExportPdf.Click += async (s, e) =>
+            {
+                try
+                {
+                    using var sfd = new SaveFileDialog { Filter = "PDF Document|*.pdf", DefaultExt = "pdf", FileName = "accounts.pdf" };
+                    if (sfd.ShowDialog() != DialogResult.OK) return;
+                    await WileyWidget.WinForms.Services.ExportService.ExportGridToPdfAsync(gridAccounts, sfd.FileName);
+                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
 
             // Navigation separator and buttons per Syncfusion demos pattern
             var separator = new Label { Text = "  |  ", AutoSize = true, Margin = new Padding(6, 14, 6, 6), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
@@ -548,6 +682,8 @@ namespace WileyWidget.WinForms.Controls
             flow.Controls.Add(btnAdd);
             flow.Controls.Add(btnEdit);
             flow.Controls.Add(btnDelete);
+            flow.Controls.Add(btnExportExcel);
+            flow.Controls.Add(btnExportPdf);
             flow.Controls.Add(separator);
             flow.Controls.Add(btnViewCharts);
             flow.Controls.Add(btnDashboard);
@@ -593,7 +729,7 @@ namespace WileyWidget.WinForms.Controls
                 AllowDraggingColumns = true,
                 ShowGroupDropArea = true,
                 AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-                SelectionMode = GridSelectionMode.Single,
+                SelectionMode = GridSelectionMode.Extended,
                 NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
                 ShowRowHeader = true,
                 HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(35.0f), // Per demos: DPI-aware height
@@ -657,6 +793,20 @@ namespace WileyWidget.WinForms.Controls
                 AllowSorting = true
             });
 
+            // Actions unbound column: provides contextual Edit/Delete actions per row
+            try
+            {
+                var actionsCol = new Syncfusion.WinForms.DataGrid.GridUnBoundColumn
+                {
+                    MappingName = "Actions",
+                    HeaderText = "Actions",
+                    MinimumWidth = 120,
+                    AllowEditing = false
+                };
+                gridAccounts.Columns.Add(actionsCol);
+            }
+            catch { }
+
             // Tune filter UI for categorical columns to provide Excel-like checkbox filters
             try
             {
@@ -704,6 +854,9 @@ namespace WileyWidget.WinForms.Controls
 
             // Wire up grid selection to sync with ViewModel.SelectedAccount
             gridAccounts.SelectionChanged += GridAccounts_SelectionChanged;
+
+            // Provide clickable actions column to show contextual Edit/Delete
+            gridAccounts.CellClick += GridAccounts_CellClick;
 
             // Enable double-click to edit per Syncfusion demos
             gridAccounts.CellDoubleClick += GridAccounts_CellDoubleClick;
@@ -819,9 +972,10 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsDisposed) return;
 
-                if (InvokeRequired)
+                // If we have a dispatcher helper use it to marshal to the UI thread.
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                 {
-                    try { BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    try { _ = _dispatcherHelper.InvokeAsync(() => ViewModel_PropertyChanged(sender, e)); } catch { }
                     return;
                 }
 
@@ -913,6 +1067,45 @@ namespace WileyWidget.WinForms.Controls
             {
                 Serilog.Log.Warning(ex, "AccountsPanel: GridAccounts_CellDoubleClick failed");
             }
+        }
+
+        private void GridAccounts_CellClick(object? sender, Syncfusion.WinForms.DataGrid.Events.CellClickEventArgs e)
+        {
+            try
+            {
+                if (IsDisposed) return;
+
+                if (e.Column?.MappingName == "Actions")
+                {
+                    var rowData = e.DataRow?.RowData;
+                    if (rowData == null) return;
+
+                    // If rowData is a MunicipalAccount, set as selected
+                    if (rowData is WileyWidget.Models.MunicipalAccount acct)
+                    {
+                        _viewModel.SelectedAccount = acct;
+                    }
+
+                    var cm = new ContextMenuStrip();
+                    var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+
+                    var miEdit = new ToolStripMenuItem("Edit");
+                    try { miEdit.Image = iconService?.GetIcon("edit", ThemeManager.CurrentTheme, 14); } catch { }
+                    miEdit.Click += (s, a) => BtnEdit_Click(sender, EventArgs.Empty);
+
+                    var miDelete = new ToolStripMenuItem("Delete");
+                    try { miDelete.Image = iconService?.GetIcon("delete", ThemeManager.CurrentTheme, 14); } catch { }
+                    miDelete.Click += (s, a) => BtnDelete_Click(sender, EventArgs.Empty);
+
+                    cm.Items.Add(miEdit);
+                    cm.Items.Add(miDelete);
+
+                    // Show context menu at mouse position
+                    var mousePos = gridAccounts.PointToClient(Cursor.Position);
+                    cm.Show(gridAccounts, mousePos);
+                }
+            }
+            catch { }
         }
 
         /// <summary>
@@ -1076,9 +1269,9 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsDisposed) return;
 
-                if (InvokeRequired)
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                 {
-                    try { BeginInvoke(new Action(() => OnThemeChanged(sender, theme))); } catch { }
+                    try { _ = _dispatcherHelper.InvokeAsync(() => OnThemeChanged(sender, theme)); } catch { }
                     return;
                 }
 
@@ -1103,6 +1296,8 @@ namespace WileyWidget.WinForms.Controls
                 try { if (_btnAddThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnAddThemeChangedHandler; } catch { }
                 try { if (_btnEditThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnEditThemeChangedHandler; } catch { }
                 try { if (_btnDeleteThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnDeleteThemeChangedHandler; } catch { }
+                try { if (_btnExportExcelThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnExportExcelThemeChangedHandler; } catch { }
+                try { if (_btnExportPdfThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnExportPdfThemeChangedHandler; } catch { }
                 try { if (_viewModelPropertyChangedHandler != null && _viewModel is System.ComponentModel.INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
                 try { if (_accountsCollectionChangedHandler != null && _viewModel?.Accounts != null) _viewModel.Accounts.CollectionChanged -= _accountsCollectionChangedHandler; } catch { }
                 try { if (_comboFundValidatingHandler != null && comboFund != null) comboFund.Validating -= _comboFundValidatingHandler; } catch { }
@@ -1116,9 +1311,12 @@ namespace WileyWidget.WinForms.Controls
                 try { if (gridAccounts != null) { gridAccounts.ToolTipOpening -= GridAccounts_ToolTipOpening; } } catch { }
 
                 // Clear DataSource before disposing Syncfusion controls to avoid NullReferenceException bugs
-                try { if (comboFund != null && !comboFund.IsDisposed) { comboFund.DataSource = null; } } catch { }
-                try { if (comboAccountType != null && !comboAccountType.IsDisposed) { comboAccountType.DataSource = null; } } catch { }
-                try { if (gridAccounts != null && !gridAccounts.IsDisposed) { gridAccounts.DataSource = null; } } catch { }
+                try { comboFund.SafeClearDataSource(); } catch { }
+                try { comboFund.SafeDispose(); } catch { }
+                try { comboAccountType.SafeClearDataSource(); } catch { }
+                try { comboAccountType.SafeDispose(); } catch { }
+                try { gridAccounts.SafeClearDataSource(); } catch { }
+                try { gridAccounts.SafeDispose(); } catch { }
 
                 // Dispose controls
                 try { gridAccounts?.Dispose(); } catch { }
@@ -1128,6 +1326,8 @@ namespace WileyWidget.WinForms.Controls
                 try { btnAdd?.Dispose(); } catch { }
                 try { btnEdit?.Dispose(); } catch { }
                 try { btnDelete?.Dispose(); } catch { }
+                try { btnExportExcel?.Dispose(); } catch { }
+                try { btnExportPdf?.Dispose(); } catch { }
                 try { topPanel?.Dispose(); } catch { }
                 try { _panelHeader?.Dispose(); } catch { }
                 try { _loadingOverlay?.Dispose(); } catch { }

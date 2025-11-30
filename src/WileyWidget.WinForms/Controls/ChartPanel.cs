@@ -10,6 +10,7 @@ using Syncfusion.Pdf;
 using Syncfusion.Pdf.Graphics;
 using System.IO;
 using System.Threading.Tasks;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -30,6 +31,7 @@ namespace WileyWidget.WinForms.Controls
     public partial class ChartPanel : UserControl
     {
         private readonly ChartViewModel _vm;
+        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
         private ChartControl? _chartControl;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -47,6 +49,8 @@ namespace WileyWidget.WinForms.Controls
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
         private EventHandler<AppTheme>? _themeChangedHandler;
         private EventHandler<AppTheme>? _btnRefreshThemeChangedHandler;
+        private EventHandler<AppTheme>? _btnExportPngThemeChangedHandler;
+        private EventHandler<AppTheme>? _btnExportPdfThemeChangedHandler;
 
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
@@ -55,8 +59,9 @@ namespace WileyWidget.WinForms.Controls
 
         public ChartPanel() : this(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(Program.Services)) { }
 
-        public ChartPanel(ChartViewModel vm)
+        public ChartPanel(ChartViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
         {
+            _dispatcherHelper = dispatcherHelper;
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             DataContext = vm;
             InitializeComponent();
@@ -120,7 +125,11 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        if (_btnRefresh.InvokeRequired)
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = iconService?.GetIcon("refresh", t, 14));
+                        }
+                        else if (_btnRefresh.InvokeRequired)
                         {
                             _btnRefresh.Invoke(() => _btnRefresh.Image = iconService?.GetIcon("refresh", t, 14));
                         }
@@ -170,12 +179,70 @@ namespace WileyWidget.WinForms.Controls
             _btnExportPng = new Syncfusion.WinForms.Controls.SfButton { Text = "Export PNG", Width = 100, Height = 28, AccessibleName = "Export chart as PNG" };
             var exportPngTip = new ToolTip();
             exportPngTip.SetToolTip(_btnExportPng, "Export the current chart view to a PNG image");
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var theme = ThemeManager.CurrentTheme;
+                _btnExportPng.Image = iconService?.GetIcon("export", theme, 14);
+                _btnExportPng.ImageAlign = ContentAlignment.MiddleLeft;
+                _btnExportPng.TextImageRelation = TextImageRelation.ImageBeforeText;
+                _btnExportPngThemeChangedHandler = (s, t) =>
+                {
+                    try
+                    {
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnExportPng.Image = iconService?.GetIcon("export", t, 14));
+                        }
+                        else if (_btnExportPng.InvokeRequired)
+                        {
+                            _btnExportPng.Invoke(() => _btnExportPng.Image = iconService?.GetIcon("export", t, 14));
+                        }
+                        else
+                        {
+                            _btnExportPng.Image = iconService?.GetIcon("export", t, 14);
+                        }
+                    }
+                    catch { }
+                };
+                ThemeManager.ThemeChanged += _btnExportPngThemeChangedHandler;
+            }
+            catch { }
             _btnExportPng.Click += ExportPng_Click;
             flow.Controls.Add(_btnExportPng);
 
             _btnExportPdf = new Syncfusion.WinForms.Controls.SfButton { Text = "Export PDF", Width = 100, Height = 28, AccessibleName = "Export chart as PDF" };
             var exportPdfTip = new ToolTip();
             exportPdfTip.SetToolTip(_btnExportPdf, "Export the current chart view embedded in a PDF");
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var theme = ThemeManager.CurrentTheme;
+                _btnExportPdf.Image = iconService?.GetIcon("pdf", theme, 14);
+                _btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
+                _btnExportPdf.TextImageRelation = TextImageRelation.ImageBeforeText;
+                _btnExportPdfThemeChangedHandler = (s, t) =>
+                {
+                    try
+                    {
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14));
+                        }
+                        else if (_btnExportPdf.InvokeRequired)
+                        {
+                            _btnExportPdf.Invoke(() => _btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14));
+                        }
+                        else
+                        {
+                            _btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14);
+                        }
+                    }
+                    catch { }
+                };
+                ThemeManager.ThemeChanged += _btnExportPdfThemeChangedHandler;
+            }
+            catch { }
             _btnExportPdf.Click += ExportPdf_Click;
             flow.Controls.Add(_btnExportPdf);
             flow.Controls.Add(btnGoToDashboard);
@@ -209,10 +276,38 @@ namespace WileyWidget.WinForms.Controls
             _chartControl.PrimaryXAxis.LabelRotateAngle = 45;
             _chartControl.PrimaryXAxis.DrawGrid = false;
 
+            // Enable scrollbar on X axis and zooming for better exploration
+            try
+            {
+                _chartControl.PrimaryXAxis.EnableScrollBar = true;
+            }
+            catch { }
+            try
+            {
+                _chartControl.EnableZooming = true;
+            }
+            catch { }
+
             _chartControl.PrimaryYAxis.Title = ChartPanelResources.Axis_Variance;
             _chartControl.PrimaryYAxis.TitleFont = new Font("Segoe UI", 10F);
             _chartControl.PrimaryYAxis.Font = new Font("Segoe UI", 10F);
             _chartControl.PrimaryYAxis.NumberFormat = "C0";
+
+            // Add a secondary Y axis for percentage variance if the API is available
+            try
+            {
+                var secAxis = new Syncfusion.Windows.Forms.Chart.ChartAxis();
+                secAxis.Title = "% Variance";
+                secAxis.NumberFormat = "P0";
+                // Use reflection to assign the axis to avoid compile-time coupling if property differs
+                var chartArea = _chartControl.ChartArea;
+                var prop = chartArea.GetType().GetProperty("SecondaryYAxis");
+                if (prop != null && prop.CanWrite)
+                {
+                    prop.SetValue(chartArea, secAxis);
+                }
+            }
+            catch { }
 
             // Enable tooltips per demos
             _chartControl.ShowToolTips = true;
@@ -321,13 +416,20 @@ namespace WileyWidget.WinForms.Controls
 
                 if (!IsDisposed)
                 {
-                    if (InvokeRequired)
+                    if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                     {
-                        BeginInvoke(new Action(UpdateChartFromData));
+                        try { _ = _dispatcherHelper.InvokeAsync(UpdateChartFromData); } catch { }
                     }
                     else
                     {
-                        UpdateChartFromData();
+                        if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                        {
+                            try { _ = _dispatcherHelper.InvokeAsync(UpdateChartFromData); } catch { }
+                        }
+                        else
+                        {
+                            if (InvokeRequired) BeginInvoke(new Action(UpdateChartFromData)); else UpdateChartFromData();
+                        }
                     }
                 }
             }
@@ -354,13 +456,20 @@ namespace WileyWidget.WinForms.Controls
 
                 if (!IsDisposed)
                 {
-                    if (InvokeRequired)
+                    if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                     {
-                        BeginInvoke(new Action(UpdateChartFromData));
+                        try { _ = _dispatcherHelper.InvokeAsync(UpdateChartFromData); } catch { }
                     }
                     else
                     {
-                        UpdateChartFromData();
+                        if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                        {
+                            try { _ = _dispatcherHelper.InvokeAsync(UpdateChartFromData); } catch { }
+                        }
+                        else
+                        {
+                            if (InvokeRequired) BeginInvoke(new Action(UpdateChartFromData)); else UpdateChartFromData();
+                        }
                     }
                 }
             }
@@ -405,6 +514,11 @@ namespace WileyWidget.WinForms.Controls
 
                 if (e.PropertyName == nameof(_vm.ChartData) || e.PropertyName == nameof(_vm.ErrorMessage))
                 {
+                    if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                    {
+                        try { _ = _dispatcherHelper.InvokeAsync(() => ViewModel_PropertyChanged(sender, e)); } catch { }
+                        return;
+                    }
                     if (InvokeRequired)
                     {
                         try { BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
@@ -439,6 +553,11 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsDisposed) return;
 
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                {
+                    try { _ = _dispatcherHelper.InvokeAsync(() => OnThemeChanged(sender, theme)); } catch { }
+                    return;
+                }
                 if (InvokeRequired)
                 {
                     try { BeginInvoke(new Action(() => OnThemeChanged(sender, theme))); } catch { }
@@ -472,6 +591,11 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                {
+                    try { _ = _dispatcherHelper.InvokeAsync(UpdateChartFromData); } catch { }
+                    return;
+                }
                 if (InvokeRequired)
                 {
                     Invoke(new Action(UpdateChartFromData));
@@ -565,7 +689,30 @@ namespace WileyWidget.WinForms.Controls
             if (_chartControl == null) return null;
 
             Bitmap? bmp = null;
-            if (InvokeRequired)
+            if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+            {
+                try
+                {
+                    return _dispatcherHelper.Invoke(() =>
+                    {
+                        try
+                        {
+                            var b = new Bitmap(_chartControl.Width, _chartControl.Height);
+                            _chartControl.DrawToBitmap(b, new Rectangle(0, 0, _chartControl.Width, _chartControl.Height));
+                            return b;
+                        }
+                        catch
+                        {
+                            return (Bitmap?)null;
+                        }
+                    });
+                }
+                catch
+                {
+                    bmp = null;
+                }
+            }
+            else if (InvokeRequired)
             {
                 try { Invoke(new Action(() => { bmp = new Bitmap(_chartControl.Width, _chartControl.Height); _chartControl.DrawToBitmap(bmp, new Rectangle(0, 0, _chartControl.Width, _chartControl.Height)); })); }
                 catch { bmp = null; }
@@ -680,6 +827,8 @@ namespace WileyWidget.WinForms.Controls
                 // Unsubscribe event handlers
                 try { if (_themeChangedHandler != null) ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
                 try { if (_btnRefreshThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnRefreshThemeChangedHandler; } catch { }
+                try { if (_btnExportPngThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnExportPngThemeChangedHandler; } catch { }
+                try { if (_btnExportPdfThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnExportPdfThemeChangedHandler; } catch { }
                 try { if (_viewModelPropertyChangedHandler != null && _vm is INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
                 try { if (_comboSelectedIndexChangedHandler != null && _comboDepartmentFilter != null) _comboDepartmentFilter.SelectedIndexChanged -= _comboSelectedIndexChangedHandler; } catch { }
                 try { if (_btnRefresh != null) _btnRefresh.Click -= BtnRefresh_Click; } catch { }
@@ -688,21 +837,14 @@ namespace WileyWidget.WinForms.Controls
                 // Dispose controls
                 try { _chartControl?.Dispose(); } catch { }
 
-                // Clear DataSource before disposing Syncfusion controls to avoid NullReferenceException bugs
-                try
-                {
-                    if (_comboDepartmentFilter != null && !_comboDepartmentFilter.IsDisposed)
-                    {
-                        try { _comboDepartmentFilter.DataSource = null; } catch { }
-                        _comboDepartmentFilter.Dispose();
-                    }
-                }
-                catch (NullReferenceException) { /* Syncfusion bug in UnWireEvents - ignore */ }
-                catch (ObjectDisposedException) { /* Already disposed - safe to ignore */ }
-                catch { }
+                // Clear DataSource and dispose Syncfusion combo safely via helper
+                try { _comboDepartmentFilter.SafeClearDataSource(); } catch { }
+                try { _comboDepartmentFilter.SafeDispose(); } catch { }
                 try { _btnRefresh?.Dispose(); } catch { }
                 try { _btnExportPng?.Click -= ExportPng_Click; } catch { }
                 try { _btnExportPdf?.Click -= ExportPdf_Click; } catch { }
+                try { _btnExportPngThemeChangedHandler = null; } catch { }
+                try { _btnExportPdfThemeChangedHandler = null; } catch { }
                 try { _btnExportPng?.Dispose(); } catch { }
                 try { _btnExportPdf?.Dispose(); } catch { }
                 try { _panelHeader?.Dispose(); } catch { }

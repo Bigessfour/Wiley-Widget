@@ -66,7 +66,8 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
+				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1",
+				"-Force"
 			],
 			"group": "build",
 			"presentation": {
@@ -255,7 +256,8 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
+				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1",
+				"-Force"
 			],
 			"group": "build",
 			"presentation": {

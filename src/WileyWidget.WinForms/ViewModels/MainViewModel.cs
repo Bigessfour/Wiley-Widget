@@ -200,7 +200,6 @@ namespace WileyWidget.ViewModels
         {
             IsBusy = value;
         }
-        }
 
         /// <summary>
         /// Refreshes all overview data.

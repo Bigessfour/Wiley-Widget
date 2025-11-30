@@ -4,6 +4,8 @@
 
 The Wiley Widget workspace includes **Python-based MCP (Model Context Protocol) servers** that extend GitHub Copilot Chat with custom workspace tools. These servers run locally and provide tools for inspecting C# code, running builds, navigating the project structure, and fetching web content.
 
+> NOTE: This workspace expects Python 3.14+ for the MCP servers and tools. If you upgraded Python recently, recreate the workspace venv with your 3.14 interpreter (python -m venv .continue\venv). Using a workspace venv avoids relying on a system-installed Store Python path.
+
 **Why Python for MCP?**
 
 - ✅ **Official SDK support** - `@modelcontextprotocol` is natively Python/TypeScript
@@ -171,10 +173,10 @@ Main configuration file for GitHub Copilot Chat MCP integration:
 {
   "mcpServers": {
     "wiley-widget-gh": {
-      "command": "C:/Users/biges/Desktop/Wiley-Widget/.continue/venv/Scripts/python.exe",
-      "args": ["C:/Users/biges/Desktop/Wiley-Widget/.continue/mcpServers/wiley-widget-gh-mcp.py"],
+      "command": "${workspaceFolder}\\.continue\\venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\.continue\\mcpServers\\wiley-widget-gh-mcp.py"],
       "env": {
-        "WW_REPO_ROOT": "C:/Users/biges/Desktop/Wiley-Widget",
+        "WW_REPO_ROOT": "${workspaceFolder}",
         "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
       }
     }

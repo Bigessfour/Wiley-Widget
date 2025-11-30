@@ -85,9 +85,13 @@ namespace WileyWidget.WinForms.Configuration
             }
 
             // Core Services
+            // WinForms-aware dispatcher helper for UI-thread marshaling (captures SynchronizationContext at construction)
+            services.AddSingleton<WileyWidget.Services.Threading.IDispatcherHelper, WileyWidget.Services.Threading.WinFormsDispatcherHelper>();
+
             services.AddSingleton<ISettingsService, SettingsService>();
             services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
-            // Theme / Icon service for runtime icon lookups
+            // Theme / Icon services
+            services.AddSingleton<WileyWidget.WinForms.Services.IThemeService, WileyWidget.WinForms.Services.ThemeService>();
             services.AddSingleton<WileyWidget.WinForms.Services.IThemeIconService, WileyWidget.WinForms.Services.ThemeIconService>();
             services.AddSingleton<HealthCheckService>();
 

@@ -111,6 +111,8 @@ namespace WileyWidget.WinForms.Controls
                 };
             }
 
+        }
+
         /// <summary>
         /// Set or get the overlay message shown under the progress indicator.
         /// </summary>

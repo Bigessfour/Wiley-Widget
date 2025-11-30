@@ -7,6 +7,7 @@ using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
 using System.ComponentModel;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.ViewModels;
 using CommunityToolkit.Mvvm.Input;
@@ -56,14 +57,18 @@ namespace WileyWidget.WinForms.Controls
         private Label? _tileRemainingValueLabel;
 
         // DI-friendly default constructor for container/hosting convenience
-        public DashboardPanel() : this(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DashboardViewModel>(Program.Services))
+        public DashboardPanel() : this(
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DashboardViewModel>(Program.Services),
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services))
         {
         }
 
         private IAsyncRelayCommand? _refreshCommand;
+        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
-        public DashboardPanel(DashboardViewModel vm)
+        public DashboardPanel(DashboardViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
         {
+            _dispatcherHelper = dispatcherHelper;
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             DataContext = vm;
             InitializeComponent();
@@ -135,7 +140,11 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        if (_btnRefresh.GetCurrentParent()?.InvokeRequired ?? false)
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = iconService?.GetIcon("refresh", t, 16));
+                        }
+                        else if (_btnRefresh.GetCurrentParent()?.InvokeRequired ?? false)
                         {
                             _btnRefresh.GetCurrentParent().BeginInvoke(new Action(() => _btnRefresh.Image = iconService?.GetIcon("refresh", t, 16)));
                         }
@@ -167,6 +176,38 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(new ToolStripSeparator());
             _toolStrip.Items.Add(_btnRefresh);
             _toolStrip.Items.Add(new ToolStripSeparator());
+
+            // Export buttons (Excel / PDF)
+            var btnExportExcel = new ToolStripButton("Export Excel") { ToolTipText = "Export details to Excel" };
+            try { btnExportExcel.Image = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
+            btnExportExcel.Click += async (s, e) =>
+            {
+                try
+                {
+                    using var sfd = new SaveFileDialog { Filter = "Excel Workbook|*.xlsx", DefaultExt = "xlsx", FileName = "dashboard-details.xlsx" };
+                    if (sfd.ShowDialog() != DialogResult.OK) return;
+                    await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(_detailsGrid, sfd.FileName);
+                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            };
+            _toolStrip.Items.Add(btnExportExcel);
+
+            var btnExportPdf = new ToolStripButton("Export PDF") { ToolTipText = "Export details/chart to PDF" };
+            try { btnExportPdf.Image = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
+            btnExportPdf.Click += async (s, e) =>
+            {
+                try
+                {
+                    using var sfd = new SaveFileDialog { Filter = "PDF Document|*.pdf", DefaultExt = "pdf", FileName = "dashboard.pdf" };
+                    if (sfd.ShowDialog() != DialogResult.OK) return;
+                    // Export main chart into PDF
+                    await WileyWidget.WinForms.Services.ExportService.ExportChartToPdfAsync(_mainChart, sfd.FileName);
+                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            };
+            _toolStrip.Items.Add(btnExportPdf);
 
             // Navigation buttons per Syncfusion demos patterns
             var btnAccounts = new ToolStripButton("Accounts")
@@ -304,7 +345,7 @@ namespace WileyWidget.WinForms.Controls
                 AutoGenerateColumns = false,
                 AllowFiltering = true,
                 AllowSorting = true,
-                AllowGrouping = false,
+                AllowGrouping = true,
                 ShowRowHeader = false,
                 SelectionMode = Syncfusion.WinForms.DataGrid.Enums.GridSelectionMode.Single,
                 AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill,
@@ -317,6 +358,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Details grid",
                 AccessibleDescription = "Details list for top departments/accounts"
             };
+            try { _detailsGrid.ShowGroupDropArea = true; } catch { }
             try
             {
                 // Column configuration per demos - use NumberFormatInfo for proper formatting
@@ -493,7 +535,11 @@ namespace WileyWidget.WinForms.Controls
 
                 if (e.PropertyName == nameof(_vm.Metrics) || e.PropertyName == nameof(_vm.TotalBudget) || e.PropertyName == nameof(_vm.TotalExpenditure) || e.PropertyName == nameof(_vm.RemainingBudget) || e.PropertyName == nameof(_vm.LastRefreshed))
                 {
-                    if (InvokeRequired)
+                    if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                    {
+                        try { _ = _dispatcherHelper.InvokeAsync(TryApplyViewModelBindings); } catch { }
+                    }
+                    else if (InvokeRequired)
                     {
                         try { BeginInvoke(new Action(TryApplyViewModelBindings)); } catch { }
                     }
@@ -561,9 +607,10 @@ namespace WileyWidget.WinForms.Controls
                 try { WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged -= _btnRefreshThemeChangedHandler; } catch { }
                 try { if (_viewModelPropertyChangedHandler != null && _vm is INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
 
-                // Clear DataSource before disposing Syncfusion controls
-                try { if (_kpiList != null && !_kpiList.IsDisposed) { _kpiList.DataSource = null; } } catch { }
-                try { if (_detailsGrid != null && !_detailsGrid.IsDisposed) { _detailsGrid.DataSource = null; } } catch { }
+                try { _kpiList.SafeClearDataSource(); } catch { }
+                try { _kpiList.SafeDispose(); } catch { }
+                try { _detailsGrid.SafeClearDataSource(); } catch { }
+                try { _detailsGrid.SafeDispose(); } catch { }
 
                 try { _kpiList?.Dispose(); } catch { }
                 try { _mainChart?.Dispose(); } catch { }

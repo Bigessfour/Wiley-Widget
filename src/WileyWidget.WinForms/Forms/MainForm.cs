@@ -77,9 +77,11 @@ namespace WileyWidget.WinForms.Forms
         /// Sets up theme system, docking manager, and global exception handlers.
         /// </summary>
         private readonly WileyWidget.ViewModels.MainViewModel? _mainViewModel;
+        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
-        public MainForm(WileyWidget.ViewModels.MainViewModel? mainViewModel = null)
+        public MainForm(WileyWidget.ViewModels.MainViewModel? mainViewModel = null, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
         {
+            _dispatcherHelper = dispatcherHelper;
             _mainViewModel = mainViewModel;
             // Initialize theme system first
             ThemeManager.Initialize();
@@ -111,6 +113,17 @@ namespace WileyWidget.WinForms.Forms
             // Ensure MainViewModel gets a chance to load app-level data when form loads
             _loadHandler = MainForm_Load;
             this.Load += _loadHandler;
+
+            // Capture UI SynchronizationContext as soon as the message loop starts.
+            // The SynchronizationContext may not exist during construction, so we capture it in Shown.
+            this.Shown += (s, e) =>
+            {
+                try
+                {
+                    _dispatcherHelper?.CheckAccess();
+                }
+                catch { }
+            };
         }
 
         private void InitializeComponent()
@@ -828,6 +841,12 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void OnThemeChanged(object? sender, AppTheme theme)
         {
+            // Prefer centralized dispatcher when available
+            if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+            {
+                try { _ = _dispatcherHelper.InvokeAsync(() => OnThemeChanged(sender, theme)); } catch { }
+                return;
+            }
             if (InvokeRequired)
             {
                 Invoke(() => OnThemeChanged(sender, theme));
@@ -862,6 +881,11 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                {
+                    try { _ = _dispatcherHelper.InvokeAsync(() => AccountsMenu_Click(sender, e)); } catch { }
+                    return;
+                }
                 if (InvokeRequired)
                 {
                     Invoke(() => AccountsMenu_Click(sender, e));
@@ -889,6 +913,11 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                {
+                    try { _ = _dispatcherHelper.InvokeAsync(() => DashboardMenu_Click(sender, e)); } catch { }
+                    return;
+                }
                 if (InvokeRequired)
                 {
                     Invoke(() => DashboardMenu_Click(sender, e));
@@ -916,6 +945,11 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                {
+                    try { _ = _dispatcherHelper.InvokeAsync(() => ChartsMenu_Click(sender, e)); } catch { }
+                    return;
+                }
                 if (InvokeRequired)
                 {
                     Invoke(() => ChartsMenu_Click(sender, e));
@@ -943,6 +977,11 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                {
+                    try { _ = _dispatcherHelper.InvokeAsync(() => SettingsMenu_Click(sender, e)); } catch { }
+                    return;
+                }
                 if (InvokeRequired)
                 {
                     Invoke(() => SettingsMenu_Click(sender, e));
@@ -971,6 +1010,11 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                {
+                    try { _ = _dispatcherHelper.InvokeAsync(() => ResetLayout_Click(sender, e)); } catch { }
+                    return;
+                }
                 if (InvokeRequired)
                 {
                     Invoke(() => ResetLayout_Click(sender, e));

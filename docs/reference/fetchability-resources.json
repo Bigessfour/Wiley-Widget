@@ -20741,7 +20741,7 @@
       "size": 108413,
       "extension": ".exe",
       "tracked": false,
-      "path": ".venv/Scripts/coverage-3.11.exe",
+      "path": ".venv/Scripts/coverage-3.14.exe",
       "sha256": "6eb78ed550a423b36da608a4c2a06671cb2d6a5803c2db7064b170b5759ff7dd"
     },
     {
@@ -20853,7 +20853,7 @@
       "size": 108390,
       "extension": ".exe",
       "tracked": false,
-      "path": ".venv/Scripts/pip3.11.exe",
+      "path": ".venv/Scripts/pip3.14.exe",
       "sha256": "9414cc96d8123ddca6014fe0dfed7e935f4c3817b0b0b9d079ecb911bf251a5e"
     },
     {

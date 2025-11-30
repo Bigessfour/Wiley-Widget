@@ -31,7 +31,7 @@
 
 .NOTES
     Author: Wiley Widget Development Team
-    Dependencies: Python 3.11+, FastAPI, Uvicorn (installed in .continue/venv)
+    Dependencies: Python 3.14+, FastAPI, Uvicorn (installed in .continue/venv)
     Server endpoints:
         - http://127.0.0.1:6723/.well-known/ai-plugin.json (manifest)
         - http://127.0.0.1:6723/list-cs-files

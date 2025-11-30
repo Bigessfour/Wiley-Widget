@@ -83,11 +83,11 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusMessage = "Ready";
                 _logger?.LogDebug("ChartViewModel.LoadChartDataAsync finished");
             }
+        }
 
         partial void OnIsLoadingChanged(bool value)
         {
             IsBusy = value;
-        }
         }
 
         // MVVM Command to refresh chart data from UI

@@ -244,14 +244,19 @@ namespace WileyWidget.WinForms
                     Log.Error(ex, "Database initialization failed. Application will continue if possible.");
                 }
 
-                // Initialize theme system earlier so Syncfusion skins and icon preloads can run before UI creation
+                // Initialize theme service earlier so Syncfusion skins and icon preloads can run before UI creation
                 try
                 {
-                    WileyWidget.WinForms.Theming.ThemeManager.Initialize();
+                    var themeService = Services.GetService(typeof(WileyWidget.WinForms.Services.IThemeService)) as WileyWidget.WinForms.Services.IThemeService;
+                    themeService?.Initialize();
 
                     // Attempt to preload a small set of frequently used icons so theme-aware caching is warmed.
                     var iconService = Services.GetService(typeof(WileyWidget.WinForms.Services.IThemeIconService)) as WileyWidget.WinForms.Services.IThemeIconService;
-                    iconService?.Preload(new string[] { "add", "edit", "delete", "save", "dismiss", "home", "settings", "search", "refresh", "play", "share", "question" }, WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme, 24);
+                    if (iconService != null)
+                    {
+                        var effectiveTheme = themeService?.CurrentTheme ?? WileyWidget.WinForms.Theming.AppTheme.Light;
+                        iconService.Preload(new string[] { "add", "edit", "delete", "save", "dismiss", "home", "settings", "search", "refresh", "play", "share", "question" }, effectiveTheme, 24);
+                    }
                 }
                 catch (Exception ex)
                 {

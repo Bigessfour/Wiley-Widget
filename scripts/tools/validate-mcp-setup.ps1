@@ -44,7 +44,7 @@
 
 .NOTES
     Author: Wiley Widget Development Team
-    Requires: Docker Desktop, PowerShell 7+, Python 3.11+
+    Requires: Docker Desktop, PowerShell 7+, Python 3.14+
 #>
 
 [CmdletBinding()]
@@ -120,10 +120,12 @@ if (Test-Path $PythonExe) {
         $pythonVersion = & $PythonExe --version 2>&1
         if ($pythonVersion -match 'Python (\d+\.\d+\.\d+)') {
             $version = [version]$matches[1]
-            if ($version.Major -ge 3 -and $version.Minor -ge 11) {
-                Add-Passed "Python version: $($matches[1]) (>= 3.11 required)"
+            # Use a robust version comparison so future minors/majors compare correctly
+            $requiredVersion = [version]"3.14.0"
+            if ([version]$matches[1] -ge $requiredVersion) {
+                Add-Passed "Python version: $($matches[1]) (>= 3.14 required)"
             } else {
-                Add-Warning "Python version $($matches[1]) is older than recommended 3.11+"
+                Add-Warning "Python version $($matches[1]) is older than recommended 3.14+"
             }
         }
     } catch {

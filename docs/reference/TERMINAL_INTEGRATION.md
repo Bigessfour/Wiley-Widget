@@ -14,7 +14,7 @@ Location: `scripts/tools/run-script.ps1`
 
 - Automatic file type detection (.py, .ps1, .csx, .cs)
 - Intelligent interpreter discovery and validation
-- Version checking (Python 3.11+, PowerShell 7.5+, .NET 9.0)
+- Version checking (Python 3.14+, PowerShell 7.5+, .NET 9.0)
 - Environment variable setup per language
 - Support for background execution
 - Comprehensive error handling and logging
@@ -72,7 +72,7 @@ Location: `.vscode/settings.json`
 **Configured Profiles:**
 
 - **PowerShell 7.5+** - Default, with shell integration enabled
-- **Python 3.11** - Pre-configured with PYTHONPATH and PYTHONUNBUFFERED
+- **Python 3.14** - Pre-configured with PYTHONPATH and PYTHONUNBUFFERED
 - **Command Prompt** - Legacy Windows CMD support
 
 Each profile has:
@@ -142,13 +142,13 @@ Based on the [official documentation](https://code.visualstudio.com/docs/termina
 
 ## Interpreter Discovery Priority
 
-### Python 3.11+
+### Python 3.14+
 
-1. Windows Store: `C:\Users\$USERNAME\AppData\Local\Microsoft\WindowsApps\python3.11.exe`
+1. Windows Store: `C:\Users\$USERNAME\AppData\Local\Microsoft\WindowsApps\python3.14.exe`
 2. Windows Store generic: `python.exe`
-3. Standard install: `C:\Python311\python.exe`
-4. Program Files: `C:\Program Files\Python311\python.exe`
-5. PATH resolution: `python3.11`, `python3`, `python`
+3. Standard install: `C:\Python314\python.exe`
+4. Program Files: `C:\Program Files\Python314\python.exe`
+5. PATH resolution: `python3.14`, `python3`, `python`
 
 ### PowerShell 7.5+
 
@@ -245,11 +245,11 @@ validator
 
 ### Python Not Found
 
-**Error:** `Python 3.11+ not found`
+**Error:** `Python 3.14+ not found`
 
 **Solution:**
 
-1. Install Python 3.11 from Microsoft Store (recommended)
+1. Install Python 3.14 from Microsoft Store (recommended)
 2. Or download from https://www.python.org/downloads/
 3. Ensure added to PATH
 

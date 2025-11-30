@@ -80,6 +80,14 @@ After extensive testing with WinUI 3 (6+ weeks of XamlCompiler issues, unpackage
 - Added manifest enhancement reference guide and linked schema/config assets
 - Clarified package upgrade impact and follow-up validation needs
 
+### Python upgrade: 3.14
+
+We standardized our development guidance on Python 3.14. See `docs/upgrade-to-python-3.14.md` for a short dev-note explaining the changes, how to set up a workspace `.venv`, and a troubleshooting helper that can fix VS Code settings which reference old Microsoft Store / python3.11 paths:
+
+```powershell
+scripts/tools/fix-vscode-python-paths.ps1
+```
+
 ### Key Capabilities
 
 - **Pure Prism MVVM Architecture**: Complete Prism framework integration with no mixed toolkits

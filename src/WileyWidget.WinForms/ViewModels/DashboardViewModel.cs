@@ -173,7 +173,6 @@ namespace WileyWidget.ViewModels
         {
             IsBusy = value;
         }
-        }
 
         /// <summary>
         /// Refreshes dashboard data, forcing a full reload.

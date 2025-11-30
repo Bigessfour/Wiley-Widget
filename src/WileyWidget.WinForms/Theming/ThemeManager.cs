@@ -19,10 +19,7 @@ namespace WileyWidget.WinForms.Theming;
 /// </summary>
 public static class ThemeManager
 {
-    private static readonly string SettingsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "WileyWidget",
-        "user-settings.json");
+    // Theme persistence is now handled by IThemeService/ThemeService.
 
     /// <summary>
     /// Current application theme
@@ -45,14 +42,11 @@ public static class ThemeManager
     public const string SyncfusionLightTheme = "FluentLight";
 
     /// <summary>
-    /// Initialize theme from user settings and apply app-wide Syncfusion theme.
-    /// MUST be called before any forms are created (typically in Program.Main).
+    /// Initialize theme system for forms. Theme selection and persistence is managed
+    /// by an external ThemeService; this method ensures visual theme application logic
+    /// is ready for use by callers.
     /// </summary>
-    public static void Initialize()
-    {
-        LoadSettings();
-        ApplySyncfusionApplicationTheme();
-    }
+    public static void Initialize() => ApplySyncfusionApplicationTheme();
 
     /// <summary>
     /// Apply the Syncfusion theme at application level.
@@ -99,16 +93,15 @@ public static class ThemeManager
     public static ThemeColors Colors => CurrentTheme == AppTheme.Dark ? DarkColors : LightColors;
 
     /// <summary>
-    /// Set the application theme and persist to user settings.
-    /// Note: Changing theme at runtime requires restarting the app for Syncfusion controls,
-    /// but standard WinForms controls will update immediately.
+    /// Set the application theme (effective theme) and notify listeners.
+    /// Persistence is intentionally handled by ThemeService to centralize storage.
+    /// Note: Changing theme at runtime may require restarting some Syncfusion controls
+    /// to fully update — standard WinForms controls will update immediately.
     /// </summary>
     public static void SetTheme(AppTheme theme)
     {
         var previousTheme = CurrentTheme;
         CurrentTheme = theme;
-        SaveSettings();
-
         // Update Syncfusion application theme
         ApplySyncfusionApplicationTheme();
 
@@ -403,45 +396,7 @@ public static class ThemeManager
         }
     }
 
-    private static void LoadSettings()
-    {
-        try
-        {
-            if (File.Exists(SettingsPath))
-            {
-                var json = File.ReadAllText(SettingsPath);
-                var settings = JsonSerializer.Deserialize<UserSettings>(json);
-                if (settings != null)
-                {
-                    CurrentTheme = settings.Theme;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Warning(ex, "Failed to load user settings, using defaults");
-        }
-    }
-
-    private static void SaveSettings()
-    {
-        try
-        {
-            var dir = Path.GetDirectoryName(SettingsPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-
-            var settings = new UserSettings { Theme = CurrentTheme };
-            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(SettingsPath, json);
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Warning(ex, "Failed to save user settings");
-        }
-    }
+    // Persistence responsibilities are now provided by ThemeService.
 
     // Dark theme colors (Fluent Dark inspired)
     private static readonly ThemeColors DarkColors = new()
@@ -497,10 +452,7 @@ public static class ThemeManager
         GridRowSelected = Color.FromArgb(204, 232, 255)
     };
 
-    private class UserSettings
-    {
-        public AppTheme Theme { get; set; } = AppTheme.Dark;
-    }
+    // No longer store user settings here.
 }
 
 /// <summary>
@@ -509,7 +461,12 @@ public static class ThemeManager
 public enum AppTheme
 {
     Dark,
-    Light
+    Light,
+    /// <summary>
+    /// Follow the operating system preference (Windows light/dark setting).
+    /// ThemeService will resolve this to an effective Dark/Light value at runtime.
+    /// </summary>
+    System
 }
 
 /// <summary>

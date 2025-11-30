@@ -43,6 +43,7 @@ internal static class AccountEditFormResources
 public partial class AccountEditForm : Syncfusion.WinForms.Controls.SfForm
 {
     private readonly AccountsViewModel _viewModel;
+    private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
     private readonly MunicipalAccount? _existingAccount;
     private readonly bool _isNew;
 
@@ -71,12 +72,14 @@ public partial class AccountEditForm : Syncfusion.WinForms.Controls.SfForm
     private EventHandler<AppTheme>? _themeChangedHandler;
 
     // Default ctor for DI-friendly usage
-    public AccountEditForm() : this(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(Program.Services), null)
+    public AccountEditForm() : this(
+        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(Program.Services),
+        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services))
     {
     }
-
-    public AccountEditForm(AccountsViewModel viewModel, MunicipalAccount? existingAccount = null)
+    public AccountEditForm(AccountsViewModel viewModel, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, MunicipalAccount? existingAccount = null)
     {
+        _dispatcherHelper = dispatcherHelper;
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _existingAccount = existingAccount;
         _isNew = existingAccount == null;
@@ -91,7 +94,15 @@ public partial class AccountEditForm : Syncfusion.WinForms.Controls.SfForm
             {
                 try
                 {
-                    if (InvokeRequired) BeginInvoke(new Action(UpdateLoadingState)); else UpdateLoadingState();
+                    // Prefer centralized UI marshaling via IDispatcherHelper when available
+                    if (_dispatcherHelper != null)
+                    {
+                        _ = _dispatcherHelper.InvokeAsync(UpdateLoadingState);
+                    }
+                    else
+                    {
+                        if (InvokeRequired) BeginInvoke(new Action(UpdateLoadingState)); else UpdateLoadingState();
+                    }
                 }
                 catch { }
             }
@@ -337,10 +348,17 @@ public partial class AccountEditForm : Syncfusion.WinForms.Controls.SfForm
             {
                 try
                 {
-                    if (btnSave.InvokeRequired)
-                        btnSave.Invoke(() => btnSave.Image = iconService?.GetIcon("save", t, 14));
+                    if (_dispatcherHelper != null)
+                    {
+                        _ = _dispatcherHelper.InvokeAsync(() => btnSave.Image = iconService?.GetIcon("save", t, 14));
+                    }
                     else
-                        btnSave.Image = iconService?.GetIcon("save", t, 14);
+                    {
+                        if (btnSave.InvokeRequired)
+                            btnSave.Invoke(() => btnSave.Image = iconService?.GetIcon("save", t, 14));
+                        else
+                            btnSave.Image = iconService?.GetIcon("save", t, 14);
+                    }
                 }
                 catch { }
             };
@@ -374,10 +392,17 @@ public partial class AccountEditForm : Syncfusion.WinForms.Controls.SfForm
             {
                 try
                 {
-                    if (btnCancel.InvokeRequired)
-                        btnCancel.Invoke(() => btnCancel.Image = iconService?.GetIcon("dismiss", t, 14));
+                    if (_dispatcherHelper != null)
+                    {
+                        _ = _dispatcherHelper.InvokeAsync(() => btnCancel.Image = iconService?.GetIcon("dismiss", t, 14));
+                    }
                     else
-                        btnCancel.Image = iconService?.GetIcon("dismiss", t, 14);
+                    {
+                        if (btnCancel.InvokeRequired)
+                            btnCancel.Invoke(() => btnCancel.Image = iconService?.GetIcon("dismiss", t, 14));
+                        else
+                            btnCancel.Image = iconService?.GetIcon("dismiss", t, 14);
+                    }
                 }
                 catch { }
             };
