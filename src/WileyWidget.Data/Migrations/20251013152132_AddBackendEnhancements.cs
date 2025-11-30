@@ -563,34 +563,61 @@ namespace WileyWidget.Data.Migrations
                 },
                 constraints: table => table.PrimaryKey("PK_Funds", x => x.Id));
 
-            migrationBuilder.InsertData(
-                table: "Departments",
-                columns: new[] { "Id", "DepartmentCode", "Name", "ParentId" },
-                values: new object[] { 1, "DPW", "Public Works", null });
+            // Idempotent seed for Departments
+            migrationBuilder.Sql(@"
+IF NOT EXISTS (SELECT 1 FROM [Departments] WHERE [Id] = 1)
+BEGIN
+    SET IDENTITY_INSERT [Departments] ON;
+    INSERT INTO [Departments] ([Id], [DepartmentCode], [Name], [ParentId])
+    VALUES (1, N'DPW', N'Public Works', NULL);
+    SET IDENTITY_INSERT [Departments] OFF;
+END
+");
 
-            migrationBuilder.InsertData(
-                table: "Funds",
-                columns: new[] { "Id", "FundCode", "Name", "Type" },
-                values: new object[,]
-                {
-                    { 1, "100", "General Fund", 1 },
-                    { 2, "200", "Utility Fund", 2 }
-                });
+            // Idempotent seed for Funds
+            migrationBuilder.Sql(@"
+IF NOT EXISTS (SELECT 1 FROM [Funds] WHERE [Id] = 1)
+BEGIN
+    SET IDENTITY_INSERT [Funds] ON;
+    INSERT INTO [Funds] ([Id], [FundCode], [Name], [Type])
+    VALUES (1, N'100', N'General Fund', 1);
+    SET IDENTITY_INSERT [Funds] OFF;
+END
+IF NOT EXISTS (SELECT 1 FROM [Funds] WHERE [Id] = 2)
+BEGIN
+    SET IDENTITY_INSERT [Funds] ON;
+    INSERT INTO [Funds] ([Id], [FundCode], [Name], [Type])
+    VALUES (2, N'200', N'Utility Fund', 2);
+    SET IDENTITY_INSERT [Funds] OFF;
+END
+");
 
-            migrationBuilder.InsertData(
-                table: "BudgetEntries",
-                columns: new[] { "Id", "AccountNumber", "ActivityCode", "ActualAmount", "BudgetedAmount", "CreatedAt", "DepartmentId", "Description", "EncumbranceAmount", "EndPeriod", "FiscalYear", "FundId", "FundType", "IsGASBCompliant", "MunicipalAccountId", "ParentId", "SourceFilePath", "SourceRowNumber", "StartPeriod", "UpdatedAt", "Variance" },
-                values: new object[] { 1, "405", "GOV", 0m, 50000m, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(1044), 1, "Road Maintenance", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 0, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), null, 0m });
+            // Idempotent seed for BudgetEntries and Departments
+            migrationBuilder.Sql(@"
+IF NOT EXISTS (SELECT 1 FROM [BudgetEntries] WHERE [Id] = 1)
+BEGIN
+    SET IDENTITY_INSERT [BudgetEntries] ON;
+    INSERT INTO [BudgetEntries] ([Id], [AccountNumber], [ActivityCode], [ActualAmount], [BudgetedAmount], [CreatedAt], [DepartmentId], [Description], [EncumbranceAmount], [EndPeriod], [FiscalYear], [FundId], [FundType], [IsGASBCompliant], [MunicipalAccountId], [ParentId], [SourceFilePath], [SourceRowNumber], [StartPeriod], [UpdatedAt], [Variance])
+    VALUES (1, N'405', N'GOV', 0, 50000, '2025-10-13T15:21:30.8091044Z', 1, N'Road Maintenance', 0, '0001-01-01T00:00:00.0000000', 2026, 1, 0, 1, NULL, NULL, NULL, NULL, '0001-01-01T00:00:00.0000000', NULL, 0);
+    SET IDENTITY_INSERT [BudgetEntries] OFF;
+END
 
-            migrationBuilder.InsertData(
-                table: "Departments",
-                columns: new[] { "Id", "DepartmentCode", "Name", "ParentId" },
-                values: new object[] { 2, "SAN", "Sanitation", 1 });
+IF NOT EXISTS (SELECT 1 FROM [Departments] WHERE [Id] = 2)
+BEGIN
+    SET IDENTITY_INSERT [Departments] ON;
+    INSERT INTO [Departments] ([Id], [DepartmentCode], [Name], [ParentId])
+    VALUES (2, N'SAN', N'Sanitation', 1);
+    SET IDENTITY_INSERT [Departments] OFF;
+END
 
-            migrationBuilder.InsertData(
-                table: "BudgetEntries",
-                columns: new[] { "Id", "AccountNumber", "ActivityCode", "ActualAmount", "BudgetedAmount", "CreatedAt", "DepartmentId", "Description", "EncumbranceAmount", "EndPeriod", "FiscalYear", "FundId", "FundType", "IsGASBCompliant", "MunicipalAccountId", "ParentId", "SourceFilePath", "SourceRowNumber", "StartPeriod", "UpdatedAt", "Variance" },
-                values: new object[] { 2, "405.1", "GOV", 0m, 20000m, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(2333), 1, "Paving", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 0, true, null, 1, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), null, 0m });
+IF NOT EXISTS (SELECT 1 FROM [BudgetEntries] WHERE [Id] = 2)
+BEGIN
+    SET IDENTITY_INSERT [BudgetEntries] ON;
+    INSERT INTO [BudgetEntries] ([Id], [AccountNumber], [ActivityCode], [ActualAmount], [BudgetedAmount], [CreatedAt], [DepartmentId], [Description], [EncumbranceAmount], [EndPeriod], [FiscalYear], [FundId], [FundType], [IsGASBCompliant], [MunicipalAccountId], [ParentId], [SourceFilePath], [SourceRowNumber], [StartPeriod], [UpdatedAt], [Variance])
+    VALUES (2, N'405.1', N'GOV', 0, 20000, '2025-10-13T15:21:30.8092333Z', 1, N'Paving', 0, '0001-01-01T00:00:00.0000000', 2026, 1, 0, 1, NULL, 1, NULL, NULL, '0001-01-01T00:00:00.0000000', NULL, 0);
+    SET IDENTITY_INSERT [BudgetEntries] OFF;
+END
+");
 
             migrationBuilder.InsertData(
                 table: "Transactions",

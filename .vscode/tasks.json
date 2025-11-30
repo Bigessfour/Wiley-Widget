@@ -1,5 +1,23 @@
 {
 	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"problemMatcher": "$msCompile",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+	],
 	// Pragmatic Problem Matcher Configuration for Wiley Widget
 	// ========================================================
 	// Focus: FUNCTIONAL ISSUES ONLY (runtime blockers, not cosmetic)

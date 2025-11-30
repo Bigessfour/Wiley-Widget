@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Theming;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Styles;
@@ -39,6 +40,9 @@ namespace WileyWidget.WinForms.Forms
         private SfComboBox? comboFund;
         private SfComboBox? comboAccountType;
         private Button? btnRefresh;
+        private Button? btnAdd;
+        private Button? btnEdit;
+        private Button? btnDelete;
         private Panel? topPanel;
         // Summary UI (bottom): displays total balance and active account count
         private Panel? summaryPanel;
@@ -85,6 +89,12 @@ namespace WileyWidget.WinForms.Forms
         {
             Text = Resources.FormTitle;
             Size = new Size(1200, 800);
+            // Prefer DPI scaling for modern displays
+            try
+            {
+                this.AutoScaleMode = AutoScaleMode.Dpi;
+            }
+            catch { }
             StartPosition = FormStartPosition.CenterParent;
         }
 
@@ -150,6 +160,25 @@ namespace WileyWidget.WinForms.Forms
                 Height = 32,
                 Margin = new Padding(6, 10, 6, 6)
             };
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
+                btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
+                btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
+
+                // Update on theme change
+                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += (s, t) =>
+                {
+                    try
+                    {
+                        btnRefresh.Image = iconService?.GetIcon("refresh", t, 16);
+                    }
+                    catch { }
+                };
+            }
+            catch { }
             btnRefresh.Click += async (s, e) =>
             {
                 try
@@ -163,12 +192,104 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        var reporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.ErrorReportingService>(Program.Services);
+                        var reporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.ErrorReportingService>(Program.Services);
                         reporting?.ReportError(ex, "Error running FilterAccountsCommand", showToUser: false);
                     }
                     catch { }
                 }
             };
+
+            // Add button
+            btnAdd = new Button
+            {
+                Text = "Add",
+                Name = "btnAdd",
+                Width = 80,
+                Height = 32,
+                Margin = new Padding(6, 10, 6, 6),
+                BackColor = Color.FromArgb(0, 120, 212),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                btnAdd.Image = iconService?.GetIcon("add", theme, 14);
+                btnAdd.ImageAlign = ContentAlignment.MiddleLeft;
+                btnAdd.TextImageRelation = TextImageRelation.ImageBeforeText;
+                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += (s, t) =>
+                {
+                    try
+                    {
+                        btnAdd.Image = iconService?.GetIcon("add", t, 14);
+                    }
+                    catch { }
+                };
+            }
+            catch { }
+            btnAdd.FlatAppearance.BorderSize = 0;
+            btnAdd.Click += BtnAdd_Click;
+
+            // Edit button
+            btnEdit = new Button
+            {
+                Text = "Edit",
+                Name = "btnEdit",
+                Width = 80,
+                Height = 32,
+                Margin = new Padding(6, 10, 6, 6)
+            };
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                btnEdit.Image = iconService?.GetIcon("edit", theme, 14);
+                btnEdit.ImageAlign = ContentAlignment.MiddleLeft;
+                btnEdit.TextImageRelation = TextImageRelation.ImageBeforeText;
+                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += (s, t) =>
+                {
+                    try
+                    {
+                        btnEdit.Image = iconService?.GetIcon("edit", t, 14);
+                    }
+                    catch { }
+                };
+            }
+            catch { }
+            btnEdit.Click += BtnEdit_Click;
+
+            // Delete button
+            btnDelete = new Button
+            {
+                Text = "Delete",
+                Name = "btnDelete",
+                Width = 80,
+                Height = 32,
+                Margin = new Padding(6, 10, 6, 6),
+                BackColor = Color.FromArgb(209, 52, 56),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                btnDelete.Image = iconService?.GetIcon("delete", theme, 14);
+                btnDelete.ImageAlign = ContentAlignment.MiddleLeft;
+                btnDelete.TextImageRelation = TextImageRelation.ImageBeforeText;
+                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += (s, t) =>
+                {
+                    try
+                    {
+                        btnDelete.Image = iconService?.GetIcon("delete", t, 14);
+                    }
+                    catch { }
+                };
+            }
+            catch { }
+            btnDelete.FlatAppearance.BorderSize = 0;
+            btnDelete.Click += BtnDelete_Click;
 
             // Add controls to top panel
             topPanel.Controls.Add(fundLabel);
@@ -176,6 +297,9 @@ namespace WileyWidget.WinForms.Forms
             topPanel.Controls.Add(acctTypeLabel);
             topPanel.Controls.Add(comboAccountType);
             topPanel.Controls.Add(btnRefresh);
+            topPanel.Controls.Add(btnAdd);
+            topPanel.Controls.Add(btnEdit);
+            topPanel.Controls.Add(btnDelete);
 
             // Main grid
             gridAccounts = new SfDataGrid
@@ -191,11 +315,42 @@ namespace WileyWidget.WinForms.Forms
                 NavigationMode = NavigationMode.Row
             };
 
+            // Try to enable any Syncfusion DPI-aware flags if available (best-effort)
+            try
+            {
+                var dpiProp = gridAccounts.GetType().GetProperty("DpiAware");
+                if (dpiProp != null && dpiProp.CanWrite)
+                {
+                    dpiProp.SetValue(gridAccounts, true);
+                }
+            }
+            catch { /* not all versions expose DpiAware */ }
+
             // Columns setup
             gridAccounts.Columns.Add(new GridTextColumn { MappingName = "AccountNumber", HeaderText = Resources.AccountNumberHeader, Width = 160 });
-            gridAccounts.Columns.Add(new GridTextColumn { MappingName = "Name", HeaderText = Resources.AccountNameHeader, Width = 360 });
-            gridAccounts.Columns.Add(new GridTextColumn { MappingName = "Type", HeaderText = Resources.TypeHeader, Width = 160 });
+            gridAccounts.Columns.Add(new GridTextColumn { MappingName = "AccountName", HeaderText = Resources.AccountNameHeader, Width = 360 });
+            gridAccounts.Columns.Add(new GridTextColumn { MappingName = "AccountType", HeaderText = Resources.TypeHeader, Width = 160 });
             gridAccounts.Columns.Add(new GridNumericColumn { MappingName = "CurrentBalance", HeaderText = Resources.BalanceHeader, Format = "C2", Width = 160 });
+
+            // Events: selection, double-click and keyboard shortcuts for edit/delete
+            gridAccounts.DoubleClick += (s, e) => BtnEdit_Click(s, EventArgs.Empty);
+            gridAccounts.KeyDown += (s, e) =>
+            {
+                try
+                {
+                    if (e.KeyCode == Keys.Delete)
+                    {
+                        BtnDelete_Click(s, EventArgs.Empty);
+                    }
+                    else if (e.KeyCode == Keys.Enter)
+                    {
+                        BtnEdit_Click(s, EventArgs.Empty);
+                        e.Handled = true;
+                    }
+                }
+                catch { }
+            };
+            gridAccounts.SelectionChanged += (s, e) => UpdateButtonsState();
 
             // Table summary (bottom): Show total balance and active count
             // TODO: Re-enable after verifying correct Syncfusion API
@@ -283,6 +438,17 @@ namespace WileyWidget.WinForms.Forms
 
             // Apply initial bindings
             TryApplyViewModelBindings();
+
+            // Ensure buttons reflect selection state
+            UpdateButtonsState();
+
+            // Apply theming and subscribe for live updates
+            try
+            {
+                ThemeManager.ApplyTheme(this);
+                ThemeManager.ThemeChanged += (s, t) => ThemeManager.ApplyTheme(this);
+            }
+            catch { }
         }
 
         private void BindViewModel()
@@ -321,6 +487,8 @@ namespace WileyWidget.WinForms.Forms
                                 if (gridAccounts != null)
                                 {
                                     gridAccounts.DataSource = _viewModel.Accounts;
+                                    // Ensure buttons reflect selection after new data loads
+                                    UpdateButtonsState();
                                 }
                                 break;
                             case nameof(_viewModel.TotalBalance):
@@ -465,6 +633,108 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private void BtnAdd_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                using var editForm = new AccountEditForm(_viewModel);
+                if (editForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Accounts are refreshed by the ViewModel after save
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "Error opening add account form");
+                MessageBox.Show($"Error: {ex.Message}", Resources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void BtnEdit_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var selectedAccount = GetSelectedAccount();
+                if (selectedAccount == null)
+                {
+                    MessageBox.Show("Please select an account to edit.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Get the full entity from DB
+                var account = await _viewModel.GetAccountByIdAsync(selectedAccount.Id);
+                if (account == null)
+                {
+                    MessageBox.Show("Could not load account details.", Resources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                using var editForm = new AccountEditForm(_viewModel, account);
+                if (editForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Accounts are refreshed by the ViewModel after save
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "Error opening edit account form");
+                MessageBox.Show($"Error: {ex.Message}", Resources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void BtnDelete_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var selectedAccount = GetSelectedAccount();
+                if (selectedAccount == null)
+                {
+                    MessageBox.Show("Please select an account to delete.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"Are you sure you want to delete account '{selectedAccount.AccountNumber} - {selectedAccount.AccountName}'?\n\nThis will deactivate the account.",
+                    "Confirm Delete",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (result == DialogResult.Yes)
+                {
+                    var success = await _viewModel.DeleteAccountAsync(selectedAccount.Id);
+                    if (!success)
+                    {
+                        MessageBox.Show("Failed to delete account. Check logs for details.", Resources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "Error deleting account");
+                MessageBox.Show($"Error: {ex.Message}", Resources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private Models.MunicipalAccountDisplay? GetSelectedAccount()
+        {
+            if (gridAccounts?.SelectedItem is Models.MunicipalAccountDisplay account)
+            {
+                return account;
+            }
+            return null;
+        }
+
+        private void UpdateButtonsState()
+        {
+            var selected = GetSelectedAccount();
+            try
+            {
+                if (btnEdit != null) btnEdit.Enabled = selected != null;
+                if (btnDelete != null) btnDelete.Enabled = selected != null;
+            }
+            catch { }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -473,6 +743,9 @@ namespace WileyWidget.WinForms.Forms
                 comboFund?.Dispose();
                 comboAccountType?.Dispose();
                 btnRefresh?.Dispose();
+                btnAdd?.Dispose();
+                btnEdit?.Dispose();
+                btnDelete?.Dispose();
                 topPanel?.Dispose();
                 // Dispose summary UI elements
                 lblTotalBalance?.Dispose();
@@ -481,6 +754,24 @@ namespace WileyWidget.WinForms.Forms
             }
 
             base.Dispose(disposing);
+        }
+
+        /// <summary>
+        /// Prepare this form to be docked/embedded inside a host control (DockingManager etc).
+        /// Calling code should keep a reference to the original instance (DI-scoped) when used.
+        /// </summary>
+        public void PrepareForDocking()
+        {
+            try
+            {
+                // Make it a child control instead of a top-level window
+                TopLevel = false;
+                FormBorderStyle = FormBorderStyle.None;
+                Dock = DockStyle.Fill;
+                // Some dialogs expect CenterParent; in docking hosts we want fill behaviour
+                StartPosition = FormStartPosition.Manual;
+            }
+            catch { }
         }
     }
 }

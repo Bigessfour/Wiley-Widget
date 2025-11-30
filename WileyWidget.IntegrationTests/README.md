@@ -99,17 +99,17 @@ Tests use `appsettings.test.json` for configuration:
 
 ## Benefits
 
-✅ **Real DI Container**: Tests actual service wiring, not mocked containers  
-✅ **Fast**: In-memory database, no external dependencies  
-✅ **Isolated**: Each test gets fresh database instance  
-✅ **Non-Whitewash**: Uses real service implementations (except expensive external calls)  
+✅ **Real DI Container**: Tests actual service wiring, not mocked containers
+✅ **Fast**: In-memory database, no external dependencies
+✅ **Isolated**: Each test gets fresh database instance
+✅ **Non-Whitewash**: Uses real service implementations (except expensive external calls)
 ✅ **Maintainable**: Follows same patterns as production code
 
 ## Anti-Patterns to Avoid
 
-❌ **Don't** create manual service instances outside the container  
-❌ **Don't** mock the entire service container  
-❌ **Don't** share database state between tests  
+❌ **Don't** create manual service instances outside the container
+❌ **Don't** mock the entire service container
+❌ **Don't** share database state between tests
 ❌ **Don't** make real API calls to external services
 
 ## Running Tests
@@ -123,6 +123,12 @@ dotnet test --filter FullyQualifiedName~AIServiceIntegrationTests
 
 # Run with verbose output
 dotnet test --logger "console;verbosity=detailed"
+```
+
+Note: Some integration tests exercise a real SQL Server (Category: Database.SqlExpress). Those tests will automatically skip when no SQL connection string is present (they respect the TEST_SQL_CONNECTIONSTRING environment variable or appsettings.test.json). To run the SQL-backed tests locally, either set TEST_SQL_CONNECTIONSTRING to a valid connection string or use the repo helper to create LocalDB and apply migrations:
+
+```powershell
+pwsh ./scripts/maintenance/setup-localdb-and-migrate.ps1
 ```
 
 ## Coverage Requirements

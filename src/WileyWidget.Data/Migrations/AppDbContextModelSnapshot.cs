@@ -17,7 +17,7 @@ namespace WileyWidget.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.10")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -30,14 +30,77 @@ namespace WileyWidget.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AutoSaveIntervalMinutes")
+                        .HasColumnType("int");
+
                     b.Property<int>("CacheExpirationMinutes")
                         .HasColumnType("int");
+
+                    b.Property<string>("CurrencyFormat")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CurrentFiscalYear")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DatabaseName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DatabaseServer")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DateFormat")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DefaultLanguage")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("EnableAI")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableAutoSave")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("EnableDataCaching")
                         .HasColumnType("bit");
 
                     b.Property<bool>("EnableFileLogging")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("EnableNotifications")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableQuickBooksSync")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableSounds")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FiscalPeriod")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FiscalQuarter")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FiscalYearEnd")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FiscalYearStart")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FiscalYearStartDay")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FiscalYearStartMonth")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IncludeChartsInReports")
                         .HasColumnType("bit");
@@ -79,11 +142,17 @@ namespace WileyWidget.Data.Migrations
                     b.Property<string>("QuickBooksAccessToken")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("QuickBooksCompanyFile")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("QuickBooksEnvironment")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("QuickBooksRealmId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("QuickBooksRedirectUri")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("QuickBooksRefreshToken")
@@ -96,11 +165,20 @@ namespace WileyWidget.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("SessionTimeoutMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SyncIntervalMinutes")
+                        .HasColumnType("int");
+
                     b.Property<string>("Theme")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("UseDynamicColumns")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("UseFiscalYearForReporting")
                         .HasColumnType("bit");
 
                     b.Property<double?>("WindowHeight")
@@ -118,9 +196,72 @@ namespace WileyWidget.Data.Migrations
                     b.Property<double?>("WindowWidth")
                         .HasColumnType("float");
 
+                    b.Property<string>("XaiApiEndpoint")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("XaiApiKey")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("XaiMaxTokens")
+                        .HasColumnType("int");
+
+                    b.Property<string>("XaiModel")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("XaiTemperature")
+                        .HasColumnType("float");
+
+                    b.Property<int>("XaiTimeout")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.ToTable("AppSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AutoSaveIntervalMinutes = 5,
+                            CacheExpirationMinutes = 30,
+                            CurrencyFormat = "USD",
+                            CurrentFiscalYear = "2024-2025",
+                            DatabaseName = "WileyWidget",
+                            DatabaseServer = "localhost",
+                            DateFormat = "MM/dd/yyyy",
+                            DefaultLanguage = "en-US",
+                            EnableAI = false,
+                            EnableAutoSave = true,
+                            EnableDataCaching = true,
+                            EnableFileLogging = true,
+                            EnableNotifications = true,
+                            EnableQuickBooksSync = false,
+                            EnableSounds = true,
+                            FiscalPeriod = "Q1",
+                            FiscalQuarter = 1,
+                            FiscalYearEnd = "June 30",
+                            FiscalYearStart = "July 1",
+                            FiscalYearStartDay = 1,
+                            FiscalYearStartMonth = 7,
+                            IncludeChartsInReports = true,
+                            LastSelectedEnterpriseId = 1,
+                            LogFilePath = "logs/wiley-widget.log",
+                            QboTokenExpiry = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            QuickBooksEnvironment = "sandbox",
+                            SelectedLogLevel = "Information",
+                            SessionTimeoutMinutes = 60,
+                            SyncIntervalMinutes = 30,
+                            Theme = "FluentDark",
+                            UseDynamicColumns = false,
+                            UseFiscalYearForReporting = true,
+                            XaiApiEndpoint = "https://api.x.ai/v1",
+                            XaiMaxTokens = 2000,
+                            XaiModel = "grok-4-0709",
+                            XaiTemperature = 0.69999999999999996,
+                            XaiTimeout = 30
+                        });
                 });
 
             modelBuilder.Entity("WileyWidget.Models.AuditEntry", b =>
@@ -181,10 +322,12 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("nvarchar(10)");
 
                     b.Property<decimal>("ActualAmount")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("BudgetedAmount")
                         .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
 
@@ -200,6 +343,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<decimal>("EncumbranceAmount")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("EndPeriod")
@@ -217,7 +361,7 @@ namespace WileyWidget.Data.Migrations
                     b.Property<bool>("IsGASBCompliant")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("MunicipalAccountId")
+                    b.Property<int>("MunicipalAccountId")
                         .HasColumnType("int");
 
                     b.Property<int?>("ParentId")
@@ -237,6 +381,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("Variance")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -259,6 +404,408 @@ namespace WileyWidget.Data.Migrations
                     b.ToTable("BudgetEntries", t =>
                         {
                             t.HasCheckConstraint("CK_Budget_Positive", "[BudgetedAmount] > 0");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AccountNumber = "332.1",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 360m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Federal: Mineral Lease",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 2,
+                            AccountNumber = "333.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 240m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "State: Cigarette Taxes",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 3,
+                            AccountNumber = "334.31",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 18153m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Highways Users",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 4,
+                            AccountNumber = "313.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 1775m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Additional MV",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 5,
+                            AccountNumber = "337.17",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 1460m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "County Road & Bridge",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 6,
+                            AccountNumber = "311.20",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 1500m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Senior Homestead Exemption",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 7,
+                            AccountNumber = "312.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 5100m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Specific Ownership Taxes",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 8,
+                            AccountNumber = "314.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 2500m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Tax A",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 9,
+                            AccountNumber = "319.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 35m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Penalties & Interest on Delinquent Taxes",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 10,
+                            AccountNumber = "336.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 120000m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Sales Tax",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 11,
+                            AccountNumber = "318.20",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 7058m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Franchise Fee",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 12,
+                            AccountNumber = "322.70",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 50m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Animal Licenses",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 13,
+                            AccountNumber = "310.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 6000m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Charges for Services: WSD Collection Fee",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 14,
+                            AccountNumber = "370.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 12000m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Housing Authority Mgt Fee",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 15,
+                            AccountNumber = "373.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 2400m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Pickup Usage Fee",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 16,
+                            AccountNumber = "361.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 325m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Miscellaneous Receipts: Interest Earnings",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 17,
+                            AccountNumber = "365.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 100m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Dividends",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 18,
+                            AccountNumber = "363.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 1100m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Lease",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 19,
+                            AccountNumber = "350.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 10000m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Wiley Hay Days Donations",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
+                        },
+                        new
+                        {
+                            Id = 20,
+                            AccountNumber = "362.00",
+                            ActualAmount = 0m,
+                            BudgetedAmount = 2500m,
+                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DepartmentId = 1,
+                            Description = "Donations",
+                            EncumbranceAmount = 0m,
+                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FiscalYear = 2026,
+                            FundId = 1,
+                            FundType = 1,
+                            IsGASBCompliant = true,
+                            MunicipalAccountId = 0,
+                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Variance = 0m
                         });
                 });
 
@@ -290,6 +837,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal>("MonthlyAmount")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Notes")
@@ -365,7 +913,71 @@ namespace WileyWidget.Data.Migrations
                             StartDate = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Status = 2,
                             Year = 2025
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedDate = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndDate = new DateTime(2026, 12, 31, 23, 59, 59, 0, DateTimeKind.Utc),
+                            IsActive = false,
+                            Name = "2026 Proposed",
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 1,
+                            Year = 2026
                         });
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.Charge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("BillId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ChargeType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int?>("UtilityBillId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BillId");
+
+                    b.HasIndex("ChargeType");
+
+                    b.HasIndex("UtilityBillId");
+
+                    b.ToTable("Charges");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Department", b =>
@@ -397,6 +1009,57 @@ namespace WileyWidget.Data.Migrations
                     b.HasIndex("ParentId");
 
                     b.ToTable("Departments");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            DepartmentCode = "ADMIN",
+                            Name = "Administration"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            DepartmentCode = "DPW",
+                            Name = "Public Works"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            DepartmentCode = "CULT",
+                            Name = "Culture and Recreation"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            DepartmentCode = "SAN",
+                            Name = "Sanitation",
+                            ParentId = 2
+                        },
+                        new
+                        {
+                            Id = 5,
+                            DepartmentCode = "UTIL",
+                            Name = "Utilities"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            DepartmentCode = "COMM",
+                            Name = "Community Center"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            DepartmentCode = "CONS",
+                            Name = "Conservation"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            DepartmentCode = "REC",
+                            Name = "Recreation"
+                        });
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Enterprise", b =>
@@ -408,6 +1071,7 @@ namespace WileyWidget.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("BudgetAmount")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("CitizenCount")
@@ -423,6 +1087,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("CurrentRate")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("DeletedBy")
@@ -445,6 +1110,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal?>("MeterReading")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ModifiedBy")
@@ -454,6 +1120,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("MonthlyExpenses")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
@@ -469,6 +1136,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal?>("PreviousMeterReading")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<byte[]>("RowVersion")
@@ -481,6 +1149,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("TotalBudget")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Type")
@@ -519,6 +1188,50 @@ namespace WileyWidget.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Funds");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            FundCode = "100-GEN",
+                            Name = "General Fund",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            FundCode = "200-ENT",
+                            Name = "Enterprise Fund",
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            FundCode = "300-UTIL",
+                            Name = "Utility Fund",
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = 4,
+                            FundCode = "400-COMM",
+                            Name = "Community Center Fund",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 5,
+                            FundCode = "500-CONS",
+                            Name = "Conservation Trust Fund",
+                            Type = 6
+                        },
+                        new
+                        {
+                            Id = 6,
+                            FundCode = "600-REC",
+                            Name = "Recreation Fund",
+                            Type = 3
+                        });
                 });
 
             modelBuilder.Entity("WileyWidget.Models.FiscalYearSettings", b =>
@@ -558,6 +1271,7 @@ namespace WileyWidget.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("DueDate")
@@ -615,9 +1329,11 @@ namespace WileyWidget.Data.Migrations
                         .HasComputedColumnSql("[AccountNumber]");
 
                     b.Property<decimal>("Balance")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("BudgetAmount")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("BudgetPeriodId")
@@ -659,7 +1375,8 @@ namespace WileyWidget.Data.Migrations
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
+                        .HasColumnType("rowversion")
+                        .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
@@ -1056,6 +1773,239 @@ namespace WileyWidget.Data.Migrations
                             RowVersion = new byte[0],
                             Type = 29,
                             TypeDescription = "Asset"
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            FundDescription = "Conservation Trust Fund",
+                            IsActive = true,
+                            Name = "MISC EXPENSE",
+                            RowVersion = new byte[0],
+                            Type = 24,
+                            TypeDescription = "Asset"
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            FundDescription = "Conservation Trust Fund",
+                            IsActive = true,
+                            Name = "TRAIL MAINTENANCE",
+                            RowVersion = new byte[0],
+                            Type = 24,
+                            TypeDescription = "Asset"
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            FundDescription = "Conservation Trust Fund",
+                            IsActive = true,
+                            Name = "PARK IMPROVEMENTS",
+                            RowVersion = new byte[0],
+                            Type = 29,
+                            TypeDescription = "Asset"
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            FundDescription = "Conservation Trust Fund",
+                            IsActive = true,
+                            Name = "EQUIPMENT PURCHASES",
+                            RowVersion = new byte[0],
+                            Type = 29,
+                            TypeDescription = "Asset"
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            FundDescription = "Conservation Trust Fund",
+                            IsActive = true,
+                            Name = "PROJECTS - SMALL",
+                            RowVersion = new byte[0],
+                            Type = 24,
+                            TypeDescription = "Asset"
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Balance = 0m,
+                            BudgetAmount = 0m,
+                            BudgetPeriodId = 1,
+                            DepartmentId = 1,
+                            Fund = 8,
+                            FundDescription = "Conservation Trust Fund",
+                            IsActive = true,
+                            Name = "RESERVES ALLOCATION",
+                            RowVersion = new byte[0],
+                            Type = 30,
+                            TypeDescription = "Asset"
+                        });
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.TaxRevenueSummary", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("BudgetYearAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("BudgetYearLevy")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CurrentYearAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CurrentYearLevy")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("IncDecAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("IncDecLevy")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("PriorYearAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("PriorYearLevy")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TaxRevenueSummaries");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BudgetYearAmount = 1880448m,
+                            BudgetYearLevy = 1880448m,
+                            CurrentYearAmount = 1072691m,
+                            CurrentYearLevy = 1072691m,
+                            Description = "ASSESSED VALUATION-COUNTY FUND",
+                            IncDecAmount = 807757m,
+                            IncDecLevy = 807757m,
+                            PriorYearAmount = 1069780m,
+                            PriorYearLevy = 1069780m
+                        },
+                        new
+                        {
+                            Id = 2,
+                            BudgetYearAmount = 85692m,
+                            BudgetYearLevy = 45.570m,
+                            CurrentYearAmount = 48883m,
+                            CurrentYearLevy = 45.570m,
+                            Description = "GENERAL",
+                            IncDecAmount = 36809m,
+                            IncDecLevy = 0m,
+                            PriorYearAmount = 48750m,
+                            PriorYearLevy = 45.570m
+                        },
+                        new
+                        {
+                            Id = 3,
+                            BudgetYearAmount = 0m,
+                            BudgetYearLevy = 0m,
+                            CurrentYearAmount = 0m,
+                            CurrentYearLevy = 0m,
+                            Description = "UTILITY",
+                            IncDecAmount = 0m,
+                            IncDecLevy = 0m,
+                            PriorYearAmount = 0m,
+                            PriorYearLevy = 0m
+                        },
+                        new
+                        {
+                            Id = 4,
+                            BudgetYearAmount = 0m,
+                            BudgetYearLevy = 0m,
+                            CurrentYearAmount = 0m,
+                            CurrentYearLevy = 0m,
+                            Description = "COMMUNITY CENTER",
+                            IncDecAmount = 0m,
+                            IncDecLevy = 0m,
+                            PriorYearAmount = 0m,
+                            PriorYearLevy = 0m
+                        },
+                        new
+                        {
+                            Id = 5,
+                            BudgetYearAmount = 0m,
+                            BudgetYearLevy = 0m,
+                            CurrentYearAmount = 0m,
+                            CurrentYearLevy = 0m,
+                            Description = "CONSERVATION TRUST FUND",
+                            IncDecAmount = 0m,
+                            IncDecLevy = 0m,
+                            PriorYearAmount = 0m,
+                            PriorYearLevy = 0m
+                        },
+                        new
+                        {
+                            Id = 6,
+                            BudgetYearAmount = 0m,
+                            BudgetYearLevy = 0m,
+                            CurrentYearAmount = 0m,
+                            CurrentYearLevy = 0m,
+                            Description = "TEMPORARY MILL LEVY CREDIT",
+                            IncDecAmount = 0m,
+                            IncDecLevy = 0m,
+                            PriorYearAmount = 0m,
+                            PriorYearLevy = 0m
+                        },
+                        new
+                        {
+                            Id = 7,
+                            BudgetYearAmount = 85692m,
+                            BudgetYearLevy = 45.570m,
+                            CurrentYearAmount = 48883m,
+                            CurrentYearLevy = 45.570m,
+                            Description = "TOTAL",
+                            IncDecAmount = 36810m,
+                            IncDecLevy = 0m,
+                            PriorYearAmount = 48750m,
+                            PriorYearLevy = 45.570m
                         });
                 });
 
@@ -1068,6 +2018,7 @@ namespace WileyWidget.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("BudgetEntryId")
@@ -1109,6 +2060,124 @@ namespace WileyWidget.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("WileyWidget.Models.UtilityBill", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AmountPaid")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime>("BillDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BillNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CurrentMeterReading")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("GarbageCharges")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("LateFees")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("OtherCharges")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime?>("PaidDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PeriodEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PeriodStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PreviousMeterReading")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
+
+                    b.Property<decimal>("SewerCharges")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("StormwaterCharges")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("WaterCharges")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("WaterUsageGallons")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BillDate");
+
+                    b.HasIndex("BillNumber")
+                        .IsUnique();
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("DueDate");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("UtilityBills");
+                });
+
             modelBuilder.Entity("WileyWidget.Models.UtilityCustomer", b =>
                 {
                     b.Property<int>("Id")
@@ -1143,6 +2212,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("CurrentBalance")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("CustomerType")
@@ -1169,6 +2239,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("LastPaymentAmount")
+                        .HasPrecision(19, 4)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("LastPaymentDate")
@@ -1206,7 +2277,8 @@ namespace WileyWidget.Data.Migrations
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
+                        .HasColumnType("rowversion")
+                        .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
 
                     b.Property<string>("ServiceAddress")
                         .IsRequired()
@@ -1270,6 +2342,29 @@ namespace WileyWidget.Data.Migrations
                     b.HasIndex("Name");
 
                     b.ToTable("Vendor", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ContactInfo = "contact@acmesupplies.example.com",
+                            IsActive = true,
+                            Name = "Acme Supplies"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            ContactInfo = "info@muniservices.example.com",
+                            IsActive = true,
+                            Name = "Municipal Services Co."
+                        },
+                        new
+                        {
+                            Id = 3,
+                            ContactInfo = "projects@trailbuilders.example.com",
+                            IsActive = true,
+                            Name = "Trail Builders LLC"
+                        });
                 });
 
             modelBuilder.Entity("WileyWidget.Models.BudgetEntry", b =>
@@ -1285,10 +2380,11 @@ namespace WileyWidget.Data.Migrations
                         .HasForeignKey("FundId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("WileyWidget.Models.MunicipalAccount", null)
+                    b.HasOne("WileyWidget.Models.MunicipalAccount", "MunicipalAccount")
                         .WithMany("BudgetEntries")
                         .HasForeignKey("MunicipalAccountId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("WileyWidget.Models.BudgetEntry", "Parent")
                         .WithMany("Children")
@@ -1298,6 +2394,8 @@ namespace WileyWidget.Data.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("Fund");
+
+                    b.Navigation("MunicipalAccount");
 
                     b.Navigation("Parent");
                 });
@@ -1323,6 +2421,22 @@ namespace WileyWidget.Data.Migrations
                     b.Navigation("PrimaryEnterprise");
 
                     b.Navigation("SecondaryEnterprise");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.Charge", b =>
+                {
+                    b.HasOne("WileyWidget.Models.UtilityBill", "Bill")
+                        .WithMany()
+                        .HasForeignKey("BillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WileyWidget.Models.UtilityBill", null)
+                        .WithMany("Charges")
+                        .HasForeignKey("UtilityBillId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Bill");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Department", b =>
@@ -1363,7 +2477,7 @@ namespace WileyWidget.Data.Migrations
                         .IsRequired();
 
                     b.HasOne("WileyWidget.Models.Department", "Department")
-                        .WithMany()
+                        .WithMany("MunicipalAccounts")
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1516,6 +2630,36 @@ namespace WileyWidget.Data.Migrations
                                 {
                                     MunicipalAccountId = 25,
                                     Value = "420"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 26,
+                                    Value = "425"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 27,
+                                    Value = "430"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 28,
+                                    Value = "435"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 29,
+                                    Value = "440"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 30,
+                                    Value = "445"
+                                },
+                                new
+                                {
+                                    MunicipalAccountId = 31,
+                                    Value = "450"
                                 });
                         });
 
@@ -1545,6 +2689,17 @@ namespace WileyWidget.Data.Migrations
                     b.Navigation("BudgetEntry");
                 });
 
+            modelBuilder.Entity("WileyWidget.Models.UtilityBill", b =>
+                {
+                    b.HasOne("WileyWidget.Models.UtilityCustomer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+                });
+
             modelBuilder.Entity("WileyWidget.Models.BudgetEntry", b =>
                 {
                     b.Navigation("Children");
@@ -1562,6 +2717,8 @@ namespace WileyWidget.Data.Migrations
                     b.Navigation("BudgetEntries");
 
                     b.Navigation("Children");
+
+                    b.Navigation("MunicipalAccounts");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Enterprise", b =>
@@ -1583,6 +2740,11 @@ namespace WileyWidget.Data.Migrations
                     b.Navigation("Invoices");
 
                     b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.UtilityBill", b =>
+                {
+                    b.Navigation("Charges");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Vendor", b =>

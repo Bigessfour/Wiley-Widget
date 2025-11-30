@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Enable PerMonitorV2 DPI-awareness via manifest and set application DPI mode -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
 
 
@@ -24,16 +27,20 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="appsettings.Development.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
+    <!-- SVG rendering for runtime themable icons -->
+    <PackageReference Include="Svg" />
+    <!-- Syncfusion skin manager (app-wide skins like Fluent) -->
+    <!-- SfSkinManager not required in this project runtime; ThemeManager uses
+    Syncfusion.Windows.Forms.SkinManager for compatibility -->
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
     <PackageReference Include="Syncfusion.Shared.Base" />
     <PackageReference Include="Syncfusion.SfInput.WinForms" />
+    <!-- Syncfusion DockingManager (Dock panels, serialization, MDI, etc) -->
+    <PackageReference Include="Syncfusion.Tools.Windows" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
@@ -76,6 +83,19 @@
     <PackageReference Include="Polly" />
     <PackageReference Include="IppOAuth2PlatformSdk" />
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
+    <PackageReference Include="Syncfusion.Chart.Windows" />
+    <PackageReference Include="System.Windows.Forms.DataVisualization" />
+    <PackageReference Include="System.Data.SqlClient" />
+  </ItemGroup>
+
+  <!-- Copy icon assets into output so ThemeIconService can load them at runtime -->
+  <ItemGroup>
+    <Content Include="Assets\Icons\**\*.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Icons\**\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

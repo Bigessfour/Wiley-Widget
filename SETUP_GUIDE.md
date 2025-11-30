@@ -545,7 +545,8 @@ Get-Service 'MSSQL$SQLEXPRESS' | Select-Object Status, StartType
 **Fix**:
 
 ```powershell
-dotnet ef database update --project src/WileyWidget.Data --startup-project src/WileyWidget.WinUI
+# Use the Data project as the startup project so design-time services load correctly.
+dotnet ef database update --project src/WileyWidget.Data --startup-project src/WileyWidget.Data
 ```
 
 ##### Error: "The model for context 'AppDbContext' has pending changes" (PendingModelChangesWarning)
@@ -558,15 +559,29 @@ dotnet ef database update --project src/WileyWidget.Data --startup-project src/W
 
 ```powershell
 # From repository root — create a new migration capturing your model changes
-dotnet ef migrations add <DescriptiveName> --project src/WileyWidget.Data --startup-project WileyWidget.WinForms
+# NOTE: use the Data project as both the migrations and startup project so EF picks up your design-time factory
+dotnet ef migrations add <DescriptiveName> -p src/WileyWidget.Data -s src/WileyWidget.Data
 
-# Apply the migration locally
-dotnet ef database update --project src/WileyWidget.Data --startup-project WileyWidget.WinForms
+# Apply the migration locally (applies all pending migrations)
+dotnet ef database update -p src/WileyWidget.Data -s src/WileyWidget.Data
 ```
 
 **Temporary local recovery (development only)**
 
-If you just need the UI to run for local debugging and your DB is not available, the app will now automatically fall back to an in-memory database in Development mode. This is not intended for production.
+If you just need the UI to run for local debugging and your DB is not available, the app will now allow an opt-in development-only fallback when a model/snapshot mismatch is detected. To enable this behavior set either of the following on your machine before launching the app:
+
+- DOTNET_ENVIRONMENT=Development (standard .NET env variable) OR
+- WW_IGNORE_PENDING_MODEL_CHANGES=true (explicit override — developer machines only)
+
+This is strictly development-only and should not be used in production. Prefer creating and applying a migration instead.
+
+Also note: the migration helper script supports an override connection string via the EF_MIGRATION_CONNECTION environment variable. Example:
+
+```powershell
+# Use a custom connection for migrations (useful in CI)
+$env:EF_MIGRATION_CONNECTION = 'Server=tcp:your-sql-server;Initial Catalog=WileyWidget;User Id=sa;Password=YourPassword;'
+pwsh ./scripts/maintenance/setup-localdb-and-migrate.ps1
+```
 
 ---
 

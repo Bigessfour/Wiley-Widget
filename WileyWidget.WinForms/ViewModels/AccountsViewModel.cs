@@ -159,10 +159,14 @@ namespace WileyWidget.WinForms.ViewModels
                 // Convert to lightweight display models and cache full collection
                 _allAccounts = accountsList.Select(account => new MunicipalAccountDisplay
                 {
+                    Id = account.Id,
                     AccountNumber = account.AccountNumber?.Value ?? "N/A",
                     AccountName = account.Name,
+                    DepartmentId = account.DepartmentId,
                     DepartmentName = account.Department?.Name ?? "N/A",
+                    Fund = account.Fund,
                     FundType = account.Fund.ToString(),
+                    Type = account.Type,
                     AccountType = account.Type.ToString(),
                     CurrentBalance = account.Balance,
                     BudgetAmount = account.BudgetAmount,
@@ -254,6 +258,124 @@ namespace WileyWidget.WinForms.ViewModels
         partial void OnSelectedAccountTypeChanged(AccountType? value)
         {
             _ = FilterAccountsCommand.ExecuteAsync(null);
+        }
+
+        /// <summary>
+        /// Get a MunicipalAccount entity by ID for editing
+        /// </summary>
+        public async Task<MunicipalAccount?> GetAccountByIdAsync(int id)
+        {
+            try
+            {
+                return await _dbContext.MunicipalAccounts
+                    .Include(a => a.Department)
+                    .Include(a => a.BudgetPeriod)
+                    .FirstOrDefaultAsync(a => a.Id == id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get account by ID {Id}", id);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Get all departments for dropdown selection
+        /// </summary>
+        public async Task<List<Department>> GetDepartmentsAsync()
+        {
+            try
+            {
+                return await _dbContext.Departments.OrderBy(d => d.Name).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load departments");
+                return new List<Department>();
+            }
+        }
+
+        /// <summary>
+        /// Get active budget period
+        /// </summary>
+        public async Task<BudgetPeriod?> GetActiveBudgetPeriodAsync()
+        {
+            try
+            {
+                return await _dbContext.BudgetPeriods
+                    .Where(bp => bp.IsActive)
+                    .FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get active budget period");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Create a new account
+        /// </summary>
+        public async Task<bool> CreateAccountAsync(MunicipalAccount account)
+        {
+            if (account == null) throw new ArgumentNullException(nameof(account));
+            try
+            {
+                _dbContext.MunicipalAccounts.Add(account);
+                await _dbContext.SaveChangesAsync();
+                _logger.LogInformation("Created account {AccountNumber}", account.AccountNumber?.Value);
+                await LoadAccountsAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create account");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Update an existing account
+        /// </summary>
+        public async Task<bool> UpdateAccountAsync(MunicipalAccount account)
+        {
+            if (account == null) throw new ArgumentNullException(nameof(account));
+            try
+            {
+                _dbContext.MunicipalAccounts.Update(account);
+                await _dbContext.SaveChangesAsync();
+                _logger.LogInformation("Updated account {AccountNumber}", account.AccountNumber?.Value);
+                await LoadAccountsAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update account {Id}", account.Id);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Delete an account (soft delete - sets IsActive to false)
+        /// </summary>
+        public async Task<bool> DeleteAccountAsync(int id)
+        {
+            try
+            {
+                var account = await _dbContext.MunicipalAccounts.FindAsync(id);
+                if (account == null) return false;
+
+                account.IsActive = false;
+                await _dbContext.SaveChangesAsync();
+                _logger.LogInformation("Deleted (deactivated) account {Id}", id);
+                await LoadAccountsAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete account {Id}", id);
+                return false;
+            }
         }
     }
 

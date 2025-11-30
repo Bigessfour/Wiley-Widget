@@ -461,6 +461,28 @@
           "Serilog": "4.2.0"
         }
       },
+      "Svg": {
+        "type": "Direct",
+        "requested": "[3.4.7, )",
+        "resolved": "3.4.7",
+        "contentHash": "Omez7ly5BGhg3OzdV+LHZ5sI0+JQ6hF7WVKUeyHw4jRvcEWNCPCf1MWMBaf+R0DRBSZHx5EUHwBTEF+2oYtsAw==",
+        "dependencies": {
+          "ExCSS": "4.2.3",
+          "System.Drawing.Common": "5.0.3"
+        }
+      },
+      "Syncfusion.Chart.Windows": {
+        "type": "Direct",
+        "requested": "[31.2.15, )",
+        "resolved": "31.2.15",
+        "contentHash": "tDXzzESpDGtBXgSFEMa9hsYDSXwvrQKrc27dkmx352WTwC/S/VzKpQ5cftVg3LQJuw8dBzxXMEBVCg8+i37Khw==",
+        "dependencies": {
+          "Syncfusion.Chart.Base": "31.2.15",
+          "Syncfusion.Grouping.Base": "31.2.15",
+          "Syncfusion.Licensing": "31.2.15",
+          "Syncfusion.Shared.Base": "31.2.15"
+        }
+      },
       "Syncfusion.SfDataGrid.WinForms": {
         "type": "Direct",
         "requested": "[31.2.15, )",
@@ -498,6 +520,30 @@
           "Syncfusion.Licensing": "31.2.15"
         }
       },
+      "Syncfusion.Tools.Windows": {
+        "type": "Direct",
+        "requested": "[31.2.15, )",
+        "resolved": "31.2.15",
+        "contentHash": "9NiQ7FmfnOLCn2Ql2jZaNaXZWkd0YJ/N5202rmieykxibWMkfoRERvy393czrjlUxnzSWzexMHYamz4siwwZXw==",
+        "dependencies": {
+          "Microsoft.WinForms.Designer.SDK": "1.6.0",
+          "Syncfusion.Grid.Windows": "31.2.15",
+          "Syncfusion.Licensing": "31.2.15",
+          "Syncfusion.Shared.Base": "31.2.15",
+          "Syncfusion.Shared.Windows": "31.2.15",
+          "Syncfusion.SpellChecker.Base": "31.2.15",
+          "Syncfusion.Tools.Base": "31.2.15"
+        }
+      },
+      "System.Data.SqlClient": {
+        "type": "Direct",
+        "requested": "[4.9.0, )",
+        "resolved": "4.9.0",
+        "contentHash": "j4KJO+vC62NyUtNHz854njEqXbT8OmAa5jb1nrGfYWBOcggyYUQE0w/snXeaCjdvkSKWuUD+hfvlbN8pTrJTXg==",
+        "dependencies": {
+          "runtime.native.System.Data.SqlClient.sni": "4.4.0"
+        }
+      },
       "System.Management": {
         "type": "Direct",
         "requested": "[10.0.0, )",
@@ -506,6 +552,12 @@
         "dependencies": {
           "System.CodeDom": "10.0.0"
         }
+      },
+      "System.Windows.Forms.DataVisualization": {
+        "type": "Direct",
+        "requested": "[1.0.0-prerelease.20110.1, )",
+        "resolved": "1.0.0-prerelease.20110.1",
+        "contentHash": "1EdLFl/I5QobO4shpqUNslDGWTeRbpt3pLMSkiLQYzdWBDqf44/8TM5hXMtkA8ktHU80aVZYVEuxr8vJqcB1Ig=="
       },
       "Azure.Core": {
         "type": "Transitive",
@@ -553,6 +605,11 @@
         "type": "Transitive",
         "resolved": "1.1.0",
         "contentHash": "R3BVHPs9O+RkExbZYTGT0+9HLbi8ZrNij1Yziyw6znd3J7P3uoIR07uwTLGOogtz1p6+0sna66eBoXu7tBiVQA=="
+      },
+      "ExCSS": {
+        "type": "Transitive",
+        "resolved": "4.2.3",
+        "contentHash": "SyeAfu2wL5247sipJoPUzQfjiwQtfSd8hN4IbgoyVcDx4PP6Dud4znwPRibWQzLtTlUxYYcbf5f4p+EfFC7KtQ=="
       },
       "Google.Protobuf": {
         "type": "Transitive",
@@ -1169,6 +1226,16 @@
           "Microsoft.NETCore.Targets": "1.1.0"
         }
       },
+      "runtime.native.System.Data.SqlClient.sni": {
+        "type": "Transitive",
+        "resolved": "4.4.0",
+        "contentHash": "A8v6PGmk+UGbfWo5Ixup0lPM4swuSwOiayJExZwKIOjTlFFQIsu3QnDXECosBEyrWSPryxBVrdqtJyhK3BaupQ==",
+        "dependencies": {
+          "runtime.win-arm64.runtime.native.System.Data.SqlClient.sni": "4.4.0",
+          "runtime.win-x64.runtime.native.System.Data.SqlClient.sni": "4.4.0",
+          "runtime.win-x86.runtime.native.System.Data.SqlClient.sni": "4.4.0"
+        }
+      },
       "runtime.native.System.IO.Compression": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -1270,6 +1337,21 @@
         "resolved": "4.3.2",
         "contentHash": "leXiwfiIkW7Gmn7cgnNcdtNAU70SjmKW3jxGj1iKHOvdn0zRWsgv/l2OJUO5zdGdiv2VRFnAsxxhDgMzofPdWg=="
       },
+      "runtime.win-arm64.runtime.native.System.Data.SqlClient.sni": {
+        "type": "Transitive",
+        "resolved": "4.4.0",
+        "contentHash": "LbrynESTp3bm5O/+jGL8v0Qg5SJlTV08lpIpFesXjF6uGNMWqFnUQbYBJwZTeua6E/Y7FIM1C54Ey1btLWupdg=="
+      },
+      "runtime.win-x64.runtime.native.System.Data.SqlClient.sni": {
+        "type": "Transitive",
+        "resolved": "4.4.0",
+        "contentHash": "38ugOfkYJqJoX9g6EYRlZB5U2ZJH51UP8ptxZgdpS07FgOEToV+lS11ouNK2PM12Pr6X/PpT5jK82G3DwH/SxQ=="
+      },
+      "runtime.win-x86.runtime.native.System.Data.SqlClient.sni": {
+        "type": "Transitive",
+        "resolved": "4.4.0",
+        "contentHash": "YhEdSQUsTx+C8m8Bw7ar5/VesXvCFMItyZF7G1AUY+OM0VPZUOeAVpJ4Wl6fydBGUYZxojTDR3I6Bj/+BPkJNA=="
+      },
       "Serilog.Sinks.AzureDocumentDB": {
         "type": "Transitive",
         "resolved": "4.0.0",
@@ -1344,6 +1426,15 @@
           "System.Text.RegularExpressions": "4.3.0"
         }
       },
+      "Syncfusion.Chart.Base": {
+        "type": "Transitive",
+        "resolved": "31.2.15",
+        "contentHash": "ir1lal006YsMFf9EBDJI5x78MzCcKyXmpcX4XGiwBlpDhu/33z0Dur8rb4ib/zPacFvI76KJeDsREqqhg4A4Tw==",
+        "dependencies": {
+          "Syncfusion.Licensing": "31.2.15",
+          "Syncfusion.Shared.Base": "31.2.15"
+        }
+      },
       "Syncfusion.Compression.Base": {
         "type": "Transitive",
         "resolved": "31.2.15",
@@ -1374,6 +1465,15 @@
         "resolved": "31.2.15",
         "contentHash": "J6nW1xwZUQwEnJs4zxzi/wqoyzH7X+xW69lZytuckg+oBuwdNWYUFNBxVkZs3pZgLqdCVAZ0tz6+tXPOqO4UVg=="
       },
+      "Syncfusion.Grouping.Base": {
+        "type": "Transitive",
+        "resolved": "31.2.15",
+        "contentHash": "FH2OlI2nTpvkmheR+vmioMGfYAODPouQHIGhBPbccLpu642ZFKOEZGno5kAUNggNsZLTvRKfair9vebW+friEw==",
+        "dependencies": {
+          "Syncfusion.Licensing": "31.2.15",
+          "Syncfusion.Shared.Base": "31.2.15"
+        }
+      },
       "Syncfusion.SfListView.WinForms": {
         "type": "Transitive",
         "resolved": "31.2.15",
@@ -1382,6 +1482,32 @@
           "Syncfusion.Core.WinForms": "31.2.15",
           "Syncfusion.DataSource.WinForms": "31.2.15",
           "Syncfusion.GridCommon.WinForms": "31.2.15",
+          "Syncfusion.Licensing": "31.2.15",
+          "Syncfusion.Shared.Base": "31.2.15"
+        }
+      },
+      "Syncfusion.Shared.Windows": {
+        "type": "Transitive",
+        "resolved": "31.2.15",
+        "contentHash": "6IR5HlHJEloO/5krAyTkV8UCj7FJ6fjM87zI1xocAe8xQJLWk/OTmrwLP5MfyxfAa7z0yjErEarIJA7qnDIIuw==",
+        "dependencies": {
+          "Syncfusion.Licensing": "31.2.15",
+          "Syncfusion.Shared.Base": "31.2.15"
+        }
+      },
+      "Syncfusion.SpellChecker.Base": {
+        "type": "Transitive",
+        "resolved": "31.2.15",
+        "contentHash": "fHho9169aiMf5V4z+fw4vIOxWWIO/cr28I6IkGjixVMOEmmVg3pG+9OX8ZgWaGGUZoteSJYDpCKxOajQYGg3fQ==",
+        "dependencies": {
+          "Syncfusion.Licensing": "31.2.15"
+        }
+      },
+      "Syncfusion.Tools.Base": {
+        "type": "Transitive",
+        "resolved": "31.2.15",
+        "contentHash": "bRTrhAON2DdK699SA6MVj2TNb4zGGBhyoVVXMyeVU9jiZ32GWPYE6MbTsP7Ij8a9rn+xggtPNh71EC3vmCW7eA==",
+        "dependencies": {
           "Syncfusion.Licensing": "31.2.15",
           "Syncfusion.Shared.Base": "31.2.15"
         }
@@ -2848,6 +2974,18 @@
         "contentHash": "Y6g3OBJ4JzTyyw16fDqtFcQ41qQAydnEvEqmXjhwhgjsnG/FaJ8GUqF5ldsC/bVkK8KYmqrPhDO+tm4dF6xx4A==",
         "dependencies": {
           "Serilog": "2.10.0"
+        }
+      },
+      "Syncfusion.Grid.Windows": {
+        "type": "CentralTransitive",
+        "requested": "[31.2.15, )",
+        "resolved": "31.2.15",
+        "contentHash": "9d7mvfMS3evHEbeLIkCQAiaRzPE58DGhivUMzC2wl78FziGGdTksQ2TnGkPEZoTOVQKG+CDsc0guHqlHjJyksA==",
+        "dependencies": {
+          "Microsoft.WinForms.Designer.SDK": "1.6.0",
+          "Syncfusion.Licensing": "31.2.15",
+          "Syncfusion.Shared.Base": "31.2.15",
+          "Syncfusion.Shared.Windows": "31.2.15"
         }
       },
       "Syncfusion.Licensing": {

@@ -1,0 +1,43 @@
+{
+  "columns": {
+    "Status": {
+      "Draft": 0,
+      "Proposed": 1,
+      "Adopted": 2,
+      "Executed": 3
+    },
+    "FundClass": {
+      "Governmental": 0,
+      "Proprietary": 1,
+      "Fiduciary": 2,
+      "Memo": 3
+    },
+    "Fund": {
+      "General": 0,
+      "SpecialRevenue": 1,
+      "CapitalProjects": 2,
+      "DebtService": 3,
+      "Enterprise": 4,
+      "InternalService": 5,
+      "Trust": 6,
+      "Agency": 7,
+      "ConservationTrust": 8,
+      "Recreation": 9,
+      "Utility": 10,
+      "Water": 11,
+      "Sewer": 12,
+      "Trash": 13,
+      "Proprietary": 4,
+      "Grant": 1,
+      "Highway": 1
+    },
+    "Type": {
+      "Expenditure": 1,
+      "Expense": 1,
+      "Revenue": 0,
+      "Income": 0,
+      "Cash": 0,
+      "Unknown": 31
+    }
+  }
+}

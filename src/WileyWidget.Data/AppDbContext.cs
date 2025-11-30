@@ -45,6 +45,10 @@ namespace WileyWidget.Data
         public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
         public DbSet<TaxRevenueSummary> TaxRevenueSummaries { get; set; } = null!;
 
+        // Chart of Accounts entities (aligned with seed_chart_of_accounts.sql)
+        public DbSet<AccountTypeEntity> AccountTypes { get; set; } = null!;
+        public DbSet<ChartOfAccountEntry> ChartOfAccounts { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             if (modelBuilder is null)
@@ -104,7 +108,7 @@ namespace WileyWidget.Data
                 entity.Property(e => e.AccountNumber_Value)
                       .HasComputedColumnSql("[AccountNumber]");
                 entity.HasOne(e => e.Department)
-                      .WithMany()
+                      .WithMany(d => d.MunicipalAccounts)
                       .HasForeignKey(e => e.DepartmentId)
                       .OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(e => e.BudgetPeriod)
@@ -129,10 +133,50 @@ namespace WileyWidget.Data
             // Fund relations
             modelBuilder.Entity<Fund>(entity =>
             {
+                entity.HasIndex(e => e.FundCode).IsUnique();
+                entity.Property(e => e.FundCode).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(500);
                 entity.HasMany(f => f.BudgetEntries)
                       .WithOne(be => be.Fund)
                       .HasForeignKey(be => be.FundId)
                       .OnDelete(DeleteBehavior.SetNull);
+                entity.HasMany(f => f.ChartOfAccounts)
+                      .WithOne(coa => coa.Fund)
+                      .HasForeignKey(coa => coa.FundId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // AccountTypeEntity configuration (for Chart of Accounts)
+            modelBuilder.Entity<AccountTypeEntity>(entity =>
+            {
+                entity.ToTable("AccountTypes");
+                entity.HasIndex(e => e.TypeName).IsUnique();
+                entity.Property(e => e.TypeName).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(255);
+            });
+
+            // ChartOfAccountEntry configuration
+            modelBuilder.Entity<ChartOfAccountEntry>(entity =>
+            {
+                entity.ToTable("ChartOfAccounts");
+                entity.HasIndex(e => new { e.AccountNumber, e.FundId }).IsUnique();
+                entity.Property(e => e.AccountNumber).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.AccountName).HasMaxLength(255).IsRequired();
+                entity.HasOne(e => e.Fund)
+                      .WithMany(f => f.ChartOfAccounts)
+                      .HasForeignKey(e => e.FundId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.AccountType)
+                      .WithMany(at => at.ChartOfAccounts)
+                      .HasForeignKey(e => e.AccountTypeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ParentAccount)
+                      .WithMany(e => e.ChildAccounts)
+                      .HasForeignKey(e => e.ParentAccountId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(e => e.ParentAccountId);
+                entity.HasIndex(e => e.AccountTypeId);
             });
 
             // New: Transaction
@@ -315,14 +359,49 @@ namespace WileyWidget.Data
                 new Department { Id = 8, Name = "Recreation", DepartmentCode = "REC" }
             );
 
-            // Seed: Funds (lookup)
+            // Seed: Funds (aligned with seed_chart_of_accounts.sql)
             modelBuilder.Entity<Fund>().HasData(
-                new Fund { Id = 1, FundCode = "100-GEN", Name = "General Fund", Type = FundType.GeneralFund },
-                new Fund { Id = 2, FundCode = "200-ENT", Name = "Enterprise Fund", Type = FundType.EnterpriseFund },
-                new Fund { Id = 3, FundCode = "300-UTIL", Name = "Utility Fund", Type = FundType.EnterpriseFund },
-                new Fund { Id = 4, FundCode = "400-COMM", Name = "Community Center Fund", Type = FundType.SpecialRevenue },
-                new Fund { Id = 5, FundCode = "500-CONS", Name = "Conservation Trust Fund", Type = FundType.PermanentFund },
-                new Fund { Id = 6, FundCode = "600-REC", Name = "Recreation Fund", Type = FundType.SpecialRevenue }
+                new Fund { Id = 1, FundCode = "TOWN-GENERAL", Name = "Town General Fund", Description = "Town of Wiley General Operating Fund", Type = FundType.GeneralFund, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new Fund { Id = 2, FundCode = "WILEY-REC", Name = "Wiley Rec", Description = "Wiley Recreation Fund", Type = FundType.SpecialRevenue, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new Fund { Id = 3, FundCode = "CONSERV-TRUST", Name = "Conservation Trust Fund", Description = "Conservation Trust Fund", Type = FundType.PermanentFund, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new Fund { Id = 4, FundCode = "WSD-GENERAL", Name = "WSD General", Description = "Wiley Sanitation District - General Fund", Type = FundType.EnterpriseFund, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new Fund { Id = 5, FundCode = "WILEY-CC", Name = "Wiley Community Center", Description = "Wiley Community Center Fund", Type = FundType.SpecialRevenue, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new Fund { Id = 6, FundCode = "WHA-BROOKSIDE", Name = "WHA Brookside", Description = "Wiley Housing Authority - Brookside", Type = FundType.EnterpriseFund, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) }
+            );
+
+            // Seed: AccountTypes (aligned with seed_chart_of_accounts.sql)
+            modelBuilder.Entity<AccountTypeEntity>().HasData(
+                new AccountTypeEntity { Id = 1, TypeName = "Income", Description = "Revenue and income accounts", IsDebit = false, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 2, TypeName = "Expense", Description = "Expenditure and expense accounts", IsDebit = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 3, TypeName = "Asset", Description = "Asset accounts", IsDebit = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 4, TypeName = "Liability", Description = "Liability accounts", IsDebit = false, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 5, TypeName = "Equity", Description = "Equity and fund balance accounts", IsDebit = false, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 6, TypeName = "Cost of Goods Sold", Description = "Cost of goods sold accounts", IsDebit = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 7, TypeName = "Bank", Description = "Bank and cash accounts", IsDebit = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 8, TypeName = "Accounts Receivable", Description = "Accounts receivable", IsDebit = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 9, TypeName = "Other Current Asset", Description = "Other current assets", IsDebit = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 10, TypeName = "Fixed Asset", Description = "Fixed assets", IsDebit = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 11, TypeName = "Other Asset", Description = "Other assets", IsDebit = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 12, TypeName = "Accounts Payable", Description = "Accounts payable", IsDebit = false, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 13, TypeName = "Credit Card", Description = "Credit card accounts", IsDebit = false, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 14, TypeName = "Other Current Liability", Description = "Other current liabilities", IsDebit = false, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new AccountTypeEntity { Id = 15, TypeName = "Long Term Liability", Description = "Long term liabilities", IsDebit = false, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) }
+            );
+
+            // Seed: Sample ChartOfAccounts entries (Town General Fund - key accounts)
+            modelBuilder.Entity<ChartOfAccountEntry>().HasData(
+                // Income accounts
+                new ChartOfAccountEntry { Id = 1, AccountNumber = "300", AccountName = "GENERAL REVENUES", FundId = 1, AccountTypeId = 1, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new ChartOfAccountEntry { Id = 2, AccountNumber = "301", AccountName = "PROPERTY TAX", FundId = 1, AccountTypeId = 1, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new ChartOfAccountEntry { Id = 3, AccountNumber = "304", AccountName = "SALES TAX", FundId = 1, AccountTypeId = 1, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new ChartOfAccountEntry { Id = 4, AccountNumber = "315", AccountName = "INTEREST REVENUE", FundId = 1, AccountTypeId = 1, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new ChartOfAccountEntry { Id = 5, AccountNumber = "320", AccountName = "MISCELLANEOUS", FundId = 1, AccountTypeId = 1, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                // Expense accounts
+                new ChartOfAccountEntry { Id = 6, AccountNumber = "400", AccountName = "ADMINISTRATION", FundId = 1, AccountTypeId = 2, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new ChartOfAccountEntry { Id = 7, AccountNumber = "401", AccountName = "SALARIES EMPLOYEES", FundId = 1, AccountTypeId = 2, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new ChartOfAccountEntry { Id = 8, AccountNumber = "405", AccountName = "INSURANCE", FundId = 1, AccountTypeId = 2, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new ChartOfAccountEntry { Id = 9, AccountNumber = "422", AccountName = "UTILITIES", FundId = 1, AccountTypeId = 2, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new ChartOfAccountEntry { Id = 10, AccountNumber = "495", AccountName = "CAPITAL OUTLAY", FundId = 1, AccountTypeId = 2, IsActive = true, CreatedAt = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc) }
             );
 
             // Seed: A few common vendors to make invoices and testing easier

@@ -1,4 +1,5 @@
 using System;
+using System.Windows.Forms;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,11 +19,11 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main()
         {
-            // Build configuration — read appsettings + environment
+            // Build configuration — use single production-style appsettings.json (no env-specific files)
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production"}.json", optional: true)
+                // NOTE: Environment-specific appsettings are intentionally disabled — app runs in production-like mode only
                 .AddEnvironmentVariables()
                 .Build();
 
@@ -42,7 +43,17 @@ namespace WileyWidget.WinForms
             try
             {
                 Log.Information("=== Wiley Widget WinForms Starting ===");
-                Log.Information("Environment: {Environment}", Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production");
+                Log.Information("Enforcing production-only configuration (environment detection disabled).");
+
+                // Ensure process uses PerMonitorV2 DPI mode (explicit runtime call in addition to manifest)
+                try
+                {
+                    Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+                }
+                catch
+                {
+                    // OS/.NET version might not support PerMonitorV2 - swallow and continue
+                }
 
                 ApplicationConfiguration.Initialize();
 
@@ -149,7 +160,7 @@ namespace WileyWidget.WinForms
                 {
                     using var scope = Services.CreateScope();
                     var db = scope.ServiceProvider.GetService(typeof(AppDbContext)) as AppDbContext;
-                    var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+                    // Production-only behavior: require DB connectivity and migrations to succeed.
 
                     if (db != null)
                     {
@@ -169,34 +180,9 @@ namespace WileyWidget.WinForms
 
                         if (!canConnect)
                         {
-                            Log.Warning("Cannot connect to the configured DB for '{Env}'. Will skip automatic migrations.", environment);
-
-                            // In Development allow a deterministic fallback to an in-memory DB so the UI can still start
-                            if (environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
-                            {
-                                Log.Information("Development environment detected — switching AppDbContext to in-memory fallback to allow UI startup.");
-
-                                // Dispose the current provider and rebuild services with in-memory DB
-                                if (Services is IDisposable d) d.Dispose();
-                                Services = DependencyInjection.ConfigureServices(configuration, forceInMemory: true);
-
-                                using var fallbackScope = Services.CreateScope();
-                                var fallbackDb = fallbackScope.ServiceProvider.GetService(typeof(AppDbContext)) as AppDbContext;
-                                if (fallbackDb != null)
-                                {
-                                    if (!fallbackDb.MunicipalAccounts.Any())
-                                    {
-                                        Log.Information("Seeding demo data into in-memory fallback DB.");
-                                        DemoDataSeeder.SeedDemoData(fallbackDb);
-                                    }
-                                }
-
-                                Log.Information("Using in-memory DB fallback; continuing startup.");
-                            }
-                            else
-                            {
-                                Log.Error("Unable to connect to DB in non-development environment. Please verify connectivity / credentials.");
-                            }
+                            // Fail-fast in all modes — DB connectivity is required for production-like behavior
+                            Log.Error("Unable to connect to the configured database. Application will stop — verify connectivity and credentials.");
+                            throw new InvalidOperationException("Cannot connect to configured database — aborting startup.");
                         }
                         else
                         {
@@ -208,7 +194,8 @@ namespace WileyWidget.WinForms
 
                                 if (!db.MunicipalAccounts.Any())
                                 {
-                                    Log.Warning("Database appears empty — seeding demo data for development/testing.");
+                                    // Seed demo data only when the real DB is empty (useful for new deployments/tests)
+                                    Log.Information("Database is empty — seeding initial demo data.");
                                     DemoDataSeeder.SeedDemoData(db);
                                 }
 
@@ -216,23 +203,28 @@ namespace WileyWidget.WinForms
                             }
                             catch (InvalidOperationException invEx) when ((invEx.Message != null && invEx.Message.IndexOf("PendingModelChangesWarning", StringComparison.OrdinalIgnoreCase) >= 0) || invEx.Message?.IndexOf("pending changes", StringComparison.OrdinalIgnoreCase) >= 0)
                             {
-                                // Clear guidance for contributors and allow dev fallback.
+                                // Detected a model/snapshot mismatch. By default this is fatal so production fails fast and we don't
+                                // attempt dangerous automatic schema changes at runtime. For development machines we provide an
+                                // opt-in escape hatch so contributors can run the UI even when new migrations haven't been applied.
                                 Log.Error(invEx, "Detected model snapshot mismatch (pending EF model changes) — automatic migration cannot be applied at runtime.");
                                 Log.Information("If you changed the EF model, create a migration and apply it instead of modifying the database at runtime. Example (from repo root):\n  dotnet ef migrations add <Name> -p src/WileyWidget.Data -s WileyWidget.WinForms\n  dotnet ef database update -p src/WileyWidget.Data -s WileyWidget.WinForms");
 
-                                if (environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    // Fall back to in-memory so UI still works for dev/debug
-                                    Log.Information("Falling back to in-memory DB for Development environment so the app can continue.");
-                                    if (Services is IDisposable d2) d2.Dispose();
-                                    Services = DependencyInjection.ConfigureServices(configuration, forceInMemory: true);
+                                // Allow non-fatal behaviour when a developer intentionally opts-in via environment variable
+                                // or when DOTNET_ENVIRONMENT=Development. This keeps production safe while improving local DX.
+                                var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+                                var allowDevFallback = false;
+                                if (!string.IsNullOrWhiteSpace(env) && env.Equals("Development", StringComparison.OrdinalIgnoreCase)) allowDevFallback = true;
+                                // Explicit override env var — safe to use on developer machines or CI test nodes.
+                                if (Environment.GetEnvironmentVariable("WW_IGNORE_PENDING_MODEL_CHANGES")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true) allowDevFallback = true;
 
-                                    using var fallbackScope = Services.CreateScope();
-                                    var fallbackDb = fallbackScope.ServiceProvider.GetService(typeof(AppDbContext)) as AppDbContext;
-                                    if (fallbackDb != null && !fallbackDb.MunicipalAccounts.Any())
-                                    {
-                                        DemoDataSeeder.SeedDemoData(fallbackDb);
-                                    }
+                                if (allowDevFallback)
+                                {
+                                    Log.Warning("Running in Development/override mode — skipping runtime migration error and continuing startup. THIS IS DEVELOPMENT-ONLY behaviour.");
+                                }
+                                else
+                                {
+                                    // Production-only: do not fall back to in-memory DB. Let the exception bubble so startup fails predictably.
+                                    throw;
                                 }
                             }
                             catch (Exception ex)
@@ -250,6 +242,20 @@ namespace WileyWidget.WinForms
                 catch (Exception ex)
                 {
                     Log.Error(ex, "Database initialization failed. Application will continue if possible.");
+                }
+
+                // Initialize theme system earlier so Syncfusion skins and icon preloads can run before UI creation
+                try
+                {
+                    WileyWidget.WinForms.Theming.ThemeManager.Initialize();
+
+                    // Attempt to preload a small set of frequently used icons so theme-aware caching is warmed.
+                    var iconService = Services.GetService(typeof(WileyWidget.WinForms.Services.IThemeIconService)) as WileyWidget.WinForms.Services.IThemeIconService;
+                    iconService?.Preload(new string[] { "add", "edit", "delete", "save", "dismiss", "home", "settings", "search", "refresh", "play", "share", "question" }, WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme, 24);
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogDebug(ex, "Non-fatal: theme initialization / icon preloading failed at startup.");
                 }
 
                 // Launch main form

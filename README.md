@@ -319,6 +319,25 @@ All Views and ViewModels follow consistent namespace patterns:
 The application will:
 
 - Initialize the local SQL Server Express database (WileyWidgetDev)
+## ⚠️ Production-only configuration (development fallbacks removed)
+
+This repository enforces a single production-like configuration at runtime. The application no longer auto-detects DOTNET_ENVIRONMENT or fall back to an in-memory database when SQL connectivity fails. Startup will fail fast if a valid SQL Server connection cannot be established.
+
+Why this was changed:
+- Keeps behavior consistent across environments and avoids silent differences between development and production.
+- Simplifies configuration to a single `appsettings.json` file.
+
+How to run locally:
+- Ensure you have an operational SQL Server (LocalDB or a reachable SQL Server instance) and update `WileyWidget.WinForms/appsettings.json` with the appropriate `WileyWidgetDb` connection string.
+- A helper script is provided to create/start LocalDB and apply EF migrations:
+
+```powershell
+# Ensure LocalDB is present and migrations applied
+pwsh ./scripts/maintenance/setup-localdb-and-migrate.ps1
+```
+
+If you prefer an empty DB and want demo data, the app will seed demo data only when the configured database is empty after migrations are successfully applied.
+
 - Load default themes and settings
 - Display the main dashboard with budget management interface
 
@@ -1097,6 +1116,12 @@ WileyWidget/
 ---
 
 ### Testing Strategy by Layer
+
+> Note: Integration tests that require a live SQL Server (Database.SqlExpress tests) will skip automatically when no connection string is present. To run those tests locally, set TEST_SQL_CONNECTIONSTRING or run the helper script to create LocalDB and apply migrations:
+
+```powershell
+pwsh ./scripts/maintenance/setup-localdb-and-migrate.ps1
+```
 
 **Official Methodology**: Two-Phase Hybrid Approach (Effective: November 8, 2025)
 

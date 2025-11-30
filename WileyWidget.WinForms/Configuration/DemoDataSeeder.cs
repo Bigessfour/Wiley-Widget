@@ -12,7 +12,20 @@ namespace WileyWidget.WinForms.Configuration
             if (dbContext == null) throw new ArgumentNullException(nameof(dbContext));
 
             // If the database already has data, do nothing.
-            if (dbContext.MunicipalAccounts.Any()) return;
+            if (dbContext.MunicipalAccounts.Any())
+            {
+                return;
+            }
+
+            // Log that we're seeding demo data into the configured database.
+            try
+            {
+                Serilog.Log.Information("Seeding initial demo data into configured database.");
+            }
+            catch
+            {
+                // Best-effort logging — don't let logging failures break seeding
+            }
 
             var now = DateTime.UtcNow;
 

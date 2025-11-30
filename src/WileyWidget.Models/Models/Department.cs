@@ -22,6 +22,12 @@ public class Department
     public ICollection<Department> Children { get; set; } = new List<Department>();
 
     public ICollection<BudgetEntry> BudgetEntries { get; set; } = new List<BudgetEntry>();
+
+    /// <summary>
+    /// Municipal accounts belonging to this department
+    /// </summary>
+    public ICollection<MunicipalAccount> MunicipalAccounts { get; set; } = new List<MunicipalAccount>();
+
     // New: Department code for Excel mapping
     [MaxLength(20)]
     public string? DepartmentCode { get; set; } // e.g., "DPW" for Public Works

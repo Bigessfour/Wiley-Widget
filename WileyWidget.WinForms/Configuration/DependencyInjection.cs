@@ -22,8 +22,7 @@ namespace WileyWidget.WinForms.Configuration
         /// Configure application services.
         /// </summary>
         /// <param name="configuration">Configuration instance</param>
-        /// <param name="forceInMemory">When true the AppDbContext will be configured with an in-memory provider instead of SQL Server. Use for developer fallback scenarios.</param>
-        public static IServiceProvider ConfigureServices(IConfiguration configuration, bool forceInMemory = false)
+        public static IServiceProvider ConfigureServices(IConfiguration configuration)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
@@ -39,16 +38,9 @@ namespace WileyWidget.WinForms.Configuration
                 builder.AddSerilog(dispose: true);
             });
 
-            // Database registration: prefer configured connection string, fallback to in-memory
+            // Database registration: require configured connection string (production-only)
             var connectionString = configuration.GetConnectionString("WileyWidgetDb");
-
-            if (forceInMemory)
-            {
-                Log.Warning("DependencyInjection configured to use InMemory DB via forceInMemory flag.");
-                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("WileyWidget_InMemory"));
-                services.AddDbContextFactory<AppDbContext>(options => options.UseInMemoryDatabase("WileyWidget_InMemory"));
-            }
-            else if (!string.IsNullOrWhiteSpace(connectionString))
+            if (!string.IsNullOrWhiteSpace(connectionString))
             {
                 services.AddDbContext<AppDbContext>(options =>
                 {
@@ -86,15 +78,16 @@ namespace WileyWidget.WinForms.Configuration
             }
             else
             {
-                // Fallback for developer machines without SQL Server
-                Log.Warning("No connection string 'WileyWidgetDb' found in configuration — using in-memory database for WinForms startup (DEV only). ");
-                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("WileyWidget_InMemory"));
-                services.AddDbContextFactory<AppDbContext>(options => options.UseInMemoryDatabase("WileyWidget_InMemory"));
+                // Enforce production-only behavior — require a valid connection string
+                Log.Fatal("Missing or empty connection string 'WileyWidgetDb'. Application requires a SQL Server connection and will not start without one.");
+                throw new InvalidOperationException("Missing connection string 'WileyWidgetDb' in configuration. Add a valid SQL Server connection string to appsettings.json.");
             }
 
             // Core Services
             services.AddSingleton<ISettingsService, SettingsService>();
             services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
+            // Theme / Icon service for runtime icon lookups
+            services.AddSingleton<WileyWidget.WinForms.Services.IThemeIconService, WileyWidget.WinForms.Services.ThemeIconService>();
             services.AddSingleton<HealthCheckService>();
 
             // Telemetry & diagnostics
