@@ -4,10 +4,10 @@ Wiley Widget Manifest Generator v3.14 Lite
 Fast, minimal manifest with only fetch URLs and git info.
 Converted/validated for Python 3.14 — Tagged: v3.14
 """
-from pathlib import Path
-from datetime import datetime, timedelta
 import json
 import subprocess
+from datetime import datetime, timedelta
+from pathlib import Path
 
 
 def git(cmd):
@@ -57,7 +57,7 @@ manifest = {
     },
     "generated_at": datetime.utcnow().isoformat() + "Z",
     "valid_until": (datetime.utcnow() + timedelta(days=7)).isoformat() + "Z",
-    "note": "Ultra-fast manifest v3.14 Lite — just the essentials."
+    "note": "Ultra-fast manifest v3.14 Lite — just the essentials.",
 }
 
 Path("ai-fetchable-manifest.json").write_text(json.dumps(manifest, indent=2))

@@ -25,20 +25,52 @@ from datetime import datetime, timedelta
 from hashlib import sha1
 from pathlib import Path
 from typing import Any
+
 # typing.Optional not required in this file
 
 # ──────────────────────────────────────────────────────────────
 # Configuration (3.14 Edition)
 # ──────────────────────────────────────────────────────────────
 EXCLUDE_DIRS = {
-    ".git", "node_modules", "bin", "obj", ".vs", ".venv", "__pycache__",
-    "TestResults", "logs", "xaml-logs", "artifacts", "packages"
+    ".git",
+    "node_modules",
+    "bin",
+    "obj",
+    ".vs",
+    ".venv",
+    "__pycache__",
+    "TestResults",
+    "logs",
+    "xaml-logs",
+    "artifacts",
+    "packages",
 }
 
 TEXT_EXTS = {
-    ".cs", ".xaml", ".json", ".yaml", ".yml", ".xml", ".md", ".txt",
-    ".py", ".ps1", ".psm1", ".psd1", ".sql", ".sh", ".toml", ".html",
-    ".htm", ".css", ".js", ".ts", ".csproj", ".sln", ".config", ".props"
+    ".cs",
+    ".xaml",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".xml",
+    ".md",
+    ".txt",
+    ".py",
+    ".ps1",
+    ".psm1",
+    ".psd1",
+    ".sql",
+    ".sh",
+    ".toml",
+    ".html",
+    ".htm",
+    ".css",
+    ".js",
+    ".ts",
+    ".csproj",
+    ".sln",
+    ".config",
+    ".props",
 }
 
 LANG_BY_EXT = {
@@ -66,16 +98,27 @@ LANG_BY_EXT = {
 
 # MVVM-aware category hints (Wiley Widget special sauce)
 CATEGORY_HINTS = [
-    ("viewmodels", "viewmodels"), ("viewmodel", "viewmodels"),
-    ("views", "views"), ("view", "views"),
-    ("models", "models"), ("model", "models"),
-    ("services", "services"), ("service", "services"),
-    ("src", "source_code"), ("source", "source_code"),
-    ("tests", "test"), ("test", "test"),
-    ("docs", "documentation"), ("doc", "documentation"),
-    ("scripts", "automation"), ("tools", "automation"),
-    ("assets", "assets"), ("resources", "assets"),
-    ("wwwroot", "web"), ("privacy.html", "legal"), ("terms.html", "legal")
+    ("viewmodels", "viewmodels"),
+    ("viewmodel", "viewmodels"),
+    ("views", "views"),
+    ("view", "views"),
+    ("models", "models"),
+    ("model", "models"),
+    ("services", "services"),
+    ("service", "services"),
+    ("src", "source_code"),
+    ("source", "source_code"),
+    ("tests", "test"),
+    ("test", "test"),
+    ("docs", "documentation"),
+    ("doc", "documentation"),
+    ("scripts", "automation"),
+    ("tools", "automation"),
+    ("assets", "assets"),
+    ("resources", "assets"),
+    ("wwwroot", "web"),
+    ("privacy.html", "legal"),
+    ("terms.html", "legal"),
 ]
 
 MANIFEST_SCHEMA = (
@@ -89,8 +132,11 @@ MANIFEST_SCHEMA = (
 # ──────────────────────────────────────────────────────────────
 def repo_git_info(root: Path) -> dict[str, Any]:
     info: dict[str, Any] = {
-        "remote_url": None, "owner_repo": None, "branch": None,
-        "commit_hash": None, "is_dirty": None
+        "remote_url": None,
+        "owner_repo": None,
+        "branch": None,
+        "commit_hash": None,
+        "is_dirty": None,
     }
 
     if not (root / ".git").exists():
@@ -98,10 +144,13 @@ def repo_git_info(root: Path) -> dict[str, Any]:
 
     def git(*args):
         try:
-            return subprocess.check_output(
-                ["git", "-C", str(root)] + list(args),
-                stderr=subprocess.DEVNULL
-            ).decode("utf-8", errors="replace").strip()
+            return (
+                subprocess.check_output(
+                    ["git", "-C", str(root)] + list(args), stderr=subprocess.DEVNULL
+                )
+                .decode("utf-8", errors="replace")
+                .strip()
+            )
         except Exception:
             return None
 
@@ -171,10 +220,7 @@ def detect_category(rel_path: str) -> str:
     # Fallback heuristics
     if rel_path.lower().endswith((".md", ".markdown")):
         return "documentation"
-    if (
-        Path(rel_path).suffix.lower()
-        in {".json", ".yaml", ".yml", ".xml", ".config"}
-    ):
+    if Path(rel_path).suffix.lower() in {".json", ".yaml", ".yml", ".xml", ".config"}:
         return "configuration"
     if Path(rel_path).suffix.lower() in {".cs", ".py", ".ps1", ".sh"}:
         return "source_code"
@@ -222,9 +268,7 @@ def scan_repository(
                     preview = p.read_bytes()[:4096]
                     text = preview.decode("utf-8", errors="replace")
                     snippet = text[:2048]
-                    lines = text.count("\n") + (
-                        0 if text.endswith("\n") else 1
-                    )
+                    lines = text.count("\n") + (0 if text.endswith("\n") else 1)
                 except Exception:
                     # ignore non-decodable preview
                     pass
@@ -232,9 +276,7 @@ def scan_repository(
             entry = {
                 "path": str(rel).replace("\\", "/"),
                 "size": size,
-                "last_modified": datetime.fromtimestamp(
-                    stat.st_mtime
-                ).isoformat(),
+                "last_modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 "extension": ext,
                 "sha1_head": fingerprint_head(p),
                 "sha1": fingerprint_full(p) if size < 5_000_000 else "",
@@ -251,7 +293,7 @@ def scan_repository(
                 git_info.get("owner_repo"),
                 git_info.get("commit_hash"),
                 git_info.get("branch"),
-                entry["path"]
+                entry["path"],
             )
 
             files.append(entry)
@@ -319,8 +361,7 @@ def build_manifest_v314(root: Path, output_path: Path) -> dict:
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Wiley Widget Manifest Generator v3.14 "
-            "— AI-ready repo manifest"
+            "Wiley Widget Manifest Generator v3.14 " "— AI-ready repo manifest"
         )
     )
     parser.add_argument(

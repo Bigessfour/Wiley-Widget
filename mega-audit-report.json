@@ -9,9 +9,7 @@
       "forms": [
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\Forms\\AccountEditForm.cs",
-          "issues": [
-            "Too many hard-coded strings in InitializeComponent (34)"
-          ]
+          "issues": ["Too many hard-coded strings in InitializeComponent (34)"]
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\Forms\\AccountsForm.cs",
@@ -19,9 +17,7 @@
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\Forms\\ChartForm.cs",
-          "issues": [
-            "Too many hard-coded strings in InitializeComponent (12)"
-          ]
+          "issues": ["Too many hard-coded strings in InitializeComponent (12)"]
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\Forms\\DashboardForm.cs",
@@ -29,54 +25,37 @@
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\Forms\\MainForm.cs",
-          "issues": [
-            "Too many hard-coded strings in InitializeComponent (13)",
-            "Direct DB/business code found in view"
-          ]
+          "issues": ["Too many hard-coded strings in InitializeComponent (13)", "Direct DB/business code found in view"]
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\Forms\\SettingsForm.cs",
-          "issues": [
-            "Too many hard-coded strings in InitializeComponent (27)"
-          ]
+          "issues": ["Too many hard-coded strings in InitializeComponent (27)"]
         }
       ],
       "viewmodels": [
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\ViewModels\\AccountsViewModel.cs",
-          "issues": [
-            "No validation patterns detected in ViewModel"
-          ]
+          "issues": ["No validation patterns detected in ViewModel"]
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\ViewModels\\BudgetOverviewViewModel.cs",
-          "issues": [
-            "No validation patterns detected in ViewModel"
-          ]
+          "issues": ["No validation patterns detected in ViewModel"]
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\ViewModels\\ChartViewModel.cs",
-          "issues": [
-            "No validation patterns detected in ViewModel"
-          ]
+          "issues": ["No validation patterns detected in ViewModel"]
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\ViewModels\\DashboardViewModel.cs",
-          "issues": [
-            "No validation patterns detected in ViewModel"
-          ]
+          "issues": ["No validation patterns detected in ViewModel"]
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\ViewModels\\MainViewModel.cs",
-          "issues": [
-            "No validation patterns detected in ViewModel"
-          ]
+          "issues": ["No validation patterns detected in ViewModel"]
         },
         {
           "path": "c:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.WinForms\\ViewModels\\SettingsViewModel.cs",
-          "issues": [
-            "No validation patterns detected in ViewModel"
-          ]
+          "issues": ["No validation patterns detected in ViewModel"]
         }
       ]
     }
