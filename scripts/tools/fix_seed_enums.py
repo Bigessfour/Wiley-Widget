@@ -7,7 +7,6 @@ This script edits files in-place and creates a .bak file as backup.
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 parser = argparse.ArgumentParser(

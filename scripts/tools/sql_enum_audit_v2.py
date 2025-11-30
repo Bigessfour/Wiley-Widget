@@ -142,7 +142,7 @@ def extract_inserts(sql: str) -> Iterable[Tuple[str, Optional[List[str]], List[s
     for m in insert_rx.finditer(sql):
         tbl = m.group(1).strip()
         cols_raw = m.group(2)
-        vals_raw = sql[m.start(3) : m.end(3)]
+        sql[m.start(3) : m.end(3)]
         columns = None
         if cols_raw:
             # strip parentheses and split by comma
