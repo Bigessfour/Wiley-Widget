@@ -631,8 +631,8 @@ namespace WileyWidget.WinForms.Forms
                         }
                     }
 
-                        // If the closed panel was the active source of status information, fall back to the main VM
-                        try { BindGlobalStatusTo(_mainViewModel); } catch { }
+                    // If the closed panel was the active source of status information, fall back to the main VM
+                    try { BindGlobalStatusTo(_mainViewModel); } catch { }
                 }
             }
             catch (ObjectDisposedException)
