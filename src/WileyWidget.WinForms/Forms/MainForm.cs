@@ -499,10 +499,81 @@ namespace WileyWidget.WinForms.Forms
                     Serilog.Log.Debug("DockControlActivated: loading chart for {Panel}", cp.Name ?? "ChartPanel");
                     _ = cvm.LoadChartDataAsync();
                 }
+
+                // Rebind the global status strip to the active panel's ViewModel (if available)
+                try
+                {
+                    object? vm = null;
+                    if (ctrl is AccountsPanel accountPanel) vm = accountPanel.DataContext;
+                    else if (ctrl is DashboardPanel dashPanel) vm = dashPanel.DataContext;
+                    else if (ctrl is ChartPanel chartPanel) vm = chartPanel.DataContext;
+
+                    BindGlobalStatusTo(vm ?? _mainViewModel);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Failed to rebind MainForm global status to active panel");
+                }
             }
             catch (Exception ex)
             {
                 Serilog.Log.Debug(ex, "DockControlActivated handler encountered an error");
+            }
+        }
+
+        /// <summary>
+        /// Binds the global status strip to the provided view model (or the main view model when null).
+        /// The binding uses StatusMessage for text and IsBusy / IsLoading for busy indicator.
+        /// </summary>
+        private void BindGlobalStatusTo(object? viewModel)
+        {
+            try
+            {
+                if (_globalStatusLabel == null || _globalProgressBar == null) return;
+
+                // Clear existing bindings
+                try { _globalStatusLabel.DataBindings.Clear(); } catch { }
+                try { _globalProgressBar.DataBindings.Clear(); } catch { }
+
+                if (viewModel == null)
+                {
+                    var bs = new BindingSource { DataSource = _mainViewModel };
+                    _globalStatusLabel.DataBindings.Add("Text", bs, "StatusMessage", true, DataSourceUpdateMode.OnPropertyChanged);
+                    _globalProgressBar.DataBindings.Add("Visible", bs, "IsLoading", true, DataSourceUpdateMode.OnPropertyChanged);
+                    return;
+                }
+
+                var t = viewModel.GetType();
+                var bsVm = new BindingSource { DataSource = viewModel };
+
+                if (t.GetProperty("StatusMessage") != null)
+                {
+                    _globalStatusLabel.DataBindings.Add("Text", bsVm, "StatusMessage", true, DataSourceUpdateMode.OnPropertyChanged);
+                }
+                else
+                {
+                    // Fallback to main view model message
+                    var bs = new BindingSource { DataSource = _mainViewModel };
+                    _globalStatusLabel.DataBindings.Add("Text", bs, "StatusMessage", true, DataSourceUpdateMode.OnPropertyChanged);
+                }
+
+                if (t.GetProperty("IsBusy") != null)
+                {
+                    _globalProgressBar.DataBindings.Add("Visible", bsVm, "IsBusy", true, DataSourceUpdateMode.OnPropertyChanged);
+                }
+                else if (t.GetProperty("IsLoading") != null)
+                {
+                    _globalProgressBar.DataBindings.Add("Visible", bsVm, "IsLoading", true, DataSourceUpdateMode.OnPropertyChanged);
+                }
+                else
+                {
+                    var bs = new BindingSource { DataSource = _mainViewModel };
+                    _globalProgressBar.DataBindings.Add("Visible", bs, "IsLoading", true, DataSourceUpdateMode.OnPropertyChanged);
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "BindGlobalStatusTo failed");
             }
         }
 
@@ -559,6 +630,9 @@ namespace WileyWidget.WinForms.Forms
                             }
                         }
                     }
+
+                        // If the closed panel was the active source of status information, fall back to the main VM
+                        try { BindGlobalStatusTo(_mainViewModel); } catch { }
                 }
             }
             catch (ObjectDisposedException)

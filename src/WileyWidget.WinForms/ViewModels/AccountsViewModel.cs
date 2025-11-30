@@ -56,6 +56,13 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private bool isLoading;
 
+        // Mirror for MainForm global status aggregation
+        [ObservableProperty]
+        private bool isBusy;
+
+        [ObservableProperty]
+        private string? statusMessage = "Ready";
+
         [ObservableProperty]
         private string? errorMessage;
 
@@ -122,6 +129,7 @@ namespace WileyWidget.WinForms.ViewModels
             finally
             {
                 IsLoading = false;
+                StatusMessage = "Ready";
             }
         }
 
@@ -195,6 +203,7 @@ namespace WileyWidget.WinForms.ViewModels
             try
             {
                 IsLoading = true;
+                StatusMessage = "Loading accounts...";
                 _logger.LogInformation("Loading municipal accounts");
 
                 if (ct.IsCancellationRequested) return;
@@ -272,6 +281,7 @@ namespace WileyWidget.WinForms.ViewModels
                     try { _dbLock.Release(); } catch { }
                 }
                 IsLoading = false;
+                StatusMessage = "Ready";
             }
         }
 
@@ -583,6 +593,12 @@ namespace WileyWidget.WinForms.ViewModels
                 try { _dbLock.Dispose(); } catch { }
             }
             _disposed = true;
+        }
+
+        // Keep IsBusy in sync when IsLoading changes so external views can bind to IsBusy.
+        partial void OnIsLoadingChanged(bool value)
+        {
+            IsBusy = value;
         }
     }
 }

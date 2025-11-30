@@ -43,6 +43,12 @@ namespace WileyWidget.ViewModels
         private bool isLoading;
 
         [ObservableProperty]
+        private bool isBusy;
+
+        [ObservableProperty]
+        private string? statusMessage = "Ready";
+
+        [ObservableProperty]
         private string? errorMessage;
 
         [ObservableProperty]
@@ -99,6 +105,7 @@ namespace WileyWidget.ViewModels
             try
             {
                 IsLoading = true;
+                StatusMessage = "Loading dashboard...";
                 ErrorMessage = null;
                 _logger?.LogInformation("Loading dashboard metrics");
 
@@ -158,8 +165,14 @@ namespace WileyWidget.ViewModels
             finally
             {
                 IsLoading = false;
+                StatusMessage = "Ready";
                 _loadLock.Release();
             }
+
+        partial void OnIsLoadingChanged(bool value)
+        {
+            IsBusy = value;
+        }
         }
 
         /// <summary>

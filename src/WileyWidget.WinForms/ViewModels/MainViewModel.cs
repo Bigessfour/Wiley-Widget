@@ -54,6 +54,9 @@ namespace WileyWidget.ViewModels
         private string? statusMessage = "Ready";
 
         [ObservableProperty]
+        private bool isBusy;
+
+        [ObservableProperty]
         private ObservableCollection<KeyValuePair<string, double>> recentMetrics = new();
 
         [ObservableProperty]
@@ -192,6 +195,11 @@ namespace WileyWidget.ViewModels
                 IsLoading = false;
                 _loadLock.Release();
             }
+
+        partial void OnIsLoadingChanged(bool value)
+        {
+            IsBusy = value;
+        }
         }
 
         /// <summary>

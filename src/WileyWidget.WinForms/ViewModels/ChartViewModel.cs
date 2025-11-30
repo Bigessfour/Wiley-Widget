@@ -30,6 +30,12 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private ObservableCollection<KeyValuePair<string, double>> chartData = new();
 
+        [ObservableProperty]
+        private bool isBusy;
+
+        [ObservableProperty]
+        private string? statusMessage = "Ready";
+
         // Error message if data loading fails
         [ObservableProperty]
         private string? errorMessage;
@@ -45,6 +51,7 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
+                StatusMessage = "Loading chart data...";
                 await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
                 var query = await db.Departments
@@ -73,8 +80,14 @@ namespace WileyWidget.WinForms.ViewModels
             finally
             {
                 IsLoading = false;
+                StatusMessage = "Ready";
                 _logger?.LogDebug("ChartViewModel.LoadChartDataAsync finished");
             }
+
+        partial void OnIsLoadingChanged(bool value)
+        {
+            IsBusy = value;
+        }
         }
 
         // MVVM Command to refresh chart data from UI
