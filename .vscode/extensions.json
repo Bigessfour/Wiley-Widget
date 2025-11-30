@@ -5,7 +5,8 @@
     "GitHub.vscode-pull-request-github",
     "esbenp.prettier-vscode",
     "editorconfig.editorconfig",
-    "ms-dotnettools.csharp"
+    "ms-dotnettools.csharp",
+    "ms-vscode.live-server"
   ],
   "unwantedRecommendations": []
 }

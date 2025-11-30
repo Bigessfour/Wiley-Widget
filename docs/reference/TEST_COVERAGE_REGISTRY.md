@@ -557,7 +557,7 @@ List all public methods with signatures:
 
 ### Estimated Current Coverage: [X%]
 
-### Target Coverage: [Y%] (minimum 80%, aim for 90%+)
+### Target Coverage: [Y%] (minimum 80%, aim for 100%)
 ```
 
 #### **Phase 3: Test Implementation Template**
@@ -582,7 +582,7 @@ namespace WileyWidget.ViewModels.Tests.RepositoryTests;
 /// Comprehensive tests for [RepositoryName] covering all [X] methods.
 /// Tests CRUD operations, queries, filtering, pagination, caching, error handling,
 /// concurrency, and edge cases.
-/// Target: 90%+ code coverage
+/// Target: 100% code coverage
 /// </summary>
 public class [RepositoryName]Tests : IDisposable
 {
@@ -1023,7 +1023,7 @@ Before committing tests, verify:
 
 ✅ **Test Execution**: `dotnet test WileyWidget.Tests/WileyWidget.Tests.csproj --filter "FullyQualifiedName~[YourTestClass]" --logger "console;verbosity=normal"`
 
-✅ **Coverage Metrics**: Aim for 80%+ line coverage, 90%+ method coverage
+✅ **Coverage Metrics**: Aim for 80%+ line coverage, 100% method coverage
 
 ✅ **Code Quality**:
 

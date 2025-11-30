@@ -1,0 +1,66 @@
+name: WileyWidget - Backup to Blob
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_type:
+        description: 'Backup type to perform: Full, Differential, Log, All'
+        required: false
+        default: 'Full'
+  schedule:
+    # Scheduled full backups daily at 00:30 UTC - adjust according to your RTO/RPO
+    - cron: '30 0 * * *'
+
+concurrency:
+  group: wileywidget-backup
+  cancel-in-progress: true
+
+jobs:
+  run-backup:
+    # IMPORTANT: This workflow MUST run on a runner that has network access to the SQL Server instance.
+    # Typical setup: self-hosted runner in the production network, or a runner in the same VNet.
+    runs-on: [self-hosted, windows]
+
+    env:
+      BACKUP_ROOT: 'C:\backups\wileywidget'
+      SQL_INSTANCE: '.\\SQLEXPRESS' # override if needed
+      DB_NAME: 'WileyWidgetDb'
+      RETENTION_DAYS: '14'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare backup folder
+        run: |
+          if (!(Test-Path -Path "${{ env.BACKUP_ROOT }}")) { New-Item -Path "${{ env.BACKUP_ROOT }}" -ItemType Directory | Out-Null }
+        shell: pwsh
+
+      - name: Run backup script
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\maintenance\backup-wileywidget.ps1 -BackupType ${{ github.event.inputs.backup_type || 'Full' }} -BackupRoot ${{ env.BACKUP_ROOT }} -SqlInstance ${{ env.SQL_INSTANCE }} -Database ${{ env.DB_NAME }} -RetentionDays ${{ env.RETENTION_DAYS }} -Compress
+        shell: pwsh
+
+      - name: Login to Azure (optional, requires set secrets)
+        if: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING != '' || secrets.AZURE_STORAGE_ACCOUNT != '' }}
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -Command `
+            Write-Host 'Using Az CLI to upload backups to blob storage'; `
+            # If using connection string
+            if ($env:GITHUB_ACTIONS -and $env:AZURE_STORAGE_CONNECTION_STRING) { `
+              $files = Get-ChildItem -Path "${{ env.BACKUP_ROOT }}" -Filter '*.bak' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 20; `
+              foreach ($f in $files) { `
+                az storage blob upload --connection-string "$env:AZURE_STORAGE_CONNECTION_STRING" --container-name "$env:AZURE_BLOB_CONTAINER" --name "$(Split-Path $f -Leaf)" --file $f.FullName --only-show-errors; `
+              } `
+            } else { Write-Host 'AZ storage credentials not provided — skipping upload step' }
+        shell: pwsh
+
+      - name: Log artifacts (optional)
+        run: |
+          Get-ChildItem -Path "${{ env.BACKUP_ROOT }}" -Filter '*.bak' -File | Select-Object Name, Length, LastWriteTime | ConvertTo-Json -Depth 2
+        shell: pwsh
+
+    # NOTE: Security
+    # - The runner must have access to the SQL Server instance.
+    # - For uploading to Azure, set secrets.AZURE_STORAGE_CONNECTION_STRING and secrets.AZURE_BLOB_CONTAINER.
+    # - Alternatively, use a service principal and 'az login' before uploading.

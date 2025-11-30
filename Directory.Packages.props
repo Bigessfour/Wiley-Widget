@@ -111,6 +111,10 @@
     <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="31.2.15" />
     <PackageVersion Include="Syncfusion.Gauge.Windows" Version="31.2.15" />
     <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="31.2.15" />
+    <!-- SfButton, SfForm, SfSkinManager controls -->
+    <PackageVersion Include="Syncfusion.Core.WinForms" Version="31.2.15" />
+    <!-- SfComboBox, SfListView controls -->
+    <PackageVersion Include="Syncfusion.SfListView.WinForms" Version="31.2.15" />
     <!-- SfSkinManager package intentionally left out of central versions; the app uses the classic
     Syncfusion WinForms SkinManager API which is part of other Syncfusion.WinForms packages already
     referenced in the project. -->

@@ -6,6 +6,7 @@ Every view (Form / Dialog / Panel) must be validated against this checklist befo
 Location: docs/view-completeness.md
 
 How to use
+
 - Copy the checklist below into a view-specific file under `docs/views/<view-name>.md` and fill in the Evidence/Status fields.
 - For each view, mark each item as: Passed / Not Applicable (N/A) / Failed
 - The view completeness percentage is: (Passed items / Applicable items) * 100
@@ -83,11 +84,12 @@ For each view create a view-specific document and answer each item with Evidence
    - [ ] Code style & lint checks pass
 
 10. Overall Integration & Completeness
-   - [ ] DI injections used correctly (ILogger, ViewModel, services)
-   - [ ] Aligns with project MVVM architecture (no business code in views)
-   - [ ] No secrets in code; uses configuration services
-   - [ ] Builds and runs cleanly in Debug/Release modes
-   - [ ] Meets feature acceptance criteria
+
+- [ ] DI injections used correctly (ILogger, ViewModel, services)
+- [ ] Aligns with project MVVM architecture (no business code in views)
+- [ ] No secrets in code; uses configuration services
+- [ ] Builds and runs cleanly in Debug/Release modes
+- [ ] Meets feature acceptance criteria
 
 ---
 
@@ -95,15 +97,15 @@ For each view create a view-specific document and answer each item with Evidence
 
 Each view file under `docs/views/` should include these fields at the top:
 
-- View: <ViewName>
-- Path: <source file path>
-- Responsible: <engineer name>
-- Last updated: <date>
-- Applicable Items: <n> (number of items that apply)
-- Passed: <n>
-- N/A: <n>
-- Failed: <n>
-- Completeness %: <computed percent>
+- View: `<ViewName>`
+- Path: `<source file path>`
+- Responsible: `<engineer name>`
+- Last updated: `<date>`
+- Applicable Items: `<n>` (number of items that apply)
+- Passed: `<n>`
+- N/A: `<n>`
+- Failed: `<n>`
+- Completeness %: `<computed percent>`
 
 Then include the AC 10-section checklist with checkboxes and an "Evidence" subsection for each item.
 
@@ -113,9 +115,8 @@ Then include the AC 10-section checklist with checkboxes and an "Evidence" subse
 
 This repository (WinForms app) initially includes the following view targets that must each get an entry under `docs/views/`:
 
-
-
 Optional / future view targets & dialog inventory (add new docs/views entries when new forms are created):
+
 - WidgetEditor
 - Dashboard (high-level data panels)
 - Export views / ExportDialog (CSV/Excel/PDF export workflows)
@@ -132,24 +133,25 @@ The table below is the canonical inventory for view-level completeness tracking.
 
 | View Name | Source Path | Status | Completeness % | Notes |
 |---|---|---:|---:|---|
-| MainForm | WileyWidget.WinForms/Forms/MainForm.cs | Not Started / In Progress / Complete | 0% | Main app shell
-| AccountsForm | WileyWidget.WinForms/Forms/AccountsForm.cs | Not Started / In Progress / Complete | 0% | Accounts listing, grid
-| AccountCreateForm | WileyWidget.WinForms/Forms/AccountEditForm.cs | Not Started / In Progress / Complete | 0% | Create dialog (same file: AccountEditForm — track create vs edit)
-| AccountEditForm | WileyWidget.WinForms/Forms/AccountEditForm.cs | Not Started / In Progress / Complete | 0% | Edit dialog
-| AccountDeleteConfirm | WileyWidget.WinForms/Forms/AccountEditForm.cs | Not Started / In Progress / Complete | 0% | Delete confirmation (dialog or UI pattern)
-| ChartForm | WileyWidget.WinForms/Forms/ChartForm.cs | Not Started / In Progress / Complete | 0% | Charts & analytics
-| Dashboard | WileyWidget.WinForms/Forms/DashboardForm.cs (future) | Not Started | 0% | High-level dashboard panels
-| WidgetEditor | WileyWidget.WinForms/Forms/WidgetEditorForm.cs (future) | Not Started | 0% | Widget-specific CRUD
-| SettingsForm | WileyWidget.WinForms/Forms/SettingsForm.cs | Not Started / In Progress / Complete | 0% | App settings & theme toggle
-| ExportDialog | WileyWidget.WinForms/Forms/ExportForm.cs (future) | Not Started | 0% | Export workflows
-| ImportDialog | WileyWidget.WinForms/Forms/ImportForm.cs (future) | Not Started | 0% | Import workflows
-| HelpAboutDialog | WileyWidget.WinForms/Forms/HelpAboutForm.cs (future) | Not Started | 0% | Help & about
-| LicenseDialog | WileyWidget.WinForms/Forms/LicenseForm.cs (future) | Not Started | 0% | Licensing UI
-| ErrorReportingDialog | WileyWidget.WinForms/Forms/ErrorReportingForm.cs (future) | Not Started | 0% | Error reporting fallback UI
+| MainForm | WileyWidget.WinForms/Forms/MainForm.cs | Not Started / In Progress / Complete | 0% | Main app shell |
+| AccountsForm | WileyWidget.WinForms/Forms/AccountsForm.cs | Not Started / In Progress / Complete | 0% | Accounts listing, grid |
+| AccountCreateForm | WileyWidget.WinForms/Forms/AccountEditForm.cs | Not Started / In Progress / Complete | 0% | Create dialog (same file: AccountEditForm — track create vs edit) |
+| AccountEditForm | WileyWidget.WinForms/Forms/AccountEditForm.cs | Not Started / In Progress / Complete | 0% | Edit dialog |
+| AccountDeleteConfirm | WileyWidget.WinForms/Forms/AccountEditForm.cs | Not Started / In Progress / Complete | 0% | Delete confirmation (dialog or UI pattern) |
+| ChartForm | WileyWidget.WinForms/Forms/ChartForm.cs | Not Started / In Progress / Complete | 0% | Charts & analytics |
+| Dashboard | WileyWidget.WinForms/Forms/DashboardForm.cs (future) | Not Started | 0% | High-level dashboard panels |
+| WidgetEditor | WileyWidget.WinForms/Forms/WidgetEditorForm.cs (future) | Not Started | 0% | Widget-specific CRUD |
+| SettingsForm | WileyWidget.WinForms/Forms/SettingsForm.cs | Not Started / In Progress / Complete | 0% | App settings & theme toggle |
+| ExportDialog | WileyWidget.WinForms/Forms/ExportForm.cs (future) | Not Started | 0% | Export workflows |
+| ImportDialog | WileyWidget.WinForms/Forms/ImportForm.cs (future) | Not Started | 0% | Import workflows |
+| HelpAboutDialog | WileyWidget.WinForms/Forms/HelpAboutForm.cs (future) | Not Started | 0% | Help & about |
+| LicenseDialog | WileyWidget.WinForms/Forms/LicenseForm.cs (future) | Not Started | 0% | Licensing UI |
+| ErrorReportingDialog | WileyWidget.WinForms/Forms/ErrorReportingForm.cs (future) | Not Started | 0% | Error reporting fallback UI |
 
 ---
 
 If you add a new view to the codebase, create the matching `docs/views/<view-name>.md` and add a row to the table above.
+
 - WidgetEditor, Dashboard, Export views, Import views, HelpAboutDialog, LicenseDialog, ErrorReportingDialog, etc.
 
 The `docs/views/` directory is the single source of truth for view completeness records and evidence. PRs that modify views must also update the corresponding `docs/views/<view>.md` file and pass the checklist before merging.

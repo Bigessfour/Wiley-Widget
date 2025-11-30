@@ -771,7 +771,8 @@ BEGIN
 END
 
 -- Department Id=4 (child of 2)
-IF NOT EXISTS (SELECT 1 FROM [Departments] WHERE [Id] = 4)
+-- Avoid duplicate DepartmentCode insertion: check by Id OR DepartmentCode
+IF NOT EXISTS (SELECT 1 FROM [Departments] WHERE [Id] = 4 OR [DepartmentCode] = N'SAN')
 BEGIN
     SET IDENTITY_INSERT [Departments] ON;
     INSERT INTO [Departments] ([Id], [DepartmentCode], [Name], [ParentId])

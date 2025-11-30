@@ -1,23 +1,6 @@
 {
 	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "build",
-			"command": "dotnet",
-			"type": "process",
-			"args": [
-				"build",
-				"${workspaceFolder}/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
-				"/property:GenerateFullPaths=true",
-				"/consoleloggerparameters:NoSummary"
-			],
-			"problemMatcher": "$msCompile",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		}
-	],
+
 	// Pragmatic Problem Matcher Configuration for Wiley Widget
 	// ========================================================
 	// Focus: FUNCTIONAL ISSUES ONLY (runtime blockers, not cosmetic)
@@ -299,6 +282,32 @@
 				"reveal": "always",
 				"panel": "shared",
 				"focus": false
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "WileyWidget: Backup DB",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/backup-wileywidget.ps1",
+				"-BackupType",
+				"All",
+				"-BackupRoot",
+				"${workspaceFolder}/backups",
+				"-RetentionDays",
+				"14",
+				"-Compress"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
 			},
 			"problemMatcher": []
 		},

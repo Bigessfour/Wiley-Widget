@@ -194,6 +194,33 @@ After migrations, your database contains:
 
 ---
 
+## 💽 Backups & Recovery
+
+Follow the repository backup guidelines and use the provided scripts in `scripts/maintenance` to run and verify backups.
+
+Recommended quick commands:
+
+```powershell
+# Dry run: no changes
+.\scripts\maintenance\backup-wileywidget.ps1 -BackupType Full -BackupRoot .\backups -SqlInstance ".\SQLEXPRESS" -Database WileyWidgetDb -WhatIf
+
+# Perform a full/diff/log cycle (compress):
+.\scripts\maintenance\backup-wileywidget.ps1 -BackupType All -BackupRoot .\backups -SqlInstance ".\SQLEXPRESS" -Database WileyWidgetDb -Compress
+
+# Restore to a staging DB (WhatIf first):
+.\scripts\maintenance\restore-wileywidget-from-backup.ps1 -FullBackupFile .\backups\WileyWidget_FULL_*.bak -TargetDatabase WileyWidget_Staging -SqlInstance ".\SQLEXPRESS" -RestoreRoot .\restores -WhatIf
+```
+
+Scheduling and CI/CD
+
+- To run backups on production systems run the same PowerShell script from a dedicated Windows Task Scheduler job or SQL Agent job (SQL Agent preferred when available).
+- We include a sample GitHub Actions workflow `.github/workflows/backup-to-blob.yml` that runs on a self-hosted runner and uploads backups to an Azure Blob container. Keep credentials (SAS/connection strings) in secrets and do not run GitHub-hosted runners if your SQL Server is not reachable from the public internet.
+
+Security & validation
+
+- Use compression and server-side backup encryption when possible. The backup script supports a `-BackupCertificateName` option for SQL Server native encryption (certificate must be present on the server).
+- Schedule periodic restores to staging (weekly) and validate important queries as part of a disaster recovery drill.
+
 ## 🔐 Secrets Configuration
 
 WileyWidget uses **DPAPI-encrypted secret storage** for production-grade security.

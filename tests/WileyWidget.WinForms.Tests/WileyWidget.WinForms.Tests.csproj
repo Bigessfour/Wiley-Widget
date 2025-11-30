@@ -14,7 +14,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
+        <ProjectReference Include="..\..\src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
         <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
         <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
         <ProjectReference

@@ -34,6 +34,7 @@ After 6+ weeks battling silent XamlCompiler crashes ([Microsoft.UI.Xaml #10027](
 - [Quick Start](#-quick-start)
 - [QuickBooks Sandbox Integration](#-quickbooks-sandbox-integration)
 - [Configuration & Secrets](#-configuration--secret-management)
+- [Backups & Recovery](#-backups--recovery)
 - [Architecture](#-architecture)
 - [Development](#-development)
 - [Testing](#-testing)
@@ -88,7 +89,7 @@ After extensive testing with WinUI 3 (6+ weeks of XamlCompiler issues, unpackage
 - **Modern UI**: Syncfusion WinUI themes with Windows 11 Fluent Design integration
 - **Secure Secret Management**: DPAPI-encrypted credential storage for API keys and licenses
 - **Comprehensive Testing**: Unit tests, integration tests, and UI tests with >70% coverage
-- **CI/CD Pipeline**: Local CI/CD with Trunk integration (90% success rate target)
+- **CI/CD Pipeline**: Local CI/CD with Trunk integration (100% success rate target)
 - **AI Repository Manifest**: Schema-backed manifest with dependency graphs, git history, and security insights for LLM tooling
 
 ### Project Status
@@ -319,15 +320,18 @@ All Views and ViewModels follow consistent namespace patterns:
 The application will:
 
 - Initialize the local SQL Server Express database (WileyWidgetDev)
+
 ## ⚠️ Production-only configuration (development fallbacks removed)
 
 This repository enforces a single production-like configuration at runtime. The application no longer auto-detects DOTNET_ENVIRONMENT or fall back to an in-memory database when SQL connectivity fails. Startup will fail fast if a valid SQL Server connection cannot be established.
 
 Why this was changed:
+
 - Keeps behavior consistent across environments and avoids silent differences between development and production.
 - Simplifies configuration to a single `appsettings.json` file.
 
 How to run locally:
+
 - Ensure you have an operational SQL Server (LocalDB or a reachable SQL Server instance) and update `WileyWidget.WinForms/appsettings.json` with the appropriate `WileyWidgetDb` connection string.
 - A helper script is provided to create/start LocalDB and apply EF migrations:
 
@@ -1249,7 +1253,7 @@ pwsh ./scripts/maintenance/setup-localdb-and-migrate.ps1
 
 **MVVM Framework:** Pure Prism v9.0 (DryIoc container)
 **Theme System:** Syncfusion SfSkinManager (FluentDark/FluentLight)
-**CI/CD:** Local CI/CD + Trunk (90% success rate target)
+**CI/CD:** Local CI/CD + Trunk (100% success rate target)
 
 This layered architecture ensures WileyWidget is maintainable, testable, and ready for enterprise-scale deployment following Microsoft's recommended patterns for modern .NET applications.
 
@@ -1945,7 +1949,7 @@ dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj
 
 ### **Coverage Targets & Quality Gates**
 
-- **Unit Tests:** 80% line coverage, 90% branch coverage
+- **Unit Tests:** 80% line coverage, 100% branch coverage
 - **Integration Tests:** All critical database operations covered
 - **UI Tests:** All user workflows and error conditions
 - **Performance Tests:** Sub-100ms response times for critical operations
@@ -2115,6 +2119,29 @@ pwsh ./scripts/setup-license.ps1 -Remove
 ```
 
 Minimal enough that future-you won’t hate past-you.
+
+## 💽 Backups & Recovery
+
+We provide a set of maintenance scripts to perform, verify, and automate SQL Server backups for WileyWidget. See `scripts/maintenance/backup-wileywidget.ps1` and `scripts/maintenance/restore-wileywidget-from-backup.ps1` for the primary helpers.
+
+Quickstart (developer machine)
+
+```powershell
+# Dry-run (no changes)
+.\scripts\maintenance\backup-wileywidget.ps1 -BackupType Full -BackupRoot .\backups -SqlInstance ".\SQLEXPRESS" -Database WileyWidgetDb -WhatIf
+
+# Run a full+diff+log backup with compression
+.\scripts\maintenance\backup-wileywidget.ps1 -BackupType All -BackupRoot .\backups -SqlInstance ".\SQLEXPRESS" -Database WileyWidgetDb -Compress
+
+# Restore into a staging database (WhatIf first):
+.\scripts\maintenance\restore-wileywidget-from-backup.ps1 -FullBackupFile .\backups\WileyWidget_FULL_*.bak -TargetDatabase WileyWidget_Staging -SqlInstance ".\SQLEXPRESS" -RestoreRoot .\restores -WhatIf
+```
+
+Scheduling and CI/CD
+
+- Add a scheduled Windows Task or SQL Agent job on your production server to run the backup script on your backup cadence.
+- Use the included sample workflow `.github/workflows/backup-to-blob.yml` to upload backups to offsite storage from a self-hosted runner. Keep storage credentials in Actions secrets or your organization's secret store.
+
 
 ## Features
 

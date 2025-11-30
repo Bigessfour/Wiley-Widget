@@ -276,7 +276,7 @@ Tests are part of the **CI/CD Feedback Loop** documented in `copilot-instruction
 
 - ❌ Any test failure = CI fails
 - ⚠️ Warnings logged but don't block merge
-- ✅ 90% success rate target across all CI runs
+- ✅ 100% success rate target across all CI runs
 
 ## Future Enhancements
 

@@ -3,51 +3,28 @@ name: CI
 
 on:
   push:
-    # allow pushes to main and the current working branch for CI test runs
-    branches: [ main, fix/workflows-ci-lint ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  build:
     runs-on: windows-latest
-    timeout-minutes: 30
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup .NET 9 (or 10 when you upgrade)
-        uses: actions/setup-dotnet@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: '9.0.x'
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+      - name: Restore
+        run: dotnet restore WileyWidget.sln
 
-      - name: Restore & Build
-        run: |
-          dotnet restore WileyWidget.sln
-          dotnet build WileyWidget.sln --configuration Release --no-restore
+      - name: Build
+        run: dotnet build WileyWidget.sln -c Release --no-restore
 
-      - name: Run fast tests (everything except slow SQL/QBO)
-        run: |
-          dotnet test WileyWidget.sln --no-build --configuration Release --filter "FullyQualifiedName!~Integration" --logger "trx;LogFileName=test-results.trx"
-
-      - name: Publish executable
-        run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish
-
-      - name: Upload artifact (one-click install for you)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Wiley-Widget-Latest
-          path: ./publish/
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: '**/test-results.trx'
+      - name: Test
+        run: dotnet test WileyWidget.sln --no-build --configuration Release
