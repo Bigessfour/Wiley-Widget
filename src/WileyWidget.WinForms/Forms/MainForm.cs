@@ -621,25 +621,46 @@ namespace WileyWidget.WinForms.Forms
                     // Save panel state before disposal
                     SavePanelStateForControl(ctrl);
 
-                    // Dispose the control FIRST while DI services are still available,
-                    // then dispose the DI scope.
-                    if (ctrl is UserControl uc && !uc.IsDisposed)
+                    // Ensure we disable docking first so DockingManager drops internal references
+                    try
                     {
-                        try { uc.Dispose(); } catch { }
+                        if (_dockingManager != null)
+                        {
+                            // Marshal to UI thread if necessary
+                            if (ctrl != null && ctrl.InvokeRequired)
+                            {
+                                ctrl.Invoke((Action)(() =>
+                                {
+                                    try { _dockingManager.SetEnableDocking(ctrl, false); } catch { }
+                                }));
+                            }
+                            else
+                            {
+                                try { _dockingManager.SetEnableDocking(ctrl, false); } catch { }
+                            }
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // DockingManager already disposed - ignore
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Debug(ex, "Failed to disable docking for control {Panel} on close", panelName);
                     }
 
-                    // Now remove tracked control and dispose its DI scope under lock
+                    // Use the shared cleanup helper under lock to remove tracked entries and dispose scope
                     if (!string.IsNullOrEmpty(panelName))
                     {
                         lock (_dockedControlsLock)
                         {
-                            _dockedControls.Remove(panelName);
-
-                            if (_dockedControlScopes.TryGetValue(panelName, out var scope))
+                            try
                             {
-                                _dockedControlScopes.Remove(panelName);
-                                try { scope.Dispose(); } catch { }
-                                Serilog.Log.Debug("Disposed DI scope for panel '{Panel}'", panelName);
+                                CleanupDockedControl(panelName);
+                            }
+                            catch (Exception ex)
+                            {
+                                Serilog.Log.Debug(ex, "CleanupDockedControl failed for {Panel}", panelName);
                             }
                         }
                     }
@@ -1193,18 +1214,36 @@ namespace WileyWidget.WinForms.Forms
                 // Unsubscribe load handler
                 try { if (_loadHandler != null) this.Load -= _loadHandler; } catch { }
 
-                // Dispose all tracked UserControls first, then their DI scopes
-                foreach (var control in _dockedControls.Values)
+                // Dispose all tracked UserControls and their DI scopes safely.
+                // Ensure DockingManager releases references before disposing controls to avoid
+                // ObjectDisposedException / NullReferenceException from Syncfusion internals.
+                try
                 {
-                    try { if (control != null && !control.IsDisposed) control.Dispose(); } catch { }
-                }
-                _dockedControls.Clear();
+                    lock (_dockedControlsLock)
+                    {
+                        // Make a copy of keys so CleanupDockedControl can safely remove entries
+                        var keys = _dockedControls.Keys.ToList();
+                        foreach (var key in keys)
+                        {
+                            try
+                            {
+                                // CleanupDockedControl expects to be called while holding the lock.
+                                CleanupDockedControl(key);
+                            }
+                            catch (Exception ex)
+                            {
+                                Serilog.Log.Debug(ex, "Dispose: CleanupDockedControl failed for {Panel}", key);
+                            }
+                        }
 
-                foreach (var scope in _dockedControlScopes.Values)
-                {
-                    try { scope.Dispose(); } catch { }
+                        _dockedControls.Clear();
+                        _dockedControlScopes.Clear();
+                    }
                 }
-                _dockedControlScopes.Clear();
+                catch (Exception ex)
+                {
+                    Serilog.Log.Debug(ex, "Dispose: error while disposing docked controls");
+                }
 
                 _menuStrip?.Dispose();
                 _globalStatusStrip?.Dispose();
@@ -1224,7 +1263,56 @@ namespace WileyWidget.WinForms.Forms
             SaveAllPanelStates();
             _panelStateManager.SavePanelState();
 
+            // Persist layout now (before we disable docking/dispose controls)
             SaveDockingLayout();
+
+            // Safely disable docking for any live controls held by the DockingManager
+            // and then dispose them. This avoids Syncfusion internal errors where the
+            // DockingManager keeps references to disposed controls.
+            try
+            {
+                if (_dockingManager != null)
+                {
+                    try
+                    {
+                        var controlsCopy = _dockingManager.Controls.OfType<Control>().ToList();
+                        foreach (var ctrl in controlsCopy)
+                        {
+                            if (ctrl == null) continue;
+                            try
+                            {
+                                try { _dockingManager.SetEnableDocking(ctrl, false); } catch { }
+                            }
+                            catch { }
+
+                            try { if (!ctrl.IsDisposed) ctrl.Dispose(); } catch { }
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // DockingManager disposed concurrently - ignore
+                    }
+                }
+
+                // Also ensure tracked panels and scopes are cleaned up
+                try
+                {
+                    lock (_dockedControlsLock)
+                    {
+                        var keys = _dockedControls.Keys.ToList();
+                        foreach (var key in keys)
+                        {
+                            try { CleanupDockedControl(key); } catch { }
+                        }
+                    }
+                }
+                catch { }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Debug(ex, "Error during OnFormClosing docked-control cleanup");
+            }
+
             base.OnFormClosing(e);
         }
 
@@ -1395,6 +1483,45 @@ namespace WileyWidget.WinForms.Forms
                 // Enable docking for the UserControl
                 try
                 {
+                    // If a Form slipped into our generic UserControl flow, ensure it's prepared for docking
+                    if (panel is Form asForm)
+                    {
+                        try
+                        {
+                            // Call PrepareForDocking when available on known forms (best-effort)
+                            var prep = asForm.GetType().GetMethod("PrepareForDocking");
+                            if (prep != null)
+                            {
+                                try { prep.Invoke(asForm, null); } catch { }
+                            }
+
+                            // Ensure common properties are set so Syncfusion can host it
+                            try
+                            {
+                                if (asForm.TopLevel) asForm.TopLevel = false;
+                                asForm.FormBorderStyle = FormBorderStyle.None;
+                                asForm.Visible = false;
+                                asForm.Dock = DockStyle.Fill;
+                            }
+                            catch { }
+                        }
+                        catch { }
+                    }
+
+                    // If we somehow resolved a disposed instance, try to recreate once
+                    if (panel != null && panel.IsDisposed)
+                    {
+                        Serilog.Log.Warning("DockUserControlPanel: resolved panel instance is already disposed for {Panel}; recreating", panelName);
+                        try { scope.Dispose(); } catch { }
+                        scope = Program.Services.CreateScope();
+                        provider = scope.ServiceProvider;
+                        panel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TPanel>(provider);
+                        lock (_dockedControlsLock)
+                        {
+                            _dockedControlScopes[panelName] = scope;
+                        }
+                    }
+
                     _dockingManager.SetEnableDocking(panel, true);
 
                     // Clean up any disposed entries proactively
@@ -1458,8 +1585,27 @@ namespace WileyWidget.WinForms.Forms
                         }
                         catch (Exception docEx)
                         {
-                            Serilog.Log.Debug(docEx, "DockAsDocument failed, falling back to DockControl");
-                            _dockingManager.DockControl(panel, this, DockingStyle.Fill, 600);
+                            Serilog.Log.Debug(docEx, "DockAsDocument failed, falling back to safer DockControl");
+
+                            // Defensive guard: don't dock with Fill into the DockingManager's host control (this)
+                            // as Syncfusion can throw when Fill is applied to the host control itself.
+                            try
+                            {
+                                if (panel == null || panel.IsDisposed || this.IsDisposed)
+                                {
+                                    Serilog.Log.Warning("Panel {Panel} or host disposed before fallback docking", panelName);
+                                }
+                                else
+                                {
+                                    // Prefer Tabbed docking as a safer alternative to Fill onto the host.
+                                    _dockingManager.DockControl(panel, this, DockingStyle.Tabbed, 600);
+                                }
+                            }
+                            catch (Exception innerEx)
+                            {
+                                Serilog.Log.Debug(innerEx, "Fallback DockControl(Tabbed) also failed; will fall back to adding as standard control");
+                                throw;
+                            }
                         }
                     }
                     else if (existingControl != null)
@@ -1525,20 +1671,47 @@ namespace WileyWidget.WinForms.Forms
                 }
                 catch (Exception ex)
                 {
-                    // If docking fails, fall back to adding as a regular control
-                    Serilog.Log.Warning(ex, "DockControl failed for {Panel}, falling back to standard Controls.Add", panelName);
+                    // If docking fails, capture richer diagnostics then fall back to adding as a regular control
+                    try
+                    {
+                        Serilog.Log.Warning(ex, "DockControl failed for {Panel}, falling back to standard Controls.Add. PanelType={PanelType} IsDisposed={IsDisposed} IsHandleCreated={IsHandleCreated}",
+                            panelName,
+                            panel?.GetType().FullName ?? "<null>",
+                            panel?.IsDisposed,
+                            panel?.IsHandleCreated);
+
+                        // Best-effort: write a small diagnostic file that test harness can pick up
+                        try
+                        {
+                            var diagDir = Path.Combine(AppContext.BaseDirectory, "logs");
+                            if (!Directory.Exists(diagDir)) Directory.CreateDirectory(diagDir);
+                            var diagPath = Path.Combine(diagDir, $"dock_diag_{panelName}_{DateTime.UtcNow:yyyyMMddTHHmmss}.txt");
+                            var txt = $"PanelName: {panelName}\nPanelType: {panel?.GetType().FullName ?? "<null>"}\nIsDisposed: {panel?.IsDisposed}\nIsHandleCreated: {panel?.IsHandleCreated}\nException: {ex}\n";
+                            File.WriteAllText(diagPath, txt);
+                        }
+                        catch { }
+                    }
+                    catch { }
 
                     try
                     {
-                        if (panel.IsDisposed)
+                        if (panel == null || panel.IsDisposed)
                         {
-                            Serilog.Log.Warning("Panel {Panel} was disposed before fallback could add it", panelName);
+                            Serilog.Log.Warning("Panel {Panel} was null or disposed before fallback could add it", panelName);
                             return;
                         }
 
-                        panel.Dock = DockStyle.Fill;
-                        Controls.Add(panel);
-                        panel.BringToFront();
+                        try
+                        {
+                            panel.Dock = DockStyle.Fill;
+                            Controls.Add(panel);
+                            panel.BringToFront();
+                        }
+                        catch (ObjectDisposedException ode)
+                        {
+                            Serilog.Log.Error(ode, "Fallback add failed: panel was disposed during Controls.Add/BringToFront for {Panel}", panelName);
+                            return;
+                        }
 
                         // Subscribe to Disposed for proper cleanup even in fallback mode
                         panel.Disposed += (s, args) =>
@@ -1609,12 +1782,61 @@ namespace WileyWidget.WinForms.Forms
             if (_dockedControls.TryGetValue(panelName, out var control))
             {
                 _dockedControls.Remove(panelName);
-                if (control != null && !control.IsDisposed)
+                if (control != null)
                 {
-                    try { control.Dispose(); }
+                    try
+                    {
+                        // Ensure DockingManager releases references before disposing the control.
+                        try
+                        {
+                            if (_dockingManager != null)
+                            {
+                                // If the control lives on a different thread, marshal disabling onto UI thread
+                                if (control.InvokeRequired)
+                                {
+                                    control.Invoke((Action)(() =>
+                                    {
+                                        try { _dockingManager.SetEnableDocking(control, false); } catch { }
+                                    }));
+                                }
+                                else
+                                {
+                                    try { _dockingManager.SetEnableDocking(control, false); } catch { }
+                                }
+                            }
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            // DockingManager was disposed concurrently; ignore
+                        }
+
+                        // Dispose safely on the control's owning thread
+                        if (!control.IsDisposed)
+                        {
+                            if (control.InvokeRequired)
+                            {
+                                control.Invoke((Action)(() =>
+                                {
+                                    try { if (!control.IsDisposed) control.Dispose(); }
+                                    catch (Exception ex)
+                                    {
+                                        Serilog.Log.Debug(ex, "Error disposing control '{Panel}' on UI thread", panelName);
+                                    }
+                                }));
+                            }
+                            else
+                            {
+                                try { control.Dispose(); }
+                                catch (Exception ex)
+                                {
+                                    Serilog.Log.Debug(ex, "Error disposing control '{Panel}'", panelName);
+                                }
+                            }
+                        }
+                    }
                     catch (Exception ex)
                     {
-                        Serilog.Log.Debug(ex, "Error disposing control '{Panel}'", panelName);
+                        Serilog.Log.Debug(ex, "Error during cleanup dispose of control '{Panel}'", panelName);
                     }
                 }
             }
@@ -1661,15 +1883,59 @@ namespace WileyWidget.WinForms.Forms
                     }
                 }
 
-                // Prepare for docking
-                editForm.PrepareForDocking();
+                // Prepare for docking (ensure form is in child-control state)
+                try
+                {
+                    editForm.PrepareForDocking();
+                }
+                catch { }
+
+                // Common safety: ensure properties
+                try
+                {
+                    if (editForm.TopLevel) editForm.TopLevel = false;
+                    editForm.FormBorderStyle = FormBorderStyle.None;
+                    editForm.Visible = false;
+                    editForm.Dock = DockStyle.Fill;
+                }
+                catch { }
+
                 editForm.Name = panelName;
+
+                // Guard: ensure not disposed
+                if (editForm.IsDisposed)
+                {
+                    Serilog.Log.Warning("DockAccountEditForm: supplied editForm is already disposed");
+                    return;
+                }
 
                 // Enable docking
                 _dockingManager.SetEnableDocking(editForm, true);
 
                 // Dock as floating window (tool window style)
-                _dockingManager.DockControl(editForm, this, DockingStyle.Float, 500);
+                try
+                {
+                    _dockingManager.DockControl(editForm, this, DockingStyle.Float, 500);
+                }
+                catch (Exception dEx)
+                {
+                    Serilog.Log.Warning(dEx, "DockControl failed for AccountEditForm; attempting safe fallback");
+                    try
+                    {
+                        if (editForm == null || editForm.IsDisposed)
+                        {
+                            Serilog.Log.Warning("AccountEditForm was null or disposed during DockControl fallback");
+                            return;
+                        }
+                        editForm.Dock = DockStyle.Fill;
+                        Controls.Add(editForm);
+                    }
+                    catch (ObjectDisposedException ode)
+                    {
+                        Serilog.Log.Error(ode, "Fallback add failed: AccountEditForm disposed during Controls.Add");
+                        return;
+                    }
+                }
                 _dockingManager.SetDockLabel(editForm, panelName);
 
                 // Set icon
