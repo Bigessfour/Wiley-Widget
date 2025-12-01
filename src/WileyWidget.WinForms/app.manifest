@@ -10,10 +10,8 @@
   </compatibility>
 
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
-    <windowsSettings>
-      <!-- Enable modern per-monitor DPI awareness -->
-      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
-      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
-    </windowsSettings>
+    <!-- High DPI is configured via the project property ApplicationHighDpiMode
+         in the csproj and Application.SetHighDpiMode in program code. Remove
+         dpiAware/dpiAwareness from the manifest to avoid WFO0003 warnings. -->
   </application>
 </assembly>
