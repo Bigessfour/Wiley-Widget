@@ -43,7 +43,9 @@ namespace WileyWidget.WinForms.Services
                 var visibleColumns = grid.Columns.Where(c => c.Visible).ToList();
                 foreach (var col in visibleColumns)
                 {
-                    dt.Columns.Add(col.HeaderText ?? col.MappingName ?? col.Name, typeof(string));
+                    // Some GridColumn implementations don't expose a Name property — prefer HeaderText or MappingName
+                    var colName = col.HeaderText ?? col.MappingName ?? col.MappingName;
+                    dt.Columns.Add(colName, typeof(string));
                 }
 
                 if (rows != null)
@@ -115,7 +117,11 @@ namespace WileyWidget.WinForms.Services
                     grid.DrawToBitmap(bmp, new Rectangle(0, 0, grid.Width, grid.Height));
                 }
             }
-            catch { bmp = null; }
+            catch
+            {
+                bmp?.Dispose();
+                bmp = null;
+            }
 
             if (bmp == null)
             {
@@ -138,6 +144,8 @@ namespace WileyWidget.WinForms.Services
                 doc.Save(fs);
                 doc.Close(true);
             }).ConfigureAwait(true);
+
+            bmp.Dispose();
         }
 
         public static async Task ExportChartToPdfAsync(Syncfusion.Windows.Forms.Chart.ChartControl chart, string filePath)
@@ -151,7 +159,7 @@ namespace WileyWidget.WinForms.Services
                 bmp = new Bitmap(chart.Width, chart.Height);
                 chart.DrawToBitmap(bmp, new Rectangle(0, 0, chart.Width, chart.Height));
             }
-            catch { bmp = null; }
+            catch { bmp?.Dispose(); bmp = null; }
 
             if (bmp == null) throw new InvalidOperationException("Unable to capture chart image for PDF export.");
 
@@ -171,6 +179,8 @@ namespace WileyWidget.WinForms.Services
                 doc.Save(fs);
                 doc.Close(true);
             }).ConfigureAwait(true);
+
+            bmp.Dispose();
         }
     }
 }

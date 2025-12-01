@@ -3,12 +3,12 @@
   "generator": "Wiley Widget Manifest Generator v3.14 Lite",
   "repository": {
     "owner_repo": "Bigessfour/Wiley-Widget",
-    "branch": "archive/facade-webhooks-2025-11-29",
-    "commit_hash": "4c69f07514ac4794d4b3706adf9d91b21083a157",
+    "branch": "feature/panel-ui-enhancements",
+    "commit_hash": "2cefda969f887ad50c2a0e550eb829d36dbfc926",
     "remote_url": "https://github.com/Bigessfour/Wiley-Widget.git",
-    "fetch_base": "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/4c69f07514ac4794d4b3706adf9d91b21083a157/"
+    "fetch_base": "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/2cefda969f887ad50c2a0e550eb829d36dbfc926/"
   },
-  "generated_at": "2025-11-30T05:05:03.052679Z",
-  "valid_until": "2025-12-07T05:05:03.052875Z",
+  "generated_at": "2025-11-30T23:53:36.804654Z",
+  "valid_until": "2025-12-07T23:53:36.804757Z",
   "note": "Ultra-fast manifest v3.14 Lite \u2014 just the essentials."
 }

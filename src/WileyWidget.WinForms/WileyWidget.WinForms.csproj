@@ -89,6 +89,7 @@
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
     <PackageReference Include="Syncfusion.Chart.Windows" />
     <PackageReference Include="Syncfusion.Pdf.WinForms" />
+    <PackageReference Include="Syncfusion.XlsIO.WinForms" />
     <PackageReference Include="System.Windows.Forms.DataVisualization" />
     <PackageReference Include="System.Data.SqlClient" />
   </ItemGroup>

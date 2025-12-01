@@ -68,6 +68,11 @@ public class ThemeIconService : IThemeIconService, IDisposable
 
     public void Preload(IEnumerable<string> names, AppTheme theme, int size = 24)
     {
+        if (names == null)
+        {
+            throw new ArgumentNullException(nameof(names));
+        }
+
         foreach (var name in names)
         {
             try

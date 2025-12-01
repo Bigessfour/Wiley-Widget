@@ -133,6 +133,9 @@ public static class ThemeManager
         ApplyThemeToControls(form.Controls, colors);
     }
 
+    // Track disposable resources associated with forms to ensure proper cleanup
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Form, (SkinManager SkinManager, System.ComponentModel.Container Container)> _formResources = new();
+
     /// <summary>
     /// Apply Syncfusion theme to a form using SkinManager component.
     /// </summary>
@@ -142,27 +145,50 @@ public static class ThemeManager
 
         try
         {
+            // Clean up any existing resources for this form
+            CleanupFormResources(form);
+
             // Create a container for the SkinManager (required by Syncfusion)
-            var components = new System.ComponentModel.Container();
-            var skinManager = new SkinManager(components);
+            var container = new System.ComponentModel.Container();
+            var skinManager = new SkinManager(container);
             skinManager.Controls = form;
             skinManager.VisualTheme = GetSyncfusionVisualTheme();
 
+            // Track resources for cleanup
+            _formResources[form] = (skinManager, container);
+
             // Ensure the created disposable instances are cleaned up when the form is disposed.
-            // Some versions of SkinManager require the IContainer lifetime; we'll dispose both when the form is disposed.
-            form.Disposed += (s, e) =>
-            {
-                try
-                {
-                    skinManager?.Dispose();
-                    components?.Dispose();
-                }
-                catch { }
-            };
+            form.Disposed += OnFormDisposed;
         }
         catch (Exception ex)
         {
             Serilog.Log.Warning(ex, "Failed to apply SkinManager theme to form {FormName}", form.Name);
+        }
+    }
+
+    private static void OnFormDisposed(object? sender, EventArgs e)
+    {
+        if (sender is Form form)
+        {
+            CleanupFormResources(form);
+        }
+    }
+
+    private static void CleanupFormResources(Form form)
+    {
+        if (_formResources.TryRemove(form, out var resources))
+        {
+            try
+            {
+                resources.SkinManager?.Dispose();
+            }
+            catch { }
+
+            try
+            {
+                resources.Container?.Dispose();
+            }
+            catch { }
         }
     }
 

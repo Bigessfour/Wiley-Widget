@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net9.0-windows</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="Moq" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
+        <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
+        <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
+        <ProjectReference
+            Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+        <ProjectReference Include="..\..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
+    </ItemGroup>
+
+</Project>

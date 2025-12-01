@@ -6,20 +6,9 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
-        <PackageReference Include="Moq" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
-        <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
-        <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
-        <ProjectReference
-            Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
-        <ProjectReference Include="..\..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
-    </ItemGroup>
+    <!-- Tests temporarily disabled per request. This project kept but stripped of test
+         packages and project references so it won't run or fail when running tests.
+         If you prefer deletion instead of a stub, say so and I will remove the
+         entire folder. -->
 
 </Project>

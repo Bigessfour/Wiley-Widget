@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Data;
+using WileyWidget.Services;
 
 namespace WileyWidget.ViewModels
 {
@@ -30,11 +31,20 @@ namespace WileyWidget.ViewModels
     /// budget summaries, and key performance indicators for municipal accounts.
     /// Implements full MVVM pattern with async data loading and error handling.
     /// </summary>
-    public partial class DashboardViewModel : ObservableRecipient
+    public partial class DashboardViewModel : ObservableRecipient, IDisposable
     {
         private readonly ILogger<DashboardViewModel>? _logger;
         private readonly IDbContextFactory<AppDbContext>? _dbContextFactory;
+        private readonly ISettingsService? _settingsService;
         private readonly SemaphoreSlim _loadLock = new(1, 1);
+        private readonly CancellationTokenSource _disposalCts = new();
+        private bool _disposed;
+
+        /// <summary>
+        /// Indicates whether the ViewModel is currently displaying demo/sample data.
+        /// </summary>
+        [ObservableProperty]
+        private bool isUsingDemoData;
 
         [ObservableProperty]
         private string title = "Financial Dashboard";
@@ -77,10 +87,12 @@ namespace WileyWidget.ViewModels
         /// </summary>
         public DashboardViewModel(
             ILogger<DashboardViewModel>? logger = null,
-            IDbContextFactory<AppDbContext>? dbContextFactory = null)
+            IDbContextFactory<AppDbContext>? dbContextFactory = null,
+            ISettingsService? settingsService = null)
         {
             _logger = logger;
             _dbContextFactory = dbContextFactory;
+            _settingsService = settingsService;
 
             LoadDashboardCommand = new AsyncRelayCommand(LoadDashboardAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshAsync);
@@ -100,7 +112,16 @@ namespace WileyWidget.ViewModels
         /// </summary>
         private async Task LoadDashboardAsync(CancellationToken ct = default)
         {
-            if (!await _loadLock.WaitAsync(0)) return; // Skip if already loading
+            // Use linked token to respect both caller cancellation and disposal
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _disposalCts.Token);
+            var token = linkedCts.Token;
+
+            // Try to acquire lock with timeout (5 seconds)
+            if (!await _loadLock.WaitAsync(TimeSpan.FromSeconds(5), token))
+            {
+                _logger?.LogWarning("LoadDashboardAsync: Could not acquire lock within timeout");
+                return;
+            }
 
             try
             {
@@ -109,18 +130,24 @@ namespace WileyWidget.ViewModels
                 ErrorMessage = null;
                 _logger?.LogInformation("Loading dashboard metrics");
 
-                if (_dbContextFactory == null)
+                // Check if demo mode is enabled via settings
+                var useDemoMode = _settingsService?.Current?.UseDemoData ?? false;
+                if (useDemoMode || _dbContextFactory == null)
                 {
-                    // Fallback to sample data when no DB context available
+                    _logger?.LogInformation("Using demo data (demo mode: {DemoMode}, factory null: {FactoryNull})",
+                        useDemoMode, _dbContextFactory == null);
                     LoadSampleData();
+                    IsUsingDemoData = true;
                     return;
                 }
 
-                if (ct.IsCancellationRequested) return;
-                await using var db = await _dbContextFactory.CreateDbContextAsync(ct);
+                IsUsingDemoData = false;
+                token.ThrowIfCancellationRequested();
+                await using var db = await _dbContextFactory.CreateDbContextAsync(token);
 
-                // Load account summaries
+                // Load account summaries (read-only, no tracking needed)
                 var accountStats = await db.MunicipalAccounts
+                    .AsNoTracking()
                     .GroupBy(a => 1)
                     .Select(g => new
                     {
@@ -129,7 +156,8 @@ namespace WileyWidget.ViewModels
                         ActiveCount = g.Count(a => a.IsActive),
                         TotalCount = g.Count()
                     })
-                    .FirstOrDefaultAsync(ct);
+                    .OrderBy(_ => 1) // Satisfy EF Core warning about FirstOrDefault without OrderBy
+                    .FirstOrDefaultAsync(token);
 
                 if (accountStats != null)
                 {
@@ -140,7 +168,7 @@ namespace WileyWidget.ViewModels
                 }
 
                 // Load department count
-                DepartmentCount = await db.Departments.CountAsync(ct);
+                DepartmentCount = await db.Departments.AsNoTracking().CountAsync(token);
 
                 // Build metrics collection
                 var newMetrics = new ObservableCollection<DashboardMetric>
@@ -156,18 +184,25 @@ namespace WileyWidget.ViewModels
                 LastRefreshed = DateTime.Now;
                 _logger?.LogInformation("Dashboard loaded: {Count} metrics", Metrics.Count);
             }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogDebug("Dashboard load cancelled");
+            }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Failed to load dashboard metrics");
                 ErrorMessage = $"Unable to load dashboard: {ex.Message}";
                 LoadSampleData();
+                IsUsingDemoData = true;
             }
             finally
             {
                 IsLoading = false;
                 StatusMessage = "Ready";
-                _loadLock.Release();
+                try { _loadLock.Release(); } catch { }
             }
+
+        }
 
         partial void OnIsLoadingChanged(bool value)
         {
@@ -204,6 +239,30 @@ namespace WileyWidget.ViewModels
             };
 
             LastRefreshed = DateTime.Now;
+        }
+
+        /// <summary>
+        /// Disposes resources and cancels pending operations.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected dispose pattern implementation.
+        /// </summary>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+            if (disposing)
+            {
+                try { _disposalCts.Cancel(); } catch { }
+                try { _disposalCts.Dispose(); } catch { }
+                try { _loadLock.Dispose(); } catch { }
+            }
+            _disposed = true;
         }
     }
 }

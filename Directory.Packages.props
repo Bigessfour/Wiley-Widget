@@ -25,8 +25,7 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables"
-      Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
@@ -34,8 +33,7 @@
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization"
-      Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
     <!-- IdentityModel – huge security jump, fully net9.0 compatible -->
     <PackageVersion Include="Microsoft.IdentityModel.*" Version="8.15.0" />
@@ -88,6 +86,10 @@
     <PackageVersion Include="Serilog.Sinks.Async" Version="2.1.0" />
     <PackageVersion Include="DotNetEnv" Version="3.1.1" />
     <!-- Test packages -->
+    <PackageVersion Include="NUnit" Version="4.0.1" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="4.5.0" />
+    <PackageVersion Include="NUnitForms" Version="0.20" />
+    <PackageVersion Include="Xunit.StaFact" Version="3.0.13" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
@@ -99,8 +101,7 @@
     <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-    <PackageVersion Include="System.Windows.Forms.DataVisualization"
-      Version="1.0.0-prerelease.20110.1" />
+    <PackageVersion Include="System.Windows.Forms.DataVisualization" Version="1.0.0-prerelease.20110.1" />
     <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />
     <!-- Syncfusion WinForms packages v31.2.15 (public NuGet) -->
     <PackageVersion Include="Syncfusion.Grid.Windows" Version="31.2.15" />

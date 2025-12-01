@@ -36,8 +36,8 @@ namespace WileyWidget.WinForms
                 .Enrich.FromLogContext()
                 .Enrich.WithMachineName()
                 .Enrich.WithThreadId()
-                .WriteTo.Console()
-                .WriteTo.File("logs/wileywidget-.log", rollingInterval: Serilog.RollingInterval.Day, retainedFileCountLimit: 7, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.Console(formatProvider: System.Globalization.CultureInfo.InvariantCulture)
+                .WriteTo.File("logs/wileywidget-.log", rollingInterval: Serilog.RollingInterval.Day, retainedFileCountLimit: 7, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}", formatProvider: System.Globalization.CultureInfo.InvariantCulture)
                 .CreateLogger();
 
             try
@@ -53,6 +53,25 @@ namespace WileyWidget.WinForms
                 catch
                 {
                     // OS/.NET version might not support PerMonitorV2 - swallow and continue
+                }
+
+                // CRITICAL: Set a region-associated culture for the UI thread BEFORE any controls are created.
+                // Invariant culture (CultureInfo.InvariantCulture) lacks a region and causes ArgumentException
+                // when Syncfusion controls attempt RegionInfo lookups for currency/number formatting.
+                // This affects SfDataGrid, ChartControl, and numeric formatting throughout the app.
+                try
+                {
+                    var defaultCulture = new System.Globalization.CultureInfo("en-US");
+                    System.Threading.Thread.CurrentThread.CurrentCulture = defaultCulture;
+                    System.Threading.Thread.CurrentThread.CurrentUICulture = defaultCulture;
+                    // Also set default for new threads created by the app
+                    System.Globalization.CultureInfo.DefaultThreadCurrentCulture = defaultCulture;
+                    System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = defaultCulture;
+                    Log.Information("Culture set to {Culture} for UI thread (avoids invariant culture RegionInfo issues)", defaultCulture.Name);
+                }
+                catch (Exception cultureEx)
+                {
+                    Log.Warning(cultureEx, "Failed to set default culture - Syncfusion controls may have formatting issues");
                 }
 
                 ApplicationConfiguration.Initialize();
@@ -263,10 +282,93 @@ namespace WileyWidget.WinForms
                     logger?.LogDebug(ex, "Non-fatal: theme initialization / icon preloading failed at startup.");
                 }
 
-                // Launch main form
+                // Launch main form with extra defensive handling.
+                // We attach a global ApplicationExit logger and run the main form inside
+                // an isolated try/catch/finally so disposal-time exceptions can be handled
+                // and logged more granularly (see AccountsForm.Dispose stack traces).
+                Application.ApplicationExit += (s, e) => Log.Information("Application exiting (ApplicationExit event fired)");
+
                 var mainForm = Services.GetService(typeof(MainForm)) as MainForm;
                 if (mainForm == null) throw new InvalidOperationException("MainForm not found in IServiceProvider");
-                Application.Run(mainForm);
+
+                // Guard the form's closing event so we can log any exceptions thrown during
+                // user-driven shutdown logic before Dispose/Dispose chain runs.
+                try
+                {
+                    mainForm.FormClosing += (sender, e) =>
+                {
+                    try
+                    {
+                        // Use the FormClosingEventArgs to obtain the CloseReason reliably
+                        Log.Debug("MainForm.FormClosing invoked (CloseReason={reason})", e.CloseReason);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Avoid allowing FormClosing exceptions to crash the shutdown path
+                        Log.Error(ex, "Exception in MainForm.FormClosing handler");
+                    }
+                };
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to attach FormClosing handler to MainForm (non-fatal)");
+                }
+
+                try
+                {
+                    // Application.Run can propagate exceptions that occur during message processing
+                    // or during disposal of the form hierarchy — catch them explicitly so we
+                    // can differentiate runtime errors from startup errors logged earlier.
+                    try
+                    {
+                        Application.Run(mainForm);
+                    }
+                    catch (Exception runEx)
+                    {
+                        // This is an unhandled exception that happened while the message loop
+                        // was running (including disposal-time exceptions). Log as Fatal and
+                        // show a user-friendly dialog if possible.
+                        Log.Fatal(runEx, "Unhandled exception during Application.Run (message loop)");
+                        try
+                        {
+                            System.Windows.Forms.MessageBox.Show($"Fatal runtime error: {runEx.Message}", "Runtime Error", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                        }
+                        catch { /* best-effort UI feedback; swallow */ }
+
+                        // Re-throw so outer catch/finally handle overall shutdown/logging as appropriate
+                        throw;
+                    }
+                }
+                finally
+                {
+                    // Attempt to explicitly dispose the main form if it hasn't already been disposed.
+                    // Dispose can itself throw (as observed in the AccountsForm.Dispose stack traces),
+                    // so guard it with a try/catch to ensure we record the issue rather than crash
+                    // silently during process exit.
+                    try
+                    {
+                        if (!mainForm.IsDisposed)
+                        {
+                            try
+                            {
+                                mainForm.Dispose();
+                            }
+                            catch (Exception disposeEx)
+                            {
+                                Log.Error(disposeEx, "Exception thrown while disposing MainForm during shutdown");
+                                try
+                                {
+                                    System.Windows.Forms.MessageBox.Show($"Error disposing main window: {disposeEx.Message}", "Dispose Error", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                                }
+                                catch { /* swallow UI failures */ }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Unexpected error while attempting final MainForm disposal guard");
+                    }
+                }
             }
             catch (Exception ex)
             {

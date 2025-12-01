@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>false</UseWindowsForms>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\WileyWidget.WinForms\WileyWidget.WinForms.csproj"/>
+    <ProjectReference Include="..\..\..\src\WileyWidget.Services\WileyWidget.Services.csproj"/>
+    <ProjectReference Include="..\..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj"/>
+  </ItemGroup>
+</Project>

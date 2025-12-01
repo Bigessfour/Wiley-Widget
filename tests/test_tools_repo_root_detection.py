@@ -4,8 +4,14 @@ from pathlib import Path
 
 def load_module_from_path(p: Path):
     spec = importlib.util.spec_from_file_location(p.stem, str(p))
+    if spec is None:
+        raise ImportError(f"Cannot create module spec for {p}")
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    loader = spec.loader
+    if loader is None:
+        raise ImportError(f"No loader available for module spec of {p}")
+    # explicitly narrow types for static checkers and call the loader safely
+    loader.exec_module(mod)  # type: ignore[arg-type]
     return mod
 
 

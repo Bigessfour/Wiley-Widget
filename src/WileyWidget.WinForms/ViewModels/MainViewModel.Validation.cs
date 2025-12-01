@@ -4,7 +4,7 @@ namespace WileyWidget.WinForms.ViewModels
 {
     public partial class MainViewModel
     {
-        private readonly ObservableValidator _validationHelper = new ObservableValidator();
+        private readonly WinFormsObservableValidator _validationHelper = new WinFormsObservableValidator();
         public void EnsureValidationInitialized() => _ = _validationHelper;
     }
 }

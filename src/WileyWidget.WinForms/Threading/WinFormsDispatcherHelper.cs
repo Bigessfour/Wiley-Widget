@@ -2,6 +2,7 @@
 
 using System;
 using System.Threading;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Threading; // Used only for DispatcherPriority enum in the shared interface
 using Microsoft.Extensions.Logging;

@@ -304,17 +304,36 @@ public class PanelStateManager
 
             StateData.ChartPanel!.ChartZoom ??= new ChartZoomState();
 
-            // Save primary axis visible range
-            if (chart.PrimaryXAxis != null)
+            // Save primary axis visible range (use reflection to support different Syncfusion versions)
+            try
             {
-                StateData.ChartPanel.ChartZoom.XAxisVisibleStart = chart.PrimaryXAxis.VisibleRange.Start;
-                StateData.ChartPanel.ChartZoom.XAxisVisibleEnd = chart.PrimaryXAxis.VisibleRange.End;
-            }
+                if (chart.PrimaryXAxis != null)
+                {
+                    var vr = chart.PrimaryXAxis.GetType().GetProperty("VisibleRange")?.GetValue(chart.PrimaryXAxis);
+                    if (vr != null)
+                    {
+                        double? s = TryGetDoubleProperty(vr, "Start") ?? TryGetDoubleProperty(vr, "Minimum") ?? TryGetDoubleProperty(vr, "Min");
+                        double? e = TryGetDoubleProperty(vr, "End") ?? TryGetDoubleProperty(vr, "Maximum") ?? TryGetDoubleProperty(vr, "Max");
+                        StateData.ChartPanel.ChartZoom.XAxisVisibleStart = s;
+                        StateData.ChartPanel.ChartZoom.XAxisVisibleEnd = e;
+                    }
+                }
 
-            if (chart.PrimaryYAxis != null)
+                if (chart.PrimaryYAxis != null)
+                {
+                    var vr = chart.PrimaryYAxis.GetType().GetProperty("VisibleRange")?.GetValue(chart.PrimaryYAxis);
+                    if (vr != null)
+                    {
+                        double? s = TryGetDoubleProperty(vr, "Start") ?? TryGetDoubleProperty(vr, "Minimum") ?? TryGetDoubleProperty(vr, "Min");
+                        double? e = TryGetDoubleProperty(vr, "End") ?? TryGetDoubleProperty(vr, "Maximum") ?? TryGetDoubleProperty(vr, "Max");
+                        StateData.ChartPanel.ChartZoom.YAxisVisibleStart = s;
+                        StateData.ChartPanel.ChartZoom.YAxisVisibleEnd = e;
+                    }
+                }
+            }
+            catch (Exception ex)
             {
-                StateData.ChartPanel.ChartZoom.YAxisVisibleStart = chart.PrimaryYAxis.VisibleRange.Start;
-                StateData.ChartPanel.ChartZoom.YAxisVisibleEnd = chart.PrimaryYAxis.VisibleRange.End;
+                Log.Debug(ex, "PanelStateManager: reflection error saving chart VisibleRange (skipping)");
             }
         }
         catch (Exception ex)
@@ -332,17 +351,83 @@ public class PanelStateManager
 
             var zoom = StateData.ChartPanel.ChartZoom;
 
-            // Restore axis visible ranges if they were saved
-            if (chart.PrimaryXAxis != null && zoom.XAxisVisibleStart.HasValue && zoom.XAxisVisibleEnd.HasValue)
+            // Restore axis visible ranges if they were saved - use reflection and best-effort approaches
+            try
             {
-                chart.PrimaryXAxis.VisibleRange = new Syncfusion.Windows.Forms.Chart.MinMaxInfo(
-                    zoom.XAxisVisibleStart.Value, zoom.XAxisVisibleEnd.Value, 1);
-            }
+                if (chart.PrimaryXAxis != null && zoom.XAxisVisibleStart.HasValue && zoom.XAxisVisibleEnd.HasValue)
+                {
+                    var axis = chart.PrimaryXAxis;
+                    // Try setter on VisibleRange
+                    var prop = axis.GetType().GetProperty("VisibleRange");
+                    if (prop != null && prop.CanWrite)
+                    {
+                        var minMaxType = prop.PropertyType;
+                        try
+                        {
+                            // Try to find a constructor that accepts two doubles (or two doubles and an int)
+                            var ctor = minMaxType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length >= 2 && c.GetParameters()[0].ParameterType == typeof(double));
+                            if (ctor != null)
+                            {
+                                object obj;
+                                var parms = ctor.GetParameters();
+                                if (parms.Length >= 2)
+                                {
+                                    var args = new object[] { zoom.XAxisVisibleStart.Value, zoom.XAxisVisibleEnd.Value };
+                                    // If extra parameter required, let default of 1 for interval if present
+                                    if (parms.Length >= 3 && parms[2].ParameterType == typeof(int)) args = new object[] { zoom.XAxisVisibleStart.Value, zoom.XAxisVisibleEnd.Value, 1 };
+                                    obj = ctor.Invoke(args);
+                                    prop.SetValue(axis, obj);
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                    else
+                    {
+                        // Try using a runtime method to set range if available
+                        var setMethod = axis.GetType().GetMethod("SetVisibleRange", new[] { typeof(double), typeof(double) }) ?? axis.GetType().GetMethod("SetRange", new[] { typeof(double), typeof(double) });
+                        if (setMethod != null)
+                        {
+                            try { setMethod.Invoke(axis, new object[] { zoom.XAxisVisibleStart.Value, zoom.XAxisVisibleEnd.Value }); } catch { }
+                        }
+                    }
+                }
 
-            if (chart.PrimaryYAxis != null && zoom.YAxisVisibleStart.HasValue && zoom.YAxisVisibleEnd.HasValue)
+                if (chart.PrimaryYAxis != null && zoom.YAxisVisibleStart.HasValue && zoom.YAxisVisibleEnd.HasValue)
+                {
+                    var axis = chart.PrimaryYAxis;
+                    var prop = axis.GetType().GetProperty("VisibleRange");
+                    if (prop != null && prop.CanWrite)
+                    {
+                        var minMaxType = prop.PropertyType;
+                        try
+                        {
+                            var ctor = minMaxType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length >= 2 && c.GetParameters()[0].ParameterType == typeof(double));
+                            if (ctor != null)
+                            {
+                                object obj;
+                                var parms = ctor.GetParameters();
+                                var args = new object[] { zoom.YAxisVisibleStart.Value, zoom.YAxisVisibleEnd.Value };
+                                if (parms.Length >= 3 && parms[2].ParameterType == typeof(int)) args = new object[] { zoom.YAxisVisibleStart.Value, zoom.YAxisVisibleEnd.Value, 1 };
+                                obj = ctor.Invoke(args);
+                                prop.SetValue(axis, obj);
+                            }
+                        }
+                        catch { }
+                    }
+                    else
+                    {
+                        var setMethod = axis.GetType().GetMethod("SetVisibleRange", new[] { typeof(double), typeof(double) }) ?? axis.GetType().GetMethod("SetRange", new[] { typeof(double), typeof(double) });
+                        if (setMethod != null)
+                        {
+                            try { setMethod.Invoke(axis, new object[] { zoom.YAxisVisibleStart.Value, zoom.YAxisVisibleEnd.Value }); } catch { }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
             {
-                chart.PrimaryYAxis.VisibleRange = new Syncfusion.Windows.Forms.Chart.MinMaxInfo(
-                    zoom.YAxisVisibleStart.Value, zoom.YAxisVisibleEnd.Value, 1);
+                Log.Debug(ex, "PanelStateManager: reflection error restoring chart VisibleRange (skipping)");
             }
         }
         catch (Exception ex)
@@ -414,24 +499,78 @@ public class PanelStateManager
             var grid = FindControlByType<SfDataGrid>(panel);
             if (grid?.View == null) return;
 
-            var state = grid.View.GetState();
+            // Try calling GetState via reflection; some Syncfusion versions may not provide it
+            object? state = null;
+            try
+            {
+                var view = grid.View;
+                var getState = view?.GetType().GetMethod("GetState");
+                if (getState != null)
+                {
+                    state = getState.Invoke(view, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "PanelStateManager: reflection call to GetState failed (Syncfusion view API mismatch?)");
+            }
+
             if (state == null) return;
 
-            // Convert state to serializable format
-            var gridState = new GridViewState
+            // Convert state to serializable format (use reflection to read the shape)
+            var gridState = new GridViewState();
+
+            try
             {
-                GroupedColumns = state.GroupDescriptors?.Select(g => g.PropertyName).ToList(),
-                SortedColumns = state.SortDescriptors?.Select(s => new SortColumnState
+                // GroupDescriptors -> list of objects with PropertyName
+                var gd = state.GetType().GetProperty("GroupDescriptors")?.GetValue(state) as System.Collections.IEnumerable;
+                if (gd != null)
                 {
-                    PropertyName = s.PropertyName,
-                    Direction = s.Direction.ToString()
-                }).ToList(),
-                FilterPredicates = state.FilterDescriptors?.Select(f => new FilterPredicateState
+                    gridState.GroupedColumns = new System.Collections.Generic.List<string>();
+                    foreach (var g in gd)
+                    {
+                        var pn = g?.GetType().GetProperty("PropertyName")?.GetValue(g)?.ToString();
+                        if (!string.IsNullOrEmpty(pn)) gridState.GroupedColumns.Add(pn);
+                    }
+                }
+
+                // SortDescriptors -> list with PropertyName and Direction
+                var sd = state.GetType().GetProperty("SortDescriptors")?.GetValue(state) as System.Collections.IEnumerable;
+                if (sd != null)
                 {
-                    PropertyName = f.PropertyName,
-                    FilterText = f.FilterValue?.ToString()
-                }).ToList()
-            };
+                    gridState.SortedColumns = new System.Collections.Generic.List<SortColumnState>();
+                    foreach (var s in sd)
+                    {
+                        var propName = s?.GetType().GetProperty("PropertyName")?.GetValue(s)?.ToString();
+                        var dirObj = s?.GetType().GetProperty("Direction")?.GetValue(s);
+                        var dir = dirObj?.ToString() ?? string.Empty;
+                        if (!string.IsNullOrEmpty(propName))
+                        {
+                            gridState.SortedColumns.Add(new SortColumnState { PropertyName = propName, Direction = dir });
+                        }
+                    }
+                }
+
+                // FilterDescriptors -> list with PropertyName and FilterValue
+                var fd = state.GetType().GetProperty("FilterDescriptors")?.GetValue(state) as System.Collections.IEnumerable;
+                if (fd != null)
+                {
+                    gridState.FilterPredicates = new System.Collections.Generic.List<FilterPredicateState>();
+                    foreach (var f in fd)
+                    {
+                        var propName = f?.GetType().GetProperty("PropertyName")?.GetValue(f)?.ToString();
+                        var filterVal = f?.GetType().GetProperty("FilterValue")?.GetValue(f)?.ToString();
+                        if (!string.IsNullOrEmpty(propName))
+                        {
+                            gridState.FilterPredicates.Add(new FilterPredicateState { PropertyName = propName, FilterText = filterVal });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "PanelStateManager: failed to reflectively convert grid view state");
+            }
 
             // Store column widths
             gridState.ColumnWidths = new Dictionary<string, double>();
@@ -616,6 +755,24 @@ public class PanelStateManager
         }
 
         return results;
+    }
+
+    private static double? TryGetDoubleProperty(object target, string propertyName)
+    {
+        try
+        {
+            var pi = target.GetType().GetProperty(propertyName);
+            if (pi == null) return null;
+            var val = pi.GetValue(target);
+            if (val == null) return null;
+            if (val is double d) return d;
+            if (val is float f) return (double)f;
+            if (val is decimal dec) return (double)dec;
+            if (double.TryParse(val.ToString(), out var parsed)) return parsed;
+        }
+        catch { }
+
+        return null;
     }
 
     #endregion

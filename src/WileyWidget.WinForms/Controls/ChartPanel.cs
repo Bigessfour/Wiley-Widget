@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.ComponentModel;
 using System.Linq;
+using System.Collections.Generic;
 using WileyWidget.WinForms.ViewModels;
 using Syncfusion.Windows.Forms.Chart;
 using WileyWidget.WinForms.Theming;
@@ -42,6 +43,7 @@ namespace WileyWidget.WinForms.Controls
         private Syncfusion.WinForms.Controls.SfButton? _btnRefresh;
         private Panel? _topPanel;
         private ErrorProvider? _errorProvider;
+        private readonly List<ToolTip> _toolTips = new();
         private ChartSeries? _series;
 
         // Stored event handlers for proper cleanup
@@ -51,13 +53,40 @@ namespace WileyWidget.WinForms.Controls
         private EventHandler<AppTheme>? _btnRefreshThemeChangedHandler;
         private EventHandler<AppTheme>? _btnExportPngThemeChangedHandler;
         private EventHandler<AppTheme>? _btnExportPdfThemeChangedHandler;
+        // Named event handlers for PanelHeader (stored for proper unsubscription)
+        private EventHandler? _panelHeaderRefreshHandler;
+        private EventHandler? _panelHeaderCloseHandler;
 
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
         /// </summary>
-        public object? DataContext { get; private set; }
+        public new object? DataContext { get; private set; }
 
-        public ChartPanel() : this(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(Program.Services)) { }
+        /// <summary>
+        /// Parameterless constructor for DI/designer support.
+        /// Guards against null Program.Services and provides safe fallback.
+        /// </summary>
+        public ChartPanel() : this(ResolveChartViewModel()) { }
+
+        private static ChartViewModel ResolveChartViewModel()
+        {
+            if (Program.Services == null)
+            {
+                Serilog.Log.Error("ChartPanel: Program.Services is null - cannot resolve ChartViewModel");
+                throw new InvalidOperationException("ChartPanel requires DI services to be initialized. Ensure Program.Services is set before creating ChartPanel.");
+            }
+            try
+            {
+                var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(Program.Services);
+                Serilog.Log.Debug("ChartPanel: ChartViewModel resolved from DI container");
+                return vm;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "ChartPanel: Failed to resolve ChartViewModel from DI");
+                throw;
+            }
+        }
 
         public ChartPanel(ChartViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
         {
@@ -98,6 +127,7 @@ namespace WileyWidget.WinForms.Controls
             };
             // Add tooltip for better UX
             var comboToolTip = new ToolTip();
+            _toolTips.Add(comboToolTip);
             comboToolTip.SetToolTip(_comboDepartmentFilter, "Filter chart by department (or leave blank for all)");
             // Per demos: configure DropDownListView styling
             _comboDepartmentFilter.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
@@ -112,11 +142,14 @@ namespace WileyWidget.WinForms.Controls
             };
             // Add tooltip for better UX
             var refreshToolTip = new ToolTip();
+            _toolTips.Add(refreshToolTip);
             refreshToolTip.SetToolTip(_btnRefresh, "Reload chart data from database (F5)");
             // Add icon from theme icon service
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 14);
                 _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
@@ -125,17 +158,21 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
+                        // Re-resolve icon service on theme change to avoid stale closure
+                        var svc = Program.Services != null
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            : null;
                         if (_dispatcherHelper != null)
                         {
-                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = iconService?.GetIcon("refresh", t, 14));
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 14));
                         }
                         else if (_btnRefresh.InvokeRequired)
                         {
-                            _btnRefresh.Invoke(() => _btnRefresh.Image = iconService?.GetIcon("refresh", t, 14));
+                            _btnRefresh.Invoke(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 14));
                         }
                         else
                         {
-                            _btnRefresh.Image = iconService?.GetIcon("refresh", t, 14);
+                            _btnRefresh.Image = svc?.GetIcon("refresh", t, 14);
                         }
                     }
                     catch { }
@@ -156,10 +193,13 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Navigate to the Dashboard panel"
             };
             var dashToolTip = new ToolTip();
+            _toolTips.Add(dashToolTip);
             dashToolTip.SetToolTip(btnGoToDashboard, "Open the Dashboard panel (Ctrl+Shift+D)");
             try
             {
-                var iconSvc = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var iconSvc = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    : null;
                 btnGoToDashboard.Image = iconSvc?.GetIcon("home", ThemeManager.CurrentTheme, 14);
                 btnGoToDashboard.ImageAlign = ContentAlignment.MiddleLeft;
                 btnGoToDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -178,10 +218,13 @@ namespace WileyWidget.WinForms.Controls
             // Export buttons
             _btnExportPng = new Syncfusion.WinForms.Controls.SfButton { Text = "Export PNG", Width = 100, Height = 28, AccessibleName = "Export chart as PNG" };
             var exportPngTip = new ToolTip();
+            _toolTips.Add(exportPngTip);
             exportPngTip.SetToolTip(_btnExportPng, "Export the current chart view to a PNG image");
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    : null;
                 var theme = ThemeManager.CurrentTheme;
                 _btnExportPng.Image = iconService?.GetIcon("export", theme, 14);
                 _btnExportPng.ImageAlign = ContentAlignment.MiddleLeft;
@@ -190,17 +233,21 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
+                        // Re-resolve icon service on theme change
+                        var svc = Program.Services != null
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            : null;
                         if (_dispatcherHelper != null)
                         {
-                            _ = _dispatcherHelper.InvokeAsync(() => _btnExportPng.Image = iconService?.GetIcon("export", t, 14));
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnExportPng.Image = svc?.GetIcon("export", t, 14));
                         }
                         else if (_btnExportPng.InvokeRequired)
                         {
-                            _btnExportPng.Invoke(() => _btnExportPng.Image = iconService?.GetIcon("export", t, 14));
+                            _btnExportPng.Invoke(() => _btnExportPng.Image = svc?.GetIcon("export", t, 14));
                         }
                         else
                         {
-                            _btnExportPng.Image = iconService?.GetIcon("export", t, 14);
+                            _btnExportPng.Image = svc?.GetIcon("export", t, 14);
                         }
                     }
                     catch { }
@@ -213,10 +260,13 @@ namespace WileyWidget.WinForms.Controls
 
             _btnExportPdf = new Syncfusion.WinForms.Controls.SfButton { Text = "Export PDF", Width = 100, Height = 28, AccessibleName = "Export chart as PDF" };
             var exportPdfTip = new ToolTip();
+            _toolTips.Add(exportPdfTip);
             exportPdfTip.SetToolTip(_btnExportPdf, "Export the current chart view embedded in a PDF");
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    : null;
                 var theme = ThemeManager.CurrentTheme;
                 _btnExportPdf.Image = iconService?.GetIcon("pdf", theme, 14);
                 _btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
@@ -225,17 +275,21 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
+                        // Re-resolve icon service on theme change
+                        var svc = Program.Services != null
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            : null;
                         if (_dispatcherHelper != null)
                         {
-                            _ = _dispatcherHelper.InvokeAsync(() => _btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14));
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnExportPdf.Image = svc?.GetIcon("pdf", t, 14));
                         }
                         else if (_btnExportPdf.InvokeRequired)
                         {
-                            _btnExportPdf.Invoke(() => _btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14));
+                            _btnExportPdf.Invoke(() => _btnExportPdf.Image = svc?.GetIcon("pdf", t, 14));
                         }
                         else
                         {
-                            _btnExportPdf.Image = iconService?.GetIcon("pdf", t, 14);
+                            _btnExportPdf.Image = svc?.GetIcon("pdf", t, 14);
                         }
                     }
                     catch { }
@@ -279,26 +333,42 @@ namespace WileyWidget.WinForms.Controls
             // Enable scrollbar on X axis and zooming for better exploration
             try
             {
-                _chartControl.PrimaryXAxis.EnableScrollBar = true;
+                // Some Syncfusion versions name these properties differently. Use reflection to set if available.
+                var px = _chartControl.PrimaryXAxis;
+                var propEnableScroll = px?.GetType().GetProperty("EnableScrollBar");
+                if (propEnableScroll != null && propEnableScroll.CanWrite) propEnableScroll.SetValue(px, true);
             }
             catch { }
             try
             {
-                _chartControl.EnableZooming = true;
+                var chartType = _chartControl.GetType();
+                var propEnableZoom = chartType.GetProperty("EnableZooming");
+                if (propEnableZoom != null && propEnableZoom.CanWrite) propEnableZoom.SetValue(_chartControl, true);
             }
             catch { }
 
             _chartControl.PrimaryYAxis.Title = ChartPanelResources.Axis_Variance;
             _chartControl.PrimaryYAxis.TitleFont = new Font("Segoe UI", 10F);
             _chartControl.PrimaryYAxis.Font = new Font("Segoe UI", 10F);
-            _chartControl.PrimaryYAxis.NumberFormat = "C0";
+            try
+            {
+                var py = _chartControl.PrimaryYAxis;
+                var propNum = py?.GetType().GetProperty("NumberFormat");
+                if (propNum != null && propNum.CanWrite) propNum.SetValue(py, "C0");
+            }
+            catch { }
 
             // Add a secondary Y axis for percentage variance if the API is available
             try
             {
                 var secAxis = new Syncfusion.Windows.Forms.Chart.ChartAxis();
                 secAxis.Title = "% Variance";
-                secAxis.NumberFormat = "P0";
+                try
+                {
+                    var propNum = secAxis.GetType().GetProperty("NumberFormat");
+                    if (propNum != null && propNum.CanWrite) propNum.SetValue(secAxis, "P0");
+                }
+                catch { }
                 // Use reflection to assign the axis to avoid compile-time coupling if property differs
                 var chartArea = _chartControl.ChartArea;
                 var prop = chartArea.GetType().GetProperty("SecondaryYAxis");
@@ -361,17 +431,10 @@ namespace WileyWidget.WinForms.Controls
                 if (_panelHeader != null)
                 {
                     _panelHeader.Title = ChartPanelResources.PanelTitle;
-                    _panelHeader.RefreshClicked += async (s, e) => { try { await (_vm.RefreshCommand?.ExecuteAsync(null) ?? Task.CompletedTask); } catch { } };
-                    _panelHeader.CloseClicked += (s, e) =>
-                    {
-                        try
-                        {
-                            var parent = this.FindForm();
-                            var method = parent?.GetType().GetMethod("ClosePanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                            method?.Invoke(parent, new object[] { this.Name });
-                        }
-                        catch { }
-                    };
+                    _panelHeaderRefreshHandler = OnPanelHeaderRefreshClicked;
+                    _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+                    _panelHeaderCloseHandler = OnPanelHeaderCloseClicked;
+                    _panelHeader.CloseClicked += _panelHeaderCloseHandler;
                 }
             }
             catch { }
@@ -388,9 +451,14 @@ namespace WileyWidget.WinForms.Controls
                 var parentForm = this.FindForm();
                 if (parentForm == null) return;
 
-                // Use reflection to invoke the parent form's navigation method
-                var method = parentForm.GetType().GetMethod("DockUserControlPanel",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                // Prefer direct API on MainForm where available
+                if (parentForm is WileyWidget.WinForms.Forms.MainForm mf)
+                {
+                    try { mf.ShowPanel<DashboardPanel>("Dashboard"); return; } catch { }
+                }
+
+                // Fallback to reflection
+                var method = parentForm.GetType().GetMethod("DockUserControlPanel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (method != null)
                 {
                     var genericMethod = method.MakeGenericMethod(typeof(DashboardPanel));
@@ -400,6 +468,38 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 Serilog.Log.Warning(ex, "ChartPanel: NavigateToDashboard failed");
+            }
+        }
+
+        /// <summary>
+        /// Named handler for PanelHeader.RefreshClicked event (enables proper unsubscription).
+        /// </summary>
+        private async void OnPanelHeaderRefreshClicked(object? sender, EventArgs e)
+        {
+            try
+            {
+                await (_vm.RefreshCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "ChartPanel: Refresh failed");
+            }
+        }
+
+        /// <summary>
+        /// Named handler for PanelHeader.CloseClicked event (enables proper unsubscription).
+        /// </summary>
+        private void OnPanelHeaderCloseClicked(object? sender, EventArgs e)
+        {
+            try
+            {
+                var parent = this.FindForm();
+                var method = parent?.GetType().GetMethod("ClosePanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                method?.Invoke(parent, new object[] { this.Name });
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "ChartPanel: Close panel failed");
             }
         }
 
@@ -580,9 +680,9 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                ThemeManager.ApplyTheme(this);
+                ThemeManager.ApplyThemeToControl(this);
                 // Apply Syncfusion skin using global theme (FluentDark default, FluentLight fallback)
-                try { Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(this, ThemeManager.GetSyncfusionThemeName()); } catch { }
+                // Per-form Syncfusion theming is already applied by ThemeManager.ApplyTheme(this) above
             }
             catch { }
         }
@@ -646,11 +746,17 @@ namespace WileyWidget.WinForms.Controls
                 var list = data.OrderByDescending(k => k.Value).ToList();
 
                 // Configure series per Syncfusion demo best practices (Column Charts demo)
-                var series = new ChartSeries("Variance", ChartSeriesType.Column)
+                var series = new ChartSeries("Variance", ChartSeriesType.Column);
+                try
                 {
-                    XAxisValueType = ChartValueType.Category,
-                    YAxisValueType = ChartValueType.Double
-                };
+                    // set series axis value types if supported across Syncfusion versions
+                    var sType = series.GetType();
+                    var pX = sType.GetProperty("XAxisValueType") ?? sType.GetProperty("XValueType");
+                    var pY = sType.GetProperty("YAxisValueType") ?? sType.GetProperty("YValueType");
+                    if (pX != null && pX.CanWrite) pX.SetValue(series, ChartValueType.Category);
+                    if (pY != null && pY.CanWrite) pY.SetValue(series, ChartValueType.Double);
+                }
+                catch { }
                 series.Text = series.Name;
 
                 foreach (var d in list)
@@ -834,6 +940,20 @@ namespace WileyWidget.WinForms.Controls
                 try { if (_btnRefresh != null) _btnRefresh.Click -= BtnRefresh_Click; } catch { }
                 try { this.Load -= ChartPanel_Load; } catch { }
 
+                // Unsubscribe from PanelHeader events using stored named handlers
+                try
+                {
+                    if (_panelHeader != null)
+                    {
+                        if (_panelHeaderRefreshHandler != null) _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                        if (_panelHeaderCloseHandler != null) _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Debug(ex, "ChartPanel: Failed to unsubscribe PanelHeader events");
+                }
+
                 // Dispose controls
                 try { _chartControl?.Dispose(); } catch { }
 
@@ -841,8 +961,8 @@ namespace WileyWidget.WinForms.Controls
                 try { _comboDepartmentFilter.SafeClearDataSource(); } catch { }
                 try { _comboDepartmentFilter.SafeDispose(); } catch { }
                 try { _btnRefresh?.Dispose(); } catch { }
-                try { _btnExportPng?.Click -= ExportPng_Click; } catch { }
-                try { _btnExportPdf?.Click -= ExportPdf_Click; } catch { }
+                try { if (_btnExportPng != null) _btnExportPng.Click -= ExportPng_Click; } catch { }
+                try { if (_btnExportPdf != null) _btnExportPdf.Click -= ExportPdf_Click; } catch { }
                 try { _btnExportPngThemeChangedHandler = null; } catch { }
                 try { _btnExportPdfThemeChangedHandler = null; } catch { }
                 try { _btnExportPng?.Dispose(); } catch { }
@@ -852,6 +972,7 @@ namespace WileyWidget.WinForms.Controls
                 try { _noDataOverlay?.Dispose(); } catch { }
                 try { _topPanel?.Dispose(); } catch { }
                 try { _errorProvider?.Dispose(); } catch { }
+                try { foreach (var t in _toolTips) { try { t?.Dispose(); } catch { } } _toolTips.Clear(); } catch { }
             }
 
             base.Dispose(disposing);

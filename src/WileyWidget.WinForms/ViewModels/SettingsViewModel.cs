@@ -4,10 +4,12 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Validation;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -28,8 +30,9 @@ namespace WileyWidget.WinForms.ViewModels
     /// ViewModel for the Settings view providing comprehensive application configuration,
     /// theme management, connection settings, and user preferences.
     /// Implements full MVVM pattern with async save/load and validation.
+    /// Uses <see cref="ValidatableViewModelBase"/> for INotifyDataErrorInfo support.
     /// </summary>
-    public partial class SettingsViewModel : ObservableRecipient
+    public partial class SettingsViewModel : ValidatableViewModelBase
     {
         private readonly ILogger<SettingsViewModel>? _logger;
         private readonly string _settingsFilePath;
@@ -53,34 +56,53 @@ namespace WileyWidget.WinForms.ViewModels
         private AppTheme selectedTheme = AppTheme.Light;
 
         [ObservableProperty]
+        [NotifyDataErrorInfo]
+        [MaxLength(500, ErrorMessage = "Connection string cannot exceed 500 characters.")]
         private string connectionString = string.Empty;
 
         [ObservableProperty]
         private bool autoSaveEnabled = true;
 
         [ObservableProperty]
+        [NotifyDataErrorInfo]
+        [Range(1, 60, ErrorMessage = "Auto-save interval must be between 1 and 60 minutes.")]
         private int autoSaveIntervalMinutes = 5;
 
         [ObservableProperty]
         private bool showNotifications = true;
 
         [ObservableProperty]
+        [NotifyDataErrorInfo]
+        [DirectoryExists(AllowEmpty = true, ErrorMessage = "The export path directory does not exist.")]
         private string defaultExportPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
         [ObservableProperty]
+        [NotifyDataErrorInfo]
+        [ValidFormatString(FormatType = FormatStringType.DateTime, ErrorMessage = "Invalid date format string.")]
         private string dateFormat = "MM/dd/yyyy";
 
         [ObservableProperty]
+        [NotifyDataErrorInfo]
+        [ValidFormatString(FormatType = FormatStringType.Numeric, ErrorMessage = "Invalid currency format string.")]
         private string currencyFormat = "C2";
 
         [ObservableProperty]
         private bool enableLogging = true;
 
         [ObservableProperty]
+        [NotifyDataErrorInfo]
+        [ValidLogLevel(ErrorMessage = "Invalid log level. Valid levels: Verbose, Debug, Information, Warning, Error, Fatal.")]
         private string logLevel = "Information";
 
         [ObservableProperty]
         private bool openEditFormsDocked = false;
+
+        /// <summary>
+        /// When enabled, ViewModels will use sample/demo data instead of real database data.
+        /// Useful for demonstrations, testing, or when database is unavailable.
+        /// </summary>
+        [ObservableProperty]
+        private bool useDemoData = false;
 
         [ObservableProperty]
         private DateTime lastSaved = DateTime.MinValue;
@@ -168,6 +190,7 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>
         /// Saves all settings to the settings file asynchronously.
+        /// Validates all properties before saving and aborts if validation fails.
         /// </summary>
         private async Task SaveSettingsAsync(CancellationToken ct = default)
         {
@@ -175,6 +198,18 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 IsLoading = true;
                 ErrorMessage = null;
+
+                // Validate all properties before saving
+                if (!ValidateSettings())
+                {
+                    var validationErrors = GetValidationSummary();
+                    ErrorMessage = validationErrors.Count > 0
+                        ? $"Cannot save settings: {string.Join("; ", validationErrors)}"
+                        : "Cannot save settings: validation failed.";
+                    _logger?.LogWarning("Settings validation failed: {Errors}", ErrorMessage);
+                    return;
+                }
+
                 _logger?.LogInformation("Saving settings to {Path}", _settingsFilePath);
 
                 var settings = new
@@ -190,6 +225,7 @@ namespace WileyWidget.WinForms.ViewModels
                     EnableLogging,
                     LogLevel,
                     OpenEditFormsDocked,
+                    UseDemoData,
                     SavedAt = DateTime.Now
                 };
 
@@ -275,6 +311,9 @@ namespace WileyWidget.WinForms.ViewModels
                 if (root.TryGetProperty("OpenEditFormsDocked", out var dockedEl))
                     OpenEditFormsDocked = dockedEl.GetBoolean();
 
+                if (root.TryGetProperty("UseDemoData", out var demoEl))
+                    UseDemoData = demoEl.GetBoolean();
+
                 HasUnsavedChanges = false;
                 _logger?.LogInformation("Settings loaded successfully");
             }
@@ -304,19 +343,32 @@ namespace WileyWidget.WinForms.ViewModels
             CurrencyFormat = "C2";
             EnableLogging = true;
             LogLevel = "Information";
+            UseDemoData = false;
             HasUnsavedChanges = true;
             SuccessMessage = "Settings reset to defaults";
             _logger?.LogInformation("Settings reset to defaults");
         }
 
         /// <summary>
-        /// Opens folder browser dialog for export path selection.
+        /// Event raised when the user wants to browse for an export path.
+        /// The UI should handle this by showing a FolderBrowserDialog and
+        /// setting <see cref="DefaultExportPath"/> with the selected path.
+        /// </summary>
+        public event EventHandler? BrowseExportPathRequested;
+
+        /// <summary>
+        /// Triggers the browse export path flow.
+        /// The UI subscribes to <see cref="BrowseExportPathRequested"/> to show the dialog.
         /// </summary>
         private void BrowseExportPath()
         {
-            // In a real implementation, this would open a FolderBrowserDialog
-            // For now, mark as changed
-            HasUnsavedChanges = true;
+            _logger?.LogDebug("Browse export path requested");
+            BrowseExportPathRequested?.Invoke(this, EventArgs.Empty);
+            // If no handler is attached (e.g., tests), just mark as changed
+            if (BrowseExportPathRequested == null)
+            {
+                HasUnsavedChanges = true;
+            }
         }
 
         // Property change handlers to track unsaved changes
@@ -330,5 +382,6 @@ namespace WileyWidget.WinForms.ViewModels
         partial void OnCurrencyFormatChanged(string value) => HasUnsavedChanges = true;
         partial void OnEnableLoggingChanged(bool value) => HasUnsavedChanges = true;
         partial void OnLogLevelChanged(string value) => HasUnsavedChanges = true;
+        partial void OnUseDemoDataChanged(bool value) => HasUnsavedChanges = true;
     }
 }

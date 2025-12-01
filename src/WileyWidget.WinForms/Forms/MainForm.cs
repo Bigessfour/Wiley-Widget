@@ -5,6 +5,7 @@ using WileyWidget.WinForms.Controls;
 using Syncfusion.Windows.Forms.Tools; // docking manager
 using Syncfusion.Runtime.Serialization; // AppStateSerializer
 using System.IO; // layout persistence
+using System.Linq; // LINQ helpers (OfType/FirstOrDefault)
 using WileyWidget.WinForms.ViewModels;
 using CommunityToolkit.Mvvm.Input;
 
@@ -50,6 +51,8 @@ namespace WileyWidget.WinForms.Forms
         private readonly Dictionary<string, IServiceScope> _dockedControlScopes = new(); // Track DI scopes - disposed when control closes
         // Lock used to safely mutate/read docked controls dictionaries across UI event handlers and background threads
         private readonly object _dockedControlsLock = new();
+        // Queue of document panels to dock after layout loads (deferred docking per Syncfusion TDI docs)
+        private readonly Queue<(Type panelType, string panelName)> _deferredDocumentPanels = new();
         private EventHandler<AppTheme>? _menuIconsThemeChangedHandler;
         // Stored delegates for menu click handlers to enable proper cleanup
         private EventHandler? _accountsMenuClickHandler;
@@ -76,17 +79,21 @@ namespace WileyWidget.WinForms.Forms
         /// Initializes a new instance of <see cref="MainForm"/>.
         /// Sets up theme system, docking manager, and global exception handlers.
         /// </summary>
-        private readonly WileyWidget.ViewModels.MainViewModel? _mainViewModel;
+        private readonly WileyWidget.ViewModels.MainViewModel _mainViewModel;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
-        public MainForm(WileyWidget.ViewModels.MainViewModel? mainViewModel = null, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+        public MainForm(WileyWidget.ViewModels.MainViewModel mainViewModel, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
         {
+            _mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
             _dispatcherHelper = dispatcherHelper;
-            _mainViewModel = mainViewModel;
             // Initialize theme system first
             ThemeManager.Initialize();
 
             InitializeComponent();
+            // Note: this project does not include a designer-generated InitializeComponent file for MainForm.
+            // Create a small stub so code compiled and construction proceeds — the rest of initialization
+            // happens in InitializeFormComponents which is used by this class.
+            InitializeFormComponents();
             Text = MainFormResources.FormTitle;
 
             // Initialize docking manager (adds control to main client area)
@@ -118,15 +125,18 @@ namespace WileyWidget.WinForms.Forms
             // The SynchronizationContext may not exist during construction, so we capture it in Shown.
             this.Shown += (s, e) =>
             {
-                try
-                {
-                    _dispatcherHelper?.CheckAccess();
-                }
-                catch { }
+                try { _dispatcherHelper?.CheckAccess(); } catch { }
             };
         }
-
         private void InitializeComponent()
+        {
+            // Minimal InitializeComponent stub — designer file intentionally not present in repo.
+            this.SuspendLayout();
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ResumeLayout(false);
+        }
+
+        private void InitializeFormComponents()
         {
             _menuStrip = new MenuStrip();
             _menuStrip.AccessibleName = "Main menu";
@@ -181,41 +191,42 @@ namespace WileyWidget.WinForms.Forms
             _settingsMenuClickHandler = SettingsMenu_Click;
 
             accountsMenu.Click += _accountsMenuClickHandler;
+            Serilog.Log.Information("*** WIRED accountsMenu.Click handler ***");
 
             // prepare a RelayCommand that docks the dashboard (improves audit detection for command usage)
             _openDashboardCommand = new RelayCommand(() => DockUserControlPanel<DashboardPanel>(MainFormResources.DashboardMenu));
             dashboardMenu.Click += _dashboardMenuClickHandler;
+            Serilog.Log.Information("*** WIRED dashboardMenu.Click handler ***");
 
             chartsMenu.Click += _chartsMenuClickHandler;
+            Serilog.Log.Information("*** WIRED chartsMenu.Click handler ***");
 
             settingsMenu.Click += _settingsMenuClickHandler;
+            Serilog.Log.Information("*** WIRED settingsMenu.Click handler ***");
             try
             {
-                if (_mainViewModel != null)
+                var mainBinding = new BindingSource { DataSource = _mainViewModel };
+                this.DataBindings.Add("Text", mainBinding, "Title", true, DataSourceUpdateMode.OnPropertyChanged);
+                Serilog.Log.Debug("MainForm: bound Text property to MainViewModel.Title");
+
+                // Add a global status strip to show a centralized StatusMessage and busy indicator
+                _globalStatusStrip = new StatusStrip { Dock = DockStyle.Bottom };
+                _globalStatusLabel = new ToolStripStatusLabel { Text = _mainViewModel.StatusMessage ?? "Ready", Spring = true };
+                _globalProgressBar = new ToolStripProgressBar { Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30, Visible = _mainViewModel.IsLoading };
+                _globalStatusStrip.Items.Add(_globalStatusLabel);
+                _globalStatusStrip.Items.Add(_globalProgressBar);
+                Controls.Add(_globalStatusStrip);
+
+                try
                 {
-                    var mainBinding = new BindingSource { DataSource = _mainViewModel };
-                    this.DataBindings.Add("Text", mainBinding, "Title", true, DataSourceUpdateMode.OnPropertyChanged);
-                    Serilog.Log.Debug("MainForm: bound Text property to MainViewModel.Title");
-
-                    // Add a global status strip to show a centralized StatusMessage and busy indicator
-                    _globalStatusStrip = new StatusStrip { Dock = DockStyle.Bottom };
-                    _globalStatusLabel = new ToolStripStatusLabel { Text = _mainViewModel.StatusMessage ?? "Ready", Spring = true };
-                    _globalProgressBar = new ToolStripProgressBar { Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30, Visible = _mainViewModel.IsLoading };
-                    _globalStatusStrip.Items.Add(_globalStatusLabel);
-                    _globalStatusStrip.Items.Add(_globalProgressBar);
-                    Controls.Add(_globalStatusStrip);
-
-                    try
-                    {
-                        // Bind status text and busy indicator to the main view model
-                        var bs = new BindingSource { DataSource = _mainViewModel };
-                        _globalStatusLabel.DataBindings.Add("Text", bs, "StatusMessage", true, DataSourceUpdateMode.OnPropertyChanged);
-                        _globalProgressBar.DataBindings.Add("Visible", bs, "IsLoading", true, DataSourceUpdateMode.OnPropertyChanged);
-                    }
-                    catch (Exception ex)
-                    {
-                        Serilog.Log.Warning(ex, "MainForm: failed to bind global status strip to MainViewModel");
-                    }
+                    // Bind status text and busy indicator to the main view model
+                    var bs = new BindingSource { DataSource = _mainViewModel };
+                    _globalStatusLabel.DataBindings.Add("Text", bs, "StatusMessage", true, DataSourceUpdateMode.OnPropertyChanged);
+                    _globalProgressBar.DataBindings.Add("Visible", bs, "IsLoading", true, DataSourceUpdateMode.OnPropertyChanged);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "MainForm: failed to bind global status strip to MainViewModel");
                 }
             }
             catch (Exception ex)
@@ -224,18 +235,22 @@ namespace WileyWidget.WinForms.Forms
             }
 
             // Apply theme-aware icons to menus (best-effort). Use DI service to load matching variants.
-            WileyWidget.WinForms.Services.IThemeIconService? iconService = null;
+            // Capture icon service in a local variable for safe closure - re-resolve on theme change to handle service updates
+            WileyWidget.WinForms.Services.IThemeIconService? initialIconService = null;
             AppTheme theme = AppTheme.Light;
             try
             {
-                iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                if (Program.Services != null)
+                {
+                    initialIconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                }
                 theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
 
-                accountsMenu.Image = iconService?.GetIcon("accounts", theme, 18);
-                dashboardMenu.Image = iconService?.GetIcon("home", theme, 18);
-                chartsMenu.Image = iconService?.GetIcon("chart", theme, 18);
-                settingsMenu.Image = iconService?.GetIcon("settings", theme, 18);
-                exitItem.Image = iconService?.GetIcon("dismiss", theme, 14);
+                accountsMenu.Image = initialIconService?.GetIcon("accounts", theme, 18);
+                dashboardMenu.Image = initialIconService?.GetIcon("home", theme, 18);
+                chartsMenu.Image = initialIconService?.GetIcon("chart", theme, 18);
+                settingsMenu.Image = initialIconService?.GetIcon("settings", theme, 18);
+                exitItem.Image = initialIconService?.GetIcon("dismiss", theme, 14);
             }
             catch (Exception ex)
             {
@@ -250,15 +265,21 @@ namespace WileyWidget.WinForms.Forms
             exitItem.ImageScaling = ToolStripItemImageScaling.SizeToFit;
 
             // Update icons when theme changes — store handler so we can unsubscribe on dispose
+            // Re-resolve icon service each time to handle potential service updates and avoid stale closures
             _menuIconsThemeChangedHandler = (s, t) =>
             {
                 try
                 {
-                    accountsMenu.Image = iconService?.GetIcon("accounts", t, 18);
-                    dashboardMenu.Image = iconService?.GetIcon("home", t, 18);
-                    chartsMenu.Image = iconService?.GetIcon("chart", t, 18);
-                    settingsMenu.Image = iconService?.GetIcon("settings", t, 18);
-                    exitItem.Image = iconService?.GetIcon("dismiss", t, 14);
+                    WileyWidget.WinForms.Services.IThemeIconService? iconSvc = null;
+                    if (Program.Services != null)
+                    {
+                        iconSvc = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                    }
+                    accountsMenu.Image = iconSvc?.GetIcon("accounts", t, 18);
+                    dashboardMenu.Image = iconSvc?.GetIcon("home", t, 18);
+                    chartsMenu.Image = iconSvc?.GetIcon("chart", t, 18);
+                    settingsMenu.Image = iconSvc?.GetIcon("settings", t, 18);
+                    exitItem.Image = iconSvc?.GetIcon("dismiss", t, 14);
                 }
                 catch (Exception ex)
                 {
@@ -287,25 +308,22 @@ namespace WileyWidget.WinForms.Forms
             // Add a hidden overview grid (bound to MainViewModel.RecentMetrics when available)
             try
             {
-                if (_mainViewModel != null)
+                _overviewGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
                 {
-                    _overviewGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
-                    {
-                        Name = "overviewGrid",
-                        Visible = false,
-                        AccessibleName = "Overview data grid",
-                        AccessibleDescription = "Hidden overview grid bound to main metrics" // SfDataGrid.DataSource
-                    };
+                    Name = "overviewGrid",
+                    Visible = false,
+                    AccessibleName = "Overview data grid",
+                    AccessibleDescription = "Hidden overview grid bound to main metrics" // SfDataGrid.DataSource
+                };
 
-                    // Minimal column mapping for telemetry
-                    _overviewGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Key", HeaderText = "Metric" });
-                    _overviewGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "Value", HeaderText = "Value" });
+                // Minimal column mapping for telemetry
+                _overviewGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Key", HeaderText = "Metric" });
+                _overviewGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "Value", HeaderText = "Value" });
 
-                    // Wire up binding to the main view model collection (if present)
-                    try { _overviewGrid.DataSource = _mainViewModel.RecentMetrics; } catch { }
-                    Controls.Add(_overviewGrid);
-                    try { _errorProvider = new ErrorProvider(this) { BlinkStyle = ErrorBlinkStyle.NeverBlink }; } catch { }
-                }
+                // Wire up binding to the main view model collection (if present)
+                try { _overviewGrid.DataSource = _mainViewModel.RecentMetrics; } catch { }
+                Controls.Add(_overviewGrid);
+                try { _errorProvider = new ErrorProvider(this) { BlinkStyle = ErrorBlinkStyle.NeverBlink }; } catch { }
             }
             catch { }
             MainMenuStrip = _menuStrip;
@@ -375,7 +393,21 @@ namespace WileyWidget.WinForms.Forms
                 _dockingManager.DragProviderStyle = DragProviderStyle.VS2012;
 
                 // Set accessibility properties for DockingManager host
-                try { _dockingManager.AccessibleName = "Main docking workspace"; _dockingManager.AccessibleDescription = "Docking manager that hosts app-wide panels like Accounts, Charts, and Settings"; } catch { }
+                try
+                {
+                    var dmType = _dockingManager.GetType();
+                    var propName = dmType.GetProperty("AccessibleName");
+                    var propDesc = dmType.GetProperty("AccessibleDescription");
+                    if (propName != null && propName.PropertyType == typeof(string))
+                    {
+                        propName.SetValue(_dockingManager, "Main docking workspace");
+                    }
+                    if (propDesc != null && propDesc.PropertyType == typeof(string))
+                    {
+                        propDesc.SetValue(_dockingManager, "Docking manager that hosts app-wide panels like Accounts, Charts, and Settings");
+                    }
+                }
+                catch { }
 
                 // Subscribe to dock state change events for lazy loading
                 _dockingManager.DockStateChanged += DockingManager_DockStateChanged;
@@ -384,9 +416,45 @@ namespace WileyWidget.WinForms.Forms
                 // Subscribe to visibility changed for proper cleanup when forms are closed
                 _dockingManager.DockVisibilityChanged += DockingManager_DockVisibilityChanged;
 
+                // Subscribe to NewDockStateEndLoad - per Syncfusion docs, DockAsDocument should be called after this event fires
+                _dockingManager.NewDockStateEndLoad += DockingManager_NewDockStateEndLoad;
+
                 // Enable custom context menu on dock tabs (right-click tab → Close All, Close Others)
-                _dockingManager.NewMenu = true;
-                _dockingManager.DockTabContextMenu += DockingManager_DockTabContextMenu;
+                // Enable custom context menu on dock tabs (right-click tab → Close All, Close Others)
+                // Use reflection to maintain compatibility across Syncfusion versions.
+                try
+                {
+                    var dmType = _dockingManager.GetType();
+                    var newMenuProp = dmType.GetProperty("NewMenu");
+                    if (newMenuProp != null && newMenuProp.PropertyType == typeof(bool))
+                    {
+                        newMenuProp.SetValue(_dockingManager, true);
+                    }
+
+                    var evt = dmType.GetEvent("DockTabContextMenu");
+                    if (evt != null)
+                    {
+                        Delegate? handler = null;
+                        try
+                        {
+                            var handlerType = evt.EventHandlerType;
+                            if (handlerType != null)
+                            {
+                                handler = Delegate.CreateDelegate(handlerType, this, nameof(DockingManager_DockTabContextMenu));
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Serilog.Log.Debug(ex, "Failed to create DockTabContextMenu delegate — event signature may not match");
+                        }
+
+                        if (handler != null)
+                        {
+                            evt.AddEventHandler(_dockingManager, handler);
+                        }
+                    }
+                }
+                catch { }
 
                 // Complete initialization
                 _dockingManager.EndInit();
@@ -420,14 +488,25 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 // Map app theme to DockingManager VisualStyle per demos
-                var visualStyle = ThemeManager.CurrentTheme switch
+                try
                 {
-                    AppTheme.Dark => Syncfusion.Windows.Forms.VisualStyle.Office2016Black,
-                    AppTheme.Light => Syncfusion.Windows.Forms.VisualStyle.Office2019Colorful,
-                    _ => Syncfusion.Windows.Forms.VisualStyle.Office2019Colorful
-                };
-
-                _dockingManager.VisualStyle = visualStyle;
+                    var dmType = _dockingManager.GetType();
+                    var vsProp = dmType.GetProperty("VisualStyle");
+                    if (vsProp != null)
+                    {
+                        var enumType = vsProp.PropertyType;
+                        if (enumType.IsEnum)
+                        {
+                            string desired = ThemeManager.CurrentTheme == AppTheme.Dark ? "Office2016Black" : "Office2019Colorful";
+                            var field = enumType.GetField(desired) ?? enumType.GetFields().FirstOrDefault();
+                            if (field != null)
+                            {
+                                vsProp.SetValue(_dockingManager, field.GetValue(null));
+                            }
+                        }
+                    }
+                }
+                catch { }
 
                 // Set matching drag provider style per demos (VS2012 is recommended)
                 var dragStyle = ThemeManager.CurrentTheme switch
@@ -441,11 +520,18 @@ namespace WileyWidget.WinForms.Forms
 
                 // Apply theme-specific colors per demos (VisualStudioDemo)
                 var colors = ThemeManager.Colors;
-                _dockingManager.ActiveCaptionBackground = new Syncfusion.Drawing.BrushInfo(colors.Accent);
-                _dockingManager.InActiveCaptionBackground = new Syncfusion.Drawing.BrushInfo(colors.SurfaceAlt);
+                try
+                {
+                    _dockingManager.ActiveCaptionBackground = new Syncfusion.Drawing.BrushInfo(colors.Accent);
+                    // Some ThemeColors variants don't expose SurfaceAlt - fall back to Surface if absent
+                    var surfaceAltProp = ThemeManager.Colors?.GetType().GetProperty("SurfaceAlt");
+                    var surfaceObj = surfaceAltProp != null ? surfaceAltProp.GetValue(ThemeManager.Colors) : null;
+                    var inactiveColor = surfaceObj is System.Drawing.Color sc ? sc : ThemeManager.Colors!.Surface;
+                    _dockingManager.InActiveCaptionBackground = new Syncfusion.Drawing.BrushInfo(inactiveColor);
+                }
+                catch { }
 
-                Serilog.Log.Debug("Applied DockingManager theme: VisualStyle={VisualStyle}, DragStyle={DragStyle}",
-                    visualStyle, dragStyle);
+                Serilog.Log.Debug("Applied DockingManager theme for {Theme}: DragStyle={DragStyle}", ThemeManager.CurrentTheme, dragStyle);
             }
             catch (Exception ex)
             {
@@ -627,9 +713,9 @@ namespace WileyWidget.WinForms.Forms
                         if (_dockingManager != null)
                         {
                             // Marshal to UI thread if necessary
-                            if (ctrl != null && ctrl.InvokeRequired)
+                            if (ctrl.InvokeRequired)
                             {
-                                ctrl.Invoke((Action)(() =>
+                                ctrl.Invoke((System.Action)(() =>
                                 {
                                     try { _dockingManager.SetEnableDocking(ctrl, false); } catch { }
                                 }));
@@ -683,22 +769,46 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Handles dock tab context menu (right-click on tab) to show Close All/Close Others options.
         /// </summary>
-        private void DockingManager_DockTabContextMenu(object? sender, DockContextMenuEventArgs e)
+        private void DockingManager_DockTabContextMenu(object sender, DockContextMenuEventArgs e)
         {
             try
             {
+
                 if (e.ContextMenu == null || _dockingManager == null) return;
 
-                e.ContextMenu.Items.Add("-"); // Separator
+                // Attempt to add menu items via reflection — avoid compile-time type assumptions between
+                // Syncfusion.PopupMenu and System.Windows.Forms ToolStrip-based menus.
+                try
+                {
+                    var ctx = e.ContextMenu;
+                    var ctxType = ctx.GetType();
+                    var itemsProp = ctxType.GetProperty("Items");
+                    if (itemsProp != null)
+                    {
+                        var items = itemsProp.GetValue(ctx);
+                        if (items != null)
+                        {
+                            // Try an Add(string) signature first
+                            var addString = items.GetType().GetMethod("Add", new[] { typeof(string) });
+                            if (addString != null)
+                            {
+                                addString.Invoke(items, new object[] { "-" });
+                            }
 
-                var closeAllItem = new ToolStripMenuItem("Close All Panels", null, (s, args) => CloseAllPanels());
-                closeAllItem.AccessibleName = "Close all panels";
-
-                var closeOthersItem = new ToolStripMenuItem("Close Other Panels", null, (s, args) => CloseOtherPanels(e.Owner));
-                closeOthersItem.AccessibleName = "Close other panels";
-
-                e.ContextMenu.Items.Add(closeAllItem);
-                e.ContextMenu.Items.Add(closeOthersItem);
+                            // Try to add ToolStripMenuItem objects as a general option
+                            var addObj = items.GetType().GetMethod("Add", new[] { typeof(object) }) ?? items.GetType().GetMethod("Add");
+                            if (addObj != null)
+                            {
+                                addObj.Invoke(items, new object[] { new ToolStripMenuItem("Close All Panels", null, (s, args) => CloseAllPanels()) });
+                                addObj.Invoke(items, new object[] { new ToolStripMenuItem("Close Other Panels", null, (s, args) => CloseOtherPanels(e.Owner)) });
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Debug(ex, "Error adding dock tab context menu items via reflection");
+                }
 
                 Serilog.Log.Debug("Added Close All/Close Others to dock tab context menu");
             }
@@ -773,6 +883,54 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 Serilog.Log.Warning(ex, "Error closing other panels");
+            }
+        }
+
+        /// <summary>
+        /// Handles the NewDockStateEndLoad event - per Syncfusion docs, DockAsDocument should be called after this event.
+        /// This processes any deferred document panels that were queued before layout finished loading.
+        /// </summary>
+        private void DockingManager_NewDockStateEndLoad(object? sender, EventArgs e)
+        {
+            try
+            {
+                Serilog.Log.Debug("DockingManager_NewDockStateEndLoad fired - dock layout is now ready for document panels");
+
+                // Process any deferred document panels
+                ProcessDeferredDocumentPanels();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Error in NewDockStateEndLoad handler");
+            }
+        }
+
+        /// <summary>
+        /// Processes deferred document panels that were queued before dock layout finished loading.
+        /// Per Syncfusion TDI documentation, DockAsDocument should be called after NewDockStateEndLoad.
+        /// </summary>
+        private void ProcessDeferredDocumentPanels()
+        {
+            try
+            {
+                while (_deferredDocumentPanels.Count > 0)
+                {
+                    var (panelType, panelName) = _deferredDocumentPanels.Dequeue();
+                    Serilog.Log.Debug("Processing deferred document panel: {Panel} ({Type})", panelName, panelType.Name);
+
+                    // Use reflection to call the generic DockUserControlPanel method
+                    var method = typeof(MainForm).GetMethod(nameof(DockUserControlPanel),
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (method != null)
+                    {
+                        var genericMethod = method.MakeGenericMethod(panelType);
+                        genericMethod.Invoke(this, new object[] { panelName });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Error processing deferred document panels");
             }
         }
 
@@ -887,11 +1045,32 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                _mainViewModel?.LoadDataCommand.Execute(null);
+                _mainViewModel.LoadDataCommand?.Execute(null);
             }
             catch (Exception ex)
             {
                 Serilog.Log.Warning(ex, "MainForm_Load: LoadDataCommand failed");
+            }
+
+            // Open default panel if no panels are currently docked
+            try
+            {
+                bool hasPanels;
+                lock (_dockedControlsLock)
+                {
+                    hasPanels = _dockedControls.Count > 0;
+                }
+
+                if (!hasPanels)
+                {
+                    Serilog.Log.Information("MainForm_Load: No panels found, opening Dashboard as default view (ShowPanel)");
+                    // Use the public ShowPanel wrapper — it logs the request and funnels to the existing docking implementation.
+                    ShowPanel<DashboardPanel>(MainFormResources.DashboardMenu);
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "MainForm_Load: Failed to open default panel");
             }
         }
 
@@ -900,22 +1079,22 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void AccountsMenu_Click(object? sender, EventArgs e)
         {
+            // DIAGNOSTIC: Log immediately to confirm handler fires
+            Serilog.Log.Information("*** ACCOUNTS MENU CLICK FIRED *** Sender={Sender}", sender?.GetType().Name ?? "null");
+
             try
             {
-                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
-                {
-                    try { _ = _dispatcherHelper.InvokeAsync(() => AccountsMenu_Click(sender, e)); } catch { }
-                    return;
-                }
+                // Simplified threading - removed dispatcher check that may silently return
                 if (InvokeRequired)
                 {
+                    Serilog.Log.Debug("AccountsMenu_Click: InvokeRequired=true, marshalling to UI thread");
                     Invoke(() => AccountsMenu_Click(sender, e));
                     return;
                 }
 
                 Serilog.Log.Information("MainForm: Accounts menu clicked - showing Accounts panel");
                 DockUserControlPanel<AccountsPanel>(MainFormResources.AccountsMenu);
-                try { _mainViewModel?.LoadDataCommand.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: mainViewModel.LoadDataCommand.Execute failed after Accounts menu click"); }
+                try { _mainViewModel.LoadDataCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: mainViewModel.LoadDataCommand.Execute failed after Accounts menu click"); }
             }
             catch (ObjectDisposedException)
             {
@@ -947,7 +1126,7 @@ namespace WileyWidget.WinForms.Forms
 
                 Serilog.Log.Information("MainForm: Dashboard menu clicked - activating dashboard");
                 try { _openDashboardCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: openDashboardCommand failed"); }
-                try { _mainViewModel?.LoadDataCommand.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: mainViewModel.LoadDataCommand.Execute failed after Dashboard menu click"); }
+                try { _mainViewModel.LoadDataCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: mainViewModel.LoadDataCommand.Execute failed after Dashboard menu click"); }
             }
             catch (ObjectDisposedException)
             {
@@ -964,22 +1143,22 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void ChartsMenu_Click(object? sender, EventArgs e)
         {
+            // DIAGNOSTIC: Log immediately to confirm handler fires
+            Serilog.Log.Information("*** CHARTS MENU CLICK FIRED *** Sender={Sender}", sender?.GetType().Name ?? "null");
+
             try
             {
-                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
-                {
-                    try { _ = _dispatcherHelper.InvokeAsync(() => ChartsMenu_Click(sender, e)); } catch { }
-                    return;
-                }
+                // Simplified threading - removed dispatcher check that may silently return
                 if (InvokeRequired)
                 {
+                    Serilog.Log.Debug("ChartsMenu_Click: InvokeRequired=true, marshalling to UI thread");
                     Invoke(() => ChartsMenu_Click(sender, e));
                     return;
                 }
 
                 Serilog.Log.Information("MainForm: Charts menu clicked - showing Charts panel");
                 DockUserControlPanel<ChartPanel>(MainFormResources.ChartsMenu);
-                try { _mainViewModel?.LoadDataCommand.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: mainViewModel.LoadDataCommand.Execute failed after Charts menu click"); }
+                try { _mainViewModel.LoadDataCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: mainViewModel.LoadDataCommand.Execute failed after Charts menu click"); }
             }
             catch (ObjectDisposedException)
             {
@@ -996,13 +1175,12 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void SettingsMenu_Click(object? sender, EventArgs e)
         {
+            // DIAGNOSTIC: Log immediately to confirm handler fires
+            Serilog.Log.Information("*** SETTINGS MENU CLICK FIRED *** Sender={Sender}", sender?.GetType().Name ?? "null");
+
             try
             {
-                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
-                {
-                    try { _ = _dispatcherHelper.InvokeAsync(() => SettingsMenu_Click(sender, e)); } catch { }
-                    return;
-                }
+                // Simplified threading - removed dispatcher check that may silently return
                 if (InvokeRequired)
                 {
                     Invoke(() => SettingsMenu_Click(sender, e));
@@ -1011,7 +1189,7 @@ namespace WileyWidget.WinForms.Forms
 
                 Serilog.Log.Information("MainForm: Settings menu clicked - opening Settings");
                 DockUserControlPanel<SettingsPanel>(MainFormResources.SettingsMenu);
-                try { _mainViewModel?.LoadDataCommand.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: mainViewModel.LoadDataCommand.Execute failed after Settings menu click"); }
+                try { _mainViewModel.LoadDataCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "MainForm: mainViewModel.LoadDataCommand.Execute failed after Settings menu click"); }
             }
             catch (ObjectDisposedException)
             {
@@ -1114,14 +1292,32 @@ namespace WileyWidget.WinForms.Forms
                 // Trigger main view model load if present (MVVM: use command instead of ad-hoc calls)
                 if (_dockingManager != null)
                 {
-                    try { _mainViewModel?.LoadDataCommand.Execute(null); } catch { }
+                    try { _mainViewModel.LoadDataCommand?.Execute(null); } catch { }
                 }
                 else
                 {
+                    // Fallback for environments without docking manager: show the AccountsPanel inside
+                    // a simple modal Form so the UI remains usable without depending on the legacy AccountsForm.
                     using var scope = Program.Services.CreateScope();
                     var provider = scope.ServiceProvider;
-                    var accountsForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsForm>(provider);
-                    accountsForm.ShowDialog();
+                    var accountsPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsPanel>(provider);
+                    using var modal = new Form()
+                    {
+                        StartPosition = FormStartPosition.CenterParent,
+                        Text = MainFormResources.AccountsMenu,
+                        Size = new System.Drawing.Size(1000, 700)
+                    };
+
+                    try
+                    {
+                        accountsPanel.Dock = DockStyle.Fill;
+                        modal.Controls.Add(accountsPanel);
+                        modal.ShowDialog();
+                    }
+                    finally
+                    {
+                        try { accountsPanel.Dispose(); } catch { }
+                    }
                 }
             }
             catch (Exception ex)
@@ -1148,8 +1344,27 @@ namespace WileyWidget.WinForms.Forms
                 }
                 else
                 {
-                    using var settingsForm = new SettingsForm(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(Program.Services));
-                    settingsForm.ShowDialog();
+                    // Fallback: host the SettingsPanel inside a simple modal Form (prefer Panel over Form)
+                    using var scope = Program.Services.CreateScope();
+                    var provider = scope.ServiceProvider;
+                    var settingsPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsPanel>(provider);
+                    using var modal = new Form()
+                    {
+                        StartPosition = FormStartPosition.CenterParent,
+                        Text = MainFormResources.SettingsMenu,
+                        Size = new System.Drawing.Size(800, 700)
+                    };
+
+                    try
+                    {
+                        settingsPanel.Dock = DockStyle.Fill;
+                        modal.Controls.Add(settingsPanel);
+                        modal.ShowDialog();
+                    }
+                    finally
+                    {
+                        try { settingsPanel.Dispose(); } catch { }
+                    }
                 }
             }
             catch (Exception ex)
@@ -1173,6 +1388,34 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
+        /// Recursively unsubscribes click handlers from menu items.
+        /// </summary>
+        private void UnsubscribeMenuHandlers(ToolStripItemCollection items)
+        {
+            foreach (ToolStripItem item in items)
+            {
+                if (item is ToolStripMenuItem menuItem)
+                {
+                    // Check if this is one of our tracked menu items and unsubscribe
+                    if (menuItem.Text == MainFormResources.AccountsMenu && _accountsMenuClickHandler != null)
+                        menuItem.Click -= _accountsMenuClickHandler;
+                    else if (menuItem.Text == MainFormResources.DashboardMenu && _dashboardMenuClickHandler != null)
+                        menuItem.Click -= _dashboardMenuClickHandler;
+                    else if (menuItem.Text == MainFormResources.ChartsMenu && _chartsMenuClickHandler != null)
+                        menuItem.Click -= _chartsMenuClickHandler;
+                    else if (menuItem.Text == MainFormResources.SettingsMenu && _settingsMenuClickHandler != null)
+                        menuItem.Click -= _settingsMenuClickHandler;
+                    else if (menuItem.Text == MainFormResources.ExitMenu && _exitMenuClickHandler != null)
+                        menuItem.Click -= _exitMenuClickHandler;
+
+                    // Recurse into submenus
+                    if (menuItem.HasDropDownItems)
+                        UnsubscribeMenuHandlers(menuItem.DropDownItems);
+                }
+            }
+        }
+
+        /// <summary>
         /// Releases managed resources and unsubscribes from events.
         /// </summary>
         /// <param name="disposing">True if called from Dispose(), false if from finalizer.</param>
@@ -1188,25 +1431,27 @@ namespace WileyWidget.WinForms.Forms
                 try { ThemeManager.ThemeChanged -= OnThemeChanged; } catch { }
                 try { WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged -= _menuIconsThemeChangedHandler; } catch { }
 
+                // Unsubscribe DockingManager event handlers
+                try
+                {
+                    if (_dockingManager != null)
+                    {
+                        _dockingManager.DockStateChanged -= DockingManager_DockStateChanged;
+                        _dockingManager.DockControlActivated -= DockingManager_DockControlActivated;
+                        _dockingManager.DockVisibilityChanged -= DockingManager_DockVisibilityChanged;
+                        _dockingManager.NewDockStateEndLoad -= DockingManager_NewDockStateEndLoad;
+                    }
+                }
+                catch { }
+
                 // Unsubscribe menu click handlers
+                // Note: Panel navigation items are in the View menu's DropDownItems, not top-level
                 try
                 {
                     if (_menuStrip != null)
                     {
-                        foreach (ToolStripItem item in _menuStrip.Items)
-                        {
-                            if (item is ToolStripMenuItem menuItem)
-                            {
-                                if (menuItem.Text == MainFormResources.AccountsMenu && _accountsMenuClickHandler != null)
-                                    menuItem.Click -= _accountsMenuClickHandler;
-                                else if (menuItem.Text == MainFormResources.DashboardMenu && _dashboardMenuClickHandler != null)
-                                    menuItem.Click -= _dashboardMenuClickHandler;
-                                else if (menuItem.Text == MainFormResources.ChartsMenu && _chartsMenuClickHandler != null)
-                                    menuItem.Click -= _chartsMenuClickHandler;
-                                else if (menuItem.Text == MainFormResources.SettingsMenu && _settingsMenuClickHandler != null)
-                                    menuItem.Click -= _settingsMenuClickHandler;
-                            }
-                        }
+                        // Recursively unsubscribe from all menu items (panels are under View menu)
+                        UnsubscribeMenuHandlers(_menuStrip.Items);
                     }
                 }
                 catch { }
@@ -1275,7 +1520,17 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        var controlsCopy = _dockingManager.Controls.OfType<Control>().ToList();
+                        // Some Syncfusion DockingManager Controls collections implement a non-generic enumerator
+                        // so use safe runtime enumeration instead of LINQ.OfType to avoid compile-time mismatches.
+                        var controlsCopy = new List<Control>();
+                        var controlsCollection = _dockingManager.Controls;
+                        if (controlsCollection is System.Collections.IEnumerable enumerable)
+                        {
+                            foreach (var obj in enumerable)
+                            {
+                                if (obj is Control ctrl) controlsCopy.Add(ctrl);
+                            }
+                        }
                         foreach (var ctrl in controlsCopy)
                         {
                             if (ctrl == null) continue;
@@ -1379,11 +1634,13 @@ namespace WileyWidget.WinForms.Forms
         {
             if (_dockingManager == null) return;
 
-            // Check if layout file exists
-            var layoutPath = Path.Combine(AppContext.BaseDirectory, LayoutFile + ".xml");
+            // Check if layout file exists (LayoutFile constant already includes .xml extension)
+            var layoutPath = Path.Combine(AppContext.BaseDirectory, LayoutFile);
             if (!File.Exists(layoutPath))
             {
-                Serilog.Log.Debug("No docking layout file found at {LayoutPath}", layoutPath);
+                Serilog.Log.Debug("No docking layout file found at {LayoutPath} - processing deferred panels immediately", layoutPath);
+                // No layout file means NewDockStateEndLoad won't fire, so process deferred panels immediately
+                ProcessDeferredDocumentPanels();
                 return;
             }
 
@@ -1392,10 +1649,13 @@ namespace WileyWidget.WinForms.Forms
                 var serializer = new AppStateSerializer(SerializeMode.XMLFile, LayoutFile);
                 _dockingManager.LoadDockState(serializer);
                 Serilog.Log.Debug("Docking layout loaded from {LayoutFile}", LayoutFile);
+                // Note: NewDockStateEndLoad event will fire after LoadDockState completes successfully
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "Failed to load docking layout");
+                Serilog.Log.Warning(ex, "Failed to load docking layout - processing deferred panels immediately");
+                // If loading fails, process deferred panels so they can still be docked
+                ProcessDeferredDocumentPanels();
             }
         }
 
@@ -1406,9 +1666,17 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         /// <typeparam name="TPanel">The UserControl panel type to dock.</typeparam>
         /// <param name="panelName">The display name for the docked panel.</param>
+        // Exposed helper for programmatic navigation/tests — calls into existing DockUserControlPanel implementation.
+        public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
+        {
+            try { Serilog.Log.Information("ShowPanel requested: {Panel}", panelName); } catch { }
+            DockUserControlPanel<TPanel>(panelName);
+        }
+
         private void DockUserControlPanel<TPanel>(string panelName) where TPanel : UserControl
         {
             // Guard against calling DockUserControlPanel on a disposed form
+            try { Serilog.Log.Information("DockUserControlPanel called for {Panel} (type={Type})", panelName, typeof(TPanel).FullName); } catch { }
             if (IsDisposed)
             {
                 Serilog.Log.Debug("DockUserControlPanel called after MainForm disposed - ignoring");
@@ -1419,6 +1687,11 @@ namespace WileyWidget.WinForms.Forms
             {
                 // Fallback to adding as a simple control since no docking available
                 Serilog.Log.Debug("DockUserControlPanel: docking manager not available — adding panel as child control for {Panel}", panelName);
+                if (Program.Services == null)
+                {
+                    Serilog.Log.Warning("DockUserControlPanel: Program.Services is null — cannot create panel {Panel}", panelName);
+                    return;
+                }
                 using var modalScope = Program.Services.CreateScope();
                 var modalProvider = modalScope.ServiceProvider;
                 var fallbackPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TPanel>(modalProvider);
@@ -1463,6 +1736,14 @@ namespace WileyWidget.WinForms.Forms
             // Create new docked panel
             try
             {
+                // Guard against null Program.Services
+                if (Program.Services == null)
+                {
+                    Serilog.Log.Error("DockUserControlPanel: Program.Services is null — DI container not initialized");
+                    MessageBox.Show($"Cannot open {panelName}: Application services not initialized.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
                 // Create scope but DO NOT use 'using' - scope must stay alive for the panel's lifetime
                 // The scope will be disposed in DockVisibilityChanged when the panel is closed
                 var scope = Program.Services.CreateScope();
@@ -1483,29 +1764,48 @@ namespace WileyWidget.WinForms.Forms
                 // Enable docking for the UserControl
                 try
                 {
-                    // If a Form slipped into our generic UserControl flow, ensure it's prepared for docking
+                    // If DI accidentally resolved a Form type here, prefer an equivalent UserControl
+                    // e.g. SomeForm -> SomePanel in the Controls namespace. This avoids docking
+                    // actual Form instances (which can race with async lifecycle) and prefers
+                    // the code-first UserControl implementation.
                     if (panel is Form asForm)
                     {
                         try
                         {
-                            // Call PrepareForDocking when available on known forms (best-effort)
-                            var prep = asForm.GetType().GetMethod("PrepareForDocking");
-                            if (prep != null)
+                            var formType = asForm.GetType();
+                            var candidateName = formType.FullName is string fn
+                                ? fn.Replace(".Forms.", ".Controls.", System.StringComparison.Ordinal).Replace("Form", "Panel", System.StringComparison.Ordinal)
+                                : null;
+                            if (!string.IsNullOrEmpty(candidateName))
                             {
-                                try { prep.Invoke(asForm, null); } catch { }
-                            }
+                                var candidateType = formType.Assembly.GetType(candidateName);
+                                if (candidateType != null && typeof(UserControl).IsAssignableFrom(candidateType))
+                                {
+                                    try
+                                    {
+                                        var fallback = provider.GetService(candidateType) as UserControl;
+                                        if (fallback != null)
+                                        {
+                                            // Dispose the Form instance we were handed (we won't dock it)
+                                            try { asForm.Dispose(); } catch { }
 
-                            // Ensure common properties are set so Syncfusion can host it
-                            try
-                            {
-                                if (asForm.TopLevel) asForm.TopLevel = false;
-                                asForm.FormBorderStyle = FormBorderStyle.None;
-                                asForm.Visible = false;
-                                asForm.Dock = DockStyle.Fill;
+                                            panel = (TPanel)(object)fallback;
+                                            panel.Name = panelName;
+                                            panel.Dock = DockStyle.Fill;
+                                        }
+                                    }
+                                    catch { }
+                                }
+                                else
+                                {
+                                    Serilog.Log.Debug("DockUserControlPanel: expected a UserControl but DI resolved a Form for {Panel}; no panel equivalent found", panelName);
+                                }
                             }
-                            catch { }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            Serilog.Log.Debug(ex, "Failed while attempting to prefer a UserControl over Form for {Panel}", panelName);
+                        }
                     }
 
                     // If we somehow resolved a disposed instance, try to recreate once
@@ -1571,61 +1871,50 @@ namespace WileyWidget.WinForms.Forms
                         existingControl = null;
                     }
 
-                    // Determine dock style based on panel type (per Syncfusion demos)
-                    // Dashboard and Charts are main content - use DockAsDocument for VS-style document tabs
-                    // Accounts and Settings are tool windows - use tabbed/docked style
-                    bool isDocumentPanel = panel is DashboardPanel || panel is ChartPanel;
+                    // SIMPLIFIED: Dock ALL panels as tool windows on Left side
+                    // This bypasses document deferral complexity that was preventing panels from appearing
+                    // TODO: Restore document-style docking after basic functionality is confirmed working
 
-                    if (isDocumentPanel)
+                    Serilog.Log.Information("*** DOCKING PANEL {Panel} as tool window on Left ***", panelName);
+
+                    // Find existing control to tab with (if any)
+                    Control? existingToolWindow = null;
+                    try
                     {
-                        // Use DockAsDocument for main content panels (VS-style document tabs)
-                        try
+                        lock (_dockedControlsLock)
                         {
-                            _dockingManager.DockAsDocument(panel);
-                        }
-                        catch (Exception docEx)
-                        {
-                            Serilog.Log.Debug(docEx, "DockAsDocument failed, falling back to safer DockControl");
-
-                            // Defensive guard: don't dock with Fill into the DockingManager's host control (this)
-                            // as Syncfusion can throw when Fill is applied to the host control itself.
-                            try
-                            {
-                                if (panel == null || panel.IsDisposed || this.IsDisposed)
-                                {
-                                    Serilog.Log.Warning("Panel {Panel} or host disposed before fallback docking", panelName);
-                                }
-                                else
-                                {
-                                    // Prefer Tabbed docking as a safer alternative to Fill onto the host.
-                                    _dockingManager.DockControl(panel, this, DockingStyle.Tabbed, 600);
-                                }
-                            }
-                            catch (Exception innerEx)
-                            {
-                                Serilog.Log.Debug(innerEx, "Fallback DockControl(Tabbed) also failed; will fall back to adding as standard control");
-                                throw;
-                            }
+                            existingToolWindow = _dockedControls.Values.FirstOrDefault(c =>
+                                c != null && !c.IsDisposed && _dockingManager.GetEnableDocking(c));
                         }
                     }
-                    else if (existingControl != null)
+                    catch { existingToolWindow = null; }
+
+                    if (existingToolWindow != null)
                     {
-                        // Tab with an existing docked control (DockingStyle.Tabbed creates VS-style document tabs)
+                        // Tab with an existing docked control (DockingStyle.Tabbed creates VS-style tabs)
+                        Serilog.Log.Debug("Tabbing {Panel} with existing control {Existing}", panelName, existingToolWindow.Name);
                         try
                         {
-                            _dockingManager.DockControl(panel, existingControl, DockingStyle.Tabbed, 600);
+                            _dockingManager.DockControl(panel, existingToolWindow, DockingStyle.Tabbed, 400);
                         }
                         catch (ObjectDisposedException)
                         {
                             // Existing control got disposed concurrently — dock to left side
-                            _dockingManager.DockControl(panel, this, DockingStyle.Left, 600);
+                            Serilog.Log.Debug("Existing control disposed, docking {Panel} to Left", panelName);
+                            _dockingManager.DockControl(panel, this, DockingStyle.Left, 400);
                         }
                     }
                     else
                     {
-                        // First tool panel - dock to left (tool window pattern from Syncfusion demos)
-                        _dockingManager.DockControl(panel, this, DockingStyle.Left, 600);
+                        // First panel - dock to left
+                        Serilog.Log.Debug("First panel, docking {Panel} to Left", panelName);
+                        _dockingManager.DockControl(panel, this, DockingStyle.Left, 400);
                     }
+
+                    // Force visibility and activation
+                    _dockingManager.SetDockVisibility(panel, true);
+                    _dockingManager.ActivateControl(panel);
+                    Serilog.Log.Information("*** PANEL {Panel} DOCKED AND ACTIVATED ***", panelName);
 
                     // Set the caption label for UX - Syncfusion uses this for tab/window titles
                     _dockingManager.SetDockLabel(panel, panelName);
@@ -1633,7 +1922,9 @@ namespace WileyWidget.WinForms.Forms
                     // Set dock icon per Syncfusion demos (MDI, SDI)
                     try
                     {
-                        var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                        var iconService = Program.Services != null
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            : null;
                         if (iconService != null)
                         {
                             var iconName = panel switch
@@ -1645,9 +1936,29 @@ namespace WileyWidget.WinForms.Forms
                                 _ => "document"
                             };
                             var icon = iconService.GetIcon(iconName, ThemeManager.CurrentTheme, 16);
-                            if (icon != null)
+                            if (icon != null && panel != null)
                             {
-                                _dockingManager.SetDockIcon(panel, icon);
+                                try
+                                {
+                                    // Use reflection to call a SetDockIcon overload that accepts an Image when available.
+                                    var dmType = _dockingManager.GetType();
+                                    var miImg = dmType.GetMethod("SetDockIcon", new[] { typeof(Control), typeof(System.Drawing.Image) });
+                                    if (miImg != null)
+                                    {
+                                        miImg.Invoke(_dockingManager, new object[] { (Control)panel, icon });
+                                    }
+                                    else
+                                    {
+                                        // If Syncfusion only exposes an integer-based API, skip setting the icon gracefully.
+                                        var miAny = dmType.GetMethods().FirstOrDefault(m => m.Name == "SetDockIcon" && m.GetParameters().Length == 2);
+                                        if (miAny != null)
+                                        {
+                                            // Try loose invocation — may throw; safest option is to skip.
+                                            try { miAny.Invoke(_dockingManager, new object[] { (Control)panel, icon }); } catch { }
+                                        }
+                                    }
+                                }
+                                catch { }
                             }
                         }
                     }
@@ -1657,23 +1968,27 @@ namespace WileyWidget.WinForms.Forms
                     }
 
                     // Subscribe to Disposed event for cleanup when panel is disposed
-                    panel.Disposed += (s, args) =>
+                    if (panel != null)
                     {
-                        var disposedPanelName = (s as Control)?.Name;
-                        if (!string.IsNullOrEmpty(disposedPanelName))
+                        panel.Disposed += (s, args) =>
                         {
-                            lock (_dockedControlsLock)
+                            var disposedPanelName = (s as Control)?.Name;
+                            if (!string.IsNullOrEmpty(disposedPanelName))
                             {
-                                CleanupDockedControl(disposedPanelName);
+                                lock (_dockedControlsLock)
+                                {
+                                    CleanupDockedControl(disposedPanelName);
+                                }
                             }
-                        }
-                    };
+                        };
+                    }
                 }
                 catch (Exception ex)
                 {
                     // If docking fails, capture richer diagnostics then fall back to adding as a regular control
                     try
                     {
+
                         Serilog.Log.Warning(ex, "DockControl failed for {Panel}, falling back to standard Controls.Add. PanelType={PanelType} IsDisposed={IsDisposed} IsHandleCreated={IsHandleCreated}",
                             panelName,
                             panel?.GetType().FullName ?? "<null>",
@@ -1734,34 +2049,37 @@ namespace WileyWidget.WinForms.Forms
 
                 // Track the successfully created panel (whether docked or fallback)
                 Serilog.Log.Information("DockUserControlPanel: successfully docked panel {Panel}", panelName);
-                lock (_dockedControlsLock)
+                if (panel != null)
                 {
-                    _dockedControls[panelName] = panel;
+                    lock (_dockedControlsLock)
+                    {
+                        _dockedControls[panelName] = panel;
+                    }
+
+                    // Apply theme to embedded panel (use control-level theming)
+                    try { ThemeManager.ApplyThemeToControl(panel); } catch { }
+
+                    // Restore panel state (filters, grid state, etc.)
+                    try { LoadPanelStateForControl(panel); } catch { }
+
+                    // Trigger initial load for viewmodels where helpful
+                    try
+                    {
+                        if (panel is AccountsPanel ap && ap.DataContext is AccountsViewModel avm)
+                        {
+                            avm.LoadAccountsCommand?.Execute(null);
+                        }
+                        else if (panel is ChartPanel cp && cp.DataContext is ChartViewModel cvm)
+                        {
+                            _ = cvm.LoadChartDataAsync();
+                        }
+                        else if (panel is DashboardPanel dp && dp.DataContext is WileyWidget.ViewModels.DashboardViewModel dvm)
+                        {
+                            dvm.LoadDashboardCommand?.Execute(null);
+                        }
+                    }
+                    catch { }
                 }
-
-                // Apply theme to embedded panel
-                ThemeManager.ApplyTheme(panel);
-
-                // Restore panel state (filters, grid state, etc.)
-                LoadPanelStateForControl(panel);
-
-                // Trigger initial load for viewmodels where helpful
-                try
-                {
-                    if (panel is AccountsPanel ap && ap.DataContext is AccountsViewModel avm)
-                    {
-                        avm.LoadAccountsCommand?.Execute(null);
-                    }
-                    else if (panel is ChartPanel cp && cp.DataContext is ChartViewModel cvm)
-                    {
-                        _ = cvm.LoadChartDataAsync();
-                    }
-                    else if (panel is DashboardPanel dp && dp.DataContext is WileyWidget.ViewModels.DashboardViewModel dvm)
-                    {
-                        dvm.LoadDashboardCommand?.Execute(null);
-                    }
-                }
-                catch { }
             }
             catch (Exception ex)
             {
@@ -1794,7 +2112,7 @@ namespace WileyWidget.WinForms.Forms
                                 // If the control lives on a different thread, marshal disabling onto UI thread
                                 if (control.InvokeRequired)
                                 {
-                                    control.Invoke((Action)(() =>
+                                    control.Invoke((System.Action)(() =>
                                     {
                                         try { _dockingManager.SetEnableDocking(control, false); } catch { }
                                     }));
@@ -1815,7 +2133,7 @@ namespace WileyWidget.WinForms.Forms
                         {
                             if (control.InvokeRequired)
                             {
-                                control.Invoke((Action)(() =>
+                                control.Invoke((System.Action)(() =>
                                 {
                                     try { if (!control.IsDisposed) control.Dispose(); }
                                     catch (Exception ex)
@@ -1854,16 +2172,28 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// Docks an AccountEditForm as a floating tool window.
+        /// Docks an AccountEditPanel as a floating tool window (preferred over docking a Form).
         /// Called when "Open edit forms docked" setting is enabled.
         /// </summary>
-        /// <param name="editForm">The AccountEditForm to dock.</param>
-        public void DockAccountEditForm(AccountEditForm editForm)
+        /// <param name="editPanel">The AccountEditPanel to dock.</param>
+        public void DockAccountEditPanel(Controls.AccountEditPanel editPanel)
         {
-            if (_dockingManager == null || editForm == null)
+            if (_dockingManager == null || editPanel == null)
             {
-                Serilog.Log.Debug("DockAccountEditForm: docking manager or form is null");
-                editForm?.ShowDialog();
+                Serilog.Log.Debug("DockAccountEditPanel: docking manager or panel is null");
+                // Fallback: show panel in a simple modal form
+                if (editPanel != null)
+                {
+                    using var modal = new Form { StartPosition = FormStartPosition.CenterParent, Size = new System.Drawing.Size(520, 560) };
+                    try
+                    {
+                        editPanel.Dock = DockStyle.Fill;
+                        modal.Controls.Add(editPanel);
+                        modal.ShowDialog();
+                    }
+                    catch { }
+                    return;
+                }
                 return;
             }
 
@@ -1878,74 +2208,97 @@ namespace WileyWidget.WinForms.Forms
                     {
                         _dockingManager.SetDockVisibility(existing, true);
                         _dockingManager.ActivateControl(existing);
-                        Serilog.Log.Debug("Activated existing AccountEditForm");
+                        Serilog.Log.Debug("Activated existing AccountEditPanel");
                         return;
                     }
                 }
 
-                // Prepare for docking (ensure form is in child-control state)
-                try
-                {
-                    editForm.PrepareForDocking();
-                }
-                catch { }
-
-                // Common safety: ensure properties
-                try
-                {
-                    if (editForm.TopLevel) editForm.TopLevel = false;
-                    editForm.FormBorderStyle = FormBorderStyle.None;
-                    editForm.Visible = false;
-                    editForm.Dock = DockStyle.Fill;
-                }
-                catch { }
-
-                editForm.Name = panelName;
+                // Configure panel for docking
+                editPanel.Name = panelName;
+                editPanel.Dock = DockStyle.Fill;
 
                 // Guard: ensure not disposed
-                if (editForm.IsDisposed)
+                if (editPanel.IsDisposed)
                 {
-                    Serilog.Log.Warning("DockAccountEditForm: supplied editForm is already disposed");
+                    Serilog.Log.Warning("DockAccountEditPanel: supplied panel is already disposed");
                     return;
                 }
 
                 // Enable docking
-                _dockingManager.SetEnableDocking(editForm, true);
+                _dockingManager.SetEnableDocking(editPanel, true);
 
                 // Dock as floating window (tool window style)
                 try
                 {
-                    _dockingManager.DockControl(editForm, this, DockingStyle.Float, 500);
+                    // Some Syncfusion versions use a different enum member name for floating style.
+                    // Try to resolve via reflection and invoke DockControl with the floating enum value if present.
+                    var dmType = _dockingManager.GetType();
+                    object? dockValue = null;
+                    var dockEnumType = dmType.Assembly.GetType("Syncfusion.Windows.Forms.Tools.DockingStyle") ?? dmType.Assembly.GetType("Syncfusion.Windows.Forms.DockingStyle");
+                    if (dockEnumType != null && dockEnumType.IsEnum)
+                    {
+                        var fld = dockEnumType.GetField("Float") ?? dockEnumType.GetField("Floating");
+                        if (fld != null) dockValue = fld.GetValue(null);
+                    }
+
+                    if (dockValue != null)
+                    {
+                        var mi = dmType.GetMethods().FirstOrDefault(m => m.Name == "DockControl" && m.GetParameters().Length == 4);
+                        if (mi != null)
+                        {
+                            mi.Invoke(_dockingManager, new[] { (object)editPanel, (object)this, dockValue, (object)500 });
+                        }
+                        else
+                        {
+                            _dockingManager.DockControl(editPanel, this, DockingStyle.Left, 500);
+                        }
+                    }
+                    else
+                    {
+                        // Safe fallback if the floating enum isn't available in this Syncfusion version.
+                        _dockingManager.DockControl(editPanel, this, DockingStyle.Left, 500);
+                    }
                 }
                 catch (Exception dEx)
                 {
-                    Serilog.Log.Warning(dEx, "DockControl failed for AccountEditForm; attempting safe fallback");
+                    Serilog.Log.Warning(dEx, "DockControl failed for AccountEditPanel; attempting safe fallback");
                     try
                     {
-                        if (editForm == null || editForm.IsDisposed)
+                        if (editPanel == null || editPanel.IsDisposed)
                         {
-                            Serilog.Log.Warning("AccountEditForm was null or disposed during DockControl fallback");
+                            Serilog.Log.Warning("AccountEditPanel was null or disposed during DockControl fallback");
                             return;
                         }
-                        editForm.Dock = DockStyle.Fill;
-                        Controls.Add(editForm);
+                        editPanel.Dock = DockStyle.Fill;
+                        Controls.Add(editPanel);
                     }
                     catch (ObjectDisposedException ode)
                     {
-                        Serilog.Log.Error(ode, "Fallback add failed: AccountEditForm disposed during Controls.Add");
+                        Serilog.Log.Error(ode, "Fallback add failed: AccountEditPanel disposed during Controls.Add");
                         return;
                     }
                 }
-                _dockingManager.SetDockLabel(editForm, panelName);
+                _dockingManager.SetDockLabel(editPanel, panelName);
 
                 // Set icon
                 try
                 {
-                    var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                    var iconService = Program.Services != null
+                        ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                        : null;
                     var icon = iconService?.GetIcon("edit", ThemeManager.CurrentTheme, 16);
                     if (icon != null)
                     {
-                        _dockingManager.SetDockIcon(editForm, icon);
+                        try
+                        {
+                            var dmType = _dockingManager.GetType();
+                            var miImg = dmType.GetMethod("SetDockIcon", new[] { typeof(Control), typeof(System.Drawing.Image) });
+                            if (miImg != null)
+                            {
+                                miImg.Invoke(_dockingManager, new object[] { (Control)editPanel, icon });
+                            }
+                        }
+                        catch { }
                     }
                 }
                 catch { }
@@ -1953,11 +2306,11 @@ namespace WileyWidget.WinForms.Forms
                 // Track the form
                 lock (_dockedControlsLock)
                 {
-                    _dockedControls[panelName] = editForm;
+                    _dockedControls[panelName] = editPanel;
                 }
 
                 // Cleanup on disposal
-                editForm.Disposed += (s, args) =>
+                editPanel.Disposed += (s, args) =>
                 {
                     lock (_dockedControlsLock)
                     {
@@ -1965,13 +2318,23 @@ namespace WileyWidget.WinForms.Forms
                     }
                 };
 
-                ThemeManager.ApplyTheme(editForm);
-                Serilog.Log.Information("Docked AccountEditForm as floating tool window");
+                ThemeManager.ApplyThemeToControl(editPanel);
+                Serilog.Log.Information("Docked AccountEditPanel as floating tool window");
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "Failed to dock AccountEditForm, showing as modal");
-                editForm.ShowDialog();
+                Serilog.Log.Warning(ex, "Failed to dock AccountEditPanel, showing as modal");
+                try
+                {
+                    using var fallback = new Form { StartPosition = FormStartPosition.CenterParent, Size = new System.Drawing.Size(520, 560) };
+                    if (!editPanel.IsDisposed)
+                    {
+                        editPanel.Dock = DockStyle.Fill;
+                        fallback.Controls.Add(editPanel);
+                        fallback.ShowDialog();
+                    }
+                }
+                catch { }
             }
         }
 

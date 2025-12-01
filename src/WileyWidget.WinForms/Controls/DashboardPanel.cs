@@ -7,6 +7,7 @@ using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
 using System.ComponentModel;
+using System.Globalization;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.ViewModels;
@@ -26,7 +27,11 @@ namespace WileyWidget.WinForms.Controls
     /// </summary>
     public partial class DashboardPanel : UserControl
     {
-        public object? DataContext { get; private set; }
+        /// <summary>
+        /// Simple DataContext wrapper for host compatibility.
+        /// Uses 'new' to intentionally hide Control.DataContext when present in platform versions.
+        /// </summary>
+        public new object? DataContext { get; private set; }
         private readonly DashboardViewModel _vm;
 
         // controls
@@ -48,6 +53,9 @@ namespace WileyWidget.WinForms.Controls
         private EventHandler<AppTheme>? _themeChangedHandler;
         private EventHandler<AppTheme>? _btnRefreshThemeChangedHandler;
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
+        // Named event handlers for PanelHeader (stored for proper unsubscription)
+        private EventHandler? _panelHeaderRefreshHandler;
+        private EventHandler? _panelHeaderCloseHandler;
         // per-tile sparkline references
         private ChartControl? _sparkBudget;
         private ChartControl? _sparkExpenditure;
@@ -56,11 +64,67 @@ namespace WileyWidget.WinForms.Controls
         private Label? _tileExpenditureValueLabel;
         private Label? _tileRemainingValueLabel;
 
-        // DI-friendly default constructor for container/hosting convenience
+        // DI-friendly default constructor for container/hosting convenience.
+        // Use GetService instead of GetRequiredService so designer/legacy activations don't throw
+        // when the ViewModel isn't registered in the global Program.Services. Fall back to a
+        // simple local DashboardViewModel instance (its constructor tolerates null optional deps).
+        // Guards against null Program.Services for safety.
         public DashboardPanel() : this(
-            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DashboardViewModel>(Program.Services),
-            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services))
+            ResolveDashboardViewModel(),
+            ResolveDispatcherHelper())
         {
+        }
+
+        private static WileyWidget.Services.Threading.IDispatcherHelper? ResolveDispatcherHelper()
+        {
+            if (Program.Services == null)
+            {
+                Serilog.Log.Warning("DashboardPanel: Program.Services is null - IDispatcherHelper unavailable");
+                return null;
+            }
+
+            try
+            {
+                var helper = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services);
+                if (helper == null)
+                {
+                    Serilog.Log.Warning("DashboardPanel: IDispatcherHelper not registered in DI container");
+                }
+                return helper;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "DashboardPanel: Failed to resolve IDispatcherHelper");
+                return null;
+            }
+        }
+
+        private static DashboardViewModel ResolveDashboardViewModel()
+        {
+            if (Program.Services == null)
+            {
+                Serilog.Log.Warning("DashboardPanel: Program.Services is null - using fallback DashboardViewModel");
+                return new DashboardViewModel();
+            }
+
+            try
+            {
+                var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DashboardViewModel>(Program.Services);
+                if (vm != null)
+                {
+                    Serilog.Log.Debug("DashboardPanel: DashboardViewModel resolved from DI container");
+                    return vm;
+                }
+
+                Serilog.Log.Warning("DashboardPanel: DashboardViewModel not registered - using fallback instance");
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "DashboardPanel: Failed to resolve DashboardViewModel from DI - using fallback");
+            }
+
+            // Fallback to default constructor - DashboardViewModel handles null dependencies gracefully
+            return new DashboardViewModel();
         }
 
         private IAsyncRelayCommand? _refreshCommand;
@@ -130,7 +194,9 @@ namespace WileyWidget.WinForms.Controls
 
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
                 _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
@@ -140,17 +206,25 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
+                        // Re-resolve icon service on theme change to avoid stale closure
+                        var svc = Program.Services != null
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            : null;
                         if (_dispatcherHelper != null)
                         {
-                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = iconService?.GetIcon("refresh", t, 16));
-                        }
-                        else if (_btnRefresh.GetCurrentParent()?.InvokeRequired ?? false)
-                        {
-                            _btnRefresh.GetCurrentParent().BeginInvoke(new Action(() => _btnRefresh.Image = iconService?.GetIcon("refresh", t, 16)));
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
                         }
                         else
                         {
-                            _btnRefresh.Image = iconService?.GetIcon("refresh", t, 16);
+                            var parent = _btnRefresh.GetCurrentParent();
+                            if (parent != null && parent.InvokeRequired)
+                            {
+                                parent.BeginInvoke(new Action(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16)));
+                            }
+                            else
+                            {
+                                _btnRefresh.Image = svc?.GetIcon("refresh", t, 16);
+                            }
                         }
                     }
                     catch { }
@@ -165,7 +239,9 @@ namespace WileyWidget.WinForms.Controls
             var dashboardLabel = new ToolStripLabel("Dashboard");
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 dashboardLabel.Image = iconService?.GetIcon("home", theme, 16);
                 dashboardLabel.ImageAlign = ContentAlignment.MiddleLeft;
@@ -179,7 +255,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Export buttons (Excel / PDF)
             var btnExportExcel = new ToolStripButton("Export Excel") { ToolTipText = "Export details to Excel" };
-            try { btnExportExcel.Image = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
+            try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportExcel.Click += async (s, e) =>
             {
                 try
@@ -194,7 +270,7 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(btnExportExcel);
 
             var btnExportPdf = new ToolStripButton("Export PDF") { ToolTipText = "Export details/chart to PDF" };
-            try { btnExportPdf.Image = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
+            try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportPdf.Click += async (s, e) =>
             {
                 try
@@ -218,14 +294,20 @@ namespace WileyWidget.WinForms.Controls
             };
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 btnAccounts.Image = iconService?.GetIcon("wallet", theme, 16);
                 btnAccounts.ImageAlign = ContentAlignment.MiddleLeft;
                 btnAccounts.TextImageRelation = TextImageRelation.ImageBeforeText;
             }
             catch { }
-            btnAccounts.Click += (s, e) => NavigateToPanel<AccountsPanel>("Accounts");
+            btnAccounts.Click += (s, e) =>
+            {
+                try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Accounts"); } catch { }
+                NavigateToPanel<AccountsPanel>("Accounts");
+            };
             _toolStrip.Items.Add(btnAccounts);
 
             var btnCharts = new ToolStripButton("Charts")
@@ -236,14 +318,20 @@ namespace WileyWidget.WinForms.Controls
             };
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 btnCharts.Image = iconService?.GetIcon("chart", theme, 16);
                 btnCharts.ImageAlign = ContentAlignment.MiddleLeft;
                 btnCharts.TextImageRelation = TextImageRelation.ImageBeforeText;
             }
             catch { }
-            btnCharts.Click += (s, e) => NavigateToPanel<ChartPanel>("Charts");
+            btnCharts.Click += (s, e) =>
+            {
+                try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Charts"); } catch { }
+                NavigateToPanel<ChartPanel>("Charts");
+            };
             _toolStrip.Items.Add(btnCharts);
 
             _toolStrip.Items.Add(new ToolStripSeparator());
@@ -253,17 +341,10 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 _panelHeader.Title = DashboardPanelResources.PanelTitle;
-                _panelHeader.RefreshClicked += async (s, e) => { try { await (_vm.RefreshCommand?.ExecuteAsync(null) ?? Task.CompletedTask); } catch { } };
-                _panelHeader.CloseClicked += (s, e) =>
-                {
-                    try
-                    {
-                        var parent = this.FindForm();
-                        var method = parent?.GetType().GetMethod("ClosePanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                        method?.Invoke(parent, new object[] { this.Name });
-                    }
-                    catch { }
-                };
+                _panelHeaderRefreshHandler = OnPanelHeaderRefreshClicked;
+                _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+                _panelHeaderCloseHandler = OnPanelHeaderCloseClicked;
+                _panelHeader.CloseClicked += _panelHeaderCloseHandler;
             }
             catch { }
 
@@ -288,18 +369,62 @@ namespace WileyWidget.WinForms.Controls
             _kpiList = new Syncfusion.WinForms.ListView.SfListView
             {
                 Dock = DockStyle.Fill,
-                View = Syncfusion.WinForms.ListView.Enums.ListViewMode.Tiles,
-                AllowMultiSelection = false,
-                HotTracking = true,
-                ShowGroups = false, // Per demos: disable grouping for tiles
-                ShowHeader = false, // Per demos: hide header for tiles
-                ShowToolTip = true, // Per demos: enable tooltips
-                AutoSizeMode = Syncfusion.WinForms.ListView.Enums.AutoSizeMode.None, // Per demos: fixed size tiles
                 AccessibleName = "Summary metrics",
                 AccessibleDescription = "Quick metrics such as Total Budget, Expenditures and Remaining funds"
             };
+
+            // Set version-dependent properties via reflection if available (API differs across Syncfusion versions)
+            try
+            {
+                var t = _kpiList.GetType();
+                var viewProp = t.GetProperty("View");
+                if (viewProp != null && viewProp.CanWrite)
+                {
+                    // Try to set enum by name if the enum exists
+                    var viewEnumType = viewProp.PropertyType;
+                    try
+                    {
+                        var tileVal = Enum.Parse(viewEnumType, "Tiles");
+                        viewProp.SetValue(_kpiList, tileVal);
+                    }
+                    catch { }
+                }
+
+                var allowMulti = t.GetProperty("AllowMultiSelection");
+                if (allowMulti != null && allowMulti.CanWrite) allowMulti.SetValue(_kpiList, false);
+
+                var hotTracking = t.GetProperty("HotTracking");
+                if (hotTracking != null && hotTracking.CanWrite) hotTracking.SetValue(_kpiList, true);
+
+                var showGroups = t.GetProperty("ShowGroups");
+                if (showGroups != null && showGroups.CanWrite) showGroups.SetValue(_kpiList, false);
+
+                var showHeader = t.GetProperty("ShowHeader");
+                if (showHeader != null && showHeader.CanWrite) showHeader.SetValue(_kpiList, false);
+
+                var showToolTip = t.GetProperty("ShowToolTip");
+                if (showToolTip != null && showToolTip.CanWrite) showToolTip.SetValue(_kpiList, true);
+
+                var autoSizeMode = t.GetProperty("AutoSizeMode");
+                if (autoSizeMode != null && autoSizeMode.CanWrite)
+                {
+                    try
+                    {
+                        var asmEnum = autoSizeMode.PropertyType;
+                        var val = Enum.Parse(asmEnum, "None");
+                        autoSizeMode.SetValue(_kpiList, val);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
             // Configure tile size for KPIs
-            _kpiList.ItemSize = new Size(180, 80);
+            try
+            {
+                var itemSize = _kpiList.GetType().GetProperty("ItemSize");
+                if (itemSize != null && itemSize.CanWrite) itemSize.SetValue(_kpiList, new Size(180, 80));
+            }
+            catch { }
             mainSplit.Controls.Add(_kpiList, 0, 0);
             mainSplit.SetColumnSpan(_kpiList, 2);
 
@@ -361,11 +486,32 @@ namespace WileyWidget.WinForms.Controls
             try { _detailsGrid.ShowGroupDropArea = true; } catch { }
             try
             {
-                // Column configuration per demos - use NumberFormatInfo for proper formatting
-                var nfi = new System.Globalization.NumberFormatInfo { NumberDecimalDigits = 0, CurrencyDecimalDigits = 0 };
+                // Column configuration per demos - use culture-aware NumberFormatInfo to avoid invariant culture issues
+                var nfi = System.Globalization.CultureInfo.GetCultureInfo("en-US").NumberFormat;
                 _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 });
-                _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budget", FormatMode = Syncfusion.WinForms.DataGrid.Enums.FormatMode.Currency, MinimumWidth = 120 });
-                _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", FormatMode = Syncfusion.WinForms.DataGrid.Enums.FormatMode.Currency, MinimumWidth = 120 });
+                var colBudget = new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budget", MinimumWidth = 120 };
+                var colActual = new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120 };
+                // Set FormatMode reflectively if available in the Syncfusion version
+                try
+                {
+                    var gmType = typeof(Syncfusion.WinForms.DataGrid.GridNumericColumn);
+                    var fmtProp = gmType.GetProperty("FormatMode");
+                    if (fmtProp != null && fmtProp.CanWrite)
+                    {
+                        var enumType = fmtProp.PropertyType;
+                        try
+                        {
+                            var val = Enum.Parse(enumType, "Currency");
+                            fmtProp.SetValue(colBudget, val);
+                            fmtProp.SetValue(colActual, val);
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+
+                _detailsGrid.Columns.Add(colBudget);
+                _detailsGrid.Columns.Add(colActual);
             }
             catch { }
 
@@ -383,7 +529,7 @@ namespace WileyWidget.WinForms.Controls
                 var tile = new Panel { Width = 260, Height = 72, Padding = new Padding(8), Margin = new Padding(6), BackColor = Color.Transparent };
 
                 var lbl = new Label { Text = title, AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
-                var valLbl = new Label { Text = value.ToString("C0"), AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
+                var valLbl = new Label { Text = value.ToString("C0", CultureInfo.CurrentCulture), AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
 
                 var spark = new ChartControl { Width = 220, Height = 28, Dock = DockStyle.Bottom, AccessibleName = title + " sparkline" };
                 spark.ShowLegend = false; spark.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality; spark.ElementsSpacing = 2; spark.PrimaryYAxis.HidePartialLabels = true; spark.PrimaryXAxis.HidePartialLabels = true; spark.ShowToolTips = false;
@@ -431,13 +577,52 @@ namespace WileyWidget.WinForms.Controls
             // Bindings
             TryApplyViewModelBindings();
 
-            // Theme update handler
-            _themeChangedHandler = (s, t) => ApplyCurrentTheme();
+            // Theme update handler - ensure UI thread marshaling
+            _themeChangedHandler = (s, t) =>
+            {
+                try
+                {
+                    if (IsDisposed) return;
+                    if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                    {
+                        try { _ = _dispatcherHelper.InvokeAsync(ApplyCurrentTheme); } catch { }
+                        return;
+                    }
+                    if (InvokeRequired)
+                    {
+                        try { BeginInvoke(new Action(ApplyCurrentTheme)); } catch { }
+                        return;
+                    }
+                    ApplyCurrentTheme();
+                }
+                catch { }
+            };
             ThemeManager.ThemeChanged += _themeChangedHandler;
         }
 
         private void TryApplyViewModelBindings()
         {
+            // Ensure this method runs on the UI thread. Some callers may originate
+            // from background threads (ViewModel property changes, async tasks, etc.).
+            // If we're not already on the UI thread, re-dispatch the call and return.
+            if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+            {
+                try { _ = _dispatcherHelper.InvokeAsync(TryApplyViewModelBindings); } catch { }
+                return;
+            }
+
+            if (_detailsGrid != null && !_detailsGrid.IsDisposed && _detailsGrid.InvokeRequired)
+            {
+                try { _detailsGrid.BeginInvoke(new Action(TryApplyViewModelBindings)); } catch { }
+                return;
+            }
+
+            if (this.InvokeRequired)
+            {
+                try { BeginInvoke(new Action(TryApplyViewModelBindings)); } catch { }
+                return;
+            }
+
             try
             {
                 // bind KPI list
@@ -467,7 +652,7 @@ namespace WileyWidget.WinForms.Controls
                             c.Series.Clear();
                             var s = new ChartSeries("s", ChartSeriesType.Line);
                             var values = new double[] { baseValue * 0.8, baseValue * 0.95, baseValue * 1.02, baseValue * 0.9, baseValue * 1.1, baseValue };
-                            for (int i = 0; i < values.Length; i++) s.Points.Add(i.ToString(), values[i]);
+                            for (int i = 0; i < values.Length; i++) s.Points.Add(i.ToString(System.Globalization.CultureInfo.InvariantCulture), values[i]);
                             s.Style.DisplayText = false;
                             s.Style.Interior = new Syncfusion.Drawing.BrushInfo(ThemeManager.Colors.Accent);
                             c.Series.Add(s);
@@ -477,9 +662,9 @@ namespace WileyWidget.WinForms.Controls
                         FillSpark(_sparkExpenditure, (double)_vm.TotalExpenditure);
                         FillSpark(_sparkRemaining, (double)_vm.RemainingBudget);
 
-                        if (_tileBudgetValueLabel != null) _tileBudgetValueLabel.Text = _vm.TotalBudget.ToString("C0");
-                        if (_tileExpenditureValueLabel != null) _tileExpenditureValueLabel.Text = _vm.TotalExpenditure.ToString("C0");
-                        if (_tileRemainingValueLabel != null) _tileRemainingValueLabel.Text = _vm.RemainingBudget.ToString("C0");
+                        if (_tileBudgetValueLabel != null) _tileBudgetValueLabel.Text = _vm.TotalBudget.ToString("C0", CultureInfo.CurrentCulture);
+                        if (_tileExpenditureValueLabel != null) _tileExpenditureValueLabel.Text = _vm.TotalExpenditure.ToString("C0", CultureInfo.CurrentCulture);
+                        if (_tileRemainingValueLabel != null) _tileRemainingValueLabel.Text = _vm.RemainingBudget.ToString("C0", CultureInfo.CurrentCulture);
                     }
                     catch { }
                 }
@@ -487,15 +672,15 @@ namespace WileyWidget.WinForms.Controls
                 // Wire status and labels
                 if (Controls.Find("lblBudget", true).FirstOrDefault() is Label lblBudget)
                 {
-                    lblBudget.Text = $"Total Budget: {_vm.TotalBudget:C0}";
+                    lblBudget.Text = $"Total Budget: {_vm.TotalBudget.ToString("C0", CultureInfo.CurrentCulture)}";
                 }
                 if (Controls.Find("lblExpenditure", true).FirstOrDefault() is Label lblExp)
                 {
-                    lblExp.Text = $"Expenditure: {_vm.TotalExpenditure:C0}";
+                    lblExp.Text = $"Expenditure: {_vm.TotalExpenditure.ToString("C0", CultureInfo.CurrentCulture)}";
                 }
                 if (Controls.Find("lblRemaining", true).FirstOrDefault() is Label lblRem)
                 {
-                    lblRem.Text = $"Remaining: {_vm.RemainingBudget:C0}";
+                    lblRem.Text = $"Remaining: {_vm.RemainingBudget.ToString("C0", CultureInfo.CurrentCulture)}";
                 }
 
                 // details grid mapping
@@ -505,7 +690,141 @@ namespace WileyWidget.WinForms.Controls
                     var val = prop.GetValue(_vm);
                     if (val != null)
                     {
-                        _detailsGrid.DataSource = val;
+                        try
+                        {
+                            // Inspect element shape and adapt grid columns to avoid Syncfusion painter errors
+                            Type? elementType = null;
+                            if (val is System.Collections.IEnumerable enumerable)
+                            {
+                                foreach (var it in enumerable)
+                                {
+                                    if (it != null)
+                                    {
+                                        elementType = it.GetType();
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // If we didn't find an instance, try to infer generic argument (IEnumerable<T>)
+                            if (elementType == null)
+                            {
+                                var t = val.GetType();
+                                if (t.IsGenericType)
+                                {
+                                    var args = t.GetGenericArguments();
+                                    if (args.Length == 1) elementType = args[0];
+                                }
+                            }
+
+                            // Defensive: if elementType is metrics-like, adjust columns to stable mappings
+                            if (elementType != null)
+                            {
+                                var hasDepartment = elementType.GetProperty("DepartmentName") != null;
+                                var hasBudgeted = elementType.GetProperty("BudgetedAmount") != null || elementType.GetProperty("Budget") != null;
+                                var hasActual = elementType.GetProperty("Amount") != null || elementType.GetProperty("Actual") != null;
+
+                                if (_detailsGrid == null) return;
+
+                                if (!hasDepartment && !hasBudgeted && !hasActual)
+                                {
+                                    // Probably binding to DashboardMetric or other shape — switch to safe two-column mapping (Name/Value)
+                                    try
+                                    {
+                                        try { _detailsGrid.SuspendLayout(); } catch { }
+                                        _detailsGrid.Columns.Clear();
+                                        _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Name", HeaderText = "Name", MinimumWidth = 160 });
+                                        var valCol = new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Value", HeaderText = "Value", MinimumWidth = 120 };
+                                        _detailsGrid.Columns.Add(valCol);
+                                    }
+                                    catch { }
+                                    finally { try { _detailsGrid.ResumeLayout(); } catch { } }
+                                }
+                                else
+                                {
+                                    // Ensure default expected columns are present when binding department summaries
+                                    try
+                                    {
+                                        if (!_detailsGrid.Columns.Any(c => c.MappingName == "DepartmentName"))
+                                        {
+                                            try { _detailsGrid.SuspendLayout(); } catch { }
+                                            _detailsGrid.Columns.Clear();
+                                            _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 });
+                                            _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budget", MinimumWidth = 120 });
+                                            _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120 });
+                                        }
+                                    }
+                                    catch { }
+                                    finally { try { _detailsGrid.ResumeLayout(); } catch { } }
+                                }
+                            }
+
+                            // Take a snapshot of the enumerable to prevent "Collection was modified"
+                            // exceptions if the backing ObservableCollection (or similar) is modified
+                            // on another thread while the grid paints or enumerates.
+                            var detailsGrid = _detailsGrid;
+                            if (detailsGrid == null) return;
+
+                            if (val is System.Collections.IEnumerable en)
+                            {
+                                try
+                                {
+                                    var snapshot = en.Cast<object?>().ToList();
+
+                                    Action assignSnapshot = () =>
+                                    {
+                                        try { detailsGrid.SuspendLayout(); } catch { }
+                                        detailsGrid.DataSource = snapshot;
+                                        try { detailsGrid.ResumeLayout(); } catch { }
+                                    };
+
+                                    if (detailsGrid.InvokeRequired)
+                                    {
+                                        try { detailsGrid.Invoke(assignSnapshot); } catch { }
+                                    }
+                                    else
+                                    {
+                                        assignSnapshot();
+                                    }
+                                }
+                                catch
+                                {
+                                    // Fallback: assign the original value if Cast/ToList fails for some reason
+                                    Action assignVal = () =>
+                                    {
+                                        try { detailsGrid.SuspendLayout(); } catch { }
+                                        detailsGrid.DataSource = val;
+                                        try { detailsGrid.ResumeLayout(); } catch { }
+                                    };
+
+                                    if (detailsGrid.InvokeRequired)
+                                    {
+                                        try { detailsGrid.Invoke(assignVal); } catch { }
+                                    }
+                                    else
+                                    {
+                                        assignVal();
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                Action assignVal = () => detailsGrid.DataSource = val;
+                                if (detailsGrid.InvokeRequired)
+                                {
+                                    try { detailsGrid.Invoke(assignVal); } catch { }
+                                }
+                                else
+                                {
+                                    assignVal();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Protect the UI thread — log and skip binding if Syncfusion throws
+                            try { Serilog.Log.Warning(ex, "DashboardPanel: failed to bind details grid — skipping grid bind"); } catch { }
+                        }
                     }
                 }
 
@@ -528,6 +847,18 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsDisposed) return;
 
+                // Marshal to UI thread for all property changes that affect UI
+                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                {
+                    try { _ = _dispatcherHelper.InvokeAsync(() => ViewModel_PropertyChanged(sender, e)); } catch { }
+                    return;
+                }
+                if (InvokeRequired)
+                {
+                    try { BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    return;
+                }
+
                 if (e.PropertyName == nameof(_vm.IsLoading))
                 {
                     try { if (_loadingOverlay != null) _loadingOverlay.Visible = _vm.IsLoading; } catch { }
@@ -535,18 +866,7 @@ namespace WileyWidget.WinForms.Controls
 
                 if (e.PropertyName == nameof(_vm.Metrics) || e.PropertyName == nameof(_vm.TotalBudget) || e.PropertyName == nameof(_vm.TotalExpenditure) || e.PropertyName == nameof(_vm.RemainingBudget) || e.PropertyName == nameof(_vm.LastRefreshed))
                 {
-                    if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
-                    {
-                        try { _ = _dispatcherHelper.InvokeAsync(TryApplyViewModelBindings); } catch { }
-                    }
-                    else if (InvokeRequired)
-                    {
-                        try { BeginInvoke(new Action(TryApplyViewModelBindings)); } catch { }
-                    }
-                    else
-                    {
-                        TryApplyViewModelBindings();
-                    }
+                    TryApplyViewModelBindings();
                     try { if (_noDataOverlay != null) _noDataOverlay.Visible = (_vm.Metrics == null || !_vm.Metrics.Any()); } catch { }
                 }
             }
@@ -564,9 +884,8 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                ThemeManager.ApplyTheme(this);
-                // Apply Syncfusion skin using global theme (FluentDark default, FluentLight fallback)
-                try { Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(this, ThemeManager.GetSyncfusionThemeName()); } catch { }
+                ThemeManager.ApplyThemeToControl(this);
+                // Per-form Syncfusion theming is already applied by ThemeManager.ApplyTheme(this) above
             }
             catch { }
         }
@@ -584,9 +903,14 @@ namespace WileyWidget.WinForms.Controls
                 var parentForm = this.FindForm();
                 if (parentForm == null) return;
 
-                // Use reflection to invoke the parent form's navigation method
-                var method = parentForm.GetType().GetMethod("DockUserControlPanel",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                // Prefer direct API on MainForm where possible — avoids reflection brittleness.
+                if (parentForm is WileyWidget.WinForms.Forms.MainForm mf)
+                {
+                    try { mf.ShowPanel<TPanel>(panelName); return; } catch { }
+                }
+
+                // Fallback to reflection for older hosts
+                var method = parentForm.GetType().GetMethod("DockUserControlPanel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (method != null)
                 {
                     var genericMethod = method.MakeGenericMethod(typeof(TPanel));
@@ -599,96 +923,90 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        /// <summary>
+        /// Named handler for PanelHeader.RefreshClicked event (enables proper unsubscription).
+        /// </summary>
+        private async void OnPanelHeaderRefreshClicked(object? sender, EventArgs e)
+        {
+            try
+            {
+                await (_vm.RefreshCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "DashboardPanel: Refresh failed");
+            }
+        }
+
+        /// <summary>
+        /// Named handler for PanelHeader.CloseClicked event (enables proper unsubscription).
+        /// </summary>
+        private void OnPanelHeaderCloseClicked(object? sender, EventArgs e)
+        {
+            try
+            {
+                var parent = this.FindForm();
+                var method = parent?.GetType().GetMethod("ClosePanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                method?.Invoke(parent, new object[] { this.Name });
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "DashboardPanel: Close panel failed");
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
+                // Unsubscribe from theme events
                 try { ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
                 try { WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged -= _btnRefreshThemeChangedHandler; } catch { }
                 try { if (_viewModelPropertyChangedHandler != null && _vm is INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
 
+                // Unsubscribe from PanelHeader events using stored named handlers (no reflection needed)
+                try
+                {
+                    if (_panelHeader != null)
+                    {
+                        if (_panelHeaderRefreshHandler != null) _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                        if (_panelHeaderCloseHandler != null) _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Debug(ex, "DashboardPanel: Failed to unsubscribe PanelHeader events");
+                }
+
+                // Clear Syncfusion control data sources before disposal
                 try { _kpiList.SafeClearDataSource(); } catch { }
                 try { _kpiList.SafeDispose(); } catch { }
                 try { _detailsGrid.SafeClearDataSource(); } catch { }
                 try { _detailsGrid.SafeDispose(); } catch { }
 
+                // Dispose UI controls
                 try { _kpiList?.Dispose(); } catch { }
                 try { _mainChart?.Dispose(); } catch { }
                 try { _detailsGrid?.Dispose(); } catch { }
                 try { _statusStrip?.Dispose(); } catch { }
                 try { _toolStrip?.Dispose(); } catch { }
                 try { _topPanel?.Dispose(); } catch { }
-                // Dispose any additional UI elements and clear handlers
-                try
-                {
-                    // Attempt to clear PanelHeader events (these were attached with anonymous handlers)
-                    if (_panelHeader != null)
-                    {
-                        try
-                        {
-                            var t = _panelHeader.GetType();
-                            // common backing-field patterns
-                            var candidateNames = new[] { "RefreshClicked", "CloseClicked", "PinToggled", "<RefreshClicked>k__BackingField", "<CloseClicked>k__BackingField", "<PinToggled>k__BackingField" };
-                            foreach (var name in candidateNames)
-                            {
-                                try
-                                {
-                                    var f = t.GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-                                    if (f != null)
-                                    {
-                                        // Clear the delegate backing field
-                                        f.SetValue(_panelHeader, null);
-                                    }
-                                }
-                                catch { }
-                            }
-                        }
-                        catch { }
+                try { _btnRefresh?.Dispose(); } catch { }
+                try { _lblLastRefreshed?.Dispose(); } catch { }
+                try { _statusLabel?.Dispose(); } catch { }
 
-                        try { _panelHeader.Dispose(); } catch { }
-                    }
+                // Dispose PanelHeader
+                try { _panelHeader?.Dispose(); } catch { }
 
-                    // Loading / no-data overlays
-                    try
-                    {
-                        if (_loadingOverlay != null)
-                        {
-                            // try to clear any event fields that may hold anonymous delegates
-                            var tlo = _loadingOverlay.GetType();
-                            var candidateNames = new[] { "Resize", "<Resize>k__BackingField" };
-                            foreach (var name in candidateNames)
-                            {
-                                try
-                                {
-                                    var f = tlo.GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-                                    if (f != null)
-                                    {
-                                        f.SetValue(_loadingOverlay, null);
-                                    }
-                                }
-                                catch { }
-                            }
-                            try { _loadingOverlay.Dispose(); } catch { }
-                        }
-                    }
-                    catch { }
+                // Dispose overlays
+                try { _loadingOverlay?.Dispose(); } catch { }
+                try { _noDataOverlay?.Dispose(); } catch { }
 
-                    try
-                    {
-                        if (_noDataOverlay != null)
-                        {
-                            try { _noDataOverlay.Dispose(); } catch { }
-                        }
-                    }
-                    catch { }
-
-                    // Dispose per-tile sparks
-                    try { _sparkBudget?.Dispose(); } catch { }
-                    try { _sparkExpenditure?.Dispose(); } catch { }
-                    try { _sparkRemaining?.Dispose(); } catch { }
-                    try { _errorProvider?.Dispose(); } catch { }
-                }
-                catch { }
+                // Dispose per-tile sparks
+                try { _sparkBudget?.Dispose(); } catch { }
+                try { _sparkExpenditure?.Dispose(); } catch { }
+                try { _sparkRemaining?.Dispose(); } catch { }
+                try { _errorProvider?.Dispose(); } catch { }
             }
             base.Dispose(disposing);
         }

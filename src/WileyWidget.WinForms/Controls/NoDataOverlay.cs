@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.ComponentModel;
 using System.Windows.Forms;
 
 namespace WileyWidget.WinForms.Controls
@@ -9,11 +10,21 @@ namespace WileyWidget.WinForms.Controls
     /// </summary>
     public class NoDataOverlay : Panel
     {
-        private Label _messageLabel;
+        private Label _messageLabel = null!;
 
         public NoDataOverlay()
         {
             InitializeComponent();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                try { _messageLabel?.Dispose(); } catch { }
+            }
+
+            base.Dispose(disposing);
         }
 
         private void InitializeComponent()
@@ -40,12 +51,16 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_messageLabel);
         }
 
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Message
         {
             get => _messageLabel.Text;
             set => _messageLabel.Text = value ?? string.Empty;
         }
 
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public new bool Visible
         {
             get => base.Visible;

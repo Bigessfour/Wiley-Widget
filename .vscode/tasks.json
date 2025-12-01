@@ -248,27 +248,6 @@
 			"dependsOn": "WileyWidget: Clean & Build"
 		},
 		{
-			"label": "WileyWidget: Cleanup Processes",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1",
-				"-Force"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
 			"label": "ensure-logs-dir",
 			"type": "shell",
 			"command": "pwsh",
@@ -484,24 +463,6 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "dotnet:cleanup-processes",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
-			],
-			"presentation": {
-				"echo": true,
-				"reveal": "silent",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
 			"label": "dotnet:fast-build",
 			"type": "shell",
 			"command": "dotnet",
@@ -560,7 +521,7 @@
 				"/p:XamlDebuggingInformation=false"
 			],
 			"dependsOn": [
-				"kill-test-processes",
+				"WileyWidget: Kill Old Processes",
 				"dotnet:clean-build-server"
 			],
 			"isBackground": false,
@@ -593,42 +554,6 @@
 			}
 		},
 		{
-			"label": "kill-test-processes",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
-			],
-			"presentation": {
-				"echo": true,
-				"reveal": "silent",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "kill-dotnet",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-Command",
-				"Get-Process | Where-Object { $_.ProcessName -match 'dotnet|WileyWidget' -and $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue"
-			],
-			"presentation": {
-				"echo": false,
-				"reveal": "never",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
 			"label": "test: viewmodels",
 			"type": "shell",
 			"command": "dotnet",
@@ -644,7 +569,7 @@
 				"${workspaceFolder}/TestResults"
 			],
 			"dependsOn": [
-				"kill-test-processes"
+				"WileyWidget: Kill Old Processes"
 			],
 			"presentation": {
 				"echo": true,

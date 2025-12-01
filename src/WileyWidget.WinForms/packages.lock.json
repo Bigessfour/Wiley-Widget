@@ -494,6 +494,16 @@
           "Syncfusion.Shared.Base": "31.2.15"
         }
       },
+      "Syncfusion.Pdf.WinForms": {
+        "type": "Direct",
+        "requested": "[31.2.15, )",
+        "resolved": "31.2.15",
+        "contentHash": "We1G6le1N4Uxiv5bxk2E6KnqsdnKRwJo/AgNfBmvGjlZWAPobOJLZEv2g8y+kQup1tdzqmVw/77fH9Z1eF7JDw==",
+        "dependencies": {
+          "Syncfusion.Compression.Base": "31.2.15",
+          "Syncfusion.Licensing": "31.2.15"
+        }
+      },
       "Syncfusion.SfDataGrid.WinForms": {
         "type": "Direct",
         "requested": "[31.2.15, )",
@@ -557,6 +567,16 @@
           "Syncfusion.Shared.Windows": "31.2.15",
           "Syncfusion.SpellChecker.Base": "31.2.15",
           "Syncfusion.Tools.Base": "31.2.15"
+        }
+      },
+      "Syncfusion.XlsIO.WinForms": {
+        "type": "Direct",
+        "requested": "[31.2.15, )",
+        "resolved": "31.2.15",
+        "contentHash": "W/psvjQ0aGykUOf7JRoz/Hkbt5lQQCTDUxfGdIQuVZkHuuv0lUbR/Dl+VIGlCEZ+zdjoAN2ijjOTa/bb5g6bIA==",
+        "dependencies": {
+          "Syncfusion.Compression.Base": "31.2.15",
+          "Syncfusion.Licensing": "31.2.15"
         }
       },
       "System.Data.SqlClient": {
@@ -2995,16 +3015,6 @@
         "requested": "[31.2.15, )",
         "resolved": "31.2.15",
         "contentHash": "9y2HMFjFT0pBxtl4l+5wcWtyiot+eff8QhVtX1B5Zwe8Y3u8jl9WCIaAgUPsNQr4JarIwqCbJrdiH5Ou0WweLQ=="
-      },
-      "Syncfusion.Pdf.WinForms": {
-        "type": "CentralTransitive",
-        "requested": "[31.2.15, )",
-        "resolved": "31.2.15",
-        "contentHash": "We1G6le1N4Uxiv5bxk2E6KnqsdnKRwJo/AgNfBmvGjlZWAPobOJLZEv2g8y+kQup1tdzqmVw/77fH9Z1eF7JDw==",
-        "dependencies": {
-          "Syncfusion.Compression.Base": "31.2.15",
-          "Syncfusion.Licensing": "31.2.15"
-        }
       },
       "System.Buffers": {
         "type": "CentralTransitive",

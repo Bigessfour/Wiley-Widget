@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -11,13 +12,25 @@ namespace WileyWidget.WinForms.Controls
     /// </summary>
     public class LoadingOverlay : Panel
     {
-        private Label _messageLabel;
+        private Label? _messageLabel;
         private ProgressBar? _progress;
         private Control? _spinnerHost;
 
         public LoadingOverlay()
         {
             InitializeComponent();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                try { _progress?.Dispose(); } catch { }
+                try { _messageLabel?.Dispose(); } catch { }
+                try { _spinnerHost?.Dispose(); } catch { }
+            }
+
+            base.Dispose(disposing);
         }
 
         private void InitializeComponent()
@@ -116,10 +129,12 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Set or get the overlay message shown under the progress indicator.
         /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Message
         {
-            get => _messageLabel.Text;
-            set => _messageLabel.Text = value ?? string.Empty;
+            get => _messageLabel?.Text ?? string.Empty;
+            set { if (_messageLabel != null) _messageLabel.Text = value ?? string.Empty; }
         }
 
         /// <summary>
@@ -131,6 +146,8 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Toggle the overlay.
         /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public new bool Visible
         {
             get => base.Visible;

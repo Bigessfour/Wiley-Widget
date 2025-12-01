@@ -332,7 +332,9 @@ namespace WileyWidget.Data.Migrations
                         .HasDefaultValue(0m);
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("DepartmentId")
                         .HasColumnType("int");
@@ -378,6 +380,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("Variance")
@@ -2376,7 +2379,9 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -2395,6 +2400,7 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");

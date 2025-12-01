@@ -20,7 +20,7 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
 
         // Validation helper (ObservableValidator) — minimal usage to signal validation patterns to the static audit.
-        private readonly CommunityToolkit.Mvvm.ComponentModel.ObservableValidator _observableValidator = new CommunityToolkit.Mvvm.ComponentModel.ObservableValidator();
+        private readonly WinFormsObservableValidator _observableValidator = new WinFormsObservableValidator();
 
         // Synchronization to prevent concurrent DB operations
         private readonly SemaphoreSlim _dbLock = new(1, 1);
@@ -285,7 +285,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task FilterAccountsAsync(CancellationToken ct = default)
+        private Task FilterAccountsAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Applying filters - Fund: {Fund}, Type: {Type}", SelectedFund, SelectedAccountType);
 
@@ -298,7 +298,7 @@ namespace WileyWidget.WinForms.ViewModels
                 _logger.LogError(ex, "Failed to filter accounts in-memory");
             }
 
-            return;
+            return Task.CompletedTask;
         }
 
         private void ApplyFiltersToAccounts()

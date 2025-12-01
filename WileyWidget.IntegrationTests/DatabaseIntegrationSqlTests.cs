@@ -23,7 +23,7 @@ namespace WileyWidget.IntegrationTests
                 .Build();
 
             var envConn = Environment.GetEnvironmentVariable("TEST_SQL_CONNECTIONSTRING");
-            var conn = envConn ?? config.GetConnectionString("DefaultConnection");
+            var conn = envConn ?? config.GetConnectionString("WileyWidgetDb");
 
             // If the environment / config uses an InMemory sentinel, skip the heavier SQL checks
             if (string.IsNullOrWhiteSpace(conn) || conn.Contains("InMemory", StringComparison.OrdinalIgnoreCase))

@@ -72,11 +72,11 @@ namespace WileyWidget.Data
                         .Options;
                 }
 
-                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+                var connectionString = _configuration.GetConnectionString("WileyWidgetDb");
                 if (string.IsNullOrWhiteSpace(connectionString))
                 {
-                    connectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
-                    Log.Warning("DefaultConnection missing; using fallback SQL Server connection string");
+                    connectionString = "Server=.\\SQLEXPRESS;Database=WileyWidget;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true";
+                    Log.Warning("WileyWidgetDb connection string missing; using fallback SQL Server connection string");
                 }
 
                 // Expand environment variables

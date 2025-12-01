@@ -81,6 +81,9 @@ public class AppSettings
     // Security settings
     public int SessionTimeoutMinutes { get; set; } = 60;
 
+    // Demo mode - when enabled, ViewModels use sample data instead of database
+    public bool UseDemoData { get; set; } = false;
+
     // Fiscal year settings
     public string FiscalYearStart { get; set; } = "July 1";
     public int FiscalYearStartMonth { get; set; } = 7; // July

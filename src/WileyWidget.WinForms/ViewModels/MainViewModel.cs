@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Data;
@@ -152,6 +153,7 @@ namespace WileyWidget.ViewModels
                         TotalBudget = g.Sum(a => a.BudgetAmount),
                         TotalBalance = g.Sum(a => a.Balance)
                     })
+                    .OrderBy(_ => 1) // Satisfy EF Core warning about FirstOrDefault without OrderBy
                     .FirstOrDefaultAsync(ct);
 
                 if (accountSummary != null)
@@ -171,10 +173,10 @@ namespace WileyWidget.ViewModels
                     // Build quick metrics with formatting
                     QuickMetrics = new ObservableCollection<QuickMetricItem>
                     {
-                        new() { Name = "Accounts", Value = accountSummary.Count, FormattedValue = accountSummary.Count.ToString("N0"), Icon = "📋", Category = "Overview" },
-                        new() { Name = "Budget", Value = (double)accountSummary.TotalBudget, FormattedValue = accountSummary.TotalBudget.ToString("C0"), Icon = "💰", Category = "Financial" },
-                        new() { Name = "Spent", Value = (double)accountSummary.TotalBalance, FormattedValue = accountSummary.TotalBalance.ToString("C0"), Icon = "📊", Category = "Financial" },
-                        new() { Name = "Available", Value = (double)(accountSummary.TotalBudget - accountSummary.TotalBalance), FormattedValue = (accountSummary.TotalBudget - accountSummary.TotalBalance).ToString("C0"), Icon = "✅", Category = "Financial" }
+                        new() { Name = "Accounts", Value = accountSummary.Count, FormattedValue = accountSummary.Count.ToString("N0", CultureInfo.CurrentCulture), Icon = "📋", Category = "Overview" },
+                        new() { Name = "Budget", Value = (double)accountSummary.TotalBudget, FormattedValue = accountSummary.TotalBudget.ToString("C0", CultureInfo.CurrentCulture), Icon = "💰", Category = "Financial" },
+                        new() { Name = "Spent", Value = (double)accountSummary.TotalBalance, FormattedValue = accountSummary.TotalBalance.ToString("C0", CultureInfo.CurrentCulture), Icon = "📊", Category = "Financial" },
+                        new() { Name = "Available", Value = (double)(accountSummary.TotalBudget - accountSummary.TotalBalance), FormattedValue = (accountSummary.TotalBudget - accountSummary.TotalBalance).ToString("C0", CultureInfo.CurrentCulture), Icon = "✅", Category = "Financial" }
                     };
                 }
 
@@ -195,6 +197,7 @@ namespace WileyWidget.ViewModels
                 IsLoading = false;
                 _loadLock.Release();
             }
+        }
 
         partial void OnIsLoadingChanged(bool value)
         {

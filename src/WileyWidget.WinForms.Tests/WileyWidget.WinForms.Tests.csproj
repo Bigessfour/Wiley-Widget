@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net9.0-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
+        <IsPackable>false</IsPackable>
+        <GenerateProgramFile>true</GenerateProgramFile>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Enable both NUnit and xUnit flavors used across the WinForms tests. Versions are
+             managed centrally in Directory.Packages.props. Including both adapters allows
+             discovery of NUnit-based and xUnit-based tests (including StaFact tests). -->
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="NUnit" />
+        <PackageReference Include="NUnit3TestAdapter" />
+        <!-- xUnit and StaFact removed in favor of NUnit for discovery in this project.
+               NUnit's Apartment attribute is used for STA tests. Remove xUnit to avoid v2/v3 conflicts. -->
+        <PackageReference Include="Moq" />
+        <PackageReference Include="FluentAssertions" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Referenced projects the tests exercise -->
+        <ProjectReference Include="..\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
+        <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
+        <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+        <ProjectReference
+            Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+        <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
+    </ItemGroup>
+</Project>

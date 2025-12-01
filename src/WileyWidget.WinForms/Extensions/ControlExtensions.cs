@@ -1,5 +1,14 @@
 #nullable enable
 
+// Disable CA1508 (dead code) here: callers may call these extension
+// methods with a null receiver (extension method syntax) and the
+// defensive null checks are intentional for safety when disposing UI
+// controls from other threads or during teardown. The analyzer flags
+// ctrl as never null because most call sites pass non-null values, but
+// we must keep the checks to avoid NullReferenceExceptions when called
+// as a static method with a null argument.
+#pragma warning disable CA1508
+
 using System;
 using System.Diagnostics;
 using System.Reflection;
@@ -35,22 +44,22 @@ namespace WileyWidget.WinForms.Extensions
             catch (TargetInvocationException tie)
             {
                 // Common when a control has been partially disposed and the setter attempts to unhook events
-                logger?.LogDebug(tie, "SafeClearDataSource: TargetInvocationException clearing DataSource for {Control}", ctrl?.GetType().FullName);
+                logger?.LogDebug(tie, "SafeClearDataSource: TargetInvocationException clearing DataSource for {Control}", ctrl.GetType().FullName);
             }
             catch (NullReferenceException nre)
             {
                 // Observed in third-party control dispose paths (Syncfusion bug); swallow
-                logger?.LogDebug(nre, "SafeClearDataSource: NullReferenceException while clearing DataSource for {Control}", ctrl?.GetType().FullName);
+                logger?.LogDebug(nre, "SafeClearDataSource: NullReferenceException while clearing DataSource for {Control}", ctrl.GetType().FullName);
             }
             catch (ObjectDisposedException ode)
             {
                 // Control already disposed - nothing to do
-                logger?.LogDebug(ode, "SafeClearDataSource: Control already disposed {Control}", ctrl?.GetType().FullName);
+                logger?.LogDebug(ode, "SafeClearDataSource: Control already disposed {Control}", ctrl.GetType().FullName);
             }
             catch (Exception ex)
             {
                 // Keep logging at debug so we don't treat this as fatal, but surface diagnostics in dev environments
-                logger?.LogDebug(ex, "SafeClearDataSource: Unexpected exception for {Control}", ctrl?.GetType().FullName);
+                logger?.LogDebug(ex, "SafeClearDataSource: Unexpected exception for {Control}", ctrl.GetType().FullName);
                 Debug.WriteLine(ex);
             }
         }

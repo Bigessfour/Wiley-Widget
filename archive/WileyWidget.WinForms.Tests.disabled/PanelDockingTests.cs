@@ -132,23 +132,10 @@ namespace WileyWidget.WinForms.Tests
         }
 
         [Fact]
-        public void AccountEditForm_HasPrepareForDocking()
+        public void AccountEditPanel_HasDataContext()
         {
-            // Arrange
-            var t = typeof(Forms.AccountEditForm);
-
-            // Act
-            var method = t.GetMethod("PrepareForDocking");
-
-            // Assert
-            Assert.NotNull(method);
-        }
-
-        [Fact]
-        public void AccountEditForm_HasDataContext()
-        {
-            // Arrange
-            var t = typeof(Forms.AccountEditForm);
+            // Arrange - verify the panel has a DataContext property (panels used for docking)
+            var t = typeof(Controls.AccountEditPanel);
 
             // Act
             var prop = t.GetProperty("DataContext");
@@ -210,13 +197,13 @@ namespace WileyWidget.WinForms.Tests
         }
 
         [Fact]
-        public void MainForm_HasDockAccountEditForm()
+        public void MainForm_HasDockAccountEditPanel()
         {
             // Arrange
             var t = typeof(Forms.MainForm);
 
             // Act
-            var method = t.GetMethod("DockAccountEditForm");
+            var method = t.GetMethod("DockAccountEditPanel");
 
             // Assert
             Assert.NotNull(method);

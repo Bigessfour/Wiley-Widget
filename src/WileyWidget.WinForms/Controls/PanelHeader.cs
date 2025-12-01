@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.ComponentModel;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Theming;
 
@@ -12,10 +13,10 @@ namespace WileyWidget.WinForms.Controls
     /// </summary>
     public partial class PanelHeader : UserControl
     {
-        private Label _titleLabel;
-        private Button _btnRefresh;
-        private CheckBox _btnPin;
-        private Button _btnClose;
+        private Label _titleLabel = null!;
+        private Button _btnRefresh = null!;
+        private CheckBox _btnPin = null!;
+        private Button _btnClose = null!;
 
         /// <summary>Raised when the user clicks Refresh.</summary>
         public event EventHandler? RefreshClicked;
@@ -27,6 +28,8 @@ namespace WileyWidget.WinForms.Controls
         public event EventHandler? CloseClicked;
 
         /// <summary>Title shown in the header.</summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Title
         {
             get => _titleLabel.Text;
@@ -34,6 +37,8 @@ namespace WileyWidget.WinForms.Controls
         }
 
         /// <summary>Whether the panel is pinned (persisted by parent if desired).</summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool IsPinned
         {
             get => _btnPin.Checked;
@@ -45,7 +50,20 @@ namespace WileyWidget.WinForms.Controls
             InitializeComponent();
 
             // Apply theme on construction so the header looks correct early
-            try { ThemeManager.ApplyTheme(this); } catch { }
+            try { ThemeManager.ApplyThemeToControl(this); } catch { }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                try { _titleLabel?.Dispose(); } catch { }
+                try { _btnRefresh?.Dispose(); } catch { }
+                try { _btnPin?.Dispose(); } catch { }
+                try { _btnClose?.Dispose(); } catch { }
+            }
+
+            base.Dispose(disposing);
         }
 
         private void InitializeComponent()
@@ -60,7 +78,7 @@ namespace WileyWidget.WinForms.Controls
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Segoe UI", 10F, FontStyle.SemiBold),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 Margin = new Padding(0),
                 AccessibleName = "Panel title"
             };

@@ -8,6 +8,8 @@ import os
 import re
 import subprocess
 import time
+import platform
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -122,7 +124,7 @@ def audit():
                 print("Screenshot capture unavailable on this environment")
         except Exception:
             pass
-    print(f"\nMEGA AUDIT 3.14 FINAL SCORE: {final_score}%")
+    print(f"\nMEGA AUDIT 3.14 FINAL SCORE: {score}%")
     if issues:
         print("REAL ISSUES:")
         for i in issues:
@@ -130,7 +132,7 @@ def audit():
     else:
         print("Actually, legitimately 100%. You win the internet today.")
 
-    return final_score, issues
+    return score, issues
 
 
 def run_static_view_checks(repo_root: Path):
@@ -150,9 +152,7 @@ def run_static_view_checks(repo_root: Path):
             pass
 
         # Build PowerShell script to capture main window rectangle and copy from screen
-        ps_script = (
-            f
-            @ """
+        ps_script = f"""
     $ErrorActionPreference = 'SilentlyContinue'
     Add-Type @'
     using System;
