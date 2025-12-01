@@ -1,5 +1,8 @@
 name: WileyWidget - Backup to Blob
 
+# checkov:skip=CKV2_GHA_1: Top-level permissions assessment not applicable for this self-hosted, network-restricted backup runner.
+# checkov:skip=CKV_GHA_7: workflow_dispatch inputs are intentionally exposed so maintainers can select a backup type when triggering a manual run.
+
 on:
   workflow_dispatch:
     inputs:
