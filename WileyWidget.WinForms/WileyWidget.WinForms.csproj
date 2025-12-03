@@ -63,6 +63,14 @@
     <PackageReference Include="Polly" />
     <PackageReference Include="IppOAuth2PlatformSdk" />
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
+    <!-- Exclude legacy Serilog AzureDocumentDB sink and DocumentDB Core to avoid NETSDK1206 -->
+    <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
+    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy production configuration to output directory -->
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

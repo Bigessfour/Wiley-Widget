@@ -12,18 +12,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <!-- NULLABILITY WARNINGS SUPPRESSED
+         CS8600-CS8625 violations exist in legacy code. -->
     <NoWarn>
-      $(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416;NU1902;NU1903</NoWarn>
+      $(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8632;CS8613;CS1061;CS1929;CA1416;NU1902;NU1903;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8625</NoWarn>
     <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <!-- Package versions managed centrally in Directory.Packages.props -->
-    <!-- Removed: BoldReports.WPF - service interface removed -->
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <!-- MSAL extensions removed (archived). -->
-    <!-- WPF-specific package removed for WinUI compatibility -->
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <!-- Additional OpenTelemetry packages for SigNoz integration -->
     <PackageReference Include="OpenTelemetry" />
@@ -74,6 +74,9 @@
     <!-- AI Integration packages removed from Services project - register per-module when needed -->
     <PackageReference Include="IppOAuth2PlatformSdk" />
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
+    <!-- Exclude legacy Serilog AzureDocumentDB sink and DocumentDB Core to avoid NETSDK1206 -->
+    <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
+    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
@@ -104,16 +107,6 @@
     <Compile Remove="Interfaces\IUserContext.cs" />
     <Compile Remove="Interfaces\IWhatIfScenarioEngine.cs" />
     <Compile Remove="Interfaces\IWileyWidgetContextService.cs" />
-
-    <!-- Exclude WPF-specific files when building for .NET 9.0 (Uno) -->
-    <Compile Remove="PasswordBoxHelper.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <Compile Remove="DialogTrackingService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <Compile Remove="SafeResourceDictionaryLoader.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <Compile Remove="ErrorReportingService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <Compile Remove="BoldReportService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <Compile Remove="Threading\DispatcherExtensions.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
   </ItemGroup>
-
-  <!-- Removed linked files - now using local copies in WileyWidget.Services/ -->
 
 </Project>

@@ -77,41 +77,6 @@ namespace WileyWidget.Data
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         }
 
-        // NOTE: The constructor that accepted an AppDbContext directly was deprecated and
-        // intentionally removed to avoid misuse. Use the IDbContextFactory-based constructor
-        // for production/DI scenarios or the DbContextOptions<AppDbContext> constructor
-        // for tests that need an in-memory provider.
-
-        // Convenience constructor for unit tests that supply DbContextOptions
-        public MunicipalAccountRepository(DbContextOptions<AppDbContext> options)
-        {
-            if (options == null) throw new ArgumentNullException(nameof(options));
-
-            // Create a factory that creates new contexts with the same options
-            _contextFactory = new TestDbContextFactory(options);
-            _cache = new MemoryCache(new MemoryCacheOptions());
-        }
-
-        private class TestDbContextFactory : IDbContextFactory<AppDbContext>
-        {
-            private readonly DbContextOptions<AppDbContext> _options;
-
-            public TestDbContextFactory(DbContextOptions<AppDbContext> options)
-            {
-                _options = options;
-            }
-
-            public AppDbContext CreateDbContext()
-            {
-                return new AppDbContext(_options);
-            }
-
-            public Task<AppDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult(new AppDbContext(_options));
-            }
-        }
-
         public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
         {
             const string cacheKey = "MunicipalAccounts_All";

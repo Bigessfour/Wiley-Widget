@@ -15,16 +15,9 @@ This guide documents how Model Context Protocol (MCP) servers enhance the Wiley 
 - PR validation with test coverage requirements
 - Code review automation for test quality
 
-**Usage in Testing:**
+**Usage in Testing (local-first):**
 
-```bash
-# Via Docker
-docker run --rm -e GITHUB_TOKEN=$env:GITHUB_TOKEN \
-  mcp/github \
-  create-issue --repo Bigessfour/Wiley-Widget \
-  --title "Test Coverage Below 80%" \
-  --body "$(cat coverage/report.txt)"
-```
+Use the GitHub MCP through your editor’s MCP client; no Docker is required for typical workflows. If you need CLI automation, prefer `gh` or a CI job over ad-hoc Docker runs.
 
 **Tasks Integration:**
 
@@ -33,7 +26,7 @@ docker run --rm -e GITHUB_TOKEN=$env:GITHUB_TOKEN \
 
 ---
 
-### 2. **Filesystem MCP** (`@modelcontextprotocol/server-filesystem`)
+### 2. **Filesystem MCP** (`@modelcontextprotocol/server-filesystem`) — Local First
 
 **Purpose:** Secure file operations with git-style diffs  
 **Integration Points:**
@@ -42,7 +35,7 @@ docker run --rm -e GITHUB_TOKEN=$env:GITHUB_TOKEN \
 - Test result parsing
 - Coverage report generation
 
-**Usage in Testing:**
+**Usage in Testing (local-first):**
 
 ```javascript
 // Mandatory for all file operations
@@ -66,7 +59,7 @@ mcp_filesystem_edit_file({
 
 ---
 
-### 3. **C# MCP** (`ghcr.io/infinityflowapp/csharp-mcp:latest`)
+### 3. **C# MCP** (`InfinityFlow.CSharp.Eval`) — Local First
 
 **Purpose:** Execute C# scripts for testing and validation  
 **Integration Points:**
@@ -75,18 +68,9 @@ mcp_filesystem_edit_file({
 - Dynamic test generation
 - Test data creation
 
-**Usage in Testing:**
+**Usage in Testing (local-first):**
 
-```bash
-# Run validation script
-docker run --rm \
-  -v "${PWD}:/scripts:ro" \
-  -v "${PWD}/logs:/logs:rw" \
-  -e WW_REPO_ROOT=/scripts \
-  -e WW_LOGS_DIR=/logs \
-  ghcr.io/infinityflowapp/csharp-mcp:latest \
-  scripts/examples/csharp/validate-test-structure.csx
-```
+Launch from `.vscode/mcp.json` (Start). The MCP client manages stdio; no Docker required. For scripted checks, consider small csx harnesses executed via the MCP client or direct `dotnet script` where appropriate.
 
 **VS Code Tasks:**
 

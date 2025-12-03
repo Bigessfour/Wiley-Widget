@@ -54,6 +54,8 @@ Get-Service MSSQL$SQLEXPRESS
 
 ---
 
+> Tip: For Copilot file operations (read/write/list) use the local Filesystem MCP. Install Node.js, then start the server from `.vscode/mcp.json` (Start button). Avoid Docker/devcontainer for MCP to prevent ENOENT issues.
+
 ## 🚀 Quick Start (5 Minutes)
 
 This gets the application running in **demo mode** with stub services (no database required).

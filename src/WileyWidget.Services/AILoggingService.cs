@@ -15,7 +15,7 @@ namespace WileyWidget.Services
     /// <summary>
     /// AI usage tracking and logging service for XAI operations.
     /// Monitors queries, responses, errors, and usage metrics for municipal finance AI integration.
-    /// Uses Serilog for structured logging with dedicated file sink.
+    /// Uses Serilog for structured logging with dedicated file sink in root project /logs directory.
     /// </summary>
     public class AILoggingService : IAILoggingService
     {
@@ -23,7 +23,6 @@ namespace WileyWidget.Services
         private readonly Logger _aiUsageLogger;
         private readonly ConcurrentBag<AILogEntry> _logEntries;
         private readonly object _metricsLock = new object();
-        private readonly ErrorReportingService _errorReportingService;
         private int _todayQueryCount;
         private double _totalResponseTime;
         private int _totalResponses;
@@ -32,18 +31,28 @@ namespace WileyWidget.Services
 
         /// <summary>
         /// Initializes a new instance of the AILoggingService.
+        /// Logs are written to the root project's /logs directory, not bin subdirectories.
         /// </summary>
         /// <param name="logger">Standard logger for service operations</param>
-        /// <param name="errorReportingService">Error reporting service for telemetry</param>
-        public AILoggingService(ILogger<AILoggingService> logger, ErrorReportingService errorReportingService)
+        public AILoggingService(ILogger<AILoggingService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _errorReportingService = errorReportingService ?? throw new ArgumentNullException(nameof(errorReportingService));
             _logEntries = new ConcurrentBag<AILogEntry>();
             _lastResetDate = DateTime.UtcNow.Date;
 
             // Create dedicated Serilog logger for AI usage
-            var logsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+            // Use root project logs directory
+            // Path strategy: AppDomain.CurrentDomain.BaseDirectory is typically:
+            // C:\path\to\WileyWidget.WinForms\bin\Debug\net9.0-windows
+            // We need to go up 4 levels to reach the project root, then into /logs
+            var binDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            var parent1 = Directory.GetParent(binDirectory);  // net9.0-windows
+            var parent2 = Directory.GetParent(parent1?.FullName ?? ".");  // Debug
+            var parent3 = Directory.GetParent(parent2?.FullName ?? ".");  // bin
+            var parent4 = Directory.GetParent(parent3?.FullName ?? ".");  // WileyWidget.WinForms
+            var projectRoot = Directory.GetParent(parent4?.FullName ?? ".")?.FullName ?? ".";  // Root (Wiley-Widget)
+            
+            var logsDirectory = Path.Combine(projectRoot, "logs");
             Directory.CreateDirectory(logsDirectory);
 
             _aiUsageLogger = new LoggerConfiguration()
@@ -90,15 +99,6 @@ namespace WileyWidget.Services
                     model, query?.Length ?? 0, context?.Length ?? 0, TruncateForLog(query, 200));
 
                 _logger.LogDebug("Logged AI query: Model={Model}, QueryLength={Length}", model, query?.Length ?? 0);
-
-                // Track telemetry event for AI query
-                _errorReportingService.TrackEvent("AI_Query_Logged", new Dictionary<string, object>
-                {
-                    ["Model"] = model,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["ContextLength"] = context?.Length ?? 0,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
             }
             catch (Exception ex)
             {
@@ -138,16 +138,6 @@ namespace WileyWidget.Services
 
                 _logger.LogDebug("Logged AI response: ResponseTime={ResponseTime}ms, TokensUsed={Tokens}",
                     responseTimeMs, tokensUsed);
-
-                // Track telemetry event for AI response
-                _errorReportingService.TrackEvent("AI_Response_Logged", new Dictionary<string, object>
-                {
-                    ["ResponseTimeMs"] = responseTimeMs,
-                    ["TokensUsed"] = tokensUsed,
-                    ["ResponseLength"] = response?.Length ?? 0,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
             }
             catch (Exception ex)
             {
@@ -209,15 +199,6 @@ namespace WileyWidget.Services
                     errorType, TruncateForLog(query, 200), error);
 
                 _logger.LogWarning("Logged AI error: Type={ErrorType}, Query={Query}", errorType, query);
-
-                // Track telemetry event for AI error
-                _errorReportingService.TrackEvent("AI_Error_Logged", new Dictionary<string, object>
-                {
-                    ["ErrorType"] = errorType,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["ErrorMessage"] = error,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
             }
             catch (Exception ex)
             {

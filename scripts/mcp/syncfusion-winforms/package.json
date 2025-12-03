@@ -1,0 +1,15 @@
+{
+  "name": "syncfusion-winforms-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server exposing Syncfusion WinForms control info and helpers",
+  "main": "src/index.mjs",
+  "scripts": {
+    "start": "node src/index.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.24.2",
+    "zod": "^4.0.0"
+  }
+}

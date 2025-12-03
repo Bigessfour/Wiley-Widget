@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Moq.Protected;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services.Tests.TestHelpers;
@@ -32,36 +33,6 @@ public static class MockFactory
             .Verifiable();
 
         return mockLogger;
-    }
-
-    /// <summary>
-    /// Creates a mock IDashboardService with configurable behavior.
-    /// </summary>
-    public static Mock<IDashboardService> CreateDashboardService(
-        IEnumerable<WileyWidget.WinUI.ViewModels.Main.DashboardItem>? items = null,
-        bool shouldThrow = false,
-        Exception? exception = null)
-    {
-        var mockService = new Mock<IDashboardService>();
-
-        if (shouldThrow)
-        {
-            mockService.Setup(s => s.GetDashboardItemsAsync())
-                .ThrowsAsync(exception ?? new Exception("Service error"));
-        }
-        else
-        {
-            var defaultItems = items ?? new List<WileyWidget.WinUI.ViewModels.Main.DashboardItem>
-            {
-                new() { Title = "Test Item 1", Description = "Description 1", Icon = "icon1.png", Count = 5, Status = "Active" },
-                new() { Title = "Test Item 2", Description = "Description 2", Icon = "icon2.png", Count = 10, Status = "Inactive" }
-            };
-
-            mockService.Setup(s => s.GetDashboardItemsAsync())
-                .ReturnsAsync(defaultItems);
-        }
-
-        return mockService;
     }
 
     /// <summary>
@@ -131,35 +102,18 @@ public static class MockFactory
     /// </summary>
     public static class TestData
     {
-        public static List<WileyWidget.WinUI.ViewModels.Main.DashboardItem> CreateDashboardItems(int count = 2)
-        {
-            var items = new List<WileyWidget.WinUI.ViewModels.Main.DashboardItem>();
-            for (int i = 1; i <= count; i++)
-            {
-                items.Add(new WileyWidget.WinUI.ViewModels.Main.DashboardItem
-                {
-                    Title = $"Test Item {i}",
-                    Description = $"Description {i}",
-                    Icon = $"icon{i}.png",
-                    Count = i * 5,
-                    Status = i % 2 == 0 ? "Active" : "Inactive"
-                });
-            }
-            return items;
-        }
-
         public static string CreateQuickBooksResponse(string entityType, int count = 2)
         {
             var entities = new List<object>();
 
             for (int i = 1; i <= count; i++)
             {
-                var entity = entityType switch
+                object entity = entityType switch
                 {
-                    "Customer" => new { Id = i.ToString(), DisplayName = $"Customer {i}", Active = true },
-                    "Invoice" => new { Id = i.ToString(), DocNumber = $"INV-{i:000}", TotalAmt = i * 100.0 },
-                    "Account" => new { Id = i.ToString(), Name = $"Account {i}", Type = "Asset", Active = true },
-                    _ => new { Id = i.ToString(), Name = $"Entity {i}" }
+                    "Customer" => new { Id = i.ToString(System.Globalization.CultureInfo.InvariantCulture), DisplayName = $"Customer {i}", Active = true },
+                    "Invoice" => new { Id = i.ToString(System.Globalization.CultureInfo.InvariantCulture), DocNumber = $"INV-{i:000}", TotalAmt = i * 100.0 },
+                    "Account" => new { Id = i.ToString(System.Globalization.CultureInfo.InvariantCulture), Name = $"Account {i}", Type = "Asset", Active = true },
+                    _ => new { Id = i.ToString(System.Globalization.CultureInfo.InvariantCulture), Name = $"Entity {i}" }
                 };
                 entities.Add(entity);
             }
@@ -188,7 +142,7 @@ public static class TestExtensions
         logger.Verify(x => x.Log(
             level,
             It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((o, t) => o.ToString().Contains(message)),
+            It.Is<It.IsAnyType>((o, t) => o != null && o.ToString() != null && o.ToString()!.Contains(message)),
             It.IsAny<Exception>(),
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.AtLeastOnce);

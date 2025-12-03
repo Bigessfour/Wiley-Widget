@@ -72,22 +72,29 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         EnsureSettingsLoaded();
     }
 
-    public void Dispose()
-    {
-        _initSemaphore.Dispose();
-        _cloudflaredSemaphore.Dispose();
-        try
+        public void Dispose()
         {
-            if (_cloudflaredProcess is { HasExited: false })
+            _initSemaphore.Dispose();
+            _cloudflaredSemaphore.Dispose();
+            try
             {
-                _cloudflaredProcess.Kill(entireProcessTree: true);
-                _cloudflaredProcess.Dispose();
+                if (_cloudflaredProcess is { HasExited: false })
+                {
+                    _cloudflaredProcess.Kill(entireProcessTree: true);
+                    _cloudflaredProcess.Dispose();
+                }
             }
-        }
-        catch { /* best effort */ }
-    }
-
-    private static async System.Threading.Tasks.Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService, string secretName, ILogger logger)
+            catch (InvalidOperationException ex)
+            {
+                // Process may have already exited - log and continue
+                _logger.LogDebug(ex, "Process already terminated during Dispose");
+            }
+            catch (Exception ex)
+            {
+                // Any other exception during cleanup
+                _logger.LogWarning(ex, "Unexpected error during cloudflared process cleanup");
+            }
+        }    private static async System.Threading.Tasks.Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService, string secretName, ILogger logger)
     {
         if (keyVaultService == null)
         {
@@ -118,28 +125,54 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// <summary>
     /// Retrieve an environment variable from any reasonable scope.
     /// Prefer process-level variables (container-friendly). If not present, attempt
-    /// to read user-level variables (Windows) but swallow any platform-specific
-    /// exceptions so callers remain cross-platform friendly.
+    /// to read user-level variables (Windows) but log specific exceptions so errors
+    /// remain visible while maintaining cross-platform compatibility.
     /// </summary>
-    private static string? GetEnvironmentVariableAnyScope(string name)
+    private string? GetEnvironmentVariableAnyScope(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
+
+        // Try process-level environment first (container-friendly)
         try
         {
             var v = Environment.GetEnvironmentVariable(name);
-            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable('{name}') => { (v == null ? "<null>" : "<redacted>") }");
+            _logger.LogDebug("GetEnvironmentVariable('{VariableName}') => {Result}", name, (v == null ? "<null>" : "<redacted>"));
             if (!string.IsNullOrWhiteSpace(v)) return v;
         }
-        catch { /* ignore */ }
-
-        try
+        catch (ArgumentException ex)
         {
-            // Some callers on Windows may have user-scoped variables set; try that as a fallback.
-            var uv = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
-            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable(User,'{name}') => {(uv == null ? "<null>" : "<redacted>")}");
-            return uv;
+            _logger.LogWarning(ex, "Invalid environment variable name: {VariableName}", name);
+            return null;
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read process-level environment variable: {VariableName}", name);
+        }
+
+        // Fallback to user-scoped variables (Windows-specific)
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                var uv = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+                _logger.LogDebug("GetEnvironmentVariable(User,'{VariableName}') => {Result}", name, (uv == null ? "<null>" : "<redacted>"));
+                return uv;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid environment variable name (user scope): {VariableName}", name);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Insufficient permissions to read user environment variable: {VariableName}", name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to read user-level environment variable: {VariableName}", name);
+            }
+        }
+
+        return null;
     }
 
     private async System.Threading.Tasks.Task EnsureInitializedAsync()
@@ -573,7 +606,7 @@ public async System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync()
 /// <summary>
 /// Syncs budgets to QuickBooks Online via REST API.
 /// Uses IHttpClientFactory to create named 'QBO' client with proper authentication.
-/// On success, publishes Prism event to refresh UI (e.g., SfDataGrid in SettingsView).
+/// On success, refreshes the UI with updated token information.
 /// </summary>
 public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default)
 {
@@ -872,9 +905,17 @@ private async Task<bool> AcquireTokensInteractiveAsync()
         {
             Console.WriteLine(authUrl);
         }
-        catch
+        catch (IOException ex)
         {
-            // best-effort printing; do not fail if console isn't available
+            _logger.LogWarning(ex, "Failed to write authorization URL to console output stream");
+        }
+        catch (ObjectDisposedException ex)
+        {
+            _logger.LogWarning(ex, "Console stream has been closed or disposed");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unexpected error writing to console");
         }
         if (skipInteractive)
         {

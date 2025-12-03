@@ -4,58 +4,37 @@ This doc shows a minimal setup to run the `csharp-mcp` server locally and connec
 
 **Note**: The csharp-mcp server uses stdio (stdin/stdout) communication, not HTTP. It's designed to be invoked by MCP clients (like VS Code extensions) that manage the stdio streams.
 
-## 1. Pull the image
+## 1. Local-first setup (no Docker)
 
-Open PowerShell and run:
+The C# MCP server is already configured to run locally via stdio in `.vscode/mcp.json` using `InfinityFlow.CSharp.Eval`. No Docker is required.
 
-```powershell
-docker pull ghcr.io/infinityflowapp/csharp-mcp:latest
-```
-
-## 2. VS Code configuration (recommended)
-
-The MCP server is best used through VS Code's MCP integration. Verify `.vscode/mcp.json` contains:
+Verify `.vscode/mcp.json` contains a block like:
 
 ```json
 {
   "servers": {
     "csharp-mcp": {
-      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-v",
-        "C:\\Users\\biges\\Desktop\\Wiley_Widget:/scripts:ro",
-        "-e",
-        "CSX_ALLOWED_PATH=/scripts",
-        "ghcr.io/infinityflowapp/csharp-mcp:latest"
-      ],
+      "command": "InfinityFlow.CSharp.Eval",
+      "args": [],
       "env": {
-        "CSX_ALLOWED_PATH": "/scripts"
+        "CSX_ALLOWED_PATH": "${workspaceFolder}",
+        "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+        "DOTNET_NOLOGO": "1"
       }
     }
   }
 }
 ```
 
-The MCP extension will launch the container with `-i` for interactive stdio communication and `--rm` for automatic cleanup.
+Start it from VS Code by opening `.vscode/mcp.json` and clicking Start.
+
+## 2. Optional: Docker-based setup (legacy)
+
+Prefer the local stdio configuration above. Only use Docker if local execution is unavailable in your environment.
 
 ## 3. Manual stdio testing (optional)
 
-If you need to test the server manually via command line:
-
-```powershell
-# Run interactively with stdin
-docker run -i --rm -v "C:\Users\biges\Desktop\Wiley_Widget:/scripts:ro" -e CSX_ALLOWED_PATH=/scripts ghcr.io/infinityflowapp/csharp-mcp:latest
-
-# Send JSON-RPC message (paste and press Enter):
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}
-```
-
-The server will respond via stdout with JSON-RPC responses.
-
-The server will respond via stdout with JSON-RPC responses.
+If needed, you can send JSON-RPC to the process launched by VS Code using the MCP client’s debug tools. Direct manual stdio invocation isn’t necessary for normal use.
 
 ## 4. Example C# + XUnit snippet
 

@@ -32,6 +32,7 @@ After 6+ weeks battling silent XamlCompiler crashes ([Microsoft.UI.Xaml #10027](
 - [Overview](#-overview)
 - [Project Structure](#-project-structure)
 - [Quick Start](#-quick-start)
+- [Local MCP Filesystem](#-local-mcp-filesystem)
 - [QuickBooks Sandbox Integration](#-quickbooks-sandbox-integration)
 - [Configuration & Secrets](#-configuration--secret-management)
 - [Architecture](#-architecture)
@@ -93,6 +94,32 @@ WileyWidget is a modern Windows desktop application built with WinUI 3, Syncfusi
 **Active Scripts:** 24 essential automation scripts (down from 84)
 **Active Docs:** 51 technical documentation files (focused and relevant)
 **Theme Files:** 1 single source of truth (`WileyTheme-Syncfusion.xaml`)
+
+---
+
+## ⚙️ Local MCP Filesystem
+
+Run Copilot’s Filesystem MCP locally (no Docker/devcontainer) to avoid ENOENT issues and ensure fast, reliable file access.
+
+1) Install Node.js LTS (20 or 22): https://nodejs.org/en/download
+2) Restart VS Code, then verify in terminal:
+
+```powershell
+npx --version
+```
+
+3) Start server from VS Code:
+- Open `.vscode/mcp.json`
+- Click Start at the top of the editor
+- Wait for "Server started" in Output → GitHub Copilot Chat
+
+4) Quick test in Copilot Agent (Agent mode → tools icon):
+```
+#codebase
+List all XAML files in Views folder, then read ChartView.xaml and summarize Grid columns.
+```
+
+Note: `.vscode/mcp.json` already points to the local Node server: `npx -y @modelcontextprotocol/server-filesystem "${workspaceFolder}"`. If you ever work in a container, open the folder locally for MCP.
 
 ---
 

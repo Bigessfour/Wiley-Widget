@@ -63,6 +63,19 @@ LicenseKey.Private.cs
 secrets/
 my.secrets
 
+# Root-level code folders (ANTI-DUPLICATION ENFORCEMENT)
+# Use proper project folders instead:
+#   ViewModels   → WileyWidget.WinForms/ViewModels/
+#   Services     → src/WileyWidget.Services/
+#   Models       → src/WileyWidget.Models/
+#   Styles       → UI-project-specific folders
+/ViewModels/
+/Services/
+/Models/
+/Styles/
+/Converters/
+/Helpers/
+
 # Environment variables (NEVER commit)
 .env
 .env.local

@@ -1,5 +1,4 @@
 // Global using directives for WileyWidget.Business
-// ImplicitUsings is disabled to prevent Prism namespaces from being auto-included
 global using System;
 global using System.Collections.Generic;
 global using System.IO;

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using WileyWidget.Models;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,11 +29,11 @@ public class HealthCheckService
     public HealthCheckService(
         IServiceScopeFactory scopeFactory,
         ILogger<HealthCheckService> logger,
-        HealthCheckConfiguration config)
+        IOptions<HealthCheckConfiguration> configOptions)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _config = configOptions?.Value ?? throw new ArgumentNullException(nameof(configOptions));
     }
 
     /// <summary>

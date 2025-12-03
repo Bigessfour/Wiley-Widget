@@ -4,116 +4,105 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Core;
 
 namespace WileyWidget.Services
 {
     /// <summary>
-    /// Simple audit service. Writes structured metadata to the normal ILogger and an append-only audit file.
-    /// This service MUST NOT store secret values. Callers should redact sensitive fields before calling.
+    /// Audit logging service for compliance and security tracking.
+    /// Maintains append-only audit trail of significant system operations.
+    /// Uses Serilog for structured logging with dedicated file sink in root project /logs directory.
     /// </summary>
     public class AuditService : IAuditService
     {
         private readonly ILogger<AuditService> _logger;
-        private readonly string _auditPath;
+        private readonly Logger _auditLogger;
 
+        /// <summary>
+        /// Initializes a new instance of the AuditService.
+        /// Logs are written to the root project's /logs directory, not bin subdirectories.
+        /// </summary>
+        /// <param name="logger">Standard logger for service operations</param>
         public AuditService(ILogger<AuditService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            var logs = Path.Combine(AppContext.BaseDirectory ?? ".", "logs");
-            Directory.CreateDirectory(logs);
-            _auditPath = Path.Combine(logs, "audit.log");
+
+            // Create dedicated Serilog logger for audit events
+            // Use root project logs directory
+            // Path strategy: AppDomain.CurrentDomain.BaseDirectory is typically:
+            // C:\path\to\WileyWidget.WinForms\bin\Debug\net9.0-windows
+            // We need to go up 4 levels to reach the project root, then into /logs
+            var binDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            var parent1 = Directory.GetParent(binDirectory);  // net9.0-windows
+            var parent2 = Directory.GetParent(parent1?.FullName ?? ".");  // Debug
+            var parent3 = Directory.GetParent(parent2?.FullName ?? ".");  // bin
+            var parent4 = Directory.GetParent(parent3?.FullName ?? ".");  // WileyWidget.WinForms
+            var projectRoot = Directory.GetParent(parent4?.FullName ?? ".")?.FullName ?? ".";  // Root (Wiley-Widget)
+
+            var logsDirectory = Path.Combine(projectRoot, "logs");
+            Directory.CreateDirectory(logsDirectory);
+
+            _auditLogger = new LoggerConfiguration()
+                .WriteTo.File(
+                    Path.Combine(logsDirectory, "audit.log"),
+                    rollingInterval: RollingInterval.Day,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                    retainedFileCountLimit: 30,
+                    fileSizeLimitBytes: 5 * 1024 * 1024,  // 5MB per file
+                    formatProvider: CultureInfo.InvariantCulture,
+                    flushToDiskInterval: TimeSpan.Zero)  // Immediate flush for audit integrity
+                .CreateLogger();
+
+            _logger.LogInformation("AuditService initialized with dedicated Serilog file sink at {LogPath}",
+                Path.Combine(logsDirectory, "audit.log"));
         }
 
-        public Task AuditAsync(string eventName, object details)
+        /// <summary>
+        /// Logs an audit event asynchronously.
+        /// </summary>
+        /// <param name="eventName">Name of the event being audited</param>
+        /// <param name="payload">Event payload containing details</param>
+        /// <returns>A task representing the asynchronous operation</returns>
+        public async Task AuditAsync(string eventName, object payload)
         {
-            if (string.IsNullOrWhiteSpace(eventName)) throw new ArgumentNullException(nameof(eventName));
-
-            // Log structured data via ILogger
             try
             {
-                _logger.LogInformation("Audit: {Event} {@Details}", eventName, details);
-            }
-            catch
-            {
-                // Swallow logging exceptions to avoid impact on UX
-            }
-
-            // Also append a compact line to the audit file. Ensure secrets are not present.
-            try
-            {
-                // Rotate and perform retention maintenance before writing
-                TryRotateAuditFileIfNeeded();
-                PerformAuditRetentionCleanup();
-
-                var entry = new
+                var auditEntry = new
                 {
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Event = eventName,
-                    Details = details
+                    Timestamp = DateTime.UtcNow,
+                    EventName = eventName,
+                    Payload = payload,
+                    MachineName = Environment.MachineName,
+                    ProcessId = Environment.ProcessId
                 };
 
-                var json = JsonSerializer.Serialize(entry, new JsonSerializerOptions { WriteIndented = false });
-                // Append newline-terminated entry to audit file
-                File.AppendAllText(_auditPath, json + Environment.NewLine);
+                var json = JsonSerializer.Serialize(auditEntry);
+
+                _auditLogger.Information(
+                    "Audit Event | Name: {EventName} | Payload: {Payload}",
+                    eventName, TruncateForLog(json, 500));
+
+                _logger.LogInformation("Audit event logged: {EventName}", eventName);
+
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                // Don't let audit writes throw into calling code; log and continue
-                try { _logger.LogWarning(ex, "Failed to write audit entry"); } catch { }
-            }
-
-            return Task.CompletedTask;
-        }
-
-        private void TryRotateAuditFileIfNeeded()
-        {
-            try
-            {
-                const long maxBytes = 5 * 1024 * 1024; // 5 MB
-                if (!File.Exists(_auditPath)) return;
-
-                var fi = new FileInfo(_auditPath);
-                if (fi.Length < maxBytes) return;
-
-                var rotated = _auditPath + "." + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture) + ".log";
-                // Move current audit file to rotated name
-                File.Move(_auditPath, rotated);
-                _logger.LogInformation("Rotated audit log to {Rotated}", rotated);
-            }
-            catch (Exception ex)
-            {
-                try { _logger.LogWarning(ex, "Failed to rotate audit file"); } catch { }
+                _logger.LogError(ex, "Error logging audit event: {EventName}", eventName);
+                // Don't rethrow - audit failures shouldn't crash the application
             }
         }
 
-        private void PerformAuditRetentionCleanup()
+        /// <summary>
+        /// Truncates text for logging to avoid excessive log file size.
+        /// </summary>
+        private string TruncateForLog(string text, int maxLength)
         {
-            try
-            {
-                var folder = Path.GetDirectoryName(_auditPath) ?? AppContext.BaseDirectory;
-                var files = Directory.GetFiles(folder, "audit.log.*.log");
-                var threshold = DateTime.UtcNow.AddDays(-30);
-                foreach (var file in files)
-                {
-                    try
-                    {
-                        var fi = new FileInfo(file);
-                        if (fi.LastWriteTimeUtc < threshold)
-                        {
-                            fi.Delete();
-                            _logger.LogInformation("Deleted old audit file {File}", file);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        try { _logger.LogDebug(ex, "Failed to delete audit file {File}", file); } catch { }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                try { _logger.LogWarning(ex, "Failed to perform audit retention cleanup"); } catch { }
-            }
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
+            return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
         }
     }
 }

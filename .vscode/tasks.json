@@ -28,8 +28,7 @@
 	//   - CS0246: Type or namespace not found
 	//   - CS0234: Type/namespace not found in namespace
 	//
-	// DI/Prism Resolution Issues:
-	//   - CS0115: No suitable method found to override
+	// DI Resolution Issues:`n	//   - CS0115: No suitable method found to override
 	//   - CS0534: Does not implement inherited abstract member
 	//   - CS0051: Inconsistent accessibility
 	//   - CS0052: Inconsistent accessibility (field)
@@ -58,22 +57,22 @@
 	"tasks": [
 		{
 			"label": "Build WileyWidget.WinForms",
-			"command": "dotnet",
+			"command": "pwsh",
 			"type": "shell",
 			"args": [
-				"build",
-				"${workspaceFolder}/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
-				"/property:GenerateFullPaths=true",
-				"/consoleloggerparameters:NoSummary;Verbosity=minimal",
-				"/p:DebugType=portable",
-				"/p:DebugSymbols=true"
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"dotnet build ${workspaceFolder}/WileyWidget.WinForms/WileyWidget.WinForms.csproj /property:GenerateFullPaths=true /consoleloggerparameters:\\\"NoSummary;Verbosity=minimal\\\" /p:DebugType=portable /p:DebugSymbols=true '/bl:${workspaceFolder}/logs/build-winforms-'\"$(Get-Date -Format 'yyyyMMdd-HHmmss')\"'.binlog'"
 			],
 			"group": "build",
 			"presentation": {
 				"reveal": "silent",
 				"panel": "shared"
 			},
-			"problemMatcher": "$msCompile"
+			"problemMatcher": "$msCompile",
+			"dependsOn": "ensure-logs-dir"
 		},
 		{
 			"label": "WileyWidget: Kill Old Processes",
@@ -119,15 +118,13 @@
 		{
 			"label": "WileyWidget: Build",
 			"type": "shell",
-			"command": "dotnet",
+			"command": "pwsh",
 			"args": [
-				"build",
-				"${workspaceFolder}/WileyWidget.sln",
-				"--no-restore",
-				"--verbosity",
-				"minimal",
-				"--configuration",
-				"Debug"
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"dotnet build ${workspaceFolder}/WileyWidget.sln --no-restore --verbosity minimal --configuration Debug '/bl:${workspaceFolder}/logs/build-solution-'\"$(Get-Date -Format 'yyyyMMdd-HHmmss')\"'.binlog'"
 			],
 			"group": {
 				"kind": "build",
@@ -205,7 +202,7 @@
 					}
 					}
 			],
-			"dependsOn": "WileyWidget: Clean"
+			"dependsOn": ["WileyWidget: Clean", "ensure-logs-dir"]
 		},
 		{
 			"label": "WileyWidget: Clean & Build",
@@ -469,32 +466,18 @@
 		{
 			"label": "build",
 			"type": "shell",
-			"command": "dotnet",
+			"command": "pwsh",
 			"args": [
-				"build",
-				"${workspaceFolder}/WileyWidget.sln",
-				"--no-restore",
-				"--configuration",
-				"Debug",
-				"--verbosity",
-				"minimal",
-				"/m",
-				"/maxcpucount",
-				"/p:BuildInParallel=true",
-				"/p:UseSharedCompilation=true",
-				"/p:AccelerateBuildsInVisualStudio=true",
-				"/p:ProduceReferenceAssemblyInOutDir=true",
-				"/p:Deterministic=true",
-				"/p:NodeReuse=true",
-				"/p:RunAnalyzers=false",
-				"/p:RunAnalyzersDuringBuild=false",
-				"/p:EnableNETAnalyzers=false",
-				"/p:GenerateDocumentationFile=false",
-				"/p:XamlDebuggingInformation=false"
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"dotnet build ${workspaceFolder}/WileyWidget.sln --no-restore --configuration Debug --verbosity minimal /m /maxcpucount /p:BuildInParallel=true /p:UseSharedCompilation=true /p:AccelerateBuildsInVisualStudio=true /p:ProduceReferenceAssemblyInOutDir=true /p:Deterministic=true /p:NodeReuse=true /p:RunAnalyzers=false /p:RunAnalyzersDuringBuild=false /p:EnableNETAnalyzers=false /p:GenerateDocumentationFile=false /p:XamlDebuggingInformation=false '/bl:${workspaceFolder}/logs/build-main-'\"$(Get-Date -Format 'yyyyMMdd-HHmmss')\"'.binlog'"
 			],
 			"dependsOn": [
 				"kill-test-processes",
-				"dotnet:clean-build-server"
+				"dotnet:clean-build-server",
+				"ensure-logs-dir"
 			],
 			"isBackground": false,
 			"problemMatcher": [
@@ -572,7 +555,7 @@
 				"--logger",
 				"trx",
 				"--logger",
-				"console;verbosity=detailed",
+				"\"console;verbosity=detailed\"",
 				"--results-directory",
 				"${workspaceFolder}/TestResults"
 			],
@@ -601,7 +584,7 @@
 				"--logger",
 				"trx",
 				"--logger",
-				"console;verbosity=detailed",
+				"\"console;verbosity=detailed\"",
 				"--results-directory",
 				"${workspaceFolder}/TestResults"
 			],
@@ -643,7 +626,7 @@
 		{
 			"label": "generate-ai-fetchable-manifest",
 			"type": "shell",
-			"command": "C:/Users/biges/AppData/Local/Microsoft/WindowsApps/python3.11.exe",
+			"command": "python",
 			"args": [
 				"${workspaceFolder}/scripts/tools/generate_repo_urls.py",
 				"-o",
@@ -1168,7 +1151,7 @@
 			"command": "python",
 			"args": [
 				"${workspaceFolder}/scripts/tools/xaml-strict-validator.py",
-				"${workspaceFolder}/src/WileyWidget.WinUI/${input:xamlObjDir}"
+				""
 			],
 			"group": "build",
 			"presentation": {
@@ -1184,11 +1167,10 @@
 					"owner": "xaml-validator",
 					"fileLocation": ["relative","${workspaceFolder}"],
 					"pattern": {
-						"regexp": "^FAIL\s+(.+?):(\\d+):(\\d+)\s+\[(WMC\\d+)\]\s+(.*)$",
+						"regexp": "^FAIL\\s+(.+?):(\\d+):(\\d+)\\s+\\[(WMC\\d+)\\]\\s+(.*)$",
 						"file": 1,
 						"line": 2,
 						"column": 3,
-						"severity": "error",
 						"code": 4,
 						"message": 5
 					}
@@ -1197,10 +1179,9 @@
 					"owner": "xaml-validator",
 					"fileLocation": ["relative","${workspaceFolder}"],
 					"pattern": {
-						"regexp": "^CRASH\s+(.+?):\\s+(.*)$",
+						"regexp": "^CRASH\\s+(.+?):\\\\s+(.*)$",
 						"file": 1,
-						"message": 2,
-						"severity": "error"
+						"message": 2
 					}
 				}
 			],

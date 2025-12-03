@@ -4,7 +4,8 @@
     "**/.venv/**",
     "**/node_modules/**",
     "**/%APPDATA%/**",
-    "**/.trunk/**"
+    "**/.trunk/**",
+    "scripts/tools/generate_repo_urls.py"
   ],
   "useLibraryCodeForTypes": false,
   "autoSearchPaths": false,

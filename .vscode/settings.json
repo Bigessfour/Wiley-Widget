@@ -5,13 +5,19 @@
     },
     {
       "file": ".vscode/copilot-mcp-rules.md"
+    },
+    {
+      "file": ".vscode/coding-standards.md"
     }
   ],
   "github.copilot.chat.localeOverride": "en",
   "github.copilot.advanced": {
     "debug.overrideEngine": "gpt-4o-2024-11-20",
-    "debug.useNodeFetcher": true
+    "debug.useNodeFetcher": true,
+    "inlineSuggest.enable": true
   },
+  "editor.inlineSuggest.enabled": true,
+  "copilot.chat.participation": "always",
   "files.associations": {
     "*.md": "markdown",
     "*.xaml": "xml",
@@ -23,7 +29,54 @@
   "github.copilot.editor.enableAutoCompletions": true,
 
   // ============================================================================
-  // XAML & XML Configuration (WinUI 3)
+  // MCP (Model Context Protocol) Server Configuration
+  // ============================================================================
+  "github.copilot.chat.mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\biges\\Desktop\\Wiley-Widget"],
+      "env": {
+        "MCP_FILESYSTEM_ALLOWED_PATHS": "${workspaceFolder}"
+      }
+    },
+    "csharp-mcp": {
+      "command": "InfinityFlow.CSharp.Eval",
+      "args": [],
+      "env": {
+        "CSX_ALLOWED_PATH": "C:\\Users\\biges\\Desktop\\Wiley-Widget",
+        "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+        "DOTNET_NOLOGO": "1"
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {
+        "DISABLE_THOUGHT_LOGGING": "false"
+      }
+    },
+    "mssql": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-mssql"],
+      "env": {
+        "MSSQL_CONNECTION_STRING": "${env:MSSQL_CONNECTION_STRING}"
+      }
+    },
+    "syncfusion-docs": {
+      "command": "C:/Users/biges/Desktop/Wiley-Widget/.venv/Scripts/python.exe",
+      "args": ["-m", "mcp_server_fetch"],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    },
+    "syncfusion-winforms": {
+      "command": "node",
+      "args": ["scripts/mcp/syncfusion-winforms/src/index.mjs"],
+      "env": {}
+    }
+  },
+
+  // ============================================================================
   // ============================================================================
   "xamlDiag.compilerPath": "C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.8.251105000\\tools\\net472\\XamlCompiler.exe",
   "xamlDiag.autoDetectCompiler": true,
@@ -191,7 +244,6 @@
     "Wiley",
     "WileyWidget",
     "winforms",
-    "WinUI",
     "XAML"
   ],
   "cSpell.enableFiletypes": [
@@ -227,6 +279,7 @@
   // ============================================================================
   // Performance & UI
   // ============================================================================
+  "github.copilot.chat.agent.autoStartMcpServers": true,
   "extensions.autoUpdate": true,
   "window.restoreWindows": "all",
   "workbench.editor.highlightModifiedTabs": true,
@@ -254,3 +307,4 @@
     }
   }
 }
+

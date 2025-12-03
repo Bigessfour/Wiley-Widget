@@ -26,4 +26,9 @@
     <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
+    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
+  </ItemGroup>
+
 </Project>

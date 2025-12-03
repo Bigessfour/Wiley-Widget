@@ -6,7 +6,7 @@
     <GenerateWinMD>true</GenerateWinMD>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <NoWarn>NU1902;NU1903</NoWarn>
+    <NoWarn>NU1902;NU1903;CA2000;CA1062</NoWarn>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
@@ -22,20 +22,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
-  </ItemGroup>
-
-  <!-- Exclude presentation/ViewModel tests that require WinUI types from service test runs -->
-  <ItemGroup>
-    <Compile Remove="ViewModelTests\\**\\*.cs" />
-    <Compile Remove="TestHelpers\\**\\*MockFactory*.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\\..\\src\\WileyWidget.Services\\WileyWidget.Services.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
+    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
   </ItemGroup>
 
 </Project>

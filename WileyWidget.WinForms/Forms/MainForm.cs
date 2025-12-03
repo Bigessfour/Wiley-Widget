@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using WileyWidget.WinForms.ViewModels;
 
@@ -17,10 +18,20 @@ namespace WileyWidget.WinForms.Forms
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class MainForm : Form
     {
-        public MainForm()
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<MainForm> _logger;
+        private readonly MainViewModel? _viewModel;
+
+        public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, MainViewModel? viewModel = null)
         {
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _viewModel = viewModel;
+
             InitializeComponent();
             Text = MainFormResources.FormTitle;
+
+            _logger.LogInformation("MainForm initialized successfully");
         }
 
         private void InitializeComponent()
@@ -32,9 +43,10 @@ namespace WileyWidget.WinForms.Forms
             var settingsMenu = new ToolStripMenuItem(MainFormResources.SettingsMenu);
             var exitItem = new ToolStripMenuItem(MainFormResources.ExitMenu, null, (s, e) => Application.Exit());
 
-            accountsMenu.Click += (s, e) => new AccountsForm(Program.Services.GetRequiredService<AccountsViewModel>()).ShowDialog();
-            chartsMenu.Click += (s, e) => new ChartForm(Program.Services.GetRequiredService<ChartViewModel>()).ShowDialog();
-            settingsMenu.Click += (s, e) => new SettingsForm(Program.Services.GetRequiredService<SettingsViewModel>()).ShowDialog();
+            // Use scoped resolution for child forms to get fresh DbContext instances
+            accountsMenu.Click += (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>();
+            chartsMenu.Click += (s, e) => ShowChildForm<ChartForm, ChartViewModel>();
+            settingsMenu.Click += (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>();
 
             fileMenu.DropDownItems.Add(exitItem);
             menu.Items.AddRange(new ToolStripItem[] { fileMenu, accountsMenu, chartsMenu, settingsMenu });
@@ -44,6 +56,28 @@ namespace WileyWidget.WinForms.Forms
 
             Size = new Size(1200, 800);
             StartPosition = FormStartPosition.CenterScreen;
+        }
+
+        private void ShowChildForm<TForm, TViewModel>()
+            where TForm : Form
+            where TViewModel : class
+        {
+            try
+            {
+                // Create a new scope to get fresh DbContext + ViewModels for each dialog
+                using var scope = _serviceProvider.CreateScope();
+                var form = scope.ServiceProvider.GetRequiredService<TForm>();
+                form.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to show child form {FormType}", typeof(TForm).Name);
+                MessageBox.Show(
+                    $"Error opening {typeof(TForm).Name}: {ex.Message}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
     }
 }

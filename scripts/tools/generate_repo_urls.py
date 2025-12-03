@@ -26,7 +26,14 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Optional
+
+# Python 3.14: Use PEP 695 type aliases for nested dictionary structures
+type JsonValue = str | int | float | bool | None | list[Any] | dict[str, Any]
+type ConfigDict = dict[str, JsonValue]
+type MetadataDict = dict[str, str | int | bool | None | dict[str, Any]]
+type FileDataDict = dict[str, MetadataDict | dict[str, Any] | list[str]]
+type FileDataList = list[FileDataDict]
 
 # Configuration defaults
 DEFAULT_CONFIG_FILE = ".ai-manifest-config.json"
@@ -234,7 +241,7 @@ class RepositoryAnalyzer:
         cpu_count = os.cpu_count() or 4
         self.max_workers = self.config.get("parallel_workers", max(2, cpu_count // 2))
 
-    def _load_config(self, config_path: Optional[str]) -> Dict:
+    def _load_config(self, config_path: str | None) -> ConfigDict:
         """Load configuration from JSON file."""
         config_file = Path(config_path or DEFAULT_CONFIG_FILE)
         if config_file.exists():
@@ -252,16 +259,30 @@ class RepositoryAnalyzer:
                 print(f"Warning: Could not load config file: {e}")
         return {}
 
-    def _compile_exclude_patterns(self) -> List[re.Pattern]:
+    def _compile_exclude_patterns(self) -> list[re.Pattern[str]]:
         """Compile exclude patterns from config and defaults."""
-        patterns: List[str] = DEFAULT_EXCLUDE_PATTERNS.copy()
+        patterns: list[str] = DEFAULT_EXCLUDE_PATTERNS.copy()
         if "exclude_patterns" in self.config:
-            patterns.extend(self.config["exclude_patterns"])
+            exclude_list = self.config.get("exclude_patterns", [])
+            if isinstance(exclude_list, list):
+                patterns.extend(exclude_list)
         return [re.compile(pattern) for pattern in patterns]
 
     def _should_exclude(self, path: str) -> bool:
         """Check if path should be excluded."""
         normalized = path.replace("\\", "/")
+
+        # Check if this is a critical file that should ALWAYS be included
+        critical_files = self.config.get("include_critical_files", [])
+        if critical_files and isinstance(critical_files, list):
+            for critical_path in critical_files:
+                if isinstance(critical_path, str):
+                    # Normalize critical path for comparison
+                    critical_normalized = critical_path.replace("\\", "/")
+                    if normalized == critical_normalized or normalized.endswith(
+                        critical_normalized
+                    ):
+                        return False  # Never exclude critical files
 
         # Regular exclusion patterns (apply to all paths)
         for pattern in self.exclude_patterns:
@@ -330,7 +351,7 @@ class RepositoryAnalyzer:
         else:
             print("No temp files to clean up")
 
-    def _get_git_info(self) -> Dict:
+    def _get_git_info(self) -> dict[str, str | bool]:
         """Get git repository information."""
         if not self.git_exe:
             # Git not available on PATH - return safe defaults
@@ -343,7 +364,7 @@ class RepositoryAnalyzer:
                 "git_available": False,
             }
 
-        def run_git(args: List[str]) -> str:
+        def run_git(args: list[str]) -> str:
             # Run git with explicit executable path and without a shell to reduce injection risk (B603/B404).
             # Note: self.git_exe is guaranteed to be non-None when this function is called
             try:
@@ -380,7 +401,7 @@ class RepositoryAnalyzer:
 
     def _get_file_git_history(
         self, relative_path: str, max_commits: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict[str, str]]:
         """Get recent git commit history for a file."""
         if not self.git_info.get("git_available", False) or not self.git_exe:
             return []
@@ -837,7 +858,7 @@ class RepositoryAnalyzer:
         else:
             return f"{category.replace('_', ' ').title()} file"
 
-    def _extract_dependencies(self, file_path: Path, content: str) -> List[str]:
+    def _extract_dependencies(self, file_path: Path, content: str) -> list[str]:
         """Extract dependencies from file content."""
         dependencies = set()
 
@@ -893,7 +914,7 @@ class RepositoryAnalyzer:
 
         return sorted(list(dependencies))
 
-    def _find_related_files(self, file_path: Path) -> List[str]:
+    def _find_related_files(self, file_path: Path) -> list[str]:
         """Find related files based on conventions."""
         related = []
         path_str = str(file_path)
@@ -930,9 +951,9 @@ class RepositoryAnalyzer:
 
         return related
 
-    def _analyze_test_file(self, content: str) -> Dict:
+    def _analyze_test_file(self, content: str) -> dict[str, list[str] | set[str]]:
         """Extract test-specific information from C# test files."""
-        test_info = {
+        test_info: dict[str, list[str] | set[str]] = {
             "test_methods": [],
             "test_classes": [],
             "mock_setups": [],
@@ -983,9 +1004,9 @@ class RepositoryAnalyzer:
 
         return test_info
 
-    def _analyze_csharp_file(self, content: str) -> Dict:
+    def _analyze_csharp_file(self, content: str) -> dict[str, list[str]]:
         """Extract comprehensive C# file structure."""
-        structure = {
+        structure: dict[str, list[str]] = {
             "namespaces": [],
             "classes": [],
             "interfaces": [],
@@ -1036,9 +1057,11 @@ class RepositoryAnalyzer:
             is_test_file = "test" in str(file_path).lower()
             if is_test_file:
                 test_length = self.config.get("test_file_summary_length", 50000)
-                read_limit = test_length
+                read_limit = (
+                    int(test_length) if isinstance(test_length, (int, float)) else 50000
+                )
             else:
-                read_limit = max_length * 2
+                read_limit = int(max_length * 2)
 
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read(read_limit)
@@ -1214,7 +1237,7 @@ class RepositoryAnalyzer:
         except Exception as e:
             return f"Unable to generate summary: {str(e)}"
 
-    def _generate_github_urls(self, relative_path: str) -> Dict:
+    def _generate_github_urls(self, relative_path: str) -> dict[str, str]:
         """Generate GitHub URLs for file."""
         if not self.git_info["owner_repo"]:
             return {"blob_url": "", "raw_url": "", "history_url": ""}
@@ -1229,7 +1252,7 @@ class RepositoryAnalyzer:
             "history_url": f"{base_url}/commits/{branch}/{file_path}",
         }
 
-    def _collect_files(self) -> List[Path]:
+    def _collect_files(self) -> list[Path]:
         """Collect all files in repository using efficient rglob."""
         all_files = []
         # Use rglob for more efficient traversal
@@ -1240,7 +1263,7 @@ class RepositoryAnalyzer:
                     all_files.append(file_path)
         return sorted(all_files)
 
-    def _build_search_index(self, files_data: List[Dict]) -> List[str]:
+    def _build_search_index(self, files_data: FileDataList) -> list[str]:
         """Build search index from file paths and descriptions."""
         keywords = set()
 
@@ -1265,9 +1288,11 @@ class RepositoryAnalyzer:
         # Limit to reasonable size
         return sorted(list(keywords))[:500]
 
-    def _build_dependency_graph(self, files_data: List[Dict]) -> Dict:
+    def _build_dependency_graph(
+        self, files_data: FileDataList
+    ) -> dict[str, dict[str, Any] | list[dict[str, Any]]]:
         """Build project-level dependency graph from files."""
-        graph = {
+        graph: dict[str, dict[str, Any] | list[dict[str, Any]]] = {
             "projects": {},
             "nuget_packages": {},
             "top_dependencies": [],
@@ -1318,9 +1343,11 @@ class RepositoryAnalyzer:
 
         return graph
 
-    def _generate_architecture_summary(self, files_data: List[Dict]) -> Dict:
+    def _generate_architecture_summary(
+        self, files_data: FileDataList
+    ) -> dict[str, str | list[dict[str, Any]] | dict[str, int]]:
         """Generate architecture overview for MVVM projects."""
-        summary = {
+        summary: dict[str, str | list[dict[str, Any]] | dict[str, int]] = {
             "pattern": "MVVM",
             "views": [],
             "viewmodels": [],
@@ -1411,7 +1438,7 @@ class RepositoryAnalyzer:
 
         return summary
 
-    def _scan_vulnerabilities(self) -> Dict:
+    def _scan_vulnerabilities(self) -> dict[str, list | bool | str]:
         """Scan for package vulnerabilities (disabled - use Trunk for security scanning)."""
         print("Skipping NuGet vulnerability scan (use Trunk for security analysis)")
 
@@ -1423,12 +1450,14 @@ class RepositoryAnalyzer:
             "note": "Vulnerability scanning disabled - use 'trunk check --filter=security' for security analysis",
         }
 
-    def _calculate_metrics(self, files_data: List[Dict]) -> Dict:
+    def _calculate_metrics(
+        self, files_data: FileDataList
+    ) -> dict[str, int | float | dict[str, Any]]:
         """Calculate repository-wide code metrics."""
         print("Calculating code metrics...")
 
         # Language-specific code/comment ratios
-        LANGUAGE_RATIOS = {
+        LANGUAGE_RATIOS: dict[str, tuple[float, float]] = {
             "C#": (0.75, 0.25),
             "XAML": (0.85, 0.15),
             "PowerShell": (0.60, 0.40),
@@ -1497,7 +1526,7 @@ class RepositoryAnalyzer:
             "project_metrics": project_metrics,
         }
 
-    def _build_folder_tree(self, files: List[Path]) -> Dict:
+    def _build_folder_tree(self, files: list[Path]) -> dict[str, str | list]:
         """Build hierarchical folder structure as nested dict."""
         print("Building folder tree...")
 
@@ -1598,9 +1627,11 @@ class RepositoryAnalyzer:
 
         return root
 
-    def _count_tree_nodes(self, node: Dict, depth: int = 0) -> Dict:
+    def _count_tree_nodes(
+        self, node: dict[str, str | list], depth: int = 0
+    ) -> dict[str, int]:
         """Count nodes in tree for statistics."""
-        stats = {"dirs": 0, "files": 0, "max_depth": depth}
+        stats: dict[str, int] = {"dirs": 0, "files": 0, "max_depth": depth}
 
         if node.get("type") == "directory":
             stats["dirs"] = 1
@@ -1614,7 +1645,7 @@ class RepositoryAnalyzer:
 
         return stats
 
-    def _extract_license_info(self) -> Dict:
+    def _extract_license_info(self) -> dict[str, str | bool | None]:
         """Extract license information from LICENSE file."""
         license_files = ["LICENSE", "LICENSE.txt", "LICENSE.md", "LICENSE.rst"]
 
@@ -1655,7 +1686,7 @@ class RepositoryAnalyzer:
             "detected": False,
         }
 
-    def analyze_file(self, file_path: Path) -> Dict:
+    def analyze_file(self, file_path: Path) -> FileDataDict:
         """Analyze a single file and return metadata."""
         relative_path = str(file_path.relative_to(self.root_path)).replace("\\", "/")
         stat = file_path.stat()
@@ -1742,8 +1773,8 @@ class RepositoryAnalyzer:
         }
 
     def generate_manifest(
-        self, output_path: str, filter_categories: Optional[List[str]] = None
-    ) -> Dict:
+        self, output_path: str, filter_categories: list[str] | None = None
+    ) -> dict[str, Any]:
         """Generate complete manifest with parallel processing."""
         print("Cleaning up temporary files...")
         self._cleanup_temp_files()

@@ -52,4 +52,9 @@
     <!-- Services reference removed to break circular dependency - use DI and abstractions instead -->
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
+    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
+  </ItemGroup>
+
 </Project>

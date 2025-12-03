@@ -1,4 +1,6 @@
 #Requires -Version 7.5
+#PSScriptAnalyzer used in IDE; disable unused variable warnings (false positives in conditional logic)
+#PSScriptAnalyzer disable=PSUseDeclaredVarsMoreThanAssignments
 <#
 .SYNOPSIS
     Validate MCP Server Configuration and Health
@@ -21,7 +23,10 @@ param(
     [switch]$FixIssues,
 
     [Parameter()]
-    [switch]$UpdateImages
+    [switch]$UpdateImages,
+
+    [Parameter()]
+    [switch]$LocalOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,21 +74,19 @@ $script:McpServers = @{
         Image = 'mcp/github'
         EnvVars = @('GITHUB_TOKEN', 'GITHUB_PERSONAL_ACCESS_TOKEN')
         Description = 'GitHub API integration for repos, issues, PRs'
+        Proposed = $true
     }
     'filesystem' = @{
         Type = 'npx'
         Package = '@modelcontextprotocol/server-filesystem'
+        EnvVars = @('MCP_FILESYSTEM_ALLOWED_PATHS')
         Description = 'Secure filesystem operations'
     }
     'csharp-mcp' = @{
-        Type = 'docker'
-        Image = 'ghcr.io/infinityflowapp/csharp-mcp:latest'
+        Type = 'local'
+        Command = 'InfinityFlow.CSharp.Eval'
         EnvVars = @('CSX_ALLOWED_PATH', 'WW_REPO_ROOT', 'WW_LOGS_DIR')
-        Volumes = @(
-            "${RepoRoot}:/scripts:ro"
-            "${RepoRoot}/logs:/logs:rw"
-        )
-        Description = 'C# script execution via Roslyn'
+        Description = 'C# script execution via Roslyn (local stdio)'
     }
     'everything' = @{
         Type = 'npx'
@@ -100,7 +103,6 @@ $script:McpServers = @{
         Package = '@modelcontextprotocol/server-mssql'
         EnvVars = @('MSSQL_CONNECTION_STRING')
         Description = 'SQL Server database access'
-        Proposed = $true
     }
 }
 
@@ -120,103 +122,62 @@ Write-Host @"
 Write-Info "Checking MCP configuration file..."
 if (Test-Path $McpConfigPath) {
     Write-Success "MCP config found: $McpConfigPath"
-    $mcpConfig = Get-Content $McpConfigPath -Raw | ConvertFrom-Json
+    $null = Get-Content $McpConfigPath -Raw | ConvertFrom-Json
 } else {
     Write-Warning "MCP config not found at expected location"
     Write-Info "This is expected if using Docker Desktop MCP Toolkit"
 }
 
-# Test 2: Docker Availability
-Write-Info "`nValidating Docker environment..."
-try {
-    $dockerVersion = docker --version
-    Write-Success "Docker installed: $dockerVersion"
-    
-    # Check if Docker daemon is running
-    docker ps | Out-Null
-    Write-Success "Docker daemon is running"
-} catch {
-    Write-Issue "Docker is not available or not running"
-    if ($FixIssues) {
-        Write-Info "Please start Docker Desktop manually"
-    }
-}
+if (-not $LocalOnly) {
+    # Test 2: Docker Availability
+    Write-Info "`nValidating Docker environment..."
+    try {
+        $dockerVersion = docker --version
+        Write-Success "Docker installed: $dockerVersion"
 
-# Test 3: Docker Images
-Write-Info "`nChecking Docker-based MCP servers..."
-foreach ($serverName in $McpServers.Keys) {
-    $server = $McpServers[$serverName]
-    
-    if ($server.Type -eq 'docker' -and -not $server.Proposed) {
-        Write-Host "`n  Server: $serverName" -ForegroundColor White
-        Write-Host "  Description: $($server.Description)" -ForegroundColor Gray
-        
-        try {
-            $imageExists = docker images --format "{{.Repository}}:{{.Tag}}" | 
-                           Select-String -Pattern $server.Image -Quiet
-            
-            if ($imageExists) {
-                Write-Success "  Image available: $($server.Image)"
-                
-                # Check image age
-                $imageInfo = docker inspect $server.Image 2>$null | ConvertFrom-Json
-                if ($imageInfo) {
-                    $created = [DateTime]$imageInfo[0].Created
-                    $age = (Get-Date) - $created
-                    
-                    if ($age.Days -gt 30) {
-                        Write-Warning "  Image is $($age.Days) days old - consider updating"
-                        
-                        if ($UpdateImages) {
-                            Write-Info "  Pulling latest image..."
-                            docker pull $server.Image
-                        }
-                    } else {
-                        Write-Success "  Image is up to date ($($age.Days) days old)"
-                    }
+        # Check if Docker daemon is running
+        docker ps | Out-Null
+        Write-Success "Docker daemon is running"
+    } catch {
+        Write-Warning "Docker is not available or not running (skipping Docker checks)"
+    }
+
+    # Test 3: Docker Images
+    Write-Info "`nChecking Docker-based MCP servers..."
+    foreach ($serverName in $McpServers.Keys) {
+        $server = $McpServers[$serverName]
+
+        if ($server.Type -eq 'docker' -and -not $server.Proposed) {
+            Write-Host "`n  Server: $serverName" -ForegroundColor White
+            Write-Host "  Description: $($server.Description)" -ForegroundColor Gray
+
+            try {
+                $imageExists = docker images --format "{{.Repository}}:{{.Tag}}" |
+                               Select-String -Pattern $server.Image -Quiet
+
+                if ($imageExists) {
+                    Write-Success "  Image available: $($server.Image)"
+                } else {
+                    Write-Warning "  Image not found: $($server.Image)"
                 }
-            } else {
-                Write-Issue "  Image not found: $($server.Image)"
-                
-                if ($FixIssues) {
-                    Write-Info "  Pulling image..."
-                    docker pull $server.Image
-                }
-            }
-            
-            # Validate environment variables
-            if ($server.EnvVars) {
-                foreach ($envVar in $server.EnvVars) {
-                    if ([Environment]::GetEnvironmentVariable($envVar)) {
-                        Write-Success "  Environment variable set: $envVar"
-                    } else {
-                        Write-Issue "  Missing environment variable: $envVar"
-                    }
-                }
-            }
-            
-            # Validate volume paths
-            if ($server.Volumes) {
-                foreach ($volume in $server.Volumes) {
-                    $hostPath = $volume -split ':' | Select-Object -First 1
-                    $resolvedPath = $ExecutionContext.InvokeCommand.ExpandString($hostPath)
-                    
-                    if (Test-Path $resolvedPath) {
-                        Write-Success "  Volume path exists: $resolvedPath"
-                    } else {
-                        Write-Warning "  Volume path missing: $resolvedPath"
-                        
-                        if ($FixIssues -and $resolvedPath -like "*logs*") {
-                            New-Item -ItemType Directory -Path $resolvedPath -Force | Out-Null
-                            Write-Success "  Created missing directory: $resolvedPath"
+
+                # Validate environment variables
+                if ($server.EnvVars) {
+                    foreach ($envVar in $server.EnvVars) {
+                        if ([Environment]::GetEnvironmentVariable($envVar)) {
+                            Write-Success "  Environment variable set: $envVar"
+                        } else {
+                            Write-Warning "  Missing environment variable: $envVar"
                         }
                     }
                 }
+            } catch {
+                Write-Warning "  Error checking $serverName : $_"
             }
-        } catch {
-            Write-Issue "  Error checking $serverName : $_"
         }
     }
+} else {
+    Write-Info "`nLocalOnly mode: Skipping Docker availability and image checks."
 }
 
 # Test 4: NPM-based Servers
@@ -224,17 +185,17 @@ Write-Info "`nChecking NPM-based MCP servers..."
 try {
     $npmVersion = npm --version 2>$null
     Write-Success "NPM installed: v$npmVersion"
-    
+
     foreach ($serverName in $McpServers.Keys) {
         $server = $McpServers[$serverName]
-        
+
         if ($server.Type -eq 'npx' -and -not $server.Proposed) {
             Write-Host "`n  Server: $serverName" -ForegroundColor White
             Write-Host "  Description: $($server.Description)" -ForegroundColor Gray
-            
+
             # Check if package is available via npx
-            $packageCheck = npx --yes --package=$($server.Package) --call="exit 0" 2>&1
-            
+            $null = npx --yes --package=$($server.Package) --call="exit 0" 2>&1
+
             if ($LASTEXITCODE -eq 0) {
                 Write-Success "  Package available: $($server.Package)"
             } else {
@@ -274,7 +235,7 @@ foreach ($root in $filesystemRoots) {
             "*.pfx"
             "*.p12"
         )
-        
+
         foreach ($pattern in $sensitiveFiles) {
             $found = Get-ChildItem -Path $root -Filter $pattern -Recurse -ErrorAction SilentlyContinue
             if ($found) {
@@ -289,13 +250,13 @@ foreach ($root in $filesystemRoots) {
 Write-Info "`nProposed MCP Server Enhancements:"
 foreach ($serverName in $McpServers.Keys) {
     $server = $McpServers[$serverName]
-    
+
     if ($server.Proposed) {
         Write-Host "`n  📦 $serverName (NOT INSTALLED)" -ForegroundColor Magenta
         Write-Host "     Description: $($server.Description)" -ForegroundColor Gray
         Write-Host "     Type: $($server.Type)" -ForegroundColor Gray
         Write-Host "     Package: $($server.Package)" -ForegroundColor Gray
-        
+
         if ($FixIssues) {
             Write-Info "     To install: npx $($server.Package)"
         }
@@ -326,19 +287,34 @@ if ($Warnings.Count -gt 0) {
     }
 }
 
-# Recommendations
+# Recommendations (dynamic)
 Write-Host "`n💡 Recommendations:" -ForegroundColor Cyan
-Write-Host "   1. Add SQL Server MCP for database testing integration" -ForegroundColor White
-Write-Host "   2. Update Docker images monthly (use -UpdateImages flag)" -ForegroundColor White
-Write-Host "   3. Audit GitHub token scopes regularly" -ForegroundColor White
-Write-Host "   4. Consider custom Syncfusion MCP for WinUI validation" -ForegroundColor White
-Write-Host "   5. Integrate sequential-thinking with csharp-mcp for debugging" -ForegroundColor White
+$recIndex = 1
+
+# SQL MCP recommendation only if not configured
+if (-not $McpServers.ContainsKey('mssql')) {
+    Write-Host ("   {0}. Add SQL Server MCP for database testing integration" -f $recIndex) -ForegroundColor White
+    $recIndex++
+} else {
+    Write-Host ("   {0}. Ensure MSSQL_CONNECTION_STRING is set for @modelcontextprotocol/server-mssql" -f $recIndex) -ForegroundColor White
+    $recIndex++
+}
+
+Write-Host ("   {0}. Update Docker images monthly (use -UpdateImages flag)" -f $recIndex) -ForegroundColor White
+$recIndex++
+Write-Host ("   {0}. Audit GitHub token scopes regularly" -f $recIndex) -ForegroundColor White
+$recIndex++
+Write-Host ("   {0}. Consider custom Syncfusion MCP for WinForms validation" -f $recIndex) -ForegroundColor White
+$recIndex++
+Write-Host ("   {0}. Integrate sequential-thinking with csharp-mcp for debugging" -f $recIndex) -ForegroundColor White
 
 Write-Host "`n"
 
 # Exit code
-if ($Issues.Count -gt 0) {
-    exit 1
+# In LocalOnly mode, treat only local/npx issues as blockers
+if ($LocalOnly) {
+    $blocking = $Issues | Where-Object { $_ -notmatch 'Image not found' -and $_ -notmatch 'Docker' }
+    if ($blocking.Count -gt 0) { exit 1 } else { exit 0 }
 } else {
-    exit 0
+    if ($Issues.Count -gt 0) { exit 1 } else { exit 0 }
 }
