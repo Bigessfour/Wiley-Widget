@@ -24,7 +24,7 @@
     "littlefoxteam.vscode-python-test-adapter",
     
     // === Database & SQL ===
-    "ms-mssql.mssql",
+    "ms-mssql.sql",
     "mtxr.sqltools",
     "mtxr.sqltools-driver-mssql",
     

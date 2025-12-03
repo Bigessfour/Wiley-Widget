@@ -57,6 +57,25 @@
 	//
 	"tasks": [
 		{
+			"label": "Build WileyWidget.WinForms",
+			"command": "dotnet",
+			"type": "shell",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary;Verbosity=minimal",
+				"/p:DebugType=portable",
+				"/p:DebugSymbols=true"
+			],
+			"group": "build",
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
 			"label": "WileyWidget: Kill Old Processes",
 			"type": "shell",
 			"command": "pwsh",
