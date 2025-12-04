@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Abstractions", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Abstractions", "src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj", "{E8ED5FBD-A352-47BA-A642-811FC7BB53E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinForms", "WileyWidget.WinForms\WileyWidget.WinForms.csproj", "{12345678-1234-1234-1234-123456789ABC}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
@@ -66,6 +68,10 @@ Global
 		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
 		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
 		{0E1E5507-BAED-4F6A-88F6-86608C7DC51C}.Release|AnyCPU.Build.0 = Release|AnyCPU
+		{12345678-1234-1234-1234-123456789ABC}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
+		{12345678-1234-1234-1234-123456789ABC}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
+		{12345678-1234-1234-1234-123456789ABC}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
+		{12345678-1234-1234-1234-123456789ABC}.Release|AnyCPU.Build.0 = Release|AnyCPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

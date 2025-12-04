@@ -7,6 +7,7 @@ using WileyWidget.Abstractions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Models;
+using FluentValidation;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Excel;
@@ -14,6 +15,8 @@ using WileyWidget.Services.Export;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
+using System.Diagnostics;
+using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -24,14 +27,20 @@ namespace WileyWidget.WinForms.Configuration
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
+            // Make IConfiguration available to services that depend on it (tests and DI consumers)
+            services.AddSingleton<IConfiguration>(configuration);
+
             // === CRITICAL INFRASTRUCTURE (MUST BE FIRST) ===
 
             // HTTP Client Factory
             services.AddHttpClient();
+            Debug.WriteLine("DI: Registered AddHttpClient()");
 
             // Memory Cache
             services.AddMemoryCache();
+            Debug.WriteLine("DI: Registered AddMemoryCache()");
             services.AddSingleton<ICacheService, MemoryCacheService>();
+            Debug.WriteLine("DI: Registered ICacheService -> MemoryCacheService (Singleton)");
 
             // DbContext (SCOPED - NOT SINGLETON! DbContext is NOT thread-safe)
             var connectionString = configuration.GetConnectionString("DefaultConnection")
@@ -50,77 +59,213 @@ namespace WileyWidget.WinForms.Configuration
             System.Diagnostics.Debug.WriteLine($"  Server: {ExtractConnectionStringPart(connectionString, "Server") ?? ExtractConnectionStringPart(connectionString, "Data Source") ?? "(unknown)"}");
             System.Diagnostics.Debug.WriteLine($"  Database: {ExtractConnectionStringPart(connectionString, "Database") ?? ExtractConnectionStringPart(connectionString, "Initial Catalog") ?? "(unknown)"}");
 
-            // IMPORTANT: Use ONLY AddDbContextFactory without AddDbContext.
-            // Repositories will use the factory to create contexts on-demand.
-            // This avoids the Singleton DbContextFactory -> Scoped DbContextOptions violation.
-            // NOTE: Factory itself is registered as SINGLETON (thread-safe, reusable).
-            // Only the DbContext instances it creates are scoped (lifetime managed by consumers).
-            services.AddDbContextFactory<AppDbContext>(options =>
+            // Register AppDbContext as Scoped to ensure a single DbContext instance per DI scope.
+            // This keeps DbContext lifetime aligned with UI/dialog/service scopes and avoids manual factory management.
+            services.AddDbContext<AppDbContext>(options =>
             {
                 options.UseSqlServer(connectionString);
                 options.EnableSensitiveDataLogging(configuration.GetValue<bool>("DB:EnableSensitiveDataLogging", false));
                 options.EnableDetailedErrors(configuration.GetValue<bool>("DB:EnableDetailedErrors", true));
-            }); // Default: Singleton factory (thread-safe)
+            });
+            Debug.WriteLine("DI: Registered AddDbContext<AppDbContext> (Scoped)");
 
             // === CORE SERVICES ===
             services.AddSingleton<ISettingsService, SettingsService>();
-            services.AddSingleton<SettingsService>(sp => (SettingsService)sp.GetRequiredService<ISettingsService>());
+            Debug.WriteLine("DI: Registered ISettingsService -> SettingsService (Singleton)");
+            services.AddSingleton<SettingsService>(sp => (SettingsService)Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ISettingsService>(sp));
+            Debug.WriteLine("DI: Registered SettingsService (singleton facade)");
             services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
+            Debug.WriteLine("DI: Registered ISecretVaultService -> EncryptedLocalSecretVaultService (Singleton)");
             services.AddScoped<IWileyWidgetContextService, WileyWidgetContextService>();
+            Debug.WriteLine("DI: Registered IWileyWidgetContextService -> WileyWidgetContextService (Scoped)");
 
             // Configure HealthCheckConfiguration from appsettings.json using Options pattern
-            // This follows Microsoft-recommended best practices for configuration management:
-            // https://learn.microsoft.com/en-us/dotnet/core/extensions/options
             services.AddOptions<HealthCheckConfiguration>()
                 .Bind(configuration.GetSection("HealthChecks"))
                 .ValidateOnStart();
+            Debug.WriteLine("DI: Registered HealthCheckConfiguration options");
 
             services.AddSingleton<HealthCheckService>();
+            Debug.WriteLine("DI: Registered HealthCheckService (Singleton)");
 
             // === DATA SERVICES ===
             services.AddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
+            Debug.WriteLine("DI: Registered IQuickBooksApiClient -> QuickBooksApiClient (Singleton)");
             services.AddSingleton<IQuickBooksService, QuickBooksService>();
+            Debug.WriteLine("DI: Registered IQuickBooksService -> QuickBooksService (Singleton)");
 
             // === REPOSITORIES (SCOPED - aligned with DbContext pattern) ===
-            // These repositories use IDbContextFactory<AppDbContext> to create context instances
-            // on-demand, allowing proper scope isolation and preventing "tracked by another instance" errors.
-            // Scoped lifetime ensures each dialog/form request gets consistent data access.
-            services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
-            services.AddScoped<IBudgetRepository, BudgetRepository>();
-            services.AddScoped<IAuditRepository, AuditRepository>();
-            services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
+                services.AddTransient<IEnterpriseRepository, EnterpriseRepository>();
+                Debug.WriteLine("DI: Registered IEnterpriseRepository -> EnterpriseRepository (Transient)");
+            // Repositories are stateless and should be registered as Transient so they are
+            // resolved fresh per-operation when created inside a scope.
+            services.AddTransient<IBudgetRepository, BudgetRepository>();
+            Debug.WriteLine("DI: Registered IBudgetRepository -> BudgetRepository (Transient)");
+                services.AddTransient<IAuditRepository, AuditRepository>();
+                Debug.WriteLine("DI: Registered IAuditRepository -> AuditRepository (Transient)");
+                services.AddTransient<IMunicipalAccountRepository, MunicipalAccountRepository>();
+                Debug.WriteLine("DI: Registered IMunicipalAccountRepository -> MunicipalAccountRepository (Transient)");
+
+            // Chart data aggregation service (Data layer implementation)
+            services.AddTransient<Business.Interfaces.IChartService, WileyWidget.Data.Services.ChartService>();
+            Debug.WriteLine("DI: Registered IChartService -> ChartService (Transient)");
+
+            // Additional repository registrations to align with scoped AppDbContext
+            services.AddTransient<IDepartmentRepository, DepartmentRepository>();
+            Debug.WriteLine("DI: Registered IDepartmentRepository -> DepartmentRepository (Transient)");
+            services.AddTransient<IUtilityBillRepository, UtilityBillRepository>();
+            Debug.WriteLine("DI: Registered IUtilityBillRepository -> UtilityBillRepository (Transient)");
+            services.AddTransient<IUtilityCustomerRepository, UtilityCustomerRepository>();
+            Debug.WriteLine("DI: Registered IUtilityCustomerRepository -> UtilityCustomerRepository (Transient)");
 
             // === FEATURE SERVICES ===
             // XAIService needs DbContextFactory, so it cannot be Singleton.
             // Changed to Scoped to allow proper DI chain resolution.
             services.AddScoped<IAIService, XAIService>();
+            Debug.WriteLine("DI: Registered IAIService -> XAIService (Scoped)");
             services.AddSingleton<IAILoggingService, AILoggingService>();
+            Debug.WriteLine("DI: Registered IAILoggingService -> AILoggingService (Singleton)");
             services.AddSingleton<IAuditService, AuditService>();
+            Debug.WriteLine("DI: Registered IAuditService -> AuditService (Singleton)");
             services.AddSingleton<IReportExportService, ReportExportService>();
+            Debug.WriteLine("DI: Registered IReportExportService -> ReportExportService (Singleton)");
             services.AddTransient<IExcelReaderService, ExcelReaderService>();
+            Debug.WriteLine("DI: Registered IExcelReaderService -> ExcelReaderService (Transient)");
             services.AddTransient<IExcelExportService, ExcelExportService>();
+            Debug.WriteLine("DI: Registered IExcelExportService -> ExcelExportService (Transient)");
+            services.AddTransient<SyncfusionPdfExportService>();
+            Debug.WriteLine("DI: Registered SyncfusionPdfExportService (Transient)");
+            services.AddSingleton<IPrintingService, PrintingService>();
+            Debug.WriteLine("DI: Registered IPrintingService -> PrintingService (Singleton)");
             services.AddTransient<IDataAnonymizerService, DataAnonymizerService>();
+            Debug.WriteLine("DI: Registered IDataAnonymizerService -> DataAnonymizerService (Transient)");
+
+            // Account mapper used by ViewModels to transform domain models to display DTOs
+            services.AddTransient<IAccountMapper, WileyWidget.Business.Services.AccountMapper>();
+            Debug.WriteLine("DI: Registered IAccountMapper -> AccountMapper (Transient)");
+
+            // === MVVM BUSINESS LOGIC SERVICES (Phase 2 Refactoring) ===
+            // These services extract business logic from ViewModels for MVVM purity
+            services.AddTransient<IAccountService, AccountService>();
+            Debug.WriteLine("DI: Registered IAccountService -> AccountService (Transient)");
+            services.AddTransient<IMainDashboardService, MainDashboardService>();
+            Debug.WriteLine("DI: Registered IMainDashboardService -> MainDashboardService (Transient)");
+            services.AddTransient<ISettingsManagementService, SettingsManagementService>();
+            Debug.WriteLine("DI: Registered ISettingsManagementService -> SettingsManagementService (Transient)");
+            services.AddTransient<IValidator<SettingsDto>, SettingsDtoValidator>();
+            Debug.WriteLine("DI: Registered IValidator<SettingsDto> -> SettingsDtoValidator (Transient)");
 
             // Register both Excel export implementations for flexibility
             // ClosedXmlExportService and ExcelExportService both implement IExcelExportService
             // Default is ExcelExportService above; applications can override as needed
             services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
+            Debug.WriteLine("DI: Registered IChargeCalculatorService -> ServiceChargeCalculatorService (Transient)");
             services.AddSingleton<IDiValidationService, DiValidationService>();
+            Debug.WriteLine("DI: Registered IDiValidationService -> DiValidationService (Singleton)");
 
             // === VIEWMODELS (SCOPED to match DbContext lifetime) ===
             // Using Scoped instead of Transient ensures ViewModels share the same DbContext instance
             // within a dialog/form lifetime, preventing "tracked by another instance" EF Core errors
             services.AddScoped<MainViewModel>();
+            Debug.WriteLine("DI: Registered MainViewModel (Scoped)");
             services.AddScoped<ChartViewModel>();
+            Debug.WriteLine("DI: Registered ChartViewModel (Scoped)");
             services.AddScoped<SettingsViewModel>();
+            Debug.WriteLine("DI: Registered SettingsViewModel (Scoped)");
             services.AddScoped<AccountsViewModel>();
+            Debug.WriteLine("DI: Registered AccountsViewModel (Scoped)");
             services.AddScoped<BudgetOverviewViewModel>();
+            Debug.WriteLine("DI: Registered BudgetOverviewViewModel (Scoped)");
 
             // === FORMS (SCOPED to get fresh instances per dialog) ===
             services.AddScoped<MainForm>();
+            Debug.WriteLine("DI: Registered MainForm (Scoped)");
             services.AddScoped<ChartForm>();
+            Debug.WriteLine("DI: Registered ChartForm (Scoped)");
             services.AddScoped<SettingsForm>();
+            Debug.WriteLine("DI: Registered SettingsForm (Scoped)");
             services.AddScoped<AccountsForm>();
+            Debug.WriteLine("DI: Registered AccountsForm (Scoped)");
+
+            // === DI VALIDATION: Build a temporary provider with ValidateScopes = true and
+            // attempt to resolve important scoped services (ViewModels) so errors are surfaced early
+            try
+            {
+                var diagProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+
+                // If logging is available, use it; otherwise fall back to Debug.WriteLine
+                var loggerFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILoggerFactory>(diagProvider);
+                var logger = loggerFactory?.CreateLogger("Startup.DI");
+                logger?.LogInformation("DI: Temporary validation provider created with ValidateScopes = true");
+
+                var viewModelTypes = new Type[]
+                {
+                    typeof(MainViewModel),
+                    typeof(ChartViewModel),
+                    typeof(SettingsViewModel),
+                    typeof(AccountsViewModel),
+                    typeof(BudgetOverviewViewModel)
+                };
+
+                foreach (var vmType in viewModelTypes)
+                {
+                    try
+                    {
+                        using var scope = diagProvider.CreateScope();
+                        var vm = scope.ServiceProvider.GetRequiredService(vmType);
+                        logger?.LogInformation("DI: Successfully resolved ViewModel {ViewModel}", vmType.FullName);
+                        Debug.WriteLine($"DI: Successfully resolved {vmType.FullName}");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "DI: Failed to resolve ViewModel {ViewModel}", vmType.FullName);
+                        Debug.WriteLine($"DI: Failed to resolve {vmType.FullName}: {ex}");
+                    }
+                }
+
+                // Also test critical singleton/scoped services to ensure DI graph is healthy
+                var serviceTypes = new Type[]
+                {
+                    typeof(ISecretVaultService),
+                    typeof(IQuickBooksService),
+                    typeof(IAIService),
+                    typeof(IAILoggingService),
+                    typeof(IQuickBooksApiClient)
+                };
+
+                foreach (var sType in serviceTypes)
+                {
+                    try
+                    {
+                        using var scope = diagProvider.CreateScope();
+                        var svc = scope.ServiceProvider.GetService(sType);
+                        if (svc != null)
+                        {
+                            logger?.LogInformation("DI: Successfully resolved service {Service}", sType.FullName);
+                            Debug.WriteLine($"DI: Successfully resolved {sType.FullName}");
+                        }
+                        else
+                        {
+                            logger?.LogWarning("DI: Service {Service} resolved to null (not registered)", sType.FullName);
+                            Debug.WriteLine($"DI: Service {sType.FullName} resolved to null (not registered)");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "DI: Failed to resolve service {Service}", sType.FullName);
+                        Debug.WriteLine($"DI: Failed to resolve {sType.FullName}: {ex}");
+                    }
+                }
+
+                if (diagProvider is IDisposable d)
+                {
+                    d.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"DI: Failed to build diagnostic provider: {ex}");
+            }
         }
 
         /// <summary>

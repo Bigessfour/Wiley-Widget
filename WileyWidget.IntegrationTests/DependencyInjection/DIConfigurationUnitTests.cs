@@ -83,7 +83,7 @@ public class DIConfigurationUnitTests
         var provider = services.BuildServiceProvider();
 
         // Act
-        var options = provider.GetRequiredService<IOptions<HealthCheckConfiguration>>();
+        var options = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IOptions<HealthCheckConfiguration>>(provider);
 
         // Assert
         Assert.NotNull(options);
@@ -106,11 +106,11 @@ public class DIConfigurationUnitTests
 
         // Act - This should not throw
         var provider = services.BuildServiceProvider();
-        var options = provider.GetRequiredService<IOptions<HealthCheckConfiguration>>();
+        var options = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IOptions<HealthCheckConfiguration>>(provider);
 
         // Manually construct to verify constructor works
-        var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HealthCheckService>>();
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HealthCheckService>>(provider);
+        var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(provider);
 
         var service = new HealthCheckService(scopeFactory, logger, options);
 
@@ -155,8 +155,8 @@ public class DIConfigurationUnitTests
         var provider = services.BuildServiceProvider();
 
         // Act
-        var options1 = provider.GetRequiredService<IOptions<HealthCheckConfiguration>>();
-        var options2 = provider.GetRequiredService<IOptions<HealthCheckConfiguration>>();
+        var options1 = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IOptions<HealthCheckConfiguration>>(provider);
+        var options2 = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IOptions<HealthCheckConfiguration>>(provider);
 
         // Assert - Should be same instance (singleton behavior)
         Assert.Same(options1, options2);

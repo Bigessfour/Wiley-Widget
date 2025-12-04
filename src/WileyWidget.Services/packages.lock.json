@@ -393,12 +393,6 @@
           "System.Threading.RateLimiting": "8.0.0"
         }
       },
-      "QuestPDF": {
-        "type": "Direct",
-        "requested": "[2025.7.4, )",
-        "resolved": "2025.7.4",
-        "contentHash": "XeiWilwLnqP2BIvDG+vh1+fjUoNWczPee5qifw8VppVOH7+vmxgoxG/KANcKftgqAfXiRQ++sXOSLPZRvXxD2g=="
-      },
       "Serilog": {
         "type": "Direct",
         "requested": "[4.2.0, )",
@@ -482,6 +476,17 @@
         "contentHash": "fKL7mXv7qaiNBUC71ssvn/dU0k9t0o45+qm2XgKAlSt19xF+ijjxyA3R6HmCgfKEKwfcfkwWjayuQtRueZFkYw==",
         "dependencies": {
           "Serilog": "4.2.0"
+        }
+      },
+      "Syncfusion.Pdf.Net.Core": {
+        "type": "Direct",
+        "requested": "[31.2.16, )",
+        "resolved": "31.2.16",
+        "contentHash": "CU7/ytKejT0ME7T3Yv3SJJUXxnJGNq70ZiXaA6gBnk2K0zZONUT6qYPrie6ZvGx1Cj7KjmTrAgVWhXuJ3d/v2Q==",
+        "dependencies": {
+          "Syncfusion.Compression.Net.Core": "31.2.16",
+          "Syncfusion.Licensing": "31.2.16",
+          "System.Text.Encoding.CodePages": "4.4.0"
         }
       },
       "System.Management": {
@@ -1280,6 +1285,16 @@
           "System.Text.RegularExpressions": "4.3.0"
         }
       },
+      "Syncfusion.Compression.Net.Core": {
+        "type": "Transitive",
+        "resolved": "31.2.16",
+        "contentHash": "uKb2Xhar/KGw2ua/TM0m4j68FktNLmNaXwR1hRKAfqe0RamIAFC5qzY63anpODPQx9BzEIepRI93PYeKqHW2pA=="
+      },
+      "Syncfusion.Licensing": {
+        "type": "Transitive",
+        "resolved": "31.2.16",
+        "contentHash": "53I4cA2+iJ1M4QC3lFRTRGU1zHJyC/NRZylkLFP0c3Pe56b/bRuMb97PBqz8YT95Z2Qsmk2FTMJYk960oqLzlA=="
+      },
       "System.AppContext": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -1328,11 +1343,6 @@
           "System.Threading": "4.3.0",
           "System.Threading.Tasks": "4.3.0"
         }
-      },
-      "System.Collections.Immutable": {
-        "type": "Transitive",
-        "resolved": "7.0.0",
-        "contentHash": "dQPcs0U1IKnBdRDBkrCTi1FoajSTBzLcVTpjO4MBCMC7f4pDOIPzgBoX8JjG7X6uZRJ8EBxsi8+DR1JuwjnzOQ=="
       },
       "System.Collections.NonGeneric": {
         "type": "Transitive",
@@ -2473,6 +2483,7 @@
           "Serilog.Sinks.Async": "[2.1.0, )",
           "Serilog.Sinks.AzureDocumentDB": "[4.0.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
+          "WileyWidget.Abstractions": "[1.0.0, )",
           "WileyWidget.Models": "[1.0.0, )"
         }
       },
@@ -2738,6 +2749,12 @@
           "System.Runtime": "4.3.0",
           "System.Threading": "4.3.0"
         }
+      },
+      "System.Collections.Immutable": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.0, )",
+        "resolved": "7.0.0",
+        "contentHash": "dQPcs0U1IKnBdRDBkrCTi1FoajSTBzLcVTpjO4MBCMC7f4pDOIPzgBoX8JjG7X6uZRJ8EBxsi8+DR1JuwjnzOQ=="
       },
       "System.IO.Packaging": {
         "type": "CentralTransitive",

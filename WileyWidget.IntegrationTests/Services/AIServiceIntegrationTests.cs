@@ -44,8 +44,8 @@ public class AIServiceIntegrationTests : IntegrationTestBase
         var result = await aiService.GetInsightsAsync("test context", "test question");
 
         // Assert
-        Assert.Contains("[Test Stub]", result);
-        Assert.Contains("disabled in integration tests", result);
+        Assert.Contains("[Test Stub]", result, StringComparison.Ordinal);
+        Assert.Contains("disabled in integration tests", result, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -58,8 +58,8 @@ public class AIServiceIntegrationTests : IntegrationTestBase
         var result = await grokService.QueryAsync("test prompt");
 
         // Assert
-        Assert.Contains("[Test Stub]", result);
-        Assert.Contains("disabled in integration tests", result);
+        Assert.Contains("[Test Stub]", result, StringComparison.Ordinal);
+        Assert.Contains("disabled in integration tests", result, StringComparison.Ordinal);
     }
 
     [Fact]

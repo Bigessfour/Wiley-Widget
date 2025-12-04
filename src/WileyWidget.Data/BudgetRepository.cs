@@ -15,7 +15,7 @@ namespace WileyWidget.Data;
 /// </summary>
 public class BudgetRepository : IBudgetRepository
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly AppDbContext _context;
     private readonly IMemoryCache _cache;
     private readonly ITelemetryService? _telemetryService;
 
@@ -26,11 +26,11 @@ public class BudgetRepository : IBudgetRepository
     /// Constructor with dependency injection
     /// </summary>
     public BudgetRepository(
-        IDbContextFactory<AppDbContext> contextFactory,
+        AppDbContext context,
         IMemoryCache cache,
-    ITelemetryService? telemetryService = null)
+        ITelemetryService? telemetryService = null)
     {
-        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _telemetryService = telemetryService;
     }
@@ -46,19 +46,18 @@ public class BudgetRepository : IBudgetRepository
 
         try
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            var result = await context.GetBudgetHierarchy(fiscalYear).ToListAsync();
+        var result = await _context.GetBudgetHierarchy(fiscalYear).ToListAsync();
 
-            activity?.SetTag("result.count", result.Count());
-            activity?.SetStatus(ActivityStatusCode.Ok);
+                activity?.SetTag("result.count", result.Count());
+        activity?.SetStatus(ActivityStatusCode.Ok);
 
-            return result;
+                return result;
         }
         catch (Exception ex)
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            _telemetryService?.RecordException(ex, ("fiscal_year", fiscalYear));
-            throw;
+        _telemetryService?.RecordException(ex, ("fiscal_year", fiscalYear));
+        throw;
         }
     }
 
@@ -79,8 +78,7 @@ public class BudgetRepository : IBudgetRepository
             activity?.SetTag("cache.hit", false);
             try
             {
-                await using var context = await _contextFactory.CreateDbContextAsync();
-                budgetEntries = await context.BudgetEntries
+                budgetEntries = await _context.BudgetEntries
                     .Where(be => be.FiscalYear == fiscalYear)
                     .Include(be => be.Department)
                     .Include(be => be.Fund)
@@ -120,9 +118,7 @@ public class BudgetRepository : IBudgetRepository
         bool sortDescending = false,
         int? fiscalYear = null)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var query = context.BudgetEntries
+        var query = _context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .AsQueryable();
@@ -152,13 +148,14 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets an IQueryable for flexible querying and paging
     /// </summary>
-    public async Task<IQueryable<BudgetEntry>> GetQueryableAsync()
+    public Task<IQueryable<BudgetEntry>> GetQueryableAsync()
     {
-        var context = await _contextFactory.CreateDbContextAsync();
-        return context.BudgetEntries
+        // Returning IQueryable tied to the current scoped DbContext. Callers should only enumerate
+        // or materialize the query while the scope (and DbContext) is still alive.
+        return Task.FromResult(_context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .AsQueryable();
+            .AsQueryable());
     }
 
     /// <summary>
@@ -166,8 +163,7 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<BudgetEntry?> GetByIdAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.BudgetEntries
+        return await _context.BudgetEntries
             .Include(be => be.Parent)
             .Include(be => be.Children)
             .Include(be => be.Department)
@@ -185,8 +181,7 @@ public class BudgetRepository : IBudgetRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            budgetEntries = await context.BudgetEntries
+            budgetEntries = await _context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.FundId == fundId)
@@ -209,8 +204,7 @@ public class BudgetRepository : IBudgetRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            budgetEntries = await context.BudgetEntries
+            budgetEntries = await _context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.DepartmentId == departmentId)
@@ -233,8 +227,7 @@ public class BudgetRepository : IBudgetRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            budgetEntries = await context.BudgetEntries
+            budgetEntries = await _context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.FundId == fundId && be.FiscalYear == fiscalYear)
@@ -257,8 +250,7 @@ public class BudgetRepository : IBudgetRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            budgetEntries = await context.BudgetEntries
+            budgetEntries = await _context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.DepartmentId == departmentId && be.FiscalYear == fiscalYear)
@@ -283,8 +275,7 @@ public class BudgetRepository : IBudgetRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            budgetEntries = await context.BudgetEntries
+            budgetEntries = await _context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.FundId == sewerFundId && be.FiscalYear == fiscalYear)
@@ -306,9 +297,8 @@ public class BudgetRepository : IBudgetRepository
         if (budgetEntry == null)
             throw new ArgumentNullException(nameof(budgetEntry));
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        context.BudgetEntries.Add(budgetEntry);
-        await context.SaveChangesAsync();
+        _context.BudgetEntries.Add(budgetEntry);
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -319,9 +309,8 @@ public class BudgetRepository : IBudgetRepository
         if (budgetEntry == null)
             throw new ArgumentNullException(nameof(budgetEntry));
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        context.BudgetEntries.Update(budgetEntry);
-        await context.SaveChangesAsync();
+        _context.BudgetEntries.Update(budgetEntry);
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -329,12 +318,11 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task DeleteAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        var budgetEntry = await context.BudgetEntries.FindAsync(id);
+        var budgetEntry = await _context.BudgetEntries.FindAsync(id);
         if (budgetEntry != null)
         {
-            context.BudgetEntries.Remove(budgetEntry);
-            await context.SaveChangesAsync();
+            _context.BudgetEntries.Remove(budgetEntry);
+            await _context.SaveChangesAsync();
         }
     }
 
@@ -343,9 +331,7 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<BudgetVarianceAnalysis> GetBudgetSummaryAsync(DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var budgetEntries = await context.BudgetEntries
+        var budgetEntries = await _context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
@@ -404,9 +390,7 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<List<DepartmentSummary>> GetDepartmentBreakdownAsync(DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var budgetEntries = await context.BudgetEntries
+        var budgetEntries = await _context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
@@ -431,9 +415,7 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<List<FundSummary>> GetFundAllocationsAsync(DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var budgetEntries = await context.BudgetEntries
+        var budgetEntries = await _context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
@@ -468,10 +450,8 @@ public class BudgetRepository : IBudgetRepository
     // If not available, this falls back to date-only filters (no-op enterprise filter).
     public async Task<BudgetVarianceAnalysis> GetBudgetSummaryByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
         // Try to filter by Department.EnterpriseId or Fund.EnterpriseId if such properties exist.
-        var query = context.BudgetEntries
+        var query = _context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
@@ -523,9 +503,7 @@ public class BudgetRepository : IBudgetRepository
 
     public async Task<List<DepartmentSummary>> GetDepartmentBreakdownByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var query = context.BudgetEntries
+        var query = _context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
@@ -547,9 +525,7 @@ public class BudgetRepository : IBudgetRepository
 
     public async Task<List<FundSummary>> GetFundAllocationsByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var query = context.BudgetEntries
+        var query = _context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);

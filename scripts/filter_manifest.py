@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import json
-import sys
 from pathlib import Path
 
 
@@ -8,7 +7,6 @@ def should_keep_file(file_entry):
     """Determine if a file should be kept in the filtered manifest."""
     path = file_entry["metadata"]["path"]
     category = file_entry["context"]["category"]
-    language = file_entry["metadata"]["language"]
     extension = file_entry["metadata"]["extension"]
 
     # Keep ALL files under src/

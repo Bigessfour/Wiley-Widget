@@ -57,22 +57,18 @@
 	"tasks": [
 		{
 			"label": "Build WileyWidget.WinForms",
-			"command": "pwsh",
+			"command": "dotnet",
 			"type": "shell",
 			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-Command",
-				"dotnet build ${workspaceFolder}/WileyWidget.WinForms/WileyWidget.WinForms.csproj /property:GenerateFullPaths=true /consoleloggerparameters:\\\"NoSummary;Verbosity=minimal\\\" /p:DebugType=portable /p:DebugSymbols=true '/bl:${workspaceFolder}/logs/build-winforms-'\"$(Get-Date -Format 'yyyyMMdd-HHmmss')\"'.binlog'"
+				"build",
+				"${workspaceFolder}\\WileyWidget.WinForms\\WileyWidget.WinForms.csproj"
 			],
 			"group": "build",
 			"presentation": {
 				"reveal": "silent",
 				"panel": "shared"
 			},
-			"problemMatcher": "$msCompile",
-			"dependsOn": "ensure-logs-dir"
+			"problemMatcher": "$msCompile"
 		},
 		{
 			"label": "WileyWidget: Kill Old Processes",
@@ -124,7 +120,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-Command",
-				"dotnet build ${workspaceFolder}/WileyWidget.sln --no-restore --verbosity minimal --configuration Debug '/bl:${workspaceFolder}/logs/build-solution-'\"$(Get-Date -Format 'yyyyMMdd-HHmmss')\"'.binlog'"
+				"$logDir = \"${workspaceFolder}/logs\"; if (-not (Test-Path -Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $logFile = Join-Path $logDir \"build-solution-$(Get-Date -Format 'yyyyMMdd-HHmmss').log\"; dotnet build ${workspaceFolder}/WileyWidget.sln --no-restore --verbosity minimal --configuration Debug | Tee-Object -FilePath $logFile -Append"
 			],
 			"group": {
 				"kind": "build",
@@ -155,52 +151,21 @@
 						"beginsPattern": "^Build started",
 						"endsPattern": "^Build (succeeded|failed)"
 					}
+				},
+				{
+					"owner": "msbuild",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": "error",
+						"code": 4,
+						"message": 5
+					}
 				}
-					,
-					{
-						"owner": "msbuild",
-						"source": "Build",
-						"fileLocation": ["relative", "${workspaceFolder}"],
-						"pattern": {
-							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
-							"file": 1,
-							"line": 2,
-							"column": 3,
-							"severity": "error",
-							"code": 4,
-							"message": 5
-						}
-					,
-					{
-						"owner": "msbuild",
-						"source": "Build",
-						"fileLocation": ["relative", "${workspaceFolder}"],
-						"pattern": {
-							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
-							"file": 1,
-							"line": 2,
-							"column": 3,
-							"severity": "error",
-							"code": 4,
-							"message": 5
-						}
-					}
-					,
-					{
-						"owner": "msbuild",
-						"source": "Build",
-						"fileLocation": ["relative", "${workspaceFolder}"],
-						"pattern": {
-							"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
-							"file": 1,
-							"line": 2,
-							"column": 3,
-							"severity": "error",
-							"code": 4,
-							"message": 5
-						}
-					}
-					}
 			],
 			"dependsOn": ["WileyWidget: Clean", "ensure-logs-dir"]
 		},
@@ -293,7 +258,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-Command",
-				"if (-not (Test-Path -Path \"${workspaceFolder}/logs\")) { New-Item -ItemType Directory -Path \"${workspaceFolder}/logs\" | Out-Null }"
+				"if (-not (Test-Path -Path \"${workspaceFolder}\\logs\")) { New-Item -ItemType Directory -Path \"${workspaceFolder}\\logs\" | Out-Null }"
 			],
 			"presentation": {
 				"echo": true,
@@ -466,18 +431,31 @@
 		{
 			"label": "build",
 			"type": "shell",
-			"command": "pwsh",
+			"command": "dotnet",
 			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-Command",
-				"dotnet build ${workspaceFolder}/WileyWidget.sln --no-restore --configuration Debug --verbosity minimal /m /maxcpucount /p:BuildInParallel=true /p:UseSharedCompilation=true /p:AccelerateBuildsInVisualStudio=true /p:ProduceReferenceAssemblyInOutDir=true /p:Deterministic=true /p:NodeReuse=true /p:RunAnalyzers=false /p:RunAnalyzersDuringBuild=false /p:EnableNETAnalyzers=false /p:GenerateDocumentationFile=false /p:XamlDebuggingInformation=false '/bl:${workspaceFolder}/logs/build-main-'\"$(Get-Date -Format 'yyyyMMdd-HHmmss')\"'.binlog'"
+				"build",
+				"${workspaceFolder}\\WileyWidget.sln",
+				"--no-restore",
+				"--configuration",
+				"Debug",
+				"--verbosity",
+				"minimal",
+				"/m",
+				"/p:BuildInParallel=true",
+				"/p:UseSharedCompilation=true",
+				"/p:AccelerateBuildsInVisualStudio=true",
+				"/p:ProduceReferenceAssemblyInOutDir=true",
+				"/p:Deterministic=true",
+				"/p:NodeReuse=true",
+				"/p:RunAnalyzers=false",
+				"/p:RunAnalyzersDuringBuild=false",
+				"/p:EnableNETAnalyzers=false",
+				"/p:GenerateDocumentationFile=false",
+				"/p:XamlDebuggingInformation=false"
 			],
 			"dependsOn": [
 				"kill-test-processes",
-				"dotnet:clean-build-server",
-				"ensure-logs-dir"
+				"dotnet:clean-build-server"
 			],
 			"isBackground": false,
 			"problemMatcher": [

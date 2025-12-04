@@ -61,16 +61,31 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     public QuickBooksService(WileyWidget.Services.ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider)
     {
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-        _secretVault = keyVaultService; // may be null in some test contexts
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+    _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+    _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+    _secretVault = keyVaultService; // may be null in some test contexts
+    _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+    _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
-        // Secrets and OAuth client are loaded lazily via EnsureInitializedAsync()
-        EnsureSettingsLoaded();
-    }
+    // Log quick startup message to make ctor failures visible in logs
+    try
+        {
+                _logger.LogInformation("QuickBooksService constructed — attempting lightweight settings load (lazy initialization)");
+            }
+            catch { /* best-effort logging */ }
+
+            // Secrets and OAuth client are loaded lazily via EnsureInitializedAsync()
+            try
+            {
+                EnsureSettingsLoaded();
+            }
+            catch (Exception ex)
+            {
+                // Keep constructor resilient - initialization will attempt again when needed
+                _logger.LogWarning(ex, "QuickBooksService EnsureSettingsLoaded failed during construction (non-fatal). Initialization will be retried lazily.");
+            }
+        }
 
         public void Dispose()
         {

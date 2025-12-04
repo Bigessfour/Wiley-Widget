@@ -16,8 +16,6 @@ namespace WileyWidget.WinForms.ViewModels
     {
         private readonly ILogger<ChartViewModel> _logger;
         private readonly IChartService _chartService;
-        private ILogger<ChartForm> object1;
-        private IChartService object2;
 
         public ObservableCollection<ChartDataPoint> LineChartData { get; set; } = new();
         public ObservableCollection<ChartDataPoint> PieChartData { get; set; } = new();

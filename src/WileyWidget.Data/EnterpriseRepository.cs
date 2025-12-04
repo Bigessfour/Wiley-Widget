@@ -13,19 +13,19 @@ namespace WileyWidget.Data;
 /// </summary>
 public class EnterpriseRepository : IEnterpriseRepository
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly AppDbContext _context;
     private readonly ILogger<EnterpriseRepository> _logger;
     private readonly IMemoryCache _cache;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public EnterpriseRepository(IDbContextFactory<AppDbContext> contextFactory, ILogger<EnterpriseRepository> logger, IMemoryCache cache)
+    public EnterpriseRepository(AppDbContext context, ILogger<EnterpriseRepository> logger, IMemoryCache cache)
     {
-        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-        _logger.LogInformation("EnterpriseRepository constructed and DB factory injected");
+        _logger.LogInformation("EnterpriseRepository constructed and DbContext injected");
     }
 
     /// <summary>
@@ -37,8 +37,7 @@ public class EnterpriseRepository : IEnterpriseRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<Enterprise>? enterprises))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            enterprises = await context.Enterprises
+            enterprises = await _context.Enterprises
                 .Where(e => !e.IsDeleted)
                 .AsNoTracking()
                 .OrderBy(e => e.Name)
@@ -65,7 +64,7 @@ public class EnterpriseRepository : IEnterpriseRepository
         string? sortBy = null,
         bool sortDescending = false)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         var query = context.Enterprises.Where(e => !e.IsDeleted).AsQueryable();
 
@@ -90,8 +89,8 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<IQueryable<Enterprise>> GetQueryableAsync()
     {
-        var context = await _contextFactory.CreateDbContextAsync();
-        return context.Enterprises.Where(e => !e.IsDeleted).AsQueryable();
+        var context = _context;
+        return await Task.FromResult(context.Enterprises.Where(e => !e.IsDeleted).AsQueryable());
     }
 
     /// <summary>
@@ -99,7 +98,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<IEnumerable<Enterprise>> GetAllIncludingDeletedAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.Enterprises
             .IgnoreQueryFilters()
             .AsNoTracking()
@@ -111,7 +110,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<Enterprise?> GetByIdAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.Enterprises
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
@@ -122,7 +121,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<IEnumerable<Enterprise>> GetByTypeAsync(string type)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.Enterprises
             .Where(e => !e.IsDeleted && e.Type == type)
             .AsNoTracking()
@@ -134,7 +133,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<Enterprise> AddAsync(Enterprise enterprise)
     {
-        var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         context.Enterprises.Add(enterprise);
         await context.SaveChangesAsync();
         return enterprise;
@@ -147,7 +146,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     {
         ArgumentNullException.ThrowIfNull(enterprise);
 
-        var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         // Set audit fields
         enterprise.ModifiedDate = DateTime.UtcNow;
@@ -177,7 +176,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<bool> DeleteAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         var enterprise = await context.Enterprises.FindAsync(id);
         if (enterprise == null)
             return false;
@@ -206,7 +205,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<int> GetCountAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.Enterprises.Where(e => !e.IsDeleted).CountAsync();
     }
 
@@ -274,7 +273,7 @@ public class EnterpriseRepository : IEnterpriseRepository
         if (string.IsNullOrWhiteSpace(name))
             return null;
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         var lowerName = name.ToLower(CultureInfo.InvariantCulture);
         return await context.Enterprises
             .AsNoTracking()
@@ -287,7 +286,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<bool> ExistsByNameAsync(string name, int? excludeId = null)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         var query = context.Enterprises.AsQueryable();
         if (excludeId.HasValue)
         {
@@ -308,7 +307,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<bool> SoftDeleteAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         var enterprise = await context.Enterprises.FindAsync(id);
         if (enterprise == null)
             return false;
@@ -325,7 +324,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<IEnumerable<Enterprise>> GetWithInteractionsAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.Enterprises
             .Where(e => !e.IsDeleted)
             .Include(e => e.BudgetInteractions)
@@ -339,7 +338,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<IEnumerable<EnterpriseSummary>> GetSummariesAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.Enterprises
             .Where(e => !e.IsDeleted)
             .AsNoTracking()
@@ -363,7 +362,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<IEnumerable<EnterpriseSummary>> GetActiveSummariesAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.Enterprises
             .Where(e => !e.IsDeleted)
             .AsNoTracking()
@@ -387,7 +386,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<bool> RestoreAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         var enterprise = await context.Enterprises.FindAsync(id);
         if (enterprise == null)
             return false;

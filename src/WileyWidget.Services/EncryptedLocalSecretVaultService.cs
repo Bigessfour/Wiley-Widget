@@ -50,7 +50,6 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
     private byte[]? _entropy; // Legacy entropy for backward compatibility
     private Dictionary<string, string> _secretsCache = new();
     private bool _disposed;
-    private bool _initialized;
 
     public EncryptedLocalSecretVaultService(ILogger<EncryptedLocalSecretVaultService> logger)
     {
@@ -73,7 +72,6 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
             // Load existing vault or initialize empty
             InitializeVaultAsync().GetAwaiter().GetResult();
 
-            _initialized = true;
             _logger.LogInformation("EncryptedLocalSecretVaultService initialized successfully. Vault: {VaultDirectory}, Version: {VaultVersion}",
                 _vaultDirectory, VaultVersion);
         }
@@ -505,10 +503,10 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
             }
 
             // Clean up old backups
-            // Order backups by creation time embedded in filename (timestamp) then keep the most recent MaxBackups
+            // Order backups by creation time, keeping the most recent MaxBackups
             var backups = Directory.GetFiles(_vaultDirectory, "vault.backup.*.json")
-                .Select(f => new { Path = f, FileName = Path.GetFileName(f) })
-                .OrderByDescending(x => x.FileName)
+                .Select(f => new { Path = f, CreationTime = File.GetCreationTimeUtc(f) })
+                .OrderByDescending(x => x.CreationTime)
                 .Skip(MaxBackups)
                 .Select(x => x.Path)
                 .ToList();

@@ -50,6 +50,7 @@ namespace WileyWidget.WinForms
         /// Per Syncfusion documentation: "Register the licensing code in static void main
         /// method before calling Application.Run() method"
         /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", Justification = "Startup diagnostic messages; not localized.")]
         private static void RegisterSyncfusionLicense()
         {
             try
@@ -69,7 +70,7 @@ namespace WileyWidget.WinForms
                     syncfusionKey = config["Syncfusion:LicenseKey"];
                 }
 
-                if (!string.IsNullOrEmpty(syncfusionKey) && !syncfusionKey.StartsWith("${"))
+                if (!string.IsNullOrEmpty(syncfusionKey) && !syncfusionKey.StartsWith("${", StringComparison.Ordinal))
                 {
                     SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
                     System.Diagnostics.Debug.WriteLine("SUCCESS: Syncfusion license registered successfully.");
@@ -78,14 +79,14 @@ namespace WileyWidget.WinForms
                 {
                     // License key not found - Syncfusion controls will show trial watermark
                     System.Diagnostics.Debug.WriteLine("WARNING: Syncfusion license key not found in configuration. Controls will run in trial mode.");
-                    Console.WriteLine("WARNING: Syncfusion license key not found. Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json");
+                    Serilog.Log.Warning("Syncfusion license key not found in configuration. Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json. Controls will run in trial mode.");
                 }
             }
             catch (Exception ex)
             {
                 // Log to Debug output since we don't have logger yet
                 System.Diagnostics.Debug.WriteLine($"ERROR: Failed to register Syncfusion license: {ex.Message}");
-                Console.WriteLine($"ERROR: Failed to register Syncfusion license: {ex.Message}");
+                Serilog.Log.Error(ex, "Failed to register Syncfusion license");
                 // Don't throw - allow app to continue in trial mode
             }
         }
@@ -201,7 +202,7 @@ namespace WileyWidget.WinForms
                         }
 
                         // Skip placeholder values from configuration
-                        if (envValue.StartsWith("${") && envValue.EndsWith("}"))
+                        if (envValue.StartsWith("${", StringComparison.Ordinal) && envValue.EndsWith("}", StringComparison.Ordinal))
                         {
                             logger.Debug("Secret '{SecretName}' contains placeholder value - skipping", secretName);
                             continue;

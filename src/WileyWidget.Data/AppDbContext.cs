@@ -9,9 +9,31 @@ namespace WileyWidget.Data
 {
     public class AppDbContext : DbContext, IAppDbContext
     {
+        private readonly bool _skipModelSeeding;
+
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
             // DbSets are now auto-initialized properties - no manual initialization needed
+            // Determine early if this DbContext is configured to use the InMemory provider OR tests set the skip flag.
+            // Check the static flag first (tests set this before creating any DbContext).
+            // Then check options.Extensions for the InMemory extension type.
+            if (SkipModelSeedingInMemoryTests)
+            {
+                _skipModelSeeding = true;
+            }
+            else
+            {
+                try
+                {
+                    _skipModelSeeding = options.Extensions.Any(e =>
+                        e.GetType().FullName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true);
+                }
+                catch
+                {
+                    // Be conservative - default to not skipping if detection throws
+                    _skipModelSeeding = false;
+                }
+            }
         }
 
         // Global conventions
@@ -27,6 +49,9 @@ namespace WileyWidget.Data
         // OnConfiguring removed: All configuration is handled via DI in DatabaseConfiguration.cs
         // This prevents EF Core 9.0 ArgumentException: "At least one object must implement IComparable"
         // which occurs when trying to modify already-configured DbContextOptions
+
+        // Test hook: when true, model-level HasData seeding will be skipped (helps InMemory-based tests avoid global seeded data collisions)
+        public static bool SkipModelSeedingInMemoryTests { get; set; } = false;
 
         public DbSet<MunicipalAccount> MunicipalAccounts { get; set; } = null!;
         public DbSet<Department> Departments { get; set; } = null!;
@@ -286,6 +311,12 @@ namespace WileyWidget.Data
             .HasForeignKey(i => i.MunicipalAccountId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Skip model-level HasData seeding when running on the InMemory provider. The in-memory store is process-global per database name
+        // and we want tests to be deterministic (no surprises from application seeds).
+        // Use the instance field _skipModelSeeding which was determined in constructor from SkipModelSeedingInMemoryTests flag or InMemory extension detection.
+
+        if (!_skipModelSeeding)
+        {
         // Seed: BudgetPeriod required for MunicipalAccount FK
         modelBuilder.Entity<BudgetPeriod>().HasData(
             new BudgetPeriod
@@ -420,9 +451,9 @@ namespace WileyWidget.Data
             // Equity / Fund Balance
             new MunicipalAccount { Id = 11, Name = "FUND BALANCE",                        Type = AccountType.FundBalance,        Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
             new MunicipalAccount { Id = 12, Name = "Opening Bal Equity",                  Type = AccountType.RetainedEarnings,   Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
-            new MunicipalAccount { Id = 13, Name = "Retained Earnings",                   Type = AccountType.RetainedEarnings,   Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
 
             // Revenues (Income)
+            new MunicipalAccount { Id = 13, Name = "Retained Earnings",                   Type = AccountType.RetainedEarnings,   Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
             new MunicipalAccount { Id = 14, Name = "STATE APPORTIONMENT",                 Type = AccountType.Revenue,            Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
             new MunicipalAccount { Id = 15, Name = "WALKING TRAIL DONATION",              Type = AccountType.Grants,             Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
             new MunicipalAccount { Id = 16, Name = "BASEBALL FIELD DONATIONS",            Type = AccountType.Grants,             Fund = MunicipalFundType.ConservationTrust, DepartmentId = 1, BudgetPeriodId = 1, IsActive = true },
@@ -483,7 +514,12 @@ namespace WileyWidget.Data
                 new { MunicipalAccountId = 30, Value = "445"   },
                 new { MunicipalAccountId = 31, Value = "450"   }
             );
+        }
+
+
     }
+
+
 
     // Hierarchy query for UI (e.g., BudgetView SfTreeGrid)
     public IQueryable<BudgetEntry> GetBudgetHierarchy(int fiscalYear)

@@ -11,7 +11,7 @@ namespace WileyWidget.Data;
 /// </summary>
 public class UtilityBillRepository : IUtilityBillRepository
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly AppDbContext _context;
     private readonly ILogger<UtilityBillRepository> _logger;
     private readonly IMemoryCache _cache;
 
@@ -19,11 +19,11 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// Constructor with dependency injection
     /// </summary>
     public UtilityBillRepository(
-        IDbContextFactory<AppDbContext> contextFactory,
+        AppDbContext context,
         ILogger<UtilityBillRepository> logger,
         IMemoryCache cache)
     {
-        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _logger.LogInformation("UtilityBillRepository constructed and DB factory injected");
@@ -38,7 +38,7 @@ public class UtilityBillRepository : IUtilityBillRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<UtilityBill>? bills))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             bills = await context.UtilityBills
                 .Include(b => b.Customer)
                 .Include(b => b.Charges)
@@ -57,7 +57,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<UtilityBill?> GetByIdAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.UtilityBills
             .Include(b => b.Customer)
             .Include(b => b.Charges)
@@ -70,7 +70,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<UtilityBill?> GetByBillNumberAsync(string billNumber)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.UtilityBills
             .Include(b => b.Customer)
             .Include(b => b.Charges)
@@ -87,7 +87,7 @@ public class UtilityBillRepository : IUtilityBillRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<UtilityBill>? bills))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             bills = await context.UtilityBills
                 .Where(b => b.CustomerId == customerId)
                 .Include(b => b.Customer)
@@ -107,7 +107,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<IEnumerable<UtilityBill>> GetByStatusAsync(BillStatus status)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.UtilityBills
             .Where(b => b.Status == status)
             .Include(b => b.Customer)
@@ -122,7 +122,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<IEnumerable<UtilityBill>> GetOverdueBillsAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         var today = DateTime.Today;
 
         return await context.UtilityBills
@@ -140,7 +140,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<IEnumerable<UtilityBill>> GetBillsDueInRangeAsync(DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         return await context.UtilityBills
             .Where(b => b.DueDate >= startDate && b.DueDate <= endDate)
@@ -156,7 +156,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<IEnumerable<UtilityBill>> GetUnpaidBillsByCustomerIdAsync(int customerId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         return await context.UtilityBills
             .Where(b => b.CustomerId == customerId &&
@@ -173,7 +173,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<decimal> GetCustomerBalanceAsync(int customerId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         var unpaidBills = await context.UtilityBills
             .Where(b => b.CustomerId == customerId &&
@@ -189,7 +189,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<IEnumerable<Charge>> GetChargesByBillIdAsync(int billId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         return await context.Charges
             .Where(c => c.BillId == billId)
@@ -202,7 +202,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<IEnumerable<Charge>> GetChargesByCustomerIdAsync(int customerId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         return await context.Charges
             .Where(c => c.Bill != null && c.Bill.CustomerId == customerId)
@@ -219,7 +219,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     {
         ArgumentNullException.ThrowIfNull(bill);
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         // Validate customer exists
         var customerExists = await context.UtilityCustomers
@@ -251,7 +251,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     {
         ArgumentNullException.ThrowIfNull(charge);
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         // Validate bill exists
         var billExists = await context.UtilityBills
@@ -287,7 +287,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     {
         ArgumentNullException.ThrowIfNull(bill);
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         var existingBill = await context.UtilityBills
             .FirstOrDefaultAsync(b => b.Id == bill.Id);
@@ -315,7 +315,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<bool> DeleteAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         var bill = await context.UtilityBills
             .Include(b => b.Charges)
@@ -356,7 +356,7 @@ public class UtilityBillRepository : IUtilityBillRepository
             throw new ArgumentException("Payment amount must be positive", nameof(paymentAmount));
         }
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         var bill = await context.UtilityBills.FindAsync(billId);
 
@@ -397,7 +397,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<bool> BillNumberExistsAsync(string billNumber, int? excludeId = null)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         var query = context.UtilityBills.Where(b => b.BillNumber == billNumber);
 
@@ -414,7 +414,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<int> GetCountAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.UtilityBills.CountAsync();
     }
 
@@ -423,7 +423,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<IEnumerable<UtilityBill>> GetBillsByDateRangeAsync(DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
 
         return await context.UtilityBills
             .Where(b => b.BillDate >= startDate && b.BillDate <= endDate)

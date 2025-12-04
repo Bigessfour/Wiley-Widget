@@ -13,15 +13,15 @@ namespace WileyWidget.Data;
 /// </summary>
 public class AuditRepository : IAuditRepository
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly AppDbContext _context;
     private readonly IMemoryCache _cache;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public AuditRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
+    public AuditRepository(AppDbContext context, IMemoryCache cache)
     {
-        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
 
@@ -30,8 +30,7 @@ public class AuditRepository : IAuditRepository
     /// </summary>
     public async Task<IEnumerable<AuditEntry>> GetAuditTrailAsync(DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.AuditEntries
+        return await _context.AuditEntries
             .Where(a => a.Timestamp >= startDate && a.Timestamp <= endDate)
             .OrderByDescending(a => a.Timestamp)
             .AsNoTracking()
@@ -43,8 +42,7 @@ public class AuditRepository : IAuditRepository
     /// </summary>
     public async Task<IEnumerable<AuditEntry>> GetAuditTrailForEntityAsync(string entityType, DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.AuditEntries
+        return await _context.AuditEntries
             .Where(a => a.EntityType == entityType && a.Timestamp >= startDate && a.Timestamp <= endDate)
             .OrderByDescending(a => a.Timestamp)
             .AsNoTracking()
@@ -56,8 +54,7 @@ public class AuditRepository : IAuditRepository
     /// </summary>
     public async Task<IEnumerable<AuditEntry>> GetAuditTrailForEntityAsync(string entityType, int entityId, DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.AuditEntries
+        return await _context.AuditEntries
             .Where(a => a.EntityType == entityType && a.EntityId == entityId && a.Timestamp >= startDate && a.Timestamp <= endDate)
             .OrderByDescending(a => a.Timestamp)
             .AsNoTracking()
@@ -69,9 +66,8 @@ public class AuditRepository : IAuditRepository
     /// </summary>
     public async Task AddAuditEntryAsync(AuditEntry auditEntry)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        context.AuditEntries.Add(auditEntry);
-        await context.SaveChangesAsync();
+        _context.AuditEntries.Add(auditEntry);
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -86,9 +82,7 @@ public class AuditRepository : IAuditRepository
         DateTime? endDate = null,
         string? entityType = null)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var query = context.AuditEntries.AsQueryable();
+        var query = _context.AuditEntries.AsQueryable();
 
         // Apply filters
         if (startDate.HasValue)
@@ -119,8 +113,7 @@ public class AuditRepository : IAuditRepository
     /// </summary>
     public async Task<IQueryable<AuditEntry>> GetQueryableAsync()
     {
-        var context = await _contextFactory.CreateDbContextAsync();
-        return context.AuditEntries.AsQueryable();
+        return await Task.FromResult(_context.AuditEntries.AsQueryable());
     }
 
     private IQueryable<AuditEntry> ApplySorting(IQueryable<AuditEntry> query, string? sortBy, bool sortDescending)

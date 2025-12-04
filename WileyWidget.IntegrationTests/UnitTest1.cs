@@ -38,7 +38,7 @@ public class ServiceIntegrationTests : IDisposable
     public async Task DatabaseContext_ShouldBeConfigured()
     {
         // Arrange
-        var dbContext = _serviceProvider.GetRequiredService<AppDbContext>();
+        var dbContext = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(_serviceProvider);
 
         // Act
         var canConnect = await dbContext.Database.CanConnectAsync();
@@ -59,8 +59,23 @@ public class ServiceIntegrationTests : IDisposable
         Assert.False(quickBooksEnabled);
     }
 
+    private bool _disposed;
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            _serviceProvider?.Dispose();
+        }
+
+        _disposed = true;
+    }
+
     public void Dispose()
     {
-        _serviceProvider?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

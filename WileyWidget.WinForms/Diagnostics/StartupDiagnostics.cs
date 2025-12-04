@@ -8,6 +8,8 @@ using WileyWidget.Abstractions;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Data;
+using WileyWidget.WinForms.ViewModels;
+using WileyWidget.ViewModels;
 
 namespace WileyWidget.WinForms.Diagnostics;
 
@@ -136,6 +138,13 @@ public class StartupDiagnostics : IStartupDiagnostics
             { "IExcelReaderService", typeof(WileyWidget.Services.Excel.IExcelReaderService) },
             { "IExcelExportService", typeof(WileyWidget.Services.Export.IExcelExportService) },
             { "IDiValidationService", typeof(WileyWidget.Services.Abstractions.IDiValidationService) },
+
+            // WinForms ViewModels (scoped) - resolve inside a created scope
+            { "MainViewModel", typeof(MainViewModel) },
+            { "ChartViewModel", typeof(ChartViewModel) },
+            { "SettingsViewModel", typeof(SettingsViewModel) },
+            { "AccountsViewModel", typeof(AccountsViewModel) },
+            { "BudgetOverviewViewModel", typeof(BudgetOverviewViewModel) },
         };
 
         // Check each service
@@ -175,21 +184,31 @@ public class StartupDiagnostics : IStartupDiagnostics
 
         try
         {
-            object? service;
+            object? service = null;
 
-            // Check if this is a scoped service by attempting resolution with a scope
-            // Scoped services cannot be resolved directly from the root provider
+            // First try resolving from root provider (works for singletons / transients)
             try
             {
-                // Try resolving from root provider first (for singleton/transient services)
                 service = _serviceProvider.GetService(serviceType);
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("scoped service", StringComparison.Ordinal))
+            catch (Exception ex)
             {
-                // This is a scoped service — create a scope and retry
-                using (var scope = _serviceProvider.CreateScope())
+                // Swallow and try a scoped resolve below
+                _logger.LogDebug(ex, "Root provider failed to resolve {ServiceType} — will try a scope", serviceType.FullName);
+            }
+
+            // If null, try resolving inside a created scope (for scoped services)
+            if (service == null)
+            {
+                try
                 {
+                    using var scope = _serviceProvider.CreateScope();
                     service = scope.ServiceProvider.GetService(serviceType);
+                }
+                catch (Exception ex)
+                {
+                    // Keep the original exception available to report below
+                    _logger.LogDebug(ex, "Scoped provider failed to resolve {ServiceType}", serviceType.FullName);
                 }
             }
 

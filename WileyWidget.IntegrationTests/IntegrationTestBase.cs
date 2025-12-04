@@ -9,6 +9,7 @@ using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.IntegrationTests.TestDoubles;
 using Serilog;
+using System.Globalization;
 
 namespace WileyWidget.IntegrationTests;
 
@@ -27,7 +28,7 @@ public abstract class IntegrationTestBase : IDisposable
         // Configure Serilog for testing (console output)
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
-            .WriteTo.Console()
+            .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
             .CreateLogger();
 
         var configuration = new ConfigurationBuilder()
@@ -84,23 +85,37 @@ public abstract class IntegrationTestBase : IDisposable
     protected virtual void InitializeDatabase()
     {
         using var scope = ServiceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var dbContext = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scope.ServiceProvider);
         dbContext.Database.EnsureCreated();
+    }
+
+    private bool _disposed;
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            Scope?.Dispose();
+            (ServiceProvider as IDisposable)?.Dispose();
+            Log.CloseAndFlush();
+        }
+
+        _disposed = true;
     }
 
     public void Dispose()
     {
-        Scope?.Dispose();
-        (ServiceProvider as IDisposable)?.Dispose();
-        Log.CloseAndFlush();
+        Dispose(true);
         GC.SuppressFinalize(this);
     }
 
     protected T GetService<T>() where T : notnull
-        => Scope.ServiceProvider.GetRequiredService<T>();
+        => Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<T>(Scope.ServiceProvider);
 
     protected T? GetOptionalService<T>() where T : class
-        => Scope.ServiceProvider.GetService<T>();
+        => Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<T>(Scope.ServiceProvider);
 
     /// <summary>
     /// Get the test database context

@@ -5,12 +5,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
+using System.Threading;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.Business.Services;
+using WileyWidget.Services;
+using WileyWidget.Services.Abstractions;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests
@@ -23,15 +28,34 @@ namespace WileyWidget.WinForms.Tests
     /// </summary>
     public sealed class AccountsViewModelTests : IDisposable
     {
-        private readonly DbContextOptions<AppDbContext> _dbOptions;
+        private readonly IServiceProvider _provider;
+        private readonly List<IServiceScope> _scopes = new();
         private readonly Mock<ILogger<AccountsViewModel>> _mockLogger;
 
         public AccountsViewModelTests()
         {
-            // Create unique in-memory database for each test to ensure isolation
-            _dbOptions = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
-                .Options;
+            // IMPORTANT: Set the static flag FIRST, before any DbContext or DI container is created.
+            // This ensures the flag is visible when AppDbContext ctor runs and inspects options.
+            AppDbContext.SkipModelSeedingInMemoryTests = true;
+
+            // Build a test DI container that uses a unique in-memory database per test class
+            var dbName = $"TestDb_{Guid.NewGuid()}";
+
+            var services = new ServiceCollection();
+
+            // Use AddDbContextPool pattern with pooling disabled (PoolSize=0 equivalent via AddDbContext)
+            // Each test gets its own DbContextOptions instance which forces a fresh model build.
+            // By using EnableSensitiveDataLogging + a unique databaseName, EF creates an isolated model.
+            services.AddDbContext<AppDbContext>((sp, o) =>
+            {
+                o.UseInMemoryDatabase(dbName)
+                 .EnableSensitiveDataLogging(); // Helps with debugging
+            });
+
+            // allow tests to resolve logging if necessary
+            services.AddLogging();
+
+            _provider = services.BuildServiceProvider();
 
             _mockLogger = new Mock<ILogger<AccountsViewModel>>();
             _mockLogger.Setup(x => x.Log(
@@ -41,29 +65,88 @@ namespace WileyWidget.WinForms.Tests
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
                 .Verifiable();
+
+            // Ensure a fresh database for each test instance — delete any existing store then create a clean one
+            using var initScope = _provider.CreateScope();
+            var initCtx = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(initScope.ServiceProvider);
+            // InMemory databases are process-global for a given name; delete then recreate to ensure clean state
+            initCtx.Database.EnsureDeleted();
+            initCtx.Database.EnsureCreated();
+
+            // Defensive cleanup: remove any model-level HasData seeded rows that may still be present
+            // (This handles edge cases where the model was cached before the skip flag was set)
+            try
+            {
+                var hasSeeds = initCtx.MunicipalAccounts.Any() || initCtx.Departments.Any() || initCtx.BudgetPeriods.Any();
+                if (hasSeeds)
+                {
+                    initCtx.MunicipalAccounts.RemoveRange(initCtx.MunicipalAccounts);
+                    initCtx.BudgetEntries.RemoveRange(initCtx.BudgetEntries);
+                    initCtx.Departments.RemoveRange(initCtx.Departments);
+                    initCtx.Funds.RemoveRange(initCtx.Funds);
+                    initCtx.Vendors.RemoveRange(initCtx.Vendors);
+                    initCtx.TaxRevenueSummaries.RemoveRange(initCtx.TaxRevenueSummaries);
+                    initCtx.AppSettings.RemoveRange(initCtx.AppSettings);
+                    initCtx.BudgetPeriods.RemoveRange(initCtx.BudgetPeriods);
+                    initCtx.SaveChanges();
+                }
+            }
+            catch
+            {
+                // Best-effort cleanup - ignore any errors here during test bootstrap
+            }
         }
 
         public void Dispose()
         {
-            // Clean up in-memory database
-            using var context = new AppDbContext(_dbOptions);
-            context.Database.EnsureDeleted();
-            GC.SuppressFinalize(this);
+            // Clean up all scopes and delete the in-memory database(s)
+            try
+            {
+                foreach (var scope in _scopes.ToArray())
+                {
+                    try
+                    {
+                        var ctx = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<AppDbContext>(scope.ServiceProvider);
+                        ctx?.Database.EnsureDeleted();
+                    }
+                    catch { /* best-effort cleanup */ }
+                    finally
+                    {
+                        scope.Dispose();
+                        _scopes.Remove(scope);
+                    }
+                }
+
+                if (_provider is IDisposable d)
+                {
+                    d.Dispose();
+                }
+            }
+            finally
+            {
+                // Reset test hook so other tests in the same process are unaffected
+                AppDbContext.SkipModelSeedingInMemoryTests = false;
+                GC.SuppressFinalize(this);
+            }
         }
 
         #region Helper Methods
 
-        private AppDbContext CreateContext() => new AppDbContext(_dbOptions);
+        private AppDbContext CreateContext()
+        {
+            var scope = _provider.CreateScope();
+            _scopes.Add(scope);
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scope.ServiceProvider);
+        }
 
         private async Task SeedTestDataAsync(int accountCount = 5, bool includeInactive = false)
         {
             await using var context = CreateContext();
 
             // Seed required reference data
-            var department = new Department { Id = 1, Name = "Test Department" };
+            var department = new Department { Name = "Test Department" };
             var budgetPeriod = new BudgetPeriod
             {
-                Id = 1,
                 Name = "FY2024",
                 StartDate = new DateTime(2024, 1, 1),
                 EndDate = new DateTime(2024, 12, 31),
@@ -73,20 +156,23 @@ namespace WileyWidget.WinForms.Tests
             context.Departments.Add(department);
             context.BudgetPeriods.Add(budgetPeriod);
 
-            for (int i = 1; i <= accountCount; i++)
+            // Save once to ensure FK ids are generated and available for account seeding
+            await context.SaveChangesAsync();
+
+            for (int i = 0; i < accountCount; i++)
             {
                 var account = new MunicipalAccount
                 {
-                    Id = i,
-                    AccountNumber = new AccountNumber($"{1000 + i}"),
-                    Name = $"Test Account {i}",
-                    DepartmentId = 1,
-                    BudgetPeriodId = 1,
-                    Balance = i * 1000m,
-                    BudgetAmount = i * 1500m,
-                    IsActive = includeInactive ? (i % 2 == 0) : true,
-                    Fund = i % 2 == 0 ? MunicipalFundType.General : MunicipalFundType.Enterprise,
-                    Type = i % 3 == 0 ? AccountType.Revenue : AccountType.Asset
+                    // Do not assign Id explicitly — let EF / provider generate keys to avoid duplicates
+                    AccountNumber = new AccountNumber($"{110 + i}"),
+                    Name = $"Test Account {i + 1}",
+                    DepartmentId = department.Id,
+                    BudgetPeriodId = budgetPeriod.Id,
+                    Balance = (i + 1) * 1000m,
+                    BudgetAmount = (i + 1) * 1500m,
+                    IsActive = includeInactive ? ((i + 1) % 2 == 0) : true,
+                    Fund = (i + 1) % 2 == 0 ? MunicipalFundType.General : MunicipalFundType.Enterprise,
+                    Type = (i + 1) % 3 == 0 ? AccountType.Revenue : AccountType.Asset
                 };
                 context.MunicipalAccounts.Add(account);
             }
@@ -94,9 +180,20 @@ namespace WileyWidget.WinForms.Tests
             await context.SaveChangesAsync();
         }
 
-        private AccountsViewModel CreateViewModel(AppDbContext context)
+        private AccountsViewModel CreateViewModel(IServiceScopeFactory scopeFactory)
         {
-            return new AccountsViewModel(_mockLogger.Object, context);
+            // Use the real AccountMapper and AccountService in tests
+            var mapper = new AccountMapper();
+            var accountServiceLogger = Mock.Of<ILogger<AccountService>>();
+            var accountService = new AccountService(accountServiceLogger, scopeFactory, mapper);
+            return new AccountsViewModel(_mockLogger.Object, accountService, mapper);
+        }
+
+        private AccountsViewModel CreateViewModel(AppDbContext _ /*ignored*/)
+        {
+            // Many tests create an AppDbContext to seed data; reuse the provider's scope factory
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(_provider);
+            return CreateViewModel(scopeFactory);
         }
 
         #endregion
@@ -107,11 +204,11 @@ namespace WileyWidget.WinForms.Tests
         public async Task LoadAccountsAsync_WithNoData_ReturnsEmptyCollection()
         {
             // Arrange
-            using var context = CreateContext();
-            var vm = CreateViewModel(context);
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(_provider);
+            var vm = CreateViewModel(scopeFactory);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(CancellationToken.None);
 
             // Assert
             vm.Accounts.Should().BeEmpty();
@@ -124,11 +221,11 @@ namespace WileyWidget.WinForms.Tests
         {
             // Arrange
             await SeedTestDataAsync(5);
-            using var context = CreateContext();
-            var vm = CreateViewModel(context);
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(_provider);
+            var vm = CreateViewModel(scopeFactory);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(CancellationToken.None);
 
             // Assert
             vm.Accounts.Should().HaveCount(5);
@@ -141,11 +238,11 @@ namespace WileyWidget.WinForms.Tests
         {
             // Arrange
             await SeedTestDataAsync(5, includeInactive: true);
-            using var context = CreateContext();
-            var vm = CreateViewModel(context);
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(_provider);
+            var vm = CreateViewModel(scopeFactory);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(CancellationToken.None);
 
             // Assert - only even IDs are active (2, 4)
             vm.Accounts.Should().HaveCount(2);
@@ -156,8 +253,8 @@ namespace WileyWidget.WinForms.Tests
         {
             // Arrange
             await SeedTestDataAsync(3);
-            using var context = CreateContext();
-            var vm = CreateViewModel(context);
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(_provider);
+            var vm = CreateViewModel(scopeFactory);
 
             // Act
             await vm.LoadAccountsCommand.ExecuteAsync(null);
@@ -177,8 +274,8 @@ namespace WileyWidget.WinForms.Tests
         {
             // Arrange
             await SeedTestDataAsync(3);
-            using var context = CreateContext();
-            var vm = CreateViewModel(context);
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(_provider);
+            var vm = CreateViewModel(scopeFactory);
 
             bool wasLoading = false;
             vm.PropertyChanged += (s, e) =>
@@ -204,8 +301,8 @@ namespace WileyWidget.WinForms.Tests
         {
             // Arrange
             await SeedTestDataAsync(6);
-            using var context = CreateContext();
-            var vm = CreateViewModel(context);
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(_provider);
+            var vm = CreateViewModel(scopeFactory);
 
             // Act
             vm.SelectedFund = MunicipalFundType.General;
@@ -220,8 +317,8 @@ namespace WileyWidget.WinForms.Tests
         {
             // Arrange
             await SeedTestDataAsync(6);
-            using var context = CreateContext();
-            var vm = CreateViewModel(context);
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(_provider);
+            var vm = CreateViewModel(scopeFactory);
 
             // Act
             vm.SelectedAccountType = AccountType.Revenue;
@@ -426,7 +523,7 @@ namespace WileyWidget.WinForms.Tests
             // Arrange
             await using (var ctx = CreateContext())
             {
-                ctx.Departments.Add(new Department { Id = 1, Name = "Test Dept" });
+                ctx.Departments.Add(new Department { Id = 1, Name = "Test Dept", DepartmentCode = "TD01" });
                 ctx.BudgetPeriods.Add(new BudgetPeriod
                 {
                     Id = 1,
@@ -453,11 +550,12 @@ namespace WileyWidget.WinForms.Tests
             // Act
             await vm.SaveAccountAsync(newAccount);
 
-            // Assert - Verify structured logging was called
+            // Assert - After Phase 2 refactoring, detailed business logic logging happens in AccountService.
+            // ViewModel logs orchestration: loading accounts to refresh UI after save
             _mockLogger.Verify(x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Created account")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Loading municipal accounts")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.AtLeastOnce);
@@ -513,11 +611,12 @@ namespace WileyWidget.WinForms.Tests
             // Act
             await vm.DeleteAccountAsync(1);
 
-            // Assert
+            // Assert - After Phase 2 refactoring, detailed business logic logging happens in AccountService.
+            // ViewModel logs orchestration: loading accounts to refresh UI after delete
             _mockLogger.Verify(x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Deleted") || o.ToString()!.Contains("deactivated")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Loading municipal accounts")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.AtLeastOnce);

@@ -6,9 +6,19 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>NU1701</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Syncfusion WinForms controls - v31.2.16 -->
+    <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
+    <PackageReference Include="Syncfusion.SfInput.WinForms" />
+    <PackageReference Include="Syncfusion.SfListView.WinForms" />
+    <PackageReference Include="Syncfusion.Tools.Windows" />
+    <PackageReference Include="Syncfusion.Shared.Base" />
+    <!-- LiveChartsCore for WinForms with explicit reference -->
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinForms" />
+    <PackageReference Include="LiveChartsCore" />
     <ProjectReference Include="..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
     <ProjectReference Include="..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
@@ -22,7 +32,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinForms" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="System.Collections.Immutable" />
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="OpenTelemetry" />
@@ -52,7 +63,7 @@
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="ClosedXML" />
-    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="Syncfusion.Pdf.Net.Core" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
     <PackageReference Include="PdfSharpCore" />

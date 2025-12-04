@@ -60,7 +60,7 @@
 
     <!-- Open-source alternatives to Syncfusion -->
     <PackageReference Include="ClosedXML" />
-    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="Syncfusion.Pdf.Net.Core" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
     <PackageReference Include="PdfSharpCore" />

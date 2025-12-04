@@ -1,29 +1,121 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using System.Threading;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels
 {
+    /// <summary>
+    /// ViewModel for the main dashboard. Orchestrates UI interactions and delegates
+    /// all business logic to IMainDashboardService (MVVM purity - Phase 3 refactoring).
+    /// </summary>
     public partial class MainViewModel : ObservableObject
     {
+        private readonly ILogger<MainViewModel> _logger;
+        private readonly IMainDashboardService _dashboardService;
+
         [ObservableProperty]
         private string title = "Wiley Widget — WinForms + .NET 9";
 
-        public IRelayCommand LoadDataCommand { get; }
+        [ObservableProperty]
+        private decimal totalBudget;
 
-        public MainViewModel()
+        [ObservableProperty]
+        private decimal totalActual;
+
+        [ObservableProperty]
+        private decimal variance;
+
+        [ObservableProperty]
+        private int activeAccountCount;
+
+        [ObservableProperty]
+        private int totalDepartments;
+
+        [ObservableProperty]
+        private string? lastUpdateTime;
+
+        [ObservableProperty]
+        private bool isLoading;
+
+        [ObservableProperty]
+        private string? errorMessage;
+
+        public IAsyncRelayCommand LoadDataCommand { get; }
+
+        public MainViewModel(ILogger<MainViewModel> logger, IMainDashboardService dashboardService)
         {
-            LoadDataCommand = new RelayCommand(async () => await LoadDataAsync());
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
+
+            try
+            {
+                LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
+                _logger.LogInformation("MainViewModel constructed with IMainDashboardService");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed during MainViewModel construction");
+                throw;
+            }
         }
 
-        private async Task LoadDataAsync()
+        private async Task LoadDataAsync(CancellationToken cancellationToken = default)
         {
-            await Task.Delay(100);
+            try
+            {
+                IsLoading = true;
+                ErrorMessage = null;
+                _logger.LogInformation("Loading dashboard data");
+
+                // Delegate business logic to service
+                var data = await _dashboardService.LoadDashboardDataAsync(cancellationToken);
+
+                // Update UI properties
+                TotalBudget = data.TotalBudget;
+                TotalActual = data.TotalActual;
+                Variance = data.Variance;
+                ActiveAccountCount = data.ActiveAccountCount;
+                TotalDepartments = data.TotalDepartments;
+                LastUpdateTime = data.LastUpdateTime;
+
+                _logger.LogInformation("Dashboard data loaded: {ActiveAccounts} accounts, {Departments} departments, Budget: {Budget:C}",
+                    ActiveAccountCount, TotalDepartments, TotalBudget);
+            }
+            catch (OperationCanceledException oce)
+            {
+                _logger.LogWarning(oce, "Dashboard data loading canceled");
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load dashboard data");
+                ErrorMessage = "Failed to load dashboard data";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            await LoadDataAsync();
+            try
+            {
+                await LoadDataAsync(cancellationToken);
+            }
+            catch (OperationCanceledException oce)
+            {
+                _logger.LogWarning(oce, "MainViewModel initialization canceled");
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "MainViewModel failed during InitializeAsync");
+                throw;
+            }
         }
     }
 }

@@ -66,14 +66,14 @@ namespace WileyWidget.Data
         private static readonly Func<AppDbContext, int, MunicipalAccount?> CQ_GetById_NoTracking =
             EF.CompileQuery((AppDbContext ctx, int id) =>
                 ctx.MunicipalAccounts.AsNoTracking().SingleOrDefault(ma => ma.Id == id));
-        private readonly IDbContextFactory<AppDbContext> _contextFactory;
+        private readonly AppDbContext _context;
         private readonly IMemoryCache _cache;
         private bool _disposed;
 
-        // Primary constructor for DI with IDbContextFactory
-        public MunicipalAccountRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
+        // Primary constructor for DI with scoped AppDbContext
+        public MunicipalAccountRepository(AppDbContext context, IMemoryCache cache)
         {
-            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         }
 
@@ -83,13 +83,13 @@ namespace WileyWidget.Data
 
             if (!_cache.TryGetValue(cacheKey, out IEnumerable<MunicipalAccount>? accounts))
             {
-                await using var context = await _contextFactory.CreateDbContextAsync();
+                var context = _context;
                 var list = CQ_GetAllOrdered(context);
                 accounts = list;
                 _cache.Set(cacheKey, accounts, TimeSpan.FromMinutes(5));
             }
 
-            return accounts!;
+            return await Task.FromResult(accounts!);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace WileyWidget.Data
             string? sortBy = null,
             bool sortDescending = false)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
 
             var query = context.MunicipalAccounts.AsNoTracking().AsQueryable();
 
@@ -125,13 +125,13 @@ namespace WileyWidget.Data
         /// </summary>
         public async Task<IQueryable<MunicipalAccount>> GetQueryableAsync()
         {
-            var context = await _contextFactory.CreateDbContextAsync();
-            return context.MunicipalAccounts.AsQueryable();
+            var context = _context;
+            return await Task.FromResult(context.MunicipalAccounts.AsQueryable());
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetAllWithRelatedAsync()
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .Include(ma => ma.Department)
@@ -142,7 +142,7 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(string typeFilter)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .Where(a => a.TypeDescription == typeFilter)
@@ -152,28 +152,28 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> GetActiveAsync()
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var list = CQ_GetAllActiveFlag(context, true);
-            return list;
+            return await Task.FromResult(list);
         }
 
-    public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund)
+        public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var list = CQ_GetByFund(context, fund);
-            return list;
+            return await Task.FromResult(list);
         }
 
-    public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type)
+        public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var list = CQ_GetByType(context, type);
-            return list;
+            return await Task.FromResult(list);
         }
 
         public async Task<MunicipalAccount?> GetByIdAsync(int id)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             // Compiled + NoTracking for fast first-hit performance
             var entity = CQ_GetById_NoTracking(context, id);
             return await Task.FromResult(entity);
@@ -181,7 +181,7 @@ namespace WileyWidget.Data
 
         public async Task<MunicipalAccount?> GetByAccountNumberAsync(string accountNumber)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber);
@@ -189,15 +189,15 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> GetByDepartmentAsync(int departmentId)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var list = CQ_GetByDepartment(context, departmentId);
             // Ensure consistent sort
-            return list.OrderBy(ma => ma.AccountNumber?.Value).ToList();
+            return await Task.FromResult(list.OrderBy(ma => ma.AccountNumber?.Value).ToList());
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetByFundClassAsync(FundClass fundClass)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
 
             // FundClass is a computed property, so we need to filter by the underlying Fund property
             IQueryable<MunicipalAccount> query = fundClass switch
@@ -227,7 +227,7 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> GetByAccountTypeAsync(AccountType accountType)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var accounts = await context.MunicipalAccounts
                 .AsNoTracking()
                 .Where(ma => ma.Type == accountType && ma.IsActive)
@@ -238,14 +238,14 @@ namespace WileyWidget.Data
         }
         public async Task<IEnumerable<MunicipalAccount>> GetChildAccountsAsync(int parentAccountId)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var list = CQ_GetChildren(context, parentAccountId);
-            return list.OrderBy(ma => ma.AccountNumber?.Value).ToList();
+            return await Task.FromResult(list.OrderBy(ma => ma.AccountNumber?.Value).ToList());
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetAccountHierarchyAsync(int rootAccountId)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
 
             // This is a simplified implementation - in a real scenario you'd need
             // a recursive CTE or stored procedure to get the full hierarchy
@@ -262,7 +262,7 @@ namespace WileyWidget.Data
 
         public async Task<IEnumerable<MunicipalAccount>> SearchByNameAsync(string searchTerm)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .Where(ma => ma.Name.Contains(searchTerm) && ma.IsActive)
@@ -272,7 +272,7 @@ namespace WileyWidget.Data
 
         public async Task<bool> AccountNumberExistsAsync(string accountNumber, int? excludeId = null)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var query = context.MunicipalAccounts.Where(ma => ma.AccountNumber!.Value == accountNumber);
 
             if (excludeId.HasValue)
@@ -283,7 +283,7 @@ namespace WileyWidget.Data
 
         public async Task<int> GetCountAsync()
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             return await context.MunicipalAccounts.CountAsync();
         }
 
@@ -291,7 +291,7 @@ namespace WileyWidget.Data
         // BudgetEntry no longer has MunicipalAccountId or BudgetPeriodId
         // public async Task<IEnumerable<MunicipalAccount>> GetAccountsWithBudgetEntriesAsync(int budgetPeriodId)
         // {
-        //     using var context = await _contextFactory.CreateDbContextAsync();
+        //     var context = _context;
         //     return await context.MunicipalAccounts
         //         .Where(ma => ma.IsActive &&
         //                    context.BudgetEntries.Any(be => be.MunicipalAccountId == ma.Id && be.BudgetPeriodId == budgetPeriodId))
@@ -306,7 +306,7 @@ namespace WileyWidget.Data
                 throw new ArgumentNullException(nameof(account));
             }
 
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
 
             // Check for duplicate account number
             var existingAccount = await context.MunicipalAccounts
@@ -329,7 +329,7 @@ namespace WileyWidget.Data
             return account;
         }        public async Task<MunicipalAccount> UpdateAsync(MunicipalAccount account)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             context.MunicipalAccounts.Update(account);
             try
             {
@@ -345,7 +345,7 @@ namespace WileyWidget.Data
 
         public async Task<bool> DeleteAsync(int id)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var account = await context.MunicipalAccounts
                 .Include(a => a.AccountNumber)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -394,7 +394,7 @@ namespace WileyWidget.Data
                 throw new ArgumentException("Chart accounts list cannot be null or empty", nameof(chartAccounts));
             }
 
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
 
             // Check if database supports transactions (skip for in-memory databases used in tests)
             var supportsTransactions = context.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory";
@@ -461,7 +461,7 @@ namespace WileyWidget.Data
         throw new ArgumentNullException(nameof(qbAccounts));
     }
 
-    using var context = await _contextFactory.CreateDbContextAsync();
+    var context = _context;
             foreach (var qbAccount in qbAccounts)
             {
                 var existingAccount = await context.MunicipalAccounts
@@ -500,7 +500,7 @@ namespace WileyWidget.Data
         /// </summary>
         public async Task<decimal> GetBalanceAtFiscalYearStartAsync(int accountId, DateTime fiscalYearStart)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var account = await context.MunicipalAccounts.FindAsync(accountId);
 
             if (account == null) return 0m;
@@ -516,7 +516,7 @@ namespace WileyWidget.Data
         public async Task<IEnumerable<MunicipalAccount>> GetBudgetAccountsAsync()
         {
 
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
 
             // Get accounts that have budget entries for this fiscal year
             var accounts = await context.MunicipalAccounts
@@ -530,7 +530,7 @@ namespace WileyWidget.Data
 
         public async Task<object> GetBudgetAnalysisAsync(int periodId)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             var accounts = await context.MunicipalAccounts
                 .AsNoTracking()
                 .Where(ma => ma.IsActive && ma.BudgetAmount != 0)
@@ -541,7 +541,7 @@ namespace WileyWidget.Data
 
         public async Task<List<MunicipalAccount>> GetBudgetAnalysisAsync()
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .Where(ma => ma.IsActive && ma.BudgetAmount != 0 && ma.AccountNumber != null)
@@ -780,7 +780,7 @@ namespace WileyWidget.Data
         /// </summary>
         public async Task<BudgetPeriod?> GetCurrentActiveBudgetPeriodAsync()
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            var context = _context;
             return await context.BudgetPeriods
                 .FirstOrDefaultAsync(bp => bp.IsActive);
         }

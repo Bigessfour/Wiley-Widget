@@ -324,7 +324,9 @@ $restoreArgs = @(
 )
 
 if ($BinaryLog) {
-    $restoreArgs += "/bl:logs\restore-$(Get-Date -Format 'yyyyMMdd-HHmmss').binlog"
+    # Create a human-readable text log instead of only a binary log so developers can open it directly
+    $restoreArgs += "/bl:logs\restore-$(Get-Date -Format 'yyyyMMdd-HHmmss').binlog",
+        "/flp:LogFile=logs\restore-$(Get-Date -Format 'yyyyMMdd-HHmmss').log;Verbosity=minimal"
 }
 
 $restoreTime = Measure-Command {
@@ -381,7 +383,9 @@ foreach ($project in $projectsToBuild) {
     }
 
     if ($BinaryLog) {
-        $buildArgs += "/bl:logs\build-$project-$(Get-Date -Format 'yyyyMMdd-HHmmss').binlog"
+        # Create a human-readable text log for each project build (keeps .log readable files in /logs)
+        $buildArgs += "/bl:logs\build-$project-$(Get-Date -Format 'yyyyMMdd-HHmmss').binlog",
+        "/flp:LogFile=logs\build-$project-$(Get-Date -Format 'yyyyMMdd-HHmmss').log;Verbosity=minimal"
     }
 
     $projectBuildTime = Measure-ProjectBuildTime $project {

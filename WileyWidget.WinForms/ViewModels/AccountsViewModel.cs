@@ -5,18 +5,24 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using WileyWidget.Data;
+using System.Threading;
 using WileyWidget.Models;
-using WileyWidget.Models.Validators;
+using WileyWidget.Abstractions.Models;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels
 {
+    /// <summary>
+    /// ViewModel for the Accounts view. Orchestrates UI interactions and delegates
+    /// all business logic to IAccountService (MVVM purity - Phase 2 refactoring).
+    /// </summary>
     public partial class AccountsViewModel : ObservableRecipient
     {
         private readonly ILogger<AccountsViewModel> _logger;
-        private readonly AppDbContext _dbContext;
+        private readonly IAccountService _accountService;
+        private readonly IAccountMapper _mapper;
 
         [ObservableProperty]
         private string title = "Municipal Accounts";
@@ -42,74 +48,63 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private int activeAccountCount;
 
+        [ObservableProperty]
+        private MunicipalAccountDisplay? selectedAccount;
+
         public AccountsViewModel(
             ILogger<AccountsViewModel> logger,
-            AppDbContext dbContext)
+            IAccountService accountService,
+            IAccountMapper mapper)
         {
-            _logger = logger;
-            _dbContext = dbContext;
-            LoadAccountsCommand = new AsyncRelayCommand(LoadAccountsAsync);
-            FilterAccountsCommand = new AsyncRelayCommand(FilterAccountsAsync);
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+
+            try
+            {
+                LoadAccountsCommand = new AsyncRelayCommand(LoadAccountsAsync);
+                FilterAccountsCommand = new AsyncRelayCommand(FilterAccountsAsync);
+                _logger.LogInformation("AccountsViewModel constructed with IAccountService");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AccountsViewModel constructor failed");
+                throw;
+            }
         }
 
         public IAsyncRelayCommand LoadAccountsCommand { get; }
         public IAsyncRelayCommand FilterAccountsCommand { get; }
 
-        private async Task LoadAccountsAsync()
+        private async Task LoadAccountsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 IsLoading = true;
-                // Enhanced logging with filter context
-                _logger.LogInformation("Loading municipal accounts with filters {@Filters}", new { Fund = SelectedFund?.ToString() ?? "(all)", AccountType = SelectedAccountType?.ToString() ?? "(all)" });
+                _logger.LogInformation("Loading municipal accounts with filters {@Filters}",
+                    new { Fund = SelectedFund?.ToString() ?? "(all)", AccountType = SelectedAccountType?.ToString() ?? "(all)" });
 
-                var accountsQuery = _dbContext.MunicipalAccounts
-                    .Include(a => a.Department)
-                    .Include(a => a.BudgetPeriod)
-                    .Include(a => a.ParentAccount)
-                    .Where(a => a.IsActive)
-                    .AsNoTracking();
+                // Delegate business logic to AccountService (returns already-mapped display objects)
+                var result = await _accountService.LoadAccountsAsync(SelectedFund, SelectedAccountType, cancellationToken);
 
-                // Apply filters if selected
-                if (SelectedFund.HasValue)
-                {
-                    accountsQuery = accountsQuery.Where(a => a.Fund == SelectedFund.Value);
-                }
-
-                if (SelectedAccountType.HasValue)
-                {
-                    accountsQuery = accountsQuery.Where(a => a.Type == SelectedAccountType.Value);
-                }
-
-                var accountsList = await accountsQuery
-                    .OrderBy(a => a.AccountNumber_Value)
-                    .ToListAsync();
-
+                // Update observable collection
                 Accounts.Clear();
-
-                foreach (var account in accountsList)
+                foreach (var display in result.Accounts)
                 {
-                    Accounts.Add(new MunicipalAccountDisplay
-                    {
-                        Id = account.Id,
-                        AccountNumber = account.AccountNumber?.Value ?? "N/A",
-                        Name = account.Name ?? "(Unnamed)",
-                        Description = account.FundDescription ?? string.Empty,
-                        Type = account.Type.ToString(),
-                        Fund = account.Fund.ToString(),
-                        Balance = account.Balance,
-                        BudgetAmount = account.BudgetAmount,
-                        Department = account.Department?.Name ?? "(Unassigned)",
-                        IsActive = account.IsActive,
-                        HasParent = account.ParentAccountId.HasValue
-                    });
+                    Accounts.Add(display);
                 }
 
-                TotalBalance = Accounts.Sum(a => a.Balance);
-                ActiveAccountCount = Accounts.Count;
+                // Update computed properties
+                TotalBalance = result.TotalBalance;
+                ActiveAccountCount = result.ActiveAccountCount;
 
                 _logger.LogInformation("Municipal accounts loaded successfully: {Count} accounts, Total Balance: {Balance:C}",
                     ActiveAccountCount, TotalBalance);
+            }
+            catch (OperationCanceledException oce)
+            {
+                _logger.LogWarning(oce, "Loading accounts operation was canceled");
+                return;
             }
             catch (Exception ex)
             {
@@ -123,62 +118,43 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private Task FilterAccountsAsync()
+        private Task FilterAccountsAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Applying filters - Fund: {Fund}, Type: {Type}", SelectedFund, SelectedAccountType);
-            return LoadAccountsAsync();
+            return LoadAccountsAsync(cancellationToken);
         }
 
         /// <summary>
-        /// Validates a MunicipalAccount using FluentValidation.
+        /// Validates a MunicipalAccount using the service layer.
         /// Returns a list of validation error messages (empty if valid).
         /// </summary>
         public IEnumerable<string> ValidateAccount(MunicipalAccount account)
         {
-            if (account == null)
-            {
-                yield return "Account cannot be null.";
-                yield break;
-            }
-
-            // Use FluentValidation extension method
-            foreach (var error in account.Validate())
-            {
-                yield return error;
-            }
+            // Delegate validation to service layer
+            return _accountService.ValidateAccount(account);
         }
 
         /// <summary>
-        /// Saves a MunicipalAccount after validation.
+        /// Saves a MunicipalAccount after validation (delegates to service).
         /// Returns true if successful, false if validation fails or an error occurs.
         /// </summary>
         public async Task<bool> SaveAccountAsync(MunicipalAccount account)
         {
             if (account == null) throw new ArgumentNullException(nameof(account));
 
-            var errors = ValidateAccount(account).ToList();
-            if (errors.Count > 0)
-            {
-                ErrorMessage = string.Join("; ", errors);
-                return false;
-            }
-
+            IsLoading = true;
             try
             {
-                IsLoading = true;
-                if (account.Id == 0)
+                // Delegate save operation to service layer
+                var result = await _accountService.SaveAccountAsync(account);
+
+                if (!result.Success)
                 {
-                    _dbContext.MunicipalAccounts.Add(account);
-                    await _dbContext.SaveChangesAsync();
-                    _logger.LogInformation("Created account {@AccountDetails}", new { AccountNumber = account.AccountNumber?.Value, Name = account.Name, DepartmentId = account.DepartmentId, Fund = account.Fund.ToString(), Type = account.Type.ToString() });
-                }
-                else
-                {
-                    _dbContext.MunicipalAccounts.Update(account);
-                    await _dbContext.SaveChangesAsync();
-                    _logger.LogInformation("Updated account {@AccountDetails}", new { Id = account.Id, AccountNumber = account.AccountNumber?.Value, Name = account.Name, Balance = account.Balance });
+                    ErrorMessage = string.Join("; ", result.ValidationErrors);
+                    return false;
                 }
 
+                // Reload accounts to refresh UI
                 await LoadAccountsAsync();
                 return true;
             }
@@ -195,20 +171,23 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Deletes (soft-deletes) a MunicipalAccount by setting IsActive to false.
+        /// Deletes (soft-deletes) a MunicipalAccount (delegates to service).
         /// </summary>
         public async Task<bool> DeleteAccountAsync(int id)
         {
+            IsLoading = true;
             try
             {
-                IsLoading = true;
-                var account = await _dbContext.MunicipalAccounts.FindAsync(id);
-                if (account == null) return false;
+                // Delegate delete operation to service layer
+                var success = await _accountService.DeleteAccountAsync(id);
 
-                account.IsActive = false;
-                await _dbContext.SaveChangesAsync();
-                _logger.LogInformation("Deleted (deactivated) account {@AccountDetails}", new { Id = id, AccountNumber = account.AccountNumber?.Value, Name = account.Name });
+                if (!success)
+                {
+                    ErrorMessage = "Account not found";
+                    return false;
+                }
 
+                // Reload accounts to refresh UI
                 await LoadAccountsAsync();
                 return true;
             }
@@ -223,23 +202,5 @@ namespace WileyWidget.WinForms.ViewModels
                 IsLoading = false;
             }
         }
-    }
-
-    /// <summary>
-    /// Display model for municipal accounts
-    /// </summary>
-    public class MunicipalAccountDisplay
-    {
-        public int Id { get; set; }
-        public string AccountNumber { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string Fund { get; set; } = string.Empty;
-        public decimal Balance { get; set; }
-        public decimal BudgetAmount { get; set; }
-        public string Department { get; set; } = string.Empty;
-        public bool IsActive { get; set; }
-        public bool HasParent { get; set; }
     }
 }

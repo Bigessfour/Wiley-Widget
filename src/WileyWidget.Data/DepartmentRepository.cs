@@ -13,15 +13,15 @@ namespace WileyWidget.Data;
 /// </summary>
 public class DepartmentRepository : IDepartmentRepository
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly AppDbContext _context;
     private readonly IMemoryCache _cache;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public DepartmentRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
+    public DepartmentRepository(AppDbContext context, IMemoryCache cache)
     {
-        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
 
@@ -34,8 +34,7 @@ public class DepartmentRepository : IDepartmentRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<Department>? departments))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            departments = await context.Departments
+            departments = await _context.Departments
                 .AsNoTracking()
                 .OrderBy(d => d.Name)
                 .ToListAsync();
@@ -55,9 +54,7 @@ public class DepartmentRepository : IDepartmentRepository
         string? sortBy = null,
         bool sortDescending = false)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var query = context.Departments.AsQueryable();
+        var query = _context.Departments.AsQueryable();
 
         // Apply sorting
         query = ApplySorting(query, sortBy, sortDescending);
@@ -80,8 +77,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// </summary>
     public async Task<IQueryable<Department>> GetQueryableAsync()
     {
-        var context = await _contextFactory.CreateDbContextAsync();
-        return context.Departments.AsQueryable();
+        return await Task.FromResult(_context.Departments.AsQueryable());
     }
 
     /// <summary>
@@ -89,8 +85,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// </summary>
     public async Task<Department?> GetByIdAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Departments
+        return await _context.Departments
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.Id == id);
     }
@@ -103,8 +98,7 @@ public class DepartmentRepository : IDepartmentRepository
         if (string.IsNullOrWhiteSpace(code))
             throw new ArgumentException("Department code cannot be null or empty", nameof(code));
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Departments
+        return await _context.Departments
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.DepartmentCode == code);
     }
@@ -117,9 +111,8 @@ public class DepartmentRepository : IDepartmentRepository
         if (department == null)
             throw new ArgumentNullException(nameof(department));
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        context.Departments.Add(department);
-        await context.SaveChangesAsync();
+        _context.Departments.Add(department);
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -130,9 +123,8 @@ public class DepartmentRepository : IDepartmentRepository
         if (department == null)
             throw new ArgumentNullException(nameof(department));
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        context.Departments.Update(department);
-        await context.SaveChangesAsync();
+        _context.Departments.Update(department);
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -141,12 +133,11 @@ public class DepartmentRepository : IDepartmentRepository
     /// </summary>
     public async Task<bool> DeleteAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        var department = await context.Departments.FindAsync(id);
+        var department = await _context.Departments.FindAsync(id);
         if (department != null)
         {
-            context.Departments.Remove(department);
-            await context.SaveChangesAsync();
+            _context.Departments.Remove(department);
+            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -161,8 +152,7 @@ public class DepartmentRepository : IDepartmentRepository
         if (string.IsNullOrWhiteSpace(code))
             return false;
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Departments.AnyAsync(d => d.DepartmentCode == code);
+        return await _context.Departments.AnyAsync(d => d.DepartmentCode == code);
     }
 
     /// <summary>
@@ -170,8 +160,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// </summary>
     public async Task<IEnumerable<Department>> GetRootDepartmentsAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Departments
+        return await _context.Departments
             .AsNoTracking()
             .Where(d => d.ParentId == null)
             .OrderBy(d => d.Name)
@@ -183,7 +172,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// </summary>
     public async Task<IEnumerable<Department>> GetChildDepartmentsAsync(int parentId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var context = _context;
         return await context.Departments
             .AsNoTracking()
             .Where(d => d.ParentId == parentId)

@@ -45,6 +45,8 @@ public class XAIService : IAIService, IDisposable
 
     /// <summary>
     /// Constructor with dependency injection
+    /// Retrieves XAI API key from encrypted vault (machine-scope environment variables migrated at startup)
+    /// Falls back to configuration for backward compatibility
     /// </summary>
     public XAIService(
         IHttpClientFactory httpClientFactory,
@@ -53,6 +55,7 @@ public class XAIService : IAIService, IDisposable
         IWileyWidgetContextService contextService,
         IAILoggingService aiLoggingService,
         IMemoryCache memoryCache,
+        ISecretVaultService? secretVault = null,
         SigNozTelemetryService? telemetryService = null
         // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
@@ -66,10 +69,34 @@ public class XAIService : IAIService, IDisposable
     if (httpClientFactory is null) throw new ArgumentNullException(nameof(httpClientFactory));
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
-        _apiKey = configuration["XAI:ApiKey"];
+        // Priority order for API key:
+        // 1. Encrypted vault (machine-scope env vars migrated at startup)
+        // 2. Configuration file or environment variables
+        _apiKey = null;
+
+        // Try vault first (preferred - encrypted at rest)
+        if (secretVault != null)
+        {
+            _apiKey = secretVault.GetSecret("XAI_API_KEY");
+            if (!string.IsNullOrWhiteSpace(_apiKey))
+            {
+                _logger.LogDebug("Loaded XAI API key from encrypted vault");
+            }
+        }
+
+        // Fall back to configuration if not in vault
         if (string.IsNullOrWhiteSpace(_apiKey))
         {
-            throw new InvalidOperationException("XAI API key not configured");
+            _apiKey = configuration["XAI:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(_apiKey))
+            {
+                _logger.LogDebug("Loaded XAI API key from configuration (consider migrating to vault for security)");
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            throw new InvalidOperationException("XAI API key not configured. Set XAI_API_KEY environment variable at machine scope or add to configuration.");
         }
 
         var baseUrl = configuration["XAI:BaseUrl"] ?? "https://api.x.ai/v1/";

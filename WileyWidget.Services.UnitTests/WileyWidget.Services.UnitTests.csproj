@@ -18,6 +18,7 @@
     <PackageReference Include="Moq" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +29,8 @@
     <ProjectReference Include="..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
     <ProjectReference Include="..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
     <ProjectReference Include="..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="..\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
   </ItemGroup>
 
   <ItemGroup>

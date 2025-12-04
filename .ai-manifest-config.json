@@ -53,7 +53,15 @@
     "Directory.Build.targets",
     "Directory.Packages.props",
     "global.json",
-    "NuGet.config"
+    "NuGet.config",
+    "WileyWidget.Services.UnitTests/ChartFormTests.cs",
+    "WileyWidget.Services.UnitTests/ChartServiceTests.cs",
+    "WileyWidget.Services.UnitTests/ChartViewModelTests.cs",
+    "WileyWidget.Services.UnitTests/PrintingServiceTests.cs",
+    "tests/WileyWidget.Services.Tests/ServiceTests/EncryptedLocalSecretVaultServiceTests.cs",
+    "tests/WileyWidget.Services.Tests/ServiceTests/QuickBooksServiceTests.cs",
+    "tests/WileyWidget.WinForms.Tests/AccountsViewModelTests.cs",
+    "tests/WileyWidget.WinForms.Tests/BudgetOverviewViewModelTests.cs"
   ],
   "max_files": 500,
   "emit_full_tree": false,

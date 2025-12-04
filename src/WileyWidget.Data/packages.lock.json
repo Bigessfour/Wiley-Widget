@@ -1013,11 +1013,6 @@
           "System.Threading.Tasks": "4.3.0"
         }
       },
-      "System.Collections.Immutable": {
-        "type": "Transitive",
-        "resolved": "7.0.0",
-        "contentHash": "dQPcs0U1IKnBdRDBkrCTi1FoajSTBzLcVTpjO4MBCMC7f4pDOIPzgBoX8JjG7X6uZRJ8EBxsi8+DR1JuwjnzOQ=="
-      },
       "System.Collections.NonGeneric": {
         "type": "Transitive",
         "resolved": "4.0.1",
@@ -2142,6 +2137,7 @@
           "Serilog.Sinks.Async": "[2.1.0, )",
           "Serilog.Sinks.AzureDocumentDB": "[4.0.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
+          "WileyWidget.Abstractions": "[1.0.0, )",
           "WileyWidget.Models": "[1.0.0, )"
         }
       },
@@ -2393,6 +2389,12 @@
           "System.Runtime": "4.1.0",
           "System.Threading": "4.0.11"
         }
+      },
+      "System.Collections.Immutable": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.0, )",
+        "resolved": "7.0.0",
+        "contentHash": "dQPcs0U1IKnBdRDBkrCTi1FoajSTBzLcVTpjO4MBCMC7f4pDOIPzgBoX8JjG7X6uZRJ8EBxsi8+DR1JuwjnzOQ=="
       },
       "System.Memory": {
         "type": "CentralTransitive",

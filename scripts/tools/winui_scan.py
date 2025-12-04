@@ -11,10 +11,10 @@ what to remove and where.
 It intentionally avoids making any edits — it's a reporting helper to guide the next cleanup steps.
 """
 
-import os
-import sys
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 
 KEYWORDS = [
@@ -49,7 +49,24 @@ SKIP_DIRS = {
 }
 
 # File extensions we consider text-searchable
-TEXT_EXT = {'.cs', '.csproj', '.vb', '.xaml', '.props', '.targets', '.sln', '.json', '.md', '.py', '.ps1', '.config', '.yml', '.yaml', '.txt', '.xml'}
+TEXT_EXT = {
+    ".cs",
+    ".csproj",
+    ".vb",
+    ".xaml",
+    ".props",
+    ".targets",
+    ".sln",
+    ".json",
+    ".md",
+    ".py",
+    ".ps1",
+    ".config",
+    ".yml",
+    ".yaml",
+    ".txt",
+    ".xml",
+}
 
 
 def is_text_file(path: Path) -> bool:
@@ -57,7 +74,7 @@ def is_text_file(path: Path) -> bool:
     if ext in TEXT_EXT:
         return True
     # Also include files without extension but not binaries
-    if ext == '':
+    if ext == "":
         return True
     return False
 
@@ -77,7 +94,7 @@ def scan(root: Path):
                 # small safety - skip large files
                 if fp.stat().st_size > 2_000_000:  # 2MB
                     continue
-                text = fp.read_text(encoding='utf-8', errors='ignore')
+                text = fp.read_text(encoding="utf-8", errors="ignore")
             except Exception:
                 continue
 
@@ -93,11 +110,17 @@ def scan(root: Path):
                 for i, line in enumerate(text.splitlines(), start=1):
                     for kw in hits:
                         if kw.lower() in line.lower():
-                            lines.append({'line': i, 'text': line.strip()})
+                            lines.append({"line": i, "text": line.strip()})
 
-                occurrences.append({'file': str(fp.relative_to(root)), 'keywords': list(sorted(set(hits))), 'lines': lines})
+                occurrences.append(
+                    {
+                        "file": str(fp.relative_to(root)),
+                        "keywords": list(sorted(set(hits))),
+                        "lines": lines,
+                    }
+                )
                 # check for csproj to collect project names
-                if fp.suffix.lower() == '.csproj':
+                if fp.suffix.lower() == ".csproj":
                     projects.add(str(fp.relative_to(root)))
 
     return occurrences, sorted(projects)
@@ -106,28 +129,48 @@ def scan(root: Path):
 def build_plan(occurrences, projects):
     plan = []
     # High-level steps
-    plan.append('1) Identify projects and test projects that depend on WinUI or Windows App SDK.\n')
-    plan.append('2) Remove the WinUI project(s) from the solution (.sln) if it is no longer needed. \n')
-    plan.append('3) Remove project folders for WinUI UI project(s) and any WinUI test projects (move to archive if desired).\n')
-    plan.append('4) Remove related package versions from Directory.Packages.props and any direct PackageReference entries.\n')
-    plan.append('5) Remove any build / XAML tooling glue such as XamlCompiler targets and diagnostic wrappers in csproj files.\n')
-    plan.append('6) Update CI (workflow files) to stop building or testing WinUI projects.\n')
-    plan.append('7) Clean/restore/rebuild solution; verify no XAML compilation steps remain and the solution builds cleanly.\n')
-    plan.append('8) Address any follow-up warnings (nullable or analyzers) in the remaining projects.\n')
+    plan.append(
+        "1) Identify projects and test projects that depend on WinUI or Windows App SDK.\n"
+    )
+    plan.append(
+        "2) Remove the WinUI project(s) from the solution (.sln) if it is no longer needed. \n"
+    )
+    plan.append(
+        "3) Remove project folders for WinUI UI project(s) and any WinUI test projects (move to archive if desired).\n"
+    )
+    plan.append(
+        "4) Remove related package versions from Directory.Packages.props and any direct PackageReference entries.\n"
+    )
+    plan.append(
+        "5) Remove any build / XAML tooling glue such as XamlCompiler targets and diagnostic wrappers in csproj files.\n"
+    )
+    plan.append(
+        "6) Update CI (workflow files) to stop building or testing WinUI projects.\n"
+    )
+    plan.append(
+        "7) Clean/restore/rebuild solution; verify no XAML compilation steps remain and the solution builds cleanly.\n"
+    )
+    plan.append(
+        "8) Address any follow-up warnings (nullable or analyzers) in the remaining projects.\n"
+    )
 
     details = {
-        'found_file_count': len(occurrences),
-        'projects_with_matches': projects,
-        'affected_files': [o['file'] for o in occurrences],
-        'suggested_actions': plan,
+        "found_file_count": len(occurrences),
+        "projects_with_matches": projects,
+        "affected_files": [o["file"] for o in occurrences],
+        "suggested_actions": plan,
     }
     return details
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description='Scan workspace for WinUI/WindowsAppSDK usages and produce a removal plan')
-    parser.add_argument('--root', '-r', default='.', help='Repository root to scan')
-    parser.add_argument('--report', '-o', default=None, help='Save JSON report to a file')
+    parser = argparse.ArgumentParser(
+        description="Scan workspace for WinUI/WindowsAppSDK usages and produce a removal plan"
+    )
+    parser.add_argument("--root", "-r", default=".", help="Repository root to scan")
+    parser.add_argument(
+        "--report", "-o", default=None, help="Save JSON report to a file"
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
@@ -135,36 +178,41 @@ def main(argv):
     report = build_plan(occurrences, projects)
 
     # print a short human-readable table
-    print('\nWinUI scan summary')
-    print('====================')
-    print(f"Found {report['found_file_count']} files mentioning WinUI/WindowsAppSDK keywords")
+    print("\nWinUI scan summary")
+    print("====================")
+    print(
+        f"Found {report['found_file_count']} files mentioning WinUI/WindowsAppSDK keywords"
+    )
     if projects:
-        print('\nProjects that contain matches:')
+        print("\nProjects that contain matches:")
         for p in projects:
-            print(' -', p)
+            print(" -", p)
 
-    if report['found_file_count'] > 0:
-        print('\nAffect files found (top 40):')
-        for f in report['affected_files'][:40]:
-            print(' *', f)
+    if report["found_file_count"] > 0:
+        print("\nAffect files found (top 40):")
+        for f in report["affected_files"][:40]:
+            print(" *", f)
 
-    print('\nSuggested removal plan (high level):')
-    for s in report['suggested_actions']:
-        print(' -', s.strip())
+    print("\nSuggested removal plan (high level):")
+    for s in report["suggested_actions"]:
+        print(" -", s.strip())
 
     if args.report:
         try:
-            with open(args.report, 'w', encoding='utf-8') as fh:
+            with open(args.report, "w", encoding="utf-8") as fh:
                 json.dump(report, fh, indent=2)
-            print(f'\nReport written to {args.report}')
+            print(f"\nReport written to {args.report}")
         except Exception as ex:
-            print('Could not write report:', ex)
+            print("Could not write report:", ex)
 
     # return non-zero if critical project present (so scripts can fail-fast)
-    if any('WinUI' in ' '.join(o['keywords']) or 'WindowsAppSDK' in ' '.join(o['keywords']) for o in occurrences):
+    if any(
+        "WinUI" in " ".join(o["keywords"]) or "WindowsAppSDK" in " ".join(o["keywords"])
+        for o in occurrences
+    ):
         return 0
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
