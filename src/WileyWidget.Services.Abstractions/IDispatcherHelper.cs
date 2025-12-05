@@ -2,10 +2,37 @@
 
 using System;
 using System.Threading.Tasks;
-using System.Windows.Threading;
 
 namespace WileyWidget.Services.Threading
 {
+    /// <summary>
+    /// Platform-agnostic dispatcher priority levels.
+    /// Implementations should map these to platform-specific priorities (e.g., WPF DispatcherPriority).
+    /// </summary>
+    public enum DispatcherPriority
+    {
+        /// <summary>Lowest priority - operations processed when system is idle</summary>
+        SystemIdle = 1,
+        /// <summary>Operations processed when application is idle</summary>
+        ApplicationIdle = 2,
+        /// <summary>Operations processed after background operations</summary>
+        ContextIdle = 3,
+        /// <summary>Background priority operations</summary>
+        Background = 4,
+        /// <summary>Same priority as input</summary>
+        Input = 5,
+        /// <summary>Operations processed when layout and render are complete</summary>
+        Loaded = 6,
+        /// <summary>Same priority as rendering</summary>
+        Render = 7,
+        /// <summary>Same priority as data binding</summary>
+        DataBind = 8,
+        /// <summary>Normal priority - default for most operations</summary>
+        Normal = 9,
+        /// <summary>Highest priority - operations processed before other async operations</summary>
+        Send = 10
+    }
+
     /// <summary>
     /// Interface for dispatcher helper operations to marshal calls to the UI thread
     /// </summary>

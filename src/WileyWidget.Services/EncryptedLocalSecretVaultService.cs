@@ -428,14 +428,36 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 _logger.LogWarning(ex, "Failed to set vault file ACL");
             }
 
-            // Atomic replace
-            if (File.Exists(_vaultPath))
+            // Atomic replace with a robust fallback. File.Replace can fail on some OS
+            // configurations (antivirus, file locks). Try Replace/Move first, then
+            // fall back to Copy+Delete to ensure the vault is updated in as many
+            // environments as possible.
+            try
             {
-                File.Replace(tmpPath, _vaultPath, null);
+                if (File.Exists(_vaultPath))
+                {
+                    // Attempt atomic replace (preferred)
+                    File.Replace(tmpPath, _vaultPath, null);
+                }
+                else
+                {
+                    File.Move(tmpPath, _vaultPath);
+                }
             }
-            else
+            catch (IOException ioEx)
             {
-                File.Move(tmpPath, _vaultPath);
+                // Best-effort fallback: copy and overwrite, then delete tmp.
+                _logger.LogWarning(ioEx, "Atomic vault replace failed; attempting copy-overwrite fallback");
+                try
+                {
+                    File.Copy(tmpPath, _vaultPath, overwrite: true);
+                    File.Delete(tmpPath);
+                }
+                catch (Exception fallbackEx)
+                {
+                    _logger.LogError(fallbackEx, "Fallback vault replace also failed");
+                    throw;
+                }
             }
 
             _logger.LogDebug("Vault saved successfully");

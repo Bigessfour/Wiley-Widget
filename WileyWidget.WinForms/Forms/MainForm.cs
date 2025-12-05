@@ -6,6 +6,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using WileyWidget.WinForms.ViewModels;
 using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
+using Syncfusion.Windows.Forms.Chart;
+using System.IO;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -31,6 +33,13 @@ namespace WileyWidget.WinForms.Forms
         private readonly ILogger<MainForm> _logger;
         private readonly MainViewModel? _viewModel;
 
+        // Dashboard card labels for dynamic data binding
+        private Label? _accountsDescLabel;
+        private Label? _chartsDescLabel;
+        private Label? _settingsDescLabel;
+        private Label? _infoDescLabel;
+        private ToolStripStatusLabel? _statusLabel;
+
         public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, MainViewModel? viewModel = null)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -43,6 +52,14 @@ namespace WileyWidget.WinForms.Forms
                 InitializeComponent();
                 Text = MainFormResources.FormTitle;
 
+                // Subscribe to ViewModel property changes for dynamic updates
+                if (_viewModel != null)
+                {
+                    _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+                    // Trigger initial data load
+                    _ = InitializeDataAsync();
+                }
+
                 _logger.LogInformation("MainForm initialized successfully");
             }
             catch (Exception ex)
@@ -50,6 +67,85 @@ namespace WileyWidget.WinForms.Forms
                 // Log full stack and surface to user, then rethrow so the host can handle fatal startup errors
                 _logger.LogCritical(ex, "Fatal error while initializing MainForm");
                 throw;
+            }
+        }
+
+        private async Task InitializeDataAsync()
+        {
+            try
+            {
+                if (_viewModel != null)
+                {
+                    await _viewModel.InitializeAsync();
+                    UpdateDashboardCards();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize dashboard data");
+            }
+        }
+
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            // Update UI on any relevant property change
+            if (InvokeRequired)
+            {
+                Invoke(() => UpdateDashboardCards());
+            }
+            else
+            {
+                UpdateDashboardCards();
+            }
+        }
+
+        private void UpdateDashboardCards()
+        {
+            if (_viewModel == null) return;
+
+            // Update Accounts card with real data
+            if (_accountsDescLabel != null)
+            {
+                _accountsDescLabel.Text = $"View and manage municipal accounts\n\n{_viewModel.ActiveAccountCount} active accounts\n{_viewModel.TotalDepartments} departments";
+            }
+
+            // Update Charts card with real budget data
+            if (_chartsDescLabel != null)
+            {
+                _chartsDescLabel.Text = $"Budget analytics and visualizations\n\nBudget: {_viewModel.TotalBudget:C0}\nActual: {_viewModel.TotalActual:C0}";
+            }
+
+            // Update Settings card with last update time
+            if (_settingsDescLabel != null)
+            {
+                var updateInfo = string.IsNullOrEmpty(_viewModel.LastUpdateTime) ? "Not synced" : $"Last sync: {_viewModel.LastUpdateTime}";
+                _settingsDescLabel.Text = $"Configure application preferences\n\nQuickBooks: Connected\n{updateInfo}";
+            }
+
+            // Update System Info card
+            if (_infoDescLabel != null)
+            {
+                var variance = _viewModel.Variance;
+                var varianceText = variance >= 0 ? $"+{variance:C0}" : $"{variance:C0}";
+                var varianceStatus = variance >= 0 ? "Under budget ✓" : "Over budget ⚠";
+                _infoDescLabel.Text = $"Variance: {varianceText}\n{varianceStatus}\nRuntime: {Environment.Version}\nMemory: {GC.GetTotalMemory(false) / 1024 / 1024} MB";
+            }
+
+            // Update status bar
+            if (_statusLabel != null)
+            {
+                if (_viewModel.IsLoading)
+                {
+                    _statusLabel.Text = "Loading data...";
+                }
+                else if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
+                {
+                    _statusLabel.Text = $"Error: {_viewModel.ErrorMessage}";
+                }
+                else
+                {
+                    _statusLabel.Text = $"Ready — Last updated: {_viewModel.LastUpdateTime ?? "N/A"}";
+                }
             }
         }
 
@@ -87,10 +183,10 @@ namespace WileyWidget.WinForms.Forms
 
             // === Status Strip ===
             var statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
-            var statusLabel = new ToolStripStatusLabel("Ready") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
+            _statusLabel = new ToolStripStatusLabel("Loading...") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
             var connectionStatus = new ToolStripStatusLabel("🟢 Database Connected") { ForeColor = Color.Green };
             var versionLabel = new ToolStripStatusLabel(".NET 9 | WinForms") { Alignment = ToolStripItemAlignment.Right };
-            statusStrip.Items.AddRange(new ToolStripItem[] { statusLabel, connectionStatus, versionLabel });
+            statusStrip.Items.AddRange(new ToolStripItem[] { _statusLabel, connectionStatus, versionLabel });
 
             // === Main Split Container ===
             var mainSplit = new SplitContainer
@@ -115,17 +211,17 @@ namespace WileyWidget.WinForms.Forms
             dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
-            // === Quick Action Cards ===
-            var accountsCard = CreateDashboardCard("📊 Accounts", "View and manage municipal accounts\n\n72 active accounts", Color.FromArgb(66, 133, 244));
+            // === Quick Action Cards (with dynamic data binding) ===
+            var accountsCard = CreateDashboardCard("📊 Accounts", "View and manage municipal accounts\n\nLoading...", Color.FromArgb(66, 133, 244), out _accountsDescLabel);
             SetupCardClickHandler(accountsCard, () => ShowChildForm<AccountsForm, AccountsViewModel>());
 
-            var chartsCard = CreateDashboardCard("📈 Charts", "Budget analytics and visualizations\n\nYTD: $1.2M revenue", Color.FromArgb(52, 168, 83));
+            var chartsCard = CreateDashboardCard("📈 Charts", "Budget analytics and visualizations\n\nLoading...", Color.FromArgb(52, 168, 83), out _chartsDescLabel);
             SetupCardClickHandler(chartsCard, () => ShowChildForm<ChartForm, ChartViewModel>());
 
-            var settingsCard = CreateDashboardCard("⚙️ Settings", "Configure application preferences\n\nQuickBooks: Connected", Color.FromArgb(251, 188, 4));
+            var settingsCard = CreateDashboardCard("⚙️ Settings", "Configure application preferences\n\nLoading...", Color.FromArgb(251, 188, 4), out _settingsDescLabel);
             SetupCardClickHandler(settingsCard, () => ShowChildForm<SettingsForm, SettingsViewModel>());
 
-            var infoCard = CreateDashboardCard("ℹ️ System Info", $"Version: 1.0.0\nRuntime: {Environment.Version}\nOS: {Environment.OSVersion.Platform}\nMemory: {GC.GetTotalMemory(false) / 1024 / 1024} MB", Color.FromArgb(234, 67, 53));
+            var infoCard = CreateDashboardCard("ℹ️ Budget Status", $"Loading budget data...\n\nRuntime: {Environment.Version}\nMemory: {GC.GetTotalMemory(false) / 1024 / 1024} MB", Color.FromArgb(234, 67, 53), out _infoDescLabel);
 
             dashboardPanel.Controls.Add(accountsCard, 0, 0);
             dashboardPanel.Controls.Add(chartsCard, 1, 0);
@@ -223,6 +319,7 @@ namespace WileyWidget.WinForms.Forms
             var quickChartsBtn = new ToolStripButton("📈 Charts", null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>());
             var quickSettingsBtn = new ToolStripButton("⚙️ Settings", null, (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>());
             var quickRefreshBtn = new ToolStripButton("🔄 Refresh", null, (s, e) => RefreshDashboard());
+            var quickExportBtn = new ToolStripButton("📄 Export", null, (s, e) => ExportDashboard());
 
             quickToolbar.Items.AddRange(new ToolStripItem[]
             {
@@ -232,7 +329,9 @@ namespace WileyWidget.WinForms.Forms
                 new ToolStripSeparator(),
                 quickSettingsBtn,
                 new ToolStripSeparator(),
-                quickRefreshBtn
+                quickRefreshBtn,
+                new ToolStripSeparator(),
+                quickExportBtn
             });
 
             // === Add Controls in Order ===
@@ -256,7 +355,82 @@ namespace WileyWidget.WinForms.Forms
         {
             _logger.LogInformation("Dashboard refresh requested");
             // Trigger a refresh of dashboard data
-            Invalidate(true);
+            if (_viewModel != null)
+            {
+                try
+                {
+                    _viewModel.LoadDataCommand.Execute(null);
+                    _logger.LogInformation("Dashboard data refresh initiated");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to refresh dashboard data");
+                }
+            }
+            else
+            {
+                Invalidate(true);
+            }
+        }
+
+        private void ExportDashboard()
+        {
+            _logger.LogInformation("Dashboard export requested");
+            try
+            {
+                using var saveDialog = new SaveFileDialog
+                {
+                    Filter = "PDF Files|*.pdf|All Files|*.*",
+                    DefaultExt = "pdf",
+                    FileName = $"DashboardReport_{DateTime.Now:yyyyMMdd}"
+                };
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    if (_viewModel != null)
+                    {
+                        // Create PDF report using Syncfusion
+                        using var document = new Syncfusion.Pdf.PdfDocument();
+                        var page = document.Pages.Add();
+                        var graphics = page.Graphics;
+
+                        // Draw header
+                        var headerFont = new Syncfusion.Pdf.Graphics.PdfStandardFont(Syncfusion.Pdf.Graphics.PdfFontFamily.Helvetica, 20, Syncfusion.Pdf.Graphics.PdfFontStyle.Bold);
+                        graphics.DrawString($"Dashboard Report - {DateTime.Now:yyyy-MM-dd}", headerFont,
+                            Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, 10));
+
+                        var bodyFont = new Syncfusion.Pdf.Graphics.PdfStandardFont(Syncfusion.Pdf.Graphics.PdfFontFamily.Helvetica, 10);
+                        var yPosition = 50f;
+
+                        // Draw dashboard metrics
+                        graphics.DrawString($"Total Budget: {_viewModel.TotalBudget:C}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        yPosition += 20;
+                        graphics.DrawString($"Total Actual: {_viewModel.TotalActual:C}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        yPosition += 20;
+                        graphics.DrawString($"Variance: {_viewModel.Variance:C}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        yPosition += 20;
+                        graphics.DrawString($"Active Accounts: {_viewModel.ActiveAccountCount}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        yPosition += 20;
+                        graphics.DrawString($"Total Departments: {_viewModel.TotalDepartments}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        yPosition += 30;
+
+                        // Footer
+                        graphics.DrawString($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Gray, new Syncfusion.Drawing.PointF(10, yPosition));
+
+                        // Save the document
+                        document.Save(saveDialog.FileName);
+                        _logger.LogInformation("Dashboard exported to: {FileName}", saveDialog.FileName);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("ViewModel not available for export");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to export dashboard");
+            }
         }
 
         private void ShowAboutDialog()
@@ -264,7 +438,7 @@ namespace WileyWidget.WinForms.Forms
             _logger.LogInformation("About dialog requested: Wiley Widget v1.0.0, Municipal Budget Management System, Runtime: .NET {Version}, OS: {OS}, © 2025 Wiley Widget Corp", Environment.Version, Environment.OSVersion);
         }
 
-        private static Panel CreateDashboardCard(string title, string description, Color accentColor)
+        private static Panel CreateDashboardCard(string title, string description, Color accentColor, out Label? descriptionLabel)
         {
             var card = new Panel
             {
@@ -302,6 +476,9 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 Padding = new Padding(0, 5, 0, 0)
             };
+
+            // Return reference for dynamic updates
+            descriptionLabel = descLabel;
 
             card.Controls.Add(descLabel);
             card.Controls.Add(titleLabel);

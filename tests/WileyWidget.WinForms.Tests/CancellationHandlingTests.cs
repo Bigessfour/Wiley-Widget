@@ -22,7 +22,8 @@ namespace WileyWidget.WinForms.Tests
             // Arrange
             var logger = new Mock<ILogger<ChartViewModel>>();
             var mockChartService = new Mock<IChartService>();
-            var vm = new ChartViewModel(logger.Object, mockChartService.Object);
+            var mockDashboardService = new Mock<IMainDashboardService>();
+            var vm = new ChartViewModel(logger.Object, mockChartService.Object, mockDashboardService.Object);
 
             using var cts = new CancellationTokenSource();
             cts.Cancel(); // token is already canceled

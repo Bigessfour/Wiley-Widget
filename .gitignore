@@ -11,7 +11,10 @@ TestResults/
 *.log
 *.nupkg
 *.snupkg
+# NuGet restored packages (but keep local package structure)
 packages/
+!packages/local/
+!packages/local/**/.gitkeep
 **/packages.lock.json
 
 # Logs / diagnostics

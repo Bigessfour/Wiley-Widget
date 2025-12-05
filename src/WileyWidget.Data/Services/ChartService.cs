@@ -18,12 +18,16 @@ namespace WileyWidget.Data.Services
     /// </summary>
     public class ChartService : IChartService
     {
-        private readonly AppDbContext _context;
+        private readonly Microsoft.EntityFrameworkCore.IDbContextFactory<AppDbContext> _contextFactory;
 
-        public ChartService(AppDbContext context)
+        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
+        public ChartService(Microsoft.EntityFrameworkCore.IDbContextFactory<AppDbContext> contextFactory)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         }
+
+        // Note: ChartService prefers IDbContextFactory<AppDbContext>. Unit tests should provide
+        // a small test implementation if constructing ChartService directly.
 
         /// <summary>
         /// Returns monthly totals for the specified calendar year using transaction amounts.
@@ -32,7 +36,8 @@ namespace WileyWidget.Data.Services
         public async Task<IEnumerable<ChartDataPoint>> GetMonthlyTotalsAsync(int year, CancellationToken cancellationToken = default)
         {
             // Query transactions for the specified year and group by month
-            var monthly = await _context.Transactions
+            using var ctx = _contextFactory.CreateDbContext();
+            var monthly = await ctx.Transactions
                 .AsNoTracking()
                 .Where(t => t.TransactionDate.Year == year)
                 .GroupBy(t => t.TransactionDate.Month)
@@ -62,33 +67,26 @@ namespace WileyWidget.Data.Services
             var e = end.Date.AddDays(1).AddTicks(-1);
 
             // Join transactions -> budget entry -> department -> group
-            var query = _context.Transactions
+            using var ctx = _contextFactory.CreateDbContext();
+            var baseQuery = ctx.Transactions
                 .AsNoTracking()
-                .Where(t => t.TransactionDate >= s && t.TransactionDate <= e)
-                .Include(t => t.BudgetEntry)
-                    .ThenInclude(be => be.Department);
+                .Where(t => t.TransactionDate >= s && t.TransactionDate <= e);
 
             if (!string.IsNullOrEmpty(category) && category != "All Categories")
             {
-                query = (Microsoft.EntityFrameworkCore.Query.IIncludableQueryable<Transaction, Department>)query.Where(t => t.BudgetEntry.Department.Name == category);
+                baseQuery = baseQuery.Where(t => t.BudgetEntry.Department.Name == category);
             }
 
-            var transactions = await query.ToListAsync(cancellationToken);
+            var transactions = await baseQuery
+                .Include(t => t.BudgetEntry)
+                    .ThenInclude(be => be.Department)
+                .ToListAsync(cancellationToken);
 
             var breakdown = transactions
                 .GroupBy(t => t.BudgetEntry?.Department?.Name ?? "(Unassigned)")
                 .Select(g => new ChartDataPoint { Category = g.Key, Value = (double)g.Sum(x => x.Amount) })
                 .OrderByDescending(x => x.Value)
                 .ToList();
-
-            // Temporary debug: check what we have
-            if (transactions.Any())
-            {
-                var first = transactions.First();
-                var key = first.BudgetEntry?.Department?.Name ?? "(Unassigned)";
-                var sum = (double)transactions.Sum(x => x.Amount);
-                // Can't log, but this would help debug
-            }
 
             return breakdown;
         }
@@ -101,15 +99,14 @@ namespace WileyWidget.Data.Services
             var s = start.Date;
             var e = end.Date.AddDays(1).AddTicks(-1);
 
-            var query = _context.Transactions
+            using var ctx = _contextFactory.CreateDbContext();
+            var query = ctx.Transactions
                 .AsNoTracking()
                 .Where(t => t.TransactionDate >= s && t.TransactionDate <= e);
 
             if (!string.IsNullOrEmpty(category) && category != "All Categories")
             {
-                query = (IQueryable<Transaction>)query.Include(t => t.BudgetEntry)
-                             .ThenInclude(be => be.Department)
-                             .Where(t => t.BudgetEntry.Department.Name == category);
+                query = query.Where(t => t.BudgetEntry.Department.Name == category);
             }
 
             return await query.CountAsync(cancellationToken);
@@ -120,12 +117,14 @@ namespace WileyWidget.Data.Services
         /// </summary>
         public async Task<decimal> GetBudgetVarianceAsync(int year, CancellationToken cancellationToken = default)
         {
-            var budgeted = await _context.BudgetEntries
+
+            using var ctx = _contextFactory.CreateDbContext();
+            var budgeted = await ctx.BudgetEntries
                 .AsNoTracking()
                 .Where(be => be.FiscalYear == year)
                 .SumAsync(be => be.BudgetedAmount, cancellationToken);
 
-            var actual = await _context.Transactions
+            var actual = await ctx.Transactions
                 .AsNoTracking()
                 .Where(t => t.TransactionDate.Year == year)
                 .SumAsync(t => t.Amount, cancellationToken);
@@ -138,7 +137,8 @@ namespace WileyWidget.Data.Services
         /// </summary>
         public async Task<double> GetTrendAsync(int year, int month, CancellationToken cancellationToken = default)
         {
-            var currentMonth = (double)await _context.Transactions
+            using var ctx = _contextFactory.CreateDbContext();
+            var currentMonth = (double)await ctx.Transactions
                 .AsNoTracking()
                 .Where(t => t.TransactionDate.Year == year && t.TransactionDate.Month == month)
                 .SumAsync(t => t.Amount, cancellationToken);
@@ -146,7 +146,7 @@ namespace WileyWidget.Data.Services
             var prevMonth = month == 1 ? 12 : month - 1;
             var prevYear = month == 1 ? year - 1 : year;
 
-            var previousMonth = (double)await _context.Transactions
+            var previousMonth = (double)await ctx.Transactions
                 .AsNoTracking()
                 .Where(t => t.TransactionDate.Year == prevYear && t.TransactionDate.Month == prevMonth)
                 .SumAsync(t => t.Amount, cancellationToken);
@@ -161,7 +161,8 @@ namespace WileyWidget.Data.Services
         /// </summary>
         public async Task<decimal> GetBudgetedAmountAsync(int year, CancellationToken cancellationToken = default)
         {
-            return await _context.BudgetEntries
+            using var ctx = _contextFactory.CreateDbContext();
+            return await ctx.BudgetEntries
                 .AsNoTracking()
                 .Where(be => be.FiscalYear == year)
                 .SumAsync(be => be.BudgetedAmount, cancellationToken);

@@ -2,16 +2,12 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing.Drawing2D;
 using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Business.Interfaces;
-using LiveChartsCore;
-using LiveChartsCore.Kernel.Sketches; // ICartesianAxis, ISeries
-using LiveChartsCore.Measure; // DataLabelsPosition
-using LiveChartsCore.SkiaSharpView.WinForms; // CartesianChart, PieChart for WinForms
-using LiveChartsCore.SkiaSharpView; // Series types (ColumnSeries, LineSeries, PieSeries)
-using LiveChartsCore.SkiaSharpView.Painting; // SolidColorPaint
-using SkiaSharp; // colors for DataLabels and painting
+using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Pdf;
 using Syncfusion.Pdf.Graphics;
 using Syncfusion.Pdf.Grid;
@@ -42,12 +38,18 @@ namespace WileyWidget.WinForms.Forms
         private readonly ILogger<ChartForm> _logger;
         private readonly IChartService _chartService;
         private readonly IPrintingService _printingService;
-        private CartesianChart? _cartesianChart;
-        private PieChart? _pieChart;
+        private ChartControl? revenueChart;
+        private ChartControl? expenditureChart;
+        private ChartControl? cumulativeChart;
+        private ChartControl? proportionChart;
         private ComboBox? _yearSelector;
         private ComboBox? _categoryFilter;
         private ToolStripComboBox? _chartTypeCombo;
         private Label? _trendLabel;
+
+        // Concurrency control for UpdateSummaryValues
+        private readonly object _updateSummaryLock = new object();
+        private bool _isUpdatingSummary = false;
 
         // Color palette for charts
         private static readonly Color[] ChartColors = new[]
@@ -77,7 +79,7 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        await _vm.LoadChartDataAsync();
+                        await _vm.LoadChartsAsync();
                         DrawCharts();
                     }
                     catch (OperationCanceledException oce)
@@ -106,9 +108,18 @@ namespace WileyWidget.WinForms.Forms
             Label[] valueLabels = null!;
 
             // Define UpdateSummaryValues method first
-            async void UpdateSummaryValues()
+            async Task UpdateSummaryValuesAsync()
             {
-                if (valueLabels == null) return; // Guard against null reference
+                // Prevent concurrent execution of UpdateSummaryValues
+                if (Interlocked.Exchange(ref _isUpdatingSummary, true))
+                    return; // Another call is already running
+
+                if (valueLabels == null)
+                {
+                    Interlocked.Exchange(ref _isUpdatingSummary, false);
+                    return; // Guard against null reference
+                }
+
                 try
                 {
                     var start = new DateTime(_vm.SelectedYear, 1, 1);
@@ -147,6 +158,10 @@ namespace WileyWidget.WinForms.Forms
                     _trendLabel!.ForeColor = trend >= 0 ? Color.FromArgb(52, 168, 83) : Color.FromArgb(234, 67, 53);
                 }
                 catch { /* best-effort: do not crash UI */ }
+                finally
+                {
+                    Interlocked.Exchange(ref _isUpdatingSummary, false);
+                }
             }
 
             // === Toolbar ===
@@ -164,9 +179,9 @@ namespace WileyWidget.WinForms.Forms
             _yearSelector.SelectedIndexChanged += async (s, e) =>
             {
                 _vm.SelectedYear = int.Parse(_yearSelector.SelectedItem?.ToString() ?? DateTime.UtcNow.Year.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
-                await _vm.LoadChartDataAsync();
+                await _vm.LoadChartsAsync();
                 DrawCharts();
-                UpdateSummaryValues();
+                await UpdateSummaryValuesAsync();
             };
             var yearHost = new ToolStripControlHost(_yearSelector);
 
@@ -178,9 +193,9 @@ namespace WileyWidget.WinForms.Forms
             _categoryFilter.SelectedIndexChanged += async (s, e) =>
             {
                 _vm.SelectedCategory = _categoryFilter.SelectedItem?.ToString() ?? "All Categories";
-                await _vm.LoadChartDataAsync();
+                await _vm.LoadChartsAsync();
                 DrawCharts();
-                UpdateSummaryValues();
+                await UpdateSummaryValuesAsync();
             };
             var categoryHost = new ToolStripControlHost(_categoryFilter);
 
@@ -193,9 +208,9 @@ namespace WileyWidget.WinForms.Forms
 
             var refreshBtn = new ToolStripButton(ChartFormResources.RefreshButton, null, async (s, e) =>
             {
-                await _vm.LoadChartDataAsync();
+                await _vm.LoadChartsAsync();
                 DrawCharts();
-                UpdateSummaryValues();
+                await UpdateSummaryValuesAsync();
             });
 
             var exportBtn = new ToolStripButton(ChartFormResources.ExportButton, null, (s, e) =>
@@ -329,51 +344,105 @@ namespace WileyWidget.WinForms.Forms
             };
 
             // === Left: Charts ===
-            var chartSplit = new SplitContainer
+            var chartTable = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 350,
-                BackColor = Color.FromArgb(245, 245, 250)
+                ColumnCount = 2,
+                RowCount = 2,
+                BackColor = Color.FromArgb(245, 245, 250),
+                Padding = new Padding(10)
             };
+            chartTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            chartTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            chartTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+            chartTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
-            // === Bar Chart Panel ===
-            var barChartGroup = new GroupBox
+            // Revenue Chart (Line)
+            var revenueGroup = new GroupBox
             {
-                Text = ChartFormResources.MonthlyTrendTitle,
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                Padding = new Padding(10),
-                Margin = new Padding(10)
-            };
-            // Use LiveCharts CartesianChart control for the bar/line/area chart
-            _cartesianChart = new CartesianChart
-            {
-                Dock = DockStyle.Fill
-            };
-            barChartGroup.Controls.Add(_cartesianChart);
-            chartSplit.Panel1.Controls.Add(barChartGroup);
-            chartSplit.Panel1.Padding = new Padding(10);
-
-            // === Pie Chart Panel ===
-            var pieChartGroup = new GroupBox
-            {
-                Text = ChartFormResources.CategoryBreakdownTitle,
+                Text = "Revenue Trends",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 Padding = new Padding(10),
-                Margin = new Padding(10)
+                Margin = new Padding(5)
             };
-            // Use LiveCharts PieChart control for category breakdown
-            _pieChart = new PieChart
+            revenueChart = new ChartControl
             {
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                ShowLegend = true,
+                LegendsPlacement = ChartPlacement.Outside
             };
-            pieChartGroup.Controls.Add(_pieChart);
-            chartSplit.Panel2.Controls.Add(pieChartGroup);
-            chartSplit.Panel2.Padding = new Padding(10);
+            revenueChart.ChartArea.BackInterior = new Syncfusion.Drawing.BrushInfo(Color.White);
+            revenueChart.PrimaryXAxis.Title = "Time";
+            revenueChart.PrimaryXAxis.TitleColor = Color.FromArgb(108, 117, 125);
+            revenueChart.PrimaryYAxis.Title = "Revenue ($)";
+            revenueGroup.Controls.Add(revenueChart);
+            chartTable.Controls.Add(revenueGroup, 0, 0);
 
-            mainSplit.Panel1.Controls.Add(chartSplit);
+            // Expenditure Chart (Column)
+            var expenditureGroup = new GroupBox
+            {
+                Text = "Expenditure Breakdown",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Padding = new Padding(10),
+                Margin = new Padding(5)
+            };
+            expenditureChart = new ChartControl
+            {
+                Dock = DockStyle.Fill,
+                ShowLegend = true,
+                LegendsPlacement = ChartPlacement.Outside
+            };
+            expenditureChart.ChartArea.BackInterior = new Syncfusion.Drawing.BrushInfo(Color.White);
+            expenditureChart.PrimaryXAxis.Title = "Department";
+            expenditureChart.PrimaryXAxis.TitleColor = Color.FromArgb(108, 117, 125);
+            expenditureChart.PrimaryYAxis.TitleColor = Color.FromArgb(108, 117, 125);
+            expenditureGroup.Controls.Add(expenditureChart);
+            chartTable.Controls.Add(expenditureGroup, 1, 0);
+
+            // Cumulative Chart (Stacked Column)
+            var cumulativeGroup = new GroupBox
+            {
+                Text = "Cumulative Budget",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Padding = new Padding(10),
+                Margin = new Padding(5)
+            };
+            cumulativeChart = new ChartControl
+            {
+                Dock = DockStyle.Fill,
+                ShowLegend = true,
+                LegendsPlacement = ChartPlacement.Outside
+            };
+            cumulativeChart.ChartArea.BackInterior = new Syncfusion.Drawing.BrushInfo(Color.White);
+            cumulativeChart.PrimaryXAxis.Title = "Month";
+            cumulativeChart.PrimaryYAxis.TitleColor = Color.FromArgb(108, 117, 125);
+            cumulativeGroup.Controls.Add(cumulativeChart);
+            // ToolTip property removed as it is invalid
+            chartTable.Controls.Add(cumulativeGroup, 0, 1);
+
+            // Proportion Chart (Pie)
+            var proportionGroup = new GroupBox
+            {
+                Text = "Budget Proportions",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Padding = new Padding(10),
+                Margin = new Padding(5)
+            };
+            proportionChart = new ChartControl
+            {
+                Dock = DockStyle.Fill,
+                ShowLegend = true,
+                LegendsPlacement = ChartPlacement.Outside
+            };
+            proportionChart.ChartArea.BackInterior = new Syncfusion.Drawing.BrushInfo(Color.White);
+            proportionGroup.Controls.Add(proportionChart);
+            chartTable.Controls.Add(proportionGroup, 1, 1);
+
+            mainSplit.Panel1.Controls.Add(chartTable);
 
             // === Right: Summary Panel ===
             var summaryPanel = new Panel
@@ -442,17 +511,31 @@ namespace WileyWidget.WinForms.Forms
             }
 
             // Apply initial values (likely placeholders). We'll also refresh after chart drawing completes
-            UpdateSummaryValues();
+            _ = UpdateSummaryValuesAsync();
 
             // Ensure charts redraw when the view model content changes
-            _vm.LineChartData.CollectionChanged += (s, e) => { DrawCharts(); UpdateSummaryValues(); };
-            _vm.PieChartData.CollectionChanged += (s, e) => { DrawCharts(); UpdateSummaryValues(); };
+            _vm.RevenueTrendSeries.CollectionChanged += (s, e) => { DrawCharts(); _ = UpdateSummaryValuesAsync(); };
+            _vm.ExpenditureColumnSeries.CollectionChanged += (s, e) => { DrawCharts(); _ = UpdateSummaryValuesAsync(); };
+            _vm.BudgetStackedSeries.CollectionChanged += (s, e) => { DrawCharts(); _ = UpdateSummaryValuesAsync(); };
+            _vm.ProportionPieSeries.CollectionChanged += (s, e) => { DrawCharts(); _ = UpdateSummaryValuesAsync(); };
 
             // Make UpdateSummaryValues available later when data changes
-            // When the cartesian chart invalidates, refresh summary metrics
-            if (_cartesianChart != null)
+            // When the charts invalidate, refresh summary metrics
+            if (revenueChart != null)
             {
-                _cartesianChart.SizeChanged += (s, e) => UpdateSummaryValues();
+                revenueChart.SizeChanged += (s, e) => _ = UpdateSummaryValuesAsync();
+            }
+            if (expenditureChart != null)
+            {
+                expenditureChart.SizeChanged += (s, e) => _ = UpdateSummaryValuesAsync();
+            }
+            if (cumulativeChart != null)
+            {
+                cumulativeChart.SizeChanged += (s, e) => _ = UpdateSummaryValuesAsync();
+            }
+            if (proportionChart != null)
+            {
+                proportionChart.SizeChanged += (s, e) => _ = UpdateSummaryValuesAsync();
             }
 
             // Trend indicator
@@ -499,98 +582,75 @@ namespace WileyWidget.WinForms.Forms
 
         public void DrawCharts()
         {
-            // TEMPORARY: Commented out due to LiveChartsCore CS0012 error (ISeries type resolution issue)
-            // This is a pre-existing bug that needs to be fixed separately
-            // TODO: Fix LiveChartsCore type references for ISeries and ICartesianAxis
-
-            _logger.LogWarning("DrawCharts temporarily disabled due to LiveChartsCore type resolution issue");
-
-            /*
-            // Map VM data into LiveCharts series and set chart properties
             try
             {
-                // Update Cartesian (monthly trend) chart
-                if (_cartesianChart != null)
+                // === Revenue Chart (Line) ===
+                if (revenueChart != null && _vm.RevenueTrendSeries.Count > 0)
                 {
-                    // Build X labels from categories
-                    var labels = _vm.LineChartData.Select(d => d.Category).ToArray();
-
-                    // Create a single series using the selected chart type
-                    var values = _vm.LineChartData.Select(d => d.Value).ToArray();
-                    var chartType = _chartTypeCombo?.SelectedItem?.ToString() ?? "Bar";
-
-                    var series = chartType switch
+                    revenueChart.Series.Clear();
+                    foreach (var series in _vm.RevenueTrendSeries)
                     {
-                        "Line" => new[]
-                        {
-                            new LineSeries<double>
-                            {
-                                Values = values,
-                                Name = "Monthly",
-                                DataLabelsPaint = new SolidColorPaint(SKColors.Black),
-                                DataLabelsSize = 10,
-                                DataLabelsPosition = DataLabelsPosition.Top,
-                                Stroke = new SolidColorPaint(SKColors.DeepSkyBlue, 2)
-                            }
-                        },
-                        "Area" => new[]
-                        {
-                            new LineSeries<double>
-                            {
-                                Values = values,
-                                Name = "Monthly",
-                                DataLabelsPaint = new SolidColorPaint(SKColors.Black),
-                                DataLabelsSize = 10,
-                                DataLabelsPosition = DataLabelsPosition.Top,
-                                Fill = new SolidColorPaint(SKColors.LightSkyBlue.WithAlpha(180))
-                            }
-                        },
-                        _ => new[]
-                        {
-                            new ColumnSeries<double>
-                            {
-                                Values = values,
-                                Name = "Monthly",
-                                DataLabelsPaint = new SolidColorPaint(SKColors.Black),
-                                DataLabelsSize = 10,
-                                DataLabelsPosition = DataLabelsPosition.Top
-                            }
-                        }
-                    };
-
-                    _cartesianChart.Series = series;
-                    _cartesianChart.XAxes = new Axis[] { new Axis { Labels = labels, LabelsRotation = 0 } };
-                    _cartesianChart.YAxes = new Axis[] { new Axis { Labeler = value => value.ToString("C0", CultureInfo.CurrentCulture) } };
+                        series.Type = ChartSeriesType.Line;
+                        // Enable data labels for better visualization
+                        series.Style.DisplayText = true;
+                        series.Style.TextColor = Color.FromArgb(33, 37, 41);
+                        revenueChart.Series.Add(series);
+                    }
+                    revenueChart.Refresh();
+                    _logger.LogDebug("Revenue chart rendered with RevenueTrendSeries");
                 }
 
-                // Update Pie chart
-                if (_pieChart != null)
+                // === Expenditure Chart (Column) ===
+                if (expenditureChart != null && _vm.ExpenditureColumnSeries.Count > 0)
                 {
-                    var pieSeries = _vm.PieChartData.Select(p =>
-                        new PieSeries<double>
-                        {
-                            Values = new double[] { p.Value },
-                            Name = p.Category,
-                            DataLabelsPaint = new SolidColorPaint(SKColors.Black),
-                            DataLabelsSize = 11,
-                            DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.ChartCenter,
-                        })
-                        .ToArray();
+                    expenditureChart.Series.Clear();
+                    foreach (var series in _vm.ExpenditureColumnSeries)
+                    {
+                        series.Type = ChartSeriesType.Column;
+                        // Enable data labels
+                        series.Style.DisplayText = true;
+                        series.Style.TextColor = Color.FromArgb(33, 37, 41);
+                        expenditureChart.Series.Add(series);
+                    }
+                    expenditureChart.Refresh();
+                    _logger.LogDebug("Expenditure chart rendered with ExpenditureColumnSeries");
+                }
 
-                    _pieChart.Series = pieSeries;
+                // === Cumulative Chart (Stacked Column) ===
+                if (cumulativeChart != null && _vm.BudgetStackedSeries.Count > 0)
+                {
+                    cumulativeChart.Series.Clear();
+                    foreach (var series in _vm.BudgetStackedSeries)
+                    {
+                        series.Type = ChartSeriesType.StackingColumn;
+                        // Enable data labels
+                        series.Style.DisplayText = true;
+                        series.Style.TextColor = Color.White;
+                        cumulativeChart.Series.Add(series);
+                    }
+                    cumulativeChart.Refresh();
+                    _logger.LogDebug("Cumulative chart rendered with BudgetStackedSeries");
+                }
+
+                // === Proportion Chart (Pie) ===
+                if (proportionChart != null && _vm.ProportionPieSeries.Count > 0)
+                {
+                    proportionChart.Series.Clear();
+                    foreach (var series in _vm.ProportionPieSeries)
+                    {
+                        // Enable data labels for pie chart
+                        series.Style.DisplayText = true;
+                        series.Style.TextColor = Color.FromArgb(33, 37, 41);
+                        proportionChart.Series.Add(series);
+                    }
+                    proportionChart.Refresh();
+                    _logger.LogDebug("Proportion chart rendered with ProportionPieSeries");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "DrawCharts failed");
+                _logger.LogError(ex, "Error rendering charts");
             }
-            finally
-            {
-                // Ask the controls to re-render
-                _cartesianChart?.Refresh();
-                _pieChart?.Refresh();
-            }
-            */
         }
 
         protected override void OnResize(EventArgs e)
@@ -603,8 +663,10 @@ namespace WileyWidget.WinForms.Forms
         {
             if (disposing)
             {
-                _cartesianChart?.Dispose();
-                _pieChart?.Dispose();
+                revenueChart?.Dispose();
+                expenditureChart?.Dispose();
+                cumulativeChart?.Dispose();
+                proportionChart?.Dispose();
                 _yearSelector?.Dispose();
                 _categoryFilter?.Dispose();
                 _chartTypeCombo?.Dispose();

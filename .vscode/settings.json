@@ -60,7 +60,8 @@
       "args": ["-y", "@modelcontextprotocol/server-mssql"],
       "env": {
         "MSSQL_CONNECTION_STRING": "${env:MSSQL_CONNECTION_STRING}"
-      }
+      },
+      "disabled": true
     },
     "syncfusion-docs": {
       "command": "C:/Users/biges/Desktop/Wiley-Widget/.venv/Scripts/python.exe",

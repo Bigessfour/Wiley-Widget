@@ -95,6 +95,7 @@ def scan(root: Path):
                 if fp.stat().st_size > 2_000_000:  # 2MB
                     continue
                 text = fp.read_text(encoding="utf-8", errors="ignore")
+            # trunk-ignore(bandit/B112)
             except Exception:
                 continue
 

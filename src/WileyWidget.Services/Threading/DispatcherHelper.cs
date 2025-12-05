@@ -3,35 +3,38 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace WileyWidget.Services.Threading;
 
 /// <summary>
-/// Implementation of IDispatcherHelper for WPF dispatcher operations
+/// Implementation of IDispatcherHelper using SynchronizationContext for cross-platform UI thread marshaling.
+/// Works with WinForms, WPF, and other UI frameworks that set up a SynchronizationContext.
 /// </summary>
 public class DispatcherHelper : IDispatcherHelper
 {
-    private readonly Dispatcher _dispatcher;
+    private readonly SynchronizationContext _syncContext;
+    private readonly int _uiThreadId;
     private readonly ILogger<DispatcherHelper>? _logger;
 
     public DispatcherHelper()
     {
-        // Use Application.Current.Dispatcher to ensure we always get the main UI dispatcher
-        // This is safer than Dispatcher.CurrentDispatcher which depends on which thread creates the instance
-        _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+        // Capture the current SynchronizationContext - must be called from UI thread
+        _syncContext = SynchronizationContext.Current
+            ?? throw new InvalidOperationException("No SynchronizationContext available. DispatcherHelper must be created on the UI thread.");
+        _uiThreadId = Thread.CurrentThread.ManagedThreadId;
     }
 
-    public DispatcherHelper(Dispatcher dispatcher)
+    public DispatcherHelper(SynchronizationContext syncContext)
     {
-        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _syncContext = syncContext ?? throw new ArgumentNullException(nameof(syncContext));
+        _uiThreadId = Thread.CurrentThread.ManagedThreadId;
     }
 
-    public DispatcherHelper(Dispatcher dispatcher, ILogger<DispatcherHelper> logger)
+    public DispatcherHelper(SynchronizationContext syncContext, ILogger<DispatcherHelper> logger)
     {
-        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _syncContext = syncContext ?? throw new ArgumentNullException(nameof(syncContext));
+        _uiThreadId = Thread.CurrentThread.ManagedThreadId;
         _logger = logger;
     }
 
@@ -40,7 +43,7 @@ public class DispatcherHelper : IDispatcherHelper
     /// </summary>
     public bool CheckAccess()
     {
-        return _dispatcher.CheckAccess();
+        return Thread.CurrentThread.ManagedThreadId == _uiThreadId;
     }
 
     /// <summary>
@@ -52,18 +55,32 @@ public class DispatcherHelper : IDispatcherHelper
         if (action == null) throw new ArgumentNullException(nameof(action));
 
         var callingThreadId = Thread.CurrentThread.ManagedThreadId;
-        var uiThreadId = _dispatcher.Thread.ManagedThreadId;
 
         if (CheckAccess())
         {
-            _logger?.LogTrace("Dispatcher.Invoke - Already on UI thread (ThreadId: {ThreadId})", callingThreadId);
+            _logger?.LogTrace("DispatcherHelper.Invoke - Already on UI thread (ThreadId: {ThreadId})", callingThreadId);
             action();
         }
         else
         {
-            _logger?.LogTrace("Dispatcher.Invoke - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}",
-                callingThreadId, uiThreadId);
-            _dispatcher.Invoke(action);
+            _logger?.LogTrace("DispatcherHelper.Invoke - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}",
+                callingThreadId, _uiThreadId);
+
+            Exception? capturedException = null;
+            _syncContext.Send(_ =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    capturedException = ex;
+                }
+            }, null);
+
+            if (capturedException != null)
+                throw capturedException;
         }
     }
 
@@ -78,18 +95,35 @@ public class DispatcherHelper : IDispatcherHelper
         if (func == null) throw new ArgumentNullException(nameof(func));
 
         var callingThreadId = Thread.CurrentThread.ManagedThreadId;
-        var uiThreadId = _dispatcher.Thread.ManagedThreadId;
 
         if (CheckAccess())
         {
-            _logger?.LogTrace("Dispatcher.Invoke<T> - Already on UI thread (ThreadId: {ThreadId})", callingThreadId);
+            _logger?.LogTrace("DispatcherHelper.Invoke<T> - Already on UI thread (ThreadId: {ThreadId})", callingThreadId);
             return func();
         }
         else
         {
-            _logger?.LogTrace("Dispatcher.Invoke<T> - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}",
-                callingThreadId, uiThreadId);
-            return _dispatcher.Invoke(func);
+            _logger?.LogTrace("DispatcherHelper.Invoke<T> - Marshalling from ThreadId: {CallingThread} to UI ThreadId: {UIThread}",
+                callingThreadId, _uiThreadId);
+
+            T result = default!;
+            Exception? capturedException = null;
+            _syncContext.Send(_ =>
+            {
+                try
+                {
+                    result = func();
+                }
+                catch (Exception ex)
+                {
+                    capturedException = ex;
+                }
+            }, null);
+
+            if (capturedException != null)
+                throw capturedException;
+
+            return result;
         }
     }
 
@@ -118,19 +152,31 @@ public class DispatcherHelper : IDispatcherHelper
     /// Executes an action on the UI thread asynchronously with priority
     /// </summary>
     /// <param name="action">The action to execute</param>
-    /// <param name="priority">The dispatcher priority</param>
+    /// <param name="priority">The dispatcher priority (informational in WinForms context)</param>
     /// <returns>A task representing the async operation</returns>
     public Task InvokeAsync(Action action, DispatcherPriority priority)
     {
         if (action == null) throw new ArgumentNullException(nameof(action));
 
         var callingThreadId = Thread.CurrentThread.ManagedThreadId;
-        var uiThreadId = _dispatcher.Thread.ManagedThreadId;
+        _logger?.LogTrace("DispatcherHelper.InvokeAsync - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}",
+            priority, callingThreadId, _uiThreadId);
 
-        _logger?.LogTrace("Dispatcher.InvokeAsync - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}",
-            priority, callingThreadId, uiThreadId);
+        var tcs = new TaskCompletionSource<bool>();
+        _syncContext.Post(_ =>
+        {
+            try
+            {
+                action();
+                tcs.SetResult(true);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        }, null);
 
-        return _dispatcher.InvokeAsync(action, priority).Task;
+        return tcs.Task;
     }
 
     /// <summary>
@@ -138,18 +184,29 @@ public class DispatcherHelper : IDispatcherHelper
     /// </summary>
     /// <typeparam name="T">The return type</typeparam>
     /// <param name="func">The function to execute</param>
-    /// <param name="priority">The dispatcher priority</param>
+    /// <param name="priority">The dispatcher priority (informational in WinForms context)</param>
     /// <returns>A task representing the async operation with result</returns>
     public Task<T> InvokeAsync<T>(Func<T> func, DispatcherPriority priority)
     {
         if (func == null) throw new ArgumentNullException(nameof(func));
 
         var callingThreadId = Thread.CurrentThread.ManagedThreadId;
-        var uiThreadId = _dispatcher.Thread.ManagedThreadId;
+        _logger?.LogTrace("DispatcherHelper.InvokeAsync<T> - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}",
+            priority, callingThreadId, _uiThreadId);
 
-        _logger?.LogTrace("Dispatcher.InvokeAsync<T> - Priority: {Priority}, ThreadId: {CallingThread} -> UI ThreadId: {UIThread}",
-            priority, callingThreadId, uiThreadId);
+        var tcs = new TaskCompletionSource<T>();
+        _syncContext.Post(_ =>
+        {
+            try
+            {
+                tcs.SetResult(func());
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        }, null);
 
-        return _dispatcher.InvokeAsync(func, priority).Task;
+        return tcs.Task;
     }
 }

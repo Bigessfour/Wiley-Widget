@@ -1164,9 +1164,124 @@
 				}
 			],
 			"detail": "Run xaml-strict-validator when XamlCompiler.exe fails silently (MSB3073) to extract exact XAML errors"
+		},
+		{
+			"label": "nuget:start-server",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/nuget/start-server.ps1"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": [],
+			"detail": "Start the private NuGet server (BaGet) for Syncfusion patches"
+		},
+		{
+			"label": "nuget:stop-server",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/nuget/start-server.ps1",
+				"-Stop"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"detail": "Stop the private NuGet server"
+		},
+		{
+			"label": "nuget:push-package",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/nuget/push-package.ps1",
+				"-PackagePath",
+				"${input:nugetPackagePath}"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": [],
+			"detail": "Push a NuGet package to the private feed"
+		},
+		{
+			"label": "nuget:list-packages",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/nuget/list-packages.ps1"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"detail": "List packages on the private NuGet feed"
+		},
+		{
+			"label": "nuget:push-syncfusion-patches",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/nuget/push-package.ps1",
+				"-PackagePath",
+				"${workspaceFolder}/packages/local/syncfusion-patches/*.nupkg",
+				"-SkipDuplicate"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"problemMatcher": [],
+			"detail": "Push all Syncfusion patches from local directory to private feed"
 		}
 	],
 	"inputs": [
+		{
+			"id": "nugetPackagePath",
+			"type": "promptString",
+			"description": "Path to the .nupkg file to push",
+			"default": "${workspaceFolder}/packages/local/syncfusion-patches/"
+		},
 		{
 			"id": "intelligentScriptPath",
 			"type": "promptString",

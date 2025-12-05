@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System.Threading;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.Services;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -15,6 +16,7 @@ namespace WileyWidget.WinForms.ViewModels
     {
         private readonly ILogger<MainViewModel> _logger;
         private readonly IMainDashboardService _dashboardService;
+        private readonly IAILoggingService _aiLoggingService;
 
         [ObservableProperty]
         private string title = "Wiley Widget — WinForms + .NET 9";
@@ -45,10 +47,11 @@ namespace WileyWidget.WinForms.ViewModels
 
         public IAsyncRelayCommand LoadDataCommand { get; }
 
-        public MainViewModel(ILogger<MainViewModel> logger, IMainDashboardService dashboardService)
+        public MainViewModel(ILogger<MainViewModel> logger, IMainDashboardService dashboardService, IAILoggingService aiLoggingService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
+            _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
 
             try
             {
@@ -87,12 +90,14 @@ namespace WileyWidget.WinForms.ViewModels
             catch (OperationCanceledException oce)
             {
                 _logger.LogWarning(oce, "Dashboard data loading canceled");
+                _aiLoggingService.LogError("Dashboard Load", oce);
                 return;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to load dashboard data");
                 ErrorMessage = "Failed to load dashboard data";
+                _aiLoggingService.LogError("Dashboard Load", ex);
             }
             finally
             {
@@ -109,11 +114,13 @@ namespace WileyWidget.WinForms.ViewModels
             catch (OperationCanceledException oce)
             {
                 _logger.LogWarning(oce, "MainViewModel initialization canceled");
+                _aiLoggingService.LogError("MainViewModel Initialize", oce);
                 return;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "MainViewModel failed during InitializeAsync");
+                _aiLoggingService.LogError("MainViewModel Initialize", ex);
                 throw;
             }
         }

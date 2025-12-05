@@ -2,15 +2,13 @@
 
   <PropertyGroup>
     <!-- Align TFM with solution-wide Windows target to avoid project compatibility (NU1201) -->
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <GenerateWinMD>true</GenerateWinMD>
+    <TargetFrameworks>net9.0;net9.0-windows</TargetFrameworks>
+    <GenerateWinMD Condition="$(TargetFramework.Contains('windows'))">true</GenerateWinMD>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <NoWarn>NU1902;NU1903</NoWarn>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Enable WPF APIs (DispatcherPriority etc.) used by some abstractions -->
-    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>

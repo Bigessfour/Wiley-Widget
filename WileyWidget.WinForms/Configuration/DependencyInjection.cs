@@ -59,20 +59,31 @@ namespace WileyWidget.WinForms.Configuration
             System.Diagnostics.Debug.WriteLine($"  Server: {ExtractConnectionStringPart(connectionString, "Server") ?? ExtractConnectionStringPart(connectionString, "Data Source") ?? "(unknown)"}");
             System.Diagnostics.Debug.WriteLine($"  Database: {ExtractConnectionStringPart(connectionString, "Database") ?? ExtractConnectionStringPart(connectionString, "Initial Catalog") ?? "(unknown)"}");
 
-            // Register AppDbContext as Scoped to ensure a single DbContext instance per DI scope.
-            // This keeps DbContext lifetime aligned with UI/dialog/service scopes and avoids manual factory management.
-            services.AddDbContext<AppDbContext>(options =>
+            // Use a DbContextFactory to create short-lived DbContext instances when needed.
+            // Register AppDbContext via the factory so existing code that depends on AppDbContext
+            // can still resolve it as Scoped while allowing concurrent operations via the factory.
+
+            // Also register a DbContextFactory so callers can create short-lived DbContext instances
+            // This is important for UI/WinForms scenarios where multiple concurrent async operations
+            // may occur on background threads. The factory prevents "A second operation was started"
+            // EF Core concurrency exceptions by giving each operation its own context instance.
+            services.AddDbContextFactory<AppDbContext>(options =>
             {
                 options.UseSqlServer(connectionString);
                 options.EnableSensitiveDataLogging(configuration.GetValue<bool>("DB:EnableSensitiveDataLogging", false));
                 options.EnableDetailedErrors(configuration.GetValue<bool>("DB:EnableDetailedErrors", true));
             });
-            Debug.WriteLine("DI: Registered AddDbContext<AppDbContext> (Scoped)");
+            Debug.WriteLine("DI: Registered AddDbContextFactory<AppDbContext>");
+
+            // Provide AppDbContext as Scoped by creating a new context from the factory per scope.
+            // Use GetRequiredService via the alias to avoid ambiguity with other GetRequiredService extension methods
+            services.AddScoped(sp => ServiceProviderExtensions.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<AppDbContext>>(sp).CreateDbContext());
+            Debug.WriteLine("DI: Registered Scoped AppDbContext backed by IDbContextFactory");
 
             // === CORE SERVICES ===
             services.AddSingleton<ISettingsService, SettingsService>();
             Debug.WriteLine("DI: Registered ISettingsService -> SettingsService (Singleton)");
-            services.AddSingleton<SettingsService>(sp => (SettingsService)Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ISettingsService>(sp));
+            services.AddSingleton<SettingsService>(sp => (SettingsService)sp.GetService(typeof(ISettingsService))!);
             Debug.WriteLine("DI: Registered SettingsService (singleton facade)");
             services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
             Debug.WriteLine("DI: Registered ISecretVaultService -> EncryptedLocalSecretVaultService (Singleton)");
@@ -152,8 +163,19 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered IMainDashboardService -> MainDashboardService (Transient)");
             services.AddTransient<ISettingsManagementService, SettingsManagementService>();
             Debug.WriteLine("DI: Registered ISettingsManagementService -> SettingsManagementService (Transient)");
+            // Register validator for SettingsDto. This ensures SettingsManagementService can resolve
+            // its validation dependency during startup validation and at runtime.
             services.AddTransient<IValidator<SettingsDto>, SettingsDtoValidator>();
             Debug.WriteLine("DI: Registered IValidator<SettingsDto> -> SettingsDtoValidator (Transient)");
+
+            // Extra safety: ensure the service collection actually contains a registration for the validator
+            // when building the diagnostic provider. If not present for any reason (assembly binding issues,
+            // conditional compilation, etc.), register a fallback implementation so resolution succeeds.
+            if (!services.Any(sd => sd.ServiceType == typeof(IValidator<SettingsDto>)))
+            {
+                services.AddTransient<IValidator<SettingsDto>, SettingsDtoValidator>();
+                Debug.WriteLine("DI: Fallback registered IValidator<SettingsDto> -> SettingsDtoValidator (Transient)");
+            }
 
             // Register both Excel export implementations for flexibility
             // ClosedXmlExportService and ExcelExportService both implement IExcelExportService

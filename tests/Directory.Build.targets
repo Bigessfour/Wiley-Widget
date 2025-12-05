@@ -1,0 +1,4 @@
+<Project>
+    <!-- xUnit v3 requires OutputType=Exe (generates its own entry point) -->
+    <!-- Previously this forced Library for xUnit v2, but v3 is executable-based -->
+</Project>
