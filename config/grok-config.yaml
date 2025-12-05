@@ -1,24 +1,127 @@
+# =============================================================================
+# Grok Model Configurations for xAI API
+# Updated: 2025-12-05 from https://docs.x.ai/docs/models
+# SDK Requirement: xai-sdk>=1.3.1 (pip install xai-sdk>=1.3.1)
+# =============================================================================
+
+- name: Grok 4.1 Fast Config
+  version: 1.1.0
+  schema: v1
+  description: |
+    Grok 4.1 Fast - xAI's best tool-calling model with 2M context window.
+    Excels at complex real-world agentic tasks like customer support and finance.
+    Released: November 19, 2025
+  models:
+    # -------------------------------------------------------------------------
+    # Grok 4.1 Fast Reasoning - Best for agentic/tool-calling tasks
+    # -------------------------------------------------------------------------
+    - name: Grok 4.1 Fast Reasoning
+      provider: xAI
+      model: grok-4-1-fast-reasoning
+      apiBase: https://api.x.ai/v1
+      apiKeyEnv: XAI_API_KEY
+      contextWindow: 2000000  # 2M tokens
+      maxOutputTokens: 8192
+      capabilities:
+        - text-input
+        - text-output
+        - tool-calling
+        - agentic-workflows
+        - multi-turn-reasoning
+        - long-context
+      pricing:
+        input: $0.20/1M tokens
+        cachedInput: $0.05/1M tokens
+        output: $0.50/1M tokens
+        toolCalls: $5/1000 invocations
+      description: |
+        Maximal intelligence variant. Best for:
+        - Complex tool-calling scenarios
+        - Multi-turn agentic workflows
+        - Long-horizon reinforcement learning tasks
+        - Enterprise customer support
+        - Deep research with web/X search
+      benchmarks:
+        tau2_bench_telecom: "State-of-the-art"
+        bfcl_v4_accuracy: 72%
+        hallucination_rate: "50% lower than Grok 4 Fast"
+      usage_instructions: |
+        from xai_sdk import Client
+        from xai_sdk.tools import code_execution, web_search, x_search
+        
+        client = Client(api_key=os.getenv("XAI_API_KEY"))
+        chat = client.chat.create(
+            model="grok-4-1-fast-reasoning",
+            tools=[web_search(), x_search(), code_execution()],
+        )
+
+    # -------------------------------------------------------------------------
+    # Grok 4.1 Fast Non-Reasoning - Speed optimized
+    # -------------------------------------------------------------------------
+    - name: Grok 4.1 Fast Non-Reasoning
+      provider: xAI
+      model: grok-4-1-fast-non-reasoning
+      apiBase: https://api.x.ai/v1
+      apiKeyEnv: XAI_API_KEY
+      contextWindow: 2000000  # 2M tokens
+      maxOutputTokens: 8192
+      capabilities:
+        - text-input
+        - text-output
+        - instant-responses
+        - autocomplete
+      pricing:
+        input: $0.20/1M tokens
+        cachedInput: $0.05/1M tokens
+        output: $0.50/1M tokens
+      description: |
+        Speed-optimized variant for instant responses.
+        Best for autocomplete and quick queries.
+      usage_instructions: |
+        import requests
+        url = "https://api.x.ai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        payload = {
+            "model": "grok-4-1-fast-non-reasoning",
+            "messages": [{"role": "user", "content": "Hello"}]
+        }
+        response = requests.post(url, json=payload, headers=headers)
+
 - name: Grok-4 Config
   version: 1.0.0
   schema: v1
   models:
+    # -------------------------------------------------------------------------
+    # Grok 4 - Full reasoning model (no non-reasoning mode)
+    # -------------------------------------------------------------------------
     - name: Grok-4
       provider: xAI
       model: grok-4
+      apiBase: https://api.x.ai/v1
       apiKeyEnv: XAI_API_KEY
-      description: Configuration for accessing the Grok-4 model via xAI's paid API. Ensure you have a valid subscription and comply with xAI's terms of service.
+      knowledgeCutoff: November 2024
+      capabilities:
+        - text-input
+        - text-output
+        - image-input
+        - image-output
+        - reasoning
+      restrictions:
+        - presencePenalty not supported
+        - frequencyPenalty not supported
+        - stop parameter not supported
+        - reasoning_effort not supported
+      description: |
+        Grok 4 is a reasoning model. No non-reasoning mode available.
+        Use grok-4-1-fast-non-reasoning for speed-optimized tasks.
       usage_instructions: |
-        To use this config:
-        1. Integrate with an API client that supports xAI's endpoint (e.g., similar to OpenAI's API structure).
-        2. Example Python usage:
-           import requests
-           url = "https://api.x.ai/v1/chat/completions"  # Replace with actual xAI API endpoint
-           headers = {"Authorization": f"Bearer {apiKey}"}
-           payload = {"model": "grok-4", "messages": [{"role": "user", "content": "Hello"}]}
-           response = requests.post(url, json=payload, headers=headers)
-        3. Note: API endpoints and availability may vary; check xAI documentation for the latest details. Grok-4 may not be publicly available yet—verify with xAI.
+        import requests
+        url = "https://api.x.ai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        payload = {"model": "grok-4", "messages": [{"role": "user", "content": "Hello"}]}
+        response = requests.post(url, json=payload, headers=headers)
       license: Proprietary (xAI Paid Access)
-      repository: https://x.ai/ # Official xAI site for more info
+      repository: https://x.ai/
 - name: Open Source Grok Config
   version: 1.0.0
   schema: v1

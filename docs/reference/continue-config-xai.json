@@ -1,11 +1,47 @@
 {
+  "$schema": "https://continue.dev/schema/config.json",
   "models": [
     {
-      "title": "Grok-4-0709 (Latest)",
+      "title": "Grok 4.1 Fast Reasoning (2M · Best Agentic)",
       "provider": "openai",
-      "model": "grok-4-0709",
+      "model": "grok-4-1-fast-reasoning",
       "apiBase": "https://api.x.ai/v1",
-      "apiKey": "YOUR_XAI_API_KEY_HERE"
+      "apiKey": "YOUR_XAI_API_KEY_HERE",
+      "contextLength": 2000000,
+      "maxTokens": 8192,
+      "completionOptions": {
+        "temperature": 0.7
+      },
+      "capabilities": {
+        "tools": true,
+        "vision": false,
+        "streaming": true
+      }
+    },
+    {
+      "title": "Grok 4.1 Fast Non-Reasoning (Speed Demon)",
+      "provider": "openai",
+      "model": "grok-4-1-fast-non-reasoning",
+      "apiBase": "https://api.x.ai/v1",
+      "apiKey": "YOUR_XAI_API_KEY_HERE",
+      "contextLength": 2000000,
+      "maxTokens": 8192,
+      "completionOptions": {
+        "temperature": 0.3
+      }
+    },
+    {
+      "title": "Grok 4 (Full Reasoning)",
+      "provider": "openai",
+      "model": "grok-4",
+      "apiBase": "https://api.x.ai/v1",
+      "apiKey": "YOUR_XAI_API_KEY_HERE",
+      "maxTokens": 8192,
+      "capabilities": {
+        "tools": true,
+        "vision": true,
+        "streaming": true
+      }
     },
     {
       "title": "Grok-2 (Stable)",
@@ -13,21 +49,15 @@
       "model": "grok-2-latest",
       "apiBase": "https://api.x.ai/v1",
       "apiKey": "YOUR_XAI_API_KEY_HERE"
-    },
-    {
-      "title": "Grok-beta (Fast)",
-      "provider": "openai",
-      "model": "grok-beta",
-      "apiBase": "https://api.x.ai/v1",
-      "apiKey": "YOUR_XAI_API_KEY_HERE"
     }
   ],
   "tabAutocompleteModel": {
-    "title": "Grok-beta",
+    "title": "Grok 4.1 Fast Non-Reasoning",
     "provider": "openai",
-    "model": "grok-beta",
+    "model": "grok-4-1-fast-non-reasoning",
     "apiBase": "https://api.x.ai/v1",
-    "apiKey": "YOUR_XAI_API_KEY_HERE"
+    "apiKey": "YOUR_XAI_API_KEY_HERE",
+    "contextLength": 2000000
   },
   "slashCommands": [
     {
@@ -41,6 +71,11 @@
     {
       "name": "test",
       "description": "Generate unit tests"
+    },
+    {
+      "name": "agent",
+      "description": "Execute agentic multi-step task",
+      "prompt": "Execute this multi-step agentic task using tool-calling. Plan, execute each step, and verify: {{input}}"
     }
   ],
   "contextProviders": [
@@ -58,6 +93,12 @@
     },
     {
       "name": "codebase",
+      "params": {
+        "nRetrieve": 15
+      }
+    },
+    {
+      "name": "problems",
       "params": {}
     }
   ],

@@ -208,6 +208,8 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered SettingsForm (Scoped)");
             services.AddScoped<AccountsForm>();
             Debug.WriteLine("DI: Registered AccountsForm (Scoped)");
+            services.AddScoped<BudgetOverviewForm>();
+            Debug.WriteLine("DI: Registered BudgetOverviewForm (Scoped)");
 
             // === DI VALIDATION: Build a temporary provider with ValidateScopes = true and
             // attempt to resolve important scoped services (ViewModels) so errors are surfaced early

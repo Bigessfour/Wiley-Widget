@@ -15,6 +15,11 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main()
         {
+            // === GLOBAL EXCEPTION HANDLERS (MUST BE FIRST) ===
+            // Wire up unhandled exception handlers BEFORE any other code runs
+            // to ensure we catch and log ALL exceptions that escape normal handling
+            SetupGlobalExceptionHandlers();
+
             // === Register Syncfusion License FIRST ===
             // CRITICAL: Must be called BEFORE ApplicationConfiguration.Initialize()
             // and BEFORE any Syncfusion control is initiated
@@ -39,8 +44,142 @@ namespace WileyWidget.WinForms
             // IMPORTANT: MainForm is Scoped, so resolve it within a service scope
             using (var scope = host.Services.CreateScope())
             {
-                Application.Run(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider));
+                // Check for test mode to provide better error handling during UI tests
+                var isTestMode = Environment.GetEnvironmentVariable("WILEY_UI_TEST_MODE") == "true";
+
+                try
+                {
+                    var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider);
+                    Application.Run(mainForm);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Fatal(ex, "Critical error running MainForm");
+                    System.Diagnostics.Debug.WriteLine($"FATAL: MainForm failed: {ex}");
+
+                    if (isTestMode)
+                    {
+                        // In test mode, show a dialog that FlaUI can detect
+                        MessageBox.Show(
+                            $"Startup failed: {ex.Message}\n\nDetails: {ex.GetType().Name}",
+                            "Wiley Widget - Startup Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }
+                    else
+                    {
+                        // In normal mode, show user-friendly error
+                        MessageBox.Show(
+                            $"The application encountered an error during startup:\n\n{ex.Message}\n\nPlease check the logs for more details.",
+                            "Wiley Widget - Startup Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }
+
+                    throw; // Re-throw to terminate the application
+                }
             }
+        }
+
+        /// <summary>
+        /// Set up global exception handlers to catch and log all unhandled exceptions.
+        /// This includes:
+        /// - AppDomain.CurrentDomain.UnhandledException: Non-UI thread exceptions
+        /// - TaskScheduler.UnobservedTaskException: Unobserved Task exceptions
+        /// - Application.ThreadException: WinForms UI thread exceptions
+        /// - AppDomain.CurrentDomain.FirstChanceException: ALL exceptions (for debugging)
+        /// </summary>
+        private static void SetupGlobalExceptionHandlers()
+        {
+            // First-chance exception handler - logs ALL exceptions as they are thrown,
+            // even if they will be caught later. Essential for debugging DI issues.
+            AppDomain.CurrentDomain.FirstChanceException += (sender, args) =>
+            {
+                var ex = args.Exception;
+
+                // Filter out common noise exceptions that are expected
+                if (ex is OperationCanceledException)
+                {
+                    Serilog.Log.Debug(ex, "[FirstChance] OperationCanceledException: {Message}", ex.Message);
+                }
+                else if (ex is InvalidOperationException ioe && ioe.Source == "Microsoft.Extensions.DependencyInjection")
+                {
+                    // This is a DI exception - log with full details
+                    Serilog.Log.Warning(ex, "[FirstChance][DI] InvalidOperationException from DI container: {Message}", ex.Message);
+                    System.Diagnostics.Debug.WriteLine($"[FirstChance][DI] {ex.GetType().Name}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"  StackTrace: {ex.StackTrace}");
+                }
+                else if (ex is InvalidOperationException)
+                {
+                    Serilog.Log.Debug(ex, "[FirstChance] InvalidOperationException: {Message}", ex.Message);
+                }
+                else if (ex is System.Net.Sockets.SocketException || ex is System.Net.Http.HttpRequestException)
+                {
+                    // Network exceptions are common and may be handled - log at Debug
+                    Serilog.Log.Debug(ex, "[FirstChance] Network exception: {Type} - {Message}", ex.GetType().Name, ex.Message);
+                }
+                else
+                {
+                    // Log other exceptions at Debug level to avoid noise
+                    Serilog.Log.Debug(ex, "[FirstChance] {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
+                }
+            };
+
+            // Unhandled exception handler - catches exceptions that escape all handlers
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                var ex = args.ExceptionObject as Exception;
+                if (ex != null)
+                {
+                    Serilog.Log.Fatal(ex, "[UNHANDLED] AppDomain.UnhandledException - IsTerminating: {IsTerminating}, Type: {ExceptionType}",
+                        args.IsTerminating, ex.GetType().FullName);
+                    System.Diagnostics.Debug.WriteLine($"[UNHANDLED] {ex.GetType().Name}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"  StackTrace: {ex.StackTrace}");
+                }
+                else
+                {
+                    Serilog.Log.Fatal("[UNHANDLED] AppDomain.UnhandledException with non-Exception object: {Object}",
+                        args.ExceptionObject?.ToString());
+                }
+
+                // Ensure logs are flushed
+                Serilog.Log.CloseAndFlush();
+            };
+
+            // Task scheduler exception handler - catches unobserved Task exceptions
+            TaskScheduler.UnobservedTaskException += (sender, args) =>
+            {
+                Serilog.Log.Error(args.Exception, "[UNOBSERVED] TaskScheduler.UnobservedTaskException: {Message}",
+                    args.Exception?.Message);
+                System.Diagnostics.Debug.WriteLine($"[UNOBSERVED] Task exception: {args.Exception?.Message}");
+                System.Diagnostics.Debug.WriteLine($"  StackTrace: {args.Exception?.StackTrace}");
+
+                // Mark as observed to prevent application crash
+                args.SetObserved();
+            };
+
+            // WinForms UI thread exception handler
+            Application.ThreadException += (sender, args) =>
+            {
+                var ex = args.Exception;
+                Serilog.Log.Error(ex, "[UI-THREAD] Application.ThreadException: {ExceptionType} - {Message}",
+                    ex.GetType().Name, ex.Message);
+                System.Diagnostics.Debug.WriteLine($"[UI-THREAD] {ex.GetType().Name}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"  StackTrace: {ex.StackTrace}");
+
+                // Show user-friendly error dialog
+                MessageBox.Show(
+                    $"An error occurred:\n\n{ex.Message}\n\nPlease check the logs for details.",
+                    "Wiley Widget - Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            };
+
+            // Set the unhandled exception mode for Windows Forms
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+
+            Serilog.Log.Debug("Global exception handlers configured successfully");
+            System.Diagnostics.Debug.WriteLine("Global exception handlers configured");
         }
 
         /// <summary>

@@ -1,56 +1,67 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <!-- Windows-only: Required for WinForms UI testing -->
-        <TargetFramework>net9.0-windows</TargetFramework>
-        <UseWindowsForms>true</UseWindowsForms>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <IsPackable>false</IsPackable>
-        <IsTestProject>true</IsTestProject>
-        <NoWarn>NU1902;NU1903;NU1701;CA2000;CA1062</NoWarn>
-    </PropertyGroup>
+  <PropertyGroup>
+    <!-- Windows-only: Required for WinForms UI testing -->
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <NoWarn>NU1902;NU1903;NU1701;CA2000;CA1062</NoWarn>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <Using Include="Xunit" />
-    </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <!-- Test framework packages (versions managed in Directory.Packages.props) -->
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="coverlet.collector">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
+  <ItemGroup>
+    <!-- Test framework packages (versions managed in Directory.Packages.props) -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
 
-        <!-- Mocking and assertions -->
-        <PackageReference Include="Moq" />
-        <PackageReference Include="FluentAssertions" />
+    <!-- Mocking and assertions -->
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
 
-        <!-- EF Core for data layer tests -->
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <!-- EF Core for data layer tests -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
 
-        <!-- Suppress Azure DocumentDB warnings -->
-        <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
-        <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
-    </ItemGroup>
+    <!-- FlaUI for Windows UI Automation testing -->
+    <PackageReference Include="FlaUI.Core" />
+    <PackageReference Include="FlaUI.UIA3" />    <!-- Suppress Azure DocumentDB warnings -->
+    <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
+    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <!-- WinForms project required for UI tests -->
-        <ProjectReference Include="..\..\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
+  <ItemGroup>
+    <!-- WinForms project required for UI tests -->
+    <ProjectReference Include="..\..\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
 
-        <!-- Core project references -->
-        <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
-        <ProjectReference Include="..\..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
-        <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
-        <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
-        <ProjectReference Include="..\..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-        <ProjectReference Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
-    </ItemGroup>
+    <!-- Core project references -->
+    <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+  </ItemGroup>
+
+  <!-- Copy required runtime files from WinForms project to ensure test-launched exe has all configs -->
+  <ItemGroup>
+    <Content Include="..\..\WileyWidget.WinForms\appsettings.json" Link="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- Test mode license placeholder for Syncfusion to avoid blocking dialogs -->
+    <None Include="license.key" CopyToOutputDirectory="PreserveNewest" Condition="Exists('license.key')" />
+  </ItemGroup>
 
 </Project>

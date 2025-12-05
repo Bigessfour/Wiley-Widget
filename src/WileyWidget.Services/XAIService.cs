@@ -457,6 +457,23 @@ public class XAIService : IAIService, IDisposable
 
             return "I'm experiencing network connectivity issues. Please check your internet connection and try again.";
         }
+        catch (OperationCanceledException ex) when (ex is not TaskCanceledException)
+        {
+            // OperationCanceledException from Polly timeout, rate limiter, or explicit cancellation
+            // TaskCanceledException (which extends OCE) is handled separately below
+            Log.Warning(ex, "xAI API operation was cancelled. Source: {Source}, IsCancellationRequested: {IsCancelled}",
+                ex.Source ?? "Unknown", ex.CancellationToken.IsCancellationRequested);
+            _aiLoggingService.LogError(question, $"Operation cancelled: {ex.Message}", "OperationCancelled");
+
+            if (ex.CancellationToken.IsCancellationRequested)
+            {
+                // User or application initiated cancellation
+                return "The AI request was cancelled.";
+            }
+
+            // Polly timeout or rate limiter
+            return "The AI service is currently busy. Please try again in a moment.";
+        }
         catch (TaskCanceledException ex)
         {
             Log.Error(ex, "xAI API request timed out after {TimeoutSeconds} seconds", _httpClient.Timeout.TotalSeconds);

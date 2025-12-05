@@ -261,11 +261,13 @@
   "debug.internalConsoleOptions": "openOnSessionStart",
 
   // ============================================================================
-  // Continue/Grok Integration
+  // Continue/Grok 4.1 Integration (Updated 2025-12-05)
+  // Models: grok-4-1-fast-reasoning (agentic), grok-4-1-fast-non-reasoning (speed)
+  // Ref: https://docs.x.ai/docs/models | https://x.ai/news/grok-4-1-fast/
   // ============================================================================
-  "continue.defaultModel": "grok-beta",
-  "continue.chat.model": "grok-4-0709",
-  "continue.maxTokens": 4096,
+  "continue.defaultModel": "grok-4-1-fast-reasoning",
+  "continue.chat.model": "grok-4-1-fast-reasoning",
+  "continue.maxTokens": 8192,
   "continue.temperature": 0.7,
   "continue.enableExperimentalFeatures": true,
   "continue.telemetryLevel": "off",

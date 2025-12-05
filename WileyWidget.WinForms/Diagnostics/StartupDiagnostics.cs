@@ -94,12 +94,14 @@ public class StartupDiagnostics : IStartupDiagnostics
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<StartupDiagnostics> _logger;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
     private StartupDiagnosticsReport? _lastReport;
 
-    public StartupDiagnostics(IServiceProvider serviceProvider, ILogger<StartupDiagnostics> logger)
+    public StartupDiagnostics(IServiceProvider serviceProvider, ILogger<StartupDiagnostics> logger, Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
     public async Task<StartupDiagnosticsReport> RunDiagnosticsAsync()
@@ -154,6 +156,12 @@ public class StartupDiagnostics : IStartupDiagnostics
             report.Results.Add(result);
         }
 
+        // === Configuration Checks ===
+        // Check critical configuration values that could cause runtime exceptions
+        report.Results.Add(CheckConfigurationValue("XAI:ApiKey", "XAI API Key", isRequired: false));
+        report.Results.Add(CheckConfigurationValue("ConnectionStrings:DefaultConnection", "Database Connection String", isRequired: true));
+        report.Results.Add(CheckSecretVaultConfiguration());
+
         _lastReport = report;
 
         // Log summary
@@ -186,30 +194,12 @@ public class StartupDiagnostics : IStartupDiagnostics
         {
             object? service = null;
 
-            // First try resolving from root provider (works for singletons / transients)
-            try
+            // ALWAYS resolve within a scope to avoid "Cannot resolve scoped service from root provider"
+            // exceptions that occur when ValidateScopes is enabled.
+            // This works correctly for Singleton, Scoped, and Transient services.
+            using (var scope = _serviceProvider.CreateScope())
             {
-                service = _serviceProvider.GetService(serviceType);
-            }
-            catch (Exception ex)
-            {
-                // Swallow and try a scoped resolve below
-                _logger.LogDebug(ex, "Root provider failed to resolve {ServiceType} — will try a scope", serviceType.FullName);
-            }
-
-            // If null, try resolving inside a created scope (for scoped services)
-            if (service == null)
-            {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    service = scope.ServiceProvider.GetService(serviceType);
-                }
-                catch (Exception ex)
-                {
-                    // Keep the original exception available to report below
-                    _logger.LogDebug(ex, "Scoped provider failed to resolve {ServiceType}", serviceType.FullName);
-                }
+                service = scope.ServiceProvider.GetService(serviceType);
             }
 
             if (service == null)
@@ -236,6 +226,129 @@ public class StartupDiagnostics : IStartupDiagnostics
         }
 
         await Task.Delay(0); // Simulate async work for future expansion
+        return result;
+    }
+
+    /// <summary>
+    /// Check if a configuration value is present and valid
+    /// </summary>
+    private DiagnosticCheckResult CheckConfigurationValue(string configKey, string displayName, bool isRequired)
+    {
+        var startTime = DateTime.UtcNow;
+        var result = new DiagnosticCheckResult { ServiceName = $"Config: {displayName}" };
+
+        try
+        {
+            var value = _configuration[configKey];
+
+            // Check for placeholder values like "${VAR_NAME}"
+            var isPlaceholder = !string.IsNullOrEmpty(value) &&
+                               value.StartsWith("${", StringComparison.Ordinal) &&
+                               value.EndsWith("}", StringComparison.Ordinal);
+
+            if (string.IsNullOrWhiteSpace(value) || isPlaceholder)
+            {
+                if (isRequired)
+                {
+                    result.IsSuccess = false;
+                    result.Message = isPlaceholder
+                        ? $"Configuration '{configKey}' contains unresolved placeholder: {value}"
+                        : $"Required configuration '{configKey}' is not set";
+                    _logger.LogWarning("Configuration check failed: {Message}", result.Message);
+                }
+                else
+                {
+                    result.IsSuccess = true;
+                    result.Message = $"Optional configuration '{configKey}' is not set (feature may be disabled)";
+                    _logger.LogDebug("Optional configuration '{ConfigKey}' not set", configKey);
+                }
+            }
+            else
+            {
+                result.IsSuccess = true;
+                // Don't log the actual value for security, just the length
+                result.Message = $"Configuration '{configKey}' is set (length: {value.Length})";
+            }
+        }
+        catch (Exception ex)
+        {
+            result.IsSuccess = false;
+            result.Message = $"Error checking configuration '{configKey}': {ex.Message}";
+            result.Exception = ex;
+            _logger.LogError(ex, "Failed to check configuration {ConfigKey}", configKey);
+        }
+        finally
+        {
+            result.Duration = DateTime.UtcNow - startTime;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Check if secret vault can be accessed and contains expected secrets
+    /// </summary>
+    private DiagnosticCheckResult CheckSecretVaultConfiguration()
+    {
+        var startTime = DateTime.UtcNow;
+        var result = new DiagnosticCheckResult { ServiceName = "Config: Secret Vault Access" };
+
+        try
+        {
+            var secretVault = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ISecretVaultService>(_serviceProvider);
+            if (secretVault == null)
+            {
+                result.IsSuccess = true; // Vault is optional
+                result.Message = "Secret vault service not registered (secrets will use env vars/config)";
+                return result;
+            }
+
+            // Try to check vault health
+            var criticalSecrets = new[] { "XAI_API_KEY", "QBO_CLIENT_ID" };
+            var presentSecrets = new List<string>();
+            var missingSecrets = new List<string>();
+
+            foreach (var secretName in criticalSecrets)
+            {
+                try
+                {
+                    var secret = secretVault.GetSecret(secretName);
+                    if (!string.IsNullOrWhiteSpace(secret))
+                    {
+                        presentSecrets.Add(secretName);
+                    }
+                    else
+                    {
+                        missingSecrets.Add(secretName);
+                    }
+                }
+                catch
+                {
+                    missingSecrets.Add(secretName);
+                }
+            }
+
+            result.IsSuccess = true; // Vault access works, missing secrets are warnings not failures
+            result.Message = $"Vault accessible. Present: {presentSecrets.Count}, Missing/Optional: {missingSecrets.Count}";
+
+            if (missingSecrets.Count > 0)
+            {
+                _logger.LogDebug("Secrets not in vault (may use env vars): {MissingSecrets}",
+                    string.Join(", ", missingSecrets));
+            }
+        }
+        catch (Exception ex)
+        {
+            result.IsSuccess = false;
+            result.Message = $"Error accessing secret vault: {ex.Message}";
+            result.Exception = ex;
+            _logger.LogError(ex, "Failed to check secret vault");
+        }
+        finally
+        {
+            result.Duration = DateTime.UtcNow - startTime;
+        }
+
         return result;
     }
 }

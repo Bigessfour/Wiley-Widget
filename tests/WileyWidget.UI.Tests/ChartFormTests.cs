@@ -5,6 +5,7 @@ using Moq;
 using WileyWidget.Abstractions.Models;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using Xunit;

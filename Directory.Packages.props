@@ -87,6 +87,9 @@
     <PackageVersion Include="FluentAssertions" Version="7.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.12.2" />
+    <!-- FlaUI packages for WinForms UI automation testing -->
+    <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
+    <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     <!-- Syncfusion WinForms central package versions -->

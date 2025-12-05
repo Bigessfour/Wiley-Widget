@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.ViewModels;
 using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 using Syncfusion.Windows.Forms.Chart;
 using System.IO;
@@ -20,6 +21,7 @@ namespace WileyWidget.WinForms.Forms
         public const string HelpMenu = "Help";
         public const string AccountsMenu = "Accounts";
         public const string ChartsMenu = "Charts";
+        public const string BudgetOverviewMenu = "Budget Overview";
         public const string SettingsMenu = "Settings";
         public const string ExitMenu = "Exit";
         public const string RefreshMenu = "Refresh";
@@ -163,8 +165,9 @@ namespace WileyWidget.WinForms.Forms
             // File menu items
             var accountsMenuItem = new ToolStripMenuItem(MainFormResources.AccountsMenu, null, (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>());
             var chartsMenuItem = new ToolStripMenuItem(MainFormResources.ChartsMenu, null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>());
+            var budgetOverviewMenuItem = new ToolStripMenuItem(MainFormResources.BudgetOverviewMenu, null, (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>());
             var exitItem = new ToolStripMenuItem(MainFormResources.ExitMenu, null, (s, e) => Application.Exit());
-            fileMenu.DropDownItems.AddRange(new ToolStripItem[] { accountsMenuItem, chartsMenuItem, new ToolStripSeparator(), exitItem });
+            fileMenu.DropDownItems.AddRange(new ToolStripItem[] { accountsMenuItem, chartsMenuItem, budgetOverviewMenuItem, new ToolStripSeparator(), exitItem });
 
             // View menu items
             var refreshItem = new ToolStripMenuItem(MainFormResources.RefreshMenu, null, (s, e) => RefreshDashboard());
@@ -317,6 +320,7 @@ namespace WileyWidget.WinForms.Forms
 
             var quickAccountsBtn = new ToolStripButton("📊 Accounts", null, (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>());
             var quickChartsBtn = new ToolStripButton("📈 Charts", null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>());
+            var quickBudgetBtn = new ToolStripButton("💰 Budget", null, (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>());
             var quickSettingsBtn = new ToolStripButton("⚙️ Settings", null, (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>());
             var quickRefreshBtn = new ToolStripButton("🔄 Refresh", null, (s, e) => RefreshDashboard());
             var quickExportBtn = new ToolStripButton("📄 Export", null, (s, e) => ExportDashboard());
@@ -326,6 +330,8 @@ namespace WileyWidget.WinForms.Forms
                 quickAccountsBtn,
                 new ToolStripSeparator(),
                 quickChartsBtn,
+                new ToolStripSeparator(),
+                quickBudgetBtn,
                 new ToolStripSeparator(),
                 quickSettingsBtn,
                 new ToolStripSeparator(),
