@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+src/wiley_widget_tools.egg-info/PKG-INFO
+src/wiley_widget_tools.egg-info/SOURCES.txt
+src/wiley_widget_tools.egg-info/dependency_links.txt
+src/wiley_widget_tools.egg-info/requires.txt
+src/wiley_widget_tools.egg-info/top_level.txt

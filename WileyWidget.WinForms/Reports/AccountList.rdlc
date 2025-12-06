@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
+  <df:DefaultFontFamily>Segoe UI</df:DefaultFontFamily>
+  <ReportParameters>
+    <ReportParameter Name="ReportTitle">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>Account List</Value>
+        </Values>
+      </DefaultValue>
+    </ReportParameter>
+  </ReportParameters>
+  <DataSources>
+    <DataSource Name="AccountData">
+      <ConnectionProperties>
+        <DataProvider>System.Data.DataSet</DataProvider>
+      </ConnectionProperties>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="AccountDataSet">
+      <Query Language="text">
+        <DataSetReference DataSet="AccountData" />
+      </Query>
+      <Fields>
+        <Field Name="AccountNumber">
+          <DataType>String</DataType>
+          <rd:TypeHint>String</rd:TypeHint>
+        </Field>
+        <Field Name="AccountName">
+          <DataType>String</DataType>
+          <rd:TypeHint>String</rd:TypeHint>
+        </Field>
+        <Field Name="Category">
+          <DataType>String</DataType>
+          <rd:TypeHint>String</rd:TypeHint>
+        </Field>
+        <Field Name="Status">
+          <DataType>String</DataType>
+          <rd:TypeHint>String</rd:TypeHint>
+        </Field>
+        <Field Name="Balance">
+          <DataType>Decimal</DataType>
+          <rd:TypeHint>Decimal</rd:TypeHint>
+        </Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+  <Body>
+    <ReportItems>
+      <Rectangle Name="rectangle1">
+        <ReportItems>
+          <Textbox Name="ReportTitle">
+            <CanGrow>true</CanGrow>
+            <CanShrink>false</CanShrink>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>=Parameters!ReportTitle.Value</Value>
+                    <Style>
+                      <FontFamily>Segoe UI</FontFamily>
+                      <FontSize>28pt</FontSize>
+                      <FontWeight>Bold</FontWeight>
+                      <Color>rgb(33, 37, 41)</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+              </Paragraph>
+            </Paragraphs>
+            <Left>0.25in</Left>
+            <Top>0.25in</Top>
+            <Width>6in</Width>
+            <Height>0.5in</Height>
+          </Textbox>
+          <Textbox Name="Generated">
+            <CanGrow>true</CanGrow>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>="Generated: " &amp; Format(Now(), "MM/dd/yyyy hh:mm tt")</Value>
+                    <Style>
+                      <FontFamily>Segoe UI</FontFamily>
+                      <FontSize>10pt</FontSize>
+                      <Color>rgb(100, 100, 100)</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+              </Paragraph>
+            </Paragraphs>
+            <Left>0.25in</Left>
+            <Top>0.8in</Top>
+            <Width>6in</Width>
+            <Height>0.25in</Height>
+          </Textbox>
+          <Table Name="AccountTable">
+            <DataSetName>AccountDataSet</DataSetName>
+            <Visibility>
+              <Hidden>false</Hidden>
+            </Visibility>
+            <TableColumns>
+              <TableColumn>
+                <Width>1in</Width>
+              </TableColumn>
+              <TableColumn>
+                <Width>2in</Width>
+              </TableColumn>
+              <TableColumn>
+                <Width>1.2in</Width>
+              </TableColumn>
+              <TableColumn>
+                <Width>0.9in</Width>
+              </TableColumn>
+              <TableColumn>
+                <Width>0.9in</Width>
+              </TableColumn>
+            </TableColumns>
+            <TableRows>
+              <TableRow>
+                <Height>0.3in</Height>
+                <TableCells>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="NumHeader">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Account #</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>11pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>white</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Left</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BackgroundColor>rgb(33, 37, 41)</BackgroundColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="NameHeader">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Account Name</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>11pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>white</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Left</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BackgroundColor>rgb(33, 37, 41)</BackgroundColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="CatHeader">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Category</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>11pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>white</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Left</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BackgroundColor>rgb(33, 37, 41)</BackgroundColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="StatusHeader">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Status</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>11pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>white</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Center</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BackgroundColor>rgb(33, 37, 41)</BackgroundColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="BalanceHeader">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Balance</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>11pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>white</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Right</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BackgroundColor>rgb(33, 37, 41)</BackgroundColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                </TableCells>
+              </TableRow>
+              <TableRow>
+                <Height>0.25in</Height>
+                <TableCells>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="NumCell">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Fields!AccountNumber.Value</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BorderStyle>
+                            <Default>Solid</Default>
+                          </BorderStyle>
+                          <BorderWidth>
+                            <Default>0.5pt</Default>
+                          </BorderWidth>
+                          <BorderColor>
+                            <Default>rgb(220, 220, 220)</Default>
+                          </BorderColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="NameCell">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Fields!AccountName.Value</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BorderStyle>
+                            <Default>Solid</Default>
+                          </BorderStyle>
+                          <BorderWidth>
+                            <Default>0.5pt</Default>
+                          </BorderWidth>
+                          <BorderColor>
+                            <Default>rgb(220, 220, 220)</Default>
+                          </BorderColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="CatCell">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Fields!Category.Value</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BorderStyle>
+                            <Default>Solid</Default>
+                          </BorderStyle>
+                          <BorderWidth>
+                            <Default>0.5pt</Default>
+                          </BorderWidth>
+                          <BorderColor>
+                            <Default>rgb(220, 220, 220)</Default>
+                          </BorderColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="StatusCell">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Fields!Status.Value</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                  <Color>=If(Fields!Status.Value = "Active", "rgb(46, 204, 113)", "rgb(231, 76, 60)")</Color>
+                                  <FontWeight>=If(Fields!Status.Value = "Active", "Bold", "Normal")</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Center</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BorderStyle>
+                            <Default>Solid</Default>
+                          </BorderStyle>
+                          <BorderWidth>
+                            <Default>0.5pt</Default>
+                          </BorderWidth>
+                          <BorderColor>
+                            <Default>rgb(220, 220, 220)</Default>
+                          </BorderColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="BalanceCell">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Format(Fields!Balance.Value, "C")</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Right</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                        <Style>
+                          <BorderStyle>
+                            <Default>Solid</Default>
+                          </BorderStyle>
+                          <BorderWidth>
+                            <Default>0.5pt</Default>
+                          </BorderWidth>
+                          <BorderColor>
+                            <Default>rgb(220, 220, 220)</Default>
+                          </BorderColor>
+                          <PaddingLeft>0.1in</PaddingLeft>
+                          <PaddingRight>0.1in</PaddingRight>
+                        </Style>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                </TableCells>
+              </TableRow>
+            </TableRows>
+            <Left>0.25in</Left>
+            <Top>1.2in</Top>
+            <Width>6in</Width>
+            <Height>2.5in</Height>
+          </Table>
+        </ReportItems>
+        <Height>4in</Height>
+        <Width>6.5in</Width>
+      </Rectangle>
+    </ReportItems>
+    <Height>4in</Height>
+  </Body>
+  <Width>7in</Width>
+  <Page>
+    <LeftMargin>0.5in</LeftMargin>
+    <RightMargin>0.5in</RightMargin>
+    <TopMargin>0.5in</TopMargin>
+    <BottomMargin>0.5in</BottomMargin>
+    <ColumnSpacing>0.13in</ColumnSpacing>
+    <Style />
+  </Page>
+  <ReportSections>
+    <ReportSection>
+      <Body>
+        <ReportItems>
+          <Rectangle Name="rectangle_DesignerRegion0">
+            <ReportItems>
+              <Rectangle Name="rectangle1" />
+            </ReportItems>
+            <Height>4in</Height>
+            <Width>6.5in</Width>
+          </Rectangle>
+        </ReportItems>
+        <Height>4in</Height>
+      </Body>
+      <Width>7in</Width>
+    </ReportSection>
+  </ReportSections>
+</Report>

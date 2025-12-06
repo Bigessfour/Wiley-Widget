@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?pub?><Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2008/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <ReportSections>
+    <ReportSection>
+      <Body>
+        <ReportItems>
+          <Textbox Name="Header">
+            <Value>Budget Summary Report</Value>
+          </Textbox>
+          <Tablix Name="TotalsTable">
+            <DataSetName>BudgetData</DataSetName>
+            <TablixColumns>
+              <TablixColumn>
+                <Width>2in</Width>
+              </TablixColumn>
+              <TablixColumn>
+                <Width>2in</Width>
+              </TablixColumn>
+            </TablixColumns>
+            <TablixRows>
+              <TablixRow>
+                <Height>0.25in</Height>
+                <TablixCells>
+                  <TablixCell>
+                    <CellContents>
+                      <Textbox>
+                        <Value>=Fields!TotalBudget.Value</Value>
+                      </Textbox>
+                    </CellContents>
+                  </TablixCell>
+                  <TablixCell>
+                    <CellContents>
+                      <Textbox>
+                        <Value>=Fields!TotalSpent.Value</Value>
+                      </Textbox>
+                    </CellContents>
+                  </TablixCell>
+                </TablixCells>
+              </TablixRow>
+            </TablixRows>
+          </Tablix>
+          <Chart Name="BudgetChart">
+            <ChartCategories>
+              <ChartCategory>
+                <DynamicCategories>
+                  <ChartExpression>=Fields!Date.Value</ChartExpression>
+                </DynamicCategories>
+              </ChartCategory>
+            </ChartCategories>
+            <ChartSeries>
+              <ChartSeries>
+                <DataPoints>
+                  <ChartDataPoint>
+                    <ChartValue>
+                      <ChartExpression>=Fields!Value.Value</ChartExpression>
+                    </ChartDataPoint>
+                </DataPoints>
+              </ChartSeries>
+            </ChartSeries>
+          </Chart>
+        </ReportItems>
+      </Body>
+    </ReportSection>
+  </ReportSections>
+  <DataSets>
+    <DataSet Name="BudgetData">
+      <Query>
+        <DataSourceName>BudgetDS</DataSourceName>
+        <CommandText>SELECT TotalBudget, TotalSpent, Date, Value FROM BudgetSummary</CommandText>
+      </Query>
+    </DataSet>
+  </DataSets>
+</Report>
