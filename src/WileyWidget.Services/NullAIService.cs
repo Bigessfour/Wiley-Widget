@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services;
@@ -41,4 +43,10 @@ public class NullAIService : IAIService
 
     public Task<AIResponseResult> SendPromptAsync(string prompt, System.Threading.CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("[Dev Stub] AI prompt sending is disabled in development. Configure XAI_API_KEY to enable.", 403, "AuthFailure", null));
+
+    public Task<ChatResponse> SendMessageAsync(string userMessage, List<ChatMessage> conversationHistory, CancellationToken ct = default)
+        => Task.FromResult(new ChatResponse("[Dev Stub] Chat is disabled in development. Configure XAI_API_KEY to enable."));
+
+    public Task<ToolCallResult> ExecuteToolCallAsync(ToolCall toolCall, CancellationToken ct = default)
+        => Task.FromResult(ToolCallResult.Error(toolCall.Id, "Dev stub: tool execution is disabled in development."));
 }

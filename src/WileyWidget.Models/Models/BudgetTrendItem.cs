@@ -63,6 +63,75 @@ public class BudgetTrendItem : INotifyPropertyChanged
         }
     }
 
+    private decimal _actualAmount;
+    private decimal _variance;
+    private decimal _change;
+    private string _trendDirection = "Flat";
+
+    /// <summary>
+    /// Sum of actual amounts for this period (if available)
+    /// </summary>
+    public decimal ActualAmount
+    {
+        get => _actualAmount;
+        set
+        {
+            if (_actualAmount != value)
+            {
+                _actualAmount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Variance between budgeted and actual for this period
+    /// </summary>
+    public decimal Variance
+    {
+        get => _variance;
+        set
+        {
+            if (_variance != value)
+            {
+                _variance = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Change from the previous period (budgeted amount)
+    /// </summary>
+    public decimal Change
+    {
+        get => _change;
+        set
+        {
+            if (_change != value)
+            {
+                _change = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Trend direction ("Up", "Down", "Flat")
+    /// </summary>
+    public string TrendDirection
+    {
+        get => _trendDirection;
+        set
+        {
+            if (_trendDirection != value)
+            {
+                _trendDirection = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     /// <summary>
     /// Gets or sets the budget category (e.g., "Revenue", "Expenses", "Capital").
     /// </summary>

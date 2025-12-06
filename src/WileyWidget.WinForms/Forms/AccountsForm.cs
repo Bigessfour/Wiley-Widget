@@ -53,6 +53,9 @@ namespace WileyWidget.WinForms.Forms
         private ComboBox? _typeCombo;
         private TextBox? _searchBox;
 
+        // Cancellation token source for async operations
+        private CancellationTokenSource? _cts;
+
         public AccountsForm(AccountsViewModel viewModel, ILogger<AccountsForm> logger)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
@@ -63,6 +66,15 @@ namespace WileyWidget.WinForms.Forms
                 InitializeComponent();
                 SetupDataGrid();
                 _logger.LogInformation("AccountsForm initialized successfully");
+
+                // Initialize cancellation token source
+                _cts = new CancellationTokenSource();
+
+                FormClosing += (s, e) =>
+                {
+                    Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
+                };
+
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
                 LoadData();
 #pragma warning restore CS4014
@@ -98,8 +110,12 @@ namespace WileyWidget.WinForms.Forms
 
             var loadButton = new ToolStripButton(Resources.LoadAccountsButton, null, async (s, e) =>
             {
-                _logger.LogInformation("Load accounts button clicked");
-                await LoadData();
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct => await LoadData(),
+                    _cts,
+                    this,
+                    _logger,
+                    "Loading accounts");
             })
             {
                 DisplayStyle = ToolStripItemDisplayStyle.Text,
@@ -109,8 +125,12 @@ namespace WileyWidget.WinForms.Forms
 
             var filterButton = new ToolStripButton(Resources.ApplyFiltersButton, null, async (s, e) =>
             {
-                _logger.LogInformation("Apply filters button clicked");
-                await _viewModel.FilterAccountsCommand.ExecuteAsync(CancellationToken.None);
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct => await _viewModel.FilterAccountsCommand.ExecuteAsync(ct),
+                    _cts,
+                    this,
+                    _logger,
+                    "Applying account filters");
             })
             {
                 DisplayStyle = ToolStripItemDisplayStyle.Text
@@ -121,6 +141,8 @@ namespace WileyWidget.WinForms.Forms
             _fundCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
             _fundCombo.Items.AddRange(new object[] { "(all)", "General Fund", "Water Fund", "Sewer Fund", "Capital Projects", "Debt Service" });
             _fundCombo.SelectedIndex = 0;
+            _fundCombo.AccessibleName = "Fund Filter";
+            _fundCombo.AccessibleDescription = "Filter accounts by fund type";
             var fundHost = new ToolStripControlHost(_fundCombo);
 
             // Account Type filter
@@ -128,12 +150,16 @@ namespace WileyWidget.WinForms.Forms
             _typeCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             _typeCombo.Items.AddRange(new object[] { "(all)", "Asset", "Liability", "Revenue", "Expense", "Equity" });
             _typeCombo.SelectedIndex = 0;
+            _typeCombo.AccessibleName = "Account Type Filter";
+            _typeCombo.AccessibleDescription = "Filter accounts by type (Asset, Liability, Revenue, Expense, Equity)";
             var typeHost = new ToolStripControlHost(_typeCombo);
 
             // Search box
             var searchLabel = new ToolStripLabel("  Search: ");
             _searchBox = new TextBox { Width = 180 };
             _searchBox.PlaceholderText = "Account name or number...";
+            _searchBox.AccessibleName = "Account Search";
+            _searchBox.AccessibleDescription = "Search accounts by name or number";
             var searchHost = new ToolStripControlHost(_searchBox);
 
             // Export button
@@ -197,7 +223,10 @@ namespace WileyWidget.WinForms.Forms
                 AutoGenerateColumns = false,
                 ShowGroupDropArea = false,
                 BackColor = Color.White,
-                RowHeight = 30
+                RowHeight = 30,
+                AccessibleName = "Municipal Accounts Grid",
+                AccessibleDescription = "Data grid displaying all municipal accounts with balance and budget information. Use arrow keys to navigate, Enter to view details.",
+                AccessibleRole = AccessibleRole.Table
             };
 
             // Selection changed event for detail panel
@@ -653,6 +682,9 @@ namespace WileyWidget.WinForms.Forms
                 _fundCombo?.Dispose();
                 _typeCombo?.Dispose();
                 _searchBox?.Dispose();
+
+                // Cancel and dispose async operations
+                Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
             }
             base.Dispose(disposing);
         }

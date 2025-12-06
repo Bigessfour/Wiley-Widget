@@ -33,6 +33,9 @@ public partial class ReportsForm : Form
     private Button? _exportExcelButton;
     private Label? _statusLabel;
 
+    // Cancellation token source for async operations
+    private CancellationTokenSource? _cts;
+
     public ReportsForm(ReportsViewModel viewModel, ILogger<ReportsForm> logger)
     {
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
@@ -40,6 +43,14 @@ public partial class ReportsForm : Form
 
         SetupUI();
         BindViewModel();
+
+        // Initialize cancellation token source
+        _cts = new CancellationTokenSource();
+
+        FormClosing += (s, e) =>
+        {
+            Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
+        };
 
         _logger.LogInformation("ReportsForm initialized");
     }
@@ -81,7 +92,9 @@ public partial class ReportsForm : Form
                 Size = new Size(200, 24),
                 DataSource = ReportsViewModel.AvailableReportTypes.ToList(),
                 SelectedItem = _viewModel.SelectedReportType,
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                AccessibleName = "Report Type",
+                AccessibleDescription = "Select the type of report to generate (Budget Summary, Account Details, etc.)"
             };
             _reportTypeCombo.SelectedIndexChanged += (s, e) =>
             {
@@ -100,7 +113,9 @@ public partial class ReportsForm : Form
                 Location = new Point(345, 10),
                 Size = new Size(120, 24),
                 Value = _viewModel.FromDate,
-                Format = DateTimePickerFormat.Short
+                Format = DateTimePickerFormat.Short,
+                AccessibleName = "From Date",
+                AccessibleDescription = "Select the start date for the report period"
             };
             _fromDatePicker.ValueChanged += (s, e) =>
             {
@@ -119,7 +134,9 @@ public partial class ReportsForm : Form
                 Location = new Point(495, 10),
                 Size = new Size(120, 24),
                 Value = _viewModel.ToDate,
-                Format = DateTimePickerFormat.Short
+                Format = DateTimePickerFormat.Short,
+                AccessibleName = "To Date",
+                AccessibleDescription = "Select the end date for the report period"
             };
             _toDatePicker.ValueChanged += (s, e) =>
             {
@@ -135,12 +152,18 @@ public partial class ReportsForm : Form
                 BackColor = Color.FromArgb(0, 120, 215),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                AccessibleName = "Generate Report",
+                AccessibleDescription = "Generate the selected report with current parameters"
             };
             _generateButton.Click += async (s, e) =>
             {
-                _logger.LogInformation("Generate report button clicked");
-                await _viewModel.GenerateReportCommand.ExecuteAsync(null);
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct => await _viewModel.GenerateReportCommand.ExecuteAsync(null),
+                    _cts,
+                    this,
+                    _logger,
+                    "Generating report");
             };
 
             // Export PDF Button
@@ -156,8 +179,12 @@ public partial class ReportsForm : Form
             };
             _exportPdfButton.Click += async (s, e) =>
             {
-                _logger.LogInformation("Export PDF button clicked");
-                await _viewModel.ExportToPdfCommand.ExecuteAsync(null);
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct => await _viewModel.ExportToPdfCommand.ExecuteAsync(null),
+                    _cts,
+                    this,
+                    _logger,
+                    "Exporting to PDF");
             };
 
             // Export Excel Button
@@ -173,8 +200,12 @@ public partial class ReportsForm : Form
             };
             _exportExcelButton.Click += async (s, e) =>
             {
-                _logger.LogInformation("Export Excel button clicked");
-                await _viewModel.ExportToExcelCommand.ExecuteAsync(null);
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct => await _viewModel.ExportToExcelCommand.ExecuteAsync(null),
+                    _cts,
+                    this,
+                    _logger,
+                    "Exporting to Excel");
             };
 
             // Status Label
@@ -280,6 +311,9 @@ public partial class ReportsForm : Form
             _exportPdfButton?.Dispose();
             _exportExcelButton?.Dispose();
             _statusLabel?.Dispose();
+
+            // Cancel and dispose async operations
+            Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
         }
 
         base.Dispose(disposing);

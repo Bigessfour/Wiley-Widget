@@ -14,6 +14,8 @@ using SyncPdf = Syncfusion.Pdf;
 using SyncPdfGraphics = Syncfusion.Pdf.Graphics;
 using WileyWidget.WinForms.Controls;
 using Microsoft.Extensions.Configuration;
+using Syncfusion.WinForms.Controls;
+using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -40,6 +42,7 @@ namespace WileyWidget.WinForms.Forms
         private readonly ILogger<MainForm> _logger;
         private readonly MainViewModel? _viewModel;
         private readonly IConfiguration _configuration;
+        private IContainer? components = null;
 
         // Dashboard card labels for dynamic data binding
         private Label? _accountsDescLabel;
@@ -53,6 +56,9 @@ namespace WileyWidget.WinForms.Forms
         private Panel? _aiChatPanel;
         private AIChatControl? _aiChatControl;
 
+        // Cancellation token source for async operations
+        private CancellationTokenSource? _cts;
+
         public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, IConfiguration configuration, MainViewModel? viewModel = null)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -63,6 +69,10 @@ namespace WileyWidget.WinForms.Forms
             // Guard the UI initialization so form-level exceptions are logged with full stacks
             try
             {
+                // Apply Syncfusion theme globally before initializing components
+                var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
+                ApplySyncfusionTheme(themeName);
+
                 InitializeComponent();
                 Text = MainFormResources.FormTitle;
 
@@ -86,6 +96,14 @@ namespace WileyWidget.WinForms.Forms
                     _ = InitializeDataAsync();
                 }
 
+                // Initialize cancellation token source
+                _cts = new CancellationTokenSource();
+
+                FormClosing += (s, e) =>
+                {
+                    Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
+                };
+
                 _logger.LogInformation("MainForm initialized successfully");
             }
             catch (Exception ex)
@@ -100,11 +118,15 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                if (_viewModel != null)
+                if (_viewModel != null && _cts != null)
                 {
-                    await _viewModel.InitializeAsync();
+                    await _viewModel.InitializeAsync(_cts.Token);
                     UpdateDashboardCards();
                 }
+            }
+            catch (OperationCanceledException oce)
+            {
+                _logger.LogWarning(oce, "Dashboard initialization was canceled");
             }
             catch (Exception ex)
             {
@@ -396,16 +418,30 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                _aiChatControl = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<AIChatControl>(_serviceProvider);
-                if (_aiChatControl != null)
+                // AIChatControl is not registered in DI; manually resolve dependencies and instantiate
+                var aiService = ServiceProviderExtensions.GetRequiredService<Services.Abstractions.IAIAssistantService>(_serviceProvider);
+                var aiLogger = ServiceProviderExtensions.GetRequiredService<ILogger<AIChatControl>>(_serviceProvider);
+
+                // Attempt to resolve optional conversational AI service for fallback responses
+                var conversationalAI = ServiceProviderExtensions.GetService<Services.Abstractions.IAIService>(_serviceProvider);
+
+                _aiChatControl = new AIChatControl(aiService, aiLogger, conversationalAI);
+
+                _aiChatControl.Dock = DockStyle.Fill;
+                _aiChatPanel.Controls.Add(_aiChatControl);
+
+                if (conversationalAI != null)
                 {
-                    _aiChatControl.Dock = DockStyle.Fill;
-                    _aiChatPanel.Controls.Add(_aiChatControl);
+                    _logger.LogInformation("AIChatControl initialized with IAIAssistantService + conversational AI fallback (IAIService)");
+                }
+                else
+                {
+                    _logger.LogInformation("AIChatControl initialized with IAIAssistantService (conversational AI fallback not available)");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to initialize AI Chat Control");
+                _logger.LogError(ex, "Failed to initialize AI Chat Control - check DI configuration");
             }
 
             // === Add Controls in Order ===
@@ -452,13 +488,19 @@ namespace WileyWidget.WinForms.Forms
         {
             if (_aiChatPanel != null)
             {
+                var previousState = _aiChatPanel.Visible;
                 _aiChatPanel.Visible = !_aiChatPanel.Visible;
-                _logger.LogInformation("AI Chat Panel toggled to {Visible}", _aiChatPanel.Visible);
+                _logger.LogInformation(
+                    "AI Chat Panel toggled: {PreviousState} → {NewState}. " +
+                    "Consider persisting this preference to user settings.",
+                    previousState ? "Visible" : "Hidden",
+                    _aiChatPanel.Visible ? "Visible" : "Hidden");
 
                 // Auto-focus AI control when panel is shown
                 if (_aiChatPanel.Visible && _aiChatControl != null)
                 {
                     _aiChatControl.Focus();
+                    _logger.LogDebug("AI Chat Control focused after panel show");
                 }
             }
         }
@@ -503,42 +545,21 @@ namespace WileyWidget.WinForms.Forms
                 {
                     if (_viewModel != null)
                     {
-                        // TODO: PDF export temporarily disabled due to Syncfusion version conflict
-                        // Will be re-enabled once version conflict is resolved
-                        MessageBox.Show("PDF export is temporarily unavailable", "Feature Disabled", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        /*
-                        // Create PDF report using Syncfusion
+                        // TODO: PDF export disabled due to Syncfusion assembly version conflict
+                        // CS0433: PdfDocument exists in both Syncfusion.Pdf.Base v30.2.4.0 and Syncfusion.Pdf.Portable v31.2.16.0
+                        // Resolution: Upgrade all Syncfusion dependencies to single version or use extern alias
+                        var warningMsg = "PDF export temporarily disabled due to library version conflict.\n" +
+                                       "Will be re-enabled after Syncfusion dependency resolution.";
+                        _logger.LogWarning("PDF export requested but disabled - Syncfusion version conflict detected");
+                        MessageBox.Show(warningMsg, "Feature Temporarily Unavailable",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        /* Commented out until version conflict resolved:
                         using var document = new SyncPdf.PdfDocument();
                         var page = document.Pages.Add();
                         var graphics = page.Graphics;
-
-                        // Draw header
-                        var headerFont = new SyncPdfGraphics.PdfStandardFont(SyncPdfGraphics.PdfFontFamily.Helvetica, 20, SyncPdfGraphics.PdfFontStyle.Bold);
-                        graphics.DrawString($"Dashboard Report - {DateTime.Now:yyyy-MM-dd}", headerFont,
-                            SyncPdfGraphics.PdfBrushes.Black, new PointF(10, 10));
-
-                        var bodyFont = new SyncPdfGraphics.PdfStandardFont(SyncPdfGraphics.PdfFontFamily.Helvetica, 10);
-                        var yPosition = 50f;
-
-                        // Draw dashboard metrics
-                        graphics.DrawString($"Total Budget: {_viewModel.TotalBudget:C}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
-                        yPosition += 20;
-                        graphics.DrawString($"Total Actual: {_viewModel.TotalActual:C}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
-                        yPosition += 20;
-                        graphics.DrawString($"Variance: {_viewModel.Variance:C}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
-                        yPosition += 20;
-                        graphics.DrawString($"Active Accounts: {_viewModel.ActiveAccountCount}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
-                        yPosition += 20;
-                        graphics.DrawString($"Total Departments: {_viewModel.TotalDepartments}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
-                        yPosition += 30;
-
-                        // Footer
-                        graphics.DrawString($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", bodyFont, SyncPdfGraphics.PdfBrushes.Gray, new PointF(10, yPosition));
-
-                        // Save the document
-                        document.Save(saveDialog.FileName);
+                        ... rest of PDF generation code ...
                         */
-                        _logger.LogInformation("Dashboard exported to: {FileName}", saveDialog.FileName);
                     }
                     else
                     {
@@ -555,6 +576,45 @@ namespace WileyWidget.WinForms.Forms
         private void ShowAboutDialog()
         {
             _logger.LogInformation("About dialog requested: Wiley Widget v1.0.0, Municipal Budget Management System, Runtime: .NET {Version}, OS: {OS}, © 2025 Wiley Widget Corp", Environment.Version, Environment.OSVersion);
+        }
+
+        /// <summary>
+        /// Apply Syncfusion visual style to this form and controls.
+        /// Note: In Syncfusion v31.2.16 for WinForms, theming is control-specific.
+        /// For comprehensive theming, consider Syncfusion.WinForms.Themes package.
+        /// </summary>
+        private void ApplySyncfusionTheme(string themeName)
+        {
+            try
+            {
+                // Apply visual style to form - basic color scheme based on theme name
+                // Note: Full theme support requires Syncfusion.WinForms.Themes package
+                // which provides ThemeSettings and comprehensive theming
+
+                // For now, apply basic styling to form
+                switch (themeName)
+                {
+                    case "Office2016DarkGray":
+                    case "MaterialDark":
+                    case "HighContrastBlack":
+                        BackColor = Color.FromArgb(45, 45, 48);
+                        ForeColor = Color.White;
+                        break;
+                    case "MaterialLight":
+                    case "Office2019Colorful":
+                    case "Office2016Colorful":
+                    default:
+                        BackColor = Color.FromArgb(245, 245, 250);
+                        ForeColor = Color.FromArgb(33, 37, 41);
+                        break;
+                }
+
+                _logger.LogInformation("Applied Syncfusion visual style: {Theme}", themeName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to apply Syncfusion theme {Theme}, using default", themeName);
+            }
         }
 
         private static Panel CreateDashboardCard(string title, string description, Color accentColor, out Label? descriptionLabel)
@@ -688,6 +748,19 @@ namespace WileyWidget.WinForms.Forms
                 {
                     _logger.LogWarning(ex, "Failed disposing docking resources during form Dispose");
                 }
+
+                // Dispose IContainer for DockingManager
+                try
+                {
+                    components?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed disposing components container");
+                }
+
+                // Cancel and dispose async operations
+                Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
             }
             base.Dispose(disposing);
         }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Syncfusion.Licensing;
+using System.IO;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Diagnostics;
@@ -15,6 +16,10 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main()
         {
+            // === BOOTSTRAP SERILOG IMMEDIATELY ===
+            // Configure minimal Serilog before anything else to capture early errors
+            BootstrapSerilog();
+
             // === GLOBAL EXCEPTION HANDLERS (MUST BE FIRST) ===
             // Wire up unhandled exception handlers BEFORE any other code runs
             // to ensure we catch and log ALL exceptions that escape normal handling
@@ -79,6 +84,36 @@ namespace WileyWidget.WinForms
                     throw; // Re-throw to terminate the application
                 }
             }
+        }
+
+        /// <summary>
+        /// Bootstrap Serilog with minimal configuration before DI container is built.
+        /// This ensures we can log errors during application startup.
+        /// </summary>
+        private static void BootstrapSerilog()
+        {
+            var logsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+            Directory.CreateDirectory(logsDir);
+
+            Log.Logger = new Serilog.LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.Debug()
+                .WriteTo.File(
+                    path: Path.Combine(logsDir, "wiley-widget-.log"),
+                    rollingInterval: Serilog.RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    shared: true)
+                .WriteTo.File(
+                    path: Path.Combine(logsDir, "errors-.log"),
+                    rollingInterval: Serilog.RollingInterval.Day,
+                    restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error,
+                    retainedFileCountLimit: 60,
+                    shared: true)
+                .CreateBootstrapLogger();
+
+            Log.Information("Serilog bootstrap complete - logs directory: {LogsDir}", logsDir);
+            System.Diagnostics.Debug.WriteLine($"Serilog bootstrap complete - logs at: {logsDir}");
         }
 
         /// <summary>
@@ -212,12 +247,15 @@ namespace WileyWidget.WinForms
                 if (!string.IsNullOrEmpty(syncfusionKey) && !syncfusionKey.StartsWith("${", StringComparison.Ordinal))
                 {
                     SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
-                    System.Diagnostics.Debug.WriteLine("SUCCESS: Syncfusion license registered successfully.");
+                    System.Diagnostics.Debug.WriteLine($"SUCCESS: Syncfusion license registered (Key length: {syncfusionKey.Length} chars, Version: 31.2.16)");
+                    Serilog.Log.Information("Syncfusion license registered successfully (v31.2.16, key length: {KeyLength})", syncfusionKey.Length);
                 }
                 else
                 {
                     // License key not found - Syncfusion controls will show trial watermark
-                    System.Diagnostics.Debug.WriteLine("WARNING: Syncfusion license key not found in configuration. Controls will run in trial mode.");
+                    var warningMsg = "WARNING: Syncfusion license key not found in configuration. Controls will run in trial mode.";
+                    System.Diagnostics.Debug.WriteLine(warningMsg);
+                    Serilog.Log.Warning("Syncfusion license not found - running in trial mode. Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json");
                     Serilog.Log.Warning("Syncfusion license key not found in configuration. Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json. Controls will run in trial mode.");
                 }
 
@@ -553,7 +591,6 @@ namespace WileyWidget.WinForms
                 {
                     loggerConfiguration
                         .ReadFrom.Configuration(context.Configuration)
-                        .ReadFrom.Services(services)
                         .Enrich.FromLogContext();
                 })
                 .ConfigureServices((context, services) =>

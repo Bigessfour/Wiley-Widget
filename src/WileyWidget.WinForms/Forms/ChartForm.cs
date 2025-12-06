@@ -57,6 +57,9 @@ namespace WileyWidget.WinForms.Forms
         private readonly HashSet<SfChartSeries> _attachedPrepareStyle = new HashSet<SfChartSeries>();
         private readonly object _attachedPrepareStyleLock = new object();
 
+        // Cancellation token source for async operations
+        private CancellationTokenSource? _cts;
+
         // Color palette for charts
         private static readonly Color[] ChartColors = new[]
         {
@@ -81,22 +84,26 @@ namespace WileyWidget.WinForms.Forms
                 InitializeComponent();
                 _logger.LogInformation("ChartForm initialized successfully");
 
+                // Initialize cancellation token source
+                _cts = new CancellationTokenSource();
+
                 Load += async (s, e) =>
                 {
-                    try
-                    {
-                        await _vm.LoadChartsAsync();
-                        DrawCharts();
-                    }
-                    catch (OperationCanceledException oce)
-                    {
-                        _logger.LogWarning(oce, "Chart load was canceled or timed out");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed loading chart data");
-                        throw;
-                    }
+                    await Utilities.AsyncEventHelper.ExecuteAsync(
+                        async ct =>
+                        {
+                            await _vm.LoadChartsAsync(null, null, ct);
+                            DrawCharts();
+                        },
+                        _cts,
+                        this,
+                        _logger,
+                        "Loading chart data");
+                };
+
+                FormClosing += (s, e) =>
+                {
+                    Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
                 };
             }
             catch (Exception ex)
@@ -207,10 +214,19 @@ namespace WileyWidget.WinForms.Forms
             _yearSelector.SelectedItem = _vm.SelectedYear.ToString(CultureInfo.InvariantCulture);
             _yearSelector.SelectedIndexChanged += async (s, e) =>
             {
-                _vm.SelectedYear = int.Parse(_yearSelector.SelectedItem?.ToString() ?? DateTime.UtcNow.Year.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
-                await _vm.LoadChartsAsync();
-                DrawCharts();
-                await UpdateSummaryValuesAsync();
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct =>
+                    {
+                        _vm.SelectedYear = int.Parse(_yearSelector.SelectedItem?.ToString() ?? DateTime.UtcNow.Year.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+                        await _vm.LoadChartsAsync(_vm.SelectedYear, null, ct);
+                        DrawCharts();
+                        await UpdateSummaryValuesAsync();
+                    },
+                    _cts,
+                    this,
+                    _logger,
+                    "Updating chart year",
+                    showErrorDialog: false);
             };
             var yearHost = new ToolStripControlHost(_yearSelector);
 
@@ -221,10 +237,19 @@ namespace WileyWidget.WinForms.Forms
             _categoryFilter.SelectedItem = _vm.SelectedCategory;
             _categoryFilter.SelectedIndexChanged += async (s, e) =>
             {
-                _vm.SelectedCategory = _categoryFilter.SelectedItem?.ToString() ?? "All Categories";
-                await _vm.LoadChartsAsync();
-                DrawCharts();
-                await UpdateSummaryValuesAsync();
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct =>
+                    {
+                        _vm.SelectedCategory = _categoryFilter.SelectedItem?.ToString() ?? "All Categories";
+                        await _vm.LoadChartsAsync(null, _vm.SelectedCategory, ct);
+                        DrawCharts();
+                        await UpdateSummaryValuesAsync();
+                    },
+                    _cts,
+                    this,
+                    _logger,
+                    "Updating chart category",
+                    showErrorDialog: false);
             };
             var categoryHost = new ToolStripControlHost(_categoryFilter);
 
@@ -237,10 +262,17 @@ namespace WileyWidget.WinForms.Forms
 
             var refreshBtn = new ToolStripButton(ChartFormResources.RefreshButton, null, async (s, e) =>
             {
-                _logger.LogInformation("Chart refresh button clicked");
-                await _vm.LoadChartsAsync();
-                DrawCharts();
-                await UpdateSummaryValuesAsync();
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct =>
+                    {
+                        await _vm.LoadChartsAsync(null, null, ct);
+                        DrawCharts();
+                        await UpdateSummaryValuesAsync();
+                    },
+                    _cts,
+                    this,
+                    _logger,
+                    "Refreshing chart data");
             });
 
             var exportBtn = new ToolStripButton(ChartFormResources.ExportButton, null, (s, e) =>
@@ -853,6 +885,9 @@ namespace WileyWidget.WinForms.Forms
                 _categoryFilter?.Dispose();
                 _chartTypeCombo?.Dispose();
                 _trendLabel?.Dispose();
+
+                // Cancel and dispose async operations
+                Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
             }
 
             base.Dispose(disposing);

@@ -83,7 +83,10 @@ public partial class AIAssistantService : IAIAssistantService
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+            // TODO: Extract timeout to IConfiguration - currently hard-coded 30 seconds
+            // Suggested appsettings.json: "AI": { "ToolExecutionTimeoutSeconds": 30 }
+            const int timeoutSeconds = 30;
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cancellationToken);
             var processTask = Task.Run(() => process.WaitForExit(), cancellationToken);
 
             var completedTask = await Task.WhenAny(processTask, timeoutTask);
@@ -91,7 +94,7 @@ public partial class AIAssistantService : IAIAssistantService
             if (completedTask == timeoutTask)
             {
                 process.Kill(entireProcessTree: true);
-                var errorMessage = $"Tool execution timed out after 30 seconds";
+                var errorMessage = $"Tool execution timed out after {timeoutSeconds} seconds";
                 _logger.LogError(errorMessage);
                 return ToolCallResult.Error(toolCall.Id, errorMessage);
             }

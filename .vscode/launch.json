@@ -6,9 +6,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "Build WileyWidget.WinForms",
-      "program": "${workspaceFolder}/WileyWidget.WinForms/bin/Debug/net9.0-windows/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net9.0-windows/WileyWidget.WinForms.exe",
       "args": [],
-      "cwd": "${workspaceFolder}/WileyWidget.WinForms",
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
       "console": "integratedTerminal",
       "env": {

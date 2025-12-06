@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
@@ -36,6 +37,13 @@ public class GrokSupercomputer : IGrokSupercomputer
     private int HighConfidence => _appOptions.Value.AIHighConfidence;
     private int LowConfidence => _appOptions.Value.AILowConfidence;
 
+    // Static JSON serialization options to avoid repeated allocations
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = false,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
     /// <summary>
     /// Initializes a new instance of the GrokSupercomputer class
     /// </summary>
@@ -65,18 +73,82 @@ public class GrokSupercomputer : IGrokSupercomputer
         _appOptions = appOptions ?? throw new ArgumentNullException(nameof(appOptions));
     }
 
-    private async Task<T> SafeCall<T>(string operation, Func<Task<T>> action, T fallback)
+    private async Task<T> SafeCall<T>(string operation, Func<Task<T>> action, T fallback, int maxRetries = 2)
     {
-        try
+        var attempt = 0;
+        Exception? lastException = null;
+
+        while (attempt <= maxRetries)
         {
-            return await action();
+            try
+            {
+                return await action();
+            }
+            catch (Exception ex) when (attempt < maxRetries && IsTransientError(ex))
+            {
+                lastException = ex;
+                attempt++;
+                var delayMs = (int)Math.Pow(2, attempt) * 100; // Exponential backoff: 200ms, 400ms
+                _logger.LogWarning(ex, "{Operation} failed (attempt {Attempt}/{MaxRetries}). Retrying in {DelayMs}ms.",
+                    operation, attempt, maxRetries, delayMs);
+                await Task.Delay(delayMs);
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                break;
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "{Operation} failed. Returning fallback.", operation);
-            try { _aiLoggingService.LogError(operation, ex); } catch { /* best-effort */ }
-            return fallback;
-        }
+
+        // All retries exhausted or non-transient error
+        _aiLoggingService.LogError(operation, lastException!);
+        _logger.LogWarning(lastException, "{Operation} failed after {Attempts} attempts. Returning fallback.",
+            operation, attempt);
+        return fallback;
+    }
+
+    private static bool IsTransientError(Exception ex)
+    {
+        // Identify transient errors that warrant retry (network, timeout, etc.)
+        return ex is TaskCanceledException
+            || ex is TimeoutException
+            || (ex.Message?.Contains("timeout", StringComparison.OrdinalIgnoreCase) == true)
+            || (ex.InnerException is TaskCanceledException or TimeoutException);
+    }
+
+    /// <summary>
+    /// Calculates budget variance as a percentage
+    /// </summary>
+    private static decimal CalculateVariancePercent(decimal budgeted, decimal actual)
+    {
+        if (budgeted == 0) return 0;
+        return ((actual - budgeted) / budgeted) * 100;
+    }
+
+    /// <summary>
+    /// Calculates health score (0-100) based on variance percentage
+    /// </summary>
+    private static int CalculateHealthScore(decimal variancePercent)
+    {
+        // Health score decreases as absolute variance increases
+        // Perfect score (100) at 0% variance, decreasing linearly
+        var absVariance = Math.Abs(variancePercent);
+        var score = 100 - (int)absVariance;
+        return Math.Max(0, Math.Min(100, score));
+    }
+
+    /// <summary>
+    /// Calculates monthly burn rate and projects end-of-year spending
+    /// </summary>
+    private static (decimal monthlyBurnRate, decimal projectedEndOfYear) CalculateBurnRateProjection(
+        decimal totalExpenditures, int currentMonth = 0)
+    {
+        var month = currentMonth > 0 ? currentMonth : DateTime.UtcNow.Month;
+        var monthsElapsed = Math.Max(1, month);
+        var remainingMonths = Math.Max(0, 12 - month);
+        var monthlyBurnRate = totalExpenditures / monthsElapsed;
+        var projectedEndOfYear = totalExpenditures + (monthlyBurnRate * remainingMonths);
+        return (monthlyBurnRate, projectedEndOfYear);
     }
 
     /// <summary>
@@ -90,6 +162,12 @@ public class GrokSupercomputer : IGrokSupercomputer
     /// <returns>A Task containing ReportData with enterprise operational information for municipal utilities.</returns>
     public async Task<WileyWidget.Models.ReportData> FetchEnterpriseDataAsync(int? enterpriseId = null, DateTime? startDate = null, DateTime? endDate = null, string filter = "")
     {
+        // Input validation
+        if (enterpriseId.HasValue && enterpriseId.Value <= 0)
+        {
+            throw new ArgumentException("Enterprise ID must be positive", nameof(enterpriseId));
+        }
+
         try
         {
             var operationStart = DateTime.UtcNow;
@@ -122,10 +200,16 @@ public class GrokSupercomputer : IGrokSupercomputer
             }
 
             // Cache key includes enterpriseId/start/end/filter minimal
-            var cacheKey = $"Grok.FetchEnterpriseData:{enterpriseId?.ToString(CultureInfo.InvariantCulture) ?? "all"}:{effectiveStartDate:yyyyMMdd}:{effectiveEndDate:yyyyMMdd}:{filter?.Trim().ToLowerInvariant()}";
+            var normalizedFilter = string.IsNullOrWhiteSpace(filter) ? "" : filter.Trim().ToLowerInvariant();
+            var cacheKey = $"Grok.FetchEnterpriseData:{enterpriseId?.ToString(CultureInfo.InvariantCulture) ?? "all"}:{effectiveStartDate:yyyyMMdd}:{effectiveEndDate:yyyyMMdd}:{normalizedFilter}";
+
             if (_appOptions.Value.EnableDataCaching && _cache.TryGetValue(cacheKey, out object? cachedObj) && cachedObj is ReportData cached)
             {
                 _logger.LogInformation("Cache hit for FetchEnterpriseData: {Key}", cacheKey);
+                _aiLoggingService.LogMetric("GrokSupercomputer.FetchEnterpriseData.CacheHit", 1, new Dictionary<string, object>
+                {
+                    ["CacheKey"] = cacheKey
+                });
                 return cached;
             }
 
@@ -277,8 +361,8 @@ public class GrokSupercomputer : IGrokSupercomputer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching enterprise data for enterprise {EnterpriseId}", enterpriseId);
             _aiLoggingService.LogError("FetchEnterpriseData", ex);
+            _logger.LogError(ex, "Error fetching enterprise data for enterprise {EnterpriseId}", enterpriseId);
             throw;
         }
     }
@@ -297,6 +381,14 @@ public class GrokSupercomputer : IGrokSupercomputer
         {
             _logger.LogInformation("Running report calculations on data: {Title}", data.Title);
 
+            // Check cache first
+            var cacheKey = $"Grok.RunReportCalcs:{data.Title?.GetHashCode() ?? 0}:{data.GeneratedAt:yyyyMMddHHmmss}";
+            if (_appOptions.Value.EnableDataCaching && _cache.TryGetValue(cacheKey, out object? cachedObj) && cachedObj is AnalyticsData cachedAnalytics)
+            {
+                _logger.LogDebug("Cache hit for RunReportCalcs: {Key}", cacheKey);
+                return cachedAnalytics;
+            }
+
             var analytics = new AnalyticsData
             {
                 ChartType = "bar",
@@ -311,7 +403,7 @@ public class GrokSupercomputer : IGrokSupercomputer
                 var totalBudgeted = data.Departments.Sum(d => d.TotalBudgeted);
                 var totalActual = data.Departments.Sum(d => d.TotalActual);
                 var variance = totalActual - totalBudgeted;
-                var variancePercent = totalBudgeted != 0 ? (variance / totalBudgeted) * 100 : 0;
+                var variancePercent = CalculateVariancePercent(totalBudgeted, totalActual);
 
                 analytics.Categories.AddRange(new[] { "Budgeted", "Actual", "Variance" });
                 analytics.SummaryStats["Total Budgeted"] = (double)totalBudgeted;
@@ -354,6 +446,16 @@ public class GrokSupercomputer : IGrokSupercomputer
             _logger.LogInformation("Successfully calculated analytics with {CategoryCount} categories and {SeriesCount} series",
                 analytics.Categories.Count, analytics.ChartData.Count);
 
+            // Cache the result
+            if (_appOptions.Value.EnableDataCaching)
+            {
+                var entryOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_appOptions.Value.CacheExpirationMinutes)
+                };
+                _cache.Set(cacheKey, analytics, entryOptions);
+            }
+
             return await Task.FromResult(analytics);
         }
         catch (Exception ex)
@@ -372,17 +474,29 @@ public class GrokSupercomputer : IGrokSupercomputer
     public async Task<BudgetInsights> AnalyzeBudgetDataAsync(BudgetData budget)
     {
         if (budget == null) throw new ArgumentNullException(nameof(budget));
+        if (budget.FiscalYear < 1900 || budget.FiscalYear > 2100)
+        {
+            throw new ArgumentException($"Invalid fiscal year: {budget.FiscalYear}", nameof(budget));
+        }
 
         try
         {
             _logger.LogInformation("Analyzing budget data for enterprise {EnterpriseId}, fiscal year {FiscalYear}",
                 budget.EnterpriseId, budget.FiscalYear);
 
+            // Check cache
+            var cacheKey = $"Grok.AnalyzeBudget:{budget.EnterpriseId}:{budget.FiscalYear}:{budget.TotalBudget}:{budget.TotalExpenditures}";
+            if (_appOptions.Value.EnableDataCaching && _cache.TryGetValue(cacheKey, out object? cachedObj) && cachedObj is BudgetInsights cachedInsights)
+            {
+                _logger.LogDebug("Cache hit for AnalyzeBudgetData: {Key}", cacheKey);
+                return cachedInsights;
+            }
+
             var insights = new BudgetInsights();
 
-            // Calculate variance
+            // Calculate variance using explicit method
             var variance = budget.TotalExpenditures - budget.TotalBudget;
-            var variancePercent = budget.TotalBudget != 0 ? (variance / budget.TotalBudget) * 100 : 0;
+            var variancePercent = CalculateVariancePercent(budget.TotalBudget, budget.TotalExpenditures);
 
             insights.Variances.Add(new WileyWidget.Models.BudgetVariance
             {
@@ -392,11 +506,8 @@ public class GrokSupercomputer : IGrokSupercomputer
                 Variance = variance
             });
 
-            // Calculate projections (simple trend analysis)
-            var remainingMonths = Math.Max(0, 12 - DateTime.Now.Month + 1);
-            var monthsElapsed = Math.Max(1, 12 - remainingMonths + 1);
-            var monthlyBurnRate = monthsElapsed > 0 ? budget.TotalExpenditures / monthsElapsed : 0;
-            var projectedEndOfYear = budget.TotalExpenditures + (monthlyBurnRate * remainingMonths);
+            // Calculate projections using explicit method
+            var (monthlyBurnRate, projectedEndOfYear) = CalculateBurnRateProjection(budget.TotalExpenditures);
 
             insights.Projections.Add(new WileyWidget.Models.BudgetProjection
             {
@@ -420,8 +531,8 @@ public class GrokSupercomputer : IGrokSupercomputer
                 insights.Recommendations.Add("Budget performance is within acceptable range. Continue monitoring.");
             }
 
-            // Calculate health score based on variance
-            insights.HealthScore = Math.Max(0, Math.Min(100, 100 - (int)Math.Abs(variancePercent)));
+            // Calculate health score using explicit method
+            insights.HealthScore = CalculateHealthScore(variancePercent);
 
             // Enhance with AI-powered insights
             try
@@ -440,6 +551,16 @@ public class GrokSupercomputer : IGrokSupercomputer
             _logger.LogInformation("Successfully analyzed budget data with variance {VariancePercent:P2} and health score {HealthScore}",
                 variancePercent / 100, insights.HealthScore);
 
+            // Cache the result
+            if (_appOptions.Value.EnableDataCaching)
+            {
+                var entryOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_appOptions.Value.CacheExpirationMinutes)
+                };
+                _cache.Set(cacheKey, insights, entryOptions);
+            }
+
             return insights;
         }
         catch (Exception ex)
@@ -456,6 +577,10 @@ public class GrokSupercomputer : IGrokSupercomputer
     public Task<WileyWidget.Models.ComplianceReport> GenerateComplianceReportAsync(Enterprise enterprise)
     {
         if (enterprise == null) throw new ArgumentNullException(nameof(enterprise));
+        if (enterprise.Id <= 0)
+        {
+            throw new ArgumentException("Enterprise ID must be positive", nameof(enterprise));
+        }
 
         try
         {
@@ -569,6 +694,12 @@ public class GrokSupercomputer : IGrokSupercomputer
     /// <returns>A Task containing the analysis results as a string.</returns>
     public async Task<string> AnalyzeMunicipalDataAsync(object data, string context)
     {
+        if (data == null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrWhiteSpace(context))
+        {
+            throw new ArgumentException("Context cannot be empty", nameof(context));
+        }
+
         try
         {
             _logger.LogInformation("Analyzing municipal data with context: {Context}", context);
@@ -579,6 +710,13 @@ public class GrokSupercomputer : IGrokSupercomputer
                 WriteIndented = false,
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             });
+
+            // Check serialized size to avoid excessive API calls
+            if (dataJson.Length > 50000)
+            {
+                _logger.LogWarning("Municipal data JSON exceeds 50KB ({Size} chars). Truncating for AI analysis.", dataJson.Length);
+                dataJson = dataJson.Substring(0, 50000) + "...[truncated]";
+            }
 
             var question = $"Please analyze this municipal utility data and provide insights. Context: {context}. Data: {dataJson}";
 
@@ -644,15 +782,31 @@ Focus on municipal utility operations and provide actionable insights.";
     /// <returns>AI-powered analysis of municipal accounts</returns>
     public async Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<WileyWidget.Models.MunicipalAccount> municipalAccounts, BudgetData budgetData)
     {
+        if (municipalAccounts == null) throw new ArgumentNullException(nameof(municipalAccounts));
+        if (budgetData == null) throw new ArgumentNullException(nameof(budgetData));
+
         try
         {
             _logger.LogInformation("Analyzing municipal accounts with AI for enterprise {EnterpriseId}", budgetData?.EnterpriseId);
 
-            var accountsJson = System.Text.Json.JsonSerializer.Serialize(municipalAccounts, new System.Text.Json.JsonSerializerOptions
+            var accountsList = municipalAccounts.ToList();
+            if (accountsList.Count == 0)
+            {
+                return "No municipal accounts provided for analysis.";
+            }
+
+            var accountsJson = System.Text.Json.JsonSerializer.Serialize(accountsList, new System.Text.Json.JsonSerializerOptions
             {
                 WriteIndented = false,
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             });
+
+            // Limit JSON size for API
+            if (accountsJson.Length > 40000)
+            {
+                _logger.LogWarning("Accounts JSON exceeds 40KB ({Size} chars). Truncating for AI analysis.", accountsJson.Length);
+                accountsJson = accountsJson.Substring(0, 40000) + "...[truncated]";
+            }
 
             var context = $"Municipal Account Analysis for Enterprise {budgetData?.EnterpriseId ?? 0}";
             var question = $@"
@@ -693,6 +847,8 @@ Focus on municipal finance best practices and operational efficiency.";
     /// <returns>A Task containing the recommendations as a string.</returns>
     public async Task<string> GenerateRecommendationsAsync(object data)
     {
+        if (data == null) throw new ArgumentNullException(nameof(data));
+
         try
         {
             _logger.LogInformation("Generating AI-powered recommendations based on analyzed data");
@@ -703,6 +859,13 @@ Focus on municipal finance best practices and operational efficiency.";
                 WriteIndented = false,
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             });
+
+            // Limit size for AI processing
+            if (dataJson.Length > 45000)
+            {
+                _logger.LogWarning("Recommendation data JSON exceeds 45KB ({Size} chars). Truncating.", dataJson.Length);
+                dataJson = dataJson.Substring(0, 45000) + "...[truncated]";
+            }
 
             var question = $"Based on this municipal utility data, please generate specific, actionable recommendations for improving efficiency, reducing costs, and optimizing operations. Data: {dataJson}";
 
@@ -738,9 +901,11 @@ Focus on municipal finance best practices and operational efficiency.";
         {
             _logger.LogInformation("Executing AI query with prompt length: {Length}", prompt.Length);
 
+            var startTime = DateTime.UtcNow;
             var response = await _aiService.SendPromptAsync(prompt);
+            var elapsedMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
-            _aiLoggingService.LogMetric("GrokSupercomputer.QueryAsync.ResponseTime", 0, new Dictionary<string, object>
+            _aiLoggingService.LogMetric("GrokSupercomputer.QueryAsync.ResponseTime", elapsedMs, new Dictionary<string, object>
             {
                 ["PromptLength"] = prompt.Length,
                 ["ResponseLength"] = response?.Content?.Length ?? 0,
@@ -756,5 +921,308 @@ Focus on municipal finance best practices and operational efficiency.";
             _aiLoggingService.LogError("QueryAsync", ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Analyzes budget data for a specific fiscal year using AI
+    /// </summary>
+    /// <param name="fiscalYear">The fiscal year to analyze</param>
+    /// <returns>AI-generated budget insights</returns>
+    public async Task<string> AnalyzeBudgetAsync(int fiscalYear)
+    {
+        if (fiscalYear < 1900 || fiscalYear > 2100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(fiscalYear), "Fiscal year must be between 1900 and 2100");
+        }
+
+        return await SafeCall(
+            "AnalyzeBudget",
+            async () =>
+            {
+                _logger.LogInformation("Analyzing budget for fiscal year {FiscalYear}", fiscalYear);
+
+                // Fetch budget entries for the fiscal year
+                var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(fiscalYear);
+                var budgetEntriesList = budgetEntries?.ToList() ?? new List<BudgetEntry>();
+
+                // Create a budget overview object
+                var budgetOverview = new
+                {
+                    FiscalYear = fiscalYear,
+                    Entries = budgetEntriesList,
+                    TotalBudgeted = budgetEntriesList.Sum(e => e.BudgetedAmount),
+                    TotalActual = budgetEntriesList.Sum(e => e.ActualAmount),
+                    EntryCount = budgetEntriesList.Count
+                };
+
+                var dataJson = System.Text.Json.JsonSerializer.Serialize(budgetOverview, JsonOptions);
+
+                var question = $"Analyze this budget data for fiscal year {fiscalYear} and provide insights: {dataJson}";
+                var insights = await _aiService.GetInsightsAsync($"Budget Analysis - FY {fiscalYear}", question);
+
+                _aiLoggingService.LogQuery($"AnalyzeBudget-{fiscalYear}", question, dataJson);
+                _aiLoggingService.LogResponse($"AnalyzeBudget-{fiscalYear}", insights, 0, (insights?.Length ?? 0));
+
+                _logger.LogInformation("AI-powered budget analysis completed for fiscal year {FiscalYear}", fiscalYear);
+                return insights;
+            },
+            GenerateFallbackBudgetAnalysis(fiscalYear, null)
+        );
+    }
+
+    /// <summary>
+    /// Analyzes enterprise data using AI
+    /// </summary>
+    /// <param name="enterpriseId">The enterprise ID to analyze</param>
+    /// <returns>AI-generated enterprise insights</returns>
+    public async Task<string> AnalyzeEnterpriseAsync(int enterpriseId)
+    {
+        if (enterpriseId <= 0)
+        {
+            throw new ArgumentException("Enterprise ID must be positive", nameof(enterpriseId));
+        }
+
+        return await SafeCall(
+            "AnalyzeEnterprise",
+            async () =>
+            {
+                _logger.LogInformation("Analyzing enterprise {EnterpriseId}", enterpriseId);
+
+                // Fetch enterprise data
+                var enterprise = await _enterpriseRepository.GetByIdAsync(enterpriseId);
+
+                if (enterprise == null)
+                {
+                    throw new InvalidOperationException($"Enterprise with ID {enterpriseId} not found");
+                }
+
+                // Create an enterprise overview
+                var enterpriseOverview = new
+                {
+                    EnterpriseId = enterprise.Id,
+                    Name = enterprise.Name,
+                    Description = enterprise.Description,
+                    CurrentRate = enterprise.CurrentRate,
+                    MonthlyExpenses = enterprise.MonthlyExpenses,
+                    Type = enterprise.Type
+                };
+
+                var dataJson = System.Text.Json.JsonSerializer.Serialize(enterpriseOverview, JsonOptions);
+
+                var question = $"Analyze this enterprise data and provide operational insights: {dataJson}";
+                var insights = await _aiService.GetInsightsAsync($"Enterprise Analysis - ID {enterpriseId}", question);
+
+                _logger.LogInformation("AI-powered enterprise analysis completed for enterprise {EnterpriseId}", enterpriseId);
+                return insights;
+            },
+            GenerateFallbackEnterpriseAnalysis(enterpriseId, null)
+        );
+    }
+
+    /// <summary>
+    /// Analyzes audit findings using AI
+    /// </summary>
+    /// <param name="startDate">Optional start date for audit data</param>
+    /// <param name="endDate">Optional end date for audit data</param>
+    /// <returns>AI-generated audit analysis</returns>
+    public async Task<string> AnalyzeAuditAsync(DateTime? startDate = null, DateTime? endDate = null)
+    {
+        return await SafeCall(
+            "AnalyzeAudit",
+            async () =>
+            {
+                _logger.LogInformation("Analyzing audit data from {StartDate} to {EndDate}", startDate, endDate);
+
+                var effectiveStartDate = startDate ?? DateTime.Now.AddYears(-1);
+                var effectiveEndDate = endDate ?? DateTime.Now;
+
+                // Fetch audit entries
+                var auditEntries = await _auditRepository.GetAuditTrailAsync(effectiveStartDate, effectiveEndDate);
+                var auditEntriesList = auditEntries?.ToList() ?? new List<AuditEntry>();
+
+                // Create audit findings object
+                var auditFindings = new
+                {
+                    StartDate = effectiveStartDate,
+                    EndDate = effectiveEndDate,
+                    Findings = auditEntriesList,
+                    TotalFindings = auditEntriesList.Count,
+                    EntitiesAudited = auditEntriesList.Select(e => e.EntityType).Distinct().Count()
+                };
+
+                var dataJson = System.Text.Json.JsonSerializer.Serialize(auditFindings, JsonOptions);
+
+                var question = $"Analyze these audit findings and provide compliance insights: {dataJson}";
+                var insights = await _aiService.GetInsightsAsync("Audit Analysis", question);
+
+                _logger.LogInformation("AI-powered audit analysis completed");
+                return insights;
+            },
+            GenerateFallbackAuditAnalysis(null)
+        );
+    }
+
+    /// <summary>
+    /// Analyzes all municipal accounts using AI
+    /// </summary>
+    /// <returns>AI-generated analysis of municipal accounts</returns>
+    public async Task<string> AnalyzeMunicipalAccountsAsync()
+    {
+        return await SafeCall(
+            "AnalyzeMunicipalAccounts",
+            async () =>
+            {
+                _logger.LogInformation("Analyzing municipal accounts");
+
+                // Fetch all enterprises (which contain municipal account information)
+                var enterprises = await _enterpriseRepository.GetAllAsync();
+                var enterprisesList = enterprises?.ToList() ?? new List<Enterprise>();
+
+                // Create accounts summary
+                var accountsSummary = new
+                {
+                    TotalAccounts = enterprisesList.Count,
+                    Accounts = enterprisesList.Select(e => new
+                    {
+                        Id = e.Id,
+                        Name = e.Name,
+                        Type = e.Type,
+                        CurrentRate = e.CurrentRate,
+                        MonthlyExpenses = e.MonthlyExpenses
+                    }).ToList()
+                };
+
+                var dataJson = System.Text.Json.JsonSerializer.Serialize(accountsSummary, JsonOptions);
+
+                if (dataJson.Length > 50000)
+                {
+                    _logger.LogWarning("Municipal accounts JSON exceeds 50KB. Truncating for AI analysis.");
+                    dataJson = dataJson.Substring(0, 50000) + "...[truncated]";
+                }
+
+                var question = $"Analyze these municipal accounts and provide insights on spending patterns and optimization: {dataJson}";
+                var insights = await _aiService.GetInsightsAsync("Municipal Accounts Analysis", question);
+
+                _logger.LogInformation("AI-powered municipal accounts analysis completed");
+                return insights;
+            },
+            GenerateFallbackAccountsAnalysis(null)
+        );
+    }
+
+    /// <summary>
+    /// Generates fallback budget analysis when AI is unavailable
+    /// </summary>
+    private string GenerateFallbackBudgetAnalysis(int fiscalYear, object? budgetData)
+    {
+        return GenerateFallbackAnalysis(
+            "Budget",
+            new Dictionary<string, object?>
+            {
+                ["Fiscal Year"] = fiscalYear,
+                ["Review Period"] = fiscalYear.ToString(CultureInfo.InvariantCulture),
+                ["Data Points"] = ExtractCollectionCount(budgetData, "Entries")
+            },
+            "Conduct detailed variance analysis and review budget allocation by department"
+        );
+    }
+
+    /// <summary>
+    /// Generates fallback enterprise analysis when AI is unavailable
+    /// </summary>
+    private string GenerateFallbackEnterpriseAnalysis(int enterpriseId, object? enterpriseData)
+    {
+        return GenerateFallbackAnalysis(
+            "Enterprise",
+            new Dictionary<string, object?>
+            {
+                ["Enterprise ID"] = enterpriseId,
+                ["Status"] = "Metrics available for review"
+            },
+            "Review operational efficiency, budget allocation, and service delivery metrics"
+        );
+    }
+
+    /// <summary>
+    /// Generates fallback audit analysis when AI is unavailable
+    /// </summary>
+    private string GenerateFallbackAuditAnalysis(object? auditData)
+    {
+        return GenerateFallbackAnalysis(
+            "Audit",
+            new Dictionary<string, object?>
+            {
+                ["Total Findings"] = ExtractCollectionCount(auditData, "Findings"),
+                ["Review Period"] = "Last 12 months (default)"
+            },
+            "Address all high-priority findings and implement corrective action plans"
+        );
+    }
+
+    /// <summary>
+    /// Generates fallback municipal accounts analysis when AI is unavailable
+    /// </summary>
+    private string GenerateFallbackAccountsAnalysis(object? accountsData)
+    {
+        return GenerateFallbackAnalysis(
+            "Municipal Accounts",
+            new Dictionary<string, object?>
+            {
+                ["Total Accounts"] = accountsData is System.Collections.ICollection coll ? coll.Count : 0
+            },
+            "Review high-expenditure accounts for optimization and consolidation opportunities"
+        );
+    }
+
+    /// <summary>
+    /// Standardized fallback message generator for all analysis types
+    /// </summary>
+    private string GenerateFallbackAnalysis(string analysisType, IDictionary<string, object?> metrics, string recommendation)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"📊 Basic {analysisType} Analysis (AI Unavailable)");
+        sb.AppendLine();
+        sb.AppendLine("Metrics:");
+
+        foreach (var kvp in metrics)
+        {
+            sb.AppendLine($"  • {kvp.Key}: {kvp.Value}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Recommendation:");
+        sb.AppendLine($"  → {recommendation}");
+        sb.AppendLine();
+        sb.AppendLine("⚠️  Note: AI-powered analysis failed. This fallback provides basic metrics only.");
+        sb.AppendLine("   For detailed insights, ensure xAI service is configured and operational.");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Safely extracts collection count from object using reflection
+    /// </summary>
+    private int ExtractCollectionCount(object? data, string propertyName)
+    {
+        if (data == null) return 0;
+
+        try
+        {
+            var property = data.GetType().GetProperty(propertyName);
+            if (property != null)
+            {
+                var value = property.GetValue(data);
+                if (value is System.Collections.ICollection collection)
+                {
+                    return collection.Count;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract collection count for property {PropertyName}", propertyName);
+        }
+
+        return 0;
     }
 }

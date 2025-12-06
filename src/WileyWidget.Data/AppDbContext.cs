@@ -69,6 +69,7 @@ namespace WileyWidget.Data
         public DbSet<Vendor> Vendors { get; set; } = null!;
         public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
         public DbSet<TaxRevenueSummary> TaxRevenueSummaries { get; set; } = null!;
+        public DbSet<ConversationHistory> ConversationHistories { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -233,6 +234,29 @@ namespace WileyWidget.Data
             entity.Property(bi => bi.InteractionType).HasMaxLength(50);
             entity.Property(bi => bi.Description).HasMaxLength(200);
             entity.Property(bi => bi.Notes).HasMaxLength(300);
+        });
+
+        // ConversationHistory configuration
+        modelBuilder.Entity<ConversationHistory>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.HasIndex(c => c.ConversationId)
+                  .IsUnique()
+                  .HasDatabaseName("IX_ConversationHistories_ConversationId");
+            entity.HasIndex(c => c.UpdatedAt)
+                  .IsDescending()
+                  .HasDatabaseName("IX_ConversationHistories_UpdatedAt");
+            entity.HasIndex(c => c.IsArchived)
+                  .HasFilter("[IsArchived] = 0")
+                  .HasDatabaseName("IX_ConversationHistories_IsArchived_Filtered");
+            entity.Property(c => c.ConversationId)
+                  .HasMaxLength(450)
+                  .IsRequired();
+            entity.Property(c => c.Title)
+                  .HasMaxLength(500)
+                  .IsRequired();
+            entity.Property(c => c.MessagesJson)
+                  .IsRequired();
         });
 
         // UtilityBill configuration

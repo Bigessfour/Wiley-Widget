@@ -3,150 +3,183 @@ using WileyWidget.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Polly;
-using Polly.Retry;
 using Polly.CircuitBreaker;
+using Polly.Retry;
 using Polly.Timeout;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
 
 namespace WileyWidget.Data.Resilience;
 
 /// <summary>
-/// Provides Polly-based resilience policies for database operations
+/// Provides Polly v8-based resilience pipelines for database operations.
 /// Handles transient failures from Azure SQL, authentication timeouts, network issues,
-/// and implements comprehensive resilience patterns using Polly v8
+/// and implements comprehensive resilience patterns using modern Polly v8 ResiliencePipelineBuilder.
+///
+/// Upgraded from Polly v7 PolicyWrap to v8 ResiliencePipeline for:
+/// - Better performance with context pooling
+/// - Simplified configuration and composition
+/// - Native async/await support without legacy wrappers
+/// - Consistent API with XAIService resilience patterns
 /// </summary>
 public static class DatabaseResiliencePolicy
 {
     /// <summary>
-    /// Retry policy for authentication/transient failures when connecting to SQL Server.
-    /// Retries 3 times with exponential backoff (500ms, 1s, 2s) using Polly v8 syntax.
+    /// Combined resilience pipeline for all database operations.
+    /// Includes circuit breaker, timeout, authentication retry, timeout retry, and concurrency retry.
     /// </summary>
-    public static AsyncRetryPolicy DatabaseAuthRetryPolicy { get; } = Policy
-        .Handle<SqlException>(ex => IsTransientError(ex))
-        .WaitAndRetryAsync(
-            retryCount: 3,
-            sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(500 * Math.Pow(2, retryAttempt - 1)),
-            onRetryAsync: async (exception, timeSpan, retryCount, context) =>
+    public static ResiliencePipeline<TResult> CombinedDatabasePipeline<TResult>()
+    {
+        return new ResiliencePipelineBuilder<TResult>()
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<TResult>
             {
-                Log.Warning(exception,
-                    "Azure authentication/transient error on attempt {RetryCount}. Retrying in {RetryDelayMs}ms",
-                    retryCount, timeSpan.TotalMilliseconds);
-                await Task.CompletedTask;
-            });
-
-    /// <summary>
-    /// Retry policy for database operation timeouts using Polly v8
-    /// Retries 2 times with linear backoff (1s, 2s)
-    /// </summary>
-    public static AsyncRetryPolicy DatabaseTimeoutRetryPolicy { get; } = Policy
-        .Handle<TimeoutException>()
-        .Or<SqlException>(ex => ex.Number == -2) // Timeout error number
-        .WaitAndRetryAsync(
-            retryCount: 2,
-            sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(retryAttempt),
-            onRetryAsync: async (exception, timeSpan, retryCount, context) =>
-            {
-                Log.Warning(exception,
-                    "Database timeout on attempt {RetryCount}. Retrying in {RetryDelaySeconds}s",
-                    retryCount, timeSpan.TotalSeconds);
-                await Task.CompletedTask;
-            });
-
-    /// <summary>
-    /// Retry policy for EF Core concurrency conflicts using Polly v8
-    /// Retries once immediately
-    /// </summary>
-    public static AsyncRetryPolicy ConcurrencyRetryPolicy { get; } = Policy
-        .Handle<DbUpdateConcurrencyException>()
-        .RetryAsync(
-            retryCount: 1,
-            onRetryAsync: async (exception, retryCount) =>
-            {
-                Log.Warning(exception, "Concurrency conflict detected. Retrying once.");
-                await Task.CompletedTask;
-            });
-
-    /// <summary>
-    /// Circuit breaker policy for database operations to prevent cascade failures
-    /// </summary>
-    public static AsyncCircuitBreakerPolicy DatabaseCircuitBreakerPolicy { get; } = Policy
-        .Handle<SqlException>(ex => IsTransientError(ex))
-        .Or<TimeoutException>()
-        .CircuitBreakerAsync(
-            exceptionsAllowedBeforeBreaking: 5,
-            durationOfBreak: TimeSpan.FromSeconds(30),
-            onBreak: (exception, breakDelay) =>
-                Log.Warning(exception, "Database circuit breaker opened for {Duration}", breakDelay),
-            onReset: () => Log.Information("Database circuit breaker reset"),
-            onHalfOpen: () => Log.Information("Database circuit breaker half-open"));
-
-    /// <summary>
-    /// Timeout policy for database operations to prevent hanging queries
-    /// </summary>
-    public static AsyncTimeoutPolicy DatabaseTimeoutPolicy { get; } = Policy
-        .TimeoutAsync(
-            timeout: TimeSpan.FromSeconds(30),
-            timeoutStrategy: TimeoutStrategy.Pessimistic,
-            onTimeoutAsync: async (context, timeout, task, exception) =>
-            {
-                Log.Warning(exception, "Database operation timed out after {TimeoutSeconds}s", timeout.TotalSeconds);
-                await Task.CompletedTask;
-            });
-
-    /// <summary>
-    /// Combined policy for all database operations using Polly v8 PolicyWrap
-    /// Wraps authentication, timeout, concurrency, circuit breaker, and timeout policies
-    /// </summary>
-    public static AsyncPolicy CombinedDatabasePolicy { get; } = Policy.WrapAsync(
-        DatabaseCircuitBreakerPolicy,
-        DatabaseTimeoutPolicy,
-        Policy.WrapAsync(
-            DatabaseAuthRetryPolicy,
-            DatabaseTimeoutRetryPolicy,
-            ConcurrencyRetryPolicy
-        ));
-
-    /// <summary>
-    /// Resilience pipeline for read operations (lighter resilience)
-    /// </summary>
-    public static AsyncPolicy ReadOperationPolicy { get; } = Policy.WrapAsync(
-        DatabaseTimeoutPolicy,
-        Policy.Handle<SqlException>(ex => IsTransientError(ex))
-            .Or<TimeoutException>()
-            .WaitAndRetryAsync(
-                retryCount: 2,
-                sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(250 * retryAttempt),
-                onRetryAsync: async (exception, timeSpan, retryCount, context) =>
+                FailureRatio = 0.5,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                MinimumThroughput = 5,
+                BreakDuration = TimeSpan.FromSeconds(30),
+                ShouldHandle = new PredicateBuilder<TResult>()
+                    .Handle<SqlException>(ex => IsTransientError(ex))
+                    .Handle<TimeoutException>(),
+                OnOpened = args =>
                 {
-                    Log.Warning(exception, "Read operation failed (attempt {RetryCount}). Retrying in {RetryDelayMs}ms",
-                        retryCount, timeSpan.TotalMilliseconds);
-                    await Task.CompletedTask;
-                }));
+                    Log.Warning("Database circuit breaker opened after failure");
+                    return default;
+                },
+                OnClosed = args =>
+                {
+                    Log.Information("Database circuit breaker closed");
+                    return default;
+                },
+                OnHalfOpened = args =>
+                {
+                    Log.Information("Database circuit breaker half-open, testing connection");
+                    return default;
+                }
+            })
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(30),
+                OnTimeout = args =>
+                {
+                    Log.Warning("Database operation timed out after {TimeoutSeconds}s", args.Timeout.TotalSeconds);
+                    return default;
+                }
+            })
+            .AddRetry(new RetryStrategyOptions<TResult>
+            {
+                MaxRetryAttempts = 3,
+                BackoffType = DelayBackoffType.Exponential,
+                Delay = TimeSpan.FromMilliseconds(500),
+                UseJitter = true,
+                ShouldHandle = new PredicateBuilder<TResult>()
+                    .Handle<SqlException>(ex => IsTransientError(ex)),
+                OnRetry = args =>
+                {
+                    Log.Warning(args.Outcome.Exception,
+                        "Database transient error on attempt {AttemptNumber}. Retrying in {RetryDelayMs}ms",
+                        args.AttemptNumber, args.RetryDelay.TotalMilliseconds);
+                    return default;
+                }
+            })
+            .AddRetry(new RetryStrategyOptions<TResult>
+            {
+                MaxRetryAttempts = 2,
+                BackoffType = DelayBackoffType.Linear,
+                Delay = TimeSpan.FromSeconds(1),
+                ShouldHandle = new PredicateBuilder<TResult>()
+                    .Handle<TimeoutException>()
+                    .Handle<SqlException>(ex => ex.Number == -2), // SQL timeout error
+                OnRetry = args =>
+                {
+                    Log.Warning(args.Outcome.Exception,
+                        "Database timeout on attempt {AttemptNumber}. Retrying in {RetryDelaySeconds}s",
+                        args.AttemptNumber, args.RetryDelay.TotalSeconds);
+                    return default;
+                }
+            })
+            .AddRetry(new RetryStrategyOptions<TResult>
+            {
+                MaxRetryAttempts = 1,
+                Delay = TimeSpan.Zero,
+                ShouldHandle = new PredicateBuilder<TResult>()
+                    .Handle<DbUpdateConcurrencyException>(),
+                OnRetry = args =>
+                {
+                    Log.Warning(args.Outcome.Exception, "Concurrency conflict detected. Retrying once.");
+                    return default;
+                }
+            })
+            .Build();
+    }
 
     /// <summary>
-    /// Resilience pipeline for write operations (stricter resilience)
+    /// Resilience pipeline for read operations (lighter resilience).
+    /// Includes timeout and 2-attempt retry for transient errors.
     /// </summary>
-    public static AsyncPolicy WriteOperationPolicy { get; } = Policy.WrapAsync(
-        DatabaseCircuitBreakerPolicy,
-        DatabaseTimeoutPolicy,
-        Policy.WrapAsync(
-            DatabaseAuthRetryPolicy,
-            ConcurrencyRetryPolicy,
-            Policy.Handle<SqlException>(ex => IsTransientError(ex))
-                .WaitAndRetryAsync(
-                    retryCount: 3,
-                    sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(500 * Math.Pow(2, retryAttempt - 1)),
-                    onRetryAsync: async (exception, timeSpan, retryCount, context) =>
-                    {
-                        Log.Warning(exception, "Write operation failed (attempt {RetryCount}). Retrying in {RetryDelayMs}ms",
-                            retryCount, timeSpan.TotalMilliseconds);
-                        await Task.CompletedTask;
-                    })));
+    public static ResiliencePipeline<TResult> ReadOperationPipeline<TResult>()
+    {
+        return new ResiliencePipelineBuilder<TResult>()
+            .AddTimeout(TimeSpan.FromSeconds(30))
+            .AddRetry(new RetryStrategyOptions<TResult>
+            {
+                MaxRetryAttempts = 2,
+                BackoffType = DelayBackoffType.Linear,
+                Delay = TimeSpan.FromMilliseconds(250),
+                ShouldHandle = new PredicateBuilder<TResult>()
+                    .Handle<SqlException>(ex => IsTransientError(ex))
+                    .Handle<TimeoutException>(),
+                OnRetry = args =>
+                {
+                    Log.Warning(args.Outcome.Exception,
+                        "Read operation failed (attempt {AttemptNumber}). Retrying in {RetryDelayMs}ms",
+                        args.AttemptNumber, args.RetryDelay.TotalMilliseconds);
+                    return default;
+                }
+            })
+            .Build();
+    }
 
     /// <summary>
-    /// Determines if a SQL exception is transient (retryable)
+    /// Resilience pipeline for write operations (stricter resilience).
+    /// Includes circuit breaker, timeout, authentication retry, and concurrency retry.
+    /// </summary>
+    public static ResiliencePipeline<TResult> WriteOperationPipeline<TResult>()
+    {
+        return new ResiliencePipelineBuilder<TResult>()
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<TResult>
+            {
+                FailureRatio = 0.5,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                MinimumThroughput = 5,
+                BreakDuration = TimeSpan.FromSeconds(30),
+                ShouldHandle = new PredicateBuilder<TResult>()
+                    .Handle<SqlException>(ex => IsTransientError(ex))
+                    .Handle<TimeoutException>()
+            })
+            .AddTimeout(TimeSpan.FromSeconds(30))
+            .AddRetry(new RetryStrategyOptions<TResult>
+            {
+                MaxRetryAttempts = 3,
+                BackoffType = DelayBackoffType.Exponential,
+                Delay = TimeSpan.FromMilliseconds(500),
+                UseJitter = true,
+                ShouldHandle = new PredicateBuilder<TResult>()
+                    .Handle<SqlException>(ex => IsTransientError(ex))
+            })
+            .AddRetry(new RetryStrategyOptions<TResult>
+            {
+                MaxRetryAttempts = 1,
+                Delay = TimeSpan.Zero,
+                ShouldHandle = new PredicateBuilder<TResult>()
+                    .Handle<DbUpdateConcurrencyException>()
+            })
+            .Build();
+    }
+
+    /// <summary>
+    /// Determines if a SQL exception is transient (retryable).
     /// </summary>
     private static bool IsTransientError(SqlException ex)
     {
@@ -173,42 +206,103 @@ public static class DatabaseResiliencePolicy
     }
 
     /// <summary>
-    /// Executes a database operation with combined resilience policy
+    /// Executes a database operation with combined resilience pipeline.
+    /// Uses context pooling for performance.
     /// </summary>
+    public static async Task<TResult> ExecuteAsync<TResult>(Func<CancellationToken, Task<TResult>> operation, CancellationToken cancellationToken = default)
+    {
+        var pipeline = CombinedDatabasePipeline<TResult>();
+        return await pipeline.ExecuteAsync(async ct => await operation(ct), cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes a void database operation with combined resilience pipeline.
+    /// </summary>
+    public static async Task ExecuteAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default)
+    {
+        await ExecuteAsync<object?>(async ct =>
+        {
+            await operation(ct);
+            return null;
+        }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes a read operation with lighter resilience pipeline.
+    /// </summary>
+    public static async Task<TResult> ExecuteReadAsync<TResult>(Func<CancellationToken, Task<TResult>> operation, CancellationToken cancellationToken = default)
+    {
+        var pipeline = ReadOperationPipeline<TResult>();
+        return await pipeline.ExecuteAsync(async ct => await operation(ct), cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes a write operation with stricter resilience pipeline.
+    /// </summary>
+    public static async Task<TResult> ExecuteWriteAsync<TResult>(Func<CancellationToken, Task<TResult>> operation, CancellationToken cancellationToken = default)
+    {
+        var pipeline = WriteOperationPipeline<TResult>();
+        return await pipeline.ExecuteAsync(async ct => await operation(ct), cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes a void write operation with stricter resilience pipeline.
+    /// </summary>
+    public static async Task ExecuteWriteAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default)
+    {
+        await ExecuteWriteAsync<object?>(async ct =>
+        {
+            await operation(ct);
+            return null;
+        }, cancellationToken);
+    }
+
+    // ===== BACKWARD COMPATIBILITY: Legacy Polly v7 API =====
+    // These overloads support existing code without CancellationToken parameters
+    // New code should use the CancellationToken overloads above
+
+    /// <summary>
+    /// Executes a database operation with combined resilience pipeline (legacy v7 compatibility).
+    /// </summary>
+    [Obsolete("Use ExecuteAsync(Func<CancellationToken, Task<TResult>>, CancellationToken) for better cancellation support")]
     public static Task<TResult> ExecuteAsync<TResult>(Func<Task<TResult>> operation)
     {
-        return CombinedDatabasePolicy.ExecuteAsync(operation);
+        return ExecuteAsync(_ => operation(), CancellationToken.None);
     }
 
     /// <summary>
-    /// Executes a void database operation with combined resilience policy
+    /// Executes a void database operation with combined resilience pipeline (legacy v7 compatibility).
     /// </summary>
+    [Obsolete("Use ExecuteAsync(Func<CancellationToken, Task>, CancellationToken) for better cancellation support")]
     public static Task ExecuteAsync(Func<Task> operation)
     {
-        return CombinedDatabasePolicy.ExecuteAsync(operation);
+        return ExecuteAsync(_ => operation(), CancellationToken.None);
     }
 
     /// <summary>
-    /// Executes a read operation with lighter resilience policy
+    /// Executes a read operation with lighter resilience pipeline (legacy v7 compatibility).
     /// </summary>
+    [Obsolete("Use ExecuteReadAsync(Func<CancellationToken, Task<TResult>>, CancellationToken) for better cancellation support")]
     public static Task<TResult> ExecuteReadAsync<TResult>(Func<Task<TResult>> operation)
     {
-        return ReadOperationPolicy.ExecuteAsync(operation);
+        return ExecuteReadAsync(_ => operation(), CancellationToken.None);
     }
 
     /// <summary>
-    /// Executes a write operation with stricter resilience policy
+    /// Executes a write operation with stricter resilience pipeline (legacy v7 compatibility).
     /// </summary>
+    [Obsolete("Use ExecuteWriteAsync(Func<CancellationToken, Task<TResult>>, CancellationToken) for better cancellation support")]
     public static Task<TResult> ExecuteWriteAsync<TResult>(Func<Task<TResult>> operation)
     {
-        return WriteOperationPolicy.ExecuteAsync(operation);
+        return ExecuteWriteAsync(_ => operation(), CancellationToken.None);
     }
 
     /// <summary>
-    /// Executes a void write operation with stricter resilience policy
+    /// Executes a void write operation with stricter resilience pipeline (legacy v7 compatibility).
     /// </summary>
+    [Obsolete("Use ExecuteWriteAsync(Func<CancellationToken, Task>, CancellationToken) for better cancellation support")]
     public static Task ExecuteWriteAsync(Func<Task> operation)
     {
-        return WriteOperationPolicy.ExecuteAsync(operation);
+        return ExecuteWriteAsync(_ => operation(), CancellationToken.None);
     }
 }

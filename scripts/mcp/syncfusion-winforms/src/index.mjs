@@ -8,32 +8,7 @@ const server = new McpServer(
 );
 
 // In-repo, curated control catalog (seed, non-exhaustive)
-const controls = [
-  {
-    name: 'SfDataGrid',
-    category: 'DataGrid',
-    description: 'High-performance data grid for WinForms with sorting, grouping, and filtering.',
-    docs: 'https://help.syncfusion.com/windowsforms/datagrid/overview'
-  },
-  {
-    name: 'SfChart',
-    category: 'Chart',
-    description: 'Comprehensive chart control for WinForms with multiple series and axes.',
-    docs: 'https://help.syncfusion.com/windowsforms/chart/overview'
-  },
-  {
-    name: 'SfComboBox',
-    category: 'Editors',
-    description: 'Combo box editor with filtering and data-binding support.',
-    docs: 'https://help.syncfusion.com/windowsforms/combobox/overview'
-  },
-  {
-    name: 'SfTabControl',
-    category: 'Navigation',
-    description: 'Tabbed navigation control with themes and drag/drop.',
-    docs: 'https://help.syncfusion.com/windowsforms/tabcontrol/overview'
-  }
-];
+import { controls } from './controls.mjs';
 
 
 
@@ -91,6 +66,22 @@ server.registerTool(
     }
   }
 );
+
+// Register new control discovery / implementation tools
+import { listControlsTool, implementControlTool } from './tools/controls.mjs';
+
+// Register tools (compatible with Model Context Protocol helpers)
+server.registerTool('list-syncfusion-controls', {
+  title: listControlsTool.title,
+  description: listControlsTool.description,
+  inputSchema: listControlsTool.inputSchema
+}, listControlsTool.handler);
+
+server.registerTool('implement-syncfusion-control', {
+  title: implementControlTool.title,
+  description: implementControlTool.description,
+  inputSchema: implementControlTool.inputSchema
+}, implementControlTool.handler);
 
 // Connect over stdio
 const transport = new StdioServerTransport();

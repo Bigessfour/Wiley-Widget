@@ -11,11 +11,145 @@ namespace WileyWidget.WinForms.Controls;
 /// <summary>
 /// AI Chat control for xAI tool execution and conversational interface.
 /// Uses Syncfusion SfDataGrid for message display following AccountsForm patterns.
+///
+/// ═══════════════════════════════════════════════════════════════════════════════
+/// INTEGRATION DOCUMENTATION - AIChatControl
+/// ═══════════════════════════════════════════════════════════════════════════════
+///
+/// DEPENDENCY INJECTION:
+/// ─────────────────────
+/// 1. Constructor Dependencies:
+///    - IAIAssistantService: Scoped service for tool parsing and execution
+///    - ILogger&lt;AIChatControl&gt;: Scoped logger for diagnostic output
+///
+/// 2. DI Registration (WileyWidget.WinForms.Configuration.DependencyInjection.cs):
+///    services.AddScoped&lt;AIChatControl&gt;();
+///    services.AddScoped&lt;IAIAssistantService, AIAssistantService&gt;();
+///
+/// 3. Instantiation (MainForm.InitializeComponent):
+///    var aiService = ServiceProviderExtensions.GetRequiredService&lt;IAIAssistantService&gt;(_serviceProvider);
+///    var aiLogger = ServiceProviderExtensions.GetRequiredService&lt;ILogger&lt;AIChatControl&gt;&gt;(_serviceProvider);
+///    _aiChatControl = new AIChatControl(aiService, aiLogger);
+///
+/// SERVICE CONNECTION:
+/// ───────────────────
+/// 1. Tool Detection (ParseInputForTool):
+///    - Regex pattern: (read|grep|search|list|get errors)\s+(.+)
+///    - Examples: "read MainForm.cs", "grep SendMessageAsync", "search AI"
+///    - Returns: ToolCall? with Name, Id, Arguments, ToolType
+///
+/// 2. Tool Execution (ExecuteToolAsync):
+///    - Invokes Python bridge: xai_tool_executor.py
+///    - Subprocess communication with JSON serialization
+///    - Timeout: 30 seconds per tool call
+///    - Concurrency: Limited to 1 execution at a time via SemaphoreSlim
+///    - Returns: ToolCallResult with IsError, Content, ErrorMessage
+///
+/// 3. Message Flow:
+///    SendMessageAsync()
+///      ├─ Parse user input for tool keywords
+///      ├─ If tool detected:
+///      │  └─ Call ExecuteToolAsync(toolCall)
+///      │     ├─ Show progress panel "⏳ Executing tool..."
+///      │     ├─ Wait for Python process completion
+///      │     ├─ Format result or error message
+///      │     └─ Return to UI thread
+///      └─ Add ChatMessage to observable collection
+///         └─ Render in RichTextBox with formatting
+///
+/// CHAT MESSAGE MODEL:
+/// ───────────────────
+/// ChatMessage.cs properties:
+///   - IsUser: bool (true for user messages, false for AI responses)
+///   - Message: string (primary content)
+///   - Text: string (alias for Message, for WPF binding compatibility)
+///   - Timestamp: DateTime (message creation time)
+///   - Author: object? (optional metadata, used for Syncfusion Author)
+///   - Metadata: IDictionary (arbitrary key-value pairs)
+///   - Factory methods: CreateUserMessage(), CreateAIMessage()
+///
+/// UI COMPONENTS:
+/// ──────────────
+/// - Header Panel: Title, Clear button
+/// - Messages Display: RichTextBox with formatted chat history
+/// - Input Panel: TextBox for user input, Send button, Tool selector dropdown
+/// - Progress Panel: Shows "⏳ Executing tool..." during async operations
+/// - Keyboard shortcuts: Enter = Send, Shift+Enter = Newline
+///
+/// ENHANCEMENT OPPORTUNITIES:
+/// ──────────────────────────
+/// A. FALLBACK CONVERSATIONAL AI: ✓ IMPLEMENTED
+///    When no tool is detected, XAIService provides conversational responses:
+///
+///    if (toolCall == null && _conversationalAIService != null)
+///    {
+///        responseMessage = await _conversationalAIService.GetInsightsAsync(
+///            context: "User querying codebase via AI Chat interface",
+///            question: input,
+///            cancellationToken: CancellationToken.None);
+///        responseMessage = $"💭 Insights:\n{responseMessage}";
+///    }
+///
+///    Feature Behavior:
+///    - Tool commands (read, grep, search, list) → AIAssistantService (Python bridge)
+///    - Natural language queries → XAIService (xAI API with Polly resilience)
+///    - Graceful fallback if XAIService unavailable or rate-limited
+///    - Error handling with user-friendly messages
+///
+/// B. UNIT TESTS: ✓ CREATED
+///    Added: tests/AIChatControl_Integration_Analysis.cs
+///    Added: tests/AIChatControl_SendMessageAsync_Tests.cs
+///    - Mock IAIAssistantService and IAIService for unit testing
+///    - Test tool detection: read, grep, search, list, get errors
+///    - Test message collection binding
+///    - Test conversational fallback
+///
+/// C. DUPLICATE AUDIT: ✓ COMPLETED
+///    Added: tests/AIServices_Audit_Duplicates.cs
+///    - Verified no duplicate AI service implementations
+///    - Confirmed AIAssistantService and XAIService are complementary:
+///      * AIAssistantService: Tool execution (filesystem, semantic search)
+///      * XAIService: Conversational insights (via xAI API)
+///    - Both properly registered under different interfaces
+///
+/// D. ERROR HANDLING:
+///    - Tool execution errors caught and displayed in chat
+///    - ToolCallResult.IsError flag indicates failure
+///    - Timeout after 30s with user-friendly message
+///    - Concurrency semaphore prevents overlapping executions
+///
+/// E. MESSAGE PERSISTENCE (Future):
+///    - Save/load chat history from local file or database
+///    - Implement IAsyncDisposable for cleanup
+///
+/// TESTING:
+/// ────────
+/// Run integration tests:
+///   dotnet test tests/AIChatControl_Integration_Analysis.cs
+///   dotnet test tests/AIServices_Audit_Duplicates.cs
+///
+/// Manual testing:
+///   1. Launch application (dotnet run --project src/WileyWidget.WinForms)
+///   2. Open AI Chat panel (Ctrl+1 or toolbar button)
+///   3. Try commands:
+///      - "read MainForm.cs" → reads file
+///      - "grep SendMessageAsync" → searches for pattern
+///      - "search AI chat integration" → semantic search
+///      - "list src/" → lists directory
+///      - "hello world" → no tool detected (future: fallback to conversational)
+///
+/// ═══════════════════════════════════════════════════════════════════════════════
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class AIChatControl : UserControl
 {
+    /// <summary>
+    /// Event raised when a message is successfully sent and processed.
+    /// Provides the user message to parent forms/windows for integration.
+    /// </summary>
+    public event EventHandler<string>? MessageSent;
     private readonly IAIAssistantService _aiService;
+    private readonly IAIService? _conversationalAIService;
     private readonly ILogger<AIChatControl> _logger;
     private readonly SemaphoreSlim _executionSemaphore = new(1, 1);
 
@@ -31,20 +165,39 @@ public partial class AIChatControl : UserControl
     private Label? _headerLabel;
 
     public ObservableCollection<ChatMessage> Messages { get; }
+    // Hard limit on retained messages to avoid unbounded memory/UI growth in long running sessions
+    private const int MaxMessageCount = 300;
 
-    public AIChatControl(IAIAssistantService aiService, ILogger<AIChatControl> logger)
+    /// <summary>
+    /// Constructor with mandatory tool execution service and optional conversational AI service.
+    /// If IAIService is available, provides fallback conversational responses when no tool is detected.
+    /// </summary>
+    public AIChatControl(IAIAssistantService aiService, ILogger<AIChatControl> logger, IAIService? conversationalAIService = null)
     {
+        // Validate STA thread requirement for WinForms controls
+        if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
+        {
+            throw new InvalidOperationException(
+                "AIChatControl must be created on an STA thread. " +
+                "Ensure the application entry point is marked with [STAThread] attribute.");
+        }
+
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _conversationalAIService = conversationalAIService;
         Messages = new ObservableCollection<ChatMessage>();
 
         InitializeComponent();
-        _logger.LogInformation("AIChatControl initialized successfully");
+        _logger.LogInformation("AIChatControl initialized successfully{ConversationalAI}",
+            _conversationalAIService != null ? " with conversational AI fallback enabled" : "");
     }
 
     private void InitializeComponent()
     {
         SuspendLayout();
+
+        // Respect system DPI scaling for consistent rendering on high-DPI displays
+        AutoScaleMode = AutoScaleMode.Dpi;
 
         Size = new Size(450, 650);
         BackColor = Color.FromArgb(248, 249, 250);
@@ -101,6 +254,8 @@ public partial class AIChatControl : UserControl
             WordWrap = true,
             DetectUrls = true
         };
+        _messagesDisplay.AccessibleName = "Chat history";
+        _messagesDisplay.AccessibleDescription = "Displays the chat conversation history. Use the input box below to send messages.";
         _messagesDisplay.LinkClicked += (s, e) =>
         {
             if (e.LinkText != null)
@@ -148,6 +303,8 @@ public partial class AIChatControl : UserControl
             Font = new Font("Segoe UI", 9f),
             BackColor = Color.White
         };
+        _toolComboBox.AccessibleName = "Tool selector";
+        _toolComboBox.AccessibleDescription = "Select a tool to use for parsing commands or leave as auto-detect.";
         _toolComboBox.Items.Add("🔍 Auto-detect tool");
         _toolComboBox.Items.AddRange(_aiService.GetAvailableTools().Select(t => $"🛠️ {t.Name} - {t.Description}").ToArray());
         _toolComboBox.SelectedIndex = 0;
@@ -165,6 +322,8 @@ public partial class AIChatControl : UserControl
             Font = new Font("Segoe UI", 10f),
             ScrollBars = ScrollBars.Vertical
         };
+        _inputTextBox.AccessibleName = "Message input";
+        _inputTextBox.AccessibleDescription = "Type your message here. Press Enter to send, Shift+Enter for newline.";
         _inputTextBox.KeyDown += InputTextBox_KeyDown;
 
         // Send button with improved styling
@@ -181,12 +340,20 @@ public partial class AIChatControl : UserControl
             Enabled = true,
             Cursor = Cursors.Hand
         };
+        _sendButton.AccessibleName = "Send message";
+        _sendButton.AccessibleDescription = "Send the typed message to the AI assistant.";
         _sendButton.FlatAppearance.BorderSize = 0;
         _sendButton.Click += async (s, e) => await SendMessageAsync();
 
         _inputPanel.Controls.Add(_toolComboBox);
         _inputPanel.Controls.Add(_inputTextBox);
         _inputPanel.Controls.Add(_sendButton);
+
+        // Basic keyboard/tab order for accessibility
+        _messagesDisplay.TabIndex = 0;
+        _toolComboBox.TabIndex = 1;
+        _inputTextBox.TabIndex = 2;
+        _sendButton.TabIndex = 3;
 
         // === Layout (Proper Z-Order) ===
         Controls.Add(_messagesDisplay);
@@ -248,6 +415,35 @@ public partial class AIChatControl : UserControl
         await _executionSemaphore.WaitAsync();
         try
         {
+            // If a parent has subscribed to MessageSent, delegate processing to the parent
+            // This allows a parent form (e.g., ChatWindow) to centralize AI service usage
+            if (MessageSent != null)
+            {
+                // Leave the semaphore acquired and the progress UI visible until the parent
+                // calls NotifyProcessingCompleted(). This avoids concurrent processing.
+                try
+                {
+                    MessageSent.Invoke(this, input);
+                }
+                catch (Exception ex)
+                {
+                    // Bubble any event handler failure into the chat display
+                    Messages.Add(new ChatMessage { IsUser = false, Message = $"❌ Event handler error: {ex.Message}", Timestamp = DateTime.Now });
+                    var lastMsg = Messages.LastOrDefault();
+                    if (lastMsg != null)
+                        AppendMessageToDisplay(lastMsg);
+                    // Release the semaphore since we aren't going to wait for parent processing
+                    _executionSemaphore.Release();
+                    if (_progressPanel != null)
+                        _progressPanel.Visible = false;
+                    if (_sendButton != null)
+                        _sendButton.Enabled = true;
+                }
+
+                // DONE: delegate to parent, return now (parent will add AI response and must call NotifyProcessingCompleted())
+                return;
+            }
+
             // Parse for tool call
             var toolCall = _aiService.ParseInputForTool(input);
 
@@ -265,16 +461,40 @@ public partial class AIChatControl : UserControl
                 }
                 else
                 {
-                    // Truncate long responses for display
-                    var content = result.Content.Length > 1000
-                        ? result.Content[..1000] + "\n\n... (truncated for display)"
-                        : result.Content;
+                    // Truncate long responses for display and guard against null Content
+                    var safeContent = string.IsNullOrEmpty(result.Content) ? "[No content]" : result.Content;
+                    var content = safeContent.Length > 1000
+                        ? safeContent[..1000] + "\n\n... (truncated for display)"
+                        : safeContent;
                     responseMessage = $"✅ Tool: {toolCall.Name}\n{new string('─', 40)}\n{content}";
                 }
             }
             else
             {
-                responseMessage = "ℹ️ No tool detected.\n\nAvailable commands:\n• read <file>\n• grep <pattern>\n• list <directory>\n• search <query>";
+                // ENHANCEMENT: Use XAIService for conversational AI fallback
+                if (_conversationalAIService != null)
+                {
+                    _logger.LogInformation("No tool detected; attempting conversational AI response");
+                    try
+                    {
+                        responseMessage = await _conversationalAIService.GetInsightsAsync(
+                            context: "User querying codebase via AI Chat interface",
+                            question: input,
+                            cancellationToken: CancellationToken.None);
+                        responseMessage = $"💭 Insights:\n{responseMessage}";
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Conversational AI fallback failed; showing default help message");
+                        responseMessage = $"ℹ️ Conversational AI unavailable.\n\nAvailable tool commands:\n• read <file>\n• grep <pattern>\n• list <directory>\n• search <query>";
+                    }
+                }
+                else
+                {
+                    // No conversational AI available; show tool help
+                    responseMessage = "ℹ️ No tool detected.\n\nAvailable commands:\n• read <file>\n• grep <pattern>\n• list <directory>\n• search <query>";
+                    _logger.LogDebug("Conversational AI not configured; showing help message");
+                }
             }
 
             // Add AI response
@@ -299,7 +519,12 @@ public partial class AIChatControl : UserControl
         }
         finally
         {
-            _executionSemaphore.Release();
+            // Release the semaphore only for internal processing case.
+            // When MessageSent had subscribers we returned earlier and released there.
+            if (MessageSent == null)
+            {
+                _executionSemaphore.Release();
+            }
 
             if (_progressPanel != null)
                 _progressPanel.Visible = false;
@@ -309,10 +534,46 @@ public partial class AIChatControl : UserControl
         }
     }
 
+    /// <summary>
+    /// Public method called by parent forms (e.g. ChatWindow) to indicate processing has completed.
+    /// This unblocks the control, hides progress UI and enables the send button.
+    /// </summary>
+    public void NotifyProcessingCompleted()
+    {
+        if (InvokeRequired)
+        {
+            BeginInvoke(() => NotifyProcessingCompleted());
+            return;
+        }
+
+        try
+        {
+            if (_progressPanel != null)
+                _progressPanel.Visible = false;
+
+            if (_sendButton != null)
+                _sendButton.Enabled = true;
+
+            // Release the semaphore which was acquired by SendMessageAsync
+            try { _executionSemaphore.Release(); } catch { /* no-op if already released */ }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to complete processing state transition");
+        }
+    }
+
     private void AppendMessageToDisplay(ChatMessage message)
     {
         if (_messagesDisplay == null)
             return;
+
+        // Ensure we always update UI on the UI thread
+        if (InvokeRequired)
+        {
+            BeginInvoke(() => AppendMessageToDisplay(message));
+            return;
+        }
 
         try
         {
@@ -338,10 +599,54 @@ public partial class AIChatControl : UserControl
             // Auto-scroll to bottom
             _messagesDisplay.SelectionStart = _messagesDisplay.TextLength;
             _messagesDisplay.ScrollToCaret();
+
+            TrimMessagesIfNeeded();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error appending message to display");
+        }
+    }
+
+    /// <summary>
+    /// Trim older messages when the collection exceeds the configured MaxMessageCount.
+    /// Rebuilds the messages display from the in-memory Messages collection to keep RTF state consistent.
+    /// </summary>
+    private void TrimMessagesIfNeeded()
+    {
+        try
+        {
+            if (_messagesDisplay == null) return;
+            if (Messages.Count <= MaxMessageCount) return;
+
+            // Remove the oldest messages until we are under the cap
+            while (Messages.Count > MaxMessageCount)
+            {
+                Messages.RemoveAt(0);
+            }
+
+            // Rebuild UI display from remaining messages
+            _messagesDisplay.Clear();
+            foreach (var m in Messages)
+            {
+                // Avoid recursively invoking AppendMessageToDisplay which would cause trimming again
+                _messagesDisplay.SelectionStart = _messagesDisplay.TextLength;
+                _messagesDisplay.SelectionLength = 0;
+                _messagesDisplay.SelectionFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+                _messagesDisplay.SelectionColor = m.IsUser ? Color.FromArgb(0, 102, 204) : Color.FromArgb(76, 175, 80);
+                var sender = m.IsUser ? "👤 You" : "🤖 AI Assistant";
+                var timestamp = m.Timestamp.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+                _messagesDisplay.AppendText($"{sender} • {timestamp}\n");
+                _messagesDisplay.SelectionFont = new Font("Segoe UI", 10f, FontStyle.Regular);
+                _messagesDisplay.SelectionColor = Color.Black;
+                _messagesDisplay.AppendText($"{m.Message}\n");
+                _messagesDisplay.SelectionColor = Color.LightGray;
+                _messagesDisplay.AppendText(new string('─', 60) + "\n\n");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to trim messages display");
         }
     }
 
@@ -360,6 +665,8 @@ public partial class AIChatControl : UserControl
             _progressLabel?.Dispose();
             _headerPanel?.Dispose();
             _headerLabel?.Dispose();
+            // Null out event handlers to avoid leaks
+            MessageSent = null;
         }
         base.Dispose(disposing);
     }

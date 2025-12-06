@@ -62,4 +62,16 @@ public class NullGrokSupercomputerDouble : IGrokSupercomputer
 
     public Task<string> QueryAsync(string prompt)
         => Task.FromResult("[Test Stub] AI query disabled in integration tests.");
+
+    public Task<string> AnalyzeBudgetAsync(int fiscalYear)
+        => Task.FromResult($"[Test Stub] Budget analysis for fiscal year {fiscalYear} disabled in integration tests.");
+
+    public Task<string> AnalyzeEnterpriseAsync(int enterpriseId)
+        => Task.FromResult($"[Test Stub] Enterprise analysis for ID {enterpriseId} disabled in integration tests.");
+
+    public Task<string> AnalyzeAuditAsync(DateTime? startDate = null, DateTime? endDate = null)
+        => Task.FromResult("[Test Stub] Audit analysis disabled in integration tests.");
+
+    public Task<string> AnalyzeMunicipalAccountsAsync()
+        => Task.FromResult("[Test Stub] Municipal accounts analysis disabled in integration tests.");
 }

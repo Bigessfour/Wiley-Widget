@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions
 {
@@ -46,15 +48,38 @@ namespace WileyWidget.Services.Abstractions
         /// </summary>
         Task UpdateApiKeyAsync(string newApiKey);
 
-    /// <summary>
-    /// Sends a raw prompt to the AI provider and returns a structured response result.
-    /// Implementations may return additional context in AIResponseResult.
-    /// </summary>
-    Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// Sends a raw prompt to the AI provider and returns a structured response result.
+        /// Implementations may return additional context in AIResponseResult.
+        /// </summary>
+        Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Sends a user message with conversation history to the AI provider and returns a ChatResponse.
+        /// This method handles the full chat flow including tool call detection and resolution.
+        /// Conversation history is maintained by the caller.
+        /// </summary>
+        Task<ChatResponse> SendMessageAsync(string userMessage, List<ChatMessage> conversationHistory, CancellationToken ct = default);
+
+        /// <summary>
+        /// Executes a tool call and returns the result.
+        /// Tool calls are detected by the AI provider when sending messages with available tools.
+        /// </summary>
+        Task<ToolCallResult> ExecuteToolCallAsync(ToolCall toolCall, CancellationToken ct = default);
     }
 
     /// <summary>
     /// Typed result for AI responses that includes status and machine code for UI handling
     /// </summary>
     public record AIResponseResult(string Content, int HttpStatusCode = 200, string? ErrorCode = null, string? RawErrorBody = null);
+
+    /// <summary>
+    /// Response from a chat message sent to the AI provider.
+    /// Includes the content and any extracted insights or tool calls.
+    /// </summary>
+    public record ChatResponse(
+        string Content,
+        AIInsight[]? Insights = null,
+        ToolCall[]? ToolCalls = null
+    );
 }

@@ -10,6 +10,7 @@ using WileyWidget.Models;
 using FluentValidation;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.Services.Validation;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.ViewModels;
@@ -141,6 +142,30 @@ namespace WileyWidget.WinForms.Configuration
             // AI Assistant Service for tool execution (Scoped for proper lifecycle)
             services.AddScoped<IAIAssistantService, AIAssistantService>();
             Debug.WriteLine("DI: Registered IAIAssistantService -> AIAssistantService (Scoped)");
+
+            // AI Tool Service for Grok function calling (Scoped for proper lifecycle)
+            services.AddScoped<IAIToolService, AIToolService>();
+            Debug.WriteLine("DI: Registered IAIToolService -> AIToolService (Scoped)");
+
+            // === AI CONVERSATION PERSISTENCE ===
+            // Conversation repository for saving/loading chat history
+            services.AddTransient<IConversationRepository, ConversationRepository>();
+            Debug.WriteLine("DI: Registered IConversationRepository -> ConversationRepository (Transient)");
+
+            // === AI SERVICE VALIDATORS ===
+            // Validators for AI inputs (injection prevention, constraint validation)
+            services.AddTransient<IValidator<ChatMessage>, ChatMessageValidator>();
+            Debug.WriteLine("DI: Registered IValidator<ChatMessage> -> ChatMessageValidator (Transient)");
+            services.AddTransient<IValidator<ToolCall>, ToolCallValidator>();
+            Debug.WriteLine("DI: Registered IValidator<ToolCall> -> ToolCallValidator (Transient)");
+            services.AddTransient<IValidator<ConversationHistory>, ConversationHistoryValidator>();
+            Debug.WriteLine("DI: Registered IValidator<ConversationHistory> -> ConversationHistoryValidator (Transient)");
+
+            // === CHAT WINDOW AND CONTROLS ===
+            // Chat window form for dedicated AI interaction
+            services.AddScoped<ChatWindow>();
+            Debug.WriteLine("DI: Registered ChatWindow (Scoped)");
+
             services.AddSingleton<IAuditService, AuditService>();
             Debug.WriteLine("DI: Registered IAuditService -> AuditService (Singleton)");
             services.AddSingleton<IReportExportService, ReportExportService>();
@@ -222,20 +247,18 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<ReportsForm>();
             Debug.WriteLine("DI: Registered ReportsForm (Scoped)");
 
-            // === CONTROLS (SCOPED for proper lifecycle) ===
-            services.AddScoped<AIChatControl>();
-            Debug.WriteLine("DI: Registered AIChatControl (Scoped)");
+            // === CONTROLS (TRANSIENT to avoid scope mismatch with Singleton forms) ===
+            services.AddTransient<AIChatControl>();
+            Debug.WriteLine("DI: Registered AIChatControl (Transient)");
 
             // === DI VALIDATION: Build a temporary provider with ValidateScopes = true and
             // attempt to resolve important scoped services (ViewModels) so errors are surfaced early
+            // NOTE: DO NOT resolve ILoggerFactory here - it causes Serilog ReloadableLogger to freeze early,
+            // which leads to "The logger is already frozen" exception when the host builds.
             try
             {
                 var diagProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
-
-                // If logging is available, use it; otherwise fall back to Debug.WriteLine
-                var loggerFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILoggerFactory>(diagProvider);
-                var logger = loggerFactory?.CreateLogger("Startup.DI");
-                logger?.LogInformation("DI: Temporary validation provider created with ValidateScopes = true");
+                Debug.WriteLine("DI: Temporary validation provider created with ValidateScopes = true");
 
                 var viewModelTypes = new Type[]
                 {
@@ -252,12 +275,10 @@ namespace WileyWidget.WinForms.Configuration
                     {
                         using var scope = diagProvider.CreateScope();
                         var vm = scope.ServiceProvider.GetRequiredService(vmType);
-                        logger?.LogInformation("DI: Successfully resolved ViewModel {ViewModel}", vmType.FullName);
                         Debug.WriteLine($"DI: Successfully resolved {vmType.FullName}");
                     }
                     catch (Exception ex)
                     {
-                        logger?.LogError(ex, "DI: Failed to resolve ViewModel {ViewModel}", vmType.FullName);
                         Debug.WriteLine($"DI: Failed to resolve {vmType.FullName}: {ex}");
                     }
                 }
@@ -280,18 +301,15 @@ namespace WileyWidget.WinForms.Configuration
                         var svc = scope.ServiceProvider.GetService(sType);
                         if (svc != null)
                         {
-                            logger?.LogInformation("DI: Successfully resolved service {Service}", sType.FullName);
                             Debug.WriteLine($"DI: Successfully resolved {sType.FullName}");
                         }
                         else
                         {
-                            logger?.LogWarning("DI: Service {Service} resolved to null (not registered)", sType.FullName);
                             Debug.WriteLine($"DI: Service {sType.FullName} resolved to null (not registered)");
                         }
                     }
                     catch (Exception ex)
                     {
-                        logger?.LogError(ex, "DI: Failed to resolve service {Service}", sType.FullName);
                         Debug.WriteLine($"DI: Failed to resolve {sType.FullName}: {ex}");
                     }
                 }

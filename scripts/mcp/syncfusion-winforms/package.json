@@ -6,11 +6,16 @@
   "description": "MCP server exposing Syncfusion WinForms control info and helpers",
   "main": "src/index.mjs",
   "scripts": {
-    "start": "node src/index.mjs"
+    "start": "node src/index.mjs",
+    "postinstall": "node ./scripts/fix-winforms-assistant-deps.cjs",
+    "test": "node ./test/test-controls.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.24.2",
     "@syncfusion/winforms-assistant": "^0.1.0",
     "zod": "^4.0.0"
+  },
+  "overrides": {
+    "@modelcontextprotocol/sdk": "^1.24.2"
   }
 }

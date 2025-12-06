@@ -89,6 +89,11 @@ public interface IBudgetRepository
     /// </summary>
     Task<BudgetVarianceAnalysis> GetYearEndSummaryAsync(int year);
 
+    /// <summary>
+    /// Gets a queryable collection for advanced querying/paging (use with care - tied to DbContext scope)
+    /// </summary>
+    Task<System.Linq.IQueryable<BudgetEntry>> GetQueryableAsync();
+
     // Enterprise-scoped reporting (if data model supports enterprise association)
     Task<BudgetVarianceAnalysis> GetBudgetSummaryByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate);
     Task<BudgetVarianceAnalysis> GetVarianceAnalysisByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate);

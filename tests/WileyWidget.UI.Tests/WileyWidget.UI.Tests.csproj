@@ -44,7 +44,7 @@
 
   <ItemGroup>
     <!-- WinForms project required for UI tests -->
-    <ProjectReference Include="..\..\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
 
     <!-- Core project references -->
     <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
@@ -57,7 +57,7 @@
 
   <!-- Copy required runtime files from WinForms project to ensure test-launched exe has all configs -->
   <ItemGroup>
-    <Content Include="..\..\WileyWidget.WinForms\appsettings.json" Link="appsettings.json">
+    <Content Include="..\..\src\WileyWidget.WinForms\appsettings.json" Link="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!-- Test mode license placeholder for Syncfusion to avoid blocking dialogs -->

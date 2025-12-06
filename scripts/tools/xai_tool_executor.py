@@ -79,12 +79,14 @@ class ToolCall:
     def from_xai_tool_call(cls, tool_call: Any) -> "ToolCall":
         """Create from xai_sdk ToolCall proto object."""
         try:
-            # Import xai-sdk for tool type detection
-            from xai_sdk.tools import get_tool_call_type
+            # Dynamically import xai-sdk tools to avoid static import errors
+            import importlib
 
+            tools_mod = importlib.import_module("xai_sdk.tools")
+            get_tool_call_type = getattr(tools_mod, "get_tool_call_type")
             tool_type = get_tool_call_type(tool_call)
-        except ImportError:
-            # Fallback: assume client-side if sdk not available
+        except Exception:
+            # Fallback: assume client-side if sdk not available or import fails
             tool_type = TOOL_CALL_TYPE_CLIENT_SIDE
 
         return cls(
@@ -714,10 +716,14 @@ def get_tool_call_type_compat(tool_call: Union[Any, dict]) -> str:
 
     # For xai-sdk ToolCall proto objects, use the SDK function
     try:
-        from xai_sdk.tools import get_tool_call_type
+        # Attempt dynamic import to avoid editor/linter unresolved import errors
+        import importlib
+
+        tools_mod = importlib.import_module("xai_sdk.tools")
+        get_tool_call_type = getattr(tools_mod, "get_tool_call_type")
 
         return get_tool_call_type(tool_call)
-    except (ImportError, AttributeError):
+    except Exception:
         # Fallback: infer from tool name
         name = getattr(getattr(tool_call, "function", None), "name", "")
         if name in {

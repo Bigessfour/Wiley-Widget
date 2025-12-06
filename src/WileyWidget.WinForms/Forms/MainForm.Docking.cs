@@ -43,37 +43,63 @@ public partial class MainForm
         {
             _logger.LogInformation("Initializing Syncfusion DockingManager (Phase 2)");
 
-            // NOTE: Syncfusion DockingManager requires IContainer parameter
-            // Proper usage: new DockingManager(components)
-            // where 'components' is the IContainer from form designer
-            //
-            // Since MainForm doesn't use a designer-generated components field,
-            // a refactoring is required to either:
-            // 1. Enable Windows Forms designer and generate components
-            // 2. Create an explicit IContainer field
-            // 3. Use an alternate docking solution
-            //
-            // For now, docking initialization is disabled
-            // See: https://help.syncfusion.com/windowsforms/docking-manager/getting-started
+            // Create IContainer if it doesn't exist
+            if (components == null)
+            {
+                components = new System.ComponentModel.Container();
+                _logger.LogDebug("Created IContainer for DockingManager");
+            }
 
-            _logger.LogWarning("DockingManager initialization requires IContainer - implementation pending");
+            // Instantiate DockingManager per official Syncfusion API
+            _dockingManager = new DockingManager(components)
+            {
+                HostControl = this,
+                EnableDocumentMode = true,
+                PersistState = true,
+                AnimateAutoHiddenWindow = true,
+                AutoHideTabFont = new Font("Segoe UI", 9f),
+                DockTabFont = new Font("Segoe UI", 9f),
+                ShowCaption = true
+            };
+
+            // Subscribe to events for state tracking and logging
+            _dockingManager.DockStateChanged += DockingManager_DockStateChanged;
+            _dockingManager.DockControlActivated += DockingManager_DockControlActivated;
+            _dockingManager.DockVisibilityChanged += DockingManager_DockVisibilityChanged;
+
+            // Create dock panels
+            CreateLeftDockPanel();
+            CreateCentralDocumentPanel();
+            CreateRightDockPanel();
+
+            // Hide standard panels when using docking
+            HideStandardPanelsForDocking();
+
+            // Load saved layout
+            LoadDockingLayout();
+
+            _logger.LogInformation("DockingManager initialized successfully");
+        }
+        catch (Syncfusion.Windows.Forms.Tools.DockingManagerException dockEx)
+        {
+            _logger.LogError(dockEx, "DockingManagerException during initialization: {Message}. InnerException: {InnerException}",
+                dockEx.Message, dockEx.InnerException?.Message);
+            System.Diagnostics.Debug.WriteLine($"[DOCKING ERROR] {dockEx.GetType().Name}: {dockEx.Message}");
+            System.Diagnostics.Debug.WriteLine($"  InnerException: {dockEx.InnerException}");
+            System.Diagnostics.Debug.WriteLine($"  StackTrace: {dockEx.StackTrace}");
+            // Fall back to standard docking
             _useSyncfusionDocking = false;
-            return;
-
-            // REFERENCE: Correct initialization pattern (once IContainer is available)
-            // _dockingManager = new DockingManager(components)
-            // {
-            //     EnableDocumentMode = true,
-            //     PersistState = true,
-            //     AnimateAutoHiddenWindow = true,
-            //     AutoHideTabFont = new Font("Segoe UI", 9f),
-            //     DockTabFont = new Font("Segoe UI", 9f),
-            //     ShowCaption = true
-            // };
+            ShowStandardPanelsAfterDockingFailure();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize Syncfusion DockingManager");
+            _logger.LogError(ex, "Failed to initialize Syncfusion DockingManager: {Type} - {Message}",
+                ex.GetType().Name, ex.Message);
+            System.Diagnostics.Debug.WriteLine($"[DOCKING ERROR] {ex.GetType().Name}: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"  InnerException: {ex.InnerException.Message}");
+            }
             // Fall back to standard docking
             _useSyncfusionDocking = false;
             ShowStandardPanelsAfterDockingFailure();
@@ -308,10 +334,12 @@ public partial class MainForm
                 return;
             }
 
-            // TODO: AppStateSerializer is available in newer Syncfusion versions
-            // For v31.2.16, use DockingManager.SaveDockState() with property-based serialization
-            // Example implementation pending full Syncfusion v31.2.16+ documentation review
-            _logger.LogInformation("Docking layout persistence (load) - implementation pending v31.2.16 API verification");
+            // Use Syncfusion's AppStateSerializer for proper state loading
+            var serializer = new Syncfusion.Runtime.Serialization.AppStateSerializer(
+                Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, layoutPath);
+            _dockingManager.LoadDockState(serializer);
+
+            _logger.LogInformation("Docking layout loaded from {Path}", layoutPath);
         }
         catch (Exception ex)
         {
@@ -341,10 +369,12 @@ public partial class MainForm
                 _logger.LogDebug("Created docking layout directory at {Dir}", layoutDir);
             }
 
-            // TODO: AppStateSerializer is available in newer Syncfusion versions
-            // For v31.2.16, use DockingManager.SaveDockState() with property-based serialization
-            // Example implementation pending full Syncfusion v31.2.16+ documentation review
-            _logger.LogInformation("Docking layout persistence (save) - implementation pending v31.2.16 API verification");
+            // Use Syncfusion's AppStateSerializer for proper state persistence
+            var serializer = new Syncfusion.Runtime.Serialization.AppStateSerializer(
+                Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, layoutPath);
+            _dockingManager.SaveDockState(serializer);
+
+            _logger.LogInformation("Docking layout saved to {Path}", layoutPath);
         }
         catch (Exception ex)
         {
@@ -412,7 +442,21 @@ public partial class MainForm
     private void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
     {
         // Log docking state changes
-        _logger.LogDebug("Dock state changed for control");
+        _logger.LogDebug("Dock state changed: NewState={NewState}, OldState={OldState}",
+            e.NewState, e.OldState);
+
+        // Auto-save layout on state changes (debounced via timer would be better for production)
+        if (_useSyncfusionDocking)
+        {
+            try
+            {
+                SaveDockingLayout();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-save docking layout after state change");
+            }
+        }
     }
 
     private void DockingManager_DockControlActivated(object? sender, DockActivationChangedEventArgs e)

@@ -42,4 +42,16 @@ public class NullGrokSupercomputer : IGrokSupercomputer
 
     public Task<string> QueryAsync(string prompt)
         => Task.FromResult("[Dev Stub] AI query is disabled in development. Configure AI services to enable.");
+
+    public Task<string> AnalyzeBudgetAsync(int fiscalYear)
+        => Task.FromResult($"[Dev Stub] Budget analysis for fiscal year {fiscalYear} is disabled in development. Configure AI services to enable.");
+
+    public Task<string> AnalyzeEnterpriseAsync(int enterpriseId)
+        => Task.FromResult($"[Dev Stub] Enterprise analysis for ID {enterpriseId} is disabled in development. Configure AI services to enable.");
+
+    public Task<string> AnalyzeAuditAsync(DateTime? startDate = null, DateTime? endDate = null)
+        => Task.FromResult("[Dev Stub] Audit analysis is disabled in development. Configure AI services to enable.");
+
+    public Task<string> AnalyzeMunicipalAccountsAsync()
+        => Task.FromResult("[Dev Stub] Municipal accounts analysis is disabled in development. Configure AI services to enable.");
 }

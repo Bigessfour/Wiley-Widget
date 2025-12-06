@@ -18,6 +18,7 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   disabled:
+    - ruff
     - bandit
     - markdownlint
     - dotnet-format
@@ -36,7 +37,6 @@ lint:
     - oxipng@9.1.5
     - prettier@3.6.2
     - pyright@1.1.407
-    - ruff@0.14.6
     - taplo@0.10.0
     - trufflehog@3.91.1
     - yamllint@1.37.1

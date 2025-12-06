@@ -65,6 +65,9 @@ namespace WileyWidget.WinForms.Forms
         private ComboBox? _periodSelector;
         private Panel? _summaryCardsPanel;
 
+        // Cancellation token source for async operations
+        private CancellationTokenSource? _cts;
+
         // Color palette (consistent with ChartForm and other forms)
         private static readonly Color PositiveColor = Color.FromArgb(52, 168, 83);   // Green - under budget
         private static readonly Color NegativeColor = Color.FromArgb(234, 67, 53);   // Red - over budget
@@ -91,23 +94,27 @@ namespace WileyWidget.WinForms.Forms
                 SetupDataBindings();
                 _logger.LogInformation("BudgetOverviewForm initialized successfully");
 
+                // Initialize cancellation token source
+                _cts = new CancellationTokenSource();
+
                 Load += async (s, e) =>
                 {
-                    try
-                    {
-                        await _viewModel.InitializeAsync();
-                        UpdateUI();
-                        UpdateBudgetProgress();
-                    }
-                    catch (OperationCanceledException oce)
-                    {
-                        _logger.LogWarning(oce, "Budget overview load was canceled");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to load budget overview data");
-                        ShowError(ex.Message);
-                    }
+                    await Utilities.AsyncEventHelper.ExecuteAsync(
+                        async ct =>
+                        {
+                            await _viewModel.InitializeAsync(ct);
+                            UpdateUI();
+                            UpdateBudgetProgress();
+                        },
+                        _cts,
+                        this,
+                        _logger,
+                        "Loading budget overview data");
+                };
+
+                FormClosing += (s, e) =>
+                {
+                    Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
                 };
             }
             catch (Exception ex)
@@ -175,7 +182,15 @@ namespace WileyWidget.WinForms.Forms
             };
             _periodSelector.Items.AddRange(new object[] { "Current Month", "Current Quarter", "Year to Date", "Full Year", "Custom..." });
             _periodSelector.SelectedIndex = 2; // YTD default
-            _periodSelector.SelectedIndexChanged += async (s, e) => await RefreshDataAsync();
+            _periodSelector.SelectedIndexChanged += async (s, e) =>
+            {
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct => await RefreshDataAsync(),
+                    _cts,
+                    this,
+                    _logger,
+                    "Refreshing budget data");
+            };
             headerPanel.Controls.Add(_periodSelector);
 
             // Refresh button
@@ -194,8 +209,12 @@ namespace WileyWidget.WinForms.Forms
             _refreshButton.FlatAppearance.BorderSize = 0;
             _refreshButton.Click += async (s, e) =>
             {
-                _logger.LogInformation("Refresh button clicked on BudgetOverviewForm");
-                await RefreshDataAsync();
+                await Utilities.AsyncEventHelper.ExecuteAsync(
+                    async ct => await RefreshDataAsync(),
+                    _cts,
+                    this,
+                    _logger,
+                    "Refreshing budget data");
             };
             headerPanel.Controls.Add(_refreshButton);
 
@@ -905,6 +924,9 @@ namespace WileyWidget.WinForms.Forms
                 _exportButton?.Dispose();
                 _periodSelector?.Dispose();
                 _summaryCardsPanel?.Dispose();
+
+                // Cancel and dispose async operations
+                Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
             }
 
             base.Dispose(disposing);

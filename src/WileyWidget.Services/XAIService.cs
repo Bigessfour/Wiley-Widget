@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.RateLimiting;
 using System.Globalization;
 using System.Net;
@@ -8,10 +9,12 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
+using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Telemetry;
@@ -988,6 +991,251 @@ public class XAIService : IAIService, IDisposable
         {
             _logger.LogError(ex, "Error sending prompt to xAI service");
             return new AIResponseResult($"Error: {ex.Message}", 500, "InternalError", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Sends a user message with conversation history to the xAI service and returns a ChatResponse.
+    /// This method handles the full chat flow including tool call detection and resolution.
+    /// Conversation history is maintained by the caller and appended with the user's message.
+    /// </summary>
+    public async Task<ChatResponse> SendMessageAsync(string userMessage, List<ChatMessage> conversationHistory, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(userMessage))
+            throw new ArgumentException("User message cannot be null or empty", nameof(userMessage));
+        if (conversationHistory == null)
+            throw new ArgumentNullException(nameof(conversationHistory));
+
+        try
+        {
+            // Sanitize user input
+            var sanitizedMessage = SanitizeInput(userMessage);
+
+            // Add user message to conversation history
+            conversationHistory.Add(ChatMessage.CreateUserMessage(sanitizedMessage));
+
+            _logger.LogInformation("Sending message to xAI service (conversation history length: {Length})", conversationHistory.Count);
+
+            // Get system context for the prompt
+            var systemContext = await _contextService.BuildCurrentSystemContextAsync(ct);
+
+            // Build messages array from conversation history
+            var messages = new List<object>();
+
+            // Add system message
+            messages.Add(new
+            {
+                role = "system",
+                content = $"You are a helpful AI assistant for a municipal utility management application called Wiley Widget. System Context: {systemContext}. Assist the user with their queries about budget management, utilities, and financial operations."
+            });
+
+            // Add conversation history
+            foreach (var msg in conversationHistory)
+            {
+                messages.Add(new
+                {
+                    role = msg.IsUser ? "user" : "assistant",
+                    content = msg.Message
+                });
+            }
+
+            var model = _configuration["XAI:Model"] ?? "grok-4-0709";
+
+            var request = new
+            {
+                messages = messages.ToArray(),
+                model = model,
+                stream = false,
+                temperature = 0.7
+            };
+
+            // Log the query
+            _aiLoggingService.LogQuery(sanitizedMessage, $"Conversation with {conversationHistory.Count} messages", model);
+
+            // Execute HTTP request with Polly v8 resilience pipeline
+            var response = await _httpPipeline.ExecuteAsync(
+                async context => await _httpClient.PostAsJsonAsync("chat/completions", request, context.CancellationToken),
+                ResilienceContextPool.Shared.Get(ct));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var status = (int)response.StatusCode;
+                var body = await response.Content.ReadAsStringAsync(ct);
+                Log.Error("xAI API returned non-success status {Status} with body: {Body}", status, body);
+                _aiLoggingService.LogError(sanitizedMessage, body ?? string.Empty, response.StatusCode.ToString());
+
+                var errorMsg = response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                    ? "AI service returned 403 Forbidden. Please verify your API key."
+                    : response.StatusCode == System.Net.HttpStatusCode.TooManyRequests
+                        ? "AI service is rate limiting. Please try again shortly."
+                        : "AI service returned an error. Please try again later.";
+
+                return new ChatResponse(errorMsg);
+            }
+
+            var xaiResponse = await response.Content.ReadFromJsonAsync<XAIResponse>(cancellationToken: ct);
+
+            if (xaiResponse?.error != null)
+            {
+                Log.Error("xAI API error: {ErrorType} - {ErrorMessage}", xaiResponse.error.type, xaiResponse.error.message);
+                _aiLoggingService.LogError(sanitizedMessage, xaiResponse.error.message, xaiResponse.error.type ?? "API Error");
+                return new ChatResponse($"API error: {xaiResponse.error.message}");
+            }
+
+            var content = xaiResponse?.choices?.FirstOrDefault()?.message?.content ?? string.Empty;
+
+            if (string.IsNullOrEmpty(content))
+            {
+                Log.Warning("xAI API returned empty response");
+                _aiLoggingService.LogError(sanitizedMessage, "Empty response from XAI API", "EmptyResponse");
+                return new ChatResponse("I received an empty response. Please try rephrasing your question.");
+            }
+
+            // Add AI response to conversation history
+            conversationHistory.Add(ChatMessage.CreateAIMessage(content));
+
+            _aiLoggingService.LogResponse(sanitizedMessage, content, 0, 0);
+            Log.Information("Successfully received xAI response");
+
+            return new ChatResponse(content);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in SendMessageAsync: {Message}", ex.Message);
+            _aiLoggingService.LogError(userMessage, ex);
+            return new ChatResponse($"Error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Executes a tool call and returns the result.
+    /// Tool calls are detected by the xAI provider when sending messages.
+    /// This implementation currently returns a placeholder; extend with actual tool implementations.
+    /// </summary>
+    public async Task<ToolCallResult> ExecuteToolCallAsync(ToolCall toolCall, CancellationToken ct = default)
+    {
+        if (toolCall == null)
+            throw new ArgumentNullException(nameof(toolCall));
+
+        try
+        {
+            _logger.LogInformation("Executing tool call: {ToolName} (ID: {ToolId})", toolCall.Name, toolCall.Id);
+
+            // Route to appropriate tool handler based on tool name
+            var result = toolCall.Name switch
+            {
+                "get_budget_data" => await ExecuteGetBudgetDataAsync(toolCall, ct),
+                "analyze_budget_trends" => await ExecuteAnalyzeBudgetTrendsAsync(toolCall, ct),
+                "get_account_details" => await ExecuteGetAccountDetailsAsync(toolCall, ct),
+                "generate_report" => await ExecuteGenerateReportAsync(toolCall, ct),
+                _ => ToolCallResult.Error(toolCall.Id, $"Unknown tool: {toolCall.Name}")
+            };
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error executing tool call {ToolName}: {Message}", toolCall.Name, ex.Message);
+            _logger.LogError(ex, "Tool execution failed");
+            return ToolCallResult.Error(toolCall.Id, $"Error executing tool: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Executes the get_budget_data tool
+    /// </summary>
+    private Task<ToolCallResult> ExecuteGetBudgetDataAsync(ToolCall toolCall, CancellationToken ct)
+    {
+        try
+        {
+            // Parse arguments (would require IBudgetRepository or similar)
+            var accountId = toolCall.Arguments.TryGetValue("account_id", out var id) ? id?.ToString() : null;
+            var fiscalYear = toolCall.Arguments.TryGetValue("fiscal_year", out var year) ? year?.ToString() : null;
+
+            _logger.LogInformation("Getting budget data for account {AccountId}, fiscal year {FiscalYear}", accountId, fiscalYear);
+
+            // Placeholder implementation - would integrate with IBudgetRepository
+            var content = $"Budget data retrieved for account {accountId} in fiscal year {fiscalYear}. " +
+                         "Integration with data layer pending.";
+
+            return Task.FromResult(ToolCallResult.Success(toolCall.Id, content));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in get_budget_data tool");
+            return Task.FromResult(ToolCallResult.Error(toolCall.Id, ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Executes the analyze_budget_trends tool
+    /// </summary>
+    private Task<ToolCallResult> ExecuteAnalyzeBudgetTrendsAsync(ToolCall toolCall, CancellationToken ct)
+    {
+        try
+        {
+            var period = toolCall.Arguments.TryGetValue("period", out var p) ? p?.ToString() : "quarterly";
+
+            _logger.LogInformation("Analyzing budget trends for period: {Period}", period);
+
+            // Placeholder implementation
+            var content = $"Budget trend analysis for {period} period. " +
+                         "Detailed analysis logic would be implemented here.";
+
+            return Task.FromResult(ToolCallResult.Success(toolCall.Id, content));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in analyze_budget_trends tool");
+            return Task.FromResult(ToolCallResult.Error(toolCall.Id, ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Executes the get_account_details tool
+    /// </summary>
+    private Task<ToolCallResult> ExecuteGetAccountDetailsAsync(ToolCall toolCall, CancellationToken ct)
+    {
+        try
+        {
+            var accountId = toolCall.Arguments.TryGetValue("account_id", out var id) ? id?.ToString() : null;
+
+            _logger.LogInformation("Getting account details for {AccountId}", accountId);
+
+            // Placeholder implementation
+            var content = $"Account details for {accountId}. " +
+                         "Detailed account information would be retrieved here.";
+
+            return Task.FromResult(ToolCallResult.Success(toolCall.Id, content));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in get_account_details tool");
+            return Task.FromResult(ToolCallResult.Error(toolCall.Id, ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Executes the generate_report tool
+    /// </summary>
+    private Task<ToolCallResult> ExecuteGenerateReportAsync(ToolCall toolCall, CancellationToken ct)
+    {
+        try
+        {
+            var reportType = toolCall.Arguments.TryGetValue("report_type", out var type) ? type?.ToString() : "summary";
+
+            _logger.LogInformation("Generating {ReportType} report", reportType);
+
+            // Placeholder implementation
+            var content = $"Generated {reportType} report. " +
+                         "Report generation logic would be implemented here.";
+
+            return Task.FromResult(ToolCallResult.Success(toolCall.Id, content));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in generate_report tool");
+            return Task.FromResult(ToolCallResult.Error(toolCall.Id, ex.Message));
         }
     }
 }

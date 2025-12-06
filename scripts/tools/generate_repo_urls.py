@@ -28,12 +28,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
-# Python 3.14: Use PEP 695 type aliases for nested dictionary structures
-type JsonValue = str | int | float | bool | None | list[Any] | dict[str, Any]
-type ConfigDict = dict[str, JsonValue]
-type MetadataDict = dict[str, str | int | bool | None | dict[str, Any]]
-type FileDataDict = dict[str, MetadataDict | dict[str, Any] | list[str]]
-type FileDataList = list[FileDataDict]
+# Python 3.11+ compatible type aliases for nested dictionary structures
+JsonValue = str | int | float | bool | None | list[Any] | dict[str, Any]
+ConfigDict = dict[str, JsonValue]
+MetadataDict = dict[str, str | int | bool | None | dict[str, Any]]
+FileDataDict = dict[str, MetadataDict | dict[str, Any] | list[str]]
+FileDataList = list[FileDataDict]
 
 # Configuration defaults
 DEFAULT_CONFIG_FILE = ".ai-manifest-config.json"

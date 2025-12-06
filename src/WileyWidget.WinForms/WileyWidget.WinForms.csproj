@@ -75,12 +75,12 @@
 
   <ItemGroup>
     <!-- Project references to internal WileyWidget libraries -->
-    <ProjectReference Include="..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
+    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
   </ItemGroup>
 
   <ItemGroup>
