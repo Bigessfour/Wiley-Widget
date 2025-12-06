@@ -27,8 +27,8 @@ namespace WileyWidget.Business.Services
             return new MunicipalAccountDisplay
             {
                 Id = account.Id,
-                AccountNumber = account.AccountNumber?.Value ?? "N/A",
-                Name = account.Name ?? "(Unnamed)",
+                AccountNumber = string.IsNullOrEmpty(account.AccountNumber?.Value) ? "N/A" : account.AccountNumber.Value,
+                Name = string.IsNullOrEmpty(account.Name) ? "(Unnamed)" : account.Name,
                 Description = account.FundDescription ?? string.Empty,
                 Type = account.Type.ToString(),
                 Fund = account.Fund.ToString(),

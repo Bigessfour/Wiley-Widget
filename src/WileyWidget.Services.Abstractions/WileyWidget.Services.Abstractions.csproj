@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- Align TFM with solution-wide Windows target to avoid project compatibility (NU1201) -->
-    <TargetFrameworks>net9.0;net9.0-windows</TargetFrameworks>
+    <TargetFramework>net9.0-windows</TargetFramework>
     <GenerateWinMD Condition="$(TargetFramework.Contains('windows'))">true</GenerateWinMD>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>

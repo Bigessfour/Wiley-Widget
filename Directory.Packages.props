@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- ==================== .NET 9 STABLE VERSIONS ==================== -->
+    <PackageVersion Include="BoldReports.Net.Core" Version="5.4.20" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
@@ -100,6 +101,8 @@
     <PackageVersion Include="Syncfusion.Tools.Windows" Version="31.2.16" />
     <PackageVersion Include="Syncfusion.Shared.Base" Version="31.2.16" />
     <PackageVersion Include="Syncfusion.Pdf.Net.Core" Version="31.2.16" />
+    <!-- BoldReports for RDL/RDLC report viewing and PDF/Excel export -->
+    <PackageVersion Include="BoldReports.WPF" Version="12.1.13" />
     <PackageVersion Include="System.Collections.Immutable" Version="10.0.0" />
     <!-- Other safe ones you probably have -->
     <PackageVersion Include="System.Buffers" Version="4.6.1" />

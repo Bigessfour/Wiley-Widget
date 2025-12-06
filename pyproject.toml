@@ -1,3 +1,20 @@
+[project]
+name = "wiley-widget-tools"
+version = "0.1.0"
+description = "Wiley Widget development tools and xAI integration"
+requires-python = ">=3.11"
+dependencies = [
+    "xai-sdk>=1.5.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [
@@ -81,3 +98,8 @@ line-ending = "auto"
 python_files = "test_*.py"
 addopts = "-v --ignore=tools/python/legacy_tests"
 testpaths = ["tools/python/clr_tests", "tools/python/unittests"]
+
+[tool.flake8]
+# Align flake8 max line length with Ruff/Black settings used in this repo
+max-line-length = 88
+extend-ignore = ["E501"]

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -10,14 +11,15 @@ using WileyWidget.Services.Abstractions;
 using WileyWidget.Data;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
+using System.Net.Http;
 
-namespace WileyWidget.WinForms.Diagnostics;
-
-/// <summary>
-/// Diagnostic service that verifies all critical services can be resolved at startup.
-/// Use this to catch DI configuration errors before they cause runtime failures.
-/// </summary>
-public interface IStartupDiagnostics
+namespace WileyWidget.WinForms.Diagnostics
+{
+    /// <summary>
+    /// Diagnostic service that verifies all critical services can be resolved at startup.
+    /// Use this to catch DI configuration errors before they cause runtime failures.
+    /// </summary>
+    public interface IStartupDiagnostics
 {
     /// <summary>
     /// Run all diagnostic checks and return results
@@ -351,4 +353,5 @@ public class StartupDiagnostics : IStartupDiagnostics
 
         return result;
     }
+}
 }

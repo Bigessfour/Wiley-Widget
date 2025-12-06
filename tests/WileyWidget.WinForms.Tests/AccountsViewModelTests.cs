@@ -208,7 +208,7 @@ namespace WileyWidget.WinForms.Tests
             var vm = CreateViewModel(scopeFactory);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(CancellationToken.None);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert
             vm.Accounts.Should().BeEmpty();
@@ -225,7 +225,7 @@ namespace WileyWidget.WinForms.Tests
             var vm = CreateViewModel(scopeFactory);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(CancellationToken.None);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert
             vm.Accounts.Should().HaveCount(5);
@@ -242,7 +242,7 @@ namespace WileyWidget.WinForms.Tests
             var vm = CreateViewModel(scopeFactory);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(CancellationToken.None);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert - only even IDs are active (2, 4)
             vm.Accounts.Should().HaveCount(2);

@@ -379,6 +379,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 try
                 {
+                    _logger.LogInformation("Settings save button clicked");
                     if (_vm.SaveCommand is IAsyncRelayCommand asyncCmd)
                     {
                         await asyncCmd.ExecuteAsync(null);
@@ -387,6 +388,7 @@ namespace WileyWidget.WinForms.Forms
                     {
                         _vm.SaveCommand.Execute(null);
                     }
+                    _logger.LogInformation("Settings saved successfully by user");
                     MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)

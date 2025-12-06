@@ -6,7 +6,7 @@
     <RunAnalyzers>false</RunAnalyzers>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
-    <TargetFrameworks>net9.0;net9.0-windows</TargetFrameworks>
+    <TargetFramework>net9.0-windows</TargetFramework>
     <GenerateWinMD>true</GenerateWinMD>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>

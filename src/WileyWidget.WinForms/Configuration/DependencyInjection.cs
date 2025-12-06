@@ -15,6 +15,7 @@ using WileyWidget.Services.Export;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Controls;
 using System.Diagnostics;
 using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 
@@ -106,16 +107,16 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered IQuickBooksService -> QuickBooksService (Singleton)");
 
             // === REPOSITORIES (SCOPED - aligned with DbContext pattern) ===
-                services.AddTransient<IEnterpriseRepository, EnterpriseRepository>();
-                Debug.WriteLine("DI: Registered IEnterpriseRepository -> EnterpriseRepository (Transient)");
+            services.AddTransient<IEnterpriseRepository, EnterpriseRepository>();
+            Debug.WriteLine("DI: Registered IEnterpriseRepository -> EnterpriseRepository (Transient)");
             // Repositories are stateless and should be registered as Transient so they are
             // resolved fresh per-operation when created inside a scope.
             services.AddTransient<IBudgetRepository, BudgetRepository>();
             Debug.WriteLine("DI: Registered IBudgetRepository -> BudgetRepository (Transient)");
-                services.AddTransient<IAuditRepository, AuditRepository>();
-                Debug.WriteLine("DI: Registered IAuditRepository -> AuditRepository (Transient)");
-                services.AddTransient<IMunicipalAccountRepository, MunicipalAccountRepository>();
-                Debug.WriteLine("DI: Registered IMunicipalAccountRepository -> MunicipalAccountRepository (Transient)");
+            services.AddTransient<IAuditRepository, AuditRepository>();
+            Debug.WriteLine("DI: Registered IAuditRepository -> AuditRepository (Transient)");
+            services.AddTransient<IMunicipalAccountRepository, MunicipalAccountRepository>();
+            Debug.WriteLine("DI: Registered IMunicipalAccountRepository -> MunicipalAccountRepository (Transient)");
 
             // Chart data aggregation service (Data layer implementation)
             services.AddTransient<Business.Interfaces.IChartService, WileyWidget.Data.Services.ChartService>();
@@ -136,10 +137,16 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered IAIService -> XAIService (Scoped)");
             services.AddSingleton<IAILoggingService, AILoggingService>();
             Debug.WriteLine("DI: Registered IAILoggingService -> AILoggingService (Singleton)");
+
+            // AI Assistant Service for tool execution (Scoped for proper lifecycle)
+            services.AddScoped<IAIAssistantService, AIAssistantService>();
+            Debug.WriteLine("DI: Registered IAIAssistantService -> AIAssistantService (Scoped)");
             services.AddSingleton<IAuditService, AuditService>();
             Debug.WriteLine("DI: Registered IAuditService -> AuditService (Singleton)");
             services.AddSingleton<IReportExportService, ReportExportService>();
             Debug.WriteLine("DI: Registered IReportExportService -> ReportExportService (Singleton)");
+            services.AddSingleton<IBoldReportService, BoldReportService>();
+            Debug.WriteLine("DI: Registered IBoldReportService -> BoldReportService (Singleton)");
             services.AddTransient<IExcelReaderService, ExcelReaderService>();
             Debug.WriteLine("DI: Registered IExcelReaderService -> ExcelReaderService (Transient)");
             services.AddTransient<IExcelExportService, ExcelExportService>();
@@ -198,6 +205,8 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered AccountsViewModel (Scoped)");
             services.AddScoped<BudgetOverviewViewModel>();
             Debug.WriteLine("DI: Registered BudgetOverviewViewModel (Scoped)");
+            services.AddScoped<ReportsViewModel>();
+            Debug.WriteLine("DI: Registered ReportsViewModel (Scoped)");
 
             // === FORMS (SCOPED to get fresh instances per dialog) ===
             services.AddScoped<MainForm>();
@@ -210,6 +219,12 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered AccountsForm (Scoped)");
             services.AddScoped<BudgetOverviewForm>();
             Debug.WriteLine("DI: Registered BudgetOverviewForm (Scoped)");
+            services.AddScoped<ReportsForm>();
+            Debug.WriteLine("DI: Registered ReportsForm (Scoped)");
+
+            // === CONTROLS (SCOPED for proper lifecycle) ===
+            services.AddScoped<AIChatControl>();
+            Debug.WriteLine("DI: Registered AIChatControl (Scoped)");
 
             // === DI VALIDATION: Build a temporary provider with ValidateScopes = true and
             // attempt to resolve important scoped services (ViewModels) so errors are surfaced early

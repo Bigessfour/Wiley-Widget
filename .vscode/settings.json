@@ -63,17 +63,12 @@
       },
       "disabled": true
     },
-    "syncfusion-docs": {
-      "command": "C:/Users/biges/Desktop/Wiley-Widget/.venv/Scripts/python.exe",
-      "args": ["-m", "mcp_server_fetch"],
+    "syncfusion-winforms-assistant": {
+      "command": "npx",
+      "args": ["-y", "@syncfusion/winforms-assistant@latest"],
       "env": {
-        "PYTHONIOENCODING": "utf-8"
+        "Syncfusion_API_Key": "${env:SYNCFUSION_API_KEY}"
       }
-    },
-    "syncfusion-winforms": {
-      "command": "node",
-      "args": ["scripts/mcp/syncfusion-winforms/src/index.mjs"],
-      "env": {}
     }
   },
 
@@ -307,6 +302,13 @@
         "${env:windir}\\System32\\cmd.exe"
       ],
       "icon": "terminal-cmd"
+    }
+  },
+  "chat.mcp.serverSampling": {
+    "Wiley-Widget/.vscode/mcp.json: mssql": {
+      "allowedModels": [
+        "copilot/auto"
+      ]
     }
   }
 }

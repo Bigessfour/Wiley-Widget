@@ -32,8 +32,19 @@ namespace WileyWidget.Services
             var result = await _validator.ValidateAsync(settings, ct);
             if (!result.IsValid)
             {
-                var errors = result.Errors.Select(e => e.ErrorMessage).ToList(); // LINQ
-                _logger.LogWarning("Validation failed: {Errors}", errors);
+                var errorDetails = result.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToList());
+
+                _logger.LogWarning("Settings validation failed: {@ValidationErrors}", errorDetails);
+
+                // Log individual errors for structured queries
+                foreach (var error in result.Errors)
+                {
+                    _logger.LogDebug("Validation error: {Property} = {Message}",
+                        error.PropertyName, error.ErrorMessage);
+                }
+
                 throw new ValidationException(result.Errors);
             }
 

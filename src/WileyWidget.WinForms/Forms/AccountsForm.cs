@@ -96,14 +96,22 @@ namespace WileyWidget.WinForms.Forms
                 Padding = new Padding(5, 0, 5, 0)
             };
 
-            var loadButton = new ToolStripButton(Resources.LoadAccountsButton, null, async (s, e) => await LoadData())
+            var loadButton = new ToolStripButton(Resources.LoadAccountsButton, null, async (s, e) =>
+            {
+                _logger.LogInformation("Load accounts button clicked");
+                await LoadData();
+            })
             {
                 DisplayStyle = ToolStripItemDisplayStyle.Text,
                 BackColor = Color.FromArgb(66, 133, 244),
                 ForeColor = Color.White
             };
 
-            var filterButton = new ToolStripButton(Resources.ApplyFiltersButton, null, async (s, e) => await _viewModel.FilterAccountsCommand.ExecuteAsync(CancellationToken.None))
+            var filterButton = new ToolStripButton(Resources.ApplyFiltersButton, null, async (s, e) =>
+            {
+                _logger.LogInformation("Apply filters button clicked");
+                await _viewModel.FilterAccountsCommand.ExecuteAsync(CancellationToken.None);
+            })
             {
                 DisplayStyle = ToolStripItemDisplayStyle.Text
             };
@@ -131,6 +139,7 @@ namespace WileyWidget.WinForms.Forms
             // Export button
             var exportButton = new ToolStripButton("Export to Excel", null, (s, e) =>
             {
+                _logger.LogInformation("Export to Excel button clicked");
                 MessageBox.Show("Export feature available in full version.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
             });
 
@@ -196,11 +205,31 @@ namespace WileyWidget.WinForms.Forms
 
             // === Context Menu ===
             var contextMenu = new ContextMenuStrip();
-            var viewDetailsItem = new ToolStripMenuItem(Resources.ViewDetailsMenu, null, (s, e) => ShowAccountDetails());
-            var editItem = new ToolStripMenuItem(Resources.EditAccountMenu, null, (s, e) => EditSelectedAccount());
-            var newItem = new ToolStripMenuItem(Resources.NewAccountMenu, null, (s, e) => CreateNewAccount());
-            var deleteItem = new ToolStripMenuItem(Resources.DeleteAccountMenu, null, (s, e) => DeleteSelectedAccount());
-            var exportItem = new ToolStripMenuItem(Resources.ExportMenu, null, (s, e) => ExportSelectedAccounts());
+            var viewDetailsItem = new ToolStripMenuItem(Resources.ViewDetailsMenu, null, (s, e) =>
+            {
+                _logger.LogInformation("View account details menu item clicked");
+                ShowAccountDetails();
+            });
+            var editItem = new ToolStripMenuItem(Resources.EditAccountMenu, null, (s, e) =>
+            {
+                _logger.LogInformation("Edit account menu item clicked");
+                EditSelectedAccount();
+            });
+            var newItem = new ToolStripMenuItem(Resources.NewAccountMenu, null, (s, e) =>
+            {
+                _logger.LogInformation("Create new account menu item clicked");
+                CreateNewAccount();
+            });
+            var deleteItem = new ToolStripMenuItem(Resources.DeleteAccountMenu, null, (s, e) =>
+            {
+                _logger.LogInformation("Delete account menu item clicked");
+                DeleteSelectedAccount();
+            });
+            var exportItem = new ToolStripMenuItem(Resources.ExportMenu, null, (s, e) =>
+            {
+                _logger.LogInformation("Export accounts menu item clicked");
+                ExportSelectedAccounts();
+            });
 
             contextMenu.Items.AddRange(new ToolStripItem[]
             {

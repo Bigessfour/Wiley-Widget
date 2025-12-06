@@ -20,13 +20,18 @@ namespace WileyWidget.Services
 
         public async Task<AppDataDto> LoadAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Loading app data – widgets and config incoming.");
-            var entities = await _repo.GetWidgetsAsync(ct); // Stub repo call
-            var widgets = _mapper.Map<List<WidgetDto>>(entities); // Mapping
+            using (new PerformanceLogger(_logger, "AppService.LoadAsync", 200))
+            {
+                _logger.LogInformation("Loading app data – widgets and config incoming.");
+                var entities = await _repo.GetWidgetsAsync(ct); // Stub repo call
+                var widgets = _mapper.Map<List<WidgetDto>>(entities); // Mapping
 
-            var config = new UserConfigDto("FluentDark", true); // Stub
+                var config = new UserConfigDto("FluentDark", true); // Stub
 
-            return new AppDataDto(widgets, config); // Record
+                _logger.LogInformation("Loaded {WidgetCount} widgets successfully", widgets.Count);
+
+                return new AppDataDto(widgets, config); // Record
+            }
         }
     }
 }

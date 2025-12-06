@@ -220,6 +220,9 @@ namespace WileyWidget.WinForms
                     System.Diagnostics.Debug.WriteLine("WARNING: Syncfusion license key not found in configuration. Controls will run in trial mode.");
                     Serilog.Log.Warning("Syncfusion license key not found in configuration. Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json. Controls will run in trial mode.");
                 }
+
+                // === Register BoldReports License ===
+                RegisterBoldReportsLicense();
             }
             catch (Exception ex)
             {
@@ -227,6 +230,65 @@ namespace WileyWidget.WinForms
                 System.Diagnostics.Debug.WriteLine($"ERROR: Failed to register Syncfusion license: {ex.Message}");
                 Serilog.Log.Error(ex, "Failed to register Syncfusion license");
                 // Don't throw - allow app to continue in trial mode
+            }
+        }
+
+        /// <summary>
+        /// Register BoldReports license key from configuration.
+        /// CRITICAL: This MUST be called AFTER Syncfusion license registration.
+        /// BoldReports is a separate Syncfusion product with its own licensing.
+        /// </summary>
+        private static void RegisterBoldReportsLicense()
+        {
+            try
+            {
+                // Try environment variable first (highest priority)
+                var boldReportsKey = Environment.GetEnvironmentVariable("BOLDREPORTS_LICENSE_KEY");
+
+                // If not in environment, try configuration file
+                if (string.IsNullOrEmpty(boldReportsKey))
+                {
+                    var config = new ConfigurationBuilder()
+                        .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                        .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
+                        .Build();
+
+                    boldReportsKey = config["BoldReports:LicenseKey"];
+                }
+
+                if (!string.IsNullOrEmpty(boldReportsKey) && !boldReportsKey.StartsWith("${", StringComparison.Ordinal))
+                {
+                    try
+                    {
+                        // Use reflection to register BoldReports license
+                        var boldReportsAssembly = System.Reflection.Assembly.Load("BoldReports.WPF");
+                        var licenseProviderType = boldReportsAssembly?.GetType("BoldReports.License.BoldReportsLicenseProvider");
+                        var registerMethod = licenseProviderType?.GetMethod("RegisterLicense",
+                            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public,
+                            null, new[] { typeof(string) }, null);
+                        registerMethod?.Invoke(null, new object[] { boldReportsKey });
+                        System.Diagnostics.Debug.WriteLine("SUCCESS: BoldReports license registered successfully.");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WARNING: Failed to register BoldReports license via reflection: {ex.Message}");
+                        Serilog.Log.Warning(ex, "Failed to register BoldReports license");
+                        // Don't throw - allow app to continue in trial mode
+                    }
+                }
+                else
+                {
+                    // License key not found - BoldReports controls will show trial watermark
+                    System.Diagnostics.Debug.WriteLine("WARNING: BoldReports license key not found in configuration. Reports will run in trial mode.");
+                    Serilog.Log.Warning("BoldReports license key not found in configuration. Set BOLDREPORTS_LICENSE_KEY environment variable or add to appsettings.json. Reports will run in trial mode.");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR: Failed to register BoldReports license: {ex.Message}");
+                Serilog.Log.Error(ex, "Failed to register BoldReports license");
+                // Don't throw - allow app to continue
             }
         }
 

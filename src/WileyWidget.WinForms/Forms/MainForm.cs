@@ -9,6 +9,11 @@ using WileyWidget.ViewModels;
 using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 using Syncfusion.Windows.Forms.Chart;
 using System.IO;
+using System.Drawing;
+using SyncPdf = Syncfusion.Pdf;
+using SyncPdfGraphics = Syncfusion.Pdf.Graphics;
+using WileyWidget.WinForms.Controls;
+using Microsoft.Extensions.Configuration;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -34,18 +39,25 @@ namespace WileyWidget.WinForms.Forms
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<MainForm> _logger;
         private readonly MainViewModel? _viewModel;
+        private readonly IConfiguration _configuration;
 
         // Dashboard card labels for dynamic data binding
         private Label? _accountsDescLabel;
         private Label? _chartsDescLabel;
         private Label? _settingsDescLabel;
+        private Label? _reportsDescLabel;
         private Label? _infoDescLabel;
         private ToolStripStatusLabel? _statusLabel;
 
-        public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, MainViewModel? viewModel = null)
+        // AI Chat Panel
+        private Panel? _aiChatPanel;
+        private AIChatControl? _aiChatControl;
+
+        public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, IConfiguration configuration, MainViewModel? viewModel = null)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _viewModel = viewModel;
 
             // Guard the UI initialization so form-level exceptions are logged with full stacks
@@ -53,6 +65,18 @@ namespace WileyWidget.WinForms.Forms
             {
                 InitializeComponent();
                 Text = MainFormResources.FormTitle;
+
+                // Enable keyboard shortcuts (e.g., Ctrl+1 for AI panel)
+                KeyPreview = true;
+                KeyDown += MainForm_KeyDown;
+
+                // Phase 2: Initialize Syncfusion docking if enabled in configuration
+                var useSyncfusionDocking = _configuration.GetValue<bool>("UI:UseSyncfusionDocking", false);
+                if (useSyncfusionDocking)
+                {
+                    _useSyncfusionDocking = true;
+                    InitializeSyncfusionDocking();
+                }
 
                 // Subscribe to ViewModel property changes for dynamic updates
                 if (_viewModel != null)
@@ -124,6 +148,12 @@ namespace WileyWidget.WinForms.Forms
                 _settingsDescLabel.Text = $"Configure application preferences\n\nQuickBooks: Connected\n{updateInfo}";
             }
 
+            // Update Reports card
+            if (_reportsDescLabel != null)
+            {
+                _reportsDescLabel.Text = "Generate and view detailed reports\n\nBudget reports, audit logs\nand financial summaries";
+            }
+
             // Update System Info card
             if (_infoDescLabel != null)
             {
@@ -176,7 +206,8 @@ namespace WileyWidget.WinForms.Forms
 
             // Tools menu items
             var settingsMenuItem = new ToolStripMenuItem(MainFormResources.SettingsMenu, null, (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>());
-            toolsMenu.DropDownItems.Add(settingsMenuItem);
+            var reportsMenuItem = new ToolStripMenuItem("Reports", null, (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>());
+            toolsMenu.DropDownItems.AddRange(new ToolStripItem[] { settingsMenuItem, reportsMenuItem });
 
             // Help menu items
             var aboutItem = new ToolStripMenuItem(MainFormResources.AboutMenu, null, (s, e) => ShowAboutDialog());
@@ -196,7 +227,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
-                SplitterDistance = 850,
+                SplitterDistance = 700,  // Reduced from 850 to balance with wider AI panel
                 BackColor = Color.FromArgb(245, 245, 250)
             };
 
@@ -205,14 +236,15 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
-                RowCount = 2,
+                RowCount = 3,
                 Padding = new Padding(10),
                 BackColor = Color.FromArgb(245, 245, 250)
             };
             dashboardPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             dashboardPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
+            dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
+            dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 33.34F));
 
             // === Quick Action Cards (with dynamic data binding) ===
             var accountsCard = CreateDashboardCard("📊 Accounts", "View and manage municipal accounts\n\nLoading...", Color.FromArgb(66, 133, 244), out _accountsDescLabel);
@@ -224,12 +256,16 @@ namespace WileyWidget.WinForms.Forms
             var settingsCard = CreateDashboardCard("⚙️ Settings", "Configure application preferences\n\nLoading...", Color.FromArgb(251, 188, 4), out _settingsDescLabel);
             SetupCardClickHandler(settingsCard, () => ShowChildForm<SettingsForm, SettingsViewModel>());
 
+            var reportsCard = CreateDashboardCard("📄 Reports", "Generate and view detailed reports\n\nLoading...", Color.FromArgb(156, 39, 176), out _reportsDescLabel);
+            SetupCardClickHandler(reportsCard, () => ShowChildForm<ReportsForm, ReportsViewModel>());
+
             var infoCard = CreateDashboardCard("ℹ️ Budget Status", $"Loading budget data...\n\nRuntime: {Environment.Version}\nMemory: {GC.GetTotalMemory(false) / 1024 / 1024} MB", Color.FromArgb(234, 67, 53), out _infoDescLabel);
 
             dashboardPanel.Controls.Add(accountsCard, 0, 0);
             dashboardPanel.Controls.Add(chartsCard, 1, 0);
             dashboardPanel.Controls.Add(settingsCard, 0, 1);
-            dashboardPanel.Controls.Add(infoCard, 1, 1);
+            dashboardPanel.Controls.Add(reportsCard, 1, 1);
+            dashboardPanel.Controls.Add(infoCard, 0, 2);
 
             mainSplit.Panel1.Controls.Add(dashboardPanel);
 
@@ -321,9 +357,11 @@ namespace WileyWidget.WinForms.Forms
             var quickAccountsBtn = new ToolStripButton("📊 Accounts", null, (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>());
             var quickChartsBtn = new ToolStripButton("📈 Charts", null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>());
             var quickBudgetBtn = new ToolStripButton("💰 Budget", null, (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>());
+            var quickReportsBtn = new ToolStripButton("📄 Reports", null, (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>());
             var quickSettingsBtn = new ToolStripButton("⚙️ Settings", null, (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>());
             var quickRefreshBtn = new ToolStripButton("🔄 Refresh", null, (s, e) => RefreshDashboard());
             var quickExportBtn = new ToolStripButton("📄 Export", null, (s, e) => ExportDashboard());
+            var quickAIAssistantBtn = new ToolStripButton("🤖 AI Assistant", null, (s, e) => ToggleAIChatPanel());
 
             quickToolbar.Items.AddRange(new ToolStripItem[]
             {
@@ -333,15 +371,46 @@ namespace WileyWidget.WinForms.Forms
                 new ToolStripSeparator(),
                 quickBudgetBtn,
                 new ToolStripSeparator(),
+                quickReportsBtn,
+                new ToolStripSeparator(),
                 quickSettingsBtn,
                 new ToolStripSeparator(),
                 quickRefreshBtn,
                 new ToolStripSeparator(),
-                quickExportBtn
+                quickExportBtn,
+                new ToolStripSeparator(),
+                quickAIAssistantBtn
             });
+
+            // === AI Chat Panel (Right Docked, Visible on Launch - Phase 1 Enhancement) ===
+            var aiDefaultWidth = _configuration.GetValue<int>("UI:AIDefaultWidth", 550);
+            var defaultAIVisible = _configuration.GetValue<bool>("UI:DefaultAIVisible", true);
+
+            _aiChatPanel = new Panel
+            {
+                Dock = DockStyle.Right,
+                Width = aiDefaultWidth,  // Configurable via appsettings.json
+                BackColor = Color.FromArgb(248, 249, 250),
+                Visible = defaultAIVisible  // Configurable - AI visible on launch by default
+            };
+
+            try
+            {
+                _aiChatControl = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<AIChatControl>(_serviceProvider);
+                if (_aiChatControl != null)
+                {
+                    _aiChatControl.Dock = DockStyle.Fill;
+                    _aiChatPanel.Controls.Add(_aiChatControl);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize AI Chat Control");
+            }
 
             // === Add Controls in Order ===
             Controls.Add(mainSplit);
+            Controls.Add(_aiChatPanel);
             Controls.Add(quickToolbar);
             Controls.Add(headerPanel);
             Controls.Add(statusStrip);
@@ -379,6 +448,45 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private void ToggleAIChatPanel()
+        {
+            if (_aiChatPanel != null)
+            {
+                _aiChatPanel.Visible = !_aiChatPanel.Visible;
+                _logger.LogInformation("AI Chat Panel toggled to {Visible}", _aiChatPanel.Visible);
+
+                // Auto-focus AI control when panel is shown
+                if (_aiChatPanel.Visible && _aiChatControl != null)
+                {
+                    _aiChatControl.Focus();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handle keyboard shortcuts: Ctrl+1 toggles AI panel, Ctrl+D toggles Syncfusion docking (Phase 2)
+        /// </summary>
+        private void MainForm_KeyDown(object? sender, KeyEventArgs e)
+        {
+            // Ctrl+1: Toggle AI Chat Panel
+            if (e.Control && e.KeyCode == Keys.D1)
+            {
+                ToggleAIChatPanel();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            // Ctrl+D: Toggle between standard and Syncfusion docking (Phase 2 - future)
+            if (e.Control && e.KeyCode == Keys.D)
+            {
+                // TODO: Implement Syncfusion docking toggle in Phase 2
+                _logger.LogInformation("Syncfusion docking toggle requested (not yet implemented)");
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        }
+
         private void ExportDashboard()
         {
             _logger.LogInformation("Dashboard export requested");
@@ -395,36 +503,41 @@ namespace WileyWidget.WinForms.Forms
                 {
                     if (_viewModel != null)
                     {
+                        // TODO: PDF export temporarily disabled due to Syncfusion version conflict
+                        // Will be re-enabled once version conflict is resolved
+                        MessageBox.Show("PDF export is temporarily unavailable", "Feature Disabled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        /*
                         // Create PDF report using Syncfusion
-                        using var document = new Syncfusion.Pdf.PdfDocument();
+                        using var document = new SyncPdf.PdfDocument();
                         var page = document.Pages.Add();
                         var graphics = page.Graphics;
 
                         // Draw header
-                        var headerFont = new Syncfusion.Pdf.Graphics.PdfStandardFont(Syncfusion.Pdf.Graphics.PdfFontFamily.Helvetica, 20, Syncfusion.Pdf.Graphics.PdfFontStyle.Bold);
+                        var headerFont = new SyncPdfGraphics.PdfStandardFont(SyncPdfGraphics.PdfFontFamily.Helvetica, 20, SyncPdfGraphics.PdfFontStyle.Bold);
                         graphics.DrawString($"Dashboard Report - {DateTime.Now:yyyy-MM-dd}", headerFont,
-                            Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, 10));
+                            SyncPdfGraphics.PdfBrushes.Black, new PointF(10, 10));
 
-                        var bodyFont = new Syncfusion.Pdf.Graphics.PdfStandardFont(Syncfusion.Pdf.Graphics.PdfFontFamily.Helvetica, 10);
+                        var bodyFont = new SyncPdfGraphics.PdfStandardFont(SyncPdfGraphics.PdfFontFamily.Helvetica, 10);
                         var yPosition = 50f;
 
                         // Draw dashboard metrics
-                        graphics.DrawString($"Total Budget: {_viewModel.TotalBudget:C}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        graphics.DrawString($"Total Budget: {_viewModel.TotalBudget:C}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
                         yPosition += 20;
-                        graphics.DrawString($"Total Actual: {_viewModel.TotalActual:C}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        graphics.DrawString($"Total Actual: {_viewModel.TotalActual:C}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
                         yPosition += 20;
-                        graphics.DrawString($"Variance: {_viewModel.Variance:C}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        graphics.DrawString($"Variance: {_viewModel.Variance:C}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
                         yPosition += 20;
-                        graphics.DrawString($"Active Accounts: {_viewModel.ActiveAccountCount}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        graphics.DrawString($"Active Accounts: {_viewModel.ActiveAccountCount}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
                         yPosition += 20;
-                        graphics.DrawString($"Total Departments: {_viewModel.TotalDepartments}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(10, yPosition));
+                        graphics.DrawString($"Total Departments: {_viewModel.TotalDepartments}", bodyFont, SyncPdfGraphics.PdfBrushes.Black, new PointF(10, yPosition));
                         yPosition += 30;
 
                         // Footer
-                        graphics.DrawString($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", bodyFont, Syncfusion.Pdf.Graphics.PdfBrushes.Gray, new Syncfusion.Drawing.PointF(10, yPosition));
+                        graphics.DrawString($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", bodyFont, SyncPdfGraphics.PdfBrushes.Gray, new PointF(10, yPosition));
 
                         // Save the document
                         document.Save(saveDialog.FileName);
+                        */
                         _logger.LogInformation("Dashboard exported to: {FileName}", saveDialog.FileName);
                     }
                     else
@@ -540,6 +653,43 @@ namespace WileyWidget.WinForms.Forms
                 // After logging/alerting, rethrow so callers or the app host can detect and handle the failure
                 throw;
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _statusLabel?.Dispose();
+                // Dispose AI chat controls
+                try
+                {
+                    _aiChatControl?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed disposing AI chat control during form Dispose");
+                }
+
+                try
+                {
+                    _aiChatPanel?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed disposing AI chat panel during form Dispose");
+                }
+
+                // Dispose docking-related resources defined in the docking partial
+                try
+                {
+                    DisposeSyncfusionDockingResources();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed disposing docking resources during form Dispose");
+                }
+            }
+            base.Dispose(disposing);
         }
     }
 }

@@ -15,7 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Abstractions", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Abstractions", "src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj", "{E8ED5FBD-A352-47BA-A642-811FC7BB53E8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinForms", "WileyWidget.WinForms\WileyWidget.WinForms.csproj", "{12345678-1234-1234-1234-123456789ABC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinForms", "src\WileyWidget.WinForms\WileyWidget.WinForms.csproj", "{12345678-1234-1234-1234-123456789ABC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Docker.Tests", "tests\WileyWidget.Docker.Tests\WileyWidget.Docker.Tests.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject

@@ -192,7 +192,11 @@ namespace WileyWidget.WinForms.Forms
                 Location = new Point(headerPanel.Width - 140, 17)
             };
             _refreshButton.FlatAppearance.BorderSize = 0;
-            _refreshButton.Click += async (s, e) => await RefreshDataAsync();
+            _refreshButton.Click += async (s, e) =>
+            {
+                _logger.LogInformation("Refresh button clicked on BudgetOverviewForm");
+                await RefreshDataAsync();
+            };
             headerPanel.Controls.Add(_refreshButton);
 
             // === Summary Cards Panel with 4 cards ===
@@ -338,7 +342,11 @@ namespace WileyWidget.WinForms.Forms
                 Cursor = Cursors.Hand
             };
             _exportButton.FlatAppearance.BorderSize = 0;
-            _exportButton.Click += (s, e) => ExportData();
+            _exportButton.Click += (s, e) =>
+            {
+                _logger.LogInformation("Export button clicked on BudgetOverviewForm");
+                ExportData();
+            };
             statusPanel.Controls.Add(_exportButton);
 
             // === Add Controls to Form (order matters for docking) ===
@@ -498,17 +506,17 @@ namespace WileyWidget.WinForms.Forms
                 if (e.Column?.MappingName == "Status")
                 {
                     var status = e.DisplayText?.ToUpperInvariant() ?? "";
-                    if (status.Contains("UNDER") || status.Contains("GOOD"))
+                    if (status.Contains("UNDER", StringComparison.OrdinalIgnoreCase) || status.Contains("GOOD", StringComparison.OrdinalIgnoreCase))
                     {
                         e.Style.TextColor = PositiveColor;
                         e.Style.Font.Bold = true;
                     }
-                    else if (status.Contains("OVER") || status.Contains("EXCEEDED"))
+                    else if (status.Contains("OVER", StringComparison.OrdinalIgnoreCase) || status.Contains("EXCEEDED", StringComparison.OrdinalIgnoreCase))
                     {
                         e.Style.TextColor = NegativeColor;
                         e.Style.Font.Bold = true;
                     }
-                    else if (status.Contains("WARNING") || status.Contains("APPROACHING"))
+                    else if (status.Contains("WARNING", StringComparison.OrdinalIgnoreCase) || status.Contains("APPROACHING", StringComparison.OrdinalIgnoreCase))
                     {
                         e.Style.TextColor = WarningColor;
                         e.Style.Font.Bold = true;

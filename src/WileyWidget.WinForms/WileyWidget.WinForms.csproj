@@ -5,12 +5,15 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF><!-- Required for BoldReports.WPF ElementHost interop -->
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>NU1701</NoWarn>
+    <NoWarn>NU1701;CS0433</NoWarn>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Syncfusion WinForms controls - v31.2.16 -->
+    <PackageReference Include="BoldReports.Net.Core" />
     <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
     <PackageReference Include="Syncfusion.SfInput.WinForms" />
     <PackageReference Include="Syncfusion.SfListView.WinForms" />
@@ -18,15 +21,8 @@
     <PackageReference Include="Syncfusion.Shared.Base" />
     <!-- Syncfusion Chart for WinForms - replaces LiveCharts -->
     <PackageReference Include="Syncfusion.Chart.Windows" />
-    <ProjectReference Include="..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
-    <ProjectReference Include="..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <!-- BoldReports WPF for RDL report viewer (hosted in WinForms via ElementHost) -->
+    <PackageReference Include="BoldReports.WPF" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
@@ -75,6 +71,16 @@
     <!-- Exclude legacy Serilog AzureDocumentDB sink and DocumentDB Core to avoid NETSDK1206 -->
     <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Project references to internal WileyWidget libraries -->
+    <ProjectReference Include="..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+    <ProjectReference Include="..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
+    <ProjectReference Include="..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
+    <ProjectReference Include="..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
+    <ProjectReference Include="..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference Include="..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
   </ItemGroup>
 
   <ItemGroup>
