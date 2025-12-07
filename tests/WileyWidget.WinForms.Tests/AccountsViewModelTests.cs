@@ -157,7 +157,7 @@ namespace WileyWidget.WinForms.Tests
             context.BudgetPeriods.Add(budgetPeriod);
 
             // Save once to ensure FK ids are generated and available for account seeding
-            await context.SaveChangesAsync();
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             for (int i = 0; i < accountCount; i++)
             {
@@ -488,7 +488,7 @@ namespace WileyWidget.WinForms.Tests
                     EndDate = DateTime.Now.AddYears(1),
                     IsActive = true
                 });
-                await ctx.SaveChangesAsync();
+                await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
             }
 
             using var context = CreateContext();

@@ -94,7 +94,8 @@
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
-    "source.organizeImports": "explicit"
+    "source.organizeImports": "explicit",
+    "source.fixAll.powershell": "explicit"
   },
   "editor.minimap.enabled": false,
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
@@ -163,6 +164,12 @@
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
 
+  "csharp.suppressDotnetRestoreNotification": true,
+
+  "[csharp]": {
+    "editor.formatOnSave": true
+  },
+
   // ============================================================================
   // Testing Configuration
   // ============================================================================
@@ -191,6 +198,16 @@
   "python.formatting.provider": "black",
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.linting.pylintArgs": [
+    "--disable=C0114,C0115,C0116",
+    "--disable=W0611",
+    "--generate-members"
+  ],
+  "python.linting.flake8Args": [
+    "--ignore=E501,W291"
+  ],
+  "python.analysis.typeCheckingMode": "basic",
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": false,
 
@@ -198,7 +215,10 @@
   // PowerShell Configuration
   // ============================================================================
   "powershell.scriptAnalysis.enable": true,
+  "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1",
   "powershell.codeFormatting.preset": "OTBS",
+  "powershell.codeFormatting.autoCorrectAliases": true,
+  "powershell.integratedConsole.showOnStartup": false,
 
   // ============================================================================
   // SonarLint Configuration

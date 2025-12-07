@@ -36,6 +36,18 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private ObservableCollection<MunicipalAccountDisplay> accounts = new();
 
+        /// <summary>
+        /// Flat search text used to filter accounts locally when the service does not provide text search.
+        /// </summary>
+        [ObservableProperty]
+        private string? searchText;
+
+        /// <summary>
+        /// Hierarchical account nodes built from the flat account list (for tree views).
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<HierarchicalAccountNode> hierarchicalAccounts = new();
+
         [ObservableProperty]
         private MunicipalFundType? selectedFund;
 
@@ -64,6 +76,10 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 LoadAccountsCommand = new AsyncRelayCommand(LoadAccountsAsync);
                 FilterAccountsCommand = new AsyncRelayCommand(FilterAccountsAsync);
+                DeleteAccountCommand = new AsyncRelayCommand<int>(async id => await DeleteAccountAsync(id));
+                AddAccountCommand = new AsyncRelayCommand(async () => await Task.CompletedTask);
+                EditAccountCommand = new AsyncRelayCommand<int>(async id => await Task.CompletedTask);
+
                 _logger.LogInformation("AccountsViewModel constructed with IAccountService");
             }
             catch (Exception ex)
@@ -75,6 +91,9 @@ namespace WileyWidget.WinForms.ViewModels
 
         public IAsyncRelayCommand LoadAccountsCommand { get; }
         public IAsyncRelayCommand FilterAccountsCommand { get; }
+        public IAsyncRelayCommand DeleteAccountCommand { get; }
+        public IAsyncRelayCommand AddAccountCommand { get; }
+        public IAsyncRelayCommand EditAccountCommand { get; }
 
         private async Task LoadAccountsAsync(CancellationToken cancellationToken = default)
         {
@@ -85,14 +104,17 @@ namespace WileyWidget.WinForms.ViewModels
                     new { Fund = SelectedFund?.ToString() ?? "(all)", AccountType = SelectedAccountType?.ToString() ?? "(all)" });
 
                 // Delegate business logic to AccountService (returns already-mapped display objects)
-                var result = await _accountService.LoadAccountsAsync(SelectedFund, SelectedAccountType, cancellationToken);
+                var result = await _accountService.LoadAccountsAsync(SelectedFund, SelectedAccountType, SearchText, cancellationToken);
 
-                // Update observable collection
+                // Update observable collection (service now handles all filtering including search)
                 Accounts.Clear();
                 foreach (var display in result.Accounts)
                 {
                     Accounts.Add(display);
                 }
+
+                // Build hierarchical view based on account number parent semantics
+                BuildHierarchy(Accounts);
 
                 // Update computed properties
                 TotalBalance = result.TotalBalance;
@@ -103,7 +125,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (OperationCanceledException oce)
             {
-                _logger.LogWarning(oce, "Loading accounts operation was canceled");
+                _logger.LogDebug(oce, "Loading accounts operation was canceled");
                 return;
             }
             catch (Exception ex)
@@ -122,6 +144,79 @@ namespace WileyWidget.WinForms.ViewModels
         {
             _logger.LogInformation("Applying filters - Fund: {Fund}, Type: {Type}", SelectedFund, SelectedAccountType);
             return LoadAccountsAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Builds a simple hierarchical account tree from the flat account list using dot-separated account numbers.
+        /// This does not modify the display DTOs; it creates lightweight nodes for UI tree binding.
+        /// </summary>
+        /// <param name="flatList">Flat list of accounts (display DTOs)</param>
+        private void BuildHierarchy(IEnumerable<MunicipalAccountDisplay> flatList)
+        {
+            try
+            {
+                var nodes = new Dictionary<string, HierarchicalAccountNode>(StringComparer.OrdinalIgnoreCase);
+                var roots = new List<HierarchicalAccountNode>();
+
+                foreach (var a in flatList)
+                {
+                    var node = new HierarchicalAccountNode(a);
+                    // Use account number string as key
+                    var key = (a.AccountNumber ?? string.Empty).Trim();
+                    if (!nodes.ContainsKey(key)) nodes[key] = node;
+                }
+
+                // Second pass: wire children to parents
+                foreach (var kvp in nodes)
+                {
+                    var key = kvp.Key;
+                    var node = kvp.Value;
+                    var parentNumber = GetParentAccountNumber(key);
+                    if (!string.IsNullOrWhiteSpace(parentNumber) && nodes.TryGetValue(parentNumber!, out var parent))
+                    {
+                        parent.Children.Add(node);
+                    }
+                    else
+                    {
+                        roots.Add(node);
+                    }
+                }
+
+                HierarchicalAccounts.Clear();
+                foreach (var r in roots.OrderBy(n => n.Account?.AccountNumber))
+                {
+                    HierarchicalAccounts.Add(r);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to build account hierarchy");
+                HierarchicalAccounts.Clear();
+            }
+        }
+
+        private static string? GetParentAccountNumber(string accountNumber)
+        {
+            if (string.IsNullOrWhiteSpace(accountNumber)) return null;
+            var parts = accountNumber.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length <= 1) return null;
+            return string.Join('.', parts.Take(parts.Length - 1));
+        }
+
+        /// <summary>
+        /// Lightweight node used by tree controls to present hierarchical accounts.
+        /// </summary>
+        public class HierarchicalAccountNode
+        {
+            public MunicipalAccountDisplay? Account { get; }
+            public ObservableCollection<HierarchicalAccountNode> Children { get; } = new();
+
+            public HierarchicalAccountNode(MunicipalAccountDisplay? account)
+            {
+                Account = account;
+            }
+
+            public override string ToString() => Account?.AccountNumber + " - " + Account?.Name;
         }
 
         /// <summary>

@@ -110,8 +110,8 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (OperationCanceledException oce)
             {
-                _logger.LogWarning(oce, "Chart load was canceled for year {Year}, category {Category}", selectedYear, selectedCategory);
-                // Silently return — cancellations are expected during shutdown/rapid navigation
+                _logger.LogDebug(oce, "Chart load was canceled for year {Year}, category {Category}", selectedYear, selectedCategory);
+                // Silently return - cancellations are expected during shutdown/rapid navigation
                 return;
             }
             catch (ArgumentException ex)

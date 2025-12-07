@@ -20,4 +20,5 @@ public class Fund
     public FundType Type { get; set; }
 
     public ICollection<BudgetEntry> BudgetEntries { get; set; } = new List<BudgetEntry>();
+    public AccountNumber AccountNumber { get; set; }
 }

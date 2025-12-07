@@ -86,7 +86,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (OperationCanceledException oce)
             {
-                _logger.LogWarning(oce, "Settings loading canceled");
+                _logger.LogDebug(oce, "Settings loading canceled");
                 return;
             }
             catch (Exception ex)

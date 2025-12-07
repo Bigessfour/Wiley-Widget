@@ -24,7 +24,8 @@ namespace WileyWidget.WinForms.Diagnostics
     /// <summary>
     /// Run all diagnostic checks and return results
     /// </summary>
-    Task<StartupDiagnosticsReport> RunDiagnosticsAsync();
+    /// <param name="cancellationToken">Cancellation token to abort diagnostics if startup is cancelled</param>
+    Task<StartupDiagnosticsReport> RunDiagnosticsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get diagnostics summary as human-readable string
@@ -106,11 +107,14 @@ public class StartupDiagnostics : IStartupDiagnostics
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
-    public async Task<StartupDiagnosticsReport> RunDiagnosticsAsync()
+    public async Task<StartupDiagnosticsReport> RunDiagnosticsAsync(CancellationToken cancellationToken = default)
     {
         var report = new StartupDiagnosticsReport();
 
         _logger.LogInformation("Starting startup diagnostics...");
+
+        // Check for cancellation before starting
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Define critical services to check
         var servicesToCheck = new Dictionary<string, Type>
@@ -154,7 +158,8 @@ public class StartupDiagnostics : IStartupDiagnostics
         // Check each service
         foreach (var kvp in servicesToCheck)
         {
-            var result = await CheckServiceResolutionAsync(kvp.Key, kvp.Value);
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await CheckServiceResolutionAsync(kvp.Key, kvp.Value, cancellationToken);
             report.Results.Add(result);
         }
 
@@ -187,10 +192,12 @@ public class StartupDiagnostics : IStartupDiagnostics
         return _lastReport?.ToString() ?? "No diagnostics report available. Run RunDiagnosticsAsync() first.";
     }
 
-    private async Task<DiagnosticCheckResult> CheckServiceResolutionAsync(string serviceName, Type serviceType)
+    private async Task<DiagnosticCheckResult> CheckServiceResolutionAsync(string serviceName, Type serviceType, CancellationToken cancellationToken = default)
     {
         var startTime = DateTime.UtcNow;
         var result = new DiagnosticCheckResult { ServiceName = serviceName };
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         try
         {

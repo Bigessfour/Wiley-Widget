@@ -6,6 +6,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
 using WileyWidget.ViewModels;
+using WileyWidget.WinForms.Models;
 using SfGradientStyle = Syncfusion.Drawing.GradientStyle;
 using SfGridBorder = Syncfusion.WinForms.DataGrid.Styles.GridBorder;
 using SfGridBorderStyle = Syncfusion.WinForms.DataGrid.Styles.GridBorderStyle;
@@ -193,6 +194,88 @@ namespace WileyWidget.WinForms.Forms
             };
             headerPanel.Controls.Add(_periodSelector);
 
+            // Action buttons
+            var addCategoryBtn = new Button
+            {
+                Text = "➕ Add Category",
+                Font = new Font("Segoe UI", 9),
+                BackColor = PositiveColor,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(120, 35),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand,
+                Location = new Point(headerPanel.Width - 400, 17)
+            };
+            addCategoryBtn.FlatAppearance.BorderSize = 0;
+            addCategoryBtn.Click += (s, e) =>
+            {
+                _logger.LogInformation("Add budget category button clicked");
+                MessageBox.Show("Add Budget Category dialog will be implemented here.\n\nThis will allow you to create new budget categories with budgeted amounts.",
+                    "Add Category", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+            headerPanel.Controls.Add(addCategoryBtn);
+
+            var editCategoryBtn = new Button
+            {
+                Text = "✏️ Edit",
+                Font = new Font("Segoe UI", 9),
+                BackColor = AccentPurple,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(80, 35),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand,
+                Location = new Point(headerPanel.Width - 270, 17)
+            };
+            editCategoryBtn.FlatAppearance.BorderSize = 0;
+            editCategoryBtn.Click += (s, e) =>
+            {
+                _logger.LogInformation("Edit budget category button clicked");
+                if (_metricsGrid?.SelectedItem != null)
+                {
+                    MessageBox.Show("Edit Budget Category dialog will be implemented here.\n\nThis will allow you to modify the selected budget category.",
+                        "Edit Category", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Please select a budget category to edit.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            };
+            headerPanel.Controls.Add(editCategoryBtn);
+
+            var deleteCategoryBtn = new Button
+            {
+                Text = "🗑️ Delete",
+                Font = new Font("Segoe UI", 9),
+                BackColor = NegativeColor,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(80, 35),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand,
+                Location = new Point(headerPanel.Width - 180, 17)
+            };
+            deleteCategoryBtn.FlatAppearance.BorderSize = 0;
+            deleteCategoryBtn.Click += (s, e) =>
+            {
+                _logger.LogInformation("Delete budget category button clicked");
+                if (_metricsGrid?.SelectedItem != null)
+                {
+                    var result = MessageBox.Show("Are you sure you want to delete the selected budget category?\n\nThis action cannot be undone.",
+                        "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (result == DialogResult.Yes)
+                    {
+                        MessageBox.Show("Budget category deletion will be implemented here.", "Delete Category", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Please select a budget category to delete.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            };
+            headerPanel.Controls.Add(deleteCategoryBtn);
+
             // Refresh button
             _refreshButton = new Button
             {
@@ -303,7 +386,11 @@ namespace WileyWidget.WinForms.Forms
                 AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
                 ShowBusyIndicator = true,
                 ShowRowHeader = true,
-                RowHeaderWidth = 35
+                RowHeaderWidth = 35,
+                // Additional essential properties from Syncfusion best practices
+                NavigationMode = NavigationMode.Cell,
+                AllowDraggingColumns = true,
+                AllowTriStateSorting = true
             };
 
             // Configure columns with proper formatting
@@ -504,12 +591,12 @@ namespace WileyWidget.WinForms.Forms
 
         private void MetricsGrid_QueryCellStyle(object? sender, QueryCellStyleEventArgs e)
         {
-            if (e.DataRow?.RowData is FinancialMetric metric)
+            if (e.DataRow?.RowData is BudgetCategoryDto category)
             {
                 // Style Variance column based on value
-                if (e.Column?.MappingName == "Variance" || e.Column?.MappingName == "Amount")
+                if (e.Column?.MappingName == "Variance")
                 {
-                    if (metric.Amount >= 0)
+                    if (category.Variance >= 0)
                     {
                         e.Style.TextColor = PositiveColor;
                         e.Style.Font.Bold = true;
@@ -524,18 +611,18 @@ namespace WileyWidget.WinForms.Forms
                 // Style Status column with appropriate colors
                 if (e.Column?.MappingName == "Status")
                 {
-                    var status = e.DisplayText?.ToUpperInvariant() ?? "";
-                    if (status.Contains("UNDER", StringComparison.OrdinalIgnoreCase) || status.Contains("GOOD", StringComparison.OrdinalIgnoreCase))
+                    var status = category.Status;
+                    if (status.Contains("Under", StringComparison.Ordinal))
                     {
                         e.Style.TextColor = PositiveColor;
                         e.Style.Font.Bold = true;
                     }
-                    else if (status.Contains("OVER", StringComparison.OrdinalIgnoreCase) || status.Contains("EXCEEDED", StringComparison.OrdinalIgnoreCase))
+                    else if (status.Contains("Over", StringComparison.Ordinal))
                     {
                         e.Style.TextColor = NegativeColor;
                         e.Style.Font.Bold = true;
                     }
-                    else if (status.Contains("WARNING", StringComparison.OrdinalIgnoreCase) || status.Contains("APPROACHING", StringComparison.OrdinalIgnoreCase))
+                    else if (status.Contains("Approaching", StringComparison.Ordinal))
                     {
                         e.Style.TextColor = WarningColor;
                         e.Style.Font.Bold = true;
@@ -545,8 +632,7 @@ namespace WileyWidget.WinForms.Forms
                 // Style PercentUsed column
                 if (e.Column?.MappingName == "PercentUsed")
                 {
-                    // Calculate percent (assuming it's stored as decimal like 0.85 for 85%)
-                    var percentUsed = GetPercentUsedFromMetric(metric);
+                    var percentUsed = category.PercentUsed;
                     if (percentUsed > 1.0m) // Over 100%
                     {
                         e.Style.BackColor = Color.FromArgb(255, 235, 238);
@@ -571,15 +657,6 @@ namespace WileyWidget.WinForms.Forms
                     e.Style.Font.Size = 14;
                 }
             }
-        }
-
-        private static decimal GetPercentUsedFromMetric(FinancialMetric metric)
-        {
-            // If we have budgeted vs actual, calculate percent
-            // For now, use a simple ratio based on variance sign
-            if (metric.Amount < 0)
-                return 1.1m; // Over budget
-            return 0.8m; // Under budget default
         }
 
         private Panel CreateSummaryCard(string title, string initialValue, Color accentColor, string icon, out Label valueLabel)
@@ -681,7 +758,7 @@ namespace WileyWidget.WinForms.Forms
                 case nameof(BudgetOverviewViewModel.TotalBudget):
                 case nameof(BudgetOverviewViewModel.TotalActual):
                 case nameof(BudgetOverviewViewModel.Variance):
-                case nameof(BudgetOverviewViewModel.Metrics):
+                case nameof(BudgetOverviewViewModel.Categories):
                     UpdateUI();
                     UpdateBudgetProgress();
                     break;
@@ -721,7 +798,7 @@ namespace WileyWidget.WinForms.Forms
             if (_percentUsedValueLabel != null)
             {
                 var percentUsed = _viewModel.TotalBudget != 0
-                    ? (_viewModel.TotalActual / _viewModel.TotalBudget) * 100
+                    ? ((_viewModel.TotalActual + _viewModel.TotalEncumbrance) / _viewModel.TotalBudget) * 100
                     : 0;
                 _percentUsedValueLabel.Text = $"{percentUsed:F1}%";
 
@@ -734,10 +811,10 @@ namespace WileyWidget.WinForms.Forms
                     _percentUsedValueLabel.ForeColor = PositiveColor;
             }
 
-            // Update metrics grid
+            // Update metrics grid with actual categories
             if (_metricsGrid != null)
             {
-                _metricsGrid.DataSource = _viewModel.Metrics;
+                _metricsGrid.DataSource = _viewModel.Categories;
                 _metricsGrid.Refresh();
             }
 
@@ -842,14 +919,30 @@ namespace WileyWidget.WinForms.Forms
             {
                 using var saveDialog = new SaveFileDialog
                 {
-                    Filter = "Excel Files|*.xlsx|CSV Files|*.csv|PDF Files|*.pdf",
-                    DefaultExt = "xlsx",
+                    Filter = "CSV Files|*.csv|Excel Files|*.xlsx|PDF Files|*.pdf",
+                    DefaultExt = "csv",
                     FileName = $"BudgetOverview_{DateTime.Now:yyyyMMdd}"
                 };
 
                 if (saveDialog.ShowDialog() == DialogResult.OK)
                 {
-                    // TODO: Implement export logic with Syncfusion Excel/PDF
+                    var extension = System.IO.Path.GetExtension(saveDialog.FileName).ToLower(CultureInfo.InvariantCulture);
+
+                    if (extension == ".csv")
+                    {
+                        ExportToCsv(saveDialog.FileName);
+                    }
+                    else if (extension == ".xlsx" || extension == ".pdf")
+                    {
+                        MessageBox.Show($"Export to {extension.ToUpper(CultureInfo.InvariantCulture)} requires Syncfusion.DataGridExport.WinForms package.\n\nPlease run 'dotnet restore' and rebuild to enable Excel/PDF export.\n\nCSV export is available now.",
+                            "Export Feature", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                    else
+                    {
+                        throw new NotSupportedException($"Export format {extension} is not supported");
+                    }
+
                     MessageBox.Show($"Export to {saveDialog.FileName} completed successfully.",
                         "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -862,6 +955,25 @@ namespace WileyWidget.WinForms.Forms
                 MessageBox.Show($"Export failed: {ex.Message}", "Export Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void ExportToCsv(string fileName)
+        {
+            if (_metricsGrid == null || _viewModel.Categories == null)
+                throw new InvalidOperationException("Metrics grid or data is not initialized");
+
+            using var writer = new System.IO.StreamWriter(fileName);
+
+            // Write header
+            writer.WriteLine("Category,Account Number,Budgeted Amount,Actual Amount,Encumbrance,Variance,Percent Used,Status,Trend");
+
+            // Write data
+            foreach (var category in _viewModel.Categories)
+            {
+                writer.WriteLine($"\"{category.Category}\",\"{category.AccountNumber}\",{category.BudgetedAmount:F2},{category.ActualAmount:F2},{category.EncumbranceAmount:F2},{category.Variance:F2},{category.PercentUsed:P2},\"{category.Status}\",\"{category.Trend}\"");
+            }
+
+            _logger.LogInformation("CSV export completed: {FileName}", fileName);
         }
 
         protected override void OnResize(EventArgs e)

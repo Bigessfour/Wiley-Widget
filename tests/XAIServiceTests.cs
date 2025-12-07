@@ -307,8 +307,8 @@ public class XAIServiceTests
             .ThrowsAsync(new HttpRequestException("Network error"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(
-            () => _mockAiService.Object.SendMessageAsync("Test", conversationHistory)
+        await Assert.ThrowsAsync<HttpRequestException>(async () =>
+            await _mockAiService.Object.SendMessageAsync("Test", conversationHistory)
         );
     }
 

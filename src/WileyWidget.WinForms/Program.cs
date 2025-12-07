@@ -4,46 +4,73 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 using Syncfusion.Licensing;
 using System.IO;
+using System.Globalization;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Diagnostics;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms
 {
     internal static class Program
     {
+        private static GlobalExceptionHandlerService? _exceptionHandler;
+
         [STAThread]
         static void Main()
         {
-            // === BOOTSTRAP SERILOG IMMEDIATELY ===
-            // Configure minimal Serilog before anything else to capture early errors
-            BootstrapSerilog();
+            try
+            {
+                // === BOOTSTRAP SERILOG IMMEDIATELY ===
+                // Configure minimal Serilog before anything else to capture early errors
+                BootstrapSerilog();
 
-            // === GLOBAL EXCEPTION HANDLERS (MUST BE FIRST) ===
-            // Wire up unhandled exception handlers BEFORE any other code runs
-            // to ensure we catch and log ALL exceptions that escape normal handling
-            SetupGlobalExceptionHandlers();
+                // === GLOBAL EXCEPTION HANDLERS (MUST BE FIRST) ===
+                // Wire up unhandled exception handlers BEFORE any other code runs
+                // to ensure we catch and log ALL exceptions that escape normal handling
+                SetupGlobalExceptionHandlers();
 
-            // === Register Syncfusion License FIRST ===
-            // CRITICAL: Must be called BEFORE ApplicationConfiguration.Initialize()
-            // and BEFORE any Syncfusion control is initiated
-            // Per Syncfusion docs: "Register the licensing code in static void main method
-            // before calling Application.Run() method"
-            RegisterSyncfusionLicense();
+                // === Register Syncfusion License FIRST ===
+                // CRITICAL: Must be called BEFORE ApplicationConfiguration.Initialize()
+                // and BEFORE any Syncfusion control is initiated
+                // Per Syncfusion docs: "Register the licensing code in static void main method
+                // before calling Application.Run() method"
+                RegisterSyncfusionLicense();
 
-            ApplicationConfiguration.Initialize();  // Required for WinForms + .NET 9
+                ApplicationConfiguration.Initialize();  // Required for WinForms + .NET 9
 
-            // Build the host — this is safe, nothing gets constructed yet
-            var host = CreateHostBuilder().Build();
+                // Build the host — UseSerilog will gracefully replace bootstrap logger
+                var host = CreateHostBuilder().Build();
 
-            // === MIGRATE SECRETS TO VAULT ===
-            // Migrate machine-scope environment variables to encrypted vault for secure storage
-            MigrateSecretsToVaultAsync(host).Wait();
+                // === INITIALIZE GLOBAL EXCEPTION HANDLER SERVICE ===
+                // Resolve the exception handler from DI after the host is built
+                _exceptionHandler = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<GlobalExceptionHandlerService>(host.Services);
+                if (_exceptionHandler is not null)
+                {
+                    Serilog.Log.Information("GlobalExceptionHandlerService initialized successfully");
+                }
+                else
+                {
+                    Serilog.Log.Warning("GlobalExceptionHandlerService not available - using fallback handlers");
+                }
 
-            // === RUN STARTUP DIAGNOSTICS ===
-            // This verifies all services can be resolved before the app tries to use them
-            RunStartupDiagnosticsAsync(host).Wait();
+                // === VALIDATE DI CONFIGURATION ===
+                // NOW validate DI after host is built and logger is properly configured
+                // This prevents Serilog ReloadableLogger from freezing prematurely
+                DependencyInjection.ValidateDependencyInjection(host.Services);
+
+                // === MIGRATE SECRETS TO VAULT ===
+                // Migrate machine-scope environment variables to encrypted vault for secure storage
+                // Using GetAwaiter().GetResult() instead of .Wait() to avoid potential deadlocks in WinForms
+                MigrateSecretsToVaultAsync(host).GetAwaiter().GetResult();
+
+                // === RUN STARTUP DIAGNOSTICS ===
+                // This verifies all services can be resolved before the app tries to use them
+                // Using GetAwaiter().GetResult() instead of .Wait() to avoid potential deadlocks in WinForms
+                // Pass CancellationToken.None since we want diagnostics to complete fully
+                RunStartupDiagnosticsAsync(host, CancellationToken.None).GetAwaiter().GetResult();
 
             // Now we have a running message pump — safe to resolve MainForm + its dependencies
             // IMPORTANT: MainForm is Scoped, so resolve it within a service scope
@@ -84,6 +111,25 @@ namespace WileyWidget.WinForms
                     throw; // Re-throw to terminate the application
                 }
             }
+            }
+            catch (Exception ex)
+            {
+                // Fatal startup error - log and terminate
+                Serilog.Log.Fatal(ex, "Application terminated unexpectedly during startup");
+                System.Diagnostics.Debug.WriteLine($"FATAL STARTUP ERROR: {ex}");
+                MessageBox.Show(
+                    $"A fatal error occurred during application startup:\n\n{ex.Message}\n\nThe application will now close.",
+                    "Wiley Widget - Fatal Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                throw;
+            }
+            finally
+            {
+                // Ensure bootstrap logger is properly disposed and all logs are flushed
+                // This also disposes the host-configured logger after application exit
+                Serilog.Log.CloseAndFlush();
+            }
         }
 
         /// <summary>
@@ -97,19 +143,21 @@ namespace WileyWidget.WinForms
 
             Log.Logger = new Serilog.LoggerConfiguration()
                 .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .WriteTo.Debug()
+                .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
                 .WriteTo.File(
                     path: Path.Combine(logsDir, "wiley-widget-.log"),
                     rollingInterval: Serilog.RollingInterval.Day,
                     retainedFileCountLimit: 30,
-                    shared: true)
+                    shared: true,
+                    formatProvider: CultureInfo.InvariantCulture)
                 .WriteTo.File(
                     path: Path.Combine(logsDir, "errors-.log"),
                     rollingInterval: Serilog.RollingInterval.Day,
                     restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error,
                     retainedFileCountLimit: 60,
-                    shared: true)
+                    shared: true,
+                    formatProvider: CultureInfo.InvariantCulture)
                 .CreateBootstrapLogger();
 
             Log.Information("Serilog bootstrap complete - logs directory: {LogsDir}", logsDir);
@@ -122,20 +170,27 @@ namespace WileyWidget.WinForms
         /// - AppDomain.CurrentDomain.UnhandledException: Non-UI thread exceptions
         /// - TaskScheduler.UnobservedTaskException: Unobserved Task exceptions
         /// - Application.ThreadException: WinForms UI thread exceptions
-        /// - AppDomain.CurrentDomain.FirstChanceException: ALL exceptions (for debugging)
+        /// - AppDomain.CurrentDomain.FirstChanceException: ALL exceptions (DEBUG builds only)
+        ///
+        /// Enhanced with GlobalExceptionHandlerService for centralized error management,
+        /// user notifications, and recovery strategies.
         /// </summary>
         private static void SetupGlobalExceptionHandlers()
         {
+#if DEBUG
             // First-chance exception handler - logs ALL exceptions as they are thrown,
             // even if they will be caught later. Essential for debugging DI issues.
+            // ONLY ENABLED IN DEBUG BUILDS to reduce overhead in production.
             AppDomain.CurrentDomain.FirstChanceException += (sender, args) =>
             {
                 var ex = args.Exception;
 
-                // Filter out common noise exceptions that are expected
+                // Filter out common noise exceptions that are expected and benign
                 if (ex is OperationCanceledException)
                 {
-                    Serilog.Log.Debug(ex, "[FirstChance] OperationCanceledException: {Message}", ex.Message);
+                    // Completely suppress - these are expected during normal async operations
+                    // (startup diagnostics, secret migration, UI cancellations, etc.)
+                    return;
                 }
                 else if (ex is InvalidOperationException ioe && ioe.Source == "Microsoft.Extensions.DependencyInjection")
                 {
@@ -153,12 +208,19 @@ namespace WileyWidget.WinForms
                     // Network exceptions are common and may be handled - log at Debug
                     Serilog.Log.Debug(ex, "[FirstChance] Network exception: {Type} - {Message}", ex.GetType().Name, ex.Message);
                 }
+                else if (ex is Syncfusion.Windows.Forms.Tools.DockingManagerException)
+                {
+                    // Syncfusion docking exceptions - log at Debug for diagnostic purposes
+                    Serilog.Log.Debug(ex, "[FirstChance] DockingManagerException: {Message}", ex.Message);
+                    System.Diagnostics.Debug.WriteLine($"[FirstChance] {ex.GetType().Name}: {ex.Message}");
+                }
                 else
                 {
                     // Log other exceptions at Debug level to avoid noise
                     Serilog.Log.Debug(ex, "[FirstChance] {ExceptionType}: {Message}", ex.GetType().Name, ex.Message);
                 }
             };
+#endif
 
             // Unhandled exception handler - catches exceptions that escape all handlers
             AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
@@ -166,10 +228,18 @@ namespace WileyWidget.WinForms
                 var ex = args.ExceptionObject as Exception;
                 if (ex != null)
                 {
-                    Serilog.Log.Fatal(ex, "[UNHANDLED] AppDomain.UnhandledException - IsTerminating: {IsTerminating}, Type: {ExceptionType}",
-                        args.IsTerminating, ex.GetType().FullName);
-                    System.Diagnostics.Debug.WriteLine($"[UNHANDLED] {ex.GetType().Name}: {ex.Message}");
-                    System.Diagnostics.Debug.WriteLine($"  StackTrace: {ex.StackTrace}");
+                    // Use centralized handler if available, otherwise fallback to basic logging
+                    if (_exceptionHandler is not null)
+                    {
+                        _exceptionHandler.HandleUnhandledException(ex, args.IsTerminating);
+                    }
+                    else
+                    {
+                        Serilog.Log.Fatal(ex, "[UNHANDLED] AppDomain.UnhandledException - IsTerminating: {IsTerminating}, Type: {ExceptionType}",
+                            args.IsTerminating, ex.GetType().FullName);
+                        System.Diagnostics.Debug.WriteLine($"[UNHANDLED] {ex.GetType().Name}: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"  StackTrace: {ex.StackTrace}");
+                    }
                 }
                 else
                 {
@@ -184,30 +254,47 @@ namespace WileyWidget.WinForms
             // Task scheduler exception handler - catches unobserved Task exceptions
             TaskScheduler.UnobservedTaskException += (sender, args) =>
             {
-                Serilog.Log.Error(args.Exception, "[UNOBSERVED] TaskScheduler.UnobservedTaskException: {Message}",
-                    args.Exception?.Message);
-                System.Diagnostics.Debug.WriteLine($"[UNOBSERVED] Task exception: {args.Exception?.Message}");
-                System.Diagnostics.Debug.WriteLine($"  StackTrace: {args.Exception?.StackTrace}");
-
-                // Mark as observed to prevent application crash
-                args.SetObserved();
+                // Use centralized handler if available
+                if (_exceptionHandler is not null && args.Exception is not null)
+                {
+                    _exceptionHandler.HandleUnobservedTaskException(args.Exception, false);
+                    args.SetObserved(); // Mark as observed to prevent crash
+                }
+                else
+                {
+                    Serilog.Log.Error(args.Exception, "[UNOBSERVED] TaskScheduler.UnobservedTaskException: {Message}",
+                        args.Exception?.Message);
+                    System.Diagnostics.Debug.WriteLine($"[UNOBSERVED] Task exception: {args.Exception?.Message}");
+                    System.Diagnostics.Debug.WriteLine($"  StackTrace: {args.Exception?.StackTrace}");
+                    args.SetObserved();
+                }
             };
 
             // WinForms UI thread exception handler
             Application.ThreadException += (sender, args) =>
             {
                 var ex = args.Exception;
-                Serilog.Log.Error(ex, "[UI-THREAD] Application.ThreadException: {ExceptionType} - {Message}",
-                    ex.GetType().Name, ex.Message);
-                System.Diagnostics.Debug.WriteLine($"[UI-THREAD] {ex.GetType().Name}: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"  StackTrace: {ex.StackTrace}");
 
-                // Show user-friendly error dialog
-                MessageBox.Show(
-                    $"An error occurred:\n\n{ex.Message}\n\nPlease check the logs for details.",
-                    "Wiley Widget - Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                // Use centralized handler if available
+                if (_exceptionHandler is not null)
+                {
+                    _exceptionHandler.HandleUIThreadException(ex, "WinForms UI Thread");
+                }
+                else
+                {
+                    // Fallback handling
+                    Serilog.Log.Error(ex, "[UI-THREAD] Application.ThreadException: {ExceptionType} - {Message}",
+                        ex.GetType().Name, ex.Message);
+                    System.Diagnostics.Debug.WriteLine($"[UI-THREAD] {ex.GetType().Name}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"  StackTrace: {ex.StackTrace}");
+
+                    // Show user-friendly error dialog
+                    MessageBox.Show(
+                        $"An error occurred:\n\n{ex.Message}\n\nPlease check the logs for details.",
+                        "Wiley Widget - Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
             };
 
             // Set the unhandled exception mode for Windows Forms
@@ -534,7 +621,9 @@ namespace WileyWidget.WinForms
         /// <summary>
         /// Run startup diagnostics to catch DI configuration errors early
         /// </summary>
-        private static async Task RunStartupDiagnosticsAsync(IHost host)
+        /// <param name="host">The application host</param>
+        /// <param name="cancellationToken">Cancellation token to abort diagnostics if needed</param>
+        private static async Task RunStartupDiagnosticsAsync(IHost host, CancellationToken cancellationToken = default)
         {
             var logger = Serilog.Log.ForContext("SourceContext", "Startup");
             try
@@ -545,7 +634,7 @@ namespace WileyWidget.WinForms
                 logger.Information("Starting Wiley Widget Startup Diagnostics");
                 logger.Information("═══════════════════════════════════════════════════════════");
 
-                var report = await diagnostics.RunDiagnosticsAsync();
+                var report = await diagnostics.RunDiagnosticsAsync(cancellationToken);
 
                 // Log the full report
                 logger.Information(report.ToString());

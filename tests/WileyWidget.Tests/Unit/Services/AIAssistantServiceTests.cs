@@ -104,8 +104,8 @@ namespace WileyWidget.Tests.Unit.Services
         public async Task ExecuteToolAsync_WithNullToolCall_ThrowsArgumentNullException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                _service.ExecuteToolAsync(null!, CancellationToken.None));
+            await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+                await _service.ExecuteToolAsync(null!, CancellationToken.None));
         }
 
         [Fact]
@@ -119,7 +119,7 @@ namespace WileyWidget.Tests.Unit.Services
 
             // Act
             // Note: This will fail if Python is not available, but tests the logging
-            var result = await _service.ExecuteToolAsync(toolCall, CancellationToken.None);
+            var result = await _service.ExecuteToolAsync(toolCall, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(result);
@@ -147,8 +147,8 @@ namespace WileyWidget.Tests.Unit.Services
             cts.Cancel();
 
             // Act & Assert
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-                _service.ExecuteToolAsync(toolCall, cts.Token));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+                await _service.ExecuteToolAsync(toolCall, cts.Token));
         }
 
         #endregion
@@ -256,7 +256,7 @@ namespace WileyWidget.Tests.Unit.Services
             ).ToList();
 
             // Act
-            var tasks = toolCalls.Select(tc => _service.ExecuteToolAsync(tc, CancellationToken.None));
+            var tasks = toolCalls.Select(tc => _service.ExecuteToolAsync(tc, TestContext.Current.CancellationToken));
             var results = await Task.WhenAll(tasks);
 
             // Assert

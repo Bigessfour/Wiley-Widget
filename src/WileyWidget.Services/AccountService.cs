@@ -38,12 +38,13 @@ namespace WileyWidget.Services
         public async Task<AccountsResult> LoadAccountsAsync(
             MunicipalFundType? fundType = null,
             AccountType? accountType = null,
+            string? searchText = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Loading municipal accounts with filters {@Filters}",
-                    new { Fund = fundType?.ToString() ?? "(all)", AccountType = accountType?.ToString() ?? "(all)" });
+                    new { Fund = fundType?.ToString() ?? "(all)", AccountType = accountType?.ToString() ?? "(all)", SearchText = searchText ?? "(none)" });
 
                 using var scope = _scopeFactory.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -65,6 +66,14 @@ namespace WileyWidget.Services
                 if (accountType.HasValue)
                 {
                     accountsQuery = accountsQuery.Where(a => a.Type == accountType.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(searchText))
+                {
+                    var searchTerm = searchText.Trim();
+                    accountsQuery = accountsQuery.Where(a =>
+                        (a.Name != null && a.Name.Contains(searchTerm)) ||
+                        (a.AccountNumber_Value != null && a.AccountNumber_Value.Contains(searchTerm)));
                 }
 
                 var accountsList = await accountsQuery

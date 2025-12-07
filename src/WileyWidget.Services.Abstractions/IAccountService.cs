@@ -13,16 +13,18 @@ namespace WileyWidget.Services.Abstractions
     public interface IAccountService
     {
         /// <summary>
-        /// Loads accounts with optional filtering by fund type and account type.
+        /// Loads accounts with optional filtering by fund type, account type, and search text.
         /// Returns display DTOs for UI binding.
         /// </summary>
         /// <param name="fundType">Optional fund type filter</param>
         /// <param name="accountType">Optional account type filter</param>
+        /// <param name="searchText">Optional search text to filter by account name or number</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Collection of account display DTOs with summary metrics</returns>
         Task<AccountsResult> LoadAccountsAsync(
             MunicipalFundType? fundType = null,
             AccountType? accountType = null,
+            string? searchText = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>

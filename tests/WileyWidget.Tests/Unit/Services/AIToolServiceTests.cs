@@ -258,8 +258,8 @@ namespace WileyWidget.Tests.Unit.Services
             cts.Cancel();
 
             // Act & Assert
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-                _service.GetBudgetDataAsync(fiscalYear, null, cts.Token));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+                await _service.GetBudgetDataAsync(fiscalYear, null, cts.Token));
         }
 
         #endregion

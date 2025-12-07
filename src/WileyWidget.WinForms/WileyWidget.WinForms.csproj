@@ -15,12 +15,18 @@
     <!-- Syncfusion WinForms controls - v31.2.16 -->
     <PackageReference Include="BoldReports.Net.Core" />
     <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
+    <PackageReference Include="Syncfusion.DataGridExport.WinForms" />
     <PackageReference Include="Syncfusion.SfInput.WinForms" />
     <PackageReference Include="Syncfusion.SfListView.WinForms" />
     <PackageReference Include="Syncfusion.Tools.Windows" />
     <PackageReference Include="Syncfusion.Shared.Base" />
+    <PackageReference Include="Syncfusion.XlsIO.Net.Core">
+      <Aliases>sync31</Aliases>
+    </PackageReference>
     <!-- Syncfusion Chart for WinForms - replaces LiveCharts -->
     <PackageReference Include="Syncfusion.Chart.Windows" />
+    <!-- System.Windows.Forms charting (Chart control) for small embedded visualizations -->
+    <!-- System.Windows.Forms.DataVisualization was removed in favor of Syncfusion ChartControl usage -->
     <!-- BoldReports WPF for RDL report viewer (hosted in WinForms via ElementHost) -->
     <PackageReference Include="BoldReports.WPF" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
@@ -57,7 +63,10 @@
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="ClosedXML" />
-    <PackageReference Include="Syncfusion.Pdf.Net.Core" />
+    <PackageReference Include="CsvHelper" />
+    <PackageReference Include="Syncfusion.Pdf.Net.Core">
+      <Aliases>sync31pdf</Aliases>
+    </PackageReference>
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
     <PackageReference Include="PdfSharpCore" />

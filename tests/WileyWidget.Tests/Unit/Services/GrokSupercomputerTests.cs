@@ -206,7 +206,7 @@ namespace WileyWidget.Tests.Unit.Services
             int invalidFiscalYear = -1;
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => _grokSupercomputer.AnalyzeBudgetAsync(invalidFiscalYear));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await _grokSupercomputer.AnalyzeBudgetAsync(invalidFiscalYear));
         }
 
         #endregion
@@ -280,7 +280,7 @@ namespace WileyWidget.Tests.Unit.Services
             int invalidId = -1;
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => _grokSupercomputer.AnalyzeEnterpriseAsync(invalidId));
+            await Assert.ThrowsAsync<ArgumentException>(async () => await _grokSupercomputer.AnalyzeEnterpriseAsync(invalidId));
         }
 
         #endregion
@@ -448,7 +448,7 @@ namespace WileyWidget.Tests.Unit.Services
         public async Task GenerateRecommendationsAsync_NullData_ThrowsArgumentNullException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(() => _grokSupercomputer.GenerateRecommendationsAsync(null!));
+            await Assert.ThrowsAsync<ArgumentNullException>(async () => await _grokSupercomputer.GenerateRecommendationsAsync(null!));
         }
 
         [Fact]
@@ -499,7 +499,7 @@ namespace WileyWidget.Tests.Unit.Services
         public async Task QueryAsync_EmptyPrompt_ThrowsArgumentException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => _grokSupercomputer.QueryAsync(string.Empty));
+            await Assert.ThrowsAsync<ArgumentException>(async () => await _grokSupercomputer.QueryAsync(string.Empty));
         }
 
         [Fact]
@@ -511,7 +511,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act & Assert
-            await Assert.ThrowsAsync<Exception>(() => _grokSupercomputer.QueryAsync(prompt));
+            await Assert.ThrowsAsync<Exception>(async () => await _grokSupercomputer.QueryAsync(prompt));
             _mockLogger.Verify(l => l.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),

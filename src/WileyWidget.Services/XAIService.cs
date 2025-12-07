@@ -319,8 +319,14 @@ public class XAIService : IAIService, IDisposable
 
             apiCallSpan?.SetTag("ai.cache_hit", false);
 
-    // Acquire concurrency semaphore to limit concurrent requests
-    await _concurrencySemaphore.WaitAsync(cancellationToken);
+    // Acquire concurrency semaphore to limit concurrent requests.
+    // Use safe acquisition to avoid SemaphoreSlim throwing OperationCanceledException
+    var acquired = await AcquireSemaphoreSafeAsync(_concurrencySemaphore, cancellationToken).ConfigureAwait(false);
+    if (!acquired)
+    {
+        _logger?.LogDebug("XAI request canceled before starting");
+        return string.Empty;
+    }
     semaphoreEntered = true;
 
             var model = _configuration["XAI:Model"] ?? "grok-4-0709";
@@ -1237,5 +1243,28 @@ public class XAIService : IAIService, IDisposable
             Log.Error(ex, "Error in generate_report tool");
             return Task.FromResult(ToolCallResult.Error(toolCall.Id, ex.Message));
         }
+    }
+
+    private static async Task<bool> AcquireSemaphoreSafeAsync(SemaphoreSlim sem, CancellationToken cancellationToken)
+    {
+        if (sem == null) throw new ArgumentNullException(nameof(sem));
+
+        if (sem.Wait(0)) return true;
+
+        var poll = TimeSpan.FromMilliseconds(200);
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                if (await sem.WaitAsync(poll).ConfigureAwait(false))
+                    return true;
+            }
+            catch
+            {
+                // ignore transient errors while polling
+            }
+        }
+
+        return false;
     }
 }

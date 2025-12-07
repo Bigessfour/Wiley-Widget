@@ -1,3 +1,4 @@
+extern alias sync31pdf;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
@@ -11,9 +12,9 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Business.Interfaces;
 using Syncfusion.Windows.Forms.Chart;
 using SfChartSeries = Syncfusion.Windows.Forms.Chart.ChartSeries;
-using SyncPdf = Syncfusion.Pdf;
-using SyncPdfGraphics = Syncfusion.Pdf.Graphics;
-using SyncPdfGrid = Syncfusion.Pdf.Grid;
+using SyncPdf = sync31pdf::Syncfusion.Pdf;
+using SyncPdfGraphics = sync31pdf::Syncfusion.Pdf.Graphics;
+using SyncPdfGrid = sync31pdf::Syncfusion.Pdf.Grid;
 using WileyWidget.Services;
 
 namespace WileyWidget.WinForms.Forms

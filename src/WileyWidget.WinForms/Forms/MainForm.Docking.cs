@@ -26,6 +26,9 @@ public partial class MainForm
     private Panel? _centralDocumentPanel;
     private bool _useSyncfusionDocking = false;  // Feature flag - set true to enable
     private const string DockingLayoutFileName = "wiley_widget_docking_layout.xml";
+    // Fonts used by DockingManager - keep references so we can dispose them
+    private Font? _dockAutoHideTabFont;
+    private Font? _dockTabFont;
 
     /// <summary>
     /// Initialize Syncfusion DockingManager with AI-first layout
@@ -57,8 +60,8 @@ public partial class MainForm
                 EnableDocumentMode = true,
                 PersistState = true,
                 AnimateAutoHiddenWindow = true,
-                AutoHideTabFont = new Font("Segoe UI", 9f),
-                DockTabFont = new Font("Segoe UI", 9f),
+                AutoHideTabFont = _dockAutoHideTabFont = new Font("Segoe UI", 9f),
+                DockTabFont = _dockTabFont = new Font("Segoe UI", 9f),
                 ShowCaption = true
             };
 
@@ -151,15 +154,15 @@ public partial class MainForm
         _centralDocumentPanel.Controls.Add(_aiChatControl);
         _aiChatControl.Dock = DockStyle.Fill;
 
-        // Configure as document container (fill area, not dockable to sides)
-        _dockingManager.SetEnableDocking(_centralDocumentPanel, true);
-        _dockingManager.DockControl(_centralDocumentPanel, this, DockingStyle.Fill, 100);
-        _dockingManager.SetDockLabel(_centralDocumentPanel, "🤖 AI Assistant");
+        // IMPORTANT: When EnableDocumentMode = true and HostControl is set,
+        // the central fill area should NOT be docked via DockControl() with DockingStyle.Fill.
+        // Syncfusion DockingManager explicitly prohibits docking with Fill style to the host control.
+        // Instead, add the panel directly to the form's Controls collection with standard WinForms docking.
+        // Side panels (Left, Right, Top, Bottom) use DockControl(), the center uses standard Fill docking.
+        Controls.Add(_centralDocumentPanel);
+        _centralDocumentPanel.BringToFront();  // Ensure it's behind docked panels visually
 
-        // Allow close button for document panels
-        // Note: SetCloseButtonVisible may not be available in this version
-
-        _logger.LogDebug("Central document panel created with AI chat");
+        _logger.LogDebug("Central document panel created with AI chat (using standard Fill docking, not DockingManager)");
     }
 
     /// <summary>
@@ -261,21 +264,24 @@ public partial class MainForm
             AutoGenerateColumns = false,
             AllowEditing = false,
             ShowGroupDropArea = false,
-            RowHeight = 36
+            RowHeight = 36,
+            AllowSorting = true,
+            AllowFiltering = true
         };
 
-        activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Time", HeaderText = "Time", Width = 80 });
-        activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Action", HeaderText = "Action", Width = 150 });
+        // Map to ActivityItem properties
+        activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 80 });
+        activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 150 });
         activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 200 });
 
-        // Add sample activity items
+        // Typed sample ActivityItem fallback
         var activities = new[]
         {
-            new { Time = DateTime.Now.AddMinutes(-5).ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture), Action = "Account Updated", Details = "GL-1001" },
-            new { Time = DateTime.Now.AddMinutes(-15).ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture), Action = "Report Generated", Details = "Budget Q4" },
-            new { Time = DateTime.Now.AddMinutes(-30).ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture), Action = "QuickBooks Sync", Details = "42 records" },
-            new { Time = DateTime.Now.AddHours(-1).ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture), Action = "User Login", Details = "Admin" },
-            new { Time = DateTime.Now.AddHours(-2).ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture), Action = "Backup Complete", Details = "12.5 MB" }
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-5), Activity = "Account Updated", Details = "GL-1001", User = "System" },
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-15), Activity = "Report Generated", Details = "Budget Q4", User = "Scheduler" },
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-30), Activity = "QuickBooks Sync", Details = "42 records", User = "Integrator" },
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddHours(-1), Activity = "User Login", Details = "Admin", User = "Admin" },
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddHours(-2), Activity = "Backup Complete", Details = "12.5 MB", User = "System" }
         };
         activityGrid.DataSource = activities;
 
@@ -435,6 +441,21 @@ public partial class MainForm
 
         _centralDocumentPanel?.Dispose();
         _centralDocumentPanel = null;
+
+        // Dispose fonts used by DockingManager
+        try
+        {
+            _dockAutoHideTabFont?.Dispose();
+            _dockAutoHideTabFont = null;
+        }
+        catch { }
+
+        try
+        {
+            _dockTabFont?.Dispose();
+            _dockTabFont = null;
+        }
+        catch { }
     }
 
     #region Docking Event Handlers

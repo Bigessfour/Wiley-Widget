@@ -1,14 +1,26 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Input;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Syncfusion.Windows.Forms.Chart;
 using System.Linq;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Abstractions.Models;
+using WileyWidget.WinForms.Dialogs;
+using WileyWidget.WinForms.Exporters;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -42,8 +54,12 @@ namespace WileyWidget.WinForms.Forms
     {
         private readonly AccountsViewModel _viewModel;
         private readonly ILogger<AccountsForm> _logger;
+        private readonly IServiceProvider _serviceProvider;
         private SfDataGrid? _dataGrid;  // Use Syncfusion SfDataGrid for high-performance grid
         private Panel? _detailPanel;
+        private Panel? _validationPanel;
+        private Label? _validationLabel;
+        private TreeView? _accountTree;
         private Label? _detailAccountNumber;
         private Label? _detailAccountName;
         private Label? _detailBalance;
@@ -52,22 +68,39 @@ namespace WileyWidget.WinForms.Forms
         private ComboBox? _fundCombo;
         private ComboBox? _typeCombo;
         private TextBox? _searchBox;
+        private SplitContainer? _mainSplit;
+        private Label? _emptyStateLabel;
+        private SplitContainer? _leftSplit;
+        private ChartControl? _varianceChart;
+        private Button? _toggleDetailButton;
 
         // Cancellation token source for async operations
         private CancellationTokenSource? _cts;
+        private System.Windows.Forms.Timer? _searchTimer;
+        private bool _isSelectingFromTree = false;
 
-        public AccountsForm(AccountsViewModel viewModel, ILogger<AccountsForm> logger)
+        public AccountsForm(AccountsViewModel viewModel, IServiceProvider serviceProvider, ILogger<AccountsForm> logger)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             try
             {
                 InitializeComponent();
+                ApplySyncfusionTheme();
                 SetupDataGrid();
                 _logger.LogInformation("AccountsForm initialized successfully");
 
                 // Initialize cancellation token source
+                _viewModel.HierarchicalAccounts.CollectionChanged += (s, e) => PopulateTreeFromHierarchy();
+                _viewModel.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(_viewModel.ErrorMessage) && !string.IsNullOrWhiteSpace(_viewModel.ErrorMessage))
+                    {
+                        ShowValidationMessage(_viewModel.ErrorMessage);
+                    }
+                };
                 _cts = new CancellationTokenSource();
 
                 FormClosing += (s, e) =>
@@ -90,6 +123,188 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private void ApplySyncfusionTheme()
+        {
+            try
+            {
+                // Apply Office2019Colorful theme colors for modern look
+                BackColor = Color.FromArgb(245, 245, 250);
+                ForeColor = Color.FromArgb(33, 37, 41);
+
+                // Update toolbar colors
+                var toolStrip = Controls.OfType<ToolStrip>().FirstOrDefault();
+                if (toolStrip != null)
+                {
+                    toolStrip.BackColor = Color.FromArgb(248, 249, 250);
+                }
+
+                // Update status strip
+                var statusStrip = Controls.OfType<StatusStrip>().FirstOrDefault();
+                if (statusStrip != null)
+                {
+                    statusStrip.BackColor = Color.FromArgb(248, 249, 250);
+                }
+
+                _logger.LogInformation("Applied Syncfusion Office2019Colorful theme to AccountsForm");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to apply theme to AccountsForm");
+            }
+        }
+
+        private void AccountsForm_KeyDown(object? sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (e.KeyCode == Keys.F5)
+                {
+                    // Refresh
+                    _ = Utilities.AsyncEventHelper.ExecuteAsync(async ct => await LoadData(), _cts, this, _logger, "Refreshing accounts");
+                    e.Handled = true;
+                }
+                else if (e.Control && e.KeyCode == Keys.N)
+                {
+                    CreateNewAccount();
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.Delete)
+                {
+                    DeleteSelectedAccount();
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.Enter)
+                {
+                    ShowAccountDetails();
+                    e.Handled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling keypress in AccountsForm");
+            }
+        }
+
+        private System.Windows.Forms.Timer? _validationHideTimer;
+
+        private void ShowValidationMessage(string? message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                if (_validationPanel != null) _validationPanel.Visible = false;
+                return;
+            }
+
+            if (_validationLabel != null && _validationPanel != null)
+            {
+                _validationLabel.Text = message;
+                _validationPanel.Visible = true;
+
+                // Auto-hide after 6 seconds
+                try
+                {
+                    _validationHideTimer ??= new System.Windows.Forms.Timer { Interval = 6000 };
+                    _validationHideTimer.Tick -= ValidationHideTimer_Tick;
+                    _validationHideTimer.Tick += ValidationHideTimer_Tick;
+                    _validationHideTimer.Stop();
+                    _validationHideTimer.Start();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to start validation hide timer");
+                }
+            }
+
+            // Also show a light toast for user attention
+            ShowToast(message, 3500);
+        }
+
+        private void ValidationHideTimer_Tick(object? sender, EventArgs e)
+        {
+            try
+            {
+                _validationHideTimer?.Stop();
+                if (_validationPanel != null)
+                    _validationPanel.Visible = false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Error hiding validation panel");
+            }
+        }
+
+        private void ShowToast(string message, int timeoutMs = 3000)
+        {
+            try
+            {
+                var toast = new Form
+                {
+                    FormBorderStyle = FormBorderStyle.None,
+                    StartPosition = FormStartPosition.Manual,
+                    ShowInTaskbar = false,
+                    TopMost = true,
+                    BackColor = Color.FromArgb(40, 40, 40),
+                    Opacity = 0.95,
+                    Width = 420,
+                    Height = 64
+                };
+
+                var lbl = new Label
+                {
+                    Text = message,
+                    ForeColor = Color.White,
+                    Dock = DockStyle.Fill,
+                    Font = new Font("Segoe UI", 9F),
+                    Padding = new Padding(12)
+                };
+                toast.Controls.Add(lbl);
+
+                // Position at top-right of parent
+                var screenPoint = this.PointToScreen(new Point(this.ClientSize.Width - toast.Width - 16, 16));
+                toast.Location = screenPoint;
+
+                toast.Load += (s, e) =>
+                {
+                    var t = new System.Windows.Forms.Timer { Interval = timeoutMs };
+                    t.Tick += (ts, te) =>
+                    {
+                        t.Stop();
+                        t.Dispose();
+                        try { toast.Close(); toast.Dispose(); } catch { }
+                    };
+                    t.Start();
+                };
+
+                toast.Show(this);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to show toast");
+            }
+        }
+
+        private void CreateNewAccount()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var accountService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IAccountService>(scope.ServiceProvider);
+                var deptRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IDepartmentRepository>(scope.ServiceProvider);
+                var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scope.ServiceProvider);
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<WileyWidget.WinForms.Dialogs.AccountEditDialog>>(scope.ServiceProvider);
+
+                var dialog = new WileyWidget.WinForms.Dialogs.AccountEditDialog(
+                    accountService, deptRepo, scopeFactory, logger);
+
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Refresh grid after a new account was created
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                    LoadData();
+#pragma warning restore CS4014
+                }
+            }
+        }
+
         [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", MessageId = "System.Windows.Forms.Form.set_Text")]
         private void InitializeComponent()
         {
@@ -99,6 +314,8 @@ namespace WileyWidget.WinForms.Forms
             Size = new Size(1400, 900);
             MinimumSize = new Size(1000, 600);
             StartPosition = FormStartPosition.CenterScreen;
+            KeyPreview = true;
+            KeyDown += AccountsForm_KeyDown;
 
             // === Enhanced Toolbar ===
             var toolStrip = new ToolStrip
@@ -161,12 +378,46 @@ namespace WileyWidget.WinForms.Forms
             _searchBox.AccessibleName = "Account Search";
             _searchBox.AccessibleDescription = "Search accounts by name or number";
             var searchHost = new ToolStripControlHost(_searchBox);
+            // Debounced search
+            _searchTimer = new System.Windows.Forms.Timer { Interval = 400 };
+            // Use an async void handler so we can await the async execution helper and avoid CS4014
+            _searchTimer.Tick += async (s, e) =>
+            {
+                _searchTimer!.Stop();
+                try
+                {
+                    _viewModel.SearchText = _searchBox?.Text;
+                    await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.FilterAccountsCommand.ExecuteAsync(ct), _cts, this, _logger, "Applying search");
+                    // Refresh grid styling for search highlights
+                    _dataGrid?.Invalidate();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error executing search");
+                }
+            };
+            _searchBox.TextChanged += (s, e) =>
+            {
+                _searchTimer!.Stop();
+                _searchTimer.Start();
+            };
 
-            // Export button
+            // Export button — invoke the same export flow as the grid context menu
             var exportButton = new ToolStripButton("Export to Excel", null, (s, e) =>
             {
-                _logger.LogInformation("Export to Excel button clicked");
-                MessageBox.Show("Export feature available in full version.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                try
+                {
+                    _logger.LogInformation("Export to Excel toolbar button clicked");
+                    ExportSelectedAccounts();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Export toolbar button failed");
+                    if (Application.MessageLoop)
+                    {
+                        MessageBox.Show(this, $"Export failed: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
             });
 
             toolStrip.Items.AddRange(new ToolStripItem[]
@@ -181,6 +432,61 @@ namespace WileyWidget.WinForms.Forms
                 new ToolStripSeparator(),
                 exportButton
             });
+
+            // Wire filter selections to ViewModel
+            _fundCombo.SelectedIndexChanged += (s, e) =>
+            {
+                try
+                {
+                    if (_fundCombo.SelectedItem is string str && str != "(all)")
+                    {
+                        // Normalize label to enum name (remove spaces)
+                        var candidate = str.Replace(" ", string.Empty);
+                        if (Enum.TryParse<MunicipalFundType>(candidate, ignoreCase: true, out var mf))
+                        {
+                            _viewModel.SelectedFund = mf;
+                        }
+                        else
+                        {
+                            _viewModel.SelectedFund = null;
+                        }
+                    }
+                    else
+                    {
+                        _viewModel.SelectedFund = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to map fund selection to ViewModel");
+                }
+            };
+
+            _typeCombo.SelectedIndexChanged += (s, e) =>
+            {
+                try
+                {
+                    if (_typeCombo.SelectedItem is string ts && ts != "(all)")
+                    {
+                        if (Enum.TryParse<AccountType>(ts, ignoreCase: true, out var at))
+                        {
+                            _viewModel.SelectedAccountType = at;
+                        }
+                        else
+                        {
+                            _viewModel.SelectedAccountType = null;
+                        }
+                    }
+                    else
+                    {
+                        _viewModel.SelectedAccountType = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to map account type selection to ViewModel");
+                }
+            };
 
             // === Status Strip ===
             var statusStrip = new StatusStrip { BackColor = Color.FromArgb(248, 249, 250) };
@@ -206,13 +512,71 @@ namespace WileyWidget.WinForms.Forms
 
         private void SetupDataGrid()
         {
-            // === Main Split Container ===
+            // === Main Split Container: Tree | Grid | Details ===
             var mainSplit = new SplitContainer
             {
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Vertical,
-                SplitterDistance = 1000,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = 1000, // Initial: left (tree+grid) takes ~70%, right (details) takes ~30%
                 BackColor = Color.FromArgb(245, 245, 250)
+            };
+            _mainSplit = mainSplit;
+
+            // Left panel: Tree and Grid vertically split
+            _leftSplit = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
+                SplitterDistance = 300, // Initial: tree takes ~30% of left panel
+                BackColor = Color.FromArgb(245, 245, 250)
+            };
+            mainSplit.Panel1.Controls.Add(_leftSplit);
+
+            // Tree panel on left
+            var treePanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(250, 250, 252),
+                Padding = new Padding(8)
+            };
+
+            _accountTree = new TreeView
+            {
+                Dock = DockStyle.Fill,
+                HideSelection = false,
+                ShowLines = true,
+                ShowRootLines = true
+            };
+            _accountTree.AfterSelect += (s, e) =>
+            {
+                _isSelectingFromTree = true;
+                // When a tree node is selected, try to select the corresponding row in the grid
+                if (e.Node?.Tag is MunicipalAccountDisplay disp && _dataGrid != null)
+                {
+                    // Find first matching item in the bound BindingSource and select it
+                    if (_dataGrid.DataSource is BindingSource bs)
+                    {
+                        for (int i = 0; i < bs.Count; i++)
+                        {
+                            if (bs[i] is MunicipalAccountDisplay r && r.Id == disp.Id)
+                            {
+                                _dataGrid.SelectedIndex = i;
+                                _dataGrid.Focus();
+                                break;
+                            }
+                        }
+                    }
+                }
+                _isSelectingFromTree = false;
+            };
+            treePanel.Controls.Add(_accountTree);
+            _leftSplit.Panel1.Controls.Add(treePanel);
+
+            // Grid panel on right of left split
+            var gridPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White
             };
 
             _dataGrid = new SfDataGrid
@@ -231,6 +595,20 @@ namespace WileyWidget.WinForms.Forms
 
             // Selection changed event for detail panel
             _dataGrid.SelectionChanged += DataGrid_SelectionChanged;
+
+            // Empty state label
+            _emptyStateLabel = new Label
+            {
+                Text = "No accounts found.\n\nClick 'Load Accounts' to refresh or check your filters.",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 12, FontStyle.Regular),
+                ForeColor = Color.FromArgb(108, 117, 125),
+                Visible = false
+            };
+            gridPanel.Controls.Add(_emptyStateLabel);
+            gridPanel.Controls.Add(_dataGrid);
+            _leftSplit.Panel2.Controls.Add(gridPanel);
 
             // === Context Menu ===
             var contextMenu = new ContextMenuStrip();
@@ -287,6 +665,9 @@ namespace WileyWidget.WinForms.Forms
             _dataGrid.Columns.Add(new GridCheckBoxColumn { MappingName = "IsActive", HeaderText = Resources.ActiveHeader, Width = 80 });
             _dataGrid.Columns.Add(new GridCheckBoxColumn { MappingName = "HasParent", HeaderText = Resources.HasParentHeader, Width = 100 });
 
+            // Add row highlighting for search matches
+            _dataGrid.QueryRowStyle += DataGrid_QueryRowStyle;
+
             // === Account Detail Panel ===
             _detailPanel = new Panel
             {
@@ -306,17 +687,74 @@ namespace WileyWidget.WinForms.Forms
             };
             _detailPanel.Controls.Add(borderPanel);
 
-            // Detail header
-            var detailHeader = new Label
+            // Detail header with collapse/expand toggle
+            var headerPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                Padding = new Padding(6, 6, 6, 0)
+            };
+
+            var headerLabel = new Label
             {
                 Text = "Account Details",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = Color.FromArgb(33, 37, 41),
-                Dock = DockStyle.Top,
-                Height = 40,
-                Padding = new Padding(10, 10, 0, 0)
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(8, 6, 0, 0)
             };
-            _detailPanel.Controls.Add(detailHeader);
+
+            _toggleDetailButton = new Button
+            {
+                Text = "«",
+                Width = 28,
+                Height = 28,
+                Dock = DockStyle.Right,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(6, 6, 6, 6)
+            };
+            _toggleDetailButton.FlatAppearance.BorderSize = 0;
+            _toggleDetailButton.Click += (s, e) =>
+            {
+                try
+                {
+                    if (_mainSplit != null)
+                    {
+                        _mainSplit.Panel2Collapsed = !_mainSplit.Panel2Collapsed;
+                        _toggleDetailButton.Text = _mainSplit.Panel2Collapsed ? "»" : "«";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Toggle detail panel failed");
+                }
+            };
+
+            headerPanel.Controls.Add(headerLabel);
+            headerPanel.Controls.Add(_toggleDetailButton);
+            _detailPanel.Controls.Add(headerPanel);
+
+            // Inline validation panel (non-blocking) shown in the details area
+            _validationPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 48,
+                BackColor = Color.FromArgb(255, 249, 230),
+                Visible = false,
+                Padding = new Padding(8)
+            };
+            _validationLabel = new Label
+            {
+                Dock = DockStyle.Fill,
+                ForeColor = Color.FromArgb(94, 53, 177),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                AutoEllipsis = true
+            };
+            _validationPanel.Controls.Add(_validationLabel);
+            _detailPanel.Controls.Add(_validationPanel);
 
             // Detail content panel with TableLayout
             var detailContent = new TableLayoutPanel
@@ -379,6 +817,22 @@ namespace WileyWidget.WinForms.Forms
 
             _detailPanel.Controls.Add(detailContent);
 
+            // Small variance/summary chart (Balance vs Budget) using Syncfusion ChartControl
+            _varianceChart = new ChartControl
+            {
+                Dock = DockStyle.Top,
+                Height = 140,
+                BackColor = Color.White,
+                ShowLegend = true,
+                LegendsPlacement = ChartPlacement.Outside
+            };
+
+            var s = new ChartSeries("Values", ChartSeriesType.Pie);
+            s.Points.Add(new ChartPoint(1, 0.0));
+            s.Points.Add(new ChartPoint(2, 0.0));
+            _varianceChart.Series.Add(s);
+            _detailPanel.Controls.Add(_varianceChart);
+
             // Action buttons panel at bottom of detail panel
             var buttonPanel = new FlowLayoutPanel
             {
@@ -418,8 +872,7 @@ namespace WileyWidget.WinForms.Forms
             buttonPanel.Controls.AddRange(new Control[] { editButton, viewButton });
             _detailPanel.Controls.Add(buttonPanel);
 
-            // Add controls to form
-            mainSplit.Panel1.Controls.Add(_dataGrid);
+            // Add controls to form: Tree | Grid | Details
             mainSplit.Panel2.Controls.Add(_detailPanel);
             Controls.Add(mainSplit);
         }
@@ -459,6 +912,17 @@ namespace WileyWidget.WinForms.Forms
                 if (sel != null && sel.Count > 0)
                 {
                     UpdateDetailPanelFromObject(sel[0]);
+
+                    // Bidirectional sync to TreeView
+                    if (!_isSelectingFromTree && sel[0] is MunicipalAccountDisplay disp)
+                    {
+                        var treeNode = FindTreeNodeByAccount(disp);
+                        if (_accountTree != null && treeNode != null)
+                        {
+                            _accountTree.SelectedNode = treeNode;
+                            treeNode.Expand();
+                        }
+                    }
                 }
             }
             catch
@@ -505,75 +969,153 @@ namespace WileyWidget.WinForms.Forms
                         statusLabel.ForeColor = disp.IsActive ? Color.FromArgb(40, 167, 69) : Color.FromArgb(108, 117, 125);
                     }
                 }
+
+                    // Update variance pie (Syncfusion ChartControl)
+                    if (_varianceChart != null)
+                    {
+                        try
+                        {
+                            _varianceChart.Series.Clear();
+                            var series = new ChartSeries("Values", ChartSeriesType.Pie);
+                            series.Points.Add(new ChartPoint(0, (double)disp.BudgetAmount));
+                            series.Points.Add(new ChartPoint(1, (double)disp.Balance));
+                            _varianceChart.Series.Add(series);
+                            var variance = disp.Balance - disp.BudgetAmount;
+                            _varianceChart.Titles.Clear();
+                            _varianceChart.Titles.Add(new ChartTitle { Text = $"Variance: {variance.ToString("C2", CultureInfo.CurrentCulture)}" });
+                            _varianceChart.ShowLegend = true;
+                            _varianceChart.LegendsPlacement = ChartPlacement.Outside;
+                            try { _varianceChart.Refresh(); } catch { }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Failed updating variance chart");
+                        }
+                    }
                 return;
             }
 
-            // DataGridViewRow fallback (in case of older implementations)
-            if (rowOrItem is DataGridViewRow row)
+            // This view is SfDataGrid-only. Legacy DataGridView fallbacks removed.
+            // If the bound item isn't a MunicipalAccountDisplay, we intentionally do not attempt
+            // to reflect arbitrary grid row types into the details panel.
+        }
+
+        private void DataGrid_QueryRowStyle(object? sender, QueryRowStyleEventArgs e)
+        {
+            if (e.RowData is MunicipalAccountDisplay account && !string.IsNullOrWhiteSpace(_viewModel.SearchText))
             {
-                if (_detailAccountNumber != null)
-                    _detailAccountNumber.Text = row.Cells["AccountNumber"]?.Value?.ToString() ?? "-";
+                var searchTerm = _viewModel.SearchText.Trim();
+                var name = account.Name ?? string.Empty;
+                var accountNumber = account.AccountNumber ?? string.Empty;
 
-                if (_detailAccountName != null)
-                    _detailAccountName.Text = row.Cells["Name"]?.Value?.ToString() ?? "-";
-
-                if (_detailBalance != null)
+                if (name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    accountNumber.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
                 {
-                    var balanceValue = row.Cells["Balance"]?.Value;
-                    if (balanceValue is decimal balance)
+                    // Highlight search matches with light yellow background
+                    e.Style.BackColor = Color.FromArgb(255, 255, 224); // Light yellow
+                    e.Style.Font.Bold = true;
+                }
+            }
+        }
+
+        private async void DeleteSelectedAccount()
+        {
+            if (_dataGrid?.SelectedItems != null && _dataGrid.SelectedItems.Count > 0)
+            {
+                var item = _dataGrid.SelectedItems[0];
+
+                if (item is MunicipalAccountDisplay disp)
+                {
+                    _logger.LogInformation("Delete confirmation requested for account {AccountNumber}", disp.AccountNumber);
+
+                    var confirmed = WileyWidget.WinForms.Dialogs.DeleteConfirmationDialog.Show(
+                        this,
+                        "Delete Account",
+                        "Are you sure you want to delete this account?",
+                        $"{disp.AccountNumber} - {disp.Name}",
+                        null);
+
+                    if (confirmed)
                     {
-                        _detailBalance.Text = balance.ToString("C2", CultureInfo.CurrentCulture);
-                        _detailBalance.ForeColor = balance >= 0 ? Color.FromArgb(40, 167, 69) : Color.FromArgb(220, 53, 69);
+                        try
+                        {
+                            _logger.LogInformation("Deleting account {Id}", disp.Id);
+                            var success = await _viewModel.DeleteAccountAsync(disp.Id);
+
+                            if (success)
+                            {
+                                _logger.LogInformation("Account {AccountNumber} deleted successfully", disp.AccountNumber);
+                                // Refresh UI and tree
+                                await LoadData();
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to delete account {AccountNumber}", disp.AccountNumber);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error deleting account {AccountNumber}", disp.AccountNumber);
+                        }
                     }
                     else
                     {
-                        _detailBalance.Text = "-";
-                    }
-                }
-
-                if (_detailBudget != null)
-                {
-                    var budgetValue = row.Cells["BudgetAmount"]?.Value;
-                    _detailBudget.Text = budgetValue is decimal budget ? budget.ToString("C2", CultureInfo.CurrentCulture) : "-";
-                }
-
-                if (_detailVariance != null)
-                {
-                    var balanceValue = row.Cells["Balance"]?.Value;
-                    var budgetValue = row.Cells["BudgetAmount"]?.Value;
-                    if (balanceValue is decimal balance && budgetValue is decimal budget)
-                    {
-                        var variance = balance - budget;
-                        _detailVariance.Text = variance.ToString("C2", CultureInfo.CurrentCulture);
-                        _detailVariance.ForeColor = variance >= 0 ? Color.FromArgb(40, 167, 69) : Color.FromArgb(220, 53, 69);
-                    }
-                    else
-                    {
-                        _detailVariance.Text = "-";
-                    }
-                }
-
-                // Update other detail fields
-                var detailContent = _detailPanel?.Controls.OfType<TableLayoutPanel>().FirstOrDefault();
-                if (detailContent != null)
-                {
-                    var fundLabel = detailContent.Controls.OfType<Label>().FirstOrDefault(l => l.Name == "detailFund");
-                    if (fundLabel != null)
-                        fundLabel.Text = row.Cells["Fund"]?.Value?.ToString() ?? "-";
-
-                    var deptLabel = detailContent.Controls.OfType<Label>().FirstOrDefault(l => l.Name == "detailDept");
-                    if (deptLabel != null)
-                        deptLabel.Text = row.Cells["Department"]?.Value?.ToString() ?? "-";
-
-                    var statusLabel = detailContent.Controls.OfType<Label>().FirstOrDefault(l => l.Name == "detailStatus");
-                    if (statusLabel != null)
-                    {
-                        var isActive = row.Cells["IsActive"]?.Value;
-                        statusLabel.Text = isActive is true ? "Active" : "Inactive";
-                        statusLabel.ForeColor = isActive is true ? Color.FromArgb(40, 167, 69) : Color.FromArgb(108, 117, 125);
+                        _logger.LogDebug("Account deletion canceled by user");
                     }
                 }
             }
+        }
+
+        private void PopulateTreeFromHierarchy()
+        {
+            if (_accountTree == null) return;
+
+            _accountTree.BeginUpdate();
+            try
+            {
+                _accountTree.Nodes.Clear();
+                foreach (var root in _viewModel.HierarchicalAccounts)
+                {
+                    var rootNode = CreateTreeNode(root);
+                    _accountTree.Nodes.Add(rootNode);
+                }
+                _accountTree.ExpandAll();
+            }
+            finally
+            {
+                _accountTree.EndUpdate();
+            }
+        }
+
+        private TreeNode CreateTreeNode(AccountsViewModel.HierarchicalAccountNode node)
+        {
+            var label = node.Account != null ? $"{node.Account.AccountNumber} - {node.Account.Name}" : "(Unknown)";
+            var tn = new TreeNode(label) { Tag = node.Account };
+            foreach (var child in node.Children)
+            {
+                tn.Nodes.Add(CreateTreeNode(child));
+            }
+            return tn;
+        }
+
+        private TreeNode? FindTreeNodeByAccount(MunicipalAccountDisplay account)
+        {
+            if (_accountTree == null) return null;
+            return FindTreeNodeRecursive(_accountTree.Nodes, account);
+        }
+
+        private TreeNode? FindTreeNodeRecursive(TreeNodeCollection nodes, MunicipalAccountDisplay account)
+        {
+            foreach (TreeNode node in nodes)
+            {
+                if (node.Tag is MunicipalAccountDisplay disp && disp.Id == account.Id)
+                {
+                    return node;
+                }
+                var found = FindTreeNodeRecursive(node.Nodes, account);
+                if (found != null) return found;
+            }
+            return null;
         }
 
         private void ShowAccountDetails()
@@ -584,67 +1126,459 @@ namespace WileyWidget.WinForms.Forms
                 if (item is MunicipalAccountDisplay disp)
                 {
                     _logger.LogWarning("Full account details view coming soon for account {AccountNumber} ({Name})", disp.AccountNumber, disp.Name);
+                    if (Application.MessageLoop)
+                    {
+                        MessageBox.Show($"{disp.AccountNumber} - {disp.Name}\n\nBalance: {disp.Balance:C}\nBudget: {disp.BudgetAmount:C}", "Account Details", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
                 }
-                else if (item is DataGridViewRow row)
+                else
                 {
-                    var accountNumber = row.Cells["AccountNumber"]?.Value?.ToString() ?? "Unknown";
-                    var accountName = row.Cells["Name"]?.Value?.ToString() ?? "Unknown";
-                    _logger.LogWarning("Full account details view coming soon for account {AccountNumber} ({Name})", accountNumber, accountName);
+                    _logger.LogDebug("Selected item is not a MunicipalAccountDisplay; cannot show typed details");
                 }
             }
         }
 
-        private void EditSelectedAccount()
+        private async void EditSelectedAccount()
         {
             if (_dataGrid?.SelectedItems != null && _dataGrid.SelectedItems.Count > 0)
             {
                 var item = _dataGrid.SelectedItems[0];
-                string accountNumber = "Unknown";
-                if (item is MunicipalAccountDisplay disp)
-                    accountNumber = disp.AccountNumber ?? accountNumber;
-                else if (item is DataGridViewRow row)
-                    accountNumber = row.Cells["AccountNumber"]?.Value?.ToString() ?? accountNumber;
 
-                _logger.LogWarning("Account editing feature coming soon for account {AccountNumber}", accountNumber);
+                if (item is MunicipalAccountDisplay disp)
+                {
+                    _logger.LogInformation("Opening edit dialog for account {AccountNumber}", disp.AccountNumber);
+
+                    try
+                    {
+                        using var scope = _serviceProvider.CreateScope();
+                        var context = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Data.AppDbContext>(scope.ServiceProvider);
+                        var account = await context.MunicipalAccounts
+                            .FirstOrDefaultAsync(a => a.Id == disp.Id, _cts?.Token ?? CancellationToken.None);
+
+                        if (account == null)
+                        {
+                            _logger.LogWarning("Account {Id} not found for editing", disp.Id);
+                            return;
+                        }
+
+                        var accountService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IAccountService>(scope.ServiceProvider);
+                        var deptRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IDepartmentRepository>(scope.ServiceProvider);
+                        var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scope.ServiceProvider);
+                        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<WileyWidget.WinForms.Dialogs.AccountEditDialog>>(scope.ServiceProvider);
+
+                        var dialog = new WileyWidget.WinForms.Dialogs.AccountEditDialog(
+                            accountService, deptRepo, scopeFactory, logger, account);
+
+                        if (dialog.ShowDialog(this) == DialogResult.OK && dialog.EditedAccount != null)
+                        {
+                            _logger.LogInformation("Account {AccountNumber} edited successfully", dialog.EditedAccount.AccountNumber?.Value);
+                            await LoadData();  // Refresh grid
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to edit account {AccountNumber}", disp.AccountNumber);
+                    }
+                }
             }
         }
 
-        private void CreateNewAccount()
-        {
-            _logger.LogWarning("Create new account feature coming soon");
-        }
-
-        private void DeleteSelectedAccount()
-        {
-            if (_dataGrid?.SelectedItems != null && _dataGrid.SelectedItems.Count > 0)
-            {
-                var item = _dataGrid.SelectedItems[0];
-                string accountNumber = "Unknown";
-                if (item is MunicipalAccountDisplay disp)
-                    accountNumber = disp.AccountNumber ?? accountNumber;
-                else if (item is DataGridViewRow row)
-                    accountNumber = row.Cells["AccountNumber"]?.Value?.ToString() ?? accountNumber;
-
-                _logger.LogWarning("Delete confirmation requested for account {AccountNumber}", accountNumber);
-
-                _logger.LogWarning("Delete functionality coming soon for account {AccountNumber}", accountNumber);
-            }
-        }
-
-        private void ExportSelectedAccounts()
+        private async void ExportSelectedAccounts()
         {
             using var saveDialog = new SaveFileDialog
             {
-                Filter = "Excel Files (*.xlsx)|*.xlsx|CSV Files (*.csv)|*.csv",
+                Filter = "Excel Files (*.xlsx)|*.xlsx|PDF Files (*.pdf)|*.pdf|CSV Files (*.csv)|*.csv",
                 Title = "Export Accounts",
                 FileName = $"Accounts_Export_{DateTime.Now:yyyyMMdd}"
             };
 
             if (saveDialog.ShowDialog() == DialogResult.OK)
             {
-                _logger.LogWarning("Export functionality coming soon for file: {FileName}", saveDialog.FileName);
+                try
+                {
+                    var path = saveDialog.FileName;
+                    // Prefer CSV export for now
+                    var accountsToExport = new List<MunicipalAccountDisplay>();
+                    if (_dataGrid?.SelectedItems != null && _dataGrid.SelectedItems.Count > 0)
+                    {
+                        foreach (var it in _dataGrid.SelectedItems)
+                        {
+                            if (it is MunicipalAccountDisplay d) accountsToExport.Add(d);
+                        }
+                    }
+                    if (accountsToExport.Count == 0)
+                    {
+                        // export all
+                        accountsToExport.AddRange(_viewModel.Accounts);
+                    }
+                    // Use typed exporter (ClosedXML) for XLSX; fallback to CSV
+                    var exporter = new AccountsExporter(_logger);
+                    var didXlsx = false;
+                    var didPdf = false;
+                    if (saveDialog.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Async XLSX export with progress and cancellation
+                        var progressDialogX = new WileyWidget.WinForms.Forms.ProgressDialog("Exporting Accounts", "Preparing XLSX export...");
+                        using var localCtsX = new CancellationTokenSource();
+                        using var linkedCtsX = CancellationTokenSource.CreateLinkedTokenSource(localCtsX.Token, _cts?.Token ?? CancellationToken.None);
+                        var progressX = new Progress<int>(p =>
+                        {
+                            try
+                            {
+                                if (p >= 92)
+                                {
+                                    progressDialogX.SetStatus("Saving file...");
+                                    progressDialogX.SetIndeterminate(true);
+                                }
+                                else
+                                {
+                                    progressDialogX.SetIndeterminate(false);
+                                    progressDialogX.SetStatus($"Writing rows... {p}%");
+                                    progressDialogX.SetProgress(p);
+                                }
+                            }
+                            catch { }
+                        });
+
+                        try
+                        {
+                            this.Enabled = false;
+                            progressDialogX.Show(this);
+
+                            var watchTaskX = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    while (!progressDialogX.IsDisposed && !progressDialogX.IsCancelled)
+                                    {
+                                        await Task.Delay(200).ConfigureAwait(false);
+                                    }
+                                    if (progressDialogX.IsCancelled)
+                                    {
+                                        try { localCtsX.Cancel(); } catch { }
+                                    }
+                                }
+                                catch { }
+                            });
+
+                            // Write to a temporary file first, then atomically move into place
+                            var directory = Path.GetDirectoryName(path) ?? Path.GetTempPath();
+                            var tempPath = Path.Combine(directory, Path.GetFileName(path) + $".tmp-{Guid.NewGuid():N}");
+                                using (var fs = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                                {
+                                    await exporter.ExportToXlsxAsync(fs, accountsToExport, linkedCtsX.Token, progressX).ConfigureAwait(false);
+                                    await fs.FlushAsync().ConfigureAwait(false);
+                                }
+
+                                // Attempt atomic replace, fall back to move
+                                try
+                                {
+                                    if (File.Exists(path))
+                                    {
+                                        File.Replace(tempPath, path, null);
+                                    }
+                                    else
+                                    {
+                                        File.Move(tempPath, path);
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    // Best-effort fallback
+                                    File.Move(tempPath, path, true);
+                                }
+
+                                didXlsx = true;
+                            _logger.LogInformation("Exported {Count} accounts to {Path}", accountsToExport.Count, path);
+                            if (Application.MessageLoop)
+                            {
+                                MessageBox.Show(this, $"Exported {accountsToExport.Count} accounts to:\n{path}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+
+                            try { await Task.WhenAny(watchTaskX).ConfigureAwait(false); } catch { }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogInformation("XLSX export canceled by user");
+                            didXlsx = false;
+                            if (Application.MessageLoop)
+                            {
+                                MessageBox.Show(this, "Export canceled.", "Export Canceled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Typed XLSX export failed; falling back to CSV");
+                            didXlsx = false;
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                if (progressDialogX != null && !progressDialogX.IsDisposed)
+                                {
+                                    progressDialogX.Close();
+                                    progressDialogX.Dispose();
+                                }
+                            }
+                            catch { }
+                            this.Enabled = true;
+                        }
+                    }
+
+                    if (saveDialog.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Async PDF export with progress and cancellation
+                        var progressDialogPdf = new WileyWidget.WinForms.Forms.ProgressDialog("Exporting Accounts", "Preparing PDF export...");
+                        using var localCtsPdf = new CancellationTokenSource();
+                        using var linkedCtsPdf = CancellationTokenSource.CreateLinkedTokenSource(localCtsPdf.Token, _cts?.Token ?? CancellationToken.None);
+                        var progressPdf = new Progress<int>(p =>
+                        {
+                            try
+                            {
+                                if (p >= 92)
+                                {
+                                    progressDialogPdf.SetStatus("Saving file...");
+                                    progressDialogPdf.SetIndeterminate(true);
+                                }
+                                else
+                                {
+                                    progressDialogPdf.SetIndeterminate(false);
+                                    progressDialogPdf.SetStatus($"Writing rows... {p}%");
+                                    progressDialogPdf.SetProgress(p);
+                                }
+                            }
+                            catch { }
+                        });
+
+                        try
+                        {
+                            this.Enabled = false;
+                            progressDialogPdf.Show(this);
+
+                            var watchTaskPdf = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    while (!progressDialogPdf.IsDisposed && !progressDialogPdf.IsCancelled)
+                                    {
+                                        await Task.Delay(200).ConfigureAwait(false);
+                                    }
+                                    if (progressDialogPdf.IsCancelled)
+                                    {
+                                        try { localCtsPdf.Cancel(); } catch { }
+                                    }
+                                }
+                                catch { }
+                            });
+
+                            // Write to a temporary file first, then atomically move into place
+                            var directory = Path.GetDirectoryName(path) ?? Path.GetTempPath();
+                            var tempPath = Path.Combine(directory, Path.GetFileName(path) + $".tmp-{Guid.NewGuid():N}");
+                                using (var fs = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                                {
+                                    await exporter.ExportToPdfAsync(fs, accountsToExport, linkedCtsPdf.Token, progressPdf).ConfigureAwait(false);
+                                    await fs.FlushAsync().ConfigureAwait(false);
+                                }
+
+                                // Attempt atomic replace, fall back to move
+                                try
+                                {
+                                    if (File.Exists(path))
+                                    {
+                                        File.Replace(tempPath, path, null);
+                                    }
+                                    else
+                                    {
+                                        File.Move(tempPath, path);
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    // Best-effort fallback
+                                    File.Move(tempPath, path, true);
+                                }
+
+                                didPdf = true;
+                            _logger.LogInformation("Exported {Count} accounts to {Path}", accountsToExport.Count, path);
+                            if (Application.MessageLoop)
+                            {
+                                MessageBox.Show(this, $"Exported {accountsToExport.Count} accounts to:\n{path}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+
+                            try { await Task.WhenAny(watchTaskPdf).ConfigureAwait(false); } catch { }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogInformation("PDF export canceled by user");
+                            didPdf = false;
+                            if (Application.MessageLoop)
+                            {
+                                MessageBox.Show(this, "Export canceled.", "Export Canceled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "PDF export failed; falling back to CSV");
+                            didPdf = false;
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                if (progressDialogPdf != null && !progressDialogPdf.IsDisposed)
+                                {
+                                    progressDialogPdf.Close();
+                                    progressDialogPdf.Dispose();
+                                }
+                            }
+                            catch { }
+                            this.Enabled = true;
+                        }
+                    }
+
+                    if (!didXlsx && !didPdf)
+                    {
+                        var csvPath = saveDialog.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+                            ? saveDialog.FileName
+                            : Path.ChangeExtension(saveDialog.FileName, ".csv");
+
+                        // Async CSV export with progress and cancellation
+                        var progressDialog = new WileyWidget.WinForms.Forms.ProgressDialog("Exporting Accounts", "Preparing export...");
+
+                        // Create a linked cancellation token source so we can cancel from dialog or form-level CTS
+                        using var localCts = new CancellationTokenSource();
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(localCts.Token, _cts?.Token ?? CancellationToken.None);
+
+                        var progress = new Progress<int>(p =>
+                        {
+                            try
+                            {
+                                if (p >= 92)
+                                {
+                                    progressDialog.SetStatus("Saving file...");
+                                    progressDialog.SetIndeterminate(true);
+                                }
+                                else
+                                {
+                                    progressDialog.SetIndeterminate(false);
+                                    progressDialog.SetStatus($"Writing rows... {p}%");
+                                    progressDialog.SetProgress(p);
+                                }
+                            }
+                            catch { }
+                        });
+
+                        try
+                        {
+                            // Disable the UI while exporting
+                            this.Enabled = false;
+
+                            // Show progress dialog modelessly (parented)
+                            progressDialog.Show(this);
+
+                            // Watch for user cancel clicks and cancel the local token when requested
+                            var watchTask = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    while (!progressDialog.IsDisposed && !progressDialog.IsCancelled)
+                                    {
+                                        await Task.Delay(200).ConfigureAwait(false);
+                                    }
+                                    if (progressDialog.IsCancelled)
+                                    {
+                                        try { localCts.Cancel(); } catch { }
+                                    }
+                                }
+                                catch { }
+                            });
+
+                            // Write CSV to a temp file first, then move into place atomically
+                            var csvDir = Path.GetDirectoryName(csvPath) ?? Path.GetTempPath();
+                            var csvTemp = Path.Combine(csvDir, Path.GetFileName(csvPath) + $".tmp-{Guid.NewGuid():N}");
+                            try
+                            {
+                                using (var fs = new FileStream(csvTemp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                                {
+                                    await CsvHelperExporter.ExportToCsvAsync(accountsToExport, fs, linkedCts.Token, progress).ConfigureAwait(false);
+                                    await fs.FlushAsync().ConfigureAwait(false);
+                                }
+
+                                try
+                                {
+                                    if (File.Exists(csvPath))
+                                    {
+                                        File.Replace(csvTemp, csvPath, null);
+                                    }
+                                    else
+                                    {
+                                        File.Move(csvTemp, csvPath);
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    File.Move(csvTemp, csvPath, true);
+                                }
+
+                                _logger.LogInformation("Exported {Count} accounts to {Path}", accountsToExport.Count, csvPath);
+                                if (Application.MessageLoop)
+                                {
+                                    MessageBox.Show(this, $"Exported {accountsToExport.Count} accounts to:\n{csvPath}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                }
+                            }
+                            finally
+                            {
+                                try { if (File.Exists(csvTemp)) File.Delete(csvTemp); } catch { }
+                            }
+
+                            // Ensure watcher finishes
+                            try { await Task.WhenAny(watchTask).ConfigureAwait(false); } catch { }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogInformation("CSV export canceled by user");
+                            if (Application.MessageLoop)
+                            {
+                                MessageBox.Show(this, "Export canceled.", "Export Canceled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed exporting accounts to CSV");
+                            if (Application.MessageLoop)
+                            {
+                                MessageBox.Show(this, $"Failed to export accounts: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                if (progressDialog != null && !progressDialog.IsDisposed)
+                                {
+                                    progressDialog.Close();
+                                    progressDialog.Dispose();
+                                }
+                            }
+                            catch { }
+                            // Restore UI
+                            this.Enabled = true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed exporting accounts");
+                    if (Application.MessageLoop)
+                    {
+                        MessageBox.Show(this, $"Failed to export accounts: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
             }
         }
+
+
 
         private async Task LoadData()
         {
@@ -652,11 +1586,33 @@ namespace WileyWidget.WinForms.Forms
             {
                 await _viewModel.LoadAccountsCommand.ExecuteAsync(CancellationToken.None);
                 _dataGrid!.DataSource = new BindingSource { DataSource = _viewModel.Accounts };
+                // Populate tree view from the ViewModel hierarchical collection (if available)
+                PopulateTreeFromHierarchy();
+
+                // Handle empty state
+                if (_emptyStateLabel != null)
+                {
+                    _emptyStateLabel.Visible = _viewModel.Accounts.Count == 0;
+                    _dataGrid.Visible = _viewModel.Accounts.Count > 0;
+                }
+
+                // Ensure at least the first row is selected for better UX
+                try
+                {
+                    if (_dataGrid.SelectedIndex < 0 && _dataGrid.DataSource is BindingSource bs && bs.Count > 0)
+                    {
+                        _dataGrid.SelectedIndex = 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Unable to auto-select first row after load");
+                }
             }
             catch (OperationCanceledException oce)
             {
-                _logger.LogWarning(oce, "Account loading was canceled (likely due to form close or app shutdown)");
-                // Don’t show a dialog on cancellation — this is expected behavior during shutdown or quick navigation
+                _logger.LogDebug(oce, "Account loading was canceled (likely due to form close or app shutdown)");
+                // Don't show a dialog on cancellation — this is expected behavior during shutdown or quick navigation
             }
             catch (Exception ex)
             {
@@ -682,6 +1638,12 @@ namespace WileyWidget.WinForms.Forms
                 _fundCombo?.Dispose();
                 _typeCombo?.Dispose();
                 _searchBox?.Dispose();
+                _searchTimer?.Stop();
+                _searchTimer?.Dispose();
+                _validationPanel?.Dispose();
+                _validationLabel?.Dispose();
+                _emptyStateLabel?.Dispose();
+                _leftSplit?.Dispose();
 
                 // Cancel and dispose async operations
                 Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
@@ -692,7 +1654,27 @@ namespace WileyWidget.WinForms.Forms
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            // DataGridView handles docking automatically
+
+            // Improve responsiveness: adjust splitter distances based on form size
+            if (_mainSplit != null && Width > 0)
+            {
+                // Main split: left (tree+grid) takes 70%, right (details) takes 30%
+                int mainSplitterDistance = (int)(Width * 0.7);
+                if (mainSplitterDistance > 0 && mainSplitterDistance < Width - 100)
+                {
+                    _mainSplit.SplitterDistance = mainSplitterDistance;
+                }
+
+                // Left split: tree takes 30% of left panel
+                if (_leftSplit != null && _mainSplit.Panel1.Width > 0)
+                {
+                    int leftSplitterDistance = (int)(_mainSplit.Panel1.Width * 0.3);
+                    if (leftSplitterDistance > 0 && leftSplitterDistance < _mainSplit.Panel1.Width - 50)
+                    {
+                        _leftSplit.SplitterDistance = leftSplitterDistance;
+                    }
+                }
+            }
         }
     }
 }

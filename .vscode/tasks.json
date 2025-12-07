@@ -230,26 +230,6 @@
 			"dependsOn": "WileyWidget: Clean & Build"
 		},
 		{
-			"label": "WileyWidget: Cleanup Processes",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
 			"label": "ensure-logs-dir",
 			"type": "shell",
 			"command": "pwsh",
@@ -379,24 +359,6 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "dotnet:cleanup-processes",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
-			],
-			"presentation": {
-				"echo": true,
-				"reveal": "silent",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
 			"label": "dotnet:fast-build",
 			"type": "shell",
 			"command": "dotnet",
@@ -427,64 +389,6 @@
 				"showReuseMessage": false
 			},
 			"group": "build"
-		},
-		{
-			"label": "build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"${workspaceFolder}\\WileyWidget.sln",
-				"--no-restore",
-				"--configuration",
-				"Debug",
-				"--verbosity",
-				"minimal",
-				"/m",
-				"/p:BuildInParallel=true",
-				"/p:UseSharedCompilation=true",
-				"/p:AccelerateBuildsInVisualStudio=true",
-				"/p:ProduceReferenceAssemblyInOutDir=true",
-				"/p:Deterministic=true",
-				"/p:NodeReuse=true",
-				"/p:RunAnalyzers=false",
-				"/p:RunAnalyzersDuringBuild=false",
-				"/p:EnableNETAnalyzers=false",
-				"/p:GenerateDocumentationFile=false",
-				"/p:XamlDebuggingInformation=false"
-			],
-			"dependsOn": [
-				"kill-test-processes",
-				"dotnet:clean-build-server"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				{
-					"owner": "csharp",
-					"source": "Build",
-					"fileLocation": ["relative", "${workspaceFolder}"],
-					"pattern": {
-						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS8600|CS8601|CS8602|CS8603|CS8604|CS8618|CS8625|CS4014|CS1998|CS0029|CS0266|CS1503|CS1061|CS0103|CS0246|CS0234|CS0115|CS0534|CS0051|CS0052|CS0619):\\s+(.*)$",
-						"file": 1,
-						"line": 2,
-						"column": 3,
-						"severity": 4,
-						"code": 5,
-						"message": 6
-					}
-				}
-			],
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"panel": "shared",
-				"clear": false,
-				"showReuseMessage": true
-			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
 		},
 		{
 			"label": "kill-test-processes",
@@ -1273,6 +1177,69 @@
 			},
 			"problemMatcher": [],
 			"detail": "Push all Syncfusion patches from local directory to private feed"
+		},
+
+		{
+			"label": "🧹 Kill Safe Dev Bloat",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/kill-safe-dev-processes.ps1"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "🧹 Kill Safe Dev Bloat (Dry Run)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/kill-safe-dev-processes.ps1",
+				"-DryRun"
+			],
+			"group": "none",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "🧹 Kill All Dev Bloat (Integrated)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Write-Host '🧹 Integrated Dev Resource Cleanup' -ForegroundColor Cyan; Write-Host '======================================' -ForegroundColor Cyan"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"dependsOn": [
+				"🧹 Kill Safe Dev Bloat",
+				"kill-dotnet"
+			]
 		}
 	],
 	"inputs": [

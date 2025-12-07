@@ -1,3 +1,4 @@
+extern alias sync31pdf;
 using Microsoft.Extensions.DependencyInjection;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -10,12 +11,16 @@ using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.Servi
 using Syncfusion.Windows.Forms.Chart;
 using System.IO;
 using System.Drawing;
-using SyncPdf = Syncfusion.Pdf;
-using SyncPdfGraphics = Syncfusion.Pdf.Graphics;
+using SyncPdf = sync31pdf::Syncfusion.Pdf;
+using SyncPdfGraphics = sync31pdf::Syncfusion.Pdf.Graphics;
 using WileyWidget.WinForms.Controls;
 using Microsoft.Extensions.Configuration;
 using Syncfusion.WinForms.Controls;
 using System.ComponentModel;
+using System.Collections;
+using System.Windows.Forms.Design;
+using System.Text.Json;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -43,6 +48,20 @@ namespace WileyWidget.WinForms.Forms
         private readonly MainViewModel? _viewModel;
         private readonly IConfiguration _configuration;
         private IContainer? components = null;
+
+        // Activity binding source
+        private BindingSource? _activityBindingSource;
+
+        // Simple loading indicator for long-running operations
+        private ProgressBar? _loadingBar;
+        // ToolTip helper for cards and toolbar items
+        private ToolTip? _toolTip;
+
+        // Timer for periodic status/dashboard refresh
+        private System.Windows.Forms.Timer? _statusTimer;
+
+        // Optional dashboard service for lightweight refreshes
+        private WileyWidget.Services.Abstractions.IDashboardService? _dashboardSvc;
 
         // Dashboard card labels for dynamic data binding
         private Label? _accountsDescLabel;
@@ -122,11 +141,77 @@ namespace WileyWidget.WinForms.Forms
                 {
                     await _viewModel.InitializeAsync(_cts.Token);
                     UpdateDashboardCards();
+
+                    // Attempt to restore persisted UI state (AI panel visibility)
+                    try
+                    {
+                        var appStateSvc = ServiceProviderExtensions.GetService<WileyWidget.Abstractions.IApplicationStateService>(_serviceProvider);
+                        if (appStateSvc != null)
+                        {
+                            var restored = await appStateSvc.RestoreStateAsync().ConfigureAwait(false);
+                            if (restored != null)
+                            {
+                                // Try multiple common shapes for the saved object
+                                if (restored is System.Collections.IDictionary dict && dict.Contains("IsAIChatVisible"))
+                                {
+                                    var val = dict["IsAIChatVisible"];
+                                    if (val is bool b)
+                                    {
+                                        _aiChatPanel!.Visible = b;
+                                    }
+                                }
+                                else if (restored is JsonElement je && je.ValueKind == JsonValueKind.Object && je.TryGetProperty("IsAIChatVisible", out var prop))
+                                {
+                                    if (prop.ValueKind == JsonValueKind.True || prop.ValueKind == JsonValueKind.False)
+                                    {
+                                        _aiChatPanel!.Visible = prop.GetBoolean();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to restore application UI state");
+                    }
+
+                        // Initialize periodic dashboard refresh timer (30s) using IDashboardService when available
+                        try
+                        {
+                            _dashboardSvc = ServiceProviderExtensions.GetService<WileyWidget.Services.Abstractions.IDashboardService>(_serviceProvider);
+                            if (_dashboardSvc != null)
+                            {
+                                _statusTimer = new System.Windows.Forms.Timer { Interval = 30_000 };
+                                _statusTimer.Tick += async (s, e) =>
+                                {
+                                    try
+                                    {
+                                        await _dashboardSvc.RefreshDashboardAsync();
+                                        if (_viewModel != null)
+                                        {
+                                            // Trigger ViewModel refresh to update UI
+                                            _viewModel.LoadDataCommand.Execute(null);
+                                        }
+                                    }
+                                    catch (OperationCanceledException) { }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogDebug(ex, "Periodic dashboard refresh failed");
+                                    }
+                                };
+                                _statusTimer.Start();
+                                _logger.LogInformation("Started dashboard status timer (30s)");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Failed to initialize dashboard timer");
+                        }
                 }
             }
             catch (OperationCanceledException oce)
             {
-                _logger.LogWarning(oce, "Dashboard initialization was canceled");
+                _logger.LogDebug(oce, "Dashboard initialization was canceled");
             }
             catch (Exception ex)
             {
@@ -191,14 +276,17 @@ namespace WileyWidget.WinForms.Forms
                 if (_viewModel.IsLoading)
                 {
                     _statusLabel.Text = "Loading data...";
+                    if (_loadingBar != null) _loadingBar.Visible = true;
                 }
                 else if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
                 {
                     _statusLabel.Text = $"Error: {_viewModel.ErrorMessage}";
+                    if (_loadingBar != null) _loadingBar.Visible = false;
                 }
                 else
                 {
                     _statusLabel.Text = $"Ready — Last updated: {_viewModel.LastUpdateTime ?? "N/A"}";
+                    if (_loadingBar != null) _loadingBar.Visible = false;
                 }
             }
         }
@@ -209,6 +297,7 @@ namespace WileyWidget.WinForms.Forms
 
             // === Menu Strip ===
             var menu = new MenuStrip { Dock = DockStyle.Top };
+            menu.ShowItemToolTips = true;
             var fileMenu = new ToolStripMenuItem(MainFormResources.FileMenu);
             var viewMenu = new ToolStripMenuItem(MainFormResources.ViewMenu);
             var toolsMenu = new ToolStripMenuItem(MainFormResources.ToolsMenu);
@@ -315,24 +404,46 @@ namespace WileyWidget.WinForms.Forms
                 AutoGenerateColumns = false,
                 AllowEditing = false,
                 ShowGroupDropArea = false,
-                RowHeight = 36
+                RowHeight = 36,
+                // Performance settings for large datasets
+                AllowSorting = true,
+                AllowFiltering = true
             };
-            activityGrid.Columns.Add(new GridTextColumn { MappingName = "Time", HeaderText = "Time", Width = 80 });
-            activityGrid.Columns.Add(new GridTextColumn { MappingName = "Action", HeaderText = "Action", Width = 150 });
-            activityGrid.Columns.Add(new GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 200 });
+            // Map columns to ActivityItem properties
+            activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 80 });
+            activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 150 });
+            activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 200 });
 
-            // Add sample activity items
-            var activities = new[]
+            // Bind to ViewModel ActivityItems when available, otherwise fall back to sample data
+            if (_viewModel != null)
             {
-                new { Time = DateTime.Now.AddMinutes(-5).ToString("HH:mm", CultureInfo.CurrentCulture), Action = "Account Updated", Details = "GL-1001" },
-                new { Time = DateTime.Now.AddMinutes(-15).ToString("HH:mm", CultureInfo.CurrentCulture), Action = "Report Generated", Details = "Budget Q4" },
-                new { Time = DateTime.Now.AddMinutes(-30).ToString("HH:mm", CultureInfo.CurrentCulture), Action = "QuickBooks Sync", Details = "42 records" },
-                new { Time = DateTime.Now.AddHours(-1).ToString("HH:mm", CultureInfo.CurrentCulture), Action = "User Login", Details = "Admin" },
-                new { Time = DateTime.Now.AddHours(-2).ToString("HH:mm", CultureInfo.CurrentCulture), Action = "Backup Complete", Details = "12.5 MB" }
-            };
-            activityGrid.DataSource = activities;
+                _activityBindingSource = new BindingSource { DataSource = _viewModel.ActivityItems };
+                activityGrid.DataSource = _activityBindingSource;
+            }
+            else
+            {
+                // Create typed sample ActivityItem instances for consistent binding
+                var activities = new[]
+                {
+                    new ActivityItem { Timestamp = DateTime.Now.AddMinutes(-5), Activity = "Account Updated", Details = "GL-1001", User = "System" },
+                    new ActivityItem { Timestamp = DateTime.Now.AddMinutes(-15), Activity = "Report Generated", Details = "Budget Q4", User = "Scheduler" },
+                    new ActivityItem { Timestamp = DateTime.Now.AddMinutes(-30), Activity = "QuickBooks Sync", Details = "42 records", User = "Integrator" },
+                    new ActivityItem { Timestamp = DateTime.Now.AddHours(-1), Activity = "User Login", Details = "Admin", User = "Admin" },
+                    new ActivityItem { Timestamp = DateTime.Now.AddHours(-2), Activity = "Backup Complete", Details = "12.5 MB", User = "System" }
+                };
+                activityGrid.DataSource = activities;
+            }
             activityPanel.Controls.Add(activityGrid);
             activityPanel.Controls.Add(activityHeader);
+            // Progress bar used during ViewModel IsLoading state
+            _loadingBar = new ProgressBar
+            {
+                Dock = DockStyle.Top,
+                Height = 6,
+                Style = ProgressBarStyle.Marquee,
+                Visible = false
+            };
+            activityPanel.Controls.Add(_loadingBar);
             mainSplit.Panel2.Controls.Add(activityPanel);
 
             // === Header Panel ===
@@ -376,6 +487,11 @@ namespace WileyWidget.WinForms.Forms
                 Padding = new Padding(10, 0, 0, 0)
             };
 
+            quickToolbar.ShowItemToolTips = true;
+
+            // Initialize a shared ToolTip for non-ToolStrip controls
+            _toolTip = new ToolTip { ShowAlways = true, AutoPopDelay = 8000, InitialDelay = 300, ReshowDelay = 100 };
+
             var quickAccountsBtn = new ToolStripButton("📊 Accounts", null, (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>());
             var quickChartsBtn = new ToolStripButton("📈 Charts", null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>());
             var quickBudgetBtn = new ToolStripButton("💰 Budget", null, (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>());
@@ -404,6 +520,30 @@ namespace WileyWidget.WinForms.Forms
                 quickAIAssistantBtn
             });
 
+            // Tooltips for toolbar items
+            quickAccountsBtn.ToolTipText = "Open Accounts — View and manage municipal accounts (Alt+A)";
+            quickChartsBtn.ToolTipText = "Open Charts — Budget analytics (Alt+C)";
+            quickBudgetBtn.ToolTipText = "Open Budget Overview (Alt+B)";
+            quickReportsBtn.ToolTipText = "Open Reports (Alt+R)";
+            quickSettingsBtn.ToolTipText = "Open Settings (Alt+S)";
+            quickRefreshBtn.ToolTipText = "Refresh Dashboard (F5 or Ctrl+R)";
+            quickExportBtn.ToolTipText = "Export Dashboard to PDF";
+            quickAIAssistantBtn.ToolTipText = "Toggle AI Assistant (Ctrl+1)";
+
+            // Tooltips for dashboard cards
+            if (_toolTip != null)
+            {
+                try
+                {
+                    _toolTip.SetToolTip(accountsCard, "Open Accounts — View and manage municipal accounts. Click to open.");
+                    _toolTip.SetToolTip(chartsCard, "Open Charts — View budget analytics and visualizations.");
+                    _toolTip.SetToolTip(settingsCard, "Open Settings — Configure application preferences.");
+                    _toolTip.SetToolTip(reportsCard, "Open Reports — Generate and view detailed reports.");
+                    _toolTip.SetToolTip(infoCard, "Budget status summary: variance, runtime, memory.");
+                }
+                catch { }
+            }
+
             // === AI Chat Panel (Right Docked, Visible on Launch - Phase 1 Enhancement) ===
             var aiDefaultWidth = _configuration.GetValue<int>("UI:AIDefaultWidth", 550);
             var defaultAIVisible = _configuration.GetValue<bool>("UI:DefaultAIVisible", true);
@@ -419,11 +559,11 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 // AIChatControl is not registered in DI; manually resolve dependencies and instantiate
-                var aiService = ServiceProviderExtensions.GetRequiredService<Services.Abstractions.IAIAssistantService>(_serviceProvider);
+                var aiService = ServiceProviderExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IAIAssistantService>(_serviceProvider);
                 var aiLogger = ServiceProviderExtensions.GetRequiredService<ILogger<AIChatControl>>(_serviceProvider);
 
                 // Attempt to resolve optional conversational AI service for fallback responses
-                var conversationalAI = ServiceProviderExtensions.GetService<Services.Abstractions.IAIService>(_serviceProvider);
+                var conversationalAI = ServiceProviderExtensions.GetService<WileyWidget.Services.Abstractions.IAIService>(_serviceProvider);
 
                 _aiChatControl = new AIChatControl(aiService, aiLogger, conversationalAI);
 
@@ -502,6 +642,21 @@ namespace WileyWidget.WinForms.Forms
                     _aiChatControl.Focus();
                     _logger.LogDebug("AI Chat Control focused after panel show");
                 }
+
+                // Persist AI panel visibility
+                try
+                {
+                    var appStateSvc = ServiceProviderExtensions.GetService<WileyWidget.Abstractions.IApplicationStateService>(_serviceProvider);
+                    if (appStateSvc != null)
+                    {
+                        var stateObj = new { IsAIChatVisible = _aiChatPanel.Visible };
+                        _ = appStateSvc.SaveStateAsync(stateObj);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to persist AI panel visibility");
+                }
             }
         }
 
@@ -514,6 +669,15 @@ namespace WileyWidget.WinForms.Forms
             if (e.Control && e.KeyCode == Keys.D1)
             {
                 ToggleAIChatPanel();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            // Ctrl+R: Refresh dashboard
+            if (e.Control && e.KeyCode == Keys.R)
+            {
+                RefreshDashboard();
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 return;
@@ -545,21 +709,49 @@ namespace WileyWidget.WinForms.Forms
                 {
                     if (_viewModel != null)
                     {
-                        // TODO: PDF export disabled due to Syncfusion assembly version conflict
-                        // CS0433: PdfDocument exists in both Syncfusion.Pdf.Base v30.2.4.0 and Syncfusion.Pdf.Portable v31.2.16.0
-                        // Resolution: Upgrade all Syncfusion dependencies to single version or use extern alias
-                        var warningMsg = "PDF export temporarily disabled due to library version conflict.\n" +
-                                       "Will be re-enabled after Syncfusion dependency resolution.";
-                        _logger.LogWarning("PDF export requested but disabled - Syncfusion version conflict detected");
-                        MessageBox.Show(warningMsg, "Feature Temporarily Unavailable",
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        // Use extern alias to reference the Syncfusion PDF assembly explicitly (see csproj Aliases)
+                        try
+                        {
+                            using var document = new SyncPdf.PdfDocument();
+                            var page = document.Pages.Add();
+                            var graphics = page.Graphics;
+                            var font = new SyncPdfGraphics.PdfStandardFont(SyncPdfGraphics.PdfFontFamily.Helvetica, 12);
 
-                        /* Commented out until version conflict resolved:
-                        using var document = new SyncPdf.PdfDocument();
-                        var page = document.Pages.Add();
-                        var graphics = page.Graphics;
-                        ... rest of PDF generation code ...
-                        */
+                            graphics.DrawString("Wiley Widget — Dashboard Report", font, SyncPdfGraphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(20, 20));
+                            graphics.DrawString($"Generated: {DateTime.Now}", font, SyncPdfGraphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(20, 40));
+
+                            // Embed some key summary metrics from ViewModel
+                            graphics.DrawString($"Total Budget: {_viewModel.TotalBudget:C}", font, SyncPdfGraphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(20, 80));
+                            graphics.DrawString($"Total Actual: {_viewModel.TotalActual:C}", font, SyncPdfGraphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(20, 100));
+                            graphics.DrawString($"Variance: {_viewModel.Variance:C}", font, SyncPdfGraphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(20, 120));
+                            graphics.DrawString($"Active Accounts: {_viewModel.ActiveAccountCount}", font, SyncPdfGraphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(20, 140));
+
+                            // Add a lightweight activity list
+                            var y = 180f;
+                            foreach (var item in _viewModel.ActivityItems)
+                            {
+                                var line = $"{item.Timestamp:yyyy-MM-dd HH:mm} - {item.Activity} - {item.Details}";
+                                graphics.DrawString(line, font, SyncPdfGraphics.PdfBrushes.Black, new Syncfusion.Drawing.PointF(20, y));
+                                y += 18f;
+                                if (y > page.GetClientSize().Height - 40)
+                                {
+                                    // Create a new page
+                                    var next = document.Pages.Add();
+                                    graphics = next.Graphics;
+                                    y = 20f;
+                                }
+                            }
+
+                            document.Save(saveDialog.FileName);
+                            document.Close(true);
+                            _logger.LogInformation("Exported dashboard to PDF: {File}", saveDialog.FileName);
+                            MessageBox.Show($"Dashboard exported to {saveDialog.FileName}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to generate PDF export using Syncfusion PDF");
+                            MessageBox.Show("Failed to export PDF. See logs for details.", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     }
                     else
                     {
@@ -699,7 +891,7 @@ namespace WileyWidget.WinForms.Forms
             catch (OperationCanceledException oce)
             {
                 // Child form startup was canceled (likely shutdown or abort). Log and continue without raising modal errors.
-                _logger.LogWarning(oce, "Showing child form {FormType} was canceled", typeof(TForm).Name);
+                _logger.LogDebug(oce, "Showing child form {FormType} was canceled", typeof(TForm).Name);
             }
             catch (Exception ex)
             {
@@ -761,6 +953,31 @@ namespace WileyWidget.WinForms.Forms
 
                 // Cancel and dispose async operations
                 Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
+                // Dispose status timer
+                try
+                {
+                    if (_statusTimer != null)
+                    {
+                        _statusTimer.Stop();
+                        _statusTimer.Dispose();
+                        _statusTimer = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed disposing status timer");
+                }
+
+                // Dispose tooltip
+                try
+                {
+                    _toolTip?.Dispose();
+                    _toolTip = null;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed disposing ToolTip");
+                }
             }
             base.Dispose(disposing);
         }

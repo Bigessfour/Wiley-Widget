@@ -19,7 +19,7 @@
 
 .EXAMPLE
     .\setup-sql-mcp.ps1 -TestConnection
-    
+
 .EXAMPLE
     .\setup-sql-mcp.ps1 -CreateProfile -ProfileName "WileyWidget-Test"
 #>
@@ -27,10 +27,10 @@
 param(
     [Parameter()]
     [switch]$TestConnection,
-    
+
     [Parameter()]
     [switch]$CreateProfile,
-    
+
     [Parameter()]
     [string]$ProfileName = "WileyWidget-Dev"
 )
@@ -52,14 +52,14 @@ function Write-ColorOutput {
         [ValidateSet("Success", "Error", "Warning", "Info")]
         [string]$Type = "Info"
     )
-    
+
     $color = switch ($Type) {
         "Success" { "Green" }
         "Error" { "Red" }
         "Warning" { "Yellow" }
         "Info" { "Cyan" }
     }
-    
+
     Write-Host $Message -ForegroundColor $color
 }
 
@@ -74,17 +74,17 @@ function Test-SqlServerAvailable {
             Write-ColorOutput "✓ SQL Server service is running" -Type Success
             return $true
         }
-        
+
         Write-ColorOutput "⚠ SQL Server service not found or not running" -Type Warning
         Write-ColorOutput "  Checking for SQL Express..." -Type Info
-        
+
         $sqlExpress = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
         if ($sqlExpress -and $sqlExpress.Status -eq "Running") {
             Write-ColorOutput "✓ SQL Server Express is running" -Type Success
             $script:Config.DefaultServer = "localhost\SQLEXPRESS"
             return $true
         }
-        
+
         Write-ColorOutput "✗ No SQL Server instance found running" -Type Error
         return $false
     }
@@ -103,7 +103,7 @@ function Get-McpSettings {
         Write-ColorOutput "⚠ MCP settings file not found at: $($script:Config.McpSettingsPath)" -Type Warning
         return $null
     }
-    
+
     try {
         $content = Get-Content $script:Config.McpSettingsPath -Raw
         return $content | ConvertFrom-Json
@@ -120,35 +120,44 @@ function Add-SqlMcpServer {
         Adds SQL Server MCP to Copilot settings.
     #>
     param([object]$CurrentSettings)
-    
+
     $mcpServers = if ($CurrentSettings.mcpServers) {
         $CurrentSettings.mcpServers
     }
     else {
         @{}
     }
-    
+
     # Check if MSSQL MCP already exists
     if ($mcpServers.PSObject.Properties.Name -contains "mssql") {
         Write-ColorOutput "✓ MSSQL MCP server already configured" -Type Success
         return $CurrentSettings
     }
-    
+
     # Add MSSQL MCP configuration
+    # Official Microsoft SQL Server MCP Server
+    # Source: https://github.com/Azure-Samples/SQL-AI-samples/tree/main/MssqlMcp
+    # Documented: https://devblogs.microsoft.com/azure-sql/introducing-mssql-mcp-server/
+
+    Write-ColorOutput "⚙ Configuring Official Microsoft SQL Server MCP" -Type Info
+    Write-ColorOutput "  GitHub: https://github.com/Azure-Samples/SQL-AI-samples/tree/main/MssqlMcp" -Type Info
+
+    # The official Microsoft SQL Server MCP uses npx to run the server
+    # It requires installation via npm/npx from the official Microsoft package
     $mssqlConfig = @{
         command = "npx"
         args = @(
             "-y"
-            "@modelcontextprotocol/server-mssql"
+            "@microsoft/mssql-mcp-server"
         )
         env = @{
             MSSQL_CONNECTION_TIMEOUT = "30"
         }
     }
-    
+
     $mcpServers | Add-Member -NotePropertyName "mssql" -NotePropertyValue $mssqlConfig -Force
     $CurrentSettings.mcpServers = $mcpServers
-    
+
     Write-ColorOutput "✓ Added MSSQL MCP server configuration" -Type Success
     return $CurrentSettings
 }
@@ -159,16 +168,16 @@ function Save-McpSettings {
         Saves updated MCP settings.
     #>
     param([object]$Settings)
-    
+
     try {
         $settingsDir = Split-Path $script:Config.McpSettingsPath -Parent
         if (-not (Test-Path $settingsDir)) {
             New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
         }
-        
+
         $json = $Settings | ConvertTo-Json -Depth 10
         Set-Content -Path $script:Config.McpSettingsPath -Value $json -Force
-        
+
         Write-ColorOutput "✓ Saved MCP settings" -Type Success
         return $true
     }
@@ -187,22 +196,22 @@ function Test-SqlConnection {
         [string]$Server = $script:Config.DefaultServer,
         [string]$Database = "master"
     )
-    
+
     Write-ColorOutput "`nTesting SQL Server connection..." -Type Info
     Write-ColorOutput "  Server: $Server" -Type Info
     Write-ColorOutput "  Database: $Database" -Type Info
-    
+
     try {
         Add-Type -AssemblyName System.Data
-        
+
         $connectionString = "Server=$Server;Database=$Database;Integrated Security=True;TrustServerCertificate=True;Connection Timeout=$($script:Config.ConnectionTimeout)"
         $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
-        
+
         $connection.Open()
-        
+
         $command = $connection.CreateCommand()
         $command.CommandText = "SELECT @@VERSION AS Version, DB_NAME() AS CurrentDatabase"
-        
+
         $reader = $command.ExecuteReader()
         if ($reader.Read()) {
             Write-ColorOutput "`n✓ Connection successful!" -Type Success
@@ -211,7 +220,7 @@ function Test-SqlConnection {
         }
         $reader.Close()
         $connection.Close()
-        
+
         return $true
     }
     catch {
@@ -235,12 +244,12 @@ function New-ConnectionProfile {
         [string]$Server = $script:Config.DefaultServer,
         [string]$Database = $script:Config.DefaultDatabase
     )
-    
+
     $profilesDir = "$PSScriptRoot/../config/sql-profiles"
     if (-not (Test-Path $profilesDir)) {
         New-Item -ItemType Directory -Path $profilesDir -Force | Out-Null
     }
-    
+
     $profile = @{
         name = $Name
         server = $Server
@@ -249,13 +258,13 @@ function New-ConnectionProfile {
         created = (Get-Date -Format "o")
         connectionTimeout = $script:Config.ConnectionTimeout
     }
-    
+
     $profilePath = Join-Path $profilesDir "$Name.json"
     $profile | ConvertTo-Json -Depth 5 | Set-Content -Path $profilePath -Force
-    
+
     Write-ColorOutput "`n✓ Created connection profile: $Name" -Type Success
     Write-ColorOutput "  Path: $profilePath" -Type Info
-    
+
     return $profile
 }
 
@@ -267,24 +276,24 @@ function Show-SetupSummary {
     Write-ColorOutput "`n" + ("=" * 70) -Type Info
     Write-ColorOutput "SQL Server MCP Setup Complete!" -Type Success
     Write-ColorOutput ("=" * 70) -Type Info
-    
+
     Write-ColorOutput "`nConfiguration:" -Type Info
     Write-ColorOutput "  • MCP Settings: $($script:Config.McpSettingsPath)" -Type Info
     Write-ColorOutput "  • Default Server: $($script:Config.DefaultServer)" -Type Info
     Write-ColorOutput "  • Default Database: $($script:Config.DefaultDatabase)" -Type Info
-    
+
     Write-ColorOutput "`nAvailable MCP Tools (via GitHub Copilot):" -Type Info
     Write-ColorOutput "  • mssql_connect - Connect to SQL Server" -Type Info
     Write-ColorOutput "  • mssql_list_servers - List available servers" -Type Info
     Write-ColorOutput "  • mssql_list_databases - List databases" -Type Info
     Write-ColorOutput "  • mssql_list_tables - List tables in database" -Type Info
     Write-ColorOutput "  • mssql_query - Execute SQL queries" -Type Info
-    
+
     Write-ColorOutput "`nNext Steps:" -Type Warning
     Write-ColorOutput "  1. Restart VS Code to load MCP configuration" -Type Info
     Write-ColorOutput "  2. Use '@mssql' in Copilot Chat to invoke SQL Server tools" -Type Info
     Write-ColorOutput "  3. Test with: 'List all databases on localhost'" -Type Info
-    
+
     Write-ColorOutput "`nDocumentation:" -Type Info
     Write-ColorOutput "  • MCP SQL Docs: https://modelcontextprotocol.io/servers/mssql" -Type Info
     Write-ColorOutput "  • Wiley Widget Docs: docs/integration/sql-server-mcp.md" -Type Info
@@ -296,14 +305,14 @@ function Main {
     Write-ColorOutput "`n╔══════════════════════════════════════════════════════════╗" -Type Info
     Write-ColorOutput "║  SQL Server MCP Setup for Wiley Widget                  ║" -Type Info
     Write-ColorOutput "╚══════════════════════════════════════════════════════════╝`n" -Type Info
-    
+
     # Step 1: Check SQL Server availability
     Write-ColorOutput "[1/4] Checking SQL Server availability..." -Type Info
     if (-not (Test-SqlServerAvailable)) {
         Write-ColorOutput "`n✗ Setup aborted: SQL Server not available" -Type Error
         exit 1
     }
-    
+
     # Step 2: Load current MCP settings
     Write-ColorOutput "`n[2/4] Loading MCP settings..." -Type Info
     $settings = Get-McpSettings
@@ -311,30 +320,30 @@ function Main {
         $settings = @{ mcpServers = @{} }
         Write-ColorOutput "  Created new settings structure" -Type Info
     }
-    
+
     # Step 3: Add SQL MCP server
     Write-ColorOutput "`n[3/4] Configuring MSSQL MCP server..." -Type Info
     $settings = Add-SqlMcpServer -CurrentSettings $settings
-    
+
     if (-not (Save-McpSettings -Settings $settings)) {
         Write-ColorOutput "`n✗ Setup failed: Could not save settings" -Type Error
         exit 1
     }
-    
+
     # Step 4: Optional tests
     Write-ColorOutput "`n[4/4] Running optional validations..." -Type Info
-    
+
     if ($TestConnection) {
         Test-SqlConnection | Out-Null
     }
-    
+
     if ($CreateProfile) {
         New-ConnectionProfile | Out-Null
     }
-    
+
     # Summary
     Show-SetupSummary
-    
+
     Write-ColorOutput "✓ Setup completed successfully!" -Type Success
 }
 

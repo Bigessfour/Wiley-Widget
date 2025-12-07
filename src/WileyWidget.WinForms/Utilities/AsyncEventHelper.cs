@@ -9,17 +9,17 @@ namespace WileyWidget.WinForms.Utilities
     /// <summary>
     /// Helper utility for handling async operations in WinForms event handlers with proper
     /// cancellation support, error handling, and user feedback.
-    /// 
+    ///
     /// Provides standardized patterns for:
     /// - CancellationToken propagation in async void handlers
     /// - OperationCanceledException graceful handling
     /// - User-friendly error messaging via MessageBox or status bars
     /// - Logging integration with structured diagnostics
-    /// 
+    ///
     /// Usage:
     /// <code>
     /// private CancellationTokenSource? _cts;
-    /// 
+    ///
     /// Load += async (s, e) => await AsyncEventHelper.ExecuteAsync(
     ///     async ct => await _viewModel.LoadDataAsync(ct),
     ///     _cts,
@@ -71,8 +71,8 @@ namespace WileyWidget.WinForms.Utilities
             }
             catch (OperationCanceledException oce)
             {
-                // Graceful cancellation - log at Warning level, don't show error dialog
-                logger?.LogWarning(oce, "{OperationName} was canceled", operationName);
+                // Graceful cancellation - suppress logging during normal app lifecycle (Debug only)
+                logger?.LogDebug(oce, "{OperationName} was canceled", operationName);
                 UpdateStatusLabel(statusLabel, control, $"{operationName} canceled");
                 return default;
             }

@@ -44,7 +44,16 @@ public partial class AIAssistantService : IAIAssistantService
     {
         if (toolCall == null) throw new ArgumentNullException(nameof(toolCall));
 
-        await _concurrencySemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            await _concurrencySemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected during shutdown or explicit cancellation - handle gracefully
+            _logger.LogDebug("Tool execution canceled before starting: {ToolName}", toolCall.Name);
+            return ToolCallResult.Error(toolCall.Id, "Operation canceled");
+        }
         try
         {
             _logger.LogInformation("Executing tool {ToolName} with ID {ToolCallId}", toolCall.Name, toolCall.Id);
@@ -204,4 +213,7 @@ public partial class AIAssistantService : IAIAssistantService
         // Escape for Windows command line (double quotes)
         return json.Replace("\"", "\\\"");
     }
+
+    // Note: use canonical SemaphoreSlim.WaitAsync(cancellationToken) and handle OperationCanceledException
+    // at the call sites where cancellation is expected to be swallowed.
 }

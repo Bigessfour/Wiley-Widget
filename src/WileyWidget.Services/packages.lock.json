@@ -1290,11 +1290,6 @@
         "resolved": "31.2.16",
         "contentHash": "uKb2Xhar/KGw2ua/TM0m4j68FktNLmNaXwR1hRKAfqe0RamIAFC5qzY63anpODPQx9BzEIepRI93PYeKqHW2pA=="
       },
-      "Syncfusion.Licensing": {
-        "type": "Transitive",
-        "resolved": "31.2.16",
-        "contentHash": "53I4cA2+iJ1M4QC3lFRTRGU1zHJyC/NRZylkLFP0c3Pe56b/bRuMb97PBqz8YT95Z2Qsmk2FTMJYk960oqLzlA=="
-      },
       "System.AppContext": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -2736,6 +2731,12 @@
         "requested": "[3.1.12, )",
         "resolved": "1.0.4",
         "contentHash": "H2rPiEr2ddBOltOuqRYhpLBAsQXDAhbzMMhhuksnBG2oefup1MXMchALe7yYkKJksNbtxbZHKeM6dn/68I75qw=="
+      },
+      "Syncfusion.Licensing": {
+        "type": "CentralTransitive",
+        "requested": "[31.2.16, )",
+        "resolved": "31.2.16",
+        "contentHash": "53I4cA2+iJ1M4QC3lFRTRGU1zHJyC/NRZylkLFP0c3Pe56b/bRuMb97PBqz8YT95Z2Qsmk2FTMJYk960oqLzlA=="
       },
       "System.Buffers": {
         "type": "CentralTransitive",

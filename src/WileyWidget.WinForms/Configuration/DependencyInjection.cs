@@ -17,6 +17,7 @@ using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Services;
 using System.Diagnostics;
 using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 
@@ -193,6 +194,8 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered IAccountService -> AccountService (Transient)");
             services.AddTransient<IMainDashboardService, MainDashboardService>();
             Debug.WriteLine("DI: Registered IMainDashboardService -> MainDashboardService (Transient)");
+            services.AddTransient<IBudgetCategoryService, BudgetCategoryService>();
+            Debug.WriteLine("DI: Registered IBudgetCategoryService -> BudgetCategoryService (Transient)");
             services.AddTransient<ISettingsManagementService, SettingsManagementService>();
             Debug.WriteLine("DI: Registered ISettingsManagementService -> SettingsManagementService (Transient)");
             // Register validator for SettingsDto. This ensures SettingsManagementService can resolve
@@ -216,6 +219,19 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered IChargeCalculatorService -> ServiceChargeCalculatorService (Transient)");
             services.AddSingleton<IDiValidationService, DiValidationService>();
             Debug.WriteLine("DI: Registered IDiValidationService -> DiValidationService (Singleton)");
+
+            // === GLOBAL EXCEPTION HANDLING ===
+            // Register the centralized exception handler service for application-wide error management
+            var isProduction = configuration.GetValue<bool>("Environment:IsProduction", false);
+            var supportContact = configuration.GetValue<string>("Support:ContactEmail", "support@wileywidget.com");
+            services.AddSingleton<WileyWidget.Services.IExceptionHandler>(sp =>
+                new GlobalExceptionHandlerService(
+                    Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<GlobalExceptionHandlerService>>(sp),
+                    isProduction,
+                    supportContact));
+            services.AddSingleton<GlobalExceptionHandlerService>(sp =>
+                (GlobalExceptionHandlerService)Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.IExceptionHandler>(sp));
+            Debug.WriteLine("DI: Registered IExceptionHandler -> GlobalExceptionHandlerService (Singleton)");
 
             // === VIEWMODELS (SCOPED to match DbContext lifetime) ===
             // Using Scoped instead of Transient ensures ViewModels share the same DbContext instance
@@ -247,19 +263,31 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<ReportsForm>();
             Debug.WriteLine("DI: Registered ReportsForm (Scoped)");
 
+            // Note: AccountEditDialog, ValidationDialog, and DeleteConfirmationDialog are created manually
+            // in forms as they require specific constructor parameters (e.g., existingAccount for edit mode)
+
             // === CONTROLS (TRANSIENT to avoid scope mismatch with Singleton forms) ===
             services.AddTransient<AIChatControl>();
             Debug.WriteLine("DI: Registered AIChatControl (Transient)");
 
-            // === DI VALIDATION: Build a temporary provider with ValidateScopes = true and
-            // attempt to resolve important scoped services (ViewModels) so errors are surfaced early
-            // NOTE: DO NOT resolve ILoggerFactory here - it causes Serilog ReloadableLogger to freeze early,
-            // which leads to "The logger is already frozen" exception when the host builds.
+            // DI validation is now performed AFTER host build in ValidateDependencyInjection()
+            // to prevent Serilog ReloadableLogger from freezing prematurely during UseSerilog()
+        }
+
+        /// <summary>
+        /// Validates that all critical services can be resolved from the DI container.
+        /// IMPORTANT: This must be called AFTER the host is built to prevent Serilog
+        /// ReloadableLogger from freezing prematurely when UseSerilog() executes.
+        /// </summary>
+        /// <param name="serviceProvider">The fully-configured service provider from the built host</param>
+        public static void ValidateDependencyInjection(IServiceProvider serviceProvider)
+        {
+            if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
+
+            Debug.WriteLine("DI: Starting post-build dependency validation...");
+
             try
             {
-                var diagProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
-                Debug.WriteLine("DI: Temporary validation provider created with ValidateScopes = true");
-
                 var viewModelTypes = new Type[]
                 {
                     typeof(MainViewModel),
@@ -273,17 +301,18 @@ namespace WileyWidget.WinForms.Configuration
                 {
                     try
                     {
-                        using var scope = diagProvider.CreateScope();
+                        using var scope = serviceProvider.CreateScope();
                         var vm = scope.ServiceProvider.GetRequiredService(vmType);
-                        Debug.WriteLine($"DI: Successfully resolved {vmType.FullName}");
+                        Debug.WriteLine($"DI: ✓ Successfully resolved {vmType.Name}");
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"DI: Failed to resolve {vmType.FullName}: {ex}");
+                        Debug.WriteLine($"DI: ✗ Failed to resolve {vmType.Name}: {ex.Message}");
+                        Serilog.Log.Error(ex, "Failed to resolve ViewModel: {ViewModelType}", vmType.Name);
                     }
                 }
 
-                // Also test critical singleton/scoped services to ensure DI graph is healthy
+                // Also test critical services to ensure DI graph is healthy
                 var serviceTypes = new Type[]
                 {
                     typeof(ISecretVaultService),
@@ -297,31 +326,33 @@ namespace WileyWidget.WinForms.Configuration
                 {
                     try
                     {
-                        using var scope = diagProvider.CreateScope();
+                        using var scope = serviceProvider.CreateScope();
                         var svc = scope.ServiceProvider.GetService(sType);
                         if (svc != null)
                         {
-                            Debug.WriteLine($"DI: Successfully resolved {sType.FullName}");
+                            Debug.WriteLine($"DI: ✓ Successfully resolved {sType.Name}");
                         }
                         else
                         {
-                            Debug.WriteLine($"DI: Service {sType.FullName} resolved to null (not registered)");
+                            Debug.WriteLine($"DI: ⚠ Service {sType.Name} resolved to null (may not be registered)");
+                            Serilog.Log.Warning("Service {ServiceType} is not registered", sType.Name);
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"DI: Failed to resolve {sType.FullName}: {ex}");
+                        Debug.WriteLine($"DI: ✗ Failed to resolve {sType.Name}: {ex.Message}");
+                        Serilog.Log.Error(ex, "Failed to resolve service: {ServiceType}", sType.Name);
                     }
                 }
 
-                if (diagProvider is IDisposable d)
-                {
-                    d.Dispose();
-                }
+                Debug.WriteLine("DI: Post-build validation complete");
+                Serilog.Log.Information("Dependency injection validation completed successfully");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"DI: Failed to build diagnostic provider: {ex}");
+                Debug.WriteLine($"DI: Validation failed with exception: {ex}");
+                Serilog.Log.Error(ex, "Dependency injection validation failed");
+                throw new InvalidOperationException("DI configuration validation failed. See logs for details.", ex);
             }
         }
 
