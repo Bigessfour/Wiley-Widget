@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -18,12 +20,20 @@ namespace WileyWidget.Tests.Unit.Services
     public class AIAssistantServiceTests
     {
         private readonly Mock<ILogger<AIAssistantService>> _mockLogger;
+        private readonly IConfiguration _configuration;
         private readonly AIAssistantService _service;
 
         public AIAssistantServiceTests()
         {
             _mockLogger = new Mock<ILogger<AIAssistantService>>();
-            _service = new AIAssistantService(_mockLogger.Object);
+            _configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["AI:PythonExecutable"] = "python",
+                    ["AI:ToolExecutionTimeoutSeconds"] = "30"
+                })
+                .Build();
+            _service = new AIAssistantService(_mockLogger.Object, _configuration);
         }
 
         #region Constructor Tests
@@ -31,15 +41,19 @@ namespace WileyWidget.Tests.Unit.Services
         [Fact]
         public void Constructor_ThrowsArgumentNullException_WhenLoggerIsNull()
         {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>())
+                .Build();
+
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AIAssistantService(null!));
+            Assert.Throws<ArgumentNullException>(() => new AIAssistantService(null!, config));
         }
 
         [Fact]
         public void Constructor_InitializesSuccessfully_WithValidLogger()
         {
             // Arrange & Act
-            var service = new AIAssistantService(_mockLogger.Object);
+            var service = new AIAssistantService(_mockLogger.Object, _configuration);
 
             // Assert
             Assert.NotNull(service);
@@ -56,8 +70,8 @@ namespace WileyWidget.Tests.Unit.Services
         [InlineData("GREP something", "grep_search")]
         [InlineData("search for code", "semantic_search")]
         [InlineData("SEARCH query", "semantic_search")]
-        [InlineData("list files", "list_dir")]
-        [InlineData("LIST .", "list_dir")]
+        [InlineData("list files", "list_directory")]
+        [InlineData("LIST .", "list_directory")]
         [InlineData("get errors", "get_errors")]
         [InlineData("get error", "get_errors")]
         public void ParseInputForTool_WithValidToolCommand_ReturnsToolCall(string input, string expectedToolName)
@@ -156,10 +170,10 @@ namespace WileyWidget.Tests.Unit.Services
         #region GetAvailableTools Tests
 
         [Fact]
-        public async Task GetAvailableTools_ReturnsNonEmptyList()
+        public void GetAvailableTools_ReturnsNonEmptyList()
         {
             // Act
-            var tools = await _service.GetAvailableTools();
+            var tools = _service.GetAvailableTools();
 
             // Assert
             Assert.NotNull(tools);
@@ -167,18 +181,27 @@ namespace WileyWidget.Tests.Unit.Services
         }
 
         [Fact]
-        public async Task GetAvailableTools_ContainsExpectedTools()
+        public void GetAvailableTools_ContainsExpectedTools()
         {
             // Act
-            var tools = await _service.GetAvailableTools();
+            var tools = _service.GetAvailableTools();
             var toolNames = tools.Select(t => t.Name).ToList();
 
             // Assert
-            Assert.Contains("read_file", toolNames);
-            Assert.Contains("grep_search", toolNames);
-            Assert.Contains("semantic_search", toolNames);
-            Assert.Contains("list_dir", toolNames);
-            Assert.Contains("get_errors", toolNames);
+            var expectedNames = new[]
+            {
+                "mcp_filesystem_read_text_file",
+                "mcp_filesystem_search_files",
+                "mcp_filesystem_list_directory",
+                "mcp_filesystem_read_multiple_files",
+                "semantic_search",
+                "get_errors"
+            };
+
+            foreach (var expectedName in expectedNames)
+            {
+                Assert.Contains(expectedName, toolNames);
+            }
         }
 
         #endregion
@@ -249,7 +272,7 @@ namespace WileyWidget.Tests.Unit.Services
         {
             // Arrange
             var toolCalls = Enumerable.Range(1, 10).Select(i =>
-                ToolCall.Create("list_dir", new Dictionary<string, object>
+                ToolCall.Create("list_directory", new Dictionary<string, object>
                 {
                     { "path", "." }
                 })

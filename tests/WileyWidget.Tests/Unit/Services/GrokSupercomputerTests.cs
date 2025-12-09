@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -131,7 +132,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync(budgetEntries);
 
             var aiInsights = "AI-generated budget insights";
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(aiInsights);
 
             // Act
@@ -162,7 +163,7 @@ namespace WileyWidget.Tests.Unit.Services
             _mockBudgetRepo.Setup(r => r.GetByFiscalYearAsync(fiscalYear))
                 .ReturnsAsync(budgetEntries);
 
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act
@@ -189,7 +190,7 @@ namespace WileyWidget.Tests.Unit.Services
             _mockBudgetRepo.Setup(r => r.GetByFiscalYearAsync(fiscalYear))
                 .ReturnsAsync((IEnumerable<BudgetEntry>)null!);
 
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act
@@ -231,7 +232,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync(enterprise);
 
             var aiInsights = "AI-generated enterprise insights";
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(aiInsights);
 
             // Act
@@ -262,7 +263,7 @@ namespace WileyWidget.Tests.Unit.Services
             _mockEnterpriseRepo.Setup(r => r.GetByIdAsync(enterpriseId))
                 .ReturnsAsync(enterprise);
 
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act
@@ -299,7 +300,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync(auditEntries);
 
             var aiInsights = "AI-generated audit insights";
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(aiInsights);
 
             // Act
@@ -320,7 +321,7 @@ namespace WileyWidget.Tests.Unit.Services
             _mockAuditRepo.Setup(r => r.GetAuditTrailAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
                 .ReturnsAsync(auditEntries);
 
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act
@@ -346,7 +347,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync(enterprises);
 
             var aiInsights = "AI-generated accounts insights";
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(aiInsights);
 
             // Act
@@ -367,7 +368,7 @@ namespace WileyWidget.Tests.Unit.Services
             _mockEnterpriseRepo.Setup(r => r.GetAllAsync())
                 .ReturnsAsync(enterprises);
 
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act
@@ -384,7 +385,7 @@ namespace WileyWidget.Tests.Unit.Services
             _mockEnterpriseRepo.Setup(r => r.GetAllAsync())
                 .ReturnsAsync(new List<Enterprise>());
 
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act
@@ -404,7 +405,7 @@ namespace WileyWidget.Tests.Unit.Services
             // Arrange
             var data = new { Key = "Value" };
             var aiRecommendations = "AI-generated recommendations";
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(aiRecommendations);
 
             // Act
@@ -426,7 +427,7 @@ namespace WileyWidget.Tests.Unit.Services
         {
             // Arrange
             var data = new { Key = "Value" };
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act
@@ -457,7 +458,7 @@ namespace WileyWidget.Tests.Unit.Services
             // Arrange
             var emptyData = new object();
             var aiRecommendations = "Recommendations for empty data";
-            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.Is<string>(q => q.Contains("{}"))))
+            _mockAiService.Setup(s => s.GetInsightsAsync(It.IsAny<string>(), It.Is<string>(q => q.Contains("{}")), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(aiRecommendations);
 
             // Act
@@ -477,7 +478,7 @@ namespace WileyWidget.Tests.Unit.Services
             // Arrange
             string prompt = "Test prompt";
             var aiResponse = new AIResponseResult("AI response content");
-            _mockAiService.Setup(s => s.SendPromptAsync(prompt, default))
+            _mockAiService.Setup(s => s.SendPromptAsync(prompt, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(aiResponse);
 
             // Act
@@ -507,7 +508,7 @@ namespace WileyWidget.Tests.Unit.Services
         {
             // Arrange
             string prompt = "Test prompt";
-            _mockAiService.Setup(s => s.SendPromptAsync(prompt, default))
+            _mockAiService.Setup(s => s.SendPromptAsync(prompt, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("AI error"));
 
             // Act & Assert

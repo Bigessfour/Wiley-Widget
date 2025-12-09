@@ -8,6 +8,7 @@ using Moq;
 using Xunit;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
+using WileyWidget.Models.Entities;
 using WileyWidget.Services;
 
 namespace WileyWidget.Tests.Unit.Services
@@ -187,7 +188,7 @@ namespace WileyWidget.Tests.Unit.Services
             var account = new MunicipalAccount
             {
                 Id = accountId,
-                AccountNumber = "ACC-001",
+                AccountNumber = new AccountNumber("ACC-001"),
                 Name = "Test Account"
             };
 
