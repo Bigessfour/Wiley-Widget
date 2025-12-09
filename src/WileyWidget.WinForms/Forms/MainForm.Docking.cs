@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Runtime.Serialization;
 using System;
@@ -9,6 +10,7 @@ using System.Xml.Serialization;
 using System.Xml;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -29,6 +31,10 @@ public partial class MainForm
     // Fonts used by DockingManager - keep references so we can dispose them
     private Font? _dockAutoHideTabFont;
     private Font? _dockTabFont;
+    // Debounce timer for auto-save to prevent I/O spam
+    private System.Windows.Forms.Timer? _dockingLayoutSaveTimer;
+    // Dictionary to track dynamically added panels
+    private Dictionary<string, Panel>? _dynamicDockPanels;
 
     /// <summary>
     /// Initialize Syncfusion DockingManager with AI-first layout
@@ -75,6 +81,12 @@ public partial class MainForm
 
             // Hide standard panels when using docking
             HideStandardPanelsForDocking();
+
+            // Initialize dynamic panel tracking
+            _dynamicDockPanels = new Dictionary<string, Panel>();
+
+            // Apply theme to docked panels
+            ApplyThemeToDockingPanels();
 
             // Load saved layout
             LoadDockingLayout();
@@ -130,6 +142,7 @@ public partial class MainForm
         _dockingManager.DockControl(_leftDockPanel, this, DockingStyle.Left, 250);
         _dockingManager.SetAutoHideMode(_leftDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_leftDockPanel, "📊 Dashboard");
+        _dockingManager.SetFloatingMode(_leftDockPanel, true);  // Enable floating windows
 
         _logger.LogDebug("Left dock panel created with dashboard cards");
     }
@@ -158,7 +171,7 @@ public partial class MainForm
         // Instead, add the panel directly to the form's Controls collection with standard WinForms docking.
         // Side panels (Left, Right, Top, Bottom) use DockControl(), the center uses standard Fill docking.
         Controls.Add(_centralDocumentPanel);
-        _centralDocumentPanel.BringToFront();  // Ensure it's behind docked panels visually
+        _centralDocumentPanel.SendToBack();  // Ensure it's behind docked panels in z-order
 
         _logger.LogDebug("Central document panel created with AI chat (using standard Fill docking, not DockingManager)");
     }
@@ -186,6 +199,7 @@ public partial class MainForm
         _dockingManager.DockControl(_rightDockPanel, this, DockingStyle.Right, 200);
         _dockingManager.SetAutoHideMode(_rightDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_rightDockPanel, "📋 Activity");
+        _dockingManager.SetFloatingMode(_rightDockPanel, true);  // Enable floating windows
 
         _logger.LogDebug("Right dock panel created with activity grid");
     }
@@ -322,7 +336,7 @@ public partial class MainForm
 
     /// <summary>
     /// Load saved docking layout from AppData
-    /// Implements state persistence using AppStateSerializer
+    /// Implements state persistence using AppStateSerializer with enhanced error handling
     /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/layouts
     /// </summary>
     private void LoadDockingLayout()
@@ -338,12 +352,42 @@ public partial class MainForm
                 return;
             }
 
+            // Validate XML structure before loading to catch corruption early
+            try
+            {
+                var xmlDoc = new System.Xml.XmlDocument();
+                xmlDoc.Load(layoutPath);
+                _logger.LogDebug("Layout XML validated successfully");
+            }
+            catch (System.Xml.XmlException xmlEx)
+            {
+                _logger.LogWarning(xmlEx, "Corrupt XML layout file detected at {Path} - deleting and using defaults", layoutPath);
+                try
+                {
+                    File.Delete(layoutPath);
+                    _logger.LogInformation("Deleted corrupt layout file");
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogWarning(deleteEx, "Failed to delete corrupt layout file - will be overwritten on save");
+                }
+                return;
+            }
+
             // Use Syncfusion's AppStateSerializer for proper state loading
             var serializer = new Syncfusion.Runtime.Serialization.AppStateSerializer(
                 Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, layoutPath);
             _dockingManager.LoadDockState(serializer);
 
             _logger.LogInformation("Docking layout loaded from {Path}", layoutPath);
+        }
+        catch (UnauthorizedAccessException authEx)
+        {
+            _logger.LogWarning(authEx, "No permission to read docking layout - using default layout. Check AppData permissions.");
+        }
+        catch (IOException ioEx)
+        {
+            _logger.LogWarning(ioEx, "I/O error loading docking layout - using default layout");
         }
         catch (Exception ex)
         {
@@ -352,7 +396,7 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Save current docking layout to AppData
+    /// Save current docking layout to AppData with fallback to temp directory
     /// Implements state persistence using Syncfusion DockingManager serialization
     /// Captures: panel positions, sizes, docking states, floating window states, tab order
     /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/layouts
@@ -361,16 +405,43 @@ public partial class MainForm
     {
         if (_dockingManager == null) return;
 
+        string? layoutPath = null;
         try
         {
-            var layoutPath = GetDockingLayoutPath();
+            layoutPath = GetDockingLayoutPath();
             var layoutDir = Path.GetDirectoryName(layoutPath);
 
-            // Ensure directory exists
-            if (!string.IsNullOrEmpty(layoutDir) && !Directory.Exists(layoutDir))
+            // Ensure directory exists with permission check
+            if (!string.IsNullOrEmpty(layoutDir))
             {
-                Directory.CreateDirectory(layoutDir);
-                _logger.LogDebug("Created docking layout directory at {Dir}", layoutDir);
+                if (!Directory.Exists(layoutDir))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(layoutDir);
+                        _logger.LogDebug("Created docking layout directory at {Dir}", layoutDir);
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Fallback to temp directory if AppData is restricted
+                        layoutPath = Path.Combine(Path.GetTempPath(), DockingLayoutFileName);
+                        _logger.LogWarning("AppData directory creation failed - using temp directory: {Path}", layoutPath);
+                    }
+                }
+                // Verify write permission by attempting to open file for write
+                else
+                {
+                    try
+                    {
+                        using var testStream = File.Open(layoutPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+                        testStream.Close();
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        layoutPath = Path.Combine(Path.GetTempPath(), DockingLayoutFileName);
+                        _logger.LogWarning("No write permission to AppData - using temp directory: {Path}", layoutPath);
+                    }
+                }
             }
 
             // Use Syncfusion's AppStateSerializer for proper state persistence
@@ -380,9 +451,17 @@ public partial class MainForm
 
             _logger.LogInformation("Docking layout saved to {Path}", layoutPath);
         }
+        catch (UnauthorizedAccessException authEx)
+        {
+            _logger.LogError(authEx, "Permission denied saving docking layout to {Path}", layoutPath);
+        }
+        catch (IOException ioEx)
+        {
+            _logger.LogError(ioEx, "I/O error saving docking layout to {Path}", layoutPath);
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save docking layout");
+            _logger.LogError(ex, "Failed to save docking layout to {Path}", layoutPath);
         }
     }    /// <summary>
     /// Get docking layout file path in AppData
@@ -431,6 +510,33 @@ public partial class MainForm
             _dockingManager = null;
         }
 
+        // Dispose debounce timer
+        if (_dockingLayoutSaveTimer != null)
+        {
+            _dockingLayoutSaveTimer.Stop();
+            _dockingLayoutSaveTimer.Tick -= OnSaveTimerTick;
+            _dockingLayoutSaveTimer.Dispose();
+            _dockingLayoutSaveTimer = null;
+        }
+
+        // Dispose dynamic panels
+        if (_dynamicDockPanels != null)
+        {
+            foreach (var panel in _dynamicDockPanels.Values)
+            {
+                try
+                {
+                    panel.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error disposing dynamic dock panel '{PanelName}'", panel.Name);
+                }
+            }
+            _dynamicDockPanels.Clear();
+            _dynamicDockPanels = null;
+        }
+
         _leftDockPanel?.Dispose();
         _leftDockPanel = null;
 
@@ -456,6 +562,135 @@ public partial class MainForm
         catch { }
     }
 
+    #region Theme Integration
+
+    /// <summary>
+    /// Apply Syncfusion theme to docked panels using ThemeManagerService
+    /// Integrates with SkinManager to ensure visual consistency
+    /// </summary>
+    private void ApplyThemeToDockingPanels()
+    {
+        try
+        {
+            var themeService = _serviceProvider.GetService<IThemeManagerService>();
+            if (themeService == null)
+            {
+                _logger.LogWarning("ThemeManagerService not available - using hardcoded panel colors");
+                return;
+            }
+
+            var currentTheme = themeService.GetCurrentTheme();
+            _logger.LogDebug("Applying theme '{Theme}' to docking panels", currentTheme);
+
+            // Apply semantic colors to left dock panel (dashboard)
+            if (_leftDockPanel != null)
+            {
+                _leftDockPanel.BackColor = themeService.GetSemanticColor(SemanticColorType.CardBackground);
+                _leftDockPanel.ForeColor = themeService.GetSemanticColor(SemanticColorType.Foreground);
+                _logger.LogDebug("Applied theme to left dock panel");
+            }
+
+            // Apply semantic colors to right dock panel (activity)
+            if (_rightDockPanel != null)
+            {
+                _rightDockPanel.BackColor = themeService.GetSemanticColor(SemanticColorType.Background);
+                _rightDockPanel.ForeColor = themeService.GetSemanticColor(SemanticColorType.Foreground);
+                _logger.LogDebug("Applied theme to right dock panel");
+            }
+
+            // Apply semantic colors to central document panel
+            if (_centralDocumentPanel != null)
+            {
+                _centralDocumentPanel.BackColor = themeService.GetSemanticColor(SemanticColorType.Background);
+                _centralDocumentPanel.ForeColor = themeService.GetSemanticColor(SemanticColorType.Foreground);
+                _logger.LogDebug("Applied theme to central document panel");
+            }
+
+            // Apply theme to DockingManager's internal controls if VisualStyle property exists
+            if (_dockingManager != null && themeService.IsSkinManagerAvailable())
+            {
+                try
+                {
+                    // Attempt to set VisualStyle property (available in some Syncfusion versions)
+                    var visualStyleProp = _dockingManager.GetType().GetProperty("VisualStyle");
+                    if (visualStyleProp != null && visualStyleProp.CanWrite)
+                    {
+                        // Map theme name to Syncfusion.Windows.Forms.VisualStyle enum
+                        var visualStyle = MapThemeToVisualStyle(currentTheme);
+                        visualStyleProp.SetValue(_dockingManager, visualStyle);
+                        _logger.LogInformation("Applied VisualStyle '{Style}' to DockingManager", visualStyle);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("DockingManager.VisualStyle property not available in this Syncfusion version");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to set DockingManager.VisualStyle - not critical");
+                }
+            }
+
+            // Apply theme to all Syncfusion controls within docked panels
+            if (_leftDockPanel != null)
+            {
+                themeService.ApplyThemeToAllControls(_leftDockPanel, currentTheme);
+            }
+            if (_rightDockPanel != null)
+            {
+                themeService.ApplyThemeToAllControls(_rightDockPanel, currentTheme);
+            }
+
+            _logger.LogInformation("Successfully applied theme to all docking panels");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to apply theme to docking panels - using default colors");
+        }
+    }
+
+    /// <summary>
+    /// Map theme name to Syncfusion.Windows.Forms.VisualStyle enum value
+    /// </summary>
+    private static object MapThemeToVisualStyle(string themeName)
+    {
+        // Use reflection to get VisualStyle enum values (version-agnostic)
+        var visualStyleType = Type.GetType("Syncfusion.Windows.Forms.VisualStyle, Syncfusion.Shared.Base");
+        if (visualStyleType == null)
+        {
+            return 0; // Default to first enum value
+        }
+
+        // Map theme names to VisualStyle enum values
+        var styleMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Office2019Colorful", "Office2019Colorful" },
+            { "Office2019White", "Office2019White" },
+            { "Office2019Black", "Office2019Black" },
+            { "Office2019DarkGray", "Office2019DarkGray" },
+            { "Office2016Colorful", "Office2016Colorful" },
+            { "Office2016White", "Office2016White" },
+            { "Office2016Black", "Office2016Black" },
+            { "Office2016DarkGray", "Office2016DarkGray" },
+            { "MaterialLight", "Office2016Colorful" },  // Fallback
+            { "MaterialDark", "Office2016Black" },      // Fallback
+            { "HighContrastBlack", "Office2016Black" }  // Fallback
+        };
+
+        var enumValueName = styleMapping.ContainsKey(themeName) ? styleMapping[themeName] : "Office2019Colorful";
+
+        try
+        {
+            return Enum.Parse(visualStyleType, enumValueName);
+        }
+        catch
+        {
+            return Enum.GetValues(visualStyleType).GetValue(0) ?? 0;
+        }
+    }
+
+    #endregion
+
     #region Docking Event Handlers
 
     private void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
@@ -464,17 +699,48 @@ public partial class MainForm
         _logger.LogDebug("Dock state changed: NewState={NewState}, OldState={OldState}",
             e.NewState, e.OldState);
 
-        // Auto-save layout on state changes (debounced via timer would be better for production)
+        // Auto-save layout on state changes with debouncing to prevent I/O spam
         if (_useSyncfusionDocking)
         {
-            try
-            {
-                SaveDockingLayout();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to auto-save docking layout after state change");
-            }
+            DebouncedSaveDockingLayout();
+        }
+    }
+
+    /// <summary>
+    /// Debounced save mechanism - waits 500ms after last state change before saving
+    /// Prevents I/O spam during rapid docking operations (e.g., dragging, resizing)
+    /// </summary>
+    private void DebouncedSaveDockingLayout()
+    {
+        // Stop existing timer if running
+        _dockingLayoutSaveTimer?.Stop();
+
+        // Initialize timer on first use
+        if (_dockingLayoutSaveTimer == null)
+        {
+            _dockingLayoutSaveTimer = new System.Windows.Forms.Timer { Interval = 500 };
+            _dockingLayoutSaveTimer.Tick += OnSaveTimerTick;
+        }
+
+        // Restart timer - will fire after 500ms of no state changes
+        _dockingLayoutSaveTimer.Start();
+    }
+
+    /// <summary>
+    /// Timer tick handler - performs actual save after debounce period
+    /// </summary>
+    private void OnSaveTimerTick(object? sender, EventArgs e)
+    {
+        _dockingLayoutSaveTimer?.Stop();
+
+        try
+        {
+            SaveDockingLayout();
+            _logger.LogDebug("Debounced auto-save completed");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to auto-save docking layout after debounce period");
         }
     }
 
@@ -493,6 +759,157 @@ public partial class MainForm
     {
         // Log visibility changes
         _logger.LogDebug("Dock visibility changed");
+    }
+
+    #endregion
+
+    #region Dynamic Panel Management
+
+    /// <summary>
+    /// Add a custom panel to the docking manager at runtime
+    /// Enables plugin architecture and dynamic content areas
+    /// </summary>
+    /// <param name="panelName">Unique identifier for the panel</param>
+    /// <param name="displayLabel">User-facing label for the dock tab</param>
+    /// <param name="content">Control to host in the panel</param>
+    /// <param name="dockStyle">Docking position (Left, Right, Top, Bottom)</param>
+    /// <param name="width">Panel width (for Left/Right docking)</param>
+    /// <param name="height">Panel height (for Top/Bottom docking)</param>
+    /// <returns>True if panel was added successfully, false if panel already exists or docking is disabled</returns>
+    public bool AddDynamicDockPanel(string panelName, string displayLabel, Control content,
+        DockingStyle dockStyle = DockingStyle.Right, int width = 200, int height = 150)
+    {
+        if (!_useSyncfusionDocking || _dockingManager == null)
+        {
+            _logger.LogWarning("Cannot add dynamic dock panel - Syncfusion docking is not enabled");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(panelName))
+        {
+            throw new ArgumentException("Panel name cannot be null or empty", nameof(panelName));
+        }
+
+        if (_dynamicDockPanels != null && _dynamicDockPanels.ContainsKey(panelName))
+        {
+            _logger.LogWarning("Dynamic dock panel '{PanelName}' already exists", panelName);
+            return false;
+        }
+
+        try
+        {
+            var panel = new Panel
+            {
+                Name = panelName,
+                BackColor = Color.White,
+                Padding = new Padding(5)
+            };
+
+            // Add content to panel
+            if (content != null)
+            {
+                content.Dock = DockStyle.Fill;
+                panel.Controls.Add(content);
+            }
+
+            // Configure docking behavior
+            _dockingManager.SetEnableDocking(panel, true);
+
+            // Dock based on style
+            if (dockStyle == DockingStyle.Left || dockStyle == DockingStyle.Right)
+            {
+                _dockingManager.DockControl(panel, this, dockStyle, width);
+            }
+            else
+            {
+                _dockingManager.DockControl(panel, this, dockStyle, height);
+            }
+
+            _dockingManager.SetAutoHideMode(panel, true);
+            _dockingManager.SetDockLabel(panel, displayLabel);
+            _dockingManager.SetFloatingMode(panel, true);
+
+            // Apply theme
+            var themeService = _serviceProvider.GetService<IThemeManagerService>();
+            if (themeService != null)
+            {
+                panel.BackColor = themeService.GetSemanticColor(SemanticColorType.Background);
+                panel.ForeColor = themeService.GetSemanticColor(SemanticColorType.Foreground);
+                themeService.ApplyThemeToAllControls(panel, themeService.GetCurrentTheme());
+            }
+
+            // Track panel
+            _dynamicDockPanels ??= new Dictionary<string, Panel>();
+            _dynamicDockPanels[panelName] = panel;
+
+            _logger.LogInformation("Added dynamic dock panel '{PanelName}' with label '{Label}'", panelName, displayLabel);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add dynamic dock panel '{PanelName}'", panelName);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Remove a dynamically added panel from the docking manager
+    /// </summary>
+    /// <param name="panelName">Name of the panel to remove</param>
+    /// <returns>True if panel was removed, false if panel doesn't exist</returns>
+    public bool RemoveDynamicDockPanel(string panelName)
+    {
+        if (_dynamicDockPanels == null || !_dynamicDockPanels.ContainsKey(panelName))
+        {
+            _logger.LogWarning("Cannot remove dynamic dock panel '{PanelName}' - not found", panelName);
+            return false;
+        }
+
+        try
+        {
+            var panel = _dynamicDockPanels[panelName];
+
+            // Undock and dispose
+            if (_dockingManager != null)
+            {
+                _dockingManager.SetEnableDocking(panel, false);
+            }
+
+            panel.Dispose();
+            _dynamicDockPanels.Remove(panelName);
+
+            _logger.LogInformation("Removed dynamic dock panel '{PanelName}'", panelName);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove dynamic dock panel '{PanelName}'", panelName);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Get a dynamically added panel by name
+    /// </summary>
+    /// <param name="panelName">Name of the panel to retrieve</param>
+    /// <returns>Panel if found, null otherwise</returns>
+    public Panel? GetDynamicDockPanel(string panelName)
+    {
+        if (_dynamicDockPanels == null || !_dynamicDockPanels.ContainsKey(panelName))
+        {
+            return null;
+        }
+
+        return _dynamicDockPanels[panelName];
+    }
+
+    /// <summary>
+    /// Get all dynamically added panel names
+    /// </summary>
+    /// <returns>Collection of panel names</returns>
+    public IReadOnlyCollection<string> GetDynamicDockPanelNames()
+    {
+        return _dynamicDockPanels?.Keys.ToList().AsReadOnly() ?? new List<string>().AsReadOnly();
     }
 
     #endregion
@@ -533,6 +950,34 @@ public partial class MainForm
 
             _dockingManager.Dispose();
             _dockingManager = null;
+        }
+
+        // Dispose debounce timer
+        if (_dockingLayoutSaveTimer != null)
+        {
+            try
+            {
+                _dockingLayoutSaveTimer.Stop();
+                _dockingLayoutSaveTimer.Tick -= OnSaveTimerTick;
+                _dockingLayoutSaveTimer.Dispose();
+                _dockingLayoutSaveTimer = null;
+            }
+            catch { }
+        }
+
+        // Dispose dynamic panels
+        if (_dynamicDockPanels != null)
+        {
+            foreach (var panel in _dynamicDockPanels.Values)
+            {
+                try
+                {
+                    panel.Dispose();
+                }
+                catch { }
+            }
+            _dynamicDockPanels.Clear();
+            _dynamicDockPanels = null;
         }
 
         _leftDockPanel?.Dispose();

@@ -20,11 +20,19 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main()
         {
+            var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 // === BOOTSTRAP SERILOG IMMEDIATELY ===
                 // Configure minimal Serilog before anything else to capture early errors
                 BootstrapSerilog();
+
+                Serilog.Log.Information("═══════════════════════════════════════════════════════════");
+                Serilog.Log.Information("Wiley Widget Application Starting");
+                Serilog.Log.Information("Version: {Version}", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown");
+                Serilog.Log.Information("OS: {OS}", Environment.OSVersion);
+                Serilog.Log.Information(".NET: {Runtime}", Environment.Version);
+                Serilog.Log.Information("═══════════════════════════════════════════════════════════");
 
                 // === GLOBAL EXCEPTION HANDLERS (MUST BE FIRST) ===
                 // Wire up unhandled exception handlers BEFORE any other code runs
@@ -70,12 +78,46 @@ namespace WileyWidget.WinForms
                         Syncfusion.Windows.Forms.SkinManager.ApplicationVisualTheme = configuredTheme;
                         Serilog.Log.Information("Application-wide theme set to: {ThemeName}", configuredTheme);
                     }
+                    else
+                    {
+                        Serilog.Log.Warning("SkinManager not available - theme will use fallback colors. Check license registration.");
+                    }
                     Serilog.Log.Information("ThemeManagerService initialized successfully");
+
+                    // Log detailed theme diagnostics
+                    if (themeManager is WileyWidget.WinForms.Services.ThemeManagerService concreteThemeManager)
+                    {
+                        concreteThemeManager.LogDiagnostics();
+                    }
                 }
                 else
                 {
                     Serilog.Log.Warning("ThemeManagerService not available - theme management disabled");
                 }
+
+                // === REGISTER APPLICATION LIFECYCLE HOOKS ===
+                // Hook into application lifetime events for proper resource management
+                var lifetime = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetRequiredService<Microsoft.Extensions.Hosting.IHostApplicationLifetime>(host.Services);
+
+                lifetime.ApplicationStarted.Register(() =>
+                {
+                    Serilog.Log.Information("✓ Application started successfully");
+                    Serilog.Log.Information("  Base Directory: {BaseDir}", AppDomain.CurrentDomain.BaseDirectory);
+                    Serilog.Log.Information("  Process ID: {ProcessId}", Environment.ProcessId);
+                    Serilog.Log.Information("  Machine Name: {MachineName}", Environment.MachineName);
+                });
+
+                lifetime.ApplicationStopping.Register(() =>
+                {
+                    Serilog.Log.Information("Application is stopping - releasing resources...");
+                });
+
+                lifetime.ApplicationStopped.Register(() =>
+                {
+                    Serilog.Log.Information("Application stopped");
+                    Serilog.Log.CloseAndFlush();
+                });
 
                 // === VALIDATE DI CONFIGURATION ===
                 // NOW validate DI after host is built and logger is properly configured
@@ -92,6 +134,29 @@ namespace WileyWidget.WinForms
                 // Using GetAwaiter().GetResult() instead of .Wait() to avoid potential deadlocks in WinForms
                 // Pass CancellationToken.None since we want diagnostics to complete fully
                 RunStartupDiagnosticsAsync(host, CancellationToken.None).GetAwaiter().GetResult();
+
+                // === WARM UP CRITICAL SERVICES ===
+                // Pre-initialize frequently used services to improve perceived startup performance
+                WarmUpCriticalServices(host);
+
+                // === PRE-FLIGHT CHECKS ===
+                // Final validation before showing UI
+                var preFlightPassed = PerformPreFlightChecks(host);
+                if (!preFlightPassed)
+                {
+                    Serilog.Log.Error("Pre-flight checks failed - application may not function correctly");
+                    // Continue anyway but warn user
+                }
+
+                // === LOG STARTUP COMPLETION ===
+                startupStopwatch.Stop();
+                Serilog.Log.Information("═══════════════════════════════════════════════════════════");
+                Serilog.Log.Information("Wiley Widget Application Startup Complete");
+                Serilog.Log.Information("Version: {Version}", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown");
+                Serilog.Log.Information(".NET Runtime: {Runtime}", Environment.Version);
+                Serilog.Log.Information("Startup Time: {StartupTime}ms", startupStopwatch.ElapsedMilliseconds);
+                Serilog.Log.Information("Ready to show MainForm...");
+                Serilog.Log.Information("═══════════════════════════════════════════════════════════");
 
             // Now we have a running message pump — safe to resolve MainForm + its dependencies
             // IMPORTANT: MainForm is Scoped, so resolve it within a service scope
@@ -345,8 +410,13 @@ namespace WileyWidget.WinForms
         {
             try
             {
+                Serilog.Log.Information("════════════════════════════════════════════════════════════");
+                Serilog.Log.Information("Syncfusion License Registration (v31.2.16)");
+                Serilog.Log.Information("════════════════════════════════════════════════════════════");
+
                 // Try environment variable first (highest priority)
                 var syncfusionKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+                var keySource = "Environment Variable";
 
                 // If not in environment, try configuration file
                 if (string.IsNullOrEmpty(syncfusionKey))
@@ -358,31 +428,50 @@ namespace WileyWidget.WinForms
                         .Build();
 
                     syncfusionKey = config["Syncfusion:LicenseKey"];
+                    keySource = "Configuration File";
                 }
 
                 if (!string.IsNullOrEmpty(syncfusionKey) && !syncfusionKey.StartsWith("${", StringComparison.Ordinal))
                 {
+                    // Register the license
                     SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
-                    System.Diagnostics.Debug.WriteLine($"SUCCESS: Syncfusion license registered (Key length: {syncfusionKey.Length} chars, Version: 31.2.16)");
-                    Serilog.Log.Information("Syncfusion license registered successfully (v31.2.16, key length: {KeyLength})", syncfusionKey.Length);
+
+                    // Log success with details
+                    System.Diagnostics.Debug.WriteLine($"✓ SUCCESS: Syncfusion license registered");
+                    System.Diagnostics.Debug.WriteLine($"  Source: {keySource}");
+                    System.Diagnostics.Debug.WriteLine($"  Key Length: {syncfusionKey.Length} characters");
+                    System.Diagnostics.Debug.WriteLine($"  Version: 31.2.16");
+                    System.Diagnostics.Debug.WriteLine($"  Assembly: Syncfusion.Licensing v{typeof(SyncfusionLicenseProvider).Assembly.GetName().Version}");
+
+                    Serilog.Log.Information("✓ Syncfusion license registered successfully");
+                    Serilog.Log.Information("  Source: {KeySource}, Length: {KeyLength} chars, Version: 31.2.16", keySource, syncfusionKey.Length);
                 }
                 else
                 {
                     // License key not found - Syncfusion controls will show trial watermark
-                    var warningMsg = "WARNING: Syncfusion license key not found in configuration. Controls will run in trial mode.";
+                    var warningMsg = "⚠ WARNING: Syncfusion license key not found - running in TRIAL MODE";
                     System.Diagnostics.Debug.WriteLine(warningMsg);
-                    Serilog.Log.Warning("Syncfusion license not found - running in trial mode. Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json");
-                    Serilog.Log.Warning("Syncfusion license key not found in configuration. Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json. Controls will run in trial mode.");
+                    System.Diagnostics.Debug.WriteLine("  Controls will display trial watermarks");
+                    System.Diagnostics.Debug.WriteLine("  To fix: Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json");
+                    System.Diagnostics.Debug.WriteLine("  Get trial key: https://www.syncfusion.com/downloads/communitylicense");
+
+                    Serilog.Log.Warning(warningMsg);
+                    Serilog.Log.Warning("Set SYNCFUSION_LICENSE_KEY environment variable or add to appsettings.json");
+                    Serilog.Log.Warning("Controls will run in trial mode with watermarks");
                 }
 
                 // === Register BoldReports License ===
                 RegisterBoldReportsLicense();
+
+                Serilog.Log.Information("════════════════════════════════════════════════════════════");
             }
             catch (Exception ex)
             {
                 // Log to Debug output since we don't have logger yet
-                System.Diagnostics.Debug.WriteLine($"ERROR: Failed to register Syncfusion license: {ex.Message}");
-                Serilog.Log.Error(ex, "Failed to register Syncfusion license");
+                System.Diagnostics.Debug.WriteLine($"✗ ERROR: Failed to register Syncfusion license: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"  Exception Type: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"  Stack Trace: {ex.StackTrace}");
+                Serilog.Log.Error(ex, "Failed to register Syncfusion license - controls will run in trial mode");
                 // Don't throw - allow app to continue in trial mode
             }
         }
@@ -645,6 +734,181 @@ namespace WileyWidget.WinForms
                 // Don't throw - allow app to continue even if migration completely fails
                 // Services will fall back to reading from configuration/environment directly
             }
+        }
+
+        /// <summary>
+        /// Warm up critical services by resolving them early to improve perceived startup performance.
+        /// This initializes expensive services (database connections, caches, etc.) before the UI appears.
+        /// </summary>
+        /// <param name="host">The application host</param>
+        private static void WarmUpCriticalServices(IHost host)
+        {
+            var logger = Serilog.Log.ForContext("SourceContext", "Startup.WarmUp");
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            try
+            {
+                logger.Information("Warming up critical services...");
+
+                using (var scope = host.Services.CreateScope())
+                {
+                    var services = scope.ServiceProvider;
+
+                    // Warm up services in parallel for faster startup
+                    var warmUpTasks = new List<Task>
+                    {
+                        Task.Run(() =>
+                        {
+                            try
+                            {
+                                // Warm up database connection by creating a context
+                                var dbFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                                    .GetService<Microsoft.EntityFrameworkCore.IDbContextFactory<WileyWidget.Data.AppDbContext>>(services);
+                                if (dbFactory != null)
+                                {
+                                    using var context = dbFactory.CreateDbContext();
+                                    var canConnect = context.Database.CanConnect();
+                                    logger.Information("Database connection: {Status}", canConnect ? "✓ Ready" : "✗ Unavailable");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Warning(ex, "Database warm-up failed (non-fatal)");
+                            }
+                        }),
+
+                        Task.Run(() =>
+                        {
+                            try
+                            {
+                                // Warm up cache service
+                                var cacheService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                                    .GetService<WileyWidget.Abstractions.ICacheService>(services);
+                                logger.Debug("Cache service: {Status}", cacheService != null ? "Ready" : "Not available");
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Warning(ex, "Cache warm-up failed (non-fatal)");
+                            }
+                        }),
+
+                        Task.Run(() =>
+                        {
+                            try
+                            {
+                                // Warm up HTTP client factory
+                                var httpFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                                    .GetService<IHttpClientFactory>(services);
+                                if (httpFactory != null)
+                                {
+                                    var client = httpFactory.CreateClient();
+                                    client.Dispose();
+                                    logger.Debug("HTTP client factory: Ready");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Warning(ex, "HTTP client warm-up failed (non-fatal)");
+                            }
+                        })
+                    };
+
+                    // Wait for all warm-up tasks with timeout
+                    Task.WaitAll(warmUpTasks.ToArray(), TimeSpan.FromSeconds(5));
+                }
+
+                stopwatch.Stop();
+                logger.Information("Service warm-up complete ({ElapsedMs}ms)", stopwatch.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                logger.Warning(ex, "Service warm-up encountered errors (non-fatal)");
+            }
+        }
+
+        /// <summary>
+        /// Perform final pre-flight checks before showing the main UI.
+        /// Returns true if all critical checks pass, false otherwise.
+        /// </summary>
+        /// <param name="host">The application host</param>
+        /// <returns>True if pre-flight checks pass</returns>
+        private static bool PerformPreFlightChecks(IHost host)
+        {
+            var logger = Serilog.Log.ForContext("SourceContext", "Startup.PreFlight");
+            bool allChecksPassed = true;
+
+            try
+            {
+                logger.Information("Performing pre-flight checks...");
+
+                // Check 1: Verify ThemeManager is functional
+                var themeManager = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<IThemeManagerService>(host.Services);
+                if (themeManager != null && !themeManager.IsSkinManagerAvailable())
+                {
+                    logger.Warning("⚠ SkinManager not available - UI will use fallback colors");
+                    // Not critical - don't fail
+                }
+
+                // Check 2: Verify configuration is readable
+                var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetRequiredService<IConfiguration>(host.Services);
+                var connString = config["ConnectionStrings:DefaultConnection"];
+                if (string.IsNullOrWhiteSpace(connString))
+                {
+                    logger.Error("✗ Database connection string not configured");
+                    allChecksPassed = false;
+                }
+                else
+                {
+                    logger.Information("✓ Database connection string configured");
+                }
+
+                // Check 3: Verify logging is functional
+                var loggerFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<ILoggerFactory>(host.Services);
+                if (loggerFactory == null)
+                {
+                    logger.Warning("⚠ LoggerFactory not available");
+                    // Not critical
+                }
+                else
+                {
+                    logger.Information("✓ Logging system operational");
+                }
+
+                // Check 4: Verify DI container health
+                using (var scope = host.Services.CreateScope())
+                {
+                    try
+                    {
+                        var testService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                            .GetService<ISettingsService>(scope.ServiceProvider);
+                        logger.Information("✓ DI container operational");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, "✗ DI container health check failed");
+                        allChecksPassed = false;
+                    }
+                }
+
+                if (allChecksPassed)
+                {
+                    logger.Information("✓ All pre-flight checks passed");
+                }
+                else
+                {
+                    logger.Warning("⚠ Some pre-flight checks failed - application may not function correctly");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Pre-flight check process failed");
+                allChecksPassed = false;
+            }
+
+            return allChecksPassed;
         }
 
         /// <summary>

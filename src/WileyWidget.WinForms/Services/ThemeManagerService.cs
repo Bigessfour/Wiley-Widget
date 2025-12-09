@@ -216,6 +216,66 @@ namespace WileyWidget.WinForms.Services
         }
 
         /// <summary>
+        /// Gets diagnostic information about the theme manager state
+        /// </summary>
+        /// <returns>Dictionary containing diagnostic key-value pairs</returns>
+        public Dictionary<string, string> GetDiagnosticInfo()
+        {
+            var diagnostics = new Dictionary<string, string>
+            {
+                { "SkinManagerAvailable", _isSkinManagerAvailable.ToString() },
+                { "CurrentTheme", _currentTheme },
+                { "ConfiguredTheme", _config["UI:SyncfusionTheme"] ?? "not set" },
+                { "ApplicationVisualTheme", SkinManager.ApplicationVisualTheme ?? "not set" }
+            };
+
+            // Try to get Office2019Theme assembly info
+            try
+            {
+                var office2019Assembly = typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly;
+                var assemblyName = office2019Assembly.GetName();
+                diagnostics.Add("Office2019ThemeVersion", assemblyName.Version?.ToString() ?? "unknown");
+                diagnostics.Add("Office2019ThemeLocation", office2019Assembly.Location);
+            }
+            catch (Exception ex)
+            {
+                diagnostics.Add("Office2019ThemeError", ex.Message);
+            }
+
+            // Try to get SkinManager assembly info
+            try
+            {
+                var skinManagerAssembly = typeof(SkinManager).Assembly;
+                var assemblyName = skinManagerAssembly.GetName();
+                diagnostics.Add("SkinManagerVersion", assemblyName.Version?.ToString() ?? "unknown");
+            }
+            catch (Exception ex)
+            {
+                diagnostics.Add("SkinManagerError", ex.Message);
+            }
+
+            return diagnostics;
+        }
+
+        /// <summary>
+        /// Logs detailed diagnostic information about theme system state
+        /// </summary>
+        public void LogDiagnostics()
+        {
+            _logger.LogInformation("═══════════════════════════════════════════════════════════");
+            _logger.LogInformation("ThemeManagerService Diagnostic Information");
+            _logger.LogInformation("═══════════════════════════════════════════════════════════");
+
+            var diagnostics = GetDiagnosticInfo();
+            foreach (var kvp in diagnostics)
+            {
+                _logger.LogInformation("  {Key}: {Value}", kvp.Key, kvp.Value);
+            }
+
+            _logger.LogInformation("═══════════════════════════════════════════════════════════");
+        }
+
+        /// <summary>
         /// Applies manual theme colors to a form when SkinManager is unavailable
         /// </summary>
         /// <param name="form">The form to theme</param>

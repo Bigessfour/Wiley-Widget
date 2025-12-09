@@ -163,11 +163,21 @@ public class StartupDiagnostics : IStartupDiagnostics
             report.Results.Add(result);
         }
 
+        // === Syncfusion SkinManager Health Check ===
+        report.Results.Add(CheckSyncfusionSkinManager());
+
+        // === Environment & Runtime Checks ===
+        report.Results.Add(CheckRuntimeEnvironment());
+        report.Results.Add(CheckAssemblyVersions());
+
         // === Configuration Checks ===
         // Check critical configuration values that could cause runtime exceptions
         report.Results.Add(CheckConfigurationValue("XAI:ApiKey", "XAI API Key", isRequired: false));
         report.Results.Add(CheckConfigurationValue("ConnectionStrings:DefaultConnection", "Database Connection String", isRequired: true));
+        report.Results.Add(CheckConfigurationValue("UI:SyncfusionTheme", "Syncfusion Theme", isRequired: false));
+        report.Results.Add(CheckConfigurationValue("UI:UseSyncfusionDocking", "Docking Manager Feature Flag", isRequired: false));
         report.Results.Add(CheckSecretVaultConfiguration());
+        report.Results.Add(CheckLicensingConfiguration());
 
         _lastReport = report;
 
@@ -292,6 +302,196 @@ public class StartupDiagnostics : IStartupDiagnostics
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Check Syncfusion SkinManager availability and theme assembly loading
+    /// </summary>
+    private DiagnosticCheckResult CheckSyncfusionSkinManager()
+    {
+        var startTime = DateTime.UtcNow;
+        var result = new DiagnosticCheckResult { ServiceName = "Syncfusion SkinManager" };
+
+        try
+        {
+            // Check if SkinManager is available
+            var isSkinManagerAvailable = Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager;
+
+            if (!isSkinManagerAvailable)
+            {
+                result.IsSuccess = false;
+                result.Message = "SkinManager not available - themes will use fallback colors. Check license registration.";
+                _logger.LogWarning("SkinManager not available - this usually indicates licensing or assembly load issues");
+            }
+            else
+            {
+                // Check if Office2019Theme assembly is loaded
+                try
+                {
+                    var office2019Assembly = typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly;
+                    var assemblyName = office2019Assembly.GetName();
+                    var version = assemblyName.Version?.ToString() ?? "unknown";
+
+                    result.IsSuccess = true;
+                    result.Message = $"SkinManager available with Office2019Theme v{version}";
+                    _logger.LogInformation("SkinManager health check passed: Office2019Theme v{Version} loaded", version);
+
+                    // Log current application-wide theme if set
+                    var currentTheme = Syncfusion.Windows.Forms.SkinManager.ApplicationVisualTheme;
+                    if (!string.IsNullOrEmpty(currentTheme))
+                    {
+                        _logger.LogDebug("Current application-wide theme: {Theme}", currentTheme);
+                    }
+                }
+                catch (Exception themeEx)
+                {
+                    result.IsSuccess = false;
+                    result.Message = $"SkinManager available but Office2019Theme assembly load failed: {themeEx.Message}";
+                    result.Exception = themeEx;
+                    _logger.LogError(themeEx, "Failed to load Office2019Theme assembly");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            result.IsSuccess = false;
+            result.Message = $"Error checking SkinManager: {ex.Message}";
+            result.Exception = ex;
+            _logger.LogError(ex, "Failed to check SkinManager health");
+        }
+        finally
+        {
+            result.Duration = DateTime.UtcNow - startTime;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Check runtime environment (OS, .NET version, culture, etc.)
+    /// </summary>
+    private DiagnosticCheckResult CheckRuntimeEnvironment()
+    {
+        var startTime = DateTime.UtcNow;
+        var result = new DiagnosticCheckResult { ServiceName = "Runtime Environment" };
+
+        try
+        {
+            var osVersion = Environment.OSVersion.VersionString;
+            var dotnetVersion = Environment.Version.ToString();
+            var is64Bit = Environment.Is64BitProcess;
+            var culture = System.Globalization.CultureInfo.CurrentCulture.Name;
+
+            result.IsSuccess = true;
+            result.Message = $"OS: {osVersion}, .NET: {dotnetVersion}, Process: {(is64Bit ? "x64" : "x86")}, Culture: {culture}";
+            _logger.LogInformation("Runtime environment: {Message}", result.Message);
+        }
+        catch (Exception ex)
+        {
+            result.IsSuccess = false;
+            result.Message = $"Error checking runtime: {ex.Message}";
+            result.Exception = ex;
+        }
+        finally
+        {
+            result.Duration = DateTime.UtcNow - startTime;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Check critical assembly versions (Syncfusion, EF Core, etc.)
+    /// </summary>
+    private DiagnosticCheckResult CheckAssemblyVersions()
+    {
+        var startTime = DateTime.UtcNow;
+        var result = new DiagnosticCheckResult { ServiceName = "Assembly Versions" };
+
+        try
+        {
+            var assemblies = new Dictionary<string, Version?>
+            {
+                { "Syncfusion.Licensing", typeof(Syncfusion.Licensing.SyncfusionLicenseProvider).Assembly.GetName().Version },
+                { "Syncfusion.WinForms.Core", typeof(Syncfusion.Windows.Forms.SkinManager).Assembly.GetName().Version },
+                { "EntityFrameworkCore", typeof(Microsoft.EntityFrameworkCore.DbContext).Assembly.GetName().Version },
+                { "Microsoft.Extensions.Hosting", typeof(Microsoft.Extensions.Hosting.IHost).Assembly.GetName().Version }
+            };
+
+            var versions = string.Join(", ", assemblies.Select(kvp => $"{kvp.Key}: {kvp.Value?.ToString() ?? "unknown"}"));
+            result.IsSuccess = true;
+            result.Message = versions;
+            _logger.LogDebug("Assembly versions: {Versions}", versions);
+        }
+        catch (Exception ex)
+        {
+            result.IsSuccess = false;
+            result.Message = $"Error checking assemblies: {ex.Message}";
+            result.Exception = ex;
+        }
+        finally
+        {
+            result.Duration = DateTime.UtcNow - startTime;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Check licensing configuration for Syncfusion and BoldReports
+    /// </summary>
+    private DiagnosticCheckResult CheckLicensingConfiguration()
+    {
+        var startTime = DateTime.UtcNow;
+        var result = new DiagnosticCheckResult { ServiceName = "Licensing Configuration" };
+
+        try
+        {
+            var syncfusionKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+            var boldReportsKey = Environment.GetEnvironmentVariable("BOLDREPORTS_LICENSE_KEY");
+
+            // Check configuration if not in environment
+            if (string.IsNullOrEmpty(syncfusionKey))
+            {
+                syncfusionKey = _configuration["Syncfusion:LicenseKey"];
+            }
+            if (string.IsNullOrEmpty(boldReportsKey))
+            {
+                boldReportsKey = _configuration["BoldReports:LicenseKey"];
+            }
+
+            var syncfusionStatus = GetLicenseStatus(syncfusionKey, "Syncfusion");
+            var boldReportsStatus = GetLicenseStatus(boldReportsKey, "BoldReports");
+
+            result.IsSuccess = true; // License is optional, so this check always passes
+            result.Message = $"{syncfusionStatus}, {boldReportsStatus}";
+            _logger.LogInformation("License check: {Message}", result.Message);
+        }
+        catch (Exception ex)
+        {
+            result.IsSuccess = true; // Don't fail startup on license check errors
+            result.Message = $"Error checking licenses (non-fatal): {ex.Message}";
+            _logger.LogWarning(ex, "Failed to check licensing configuration");
+        }
+        finally
+        {
+            result.Duration = DateTime.UtcNow - startTime;
+        }
+
+        return result;
+    }
+
+    private static string GetLicenseStatus(string? licenseKey, string productName)
+    {
+        if (string.IsNullOrWhiteSpace(licenseKey))
+        {
+            return $"{productName}: Not configured (trial mode)";
+        }
+        if (licenseKey.StartsWith("${", StringComparison.Ordinal) && licenseKey.EndsWith("}", StringComparison.Ordinal))
+        {
+            return $"{productName}: Placeholder value (trial mode)";
+        }
+        return $"{productName}: Configured ({licenseKey.Length} chars)";
     }
 
     /// <summary>

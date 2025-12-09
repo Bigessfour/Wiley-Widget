@@ -110,6 +110,9 @@ namespace WileyWidget.WinForms.Forms
                     InitializeSyncfusionDocking();
                 }
 
+                // Initialize MDI support if enabled in configuration
+                InitializeMdiSupport();
+
                 // Subscribe to ViewModel property changes for dynamic updates
                 if (_viewModel != null)
                 {
@@ -313,6 +316,13 @@ namespace WileyWidget.WinForms.Forms
             var refreshItem = new ToolStripMenuItem(MainFormResources.RefreshMenu, null, (s, e) => RefreshDashboard());
             refreshItem.ShortcutKeys = Keys.F5;
             viewMenu.DropDownItems.Add(refreshItem);
+
+            // Add Advanced Docking toggle to View menu
+            viewMenu.DropDownItems.Add(new ToolStripSeparator());
+            var toggleDockingItem = new ToolStripMenuItem("Toggle Advanced Docking", null, (s, e) => ToggleDockingMode());
+            toggleDockingItem.ToolTipText = "Switch between standard and Syncfusion advanced docking modes";
+            toggleDockingItem.ShortcutKeys = Keys.Control | Keys.Alt | Keys.D;
+            viewMenu.DropDownItems.Add(toggleDockingItem);
 
             // Tools menu items
             var settingsMenuItem = new ToolStripMenuItem(MainFormResources.SettingsMenu, null, (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>());
@@ -698,6 +708,10 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void MainForm_KeyDown(object? sender, KeyEventArgs e)
         {
+            // Handle MDI-specific keyboard shortcuts first
+            HandleMdiKeyboardShortcuts(e);
+            if (e.Handled) return;
+
             // Ctrl+1: Toggle AI Chat Panel
             if (e.Control && e.KeyCode == Keys.D1)
             {
@@ -721,6 +735,20 @@ namespace WileyWidget.WinForms.Forms
             {
                 // TODO: Implement Syncfusion docking toggle in Phase 2
                 _logger.LogInformation("Syncfusion docking toggle requested (not yet implemented)");
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+
+            // Ctrl+M: Toggle MDI mode (if not using docking)
+            if (e.Control && e.KeyCode == Keys.M && !_useSyncfusionDocking)
+            {
+                UseMdiMode = !UseMdiMode;
+                _logger.LogInformation("MDI mode toggled to {MdiMode}", UseMdiMode);
+                MessageBox.Show(
+                    UseMdiMode ? "MDI mode enabled. Child forms will open as MDI children." : "MDI mode disabled. Child forms will open as modal dialogs.",
+                    "MDI Mode",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
                 e.Handled = true;
                 e.SuppressKeyPress = true;
             }
@@ -947,8 +975,9 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// Shows a child form as a modal dialog with dependency injection support.
+        /// Shows a child form as either a modal dialog or MDI child based on UseMdiMode setting.
         /// Creates a new service scope for fresh instances of ViewModels and DbContexts.
+        /// When MDI mode is enabled, uses ShowChildFormMdi instead of ShowDialog.
         /// </summary>
         /// <typeparam name="TForm">The type of form to show.</typeparam>
         /// <typeparam name="TViewModel">The type of ViewModel associated with the form.</typeparam>
@@ -956,34 +985,8 @@ namespace WileyWidget.WinForms.Forms
             where TForm : Form
             where TViewModel : class
         {
-            try
-            {
-                _logger.LogInformation("Showing child form {FormType}", typeof(TForm).Name);
-
-                // Create a new scope to get fresh DbContext + ViewModels for each dialog
-                using var scope = _serviceProvider.CreateScope();
-                var form = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TForm>(scope.ServiceProvider);
-                form.ShowDialog(this);
-
-                _logger.LogInformation("Child form {FormType} closed", typeof(TForm).Name);
-            }
-            catch (OperationCanceledException oce)
-            {
-                // Child form startup was canceled (likely shutdown or abort). Log and continue without raising modal errors.
-                _logger.LogDebug(oce, "Showing child form {FormType} was canceled", typeof(TForm).Name);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to show child form {FormType}", typeof(TForm).Name);
-#if DEBUG
-                if (System.Diagnostics.Debugger.IsAttached)
-                {
-                    System.Diagnostics.Debugger.Break();
-                }
-#endif
-                // After logging/alerting, rethrow so callers or the app host can detect and handle the failure
-                throw;
-            }
+            // Delegate to MDI-aware implementation which handles both modes
+            ShowChildFormMdi<TForm, TViewModel>(allowMultiple: false);
         }
 
         protected override void Dispose(bool disposing)
@@ -1018,6 +1021,16 @@ namespace WileyWidget.WinForms.Forms
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed disposing docking resources during form Dispose");
+                }
+
+                // Dispose MDI-related resources
+                try
+                {
+                    DisposeMdiResources();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed disposing MDI resources during form Dispose");
                 }
 
                 // Dispose IContainer for DockingManager
