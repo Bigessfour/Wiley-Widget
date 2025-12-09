@@ -17,10 +17,93 @@ namespace WileyWidget.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.10")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("WileyWidget.Models.ActivityLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Activity")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ActivityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<long?>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("User")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityType")
+                        .HasDatabaseName("IX_ActivityLogs_ActivityType");
+
+                    b.HasIndex("IsArchived")
+                        .HasDatabaseName("IX_ActivityLogs_IsArchived_Filtered")
+                        .HasFilter("[IsArchived] = 0");
+
+                    b.HasIndex("Timestamp")
+                        .IsDescending()
+                        .HasDatabaseName("IX_ActivityLogs_Timestamp");
+
+                    b.HasIndex("User")
+                        .HasDatabaseName("IX_ActivityLogs_User");
+
+                    b.HasIndex("EntityType", "EntityId")
+                        .HasDatabaseName("IX_ActivityLogs_Entity");
+
+                    b.ToTable("ActivityLogs");
+                });
 
             modelBuilder.Entity("WileyWidget.Models.AppSettings", b =>
                 {
@@ -120,7 +203,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AppSettings");
+                    b.ToTable("AppSettings", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.AuditEntry", b =>
@@ -160,7 +243,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuditEntries");
+                    b.ToTable("AuditEntries", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.BudgetEntry", b =>
@@ -256,7 +339,7 @@ namespace WileyWidget.Data.Migrations
                     b.HasIndex("AccountNumber", "FiscalYear")
                         .IsUnique();
 
-                    b.ToTable("BudgetEntries", t =>
+                    b.ToTable("BudgetEntries", null, t =>
                         {
                             t.HasCheckConstraint("CK_Budget_Positive", "[BudgetedAmount] > 0");
                         });
@@ -310,7 +393,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasIndex("SecondaryEnterpriseId");
 
-                    b.ToTable("BudgetInteraction");
+                    b.ToTable("BudgetInteraction", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.BudgetPeriod", b =>
@@ -352,7 +435,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasIndex("Year", "Status");
 
-                    b.ToTable("BudgetPeriods");
+                    b.ToTable("BudgetPeriods", (string)null);
 
                     b.HasData(
                         new
@@ -396,7 +479,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("Departments");
+                    b.ToTable("Departments", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Enterprise", b =>
@@ -492,7 +575,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Enterprises");
+                    b.ToTable("Enterprises", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Entities.Fund", b =>
@@ -518,7 +601,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Funds");
+                    b.ToTable("Funds", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.FiscalYearSettings", b =>
@@ -546,7 +629,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("FiscalYearSettings");
+                    b.ToTable("FiscalYearSettings", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Invoice", b =>
@@ -598,7 +681,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasIndex("VendorId");
 
-                    b.ToTable("Invoices");
+                    b.ToTable("Invoices", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.MunicipalAccount", b =>
@@ -679,7 +762,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasIndex("Fund", "Type");
 
-                    b.ToTable("MunicipalAccounts");
+                    b.ToTable("MunicipalAccounts", (string)null);
 
                     b.HasData(
                         new
@@ -1103,7 +1186,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasIndex("TransactionDate");
 
-                    b.ToTable("Transactions", t =>
+                    b.ToTable("Transactions", null, t =>
                         {
                             t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 0");
                         });
@@ -1240,7 +1323,7 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("UtilityCustomers");
+                    b.ToTable("UtilityCustomers", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Vendor", b =>
@@ -1386,7 +1469,7 @@ namespace WileyWidget.Data.Migrations
 
                             b1.HasKey("MunicipalAccountId");
 
-                            b1.ToTable("MunicipalAccounts");
+                            b1.ToTable("MunicipalAccounts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("MunicipalAccountId");

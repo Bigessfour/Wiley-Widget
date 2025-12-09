@@ -35,6 +35,9 @@ public partial class MainForm
     // Syncfusion TabbedMDIManager for enhanced tabbed MDI interface
     private TabbedMDIManager? _tabbedMdiManager;
 
+    // Preserve original MinimumSize for MDI children when we temporarily override
+    private readonly Dictionary<Form, Size> _mdiChildOriginalMinimumSizes = new();
+
     // Track active MDI child forms to prevent duplicates
     private readonly Dictionary<Type, Form> _activeMdiChildren = new();
 
@@ -115,19 +118,10 @@ public partial class MainForm
             // Disable MDI container
             IsMdiContainer = false;
 
-            // Dispose TabbedMDIManager if it exists
+            // Dispose TabbedMDIManager if it exists (use safe disposal helper)
             if (_tabbedMdiManager != null)
             {
-                try
-                {
-                    _tabbedMdiManager.DetachFromMdiContainer();
-                    _tabbedMdiManager.Dispose();
-                    _tabbedMdiManager = null;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error disposing TabbedMDIManager");
-                }
+                SafeDisposeExistingTabbedMdiManager();
             }
 
             _logger.LogInformation("MDI container mode disabled");
@@ -144,51 +138,124 @@ public partial class MainForm
         {
             _logger.LogInformation("Initializing Syncfusion TabbedMDIManager");
 
-            // Create TabbedMDIManager instance
-            _tabbedMdiManager = new TabbedMDIManager
+            // If a previous TabbedMDIManager exists, try to cleanly detach and dispose it
+            if (_tabbedMdiManager != null)
             {
-                // Tab positioning
-                TabsTextOrientation = System.Windows.Forms.Orientation.Horizontal,
+                _logger.LogDebug("Existing TabbedMDIManager found during initialization - detaching/disposing to ensure clean state");
+                SafeDisposeExistingTabbedMdiManager();
+            }
 
-                // Enable close button on tabs
-                ShowCloseButton = true,
+            // Ensure any leftover ContextMenu placeholder is cleared before creating a new manager
+            ClearTabbedTabControlContextMenu();
 
-                // Tab appearance - use ThemeName instead of hardcoded colors
-                TabControlAdv =
+            // Create TabbedMDIManager instance
+            _tabbedMdiManager = new TabbedMDIManager();
+            try
+            {
+                var dmType = _tabbedMdiManager!.GetType();
+
+                var tabsOrientProp = dmType.GetProperty("TabsTextOrientation");
+                if (tabsOrientProp != null && tabsOrientProp.CanWrite)
+                    tabsOrientProp.SetValue(_tabbedMdiManager, System.Windows.Forms.Orientation.Horizontal);
+
+                var showCloseProp = dmType.GetProperty("ShowCloseButton");
+                if (showCloseProp != null && showCloseProp.CanWrite)
+                    showCloseProp.SetValue(_tabbedMdiManager, true);
+
+                var tabControlProp = dmType.GetProperty("TabControlAdv");
+                if (tabControlProp != null)
                 {
-                    ShowTabCloseButton = true,
-                    ShowScroll = true,
-                    SizeMode = Syncfusion.Windows.Forms.Tools.TabSizeMode.Normal,
-                    TabGap = 2
-                },
+                    var tabControl = tabControlProp.GetValue(_tabbedMdiManager);
+                    if (tabControl != null)
+                    {
+                        var p = tabControl.GetType().GetProperty("ShowTabCloseButton");
+                        if (p != null && p.CanWrite) p.SetValue(tabControl, true);
+                        var p2 = tabControl.GetType().GetProperty("ShowScroll");
+                        if (p2 != null && p2.CanWrite) p2.SetValue(tabControl, true);
+                        var p3 = tabControl.GetType().GetProperty("SizeMode");
+                        if (p3 != null && p3.CanWrite)
+                        {
+                            try
+                            {
+                                var enumVal = Enum.Parse(p3.PropertyType, "Normal");
+                                p3.SetValue(tabControl, enumVal);
+                            }
+                            catch { }
+                        }
+                        var p4 = tabControl.GetType().GetProperty("TabGap");
+                        if (p4 != null && p4.CanWrite) p4.SetValue(tabControl, 2);
+                    }
+                }
 
-                // Enable drop-down for tab list when many tabs are open
-                ShowTabListPopup = true,
+                var listPopupProp = dmType.GetProperty("ShowTabListPopup");
+                if (listPopupProp != null && listPopupProp.CanWrite) listPopupProp.SetValue(_tabbedMdiManager, true);
 
-                // Enable New and Close buttons
-                ShowNewButton = false, // We handle this through menus
-            };
+                var newBtnProp = dmType.GetProperty("ShowNewButton");
+                if (newBtnProp != null && newBtnProp.CanWrite) newBtnProp.SetValue(_tabbedMdiManager, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "TabbedMDI property reflection failed");
+            }
 
             // Apply theme from configuration (uses SkinManager)
             var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
             _tabbedMdiManager.ThemeName = themeName;
 
-            // Also apply theme to TabControlAdv
-            if (_tabbedMdiManager.TabControlAdv != null)
+            // Also apply theme to TabControlAdv (if available via this Syncfusion version)
+            var tabCtrlObj = _tabbedMdiManager?.GetType().GetProperty("TabControlAdv")?.GetValue(_tabbedMdiManager);
+            if (tabCtrlObj != null)
             {
-                _tabbedMdiManager.TabControlAdv.ThemeName = themeName;
+                var themeProp = tabCtrlObj.GetType().GetProperty("ThemeName");
+                if (themeProp != null && themeProp.CanWrite)
+                    themeProp.SetValue(tabCtrlObj, themeName);
             }
 
             // Attach to this MDI container
-            _tabbedMdiManager.AttachToMdiContainer(this);
+            try
+            {
+                var dmType = _tabbedMdiManager.GetType();
+                var attach = dmType.GetMethod("AttachToMdiContainer", new[] { typeof(Form) }) ?? dmType.GetMethod("AttachToMdiContainer");
+                attach?.Invoke(_tabbedMdiManager, new object[] { this });
 
-            // Subscribe to tab events
-            _tabbedMdiManager.TabControlAdded += OnTabbedMdiTabControlAdded;
-            _tabbedMdiManager.BeforeDropDownPopup += OnBeforeDropDownPopup;
-            _tabbedMdiManager.MdiChildActivate += OnMdiChildActivate;
+                    var ev1 = dmType.GetEvent("TabControlAdded");
+                    if (ev1 != null)
+                    {
+                        var eventType1 = ev1.EventHandlerType;
+                        if (eventType1 != null)
+                        {
+                            try { var handler = Delegate.CreateDelegate(eventType1!, this, nameof(OnTabbedMdiTabControlAdded)); ev1.AddEventHandler(_tabbedMdiManager, handler); } catch { }
+                        }
+                    }
 
-            // Configure additional features
-            ConfigureTabbedMdiFeatures();
+                    var ev2 = dmType.GetEvent("BeforeDropDownPopup");
+                    if (ev2 != null)
+                    {
+                        var eventType2 = ev2.EventHandlerType;
+                        if (eventType2 != null)
+                        {
+                            try { var handler2 = Delegate.CreateDelegate(eventType2!, this, nameof(OnBeforeDropDownPopup)); ev2.AddEventHandler(_tabbedMdiManager, handler2); } catch { }
+                        }
+                    }
+
+                    var ev3 = dmType.GetEvent("MdiChildActivate");
+                    if (ev3 != null)
+                    {
+                        var eventType3 = ev3.EventHandlerType;
+                        if (eventType3 != null)
+                        {
+                            try { var handler3 = Delegate.CreateDelegate(eventType3!, this, nameof(OnMdiChildActivate)); ev3.AddEventHandler(_tabbedMdiManager, handler3); } catch { }
+                        }
+                    }
+
+                // Configure additional features
+                ConfigureTabbedMdiFeatures();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "TabbedMDI attach/event reflection failed");
+                ConfigureTabbedMdiFeatures();
+            }
 
             _logger.LogInformation("TabbedMDIManager initialized successfully");
         }
@@ -202,17 +269,114 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// Clear any ContextMenuStrip/Holders on the TabControlAdv that may be tied to a previous TabbedMDIManager.
+    /// This prevents Syncfusion exceptions about reusing a ContextMenuPlaceHolder for different managers.
+    /// </summary>
+    private void ClearTabbedTabControlContextMenu()
+    {
+        try
+        {
+            var tabCtrl = GetTabbedTabControl();
+            if (tabCtrl == null) return;
+
+            var ctxProp = tabCtrl.GetType().GetProperty("ContextMenuStrip");
+            if (ctxProp != null && ctxProp.CanWrite)
+            {
+                try
+                {
+                    // Set to null explicitly to remove any placeholder association
+                    ctxProp.SetValue(tabCtrl, null);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to clear TabControlAdv ContextMenuStrip via reflection");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "ClearTabbedTabControlContextMenu encountered an error");
+        }
+    }
+
+    /// <summary>
+    /// Attempt to safely detach and dispose of the existing TabbedMDIManager.
+    /// This will try to clear events, detach from container, and dispose the object.
+    /// </summary>
+    private void SafeDisposeExistingTabbedMdiManager()
+    {
+        if (_tabbedMdiManager == null) return;
+
+        try
+        {
+            // Clear ContextMenu placeholder first
+            ClearTabbedTabControlContextMenu();
+
+            var dmType = _tabbedMdiManager.GetType();
+
+            // Remove event handlers where possible
+            try
+            {
+                var ev1 = dmType.GetEvent("TabControlAdded");
+                if (ev1 != null && ev1.EventHandlerType != null)
+                {
+                    try { var handler = Delegate.CreateDelegate(ev1.EventHandlerType, this, nameof(OnTabbedMdiTabControlAdded)); ev1.RemoveEventHandler(_tabbedMdiManager, handler); } catch { }
+                }
+
+                var ev2 = dmType.GetEvent("BeforeDropDownPopup");
+                if (ev2 != null && ev2.EventHandlerType != null)
+                {
+                    try { var handler2 = Delegate.CreateDelegate(ev2.EventHandlerType, this, nameof(OnBeforeDropDownPopup)); ev2.RemoveEventHandler(_tabbedMdiManager, handler2); } catch { }
+                }
+
+                var ev3 = dmType.GetEvent("MdiChildActivate");
+                if (ev3 != null && ev3.EventHandlerType != null)
+                {
+                    try { var handler3 = Delegate.CreateDelegate(ev3.EventHandlerType, this, nameof(OnMdiChildActivate)); ev3.RemoveEventHandler(_tabbedMdiManager, handler3); } catch { }
+                }
+            }
+            catch { }
+
+            // Try to detach from MDI container using either signature
+            try
+            {
+                var noArg = dmType.GetMethod("DetachFromMdiContainer", Type.EmptyTypes);
+                if (noArg != null) noArg.Invoke(_tabbedMdiManager, null);
+                else
+                {
+                    var oneBool = dmType.GetMethods().FirstOrDefault(m => m.Name == "DetachFromMdiContainer" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(bool));
+                    oneBool?.Invoke(_tabbedMdiManager, new object[] { false });
+                }
+            }
+            catch { }
+
+            // Dispose instance
+            try { _tabbedMdiManager.Dispose(); } catch { }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error disposing existing TabbedMDIManager safely");
+        }
+        finally
+        {
+            _tabbedMdiManager = null;
+        }
+    }
+
+    /// <summary>
     /// Handle TabbedMDI tab control added event.
     /// </summary>
     private void OnTabbedMdiTabControlAdded(object? sender, TabbedMDITabControlEventArgs e)
     {
         try
         {
-            // Apply theme to newly added tab control
-            if (e.TabControlAdv != null)
+            // Apply theme to newly added tab control (reflection-safe)
+            var newTabControl = e?.GetType().GetProperty("TabControlAdv")?.GetValue(e);
+            if (newTabControl != null)
             {
                 var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
-                e.TabControlAdv.ThemeName = themeName;
+                var themeProp = newTabControl.GetType().GetProperty("ThemeName");
+                if (themeProp != null && themeProp.CanWrite) themeProp.SetValue(newTabControl, themeName);
                 _logger.LogDebug("Applied {ThemeName} theme to TabbedMDI tab control", themeName);
             }
         }
@@ -267,18 +431,27 @@ public partial class MainForm
             // This allows users to drag tabs to reorder them or create new tab groups
 
             // Configure tab appearance
-            if (_tabbedMdiManager.TabControlAdv != null)
+            var tabControl = GetTabbedTabControl();
+            if (tabControl != null)
             {
-                var tabControl = _tabbedMdiManager.TabControlAdv;
+                try
+                {
+                    var showTTProp = tabControl.GetType().GetProperty("ShowToolTips");
+                    if (showTTProp != null && showTTProp.CanWrite) showTTProp.SetValue(tabControl, true);
 
-                // Enable tooltips on tabs
-                tabControl.ShowToolTips = true;
+                    var fixedBorderProp = tabControl.GetType().GetProperty("FixedSingleBorderColor");
+                    if (fixedBorderProp != null && fixedBorderProp.CanWrite) fixedBorderProp.SetValue(tabControl, Color.FromArgb(45, 45, 48));
 
-                // Configure tab sizing
-                tabControl.FixedSingleBorderColor = Color.FromArgb(45, 45, 48);
-
-                // Tab selection behavior
-                tabControl.TabStyle = typeof(Syncfusion.Windows.Forms.Tools.TabRendererOffice2016Colorful);
+                    var tabStyleProp = tabControl.GetType().GetProperty("TabStyle");
+                    if (tabStyleProp != null && tabStyleProp.CanWrite)
+                    {
+                        try { tabStyleProp.SetValue(tabControl, typeof(Syncfusion.Windows.Forms.Tools.TabRendererOffice2016Colorful)); } catch { }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to apply TabControlAdv features via reflection");
+                }
             }
 
             // Configure context menu for tabs
@@ -297,7 +470,8 @@ public partial class MainForm
     /// </summary>
     private void ConfigureTabContextMenu()
     {
-        if (_tabbedMdiManager?.TabControlAdv == null) return;
+        var tabControl = GetTabbedTabControl();
+            if (tabControl == null) return;
 
         try
         {
@@ -352,8 +526,33 @@ public partial class MainForm
             tabContextMenu.Items.Add(separator1);
             tabContextMenu.Items.Add(newWindowItem);
 
-            // Assign context menu to TabControlAdv
-            _tabbedMdiManager.TabControlAdv.ContextMenuStrip = tabContextMenu;
+            // Assign context menu to TabControlAdv (clear any placeholder first)
+            var tabCtrl = GetTabbedTabControl();
+            if (tabCtrl != null)
+            {
+                var ctxProp = tabCtrl.GetType().GetProperty("ContextMenuStrip");
+                if (ctxProp != null && ctxProp.CanWrite)
+                {
+                    try
+                    {
+                        // Clear existing/placeholder first (may be from previous manager)
+                        ctxProp.SetValue(tabCtrl, null);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to clear existing TabControlAdv ContextMenuStrip before setting new one");
+                    }
+
+                    try
+                    {
+                        ctxProp.SetValue(tabCtrl, tabContextMenu);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set ContextMenuStrip on TabControlAdv");
+                    }
+                }
+            }
 
             _logger.LogDebug("Tab context menu configured");
         }
@@ -474,7 +673,18 @@ public partial class MainForm
         }
 
         _logger.LogInformation("Added Window menu with MDI management commands");
-    }
+        }
+
+        private object? GetTabbedTabControl()
+        {
+            try
+            {
+                if (_tabbedMdiManager == null) return null;
+                var prop = _tabbedMdiManager.GetType().GetProperty("TabControlAdv");
+                return prop?.GetValue(_tabbedMdiManager);
+            }
+            catch { return null; }
+        }
 
     /// <summary>
     /// Close all MDI child forms.
@@ -553,6 +763,29 @@ public partial class MainForm
             var scope = _serviceProvider.CreateScope();
             var form = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TForm>(scope.ServiceProvider);
 
+            // Enforce TabbedMDI constraints: child forms hosted in a TabbedMDIManager must have default MinimumSize (0,0)
+            try
+            {
+                if (_tabbedMdiManager != null)
+                {
+                    if (form.MinimumSize.Width != 0 || form.MinimumSize.Height != 0)
+                    {
+                        try
+                        {
+                            _mdiChildOriginalMinimumSizes[form] = form.MinimumSize;
+                        }
+                        catch { }
+
+                        try { form.MinimumSize = Size.Empty; } catch { }
+                        _logger.LogDebug("Overrode non-default MinimumSize for TabbedMDI child {FormType}", typeof(TForm).Name);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error enforcing MinimumSize for TabbedMDI child {FormType}", typeof(TForm).Name);
+            }
+
             // Configure as MDI child
             form.MdiParent = this;
 
@@ -562,6 +795,16 @@ public partial class MainForm
                 try
                 {
                     _activeMdiChildren.Remove(typeof(TForm));
+                    // Restore original MinimumSize if we changed it earlier
+                    try
+                    {
+                        if (_mdiChildOriginalMinimumSizes.TryGetValue(form, out var original))
+                        {
+                            try { if (!form.IsDisposed) form.MinimumSize = original; } catch { }
+                            _mdiChildOriginalMinimumSizes.Remove(form);
+                        }
+                    }
+                    catch { }
                     scope.Dispose();
                     _logger.LogDebug("MDI child {FormType} closed and cleaned up", typeof(TForm).Name);
                 }
@@ -635,17 +878,63 @@ public partial class MainForm
             {
                 try
                 {
-                    _tabbedMdiManager.TabControlAdded -= OnTabbedMdiTabControlAdded;
-                    _tabbedMdiManager.BeforeDropDownPopup -= OnBeforeDropDownPopup;
-                    _tabbedMdiManager.MdiChildActivate -= OnMdiChildActivate;
-
-                    // Dispose context menu if exists
-                    if (_tabbedMdiManager.TabControlAdv?.ContextMenuStrip != null)
+                    // Remove event handlers via reflection so we can compile/run against
+                    // multiple Syncfusion versions which may not expose the same events
+                    try
                     {
-                        _tabbedMdiManager.TabControlAdv.ContextMenuStrip.Dispose();
+                        var dmType = _tabbedMdiManager.GetType();
+
+                        var ev1 = dmType.GetEvent("TabControlAdded");
+                        if (ev1 != null && ev1.EventHandlerType != null)
+                        {
+                            try { var handler = Delegate.CreateDelegate(ev1.EventHandlerType, this, nameof(OnTabbedMdiTabControlAdded)); ev1.RemoveEventHandler(_tabbedMdiManager, handler); } catch { }
+                        }
+
+                        var ev2 = dmType.GetEvent("BeforeDropDownPopup");
+                        if (ev2 != null && ev2.EventHandlerType != null)
+                        {
+                            try { var handler2 = Delegate.CreateDelegate(ev2.EventHandlerType, this, nameof(OnBeforeDropDownPopup)); ev2.RemoveEventHandler(_tabbedMdiManager, handler2); } catch { }
+                        }
+
+                        var ev3 = dmType.GetEvent("MdiChildActivate");
+                        if (ev3 != null && ev3.EventHandlerType != null)
+                        {
+                            try { var handler3 = Delegate.CreateDelegate(ev3.EventHandlerType, this, nameof(OnMdiChildActivate)); ev3.RemoveEventHandler(_tabbedMdiManager, handler3); } catch { }
+                        }
+                    }
+                    catch { }
+
+                    // Dispose context menu if exists - clear property first to remove any placeholder binding
+                    var tabCtrl = GetTabbedTabControl();
+                    if (tabCtrl != null)
+                    {
+                        var ctxProp = tabCtrl.GetType().GetProperty("ContextMenuStrip");
+                        if (ctxProp != null && ctxProp.CanWrite)
+                        {
+                            object? existing = null;
+                            try { existing = ctxProp.GetValue(tabCtrl); } catch { }
+
+                            try { ctxProp.SetValue(tabCtrl, null); } catch { }
+
+                            if (existing is IDisposable disp)
+                            {
+                                try { disp.Dispose(); } catch { }
+                            }
+                        }
                     }
 
-                    _tabbedMdiManager.DetachFromMdiContainer();
+                    try
+                    {
+                        var dmType = _tabbedMdiManager.GetType();
+                        var noArg = dmType.GetMethod("DetachFromMdiContainer", Type.EmptyTypes);
+                        if (noArg != null) noArg.Invoke(_tabbedMdiManager, null);
+                        else
+                        {
+                            var oneBool = dmType.GetMethods().FirstOrDefault(m => m.Name == "DetachFromMdiContainer" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(bool));
+                            oneBool?.Invoke(_tabbedMdiManager, new object[] { false });
+                        }
+                    }
+                    catch { }
                     _tabbedMdiManager.Dispose();
                     _tabbedMdiManager = null;
                     _logger.LogDebug("TabbedMDIManager disposed successfully");
