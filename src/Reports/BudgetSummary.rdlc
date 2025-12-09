@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<?pub?><Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2008/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+<?pub?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2008/01/reportdefinition"
+  xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
   <ReportSections>
     <ReportSection>
       <Body>
@@ -9,6 +11,7 @@
           </Textbox>
           <Tablix Name="TotalsTable">
             <DataSetName>BudgetData</DataSetName>
+            <NoRowsMessage>No budget summary data found.</NoRowsMessage>
             <TablixColumns>
               <TablixColumn>
                 <Width>2in</Width>
@@ -53,11 +56,23 @@
                   <ChartDataPoint>
                     <ChartValue>
                       <ChartExpression>=Fields!Value.Value</ChartExpression>
-                    </ChartDataPoint>
+                    </ChartValue>
+                  </ChartDataPoint>
                 </DataPoints>
               </ChartSeries>
             </ChartSeries>
           </Chart>
+          <Textbox Name="BudgetChart_NoData">
+            <Value>No data available for the budget chart.</Value>
+            <Left>0.25in</Left>
+            <Top>0.8in</Top>
+            <Width>6in</Width>
+            <Height>0.25in</Height>
+            <Style>
+              <Color>rgb(120,120,120)</Color>
+              <FontFamily>Segoe UI</FontFamily>
+            </Style>
+          </Textbox>
         </ReportItems>
       </Body>
     </ReportSection>

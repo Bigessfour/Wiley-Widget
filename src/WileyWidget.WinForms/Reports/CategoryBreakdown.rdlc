@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition"
+  xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner"
+  xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
   <df:DefaultFontFamily>Segoe UI</df:DefaultFontFamily>
   <ReportParameters>
     <ReportParameter Name="ReportTitle">
@@ -7,6 +9,15 @@
       <DefaultValue>
         <Values>
           <Value>Category Breakdown</Value>
+        </Values>
+      </DefaultValue>
+    </ReportParameter>
+    <ReportParameter Name="ReportCulture">
+      <DataType>String</DataType>
+      <AllowBlank>true</AllowBlank>
+      <DefaultValue>
+        <Values>
+          <Value>en-US</Value>
         </Values>
       </DefaultValue>
     </ReportParameter>
@@ -92,6 +103,7 @@
             <ChartData>
               <ChartSeriesCollection>
                 <ChartSeries Name="Amount">
+                  <ChartType>Column</ChartType>
                   <ChartDataPoints>
                     <ChartDataPoint>
                       <ChartDataPointValues>
@@ -158,12 +170,27 @@
             <ChartCategoryDatasetsDefaultStyle />
             <ChartSeriesDatasetsDefaultStyle />
             <DataSetName>CategoryDataSet</DataSetName>
+            <NoRowsMessage>No categories found for selected criteria.</NoRowsMessage>
             <Top>0.8in</Top>
             <Left>0.25in</Left>
             <Height>3in</Height>
             <Width>6in</Width>
             <Style />
           </Chart>
+          <Textbox Name="CategoryChart_NoData">
+            <Value>No data available for selected criteria.</Value>
+            <Left>0.25in</Left>
+            <Top>0.8in</Top>
+            <Width>6in</Width>
+            <Height>0.25in</Height>
+            <Visibility>
+              <Hidden>=IIF(CountRows("CategoryDataSet") = 0, false, true)</Hidden>
+            </Visibility>
+            <Style>
+              <Color>rgb(120,120,120)</Color>
+              <FontFamily>Segoe UI</FontFamily>
+            </Style>
+          </Textbox>
           <Table Name="CategoryTable">
             <DataSetName>CategoryDataSet</DataSetName>
             <Visibility>
@@ -268,6 +295,60 @@
                 </TableCells>
               </TableRow>
               <TableRow>
+                <Height>0.3in</Height>
+                <TableCells>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="CatTotalLabel">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Total</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Left</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="AmountTotal">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Sum(Fields!Amount.Value)</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Right</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="PctTotal">
+                        <Value></Value>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                </TableCells>
+              </TableRow>
+              <TableRow>
                 <Height>0.25in</Height>
                 <TableCells>
                   <TableCell>
@@ -309,7 +390,7 @@
                           <Paragraph>
                             <TextRuns>
                               <TextRun>
-                                <Value>=Format(Fields!Amount.Value, "C")</Value>
+                                <Value>=Format(Fields!Amount.Value, "C", Parameters!ReportCulture.Value)</Value>
                                 <Style>
                                   <FontFamily>Segoe UI</FontFamily>
                                   <FontSize>10pt</FontSize>
@@ -374,7 +455,6 @@
             <Left>0.25in</Left>
             <Top>4in</Top>
             <Width>6in</Width>
-            <Height>1in</Height>
           </Table>
           <Textbox Name="FooterText">
             <CanGrow>true</CanGrow>

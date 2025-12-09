@@ -21,11 +21,13 @@ namespace WileyWidget.WinForms.Tests
     {
         private readonly Mock<ILogger<MainViewModel>> _mockLogger;
         private readonly Mock<IMainDashboardService> _mockDashboardService;
+        private readonly Mock<WileyWidget.Services.IAILoggingService> _mockAiLoggingService;
 
         public MainViewModelTests()
         {
             _mockLogger = new Mock<ILogger<MainViewModel>>();
             _mockDashboardService = new Mock<IMainDashboardService>();
+            _mockAiLoggingService = new Mock<WileyWidget.Services.IAILoggingService>();
 
             // Setup default dashboard data response
             _mockDashboardService.Setup(x => x.LoadDashboardDataAsync(It.IsAny<CancellationToken>()))
@@ -36,7 +38,7 @@ namespace WileyWidget.WinForms.Tests
         public void Constructor_WithValidLogger_ShouldSucceed()
         {
             // Act
-            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object);
+            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object, _mockAiLoggingService.Object);
 
             // Assert
             viewModel.Should().NotBeNull();
@@ -57,7 +59,7 @@ namespace WileyWidget.WinForms.Tests
         public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
         {
             // Act
-            Action act = () => new MainViewModel(null!, _mockDashboardService.Object);
+            Action act = () => new MainViewModel(null!, _mockDashboardService.Object, _mockAiLoggingService.Object);
 
             // Assert
             act.Should().Throw<ArgumentNullException>()
@@ -68,7 +70,7 @@ namespace WileyWidget.WinForms.Tests
         public async Task InitializeAsync_ShouldCompleteWithoutException()
         {
             // Arrange
-            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object);
+            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object, _mockAiLoggingService.Object);
 
             // Act
             Func<Task> act = async () => await viewModel.InitializeAsync();
@@ -81,7 +83,7 @@ namespace WileyWidget.WinForms.Tests
         public async Task InitializeAsync_WithCancellationToken_ShouldComplete()
         {
             // Arrange
-            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object);
+            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object, _mockAiLoggingService.Object);
             using var cts = new CancellationTokenSource();
 
             // Act
@@ -100,7 +102,7 @@ namespace WileyWidget.WinForms.Tests
             mockService.Setup(x => x.LoadDashboardDataAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new OperationCanceledException());
 
-            var viewModel = new MainViewModel(_mockLogger.Object, mockService.Object);
+            var viewModel = new MainViewModel(_mockLogger.Object, mockService.Object, _mockAiLoggingService.Object);
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
@@ -125,7 +127,7 @@ namespace WileyWidget.WinForms.Tests
         public async Task LoadDataCommand_Execute_ShouldCompleteWithoutException()
         {
             // Arrange
-            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object);
+            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object, _mockAiLoggingService.Object);
 
             // Act
             Func<Task> act = async () =>
@@ -146,7 +148,7 @@ namespace WileyWidget.WinForms.Tests
         public void Title_Property_ShouldBeObservable()
         {
             // Arrange
-            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object);
+            var viewModel = new MainViewModel(_mockLogger.Object, _mockDashboardService.Object, _mockAiLoggingService.Object);
             var propertyChangedRaised = false;
             viewModel.PropertyChanged += (s, e) =>
             {

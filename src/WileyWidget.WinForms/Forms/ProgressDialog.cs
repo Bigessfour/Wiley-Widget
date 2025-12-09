@@ -18,6 +18,8 @@ namespace WileyWidget.WinForms.Forms
 
         public ProgressDialog(string title = "Processing", string initialMessage = "Working...")
         {
+            InitializeComponent();
+
             Text = title;
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -155,6 +157,15 @@ namespace WileyWidget.WinForms.Forms
                 _progressBar.Style = ProgressBarStyle.Continuous;
                 try { _progressBar.MarqueeAnimationSpeed = 0; } catch { }
             }
+        }
+
+        /// <summary>
+        /// Initialize form components
+        /// </summary>
+        private void InitializeComponent()
+        {
+            SuspendLayout();
+            ResumeLayout(false);
         }
     }
 }

@@ -56,6 +56,27 @@ namespace WileyWidget.WinForms
                     Serilog.Log.Warning("GlobalExceptionHandlerService not available - using fallback handlers");
                 }
 
+                // === INITIALIZE THEME MANAGEMENT SERVICE ===
+                // Resolve theme manager and set application-wide theme from configuration
+                var themeManager = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<IThemeManagerService>(host.Services);
+                if (themeManager is not null)
+                {
+                    var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                        .GetRequiredService<IConfiguration>(host.Services);
+                    var configuredTheme = config["UI:SyncfusionTheme"] ?? "Office2019DarkGray";
+                    if (Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+                    {
+                        Syncfusion.Windows.Forms.SkinManager.ApplicationVisualTheme = configuredTheme;
+                        Serilog.Log.Information("Application-wide theme set to: {ThemeName}", configuredTheme);
+                    }
+                    Serilog.Log.Information("ThemeManagerService initialized successfully");
+                }
+                else
+                {
+                    Serilog.Log.Warning("ThemeManagerService not available - theme management disabled");
+                }
+
                 // === VALIDATE DI CONFIGURATION ===
                 // NOW validate DI after host is built and logger is properly configured
                 // This prevents Serilog ReloadableLogger from freezing prematurely
@@ -82,6 +103,14 @@ namespace WileyWidget.WinForms
                 try
                 {
                     var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider);
+
+                    // Apply theme to MainForm using ThemeManagerService
+                    var mainFormThemeManager = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeManagerService>(scope.ServiceProvider);
+                    if (mainFormThemeManager != null)
+                    {
+                        mainFormThemeManager.ApplyTheme(mainForm);
+                    }
+
                     Application.Run(mainForm);
                 }
                 catch (Exception ex)

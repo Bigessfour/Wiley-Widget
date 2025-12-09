@@ -1,0 +1,78 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\biges\Desktop\Wiley-Widget\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\biges\Desktop\Wiley-Widget
+configfile: pyproject.toml
+plugins: asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 51 items
+
+tests/test_validate_views.py::TestViewValidator::test_check_form_inheritance_valid PASSED [  1%]
+tests/test_validate_views.py::TestViewValidator::test_check_form_inheritance_invalid FAILED [  3%]
+tests/test_validate_views.py::TestViewValidator::test_check_syncfusion_controls_present FAILED [  5%]
+tests/test_validate_views.py::TestViewValidator::test_check_syncfusion_controls_missing FAILED [  7%]
+tests/test_validate_views.py::TestViewValidator::test_check_syncfusion_controls_mixed FAILED [  9%]
+tests/test_validate_views.py::TestViewValidator::test_check_theming_applied PASSED [ 11%]
+tests/test_validate_views.py::TestViewValidator::test_check_theming_missing PASSED [ 13%]
+tests/test_validate_views.py::TestViewValidator::test_check_theming_inconsistent PASSED [ 15%]
+tests/test_validate_views.py::TestViewValidator::test_check_viewmodel_binding_with_binding PASSED [ 17%]
+tests/test_validate_views.py::TestViewValidator::test_check_viewmodel_binding_without_binding PASSED [ 19%]
+tests/test_validate_views.py::TestViewValidator::test_check_disposal_with_override PASSED [ 21%]
+tests/test_validate_views.py::TestViewValidator::test_check_disposal_missing_override PASSED [ 23%]
+tests/test_validate_views.py::TestViewValidator::test_check_docking_manager_proper_init PASSED [ 25%]
+tests/test_validate_views.py::TestViewValidator::test_check_docking_manager_missing_init PASSED [ 27%]
+tests/test_validate_views.py::TestViewValidator::test_check_docking_manager_missing_config PASSED [ 29%]
+tests/test_validate_views.py::TestViewValidator::test_check_ribbon_proper_init FAILED [ 31%]
+tests/test_validate_views.py::TestViewValidator::test_check_ribbon_missing_init PASSED [ 33%]
+tests/test_validate_views.py::TestViewValidator::test_check_ribbon_no_tabs PASSED [ 35%]
+tests/test_validate_views.py::TestViewValidator::test_check_data_binding_complete PASSED [ 37%]
+tests/test_validate_views.py::TestViewValidator::test_check_data_binding_missing_source PASSED [ 39%]
+tests/test_validate_views.py::TestViewValidator::test_check_data_binding_missing_columns PASSED [ 41%]
+tests/test_validate_views.py::TestViewValidator::test_check_thread_safety_proper PASSED [ 43%]
+tests/test_validate_views.py::TestViewValidator::test_check_thread_safety_missing PASSED [ 45%]
+tests/test_validate_views.py::TestViewValidator::test_check_initialization_proper PASSED [ 47%]
+tests/test_validate_views.py::TestViewValidator::test_check_initialization_missing PASSED [ 49%]
+tests/test_validate_views.py::TestViewValidator::test_check_initialization_wrong_order PASSED [ 50%]
+tests/test_validate_views.py::TestViewValidator::test_check_accessibility_complete PASSED [ 52%]
+tests/test_validate_views.py::TestViewValidator::test_check_accessibility_missing_tabindex PASSED [ 54%]
+tests/test_validate_views.py::TestViewValidator::test_check_accessibility_missing_accessible_props PASSED [ 56%]
+tests/test_validate_views.py::TestViewValidator::test_check_performance_with_suspend PASSED [ 58%]
+tests/test_validate_views.py::TestViewValidator::test_check_performance_missing_suspend PASSED [ 60%]
+tests/test_validate_views.py::TestViewValidator::test_check_error_handling_present PASSED [ 62%]
+tests/test_validate_views.py::TestViewValidator::test_check_error_handling_missing PASSED [ 64%]
+tests/test_validate_views.py::TestViewValidator::test_check_localization_with_attribute PASSED [ 66%]
+tests/test_validate_views.py::TestViewValidator::test_check_localization_many_hardcoded_strings PASSED [ 68%]
+tests/test_validate_views.py::TestViewValidator::test_check_control_naming_good_names PASSED [ 70%]
+tests/test_validate_views.py::TestViewValidator::test_check_control_naming_generic_names PASSED [ 72%]
+tests/test_validate_views.py::TestViewValidator::test_check_control_naming_hungarian_notation PASSED [ 74%]
+tests/test_validate_views.py::TestViewValidator::test_check_layout_with_dock PASSED [ 76%]
+tests/test_validate_views.py::TestViewValidator::test_check_layout_missing_dock PASSED [ 78%]
+tests/test_validate_views.py::TestViewValidator::test_check_event_handlers_proper_cleanup PASSED [ 80%]
+tests/test_validate_views.py::TestViewValidator::test_check_event_handlers_no_cleanup PASSED [ 82%]
+tests/test_validate_views.py::TestViewValidator::test_check_event_handlers_async_void PASSED [ 84%]
+tests/test_validate_views.py::TestViewValidator::test_check_async_patterns_clean PASSED [ 86%]
+tests/test_validate_views.py::TestViewValidator::test_check_async_patterns_blocking_calls PASSED [ 88%]
+tests/test_validate_views.py::TestViewValidator::test_check_async_patterns_configure_await PASSED [ 90%]
+tests/test_validate_views.py::TestViewValidator::test_get_line_number PASSED [ 92%]
+tests/test_validate_views.py::TestViewValidator::test_validate_file_error_handling PASSED [ 94%]
+tests/test_validate_views.py::TestViolation::test_violation_to_dict PASSED [ 96%]
+tests/test_validate_views.py::TestViolation::test_violation_to_dict_no_line PASSED [ 98%]
+tests/test_validate_views.py::TestSeverity::test_severity_values PASSED  [100%]
+
+=========================== short test summary info ===========================
+FAILED tests/test_validate_views.py::TestViewValidator::test_check_form_inheritance_invalid - assert <Severity.WARNING: 'Warning'> == <Severity.ERROR: 'Error'>
+ +  where <Severity.WARNING: 'Warning'> = Violation(rule='VW001', severity=<Severity.WARNING: 'Warning'>, message="Form 'MainForm' should inherit from Form, SfForm, or Syncfusion themed form", file='MainForm.cs', line=2).severity
+ +  and   <Severity.ERROR: 'Error'> = Severity.ERROR
+FAILED tests/test_validate_views.py::TestViewValidator::test_check_syncfusion_controls_present - AssertionError: assert 1 == 0
+ +  where 1 = len([Violation(rule='VW002', severity=<Severity.ERROR: 'Error'>, message='Missing Syncfusion.Windows.Forms or Syncfusion.WinForms using statement', file='MainForm.cs', line=None)])
+FAILED tests/test_validate_views.py::TestViewValidator::test_check_syncfusion_controls_missing - assert 0 == 1
+ +  where 0 = len([])
+FAILED tests/test_validate_views.py::TestViewValidator::test_check_syncfusion_controls_mixed - AssertionError: assert 'VW002' == 'VW003'
+  
+  - VW003
+  ?     ^
+  + VW002
+  ?     ^
+FAILED tests/test_validate_views.py::TestViewValidator::test_check_ribbon_proper_init - AssertionError: assert 1 == 0
+ +  where 1 = len([Violation(rule='VW010', severity=<Severity.ERROR: 'Error'>, message='RibbonControlAdv not properly initialized', file='MainForm.cs', line=None)])
+======================== 5 failed, 46 passed in 0.07s =========================

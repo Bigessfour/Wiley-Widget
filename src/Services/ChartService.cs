@@ -1,4 +1,4 @@
-making using AutoMapper;
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Data.Repositories;
 using WileyWidget.Services;

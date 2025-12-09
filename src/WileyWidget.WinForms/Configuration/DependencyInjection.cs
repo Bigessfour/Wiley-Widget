@@ -177,6 +177,7 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered IExcelReaderService -> ExcelReaderService (Transient)");
             services.AddTransient<IExcelExportService, ExcelExportService>();
             Debug.WriteLine("DI: Registered IExcelExportService -> ExcelExportService (Transient)");
+            services.AddTransient<IPdfExportService, SyncfusionPdfExportService>();
             services.AddTransient<SyncfusionPdfExportService>();
             Debug.WriteLine("DI: Registered SyncfusionPdfExportService (Transient)");
             services.AddSingleton<IPrintingService, PrintingService>();
@@ -233,6 +234,11 @@ namespace WileyWidget.WinForms.Configuration
                 (GlobalExceptionHandlerService)Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.IExceptionHandler>(sp));
             Debug.WriteLine("DI: Registered IExceptionHandler -> GlobalExceptionHandlerService (Singleton)");
 
+            // === THEME MANAGEMENT SERVICE ===
+            // Centralized service for applying Syncfusion themes and semantic colors
+            services.AddSingleton<IThemeManagerService, ThemeManagerService>();
+            Debug.WriteLine("DI: Registered IThemeManagerService -> ThemeManagerService (Singleton)");
+
             // === VIEWMODELS (SCOPED to match DbContext lifetime) ===
             // Using Scoped instead of Transient ensures ViewModels share the same DbContext instance
             // within a dialog/form lifetime, preventing "tracked by another instance" EF Core errors
@@ -244,8 +250,12 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered SettingsViewModel (Scoped)");
             services.AddScoped<AccountsViewModel>();
             Debug.WriteLine("DI: Registered AccountsViewModel (Scoped)");
+            services.AddScoped<CustomersViewModel>();
+            Debug.WriteLine("DI: Registered CustomersViewModel (Scoped)");
             services.AddScoped<BudgetOverviewViewModel>();
             Debug.WriteLine("DI: Registered BudgetOverviewViewModel (Scoped)");
+            services.AddScoped<BudgetViewModel>();
+            Debug.WriteLine("DI: Registered BudgetViewModel (Scoped)");
             services.AddScoped<ReportsViewModel>();
             Debug.WriteLine("DI: Registered ReportsViewModel (Scoped)");
 
@@ -258,8 +268,12 @@ namespace WileyWidget.WinForms.Configuration
             Debug.WriteLine("DI: Registered SettingsForm (Scoped)");
             services.AddScoped<AccountsForm>();
             Debug.WriteLine("DI: Registered AccountsForm (Scoped)");
+            services.AddScoped<CustomersForm>();
+            Debug.WriteLine("DI: Registered CustomersForm (Scoped)");
             services.AddScoped<BudgetOverviewForm>();
             Debug.WriteLine("DI: Registered BudgetOverviewForm (Scoped)");
+            services.AddScoped<BudgetViewFormEnhanced>();
+            Debug.WriteLine("DI: Registered BudgetViewFormEnhanced (Scoped)");
             services.AddScoped<ReportsForm>();
             Debug.WriteLine("DI: Registered ReportsForm (Scoped)");
 
@@ -294,6 +308,7 @@ namespace WileyWidget.WinForms.Configuration
                     typeof(ChartViewModel),
                     typeof(SettingsViewModel),
                     typeof(AccountsViewModel),
+                    typeof(CustomersViewModel),
                     typeof(BudgetOverviewViewModel)
                 };
 

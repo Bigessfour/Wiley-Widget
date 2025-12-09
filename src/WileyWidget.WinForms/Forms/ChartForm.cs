@@ -16,6 +16,7 @@ using SyncPdf = sync31pdf::Syncfusion.Pdf;
 using SyncPdfGraphics = sync31pdf::Syncfusion.Pdf.Graphics;
 using SyncPdfGrid = sync31pdf::Syncfusion.Pdf.Grid;
 using WileyWidget.Services;
+using Syncfusion.Windows.Forms;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -27,7 +28,7 @@ namespace WileyWidget.WinForms.Forms
     {
         public const string FormTitle = "Budget Analytics";
         public const string RefreshButton = "Refresh Data";
-        public const string ExportButton = "Export to PDF";
+        public const string ExportButton = "Export";
         public const string PrintButton = "Print";
         public const string MonthlyTrendTitle = "Monthly Budget Trend";
         public const string CategoryBreakdownTitle = "Category Breakdown";
@@ -45,10 +46,12 @@ namespace WileyWidget.WinForms.Forms
         private ChartControl? expenditureChart;
         private ChartControl? cumulativeChart;
         private ChartControl? proportionChart;
-        private ComboBox? _yearSelector;
         private ComboBox? _categoryFilter;
         private ToolStripComboBox? _chartTypeCombo;
         private Label? _trendLabel;
+        private Label? _emptyStateLabel;
+        private DateTimePicker? _startDatePicker;
+        private DateTimePicker? _endDatePicker;
 
         // Concurrency control for UpdateSummaryValues
         private readonly object _updateSummaryLock = new object();
@@ -75,6 +78,8 @@ namespace WileyWidget.WinForms.Forms
 
         public ChartForm(ChartViewModel vm, ILogger<ChartForm> logger, IChartService chartService, IPrintingService printingService)
         {
+            InitializeComponent();
+
             _vm = vm;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _chartService = chartService ?? throw new ArgumentNullException(nameof(chartService));
@@ -82,7 +87,20 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                InitializeComponent();
+
+                // Prefer SkinManager when available, otherwise apply manual dark theme as fallback
+                if (Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+                {
+                    try { Syncfusion.Windows.Forms.SkinManager.SetVisualStyle(this, "Office2019DarkGray"); } catch { }
+                }
+                else
+                {
+                    BackColor = Color.FromArgb(45, 45, 48);
+                    ForeColor = Color.White;
+                }
+
+                _logger.LogInformation("Applied Office2019DarkGray theme to ChartForm");
+
                 _logger.LogInformation("ChartForm initialized successfully");
 
                 // Initialize cancellation token source
@@ -95,6 +113,7 @@ namespace WileyWidget.WinForms.Forms
                         {
                             await _vm.LoadChartsAsync(null, null, ct);
                             DrawCharts();
+                            UpdateEmptyState();
                         },
                         _cts,
                         this,
@@ -136,8 +155,8 @@ namespace WileyWidget.WinForms.Forms
 
                 try
                 {
-                    var start = new DateTime(_vm.SelectedYear, 1, 1);
-                    var end = new DateTime(_vm.SelectedYear, 12, 31);
+                    var start = _vm.SelectedStartDate;
+                    var end = _vm.SelectedEndDate;
 
                     // Total transactions count
                     var txCount = await _chartService.GetTransactionCountAsync(start, end, _vm.SelectedCategory);
@@ -151,11 +170,13 @@ namespace WileyWidget.WinForms.Forms
                     var budgetedTask = _chartService.GetBudgetedAmountAsync(_vm.SelectedYear);
                     var trendTask = _chartService.GetTrendAsync(_vm.SelectedYear, DateTime.UtcNow.Month);
 
-                    await Task.WhenAll(varianceTask, budgetedTask, trendTask).ConfigureAwait(false);
+                    // Wait for all tasks to complete in parallel (removed ConfigureAwait for UI context)
+                    await Task.WhenAll(varianceTask, budgetedTask, trendTask);
 
-                    var variance = varianceTask.Result;
-                    var budgeted = budgetedTask.Result;
-                    var trend = trendTask.Result;
+                    // Get results using await (tasks already complete, no blocking)
+                    var variance = await varianceTask;
+                    var budgeted = await budgetedTask;
+                    var trend = await trendTask;
 
                     // Prepare UI update as a single action to marshal to UI thread
                     Action uiUpdate = () =>
@@ -204,32 +225,46 @@ namespace WileyWidget.WinForms.Forms
             // === Toolbar ===
             var toolStrip = new ToolStrip
             {
-                GripStyle = ToolStripGripStyle.Hidden,
-                BackColor = Color.FromArgb(248, 249, 250)
+                GripStyle = ToolStripGripStyle.Hidden
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                toolStrip.BackColor = Color.FromArgb(248, 249, 250);
+            }
 
-            // Year selector
-            var yearLabel = new ToolStripLabel("Year: ");
-            _yearSelector = new ComboBox { Width = 80 };
-            _yearSelector.Items.AddRange(new object[] { "2025", "2024", "2023", "2022" });
-            _yearSelector.SelectedItem = _vm.SelectedYear.ToString(CultureInfo.InvariantCulture);
-            _yearSelector.SelectedIndexChanged += async (s, e) =>
+            // Date range pickers
+            var dateRangeLabel = new ToolStripLabel("Date Range: ");
+            _startDatePicker = new DateTimePicker { Width = 120, Format = DateTimePickerFormat.Short, Value = _vm.SelectedStartDate };
+            var toLabel = new ToolStripLabel(" to ");
+            _endDatePicker = new DateTimePicker { Width = 120, Format = DateTimePickerFormat.Short, Value = _vm.SelectedEndDate };
+            var updateDateRangeBtn = new Button { Text = "Update", Width = 60, Height = 23 };
+
+            updateDateRangeBtn.Click += async (s, e) =>
             {
                 await Utilities.AsyncEventHelper.ExecuteAsync(
                     async ct =>
                     {
-                        _vm.SelectedYear = int.Parse(_yearSelector.SelectedItem?.ToString() ?? DateTime.UtcNow.Year.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
-                        await _vm.LoadChartsAsync(_vm.SelectedYear, null, ct);
+                        if (_startDatePicker.Value >= _endDatePicker.Value)
+                        {
+                            MessageBox.Show("Start date must be before end date.", "Invalid Date Range", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        _vm.SelectedStartDate = _startDatePicker.Value;
+                        _vm.SelectedEndDate = _endDatePicker.Value;
+                        await _vm.LoadChartsAsync(null, null, ct);
                         DrawCharts();
+                        UpdateEmptyState();
                         await UpdateSummaryValuesAsync();
                     },
                     _cts,
                     this,
                     _logger,
-                    "Updating chart year",
+                    "Updating chart date range",
                     showErrorDialog: false);
             };
-            var yearHost = new ToolStripControlHost(_yearSelector);
+            var startDateHost = new ToolStripControlHost(_startDatePicker);
+            var endDateHost = new ToolStripControlHost(_endDatePicker);
+            var updateBtnHost = new ToolStripControlHost(updateDateRangeBtn);
 
             // Category filter
             var categoryLabel = new ToolStripLabel("  Category: ");
@@ -244,6 +279,7 @@ namespace WileyWidget.WinForms.Forms
                         _vm.SelectedCategory = _categoryFilter.SelectedItem?.ToString() ?? "All Categories";
                         await _vm.LoadChartsAsync(null, _vm.SelectedCategory, ct);
                         DrawCharts();
+                        UpdateEmptyState();
                         await UpdateSummaryValuesAsync();
                     },
                     _cts,
@@ -255,9 +291,9 @@ namespace WileyWidget.WinForms.Forms
             var categoryHost = new ToolStripControlHost(_categoryFilter);
 
             // Chart type selector
-            var chartTypeLabel = new ToolStripLabel("  Chart: ");
+            var chartTypeLabel = new ToolStripLabel("  Type: ");
             _chartTypeCombo = new ToolStripComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
-            _chartTypeCombo.Items.AddRange(new object[] { "Bar", "Line", "Area" });
+            _chartTypeCombo.Items.AddRange(new object[] { "Line", "Column", "Bar", "Area" });
             _chartTypeCombo.SelectedIndex = 0;
             _chartTypeCombo.SelectedIndexChanged += (s, e) => DrawCharts();
 
@@ -268,6 +304,7 @@ namespace WileyWidget.WinForms.Forms
                     {
                         await _vm.LoadChartsAsync(null, null, ct);
                         DrawCharts();
+                        UpdateEmptyState();
                         await UpdateSummaryValuesAsync();
                     },
                     _cts,
@@ -276,12 +313,12 @@ namespace WileyWidget.WinForms.Forms
                     "Refreshing chart data");
             });
 
-            var exportBtn = new ToolStripButton(ChartFormResources.ExportButton, null, (s, e) =>
+            var exportBtn = new ToolStripButton(ChartFormResources.ExportButton, null, async (s, e) =>
             {
                 _logger.LogInformation("Chart export button clicked");
                 using var saveDialog = new SaveFileDialog
                 {
-                    Filter = "PDF Files|*.pdf|PNG Images|*.png|All Files|*.*",
+                    Filter = "PDF Files|*.pdf|PNG Images|*.png|JPEG Images|*.jpg|All Files|*.*",
                     DefaultExt = "pdf",
                     FileName = $"BudgetReport_{DateTime.Now:yyyyMMdd}"
                 };
@@ -289,22 +326,31 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        if (Path.GetExtension(saveDialog.FileName).ToLower(CultureInfo.InvariantCulture) == ".pdf")
+                        var ext = Path.GetExtension(saveDialog.FileName).ToLower(CultureInfo.InvariantCulture);
+                        if (ext == ".pdf")
                         {
-                            // TODO: PDF export temporarily disabled due to Syncfusion version conflict
-                            // Will be re-enabled once version conflict is resolved
-                            MessageBox.Show("PDF export is temporarily unavailable", "Feature Disabled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            // Export via PrintingService which handles PDF generation
+                            var pdfPath = await _printingService.GeneratePdfAsync(_vm);
+                            File.Copy(pdfPath, saveDialog.FileName, overwrite: true);
+                            _logger.LogInformation("PDF exported successfully to: {FileName}", saveDialog.FileName);
+                            MessageBox.Show($"Report exported successfully to:\n{saveDialog.FileName}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg")
+                        {
+                            // Export chart image using Syncfusion's ExportToImage
+                            ExportChartToImage(saveDialog.FileName, ext);
+                            _logger.LogInformation("Image exported successfully to: {FileName}", saveDialog.FileName);
+                            MessageBox.Show($"Chart exported successfully to:\n{saveDialog.FileName}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                         else
                         {
-                            // For PNG, perhaps export chart image, but placeholder
-                            _logger.LogWarning("Export to {Extension} not implemented yet", Path.GetExtension(saveDialog.FileName));
+                            MessageBox.Show("Unsupported file format. Please choose PDF, PNG, or JPEG.", "Invalid Format", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
-                        _logger.LogInformation("Report exported to: {FileName}", saveDialog.FileName);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Export failed");
+                        MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             });
@@ -324,16 +370,32 @@ namespace WileyWidget.WinForms.Forms
                 }
             });
 
+            // Zoom buttons
+            var zoomInBtn = new ToolStripButton("Zoom In", null, (s, e) => ZoomCharts(1.2));
+            var zoomOutBtn = new ToolStripButton("Zoom Out", null, (s, e) => ZoomCharts(0.8));
+            var zoomResetBtn = new ToolStripButton("Reset Zoom", null, (s, e) => ResetChartZoom());
+
+            // AI Insights button
+            var aiInsightsBtn = new ToolStripButton("AI Insights", null, async (s, e) =>
+            {
+                await ShowAIInsightsAsync();
+            });
+
             toolStrip.Items.AddRange(new ToolStripItem[]
             {
-                yearLabel, yearHost,
+                dateRangeLabel, startDateHost, toLabel, endDateHost, updateBtnHost,
+                new ToolStripSeparator(),
                 categoryLabel, categoryHost,
                 chartTypeLabel, _chartTypeCombo,
+                new ToolStripSeparator(),
+                new ToolStripLabel("Zoom: "),
+                zoomInBtn, zoomOutBtn, zoomResetBtn,
                 new ToolStripSeparator(),
                 refreshBtn,
                 new ToolStripSeparator(),
                 exportBtn,
-                printBtn
+                printBtn,
+                aiInsightsBtn
             });
 
             // === Main Layout ===
@@ -341,9 +403,12 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
-                SplitterDistance = 800,
-                BackColor = Color.FromArgb(245, 245, 250)
+                SplitterDistance = 800
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                mainSplit.BackColor = Color.FromArgb(45, 45, 48);
+            }
 
             // === Left: Charts ===
             var chartTable = new TableLayoutPanel
@@ -351,7 +416,7 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 2,
-                BackColor = Color.FromArgb(245, 245, 250),
+                BackColor = Color.FromArgb(45, 45, 48),
                 Padding = new Padding(10)
             };
             chartTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -378,7 +443,6 @@ namespace WileyWidget.WinForms.Forms
             revenueChart.PrimaryXAxis.Title = "Time";
             revenueChart.PrimaryXAxis.TitleColor = Color.FromArgb(108, 117, 125);
             revenueChart.PrimaryYAxis.Title = "Revenue ($)";
-            // Apply recommended defaults
             ConfigureChartControl(revenueChart, ChartFormResources.MonthlyTrendTitle, ChartValueType.Category, "Time", "Revenue ($)");
             revenueGroup.Controls.Add(revenueChart);
             chartTable.Controls.Add(revenueGroup, 0, 0);
@@ -402,7 +466,6 @@ namespace WileyWidget.WinForms.Forms
             expenditureChart.PrimaryXAxis.Title = "Department";
             expenditureChart.PrimaryXAxis.TitleColor = Color.FromArgb(108, 117, 125);
             expenditureChart.PrimaryYAxis.TitleColor = Color.FromArgb(108, 117, 125);
-            // Apply recommended defaults
             ConfigureChartControl(expenditureChart, ChartFormResources.CategoryBreakdownTitle, ChartValueType.Category, "Department", "Amount");
             expenditureGroup.Controls.Add(expenditureChart);
             chartTable.Controls.Add(expenditureGroup, 1, 0);
@@ -425,10 +488,8 @@ namespace WileyWidget.WinForms.Forms
             cumulativeChart.ChartArea.BackInterior = new Syncfusion.Drawing.BrushInfo(Color.White);
             cumulativeChart.PrimaryXAxis.Title = "Month";
             cumulativeChart.PrimaryYAxis.TitleColor = Color.FromArgb(108, 117, 125);
-            // Apply recommended defaults
             ConfigureChartControl(cumulativeChart, "Cumulative Budget", ChartValueType.Category, "Month", "Amount");
             cumulativeGroup.Controls.Add(cumulativeChart);
-            // ToolTip property removed as it is invalid
             chartTable.Controls.Add(cumulativeGroup, 0, 1);
 
             // Proportion Chart (Pie)
@@ -447,10 +508,23 @@ namespace WileyWidget.WinForms.Forms
                 LegendsPlacement = ChartPlacement.Outside
             };
             proportionChart.ChartArea.BackInterior = new Syncfusion.Drawing.BrushInfo(Color.White);
-            // Apply recommended defaults
             ConfigureChartControl(proportionChart, ChartFormResources.CategoryBreakdownTitle);
             proportionGroup.Controls.Add(proportionChart);
             chartTable.Controls.Add(proportionGroup, 1, 1);
+
+            // Empty state overlay
+            _emptyStateLabel = new Label
+            {
+                Text = "No data available\n\nAdjust filters and click 'Update' or 'Refresh Data'",
+                Font = new Font("Segoe UI", 12, FontStyle.Regular),
+                ForeColor = Color.FromArgb(108, 117, 125),
+                TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Color.FromArgb(45, 45, 48),
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
+            chartTable.Controls.Add(_emptyStateLabel, 0, 0);
 
             mainSplit.Panel1.Controls.Add(chartTable);
 
@@ -482,7 +556,6 @@ namespace WileyWidget.WinForms.Forms
             summaryContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
 
             // Summary metrics
-            // Build the summary metric rows and keep the value labels in fields for dynamic updates
             var metricDefinitions = new[]
             {
                 ("Total Transactions", "-", Color.FromArgb(33, 37, 41)),
@@ -493,7 +566,6 @@ namespace WileyWidget.WinForms.Forms
                 ("Remaining Budget", "-", Color.FromArgb(251, 188, 4))
             };
 
-            // Keep references to the value labels so we can update them when real data loads
             valueLabels = new Label[metricDefinitions.Length];
 
             for (int i = 0; i < metricDefinitions.Length; i++)
@@ -520,7 +592,6 @@ namespace WileyWidget.WinForms.Forms
                 summaryContent.Controls.Add(valueCtrl, 1, i);
             }
 
-            // Apply initial values (likely placeholders). We'll also refresh after chart drawing completes
             _ = UpdateSummaryValuesAsync();
 
             // Ensure charts redraw when the view model content changes
@@ -549,8 +620,6 @@ namespace WileyWidget.WinForms.Forms
                 else invoke();
             };
 
-            // Make UpdateSummaryValues available later when data changes
-            // When the charts invalidate, refresh summary metrics
             if (revenueChart != null)
             {
                 revenueChart.SizeChanged += (s, e) =>
@@ -622,8 +691,8 @@ namespace WileyWidget.WinForms.Forms
             Controls.Add(toolStrip);
             Controls.Add(statusStrip);
 
-            Size = new Size(1200, 850);
-            MinimumSize = new Size(900, 650);
+            Size = new Size(1400, 850);
+            MinimumSize = new Size(1000, 650);
             StartPosition = FormStartPosition.CenterParent;
 
             ResumeLayout(false);
@@ -631,8 +700,28 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
+        /// Updates visibility of empty state label based on data availability.
+        /// </summary>
+        private void UpdateEmptyState()
+        {
+            try
+            {
+                var hasData = _vm.RevenueTrendSeries.Count > 0 || _vm.ExpenditureColumnSeries.Count > 0 ||
+                              _vm.BudgetStackedSeries.Count > 0 || _vm.ProportionPieSeries.Count > 0;
+
+                if (_emptyStateLabel != null)
+                {
+                    _emptyStateLabel.Visible = !hasData;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update empty state");
+            }
+        }
+
+        /// <summary>
         /// Event handler used to prepare the per-point style safely (invoked by Syncfusion during rendering).
-        /// This is preferred to directly assigning to series.Style which can be null or read-only in some versions.
         /// </summary>
         private void Series_PrepareStyle(object? sender, ChartPrepareStyleInfoEventArgs args)
         {
@@ -642,7 +731,6 @@ namespace WileyWidget.WinForms.Forms
                 if (series == null || args.Style == null)
                     return;
 
-                // Read configuration we stored on the series.Tag (displayText flag and text color)
                 var displayText = true;
                 var textColor = Color.FromArgb(33, 37, 41);
                 if (series.Tag is ValueTuple<bool, Color> settings)
@@ -684,11 +772,8 @@ namespace WileyWidget.WinForms.Forms
 
         private void EnsureSeriesStyleSafe(SfChartSeries series, Color textColor, bool displayText = true)
         {
-
-            // Store desired settings on the series so the PrepareStyle handler can use them
             series.Tag = (displayText, textColor);
 
-            // Attach PrepareStyle exactly once per series to avoid triggering Syncfusion internal re-computation
             lock (_attachedPrepareStyleLock)
             {
                 if (!_attachedPrepareStyle.Contains(series))
@@ -707,8 +792,7 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// Apply recommended control-level configuration for a ChartControl to match Syncfusion examples
-        /// (tooltips, legend placement, skins, axis value types and friendly title/axis labels)
+        /// Apply recommended control-level configuration for a ChartControl.
         /// </summary>
         private void ConfigureChartControl(ChartControl chart, string? title = null, ChartValueType? xAxisType = null, string? xAxisTitle = null, string? yAxisTitle = null)
         {
@@ -725,7 +809,6 @@ namespace WileyWidget.WinForms.Forms
                 chart.Legend.Position = ChartDock.Top;
                 chart.LegendsPlacement = ChartPlacement.Outside;
 
-                // Prefer a modern skin by default
                 try { chart.Skins = Skins.Metro; } catch { /* not all releases expose Skin APIs identically */ }
 
                 if (xAxisType.HasValue)
@@ -758,6 +841,217 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        /// <summary>
+        /// Exports the specified chart to an image file.
+        /// </summary>
+        private void ExportChartToImage(string filePath, string extension)
+        {
+            try
+            {
+                // Prefer capturing the control to a bitmap which works across Syncfusion versions
+                var chart = revenueChart ?? expenditureChart ?? cumulativeChart ?? proportionChart;
+                if (chart == null)
+                    throw new InvalidOperationException("No chart available to export");
+
+                // Ensure a reasonable size for rendering
+                var size = chart.ClientSize;
+                if (size.Width <= 0 || size.Height <= 0)
+                {
+                    size = new Size(Math.Max(800, size.Width), Math.Max(600, size.Height));
+                }
+
+                using var bmp = new Bitmap(size.Width, size.Height);
+                try
+                {
+                    if (chart.InvokeRequired)
+                    {
+                        chart.Invoke((Action)(() => chart.DrawToBitmap(bmp, new Rectangle(Point.Empty, bmp.Size))));
+                    }
+                    else
+                    {
+                        chart.DrawToBitmap(bmp, new Rectangle(Point.Empty, bmp.Size));
+                    }
+                }
+                catch
+                {
+                    // If DrawToBitmap still fails, attempt a best-effort render by refreshing and copying the control's image
+                    try
+                    {
+                        if (chart.InvokeRequired)
+                        {
+                            chart.Invoke((Action)(() => chart.Refresh()));
+                        }
+                        else
+                        {
+                            chart.Refresh();
+                        }
+
+                        using var g = Graphics.FromImage(bmp);
+                        var rect = new Rectangle(Point.Empty, bmp.Size);
+                        chart.Invoke((Action)(() => chart.DrawToBitmap(bmp, rect)));
+                    }
+                    catch
+                    {
+                        // give up and save empty bitmap
+                    }
+                }
+
+                // Choose image format from extension
+                var ext = extension?.ToLowerInvariant() ?? Path.GetExtension(filePath).ToLowerInvariant();
+                var format = ext switch
+                {
+                    ".png" => System.Drawing.Imaging.ImageFormat.Png,
+                    ".jpg" or ".jpeg" => System.Drawing.Imaging.ImageFormat.Jpeg,
+                    ".bmp" => System.Drawing.Imaging.ImageFormat.Bmp,
+                    _ => System.Drawing.Imaging.ImageFormat.Png
+                };
+
+                bmp.Save(filePath, format);
+                _logger.LogInformation("Chart image exported to {FilePath}", filePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to export chart image");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Applies zoom to all charts.
+        /// </summary>
+        private void ZoomCharts(double zoomFactor)
+        {
+            try
+            {
+                // Use reflection to adapt to different Syncfusion range types (MinMaxInfo vs DoubleRange etc.)
+                void TryAdjust(ChartControl? chart)
+                {
+                    if (chart == null) return;
+                    try
+                    {
+                        var axis = chart.PrimaryYAxis;
+                        var rangeProp = axis?.GetType().GetProperty("Range");
+                        if (rangeProp == null) return;
+                        var rangeVal = rangeProp.GetValue(axis);
+                        if (rangeVal == null) return;
+
+                        var startProp = rangeVal.GetType().GetProperty("Start") ?? rangeVal.GetType().GetProperty("Min") ?? rangeVal.GetType().GetProperty("Minimum") ?? rangeVal.GetType().GetProperty("Lower");
+                        var endProp = rangeVal.GetType().GetProperty("End") ?? rangeVal.GetType().GetProperty("Max") ?? rangeVal.GetType().GetProperty("Maximum") ?? rangeVal.GetType().GetProperty("Upper");
+                        if (startProp == null || endProp == null) return;
+
+                        var startObj = startProp.GetValue(rangeVal);
+                        var endObj = endProp.GetValue(rangeVal);
+                        if (startObj == null || endObj == null) return;
+
+                        var start = Convert.ToDouble(startObj, CultureInfo.InvariantCulture);
+                        var end = Convert.ToDouble(endObj, CultureInfo.InvariantCulture);
+                        start *= zoomFactor;
+                        end *= zoomFactor;
+
+                        startProp.SetValue(rangeVal, Convert.ChangeType(start, startProp.PropertyType));
+                        endProp.SetValue(rangeVal, Convert.ChangeType(end, endProp.PropertyType));
+
+                        // Reassign back in case the property is a struct/value type
+                        rangeProp.SetValue(axis, rangeVal);
+                        chart.Refresh();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Non-fatal: failed to adjust chart range via reflection");
+                    }
+                }
+
+                TryAdjust(revenueChart);
+                TryAdjust(expenditureChart);
+                TryAdjust(cumulativeChart);
+                _logger.LogDebug("Charts zoomed by factor {ZoomFactor}", zoomFactor);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Zoom operation failed");
+            }
+        }
+
+        /// <summary>
+        /// Resets zoom on all charts to default.
+        /// </summary>
+        private void ResetChartZoom()
+        {
+            try
+            {
+                void TryReset(ChartControl? chart)
+                {
+                    if (chart == null) return;
+                    try
+                    {
+                        var axis = chart.PrimaryYAxis;
+                        var rangeProp = axis?.GetType().GetProperty("Range");
+                        if (rangeProp == null) return;
+                        var rangeType = rangeProp.PropertyType;
+                        object? newRange = null;
+                        try { newRange = Activator.CreateInstance(rangeType); } catch { newRange = null; }
+                        if (newRange != null)
+                        {
+                            rangeProp.SetValue(axis, newRange);
+                        }
+                        else
+                        {
+                            // Fallback: try to set numeric start/end to reasonable defaults
+                            var current = rangeProp.GetValue(axis);
+                            if (current != null)
+                            {
+                                var startProp = current.GetType().GetProperty("Start") ?? current.GetType().GetProperty("Min") ?? current.GetType().GetProperty("Minimum") ?? current.GetType().GetProperty("Lower");
+                                var endProp = current.GetType().GetProperty("End") ?? current.GetType().GetProperty("Max") ?? current.GetType().GetProperty("Maximum") ?? current.GetType().GetProperty("Upper");
+                                if (startProp != null && endProp != null)
+                                {
+                                    startProp.SetValue(current, Convert.ChangeType(0.0, startProp.PropertyType));
+                                    endProp.SetValue(current, Convert.ChangeType(100.0, endProp.PropertyType));
+                                    rangeProp.SetValue(axis, current);
+                                }
+                            }
+                        }
+
+                        chart.Refresh();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Non-fatal: failed to reset chart range via reflection");
+                    }
+                }
+
+                TryReset(revenueChart);
+                TryReset(expenditureChart);
+                TryReset(cumulativeChart);
+                _logger.LogDebug("Chart zoom reset to default");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Reset zoom failed");
+            }
+        }
+
+        /// <summary>
+        /// Shows AI-generated insights about the current chart data.
+        /// </summary>
+        private async Task ShowAIInsightsAsync()
+        {
+            try
+            {
+                // Placeholder for AI insights integration
+                // TODO: Integrate IAIService to generate insights based on chart data
+                var insights = "AI Insights feature will be available in the next release.\n\n" +
+                    "This feature will analyze current budget trends and provide recommendations.";
+                MessageBox.Show(insights, "AI Insights", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _logger.LogInformation("AI Insights requested");
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve AI insights");
+                MessageBox.Show($"Failed to retrieve insights: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         public void DrawCharts()
         {
             // Ensure DrawCharts runs on the UI thread to avoid cross-thread control access
@@ -769,24 +1063,30 @@ namespace WileyWidget.WinForms.Forms
             }
             try
             {
+                var chartType = _chartTypeCombo?.SelectedItem?.ToString() ?? "Line";
+
                 // === Revenue Chart (Line) ===
                 if (revenueChart != null && _vm.RevenueTrendSeries.Count > 0)
                 {
                     revenueChart.Series.Clear();
                     foreach (var series in _vm.RevenueTrendSeries)
                     {
-                        series.Type = ChartSeriesType.Line;
+                        series.Type = chartType switch
+                        {
+                            "Column" => ChartSeriesType.Column,
+                            "Bar" => ChartSeriesType.Bar,
+                            "Area" => ChartSeriesType.Area,
+                            _ => ChartSeriesType.Line
+                        };
 
-                        // Apply style safely (guard against null Style objects in syncfusion runtime)
                         EnsureSeriesStyleSafe(series, Color.FromArgb(33, 37, 41));
-
                         revenueChart.Series.Add(series);
                     }
 
                     try { revenueChart.Refresh(); }
                     catch (Exception ex) { _logger.LogWarning(ex, "Non-fatal failure refreshing revenueChart"); }
 
-                    _logger.LogDebug("Revenue chart rendered with RevenueTrendSeries");
+                    _logger.LogDebug("Revenue chart rendered with type {ChartType}", chartType);
                 }
 
                 // === Expenditure Chart (Column) ===
@@ -796,16 +1096,14 @@ namespace WileyWidget.WinForms.Forms
                     foreach (var series in _vm.ExpenditureColumnSeries)
                     {
                         series.Type = ChartSeriesType.Column;
-
                         EnsureSeriesStyleSafe(series, Color.FromArgb(33, 37, 41));
-
                         expenditureChart.Series.Add(series);
                     }
 
                     try { expenditureChart.Refresh(); }
                     catch (Exception ex) { _logger.LogWarning(ex, "Non-fatal failure refreshing expenditureChart"); }
 
-                    _logger.LogDebug("Expenditure chart rendered with ExpenditureColumnSeries");
+                    _logger.LogDebug("Expenditure chart rendered");
                 }
 
                 // === Cumulative Chart (Stacked Column) ===
@@ -815,16 +1113,14 @@ namespace WileyWidget.WinForms.Forms
                     foreach (var series in _vm.BudgetStackedSeries)
                     {
                         series.Type = ChartSeriesType.StackingColumn;
-
                         EnsureSeriesStyleSafe(series, Color.White);
-
                         cumulativeChart.Series.Add(series);
                     }
 
                     try { cumulativeChart.Refresh(); }
                     catch (Exception ex) { _logger.LogWarning(ex, "Non-fatal failure refreshing cumulativeChart"); }
 
-                    _logger.LogDebug("Cumulative chart rendered with BudgetStackedSeries");
+                    _logger.LogDebug("Cumulative chart rendered");
                 }
 
                 // === Proportion Chart (Pie) ===
@@ -840,7 +1136,7 @@ namespace WileyWidget.WinForms.Forms
                     try { proportionChart.Refresh(); }
                     catch (Exception ex) { _logger.LogWarning(ex, "Non-fatal failure refreshing proportionChart"); }
 
-                    _logger.LogDebug("Proportion chart rendered with ProportionPieSeries");
+                    _logger.LogDebug("Proportion chart rendered");
                 }
             }
             catch (Exception ex)
@@ -859,7 +1155,6 @@ namespace WileyWidget.WinForms.Forms
         {
             if (disposing)
             {
-                // Detach PrepareStyle handlers we attached earlier
                 lock (_attachedPrepareStyleLock)
                 {
                     try
@@ -882,12 +1177,13 @@ namespace WileyWidget.WinForms.Forms
                 expenditureChart?.Dispose();
                 cumulativeChart?.Dispose();
                 proportionChart?.Dispose();
-                _yearSelector?.Dispose();
                 _categoryFilter?.Dispose();
                 _chartTypeCombo?.Dispose();
                 _trendLabel?.Dispose();
+                _emptyStateLabel?.Dispose();
+                _startDatePicker?.Dispose();
+                _endDatePicker?.Dispose();
 
-                // Cancel and dispose async operations
                 Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
             }
 

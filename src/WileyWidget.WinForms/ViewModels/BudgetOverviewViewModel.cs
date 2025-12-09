@@ -45,10 +45,19 @@ namespace WileyWidget.ViewModels
         [ObservableProperty]
         private string? errorMessage;
 
+        /// <summary>Gets the command to load budget overview data.</summary>
         public IAsyncRelayCommand LoadDataCommand { get; }
+
+        /// <summary>Gets the command to add a budget category.</summary>
         public IAsyncRelayCommand<BudgetCategoryDto> AddCategoryCommand { get; }
+
+        /// <summary>Gets the command to update a budget category.</summary>
         public IAsyncRelayCommand<BudgetCategoryDto> UpdateCategoryCommand { get; }
+
+        /// <summary>Gets the command to delete a budget category.</summary>
         public IAsyncRelayCommand<int> DeleteCategoryCommand { get; }
+
+        /// <summary>Gets the command to refresh budget data.</summary>
         public IAsyncRelayCommand RefreshCommand { get; }
 
         public BudgetOverviewViewModel(

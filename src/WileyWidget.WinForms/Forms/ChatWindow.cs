@@ -32,12 +32,12 @@ public partial class ChatWindow : Form
     /// </summary>
     public ChatWindow(IServiceProvider serviceProvider)
     {
+        InitializeComponent();
+
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ChatWindow>>(serviceProvider);
         _aiService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIService>(serviceProvider);
         _conversationRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConversationRepository>(serviceProvider);
-
-        InitializeComponent();
         _logger.LogInformation("ChatWindow created");
     }
 
@@ -349,7 +349,7 @@ public partial class ChatWindow : Form
 
             await _conversationRepository.SaveConversationAsync(conversation);
             _currentConversationId = saveId;
-            
+
             UpdateStatus("Conversation saved successfully");
             _logger.LogInformation("Conversation saved: {ConversationId}, MessageCount: {Count}",
                 saveId, _conversationHistory.Count);

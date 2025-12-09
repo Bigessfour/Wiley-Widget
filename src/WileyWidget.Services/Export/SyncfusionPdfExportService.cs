@@ -15,10 +15,27 @@ using WileyWidget.Models;
 namespace WileyWidget.Services.Export
 {
     /// <summary>
+    /// Abstraction for PDF export functionality so consumers (ViewModels) can depend on an interface.
+    /// </summary>
+    public interface IPdfExportService
+    {
+        /// <summary>
+        /// Exports budget entries to PDF with professional styling and returns the file path.
+        /// </summary>
+        Task<string> ExportBudgetEntriesToPdfAsync(IEnumerable<BudgetEntry> entries, string filePath);
+
+        /// <summary>
+        /// Exports municipal accounts to PDF with professional styling and returns the file path.
+        /// </summary>
+        Task<string> ExportMunicipalAccountsToPdfAsync(IEnumerable<MunicipalAccount> accounts, string filePath);
+    }
+
+
+    /// <summary>
     /// Service for exporting data to PDF using Syncfusion.Pdf.Net.Core.
     /// Professional PDF generation with headers, footers, page numbers, and styled grids.
     /// </summary>
-    public class SyncfusionPdfExportService
+    public class SyncfusionPdfExportService : IPdfExportService
     {
         private readonly ILogger<SyncfusionPdfExportService> _logger;
 
@@ -286,7 +303,7 @@ namespace WileyWidget.Services.Export
                     var variance = account.BudgetAmount - account.Balance;
 
                     dataTable.Rows.Add(
-                        account.AccountNumber?.ToString() ?? account.AccountNumber_Value ?? "",
+                        account.AccountNumber?.ToString() ?? "",
                         account.Name ?? "",
                         account.TypeDescription ?? account.Type.ToString(),
                         account.Balance.ToString("C2", CultureInfo.CurrentCulture),

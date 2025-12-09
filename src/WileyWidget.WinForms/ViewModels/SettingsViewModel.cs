@@ -43,13 +43,25 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private string? successMessage;
 
+        /// <summary>Gets the command to load settings.</summary>
         public IAsyncRelayCommand LoadCommand { get; }
+
+        /// <summary>Gets the command to save settings.</summary>
         public IAsyncRelayCommand SaveCommand { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SettingsViewModel"/> class.
+        /// </summary>
+        /// <param name="logger">Logger instance for the ViewModel.</param>
+        /// <param name="settingsService">Service for settings management operations.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
         public SettingsViewModel(ILogger<SettingsViewModel> logger, ISettingsManagementService settingsService)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(settingsService);
+
+            _logger = logger;
+            _settingsService = settingsService;
 
             try
             {

@@ -128,7 +128,8 @@ namespace WileyWidget.Data
                 owned.Property(a => a.Value).HasColumnName("AccountNumber").HasMaxLength(20).IsRequired();
             });
             entity.Property(e => e.AccountNumber_Value)
-                  .HasComputedColumnSql("[AccountNumber]");
+                  .HasComputedColumnSql("[AccountNumber]")
+                  .ValueGeneratedOnAddOrUpdate();  // Mark as database-generated
             entity.HasOne(e => e.Department)
                   .WithMany()
                   .HasForeignKey(e => e.DepartmentId)

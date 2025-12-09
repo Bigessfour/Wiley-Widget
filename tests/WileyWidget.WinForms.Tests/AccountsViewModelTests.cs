@@ -257,7 +257,7 @@ namespace WileyWidget.WinForms.Tests
             var vm = CreateViewModel(scopeFactory);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert - Verify structured logging with filters was called
             _mockLogger.Verify(x => x.Log(
@@ -285,7 +285,7 @@ namespace WileyWidget.WinForms.Tests
             };
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert
             wasLoading.Should().BeTrue();
@@ -306,7 +306,7 @@ namespace WileyWidget.WinForms.Tests
 
             // Act
             vm.SelectedFund = MunicipalFundType.General;
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert - Even numbered accounts have General fund
             vm.Accounts.Should().OnlyContain(a => a.Fund == MunicipalFundType.General.ToString());
@@ -322,7 +322,7 @@ namespace WileyWidget.WinForms.Tests
 
             // Act
             vm.SelectedAccountType = AccountType.Revenue;
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert - Accounts divisible by 3 have Revenue type
             vm.Accounts.Should().OnlyContain(a => a.Type == AccountType.Revenue.ToString());
@@ -650,7 +650,7 @@ namespace WileyWidget.WinForms.Tests
             var vm = CreateViewModel(context);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert
             vm.Accounts.Should().HaveCount(1);
@@ -680,7 +680,7 @@ namespace WileyWidget.WinForms.Tests
             var vm = CreateViewModel(context);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert
             vm.Accounts.Should().HaveCount(1);
@@ -700,7 +700,7 @@ namespace WileyWidget.WinForms.Tests
             var vm = CreateViewModel(context);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert
             vm.TotalBalance.Should().Be(vm.Accounts.Sum(a => a.Balance));
@@ -715,7 +715,7 @@ namespace WileyWidget.WinForms.Tests
             var vm = CreateViewModel(context);
 
             // Act
-            await vm.LoadAccountsCommand.ExecuteAsync(null);
+            await vm.LoadAccountsCommand.ExecuteAsync(TestContext.Current.CancellationToken);
 
             // Assert
             vm.ActiveAccountCount.Should().Be(vm.Accounts.Count);

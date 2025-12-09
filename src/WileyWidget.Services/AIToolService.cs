@@ -105,7 +105,7 @@ public class AIToolService : IAIToolService
 
             // Get historical budget entries for this account
             var query = await _budgetRepository.GetQueryableAsync();
-            var accountNumberKey = account.AccountNumber?.ToString() ?? account.AccountNumber_Value ?? string.Empty;
+            var accountNumberKey = account.AccountNumber?.ToString() ?? string.Empty;
             var accountEntries = query.Where(e => e.AccountNumber == accountNumberKey).ToList();
 
             // Group by fiscal year or date based on period
@@ -285,7 +285,7 @@ public class AIToolService : IAIToolService
             var results = accounts.Select(a => new MunicipalAccountDisplay
             {
                 Id = a.Id,
-                AccountNumber = a.AccountNumber?.ToString() ?? a.AccountNumber_Value ?? string.Empty,
+                AccountNumber = a.AccountNumber?.ToString() ?? string.Empty,
                 Name = a.Name,
                 Description = a.Notes ?? string.Empty,
                 Type = a.Type.ToString(),

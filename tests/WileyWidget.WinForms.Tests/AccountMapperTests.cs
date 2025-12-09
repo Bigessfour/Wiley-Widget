@@ -19,7 +19,7 @@ namespace WileyWidget.WinForms.Tests
             {
                 Id = 1,
                 AccountNumber = null,
-                Name = null,
+                Name = "",
                 FundDescription = null,
                 Department = null,
                 ParentAccountId = null,

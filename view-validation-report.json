@@ -1,0 +1,543 @@
+{
+  "Timestamp": "2025-12-09T03:32:15.384162",
+  "TotalFiles": 13,
+  "Summary": {
+    "Errors": 1,
+    "Warnings": 25,
+    "Info": 50
+  },
+  "Violations": [
+    {
+      "Rule": "VW004",
+      "Severity": "Warning",
+      "Message": "No theme initialization found for Syncfusion controls",
+      "File": "AccountsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW005",
+      "Severity": "Warning",
+      "Message": "Inconsistent themes detected: ComboBoxStyle, ToolStripItemDisplayStyle, FlatStyle, FormBorderStyle, ToolStripGripStyle, BorderStyle",
+      "File": "AccountsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW014",
+      "Severity": "Warning",
+      "Message": "Async methods found but no InvokeRequired check for thread-safe UI updates",
+      "File": "AccountsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 9 hardcoded strings - consider using resource files for localization",
+      "File": "AccountsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "AccountsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW029",
+      "Severity": "Warning",
+      "Message": "Found 3 event handlers not unsubscribed (potential memory leak)",
+      "File": "AccountsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW031",
+      "Severity": "Warning",
+      "Message": "ConfigureAwait(false) should not be used in UI code (can cause context issues)",
+      "File": "AccountsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW032",
+      "Severity": "Info",
+      "Message": "Task.Run found - ensure UI updates use Invoke/InvokeRequired",
+      "File": "AccountsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 9 hardcoded strings - consider using resource files for localization",
+      "File": "BudgetEntryDialog.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "BudgetEntryDialog.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW027",
+      "Severity": "Info",
+      "Message": "Consider using Dock or Anchor properties for responsive layout",
+      "File": "BudgetEntryDialog.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW029",
+      "Severity": "Warning",
+      "Message": "Found 1 event handlers not unsubscribed (potential memory leak)",
+      "File": "BudgetEntryDialog.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW005",
+      "Severity": "Warning",
+      "Message": "Inconsistent themes detected: ComboBoxStyle, FlatStyle, FormBorderStyle, Syncfusion, ProgressBarStyle, BorderStyle",
+      "File": "BudgetOverviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW017",
+      "Severity": "Info",
+      "Message": "Consider setting TabIndex for keyboard navigation",
+      "File": "BudgetOverviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW018",
+      "Severity": "Info",
+      "Message": "Consider adding AccessibleName/Description for screen readers",
+      "File": "BudgetOverviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW019",
+      "Severity": "Info",
+      "Message": "Consider using BeginUpdate/EndUpdate for large data operations",
+      "File": "BudgetOverviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 6 hardcoded strings - consider using resource files for localization",
+      "File": "BudgetOverviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "BudgetOverviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW004",
+      "Severity": "Warning",
+      "Message": "No theme initialization found for Syncfusion controls",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW005",
+      "Severity": "Warning",
+      "Message": "Inconsistent themes detected: ComboBoxStyle, ToolStripItemDisplayStyle, FlatStyle, ToolStripGripStyle, ProgressBarStyle",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW014",
+      "Severity": "Warning",
+      "Message": "Async methods found but no InvokeRequired check for thread-safe UI updates",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW017",
+      "Severity": "Info",
+      "Message": "Consider setting TabIndex for keyboard navigation",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW018",
+      "Severity": "Info",
+      "Message": "Consider adding AccessibleName/Description for screen readers",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW019",
+      "Severity": "Info",
+      "Message": "Consider using BeginUpdate/EndUpdate for large data operations",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW022",
+      "Severity": "Warning",
+      "Message": "Async method 'ImportDataAsync' should include error handling",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW022",
+      "Severity": "Warning",
+      "Message": "Async method 'ExportDataAsync' should include error handling",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW022",
+      "Severity": "Warning",
+      "Message": "Async method 'BulkAdjustAsync' should include error handling",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 37 hardcoded strings - consider using resource files for localization",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "BudgetViewFormEnhanced.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW004",
+      "Severity": "Warning",
+      "Message": "No theme initialization found for Syncfusion controls",
+      "File": "ChartForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW005",
+      "Severity": "Warning",
+      "Message": "Inconsistent themes detected: new, ComboBoxStyle, BorderStyle, ToolStripGripStyle",
+      "File": "ChartForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW006",
+      "Severity": "Info",
+      "Message": "ViewModel detected but no data binding found",
+      "File": "ChartForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW017",
+      "Severity": "Info",
+      "Message": "Consider setting TabIndex for keyboard navigation",
+      "File": "ChartForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW018",
+      "Severity": "Info",
+      "Message": "Consider adding AccessibleName/Description for screen readers",
+      "File": "ChartForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW022",
+      "Severity": "Warning",
+      "Message": "Async method 'UpdateSummaryValuesAsync' should include error handling",
+      "File": "ChartForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 8 hardcoded strings - consider using resource files for localization",
+      "File": "ChartForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "ChartForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW020",
+      "Severity": "Info",
+      "Message": "Consider using SuspendLayout/ResumeLayout when adding multiple controls",
+      "File": "ChatWindow.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "ChatWindow.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW004",
+      "Severity": "Warning",
+      "Message": "No theme initialization found for Syncfusion controls",
+      "File": "CustomersForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW005",
+      "Severity": "Warning",
+      "Message": "Inconsistent themes detected: ToolStripGripStyle, ComboBoxStyle, typeof, ToolStripItemDisplayStyle",
+      "File": "CustomersForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW017",
+      "Severity": "Info",
+      "Message": "Consider setting TabIndex for keyboard navigation",
+      "File": "CustomersForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW018",
+      "Severity": "Info",
+      "Message": "Consider adding AccessibleName/Description for screen readers",
+      "File": "CustomersForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW019",
+      "Severity": "Info",
+      "Message": "Consider using BeginUpdate/EndUpdate for large data operations",
+      "File": "CustomersForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 18 hardcoded strings - consider using resource files for localization",
+      "File": "CustomersForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "CustomersForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW029",
+      "Severity": "Warning",
+      "Message": "Found 1 event handlers not unsubscribed (potential memory leak)",
+      "File": "CustomersForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW004",
+      "Severity": "Warning",
+      "Message": "No theme initialization found for Syncfusion controls",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW005",
+      "Severity": "Warning",
+      "Message": "Inconsistent themes detected: ToolStripGripStyle, ProgressBarStyle",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW008",
+      "Severity": "Error",
+      "Message": "DockingManager not properly initialized",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW009",
+      "Severity": "Info",
+      "Message": "DockingManager may be missing essential configuration properties",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW017",
+      "Severity": "Info",
+      "Message": "Consider setting TabIndex for keyboard navigation",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW018",
+      "Severity": "Info",
+      "Message": "Consider adding AccessibleName/Description for screen readers",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW019",
+      "Severity": "Info",
+      "Message": "Consider using BeginUpdate/EndUpdate for large data operations",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 16 hardcoded strings - consider using resource files for localization",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW029",
+      "Severity": "Warning",
+      "Message": "Found 3 event handlers not unsubscribed (potential memory leak)",
+      "File": "MainForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW004",
+      "Severity": "Warning",
+      "Message": "No theme initialization found for Syncfusion controls",
+      "File": "MainForm.Docking.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW017",
+      "Severity": "Info",
+      "Message": "Consider setting TabIndex for keyboard navigation",
+      "File": "MainForm.Docking.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW018",
+      "Severity": "Info",
+      "Message": "Consider adding AccessibleName/Description for screen readers",
+      "File": "MainForm.Docking.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW019",
+      "Severity": "Info",
+      "Message": "Consider using BeginUpdate/EndUpdate for large data operations",
+      "File": "MainForm.Docking.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW020",
+      "Severity": "Info",
+      "Message": "Consider using SuspendLayout/ResumeLayout when adding multiple controls",
+      "File": "MainForm.Docking.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 4 hardcoded strings - consider using resource files for localization",
+      "File": "MainForm.Docking.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "MainForm.Docking.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW014",
+      "Severity": "Warning",
+      "Message": "Async methods found but no InvokeRequired check for thread-safe UI updates",
+      "File": "PrintPreviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 5 hardcoded strings - consider using resource files for localization",
+      "File": "PrintPreviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "PrintPreviewForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW020",
+      "Severity": "Info",
+      "Message": "Consider using SuspendLayout/ResumeLayout when adding multiple controls",
+      "File": "ProgressDialog.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "ProgressDialog.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW027",
+      "Severity": "Info",
+      "Message": "Consider using Dock or Anchor properties for responsive layout",
+      "File": "ProgressDialog.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW029",
+      "Severity": "Warning",
+      "Message": "Found 2 event handlers not unsubscribed (potential memory leak)",
+      "File": "ProgressDialog.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 17 hardcoded strings - consider using resource files for localization",
+      "File": "ReportsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "ReportsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW006",
+      "Severity": "Info",
+      "Message": "ViewModel detected but no data binding found",
+      "File": "SettingsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW023",
+      "Severity": "Info",
+      "Message": "Found 20 hardcoded strings - consider using resource files for localization",
+      "File": "SettingsForm.cs",
+      "Line": null
+    },
+    {
+      "Rule": "VW024",
+      "Severity": "Info",
+      "Message": "Consider adding [Localizable(true)] attribute to form class",
+      "File": "SettingsForm.cs",
+      "Line": null
+    }
+  ]
+}

@@ -25,11 +25,11 @@ namespace WileyWidget.WinForms.Tests
             var mockDashboardService = new Mock<IMainDashboardService>();
             var vm = new ChartViewModel(logger.Object, mockChartService.Object, mockDashboardService.Object);
 
-            using var cts = new CancellationTokenSource();
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
             cts.Cancel(); // token is already canceled
 
             // Act
-            var act = async () => await vm.LoadChartDataAsync(null, null, cts.Token);
+            var act = async () => await vm.LoadChartsAsync(null, null, cts.Token);
 
             // Assert - should complete without throwing and collections remain empty
             await act.Should().NotThrowAsync();
@@ -59,7 +59,7 @@ namespace WileyWidget.WinForms.Tests
                 // ensure db is created
                 await db.Database.EnsureCreatedAsync();
 
-                using var cts = new CancellationTokenSource();
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
                 cts.Cancel();
 
                 // Act

@@ -18,8 +18,10 @@ using System.Threading;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Abstractions.Models;
+using Syncfusion.Windows.Forms;
 using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Exporters;
+using WileyWidget.WinForms.Configuration;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Forms
@@ -55,6 +57,7 @@ namespace WileyWidget.WinForms.Forms
         private readonly AccountsViewModel _viewModel;
         private readonly ILogger<AccountsForm> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly FormStateManager _stateManager;
         private SfDataGrid? _dataGrid;  // Use Syncfusion SfDataGrid for high-performance grid
         private Panel? _detailPanel;
         private Panel? _validationPanel;
@@ -81,15 +84,34 @@ namespace WileyWidget.WinForms.Forms
 
         public AccountsForm(AccountsViewModel viewModel, IServiceProvider serviceProvider, ILogger<AccountsForm> logger)
         {
+            InitializeComponent();
+
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _stateManager = new FormStateManager(logger);
 
             try
             {
-                InitializeComponent();
                 ApplySyncfusionTheme();
                 SetupDataGrid();
+
+                // Restore window state if available
+                var savedState = _stateManager.LoadFormState("AccountsForm");
+                if (savedState != null)
+                {
+                    _stateManager.ApplyFormState(this, savedState);
+                    // Restore splitter positions if saved
+                    if (savedState.MainSplitterDistance.HasValue && _mainSplit != null)
+                    {
+                        _mainSplit.SplitterDistance = savedState.MainSplitterDistance.Value;
+                    }
+                    if (savedState.LeftSplitterDistance.HasValue && _leftSplit != null)
+                    {
+                        _leftSplit.SplitterDistance = savedState.LeftSplitterDistance.Value;
+                    }
+                }
+
                 _logger.LogInformation("AccountsForm initialized successfully");
 
                 // Initialize cancellation token source
@@ -105,6 +127,17 @@ namespace WileyWidget.WinForms.Forms
 
                 FormClosing += (s, e) =>
                 {
+                    // Save window state before closing
+                    try
+                    {
+                        var mainSplitterDist = _mainSplit?.SplitterDistance;
+                        var leftSplitterDist = _leftSplit?.SplitterDistance;
+                        _stateManager.SaveFormState(this, "AccountsForm", mainSplitterDist, leftSplitterDist);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to save form state on close");
+                    }
                     Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
                 };
 
@@ -127,25 +160,33 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                // Apply Office2019Colorful theme colors for modern look
-                BackColor = Color.FromArgb(245, 245, 250);
-                ForeColor = Color.FromArgb(33, 37, 41);
-
-                // Update toolbar colors
-                var toolStrip = Controls.OfType<ToolStrip>().FirstOrDefault();
-                if (toolStrip != null)
+                // Prefer Syncfusion SkinManager when available
+                if (Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
                 {
-                    toolStrip.BackColor = Color.FromArgb(248, 249, 250);
+                    try { Syncfusion.Windows.Forms.SkinManager.SetVisualStyle(this, "Office2019DarkGray"); } catch { }
+                }
+                else
+                {
+                    // Apply Office 2019 Dark Gray theme colors manually as a fallback
+                    BackColor = Color.FromArgb(45, 45, 48);
+                    ForeColor = Color.White;
+
+                    // Update toolbar colors
+                    var toolStrip = Controls.OfType<ToolStrip>().FirstOrDefault();
+                    if (toolStrip != null)
+                    {
+                        toolStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    }
+
+                    // Update status strip
+                    var statusStrip = Controls.OfType<StatusStrip>().FirstOrDefault();
+                    if (statusStrip != null)
+                    {
+                        statusStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    }
                 }
 
-                // Update status strip
-                var statusStrip = Controls.OfType<StatusStrip>().FirstOrDefault();
-                if (statusStrip != null)
-                {
-                    statusStrip.BackColor = Color.FromArgb(248, 249, 250);
-                }
-
-                _logger.LogInformation("Applied Syncfusion Office2019Colorful theme to AccountsForm");
+                _logger.LogInformation("Applied Office2019DarkGray theme to AccountsForm");
             }
             catch (Exception ex)
             {
@@ -243,7 +284,6 @@ namespace WileyWidget.WinForms.Forms
                     StartPosition = FormStartPosition.Manual,
                     ShowInTaskbar = false,
                     TopMost = true,
-                    BackColor = Color.FromArgb(40, 40, 40),
                     Opacity = 0.95,
                     Width = 420,
                     Height = 64
@@ -252,11 +292,16 @@ namespace WileyWidget.WinForms.Forms
                 var lbl = new Label
                 {
                     Text = message,
-                    ForeColor = Color.White,
                     Dock = DockStyle.Fill,
                     Font = new Font("Segoe UI", 9F),
                     Padding = new Padding(12)
                 };
+
+                if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+                {
+                    toast.BackColor = Color.FromArgb(40, 40, 40);
+                    lbl.ForeColor = Color.White;
+                }
                 toast.Controls.Add(lbl);
 
                 // Position at top-right of parent
@@ -311,7 +356,13 @@ namespace WileyWidget.WinForms.Forms
             SuspendLayout();
 
             Text = Resources.FormTitle;
-            Size = new Size(1400, 900);
+            // Use 85% of primary screen or 1400x900 minimum, whichever is larger
+            var primaryScreen = Screen.PrimaryScreen;
+            var screenWidth = primaryScreen?.Bounds.Width ?? 1600;
+            var screenHeight = primaryScreen?.Bounds.Height ?? 1200;
+            var width = Math.Max(1400, (int)(screenWidth * 0.85));
+            var height = Math.Max(900, (int)(screenHeight * 0.75));
+            Size = new Size(width, height);
             MinimumSize = new Size(1000, 600);
             StartPosition = FormStartPosition.CenterScreen;
             KeyPreview = true;
@@ -433,6 +484,12 @@ namespace WileyWidget.WinForms.Forms
                 exportButton
             });
 
+            // Enable overflow and set minimum sizes to prevent clipping
+            toolStrip.CanOverflow = true;
+            _fundCombo.MinimumSize = new Size(150, 0);
+            _typeCombo.MinimumSize = new Size(120, 0);
+            _searchBox.MinimumSize = new Size(180, 0);
+
             // Wire filter selections to ViewModel
             _fundCombo.SelectedIndexChanged += (s, e) =>
             {
@@ -512,13 +569,13 @@ namespace WileyWidget.WinForms.Forms
 
         private void SetupDataGrid()
         {
-            // === Main Split Container: Tree | Grid | Details ===
+            // === Main Split Container: (Tree+Grid) | Details ===
             var mainSplit = new SplitContainer
             {
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 1000, // Initial: left (tree+grid) takes ~70%, right (details) takes ~30%
-                BackColor = Color.FromArgb(245, 245, 250)
+                Orientation = Orientation.Vertical,  // Changed from Horizontal to Vertical for proper Tree | Grid | Details layout
+                SplitterDistance = 800, // Initial default; will be recalculated in OnLoad
+                BackColor = Color.FromArgb(45, 45, 48)
             };
             _mainSplit = mainSplit;
 
@@ -527,10 +584,38 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
-                SplitterDistance = 300, // Initial: tree takes ~30% of left panel
-                BackColor = Color.FromArgb(245, 245, 250)
+                SplitterDistance = 250, // Initial default; will be recalculated in OnLoad
+                BackColor = Color.FromArgb(45, 45, 48)
             };
             mainSplit.Panel1.Controls.Add(_leftSplit);
+
+            // === LEFT PANEL: Tree with Header ===
+            var treeContainerPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(250, 250, 252)
+            };
+
+            // Tree section header (bold, visible)
+            var treeHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 36,
+                BackColor = Color.FromArgb(240, 240, 245),
+                BorderStyle = BorderStyle.FixedSingle,
+                Padding = new Padding(8, 6, 8, 6)
+            };
+            var treeHeaderLabel = new Label
+            {
+                Text = "Account Hierarchy",
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.FromArgb(33, 37, 41),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Visible = true
+            };
+            treeHeaderPanel.Controls.Add(treeHeaderLabel);
+            treeContainerPanel.Controls.Add(treeHeaderPanel);
 
             // Tree panel on left
             var treePanel = new Panel
@@ -545,7 +630,8 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 HideSelection = false,
                 ShowLines = true,
-                ShowRootLines = true
+                ShowRootLines = true,
+                Visible = true
             };
             _accountTree.AfterSelect += (s, e) =>
             {
@@ -570,7 +656,36 @@ namespace WileyWidget.WinForms.Forms
                 _isSelectingFromTree = false;
             };
             treePanel.Controls.Add(_accountTree);
-            _leftSplit.Panel1.Controls.Add(treePanel);
+            treeContainerPanel.Controls.Add(treePanel);
+            _leftSplit.Panel1.Controls.Add(treeContainerPanel);
+
+            // === MIDDLE PANEL: Grid with Header ===
+            var gridContainerPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White
+            };
+
+            // Grid section header (bold, visible)
+            var gridHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 36,
+                BackColor = Color.FromArgb(240, 240, 245),
+                BorderStyle = BorderStyle.FixedSingle,
+                Padding = new Padding(8, 6, 8, 6)
+            };
+            var gridHeaderLabel = new Label
+            {
+                Text = "Account List",
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.FromArgb(33, 37, 41),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Visible = true
+            };
+            gridHeaderPanel.Controls.Add(gridHeaderLabel);
+            gridContainerPanel.Controls.Add(gridHeaderPanel);
 
             // Grid panel on right of left split
             var gridPanel = new Panel
@@ -586,11 +701,16 @@ namespace WileyWidget.WinForms.Forms
                 SelectionUnit = SelectionUnit.Row,
                 AutoGenerateColumns = false,
                 ShowGroupDropArea = false,
+                ShowRowHeader = false,
                 BackColor = Color.White,
                 RowHeight = 30,
+                HeaderRowHeight = 28,
+                AllowSorting = true,
+                AllowFiltering = false,
                 AccessibleName = "Municipal Accounts Grid",
                 AccessibleDescription = "Data grid displaying all municipal accounts with balance and budget information. Use arrow keys to navigate, Enter to view details.",
-                AccessibleRole = AccessibleRole.Table
+                AccessibleRole = AccessibleRole.Table,
+                Visible = true
             };
 
             // Selection changed event for detail panel
@@ -608,7 +728,8 @@ namespace WileyWidget.WinForms.Forms
             };
             gridPanel.Controls.Add(_emptyStateLabel);
             gridPanel.Controls.Add(_dataGrid);
-            _leftSplit.Panel2.Controls.Add(gridPanel);
+            gridContainerPanel.Controls.Add(gridPanel);
+            _leftSplit.Panel2.Controls.Add(gridContainerPanel);
 
             // === Context Menu ===
             var contextMenu = new ContextMenuStrip();
@@ -665,16 +786,25 @@ namespace WileyWidget.WinForms.Forms
             _dataGrid.Columns.Add(new GridCheckBoxColumn { MappingName = "IsActive", HeaderText = Resources.ActiveHeader, Width = 80 });
             _dataGrid.Columns.Add(new GridCheckBoxColumn { MappingName = "HasParent", HeaderText = Resources.HasParentHeader, Width = 100 });
 
+            // Enable column resizing for better responsiveness
+            _dataGrid.AllowResizingColumns = true;
+
+            // Additional properties for complete SfDataGrid implementation
+            _dataGrid.AllowGrouping = false;
+            // Theme managed globally by SfSkinManager, do not hardcode
+            _dataGrid.TabIndex = 0;
+            _dataGrid.RightToLeft = RightToLeft.No;
+
             // Add row highlighting for search matches
             _dataGrid.QueryRowStyle += DataGrid_QueryRowStyle;
 
             // === Account Detail Panel ===
             _detailPanel = new Panel
             {
-                Dock = DockStyle.Right,
-                Width = 320,
+                Dock = DockStyle.Fill,  // Changed from Right to Fill for proper right-panel filling in vertical layout
+                // Removed Width = 350; allow dynamic sizing
                 BackColor = Color.White,
-                Padding = new Padding(15),
+                Padding = new Padding(8),
                 BorderStyle = BorderStyle.None
             };
 
@@ -687,12 +817,14 @@ namespace WileyWidget.WinForms.Forms
             };
             _detailPanel.Controls.Add(borderPanel);
 
-            // Detail header with collapse/expand toggle
+            // Detail header with collapse/expand toggle - PROMINENT AND VISIBLE
             var headerPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 44,
-                Padding = new Padding(6, 6, 6, 0)
+                Height = 48,
+                BackColor = Color.FromArgb(240, 240, 245),
+                BorderStyle = BorderStyle.FixedSingle,
+                Padding = new Padding(8, 8, 8, 8)
             };
 
             var headerLabel = new Label
@@ -702,19 +834,22 @@ namespace WileyWidget.WinForms.Forms
                 ForeColor = Color.FromArgb(33, 37, 41),
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(8, 6, 0, 0)
+                Padding = new Padding(4, 0, 0, 0),
+                Visible = true
             };
 
             _toggleDetailButton = new Button
             {
                 Text = "«",
-                Width = 28,
-                Height = 28,
+                Width = 32,
+                Height = 32,
                 Dock = DockStyle.Right,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.Transparent,
+                BackColor = Color.FromArgb(66, 133, 244),
+                ForeColor = Color.White,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(6, 6, 6, 6)
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Visible = true
             };
             _toggleDetailButton.FlatAppearance.BorderSize = 0;
             _toggleDetailButton.Click += (s, e) =>
@@ -762,11 +897,12 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 8,
-                Padding = new Padding(10, 50, 10, 10),
-                AutoScroll = true
+                Padding = new Padding(4, 8, 4, 4),
+                AutoScroll = true,
+                AutoSize = false
             };
-            detailContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            detailContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
+            detailContent.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 85));
+            detailContent.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             // Account Number
             detailContent.Controls.Add(CreateDetailLabel("Account #:"), 0, 0);
@@ -1651,10 +1787,16 @@ namespace WileyWidget.WinForms.Forms
             base.Dispose(disposing);
         }
 
-        protected override void OnResize(EventArgs e)
+        protected override void OnLoad(EventArgs e)
         {
-            base.OnResize(e);
+            base.OnLoad(e);
 
+            // Recalculate splitter distances now that the form is fully loaded and sized
+            RecalculateSplitterDistances();
+        }
+
+        private void RecalculateSplitterDistances()
+        {
             // Improve responsiveness: adjust splitter distances based on form size
             if (_mainSplit != null && Width > 0)
             {
@@ -1675,6 +1817,24 @@ namespace WileyWidget.WinForms.Forms
                     }
                 }
             }
+
+            // Set PanelMinSize to prevent collapse
+            if (_mainSplit != null)
+            {
+                _mainSplit.Panel1MinSize = 400;  // Min width for tree/grid
+                _mainSplit.Panel2MinSize = 300;  // Min width for details
+            }
+            if (_leftSplit != null)
+            {
+                _leftSplit.Panel1MinSize = 200;  // Min width for tree
+                _leftSplit.Panel2MinSize = 400;  // Min width for grid
+            }
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            RecalculateSplitterDistances();
         }
     }
 }

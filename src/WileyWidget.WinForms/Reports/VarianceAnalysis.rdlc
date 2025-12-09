@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition"
+  xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner"
+  xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
   <df:DefaultFontFamily>Segoe UI</df:DefaultFontFamily>
   <ReportParameters>
     <ReportParameter Name="FromDate">
@@ -23,6 +25,15 @@
       <DefaultValue>
         <Values>
           <Value>Variance Analysis</Value>
+        </Values>
+      </DefaultValue>
+    </ReportParameter>
+    <ReportParameter Name="ReportCulture">
+      <DataType>String</DataType>
+      <AllowBlank>true</AllowBlank>
+      <DefaultValue>
+        <Values>
+          <Value>en-US</Value>
         </Values>
       </DefaultValue>
     </ReportParameter>
@@ -96,7 +107,8 @@
               <Paragraph>
                 <TextRuns>
                   <TextRun>
-                    <Value>="Period: " &amp; Format(Parameters!FromDate.Value, "MM/dd/yyyy") &amp; " to " &amp; Format(Parameters!ToDate.Value, "MM/dd/yyyy")</Value>
+                    <Value>="Period: " &amp; Format(Parameters!FromDate.Value, "MM/dd/yyyy") &amp; " to " &amp;
+                      Format(Parameters!ToDate.Value, "MM/dd/yyyy")</Value>
                     <Style>
                       <FontFamily>Segoe UI</FontFamily>
                       <FontSize>11pt</FontSize>
@@ -113,6 +125,7 @@
           </Textbox>
           <Table Name="VarianceTable">
             <DataSetName>VarianceDataSet</DataSetName>
+            <NoRowsMessage>No variance rows for selected period.</NoRowsMessage>
             <Visibility>
               <Hidden>false</Hidden>
             </Visibility>
@@ -316,7 +329,7 @@
                           <Paragraph>
                             <TextRuns>
                               <TextRun>
-                                <Value>=Format(Fields!Budget.Value, "C0")</Value>
+                                <Value>=Format(Fields!Budget.Value, "C0", Parameters!ReportCulture.Value)</Value>
                                 <Style>
                                   <FontFamily>Segoe UI</FontFamily>
                                   <FontSize>10pt</FontSize>
@@ -349,7 +362,7 @@
                           <Paragraph>
                             <TextRuns>
                               <TextRun>
-                                <Value>=Format(Fields!Actual.Value, "C0")</Value>
+                                <Value>=Format(Fields!Actual.Value, "C0", Parameters!ReportCulture.Value)</Value>
                                 <Style>
                                   <FontFamily>Segoe UI</FontFamily>
                                   <FontSize>10pt</FontSize>
@@ -382,7 +395,7 @@
                           <Paragraph>
                             <TextRuns>
                               <TextRun>
-                                <Value>=Format(Fields!Variance.Value, "C0")</Value>
+                                <Value>=Format(Fields!Variance.Value, "C0", Parameters!ReportCulture.Value)</Value>
                                 <Style>
                                   <FontFamily>Segoe UI</FontFamily>
                                   <FontSize>10pt</FontSize>
@@ -420,7 +433,8 @@
                                 <Style>
                                   <FontFamily>Segoe UI</FontFamily>
                                   <FontSize>10pt</FontSize>
-                                  <Color>=If(Fields!VariancePercent.Value &gt; 0, "rgb(46, 204, 113)", "rgb(231, 76, 60)")</Color>
+                                  <Color>=If(Fields!VariancePercent.Value &gt; 0, "rgb(46, 204, 113)", "rgb(231, 76,
+                                    60)")</Color>
                                 </Style>
                               </TextRun>
                             </TextRuns>
@@ -445,11 +459,106 @@
                   </TableCell>
                 </TableCells>
               </TableRow>
+              <TableRow>
+                <Height>0.3in</Height>
+                <TableCells>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="VarianceTotalLabel">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Total</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Left</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="BudgetTotal">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Sum(Fields!Budget.Value)</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Right</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="ActualTotal">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Sum(Fields!Actual.Value)</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Right</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="VarianceTotal">
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Sum(Fields!Variance.Value)</Value>
+                                <Style>
+                                  <FontFamily>Segoe UI</FontFamily>
+                                  <FontSize>10pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <TextAlign>Right</TextAlign>
+                          </Paragraph>
+                        </Paragraphs>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                  <TableCell>
+                    <ReportItems>
+                      <Textbox Name="PercentTotal">
+                        <Value></Value>
+                      </Textbox>
+                    </ReportItems>
+                  </TableCell>
+                </TableCells>
+              </TableRow>
             </TableRows>
             <Left>0.25in</Left>
             <Top>1.2in</Top>
             <Width>6in</Width>
-            <Height>2.5in</Height>
           </Table>
           <Textbox Name="FooterText">
             <CanGrow>true</CanGrow>

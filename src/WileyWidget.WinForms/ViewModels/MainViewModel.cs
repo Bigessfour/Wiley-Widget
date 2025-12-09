@@ -55,13 +55,25 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         public ObservableCollection<ActivityItem> ActivityItems { get; } = new();
 
+        /// <summary>Gets the command to load dashboard data.</summary>
         public IAsyncRelayCommand LoadDataCommand { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MainViewModel"/> class.
+        /// </summary>
+        /// <param name="logger">Logger instance for the ViewModel.</param>
+        /// <param name="dashboardService">Service for dashboard data operations.</param>
+        /// <param name="aiLoggingService">Service for AI-enhanced logging.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
         public MainViewModel(ILogger<MainViewModel> logger, IMainDashboardService dashboardService, IAILoggingService aiLoggingService)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
-            _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(dashboardService);
+            ArgumentNullException.ThrowIfNull(aiLoggingService);
+
+            _logger = logger;
+            _dashboardService = dashboardService;
+            _aiLoggingService = aiLoggingService;
 
             try
             {
@@ -76,6 +88,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
+        /// <summary>Gets the command to refresh dashboard data.</summary>
         public IAsyncRelayCommand RefreshCommand { get; }
 
         private async Task LoadDataAsync(CancellationToken cancellationToken = default)
@@ -105,7 +118,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (OperationCanceledException oce)
             {
-                _logger.LogDebug(oce, "Dashboard data loading canceled");
+                _logger.LogWarning(oce, "Dashboard data loading canceled");
                 _aiLoggingService.LogError("Dashboard Load", oce);
                 return;
             }
@@ -147,7 +160,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (OperationCanceledException oce)
             {
-                _logger.LogDebug(oce, "MainViewModel initialization canceled");
+                _logger.LogWarning(oce, "MainViewModel initialization canceled");
                 _aiLoggingService.LogError("MainViewModel Initialize", oce);
                 return;
             }

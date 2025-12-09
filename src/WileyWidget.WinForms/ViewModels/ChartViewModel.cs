@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Abstractions.Models;
 using WileyWidget.WinForms.Forms;
@@ -16,28 +17,88 @@ namespace WileyWidget.WinForms.ViewModels
     /// Reference: https://help.syncfusion.com/windowsforms/chart/overview
     /// Provides data for bar/line/area charts and pie charts using ObservableCollection for data binding.
     /// </summary>
-    public partial class ChartViewModel
+    public partial class ChartViewModel : ObservableObject
     {
         private readonly ILogger<ChartViewModel> _logger;
         private readonly IChartService _chartService;
         private readonly IMainDashboardService _dashboardService;
 
+        /// <summary>
+        /// Revenue trend series data for line charts.
+        /// </summary>
         public ObservableCollection<ChartSeries> RevenueTrendSeries { get; } = new();
+
+        /// <summary>
+        /// Expenditure column series data.
+        /// </summary>
         public ObservableCollection<ChartSeries> ExpenditureColumnSeries { get; } = new();
+
+        /// <summary>
+        /// Budget stacked series data.
+        /// </summary>
         public ObservableCollection<ChartSeries> BudgetStackedSeries { get; } = new();
+
+        /// <summary>
+        /// Proportion pie series data.
+        /// </summary>
         public ObservableCollection<ChartSeries> ProportionPieSeries { get; } = new();
 
+        /// <summary>
+        /// Line chart data points.
+        /// </summary>
         public ObservableCollection<ChartDataPoint> LineChartData { get; } = new();
+
+        /// <summary>
+        /// Pie chart data points.
+        /// </summary>
         public ObservableCollection<ChartDataPoint> PieChartData { get; } = new();
 
-        public int SelectedYear { get; set; } = DateTime.UtcNow.Year;
-        public string SelectedCategory { get; set; } = "All Categories";
+        /// <summary>
+        /// Selected year for filtering chart data.
+        /// </summary>
+        [ObservableProperty]
+        private int selectedYear = DateTime.UtcNow.Year;
 
+        /// <summary>
+        /// Selected category for filtering chart data.
+        /// </summary>
+        [ObservableProperty]
+        private string selectedCategory = "All Categories";
+
+        /// <summary>
+        /// Selected start date for filtering chart data.
+        /// </summary>
+        [ObservableProperty]
+        private DateTime selectedStartDate = new DateTime(DateTime.UtcNow.Year, 1, 1);
+
+        /// <summary>
+        /// Selected end date for filtering chart data.
+        /// </summary>
+        [ObservableProperty]
+        private DateTime selectedEndDate = new DateTime(DateTime.UtcNow.Year, 12, 31);
+
+        /// <summary>
+        /// Selected chart type (Line, Bar, etc.).
+        /// </summary>
+        [ObservableProperty]
+        private string selectedChartType = "Line";
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ChartViewModel"/> class.
+        /// </summary>
+        /// <param name="logger">Logger instance for the ViewModel.</param>
+        /// <param name="chartService">Service for chart data operations.</param>
+        /// <param name="dashboardService">Service for dashboard data operations.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
         public ChartViewModel(ILogger<ChartViewModel> logger, IChartService chartService, IMainDashboardService dashboardService)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _chartService = chartService ?? throw new ArgumentNullException(nameof(chartService));
-            _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(chartService);
+            ArgumentNullException.ThrowIfNull(dashboardService);
+
+            _logger = logger;
+            _chartService = chartService;
+            _dashboardService = dashboardService;
 
             try
             {
@@ -51,6 +112,15 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
+        /// <summary>
+        /// Loads chart data asynchronously for the specified year and category.
+        /// </summary>
+        /// <param name="year">Optional year filter. Defaults to current year.</param>
+        /// <param name="category">Optional category filter. Defaults to "All Categories".</param>
+        /// <param name="cancellationToken">Cancellation token for the async operation.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when year is out of valid range.</exception>
+        /// <exception cref="ArgumentException">Thrown when category is null or empty.</exception>
         public async Task LoadChartsAsync(int? year = null, string? category = null, CancellationToken cancellationToken = default)
         {
             // Input validation
@@ -68,13 +138,19 @@ namespace WileyWidget.WinForms.ViewModels
 
             try
             {
-                _logger.LogInformation("Loading charts for year {Year} and category {Category}", selectedYear, selectedCategory);
+                _logger.LogInformation("Loading charts for year {Year}, category {Category}, date range {StartDate} to {EndDate}",
+                    selectedYear, selectedCategory, SelectedStartDate, SelectedEndDate);
+
+                // If the operation was already canceled, return early without calling services
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogDebug("Chart load canceled before service calls for year {Year}, category {Category}", selectedYear, selectedCategory);
+                    return;
+                }
 
                 // Retrieve real production data via the ChartService and DashboardService
                 var monthlyPoints = (await _chartService.GetMonthlyTotalsAsync(selectedYear, cancellationToken).ConfigureAwait(false)).ToList();
-                var start = new DateTime(selectedYear, 1, 1);
-                var end = new DateTime(selectedYear, 12, 31);
-                var breakdownPoints = (await _chartService.GetCategoryBreakdownAsync(start, end, selectedCategory, cancellationToken).ConfigureAwait(false)).ToList();
+                var breakdownPoints = (await _chartService.GetCategoryBreakdownAsync(SelectedStartDate, SelectedEndDate, selectedCategory, cancellationToken).ConfigureAwait(false)).ToList();
                 var dashboard = await _dashboardService.LoadDashboardDataAsync(cancellationToken).ConfigureAwait(false);
 
                 // Validate data integrity

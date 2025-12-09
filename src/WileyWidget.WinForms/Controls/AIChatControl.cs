@@ -405,12 +405,24 @@ public partial class AIChatControl : UserControl
         Messages.Add(userMessage);
         AppendMessageToDisplay(userMessage);
 
-        // Show progress
-        if (_progressPanel != null)
-            _progressPanel.Visible = true;
-
-        if (_sendButton != null)
-            _sendButton.Enabled = false;
+        // Show progress (ensure UI thread execution)
+        if (InvokeRequired)
+        {
+            BeginInvoke(() =>
+            {
+                if (_progressPanel != null)
+                    _progressPanel.Visible = true;
+                if (_sendButton != null)
+                    _sendButton.Enabled = false;
+            });
+        }
+        else
+        {
+            if (_progressPanel != null)
+                _progressPanel.Visible = true;
+            if (_sendButton != null)
+                _sendButton.Enabled = false;
+        }
 
         await _executionSemaphore.WaitAsync();
         try
@@ -434,10 +446,24 @@ public partial class AIChatControl : UserControl
                         AppendMessageToDisplay(lastMsg);
                     // Release the semaphore since we aren't going to wait for parent processing
                     _executionSemaphore.Release();
-                    if (_progressPanel != null)
-                        _progressPanel.Visible = false;
-                    if (_sendButton != null)
-                        _sendButton.Enabled = true;
+                    // Hide progress UI on main thread
+                    if (InvokeRequired)
+                    {
+                        BeginInvoke(() =>
+                        {
+                            if (_progressPanel != null)
+                                _progressPanel.Visible = false;
+                            if (_sendButton != null)
+                                _sendButton.Enabled = true;
+                        });
+                    }
+                    else
+                    {
+                        if (_progressPanel != null)
+                            _progressPanel.Visible = false;
+                        if (_sendButton != null)
+                            _sendButton.Enabled = true;
+                    }
                 }
 
                 // DONE: delegate to parent, return now (parent will add AI response and must call NotifyProcessingCompleted())
@@ -526,11 +552,24 @@ public partial class AIChatControl : UserControl
                 _executionSemaphore.Release();
             }
 
-            if (_progressPanel != null)
-                _progressPanel.Visible = false;
-
-            if (_sendButton != null)
-                _sendButton.Enabled = true;
+            // Hide progress UI and enable button on main thread
+            if (InvokeRequired)
+            {
+                BeginInvoke(() =>
+                {
+                    if (_progressPanel != null)
+                        _progressPanel.Visible = false;
+                    if (_sendButton != null)
+                        _sendButton.Enabled = true;
+                });
+            }
+            else
+            {
+                if (_progressPanel != null)
+                    _progressPanel.Visible = false;
+                if (_sendButton != null)
+                    _sendButton.Enabled = true;
+            }
         }
     }
 

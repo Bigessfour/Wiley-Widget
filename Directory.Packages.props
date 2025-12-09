@@ -110,6 +110,7 @@
         <PackageVersion Include="Syncfusion.OfficeChart.Net.Core" Version="31.2.16" />
         <PackageVersion Include="Syncfusion.Presentation.Net.Core" Version="31.2.16" />
         <PackageVersion Include="Syncfusion.Pdf.Imaging.Net.Core" Version="31.2.16" />
+        <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="31.2.16" />
         <!-- BoldReports for RDL/RDLC report viewing and PDF/Excel export -->
         <PackageVersion Include="BoldReports.WPF" Version="12.1.13" />
         <PackageVersion Include="System.Collections.Immutable" Version="10.0.0" />

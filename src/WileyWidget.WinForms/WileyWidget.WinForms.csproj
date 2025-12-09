@@ -1,100 +1,99 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
-    <UseWPF>true</UseWPF><!-- Required for BoldReports.WPF ElementHost interop -->
-    <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>NU1701;CS0433</NoWarn>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net9.0-windows</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <Nullable>enable</Nullable>
+        <UseWindowsForms>true</UseWindowsForms>
+        <UseWPF>true</UseWPF><!-- Required for BoldReports.WPF ElementHost interop -->
+        <ImplicitUsings>enable</ImplicitUsings>
+        <NoWarn>NU1701;CS0433;NETSDK1206</NoWarn>
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <!-- Syncfusion WinForms controls - v31.2.16 -->
-    <PackageReference Include="BoldReports.Net.Core" />
-    <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
-    <PackageReference Include="Syncfusion.DataGridExport.WinForms" />
-    <PackageReference Include="Syncfusion.SfInput.WinForms" />
-    <PackageReference Include="Syncfusion.SfListView.WinForms" />
-    <PackageReference Include="Syncfusion.Tools.Windows" />
-    <PackageReference Include="Syncfusion.Shared.Base" />
-    <PackageReference Include="Syncfusion.XlsIO.Net.Core">
-      <Aliases>sync31</Aliases>
-    </PackageReference>
-    <!-- Syncfusion Chart for WinForms - replaces LiveCharts -->
-    <PackageReference Include="Syncfusion.Chart.Windows" />
-    <!-- System.Windows.Forms charting (Chart control) for small embedded visualizations -->
-    <!-- System.Windows.Forms.DataVisualization was removed in favor of Syncfusion ChartControl usage -->
-    <!-- BoldReports WPF for RDL report viewer (hosted in WinForms via ElementHost) -->
-    <PackageReference Include="BoldReports.WPF" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Serilog.Extensions.Hosting" />
-    <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="System.Collections.Immutable" />
-    <PackageReference Include="Microsoft.ApplicationInsights" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
-    <PackageReference Include="OpenTelemetry" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
-    <PackageReference Include="Polly.RateLimiting" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
-    <PackageReference Include="DotNetEnv" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
-    <PackageReference Include="Microsoft.Extensions.Http" />
-    <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="Serilog" />
-    <PackageReference Include="Serilog.Enrichers.Environment" />
-    <PackageReference Include="Serilog.Enrichers.Process" />
-    <PackageReference Include="Serilog.Enrichers.Thread" />
-    <PackageReference Include="Serilog.Settings.Configuration" />
-    <PackageReference Include="Serilog.Sinks.Async" />
-    <PackageReference Include="Serilog.Sinks.Email" />
-    <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="FluentValidation" />
-    <PackageReference Include="ClosedXML" />
-    <PackageReference Include="CsvHelper" />
-    <PackageReference Include="Syncfusion.Pdf.Net.Core">
-      <Aliases>sync31pdf</Aliases>
-    </PackageReference>
-    <PackageReference Include="ExcelDataReader" />
-    <PackageReference Include="ExcelDataReader.DataSet" />
-    <PackageReference Include="PdfSharpCore" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
-    <PackageReference Include="System.Management" />
-    <PackageReference Include="Polly" />
-    <PackageReference Include="IppOAuth2PlatformSdk" />
-    <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
-    <!-- Exclude legacy Serilog AzureDocumentDB sink and DocumentDB Core to avoid NETSDK1206 -->
-    <PackageReference Include="Serilog.Sinks.AzureDocumentDB" ExcludeAssets="All" />
-    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" ExcludeAssets="All" />
-  </ItemGroup>
+    <ItemGroup>
+        <!-- Syncfusion WinForms controls - v31.2.16 -->
+        <PackageReference Include="BoldReports.Net.Core" />
+        <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
+        <PackageReference Include="Syncfusion.DataGridExport.WinForms" />
+        <PackageReference Include="Syncfusion.SfInput.WinForms" />
+        <PackageReference Include="Syncfusion.SfListView.WinForms" />
+        <PackageReference Include="Syncfusion.Tools.Windows" />
+        <PackageReference Include="Syncfusion.Shared.Base" />
+        <PackageReference Include="Syncfusion.Office2019Theme.WinForms" />
+        <PackageReference Include="Syncfusion.XlsIO.Net.Core">
+            <Aliases>sync31</Aliases>
+        </PackageReference>
+        <!-- Syncfusion Chart for WinForms - replaces LiveCharts -->
+        <PackageReference Include="Syncfusion.Chart.Windows" />
+        <!-- System.Windows.Forms charting (Chart control) for small embedded visualizations -->
+        <!-- System.Windows.Forms.DataVisualization was removed in favor of Syncfusion ChartControl usage -->
+        <!-- BoldReports WPF for RDL report viewer (hosted in WinForms via ElementHost) -->
+        <PackageReference Include="BoldReports.WPF" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Serilog.Extensions.Hosting" />
+        <PackageReference Include="CommunityToolkit.Mvvm" />
+        <PackageReference Include="System.Collections.Immutable" />
+        <PackageReference Include="Microsoft.ApplicationInsights" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+        <PackageReference Include="OpenTelemetry" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+        <PackageReference Include="Polly.RateLimiting" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Data.SqlClient" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+        <PackageReference Include="DotNetEnv" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
+        <PackageReference Include="Microsoft.Extensions.Logging" />
+        <PackageReference Include="Serilog" />
+        <PackageReference Include="Serilog.Enrichers.Environment" />
+        <PackageReference Include="Serilog.Enrichers.Process" />
+        <PackageReference Include="Serilog.Enrichers.Thread" />
+        <PackageReference Include="Serilog.Settings.Configuration" />
+        <PackageReference Include="Serilog.Sinks.Async" />
+        <PackageReference Include="Serilog.Sinks.Email" />
+        <PackageReference Include="Serilog.Sinks.File" />
+        <PackageReference Include="FluentValidation" />
+        <PackageReference Include="ClosedXML" />
+        <PackageReference Include="CsvHelper" />
+        <PackageReference Include="Syncfusion.Pdf.Net.Core">
+            <Aliases>sync31pdf</Aliases>
+        </PackageReference>
+        <PackageReference Include="ExcelDataReader" />
+        <PackageReference Include="ExcelDataReader.DataSet" />
+        <PackageReference Include="PdfSharpCore" />
+        <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
+        <PackageReference Include="System.Management" />
+        <PackageReference Include="Polly" />
+        <PackageReference Include="IppOAuth2PlatformSdk" />
+        <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <!-- Project references to internal WileyWidget libraries -->
-    <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
-    <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
-    <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
-    <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
-    <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
-    <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <!-- Project references to internal WileyWidget libraries -->
+        <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+        <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
+        <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />
+        <ProjectReference Include="..\WileyWidget.Services\WileyWidget.Services.csproj" />
+        <ProjectReference Include="..\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+        <ProjectReference Include="..\WileyWidget.Models\WileyWidget.Models.csproj" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <!-- Copy production configuration to output directory -->
-    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+    <ItemGroup>
+        <!-- Copy production configuration to output directory -->
+        <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
 
 </Project>

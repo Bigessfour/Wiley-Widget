@@ -101,25 +101,59 @@ WileyWidget is a modern Windows desktop application built with WinUI 3, Syncfusi
 
 Run Copilot’s Filesystem MCP locally (no Docker/devcontainer) to avoid ENOENT issues and ensure fast, reliable file access.
 
-1) Install Node.js LTS (20 or 22): https://nodejs.org/en/download
-2) Restart VS Code, then verify in terminal:
+1. Install Node.js LTS (20 or 22): https://nodejs.org/en/download
+2. Restart VS Code, then verify in terminal:
 
 ```powershell
 npx --version
 ```
 
-3) Start server from VS Code:
+3. Start server from VS Code:
+
 - Open `.vscode/mcp.json`
 - Click Start at the top of the editor
 - Wait for "Server started" in Output → GitHub Copilot Chat
 
-4) Quick test in Copilot Agent (Agent mode → tools icon):
+4. Quick test in Copilot Agent (Agent mode → tools icon):
+
 ```
 #codebase
 List all XAML files in Views folder, then read ChartView.xaml and summarize Grid columns.
 ```
 
 Note: `.vscode/mcp.json` already points to the local Node server: `npx -y @modelcontextprotocol/server-filesystem "${workspaceFolder}"`. If you ever work in a container, open the folder locally for MCP.
+
+---
+
+## 🔒 Bold Reports License (Syncfusion/BoldReports integration)
+
+This project integrates Bold Reports (Report Viewer SDK) which requires a license key at runtime. The application reads the license key from the environment or configuration at startup and registers it early during host bootstrap.
+
+Supported sources (checked in order):
+
+- `BOLD_REPORTS` (machine-scoped alias; recommended if you set a machine environment variable)
+- `BOLDREPORTS_LICENSE_KEY` (legacy environment variable name)
+- `BoldReports:LicenseKey` in `appsettings.json`
+
+If you placed your Bold Reports license key in a machine-scoped environment variable named `BOLD_REPORTS`, the application will pick it up automatically on startup. The code will attempt a direct API registration (via the Bold.Licensing API) and will fall back to a reflection-based registration if necessary.
+
+Quick verification (PowerShell):
+
+```powershell
+# View machine-level variable (requires admin privileges)
+[Environment]::GetEnvironmentVariable('BOLD_REPORTS', 'Machine')
+
+# Or set it for the current process (example)
+$env:BOLD_REPORTS = 'your-boldreports-license-key-here'
+```
+
+Notes:
+
+- The community Syncfusion license provides limited Bold Reports functionality (Report Viewer SDK). If you require Report Designer or server features or if your organization exceeds community eligibility, obtain a paid Bold Reports license via the Syncfusion/BoldReports portal.
+- The license is version-specific. If you upgrade BoldReports packages, regenerate the key for the new version.
+- If the app still shows trial watermarks, check the application logs (`logs/errors-.log` or `logs/wiley-widget-.log`) for BoldReports registration warnings.
+
+If you want, I can also add a startup log line that explicitly reports which BoldReports registration path was used (direct API vs fallback reflection) to make troubleshooting easier in CI.
 
 ---
 
@@ -816,11 +850,13 @@ private bool ValidateEntropyIntegrity()
 If entropy tampering is detected:
 
 1. **Immediate Actions:**
+
    - Application automatically refuses to load secrets
    - Critical security event logged to system logs
    - User notified of security issue
 
 2. **Investigation Steps:**
+
    - Check Windows Event Viewer for security audit logs
    - Review file system access logs for `Secrets` folder
    - Verify user account integrity
@@ -1700,18 +1736,21 @@ The AssemblyResolve handler automatically logs to Serilog:
 ### Core Functionality
 
 - **📊 Budget Management**
+
   - Multi-year budget tracking
   - Department-wise budget allocation
   - Budget variance analysis
   - Historical data comparison
 
 - **🎨 Modern UI**
+
   - Syncfusion DataGrid with advanced features
   - Interactive charts and visualizations
   - Fluent Design themes (Dark/Light)
   - Responsive layout with docking panels
 
 - **🔗 Enterprise Integration**
+
   - QuickBooks Online API integration
   - Secure OAuth2 authentication
   - Automated data synchronization
@@ -2509,7 +2548,7 @@ Tokens are saved in `%AppData%/WileyWidget/settings.json` under:
 {
   "QboAccessToken": "...",
   "QboRefreshToken": "...",
-  "QboTokenExpiry": "2025-08-12T12:34:56.789Z",
+  "QboTokenExpiry": "2025-08-12T12:34:56.789Z"
 }
 ```
 
@@ -2661,6 +2700,7 @@ If issues persist, re-set the env var and restart your terminal:
 ### Cleanup & Architecture Reports
 
 - **[LEGACY_CLEANUP_REPORT.md](LEGACY_CLEANUP_REPORT.md)** - Comprehensive code cleanup report
+
   - 28 files deleted (themes, services, backups)
   - CommunityToolkit.Mvvm removed
   - Pure Prism architecture established

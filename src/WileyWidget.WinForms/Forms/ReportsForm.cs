@@ -25,19 +25,38 @@ public partial class ReportsForm : Form
 
     private ElementHost? _elementHost;
     private ReportViewer? _reportViewer;
+    private DataGridView? _previewGrid;
     private ComboBox? _reportTypeCombo;
     private DateTimePicker? _fromDatePicker;
     private DateTimePicker? _toDatePicker;
+    private NumericUpDown? _fiscalYearPicker;
+    private Button? _prevPageButton;
+    private Button? _nextPageButton;
     private Button? _generateButton;
     private Button? _exportPdfButton;
     private Button? _exportExcelButton;
     private Label? _statusLabel;
+    private Label? _pageInfoLabel;
+    private NumericUpDown? _pageSizeControl;
+    private TextBox? _findTextBox;
+    private Button? _findButton;
+    private Button? _printButton;
+    private ComboBox? _zoomCombo;
+    private Button? _toggleParamsButton;
 
     // Cancellation token source for async operations
     private CancellationTokenSource? _cts;
 
+    private void InitializeComponent()
+    {
+        SuspendLayout();
+        ResumeLayout(false);
+    }
+
     public ReportsForm(ReportsViewModel viewModel, ILogger<ReportsForm> logger)
     {
+        InitializeComponent();
+
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -70,163 +89,141 @@ public partial class ReportsForm : Form
             FormBorderStyle = FormBorderStyle.Sizable;
             DoubleBuffered = true;
 
-            // === TOOLBAR PANEL (Top) ===
-            var toolbarPanel = new Panel
+            // === TOOLBAR (Top) ===
+            // Use a FlowLayoutPanel to avoid cramped buttons and provide responsive spacing
+            var toolbarFlow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 Height = 80,
+                Padding = new Padding(10, 8, 10, 8),
                 BackColor = Color.FromArgb(240, 240, 240),
-                Padding = new Padding(10, 8, 10, 8)
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = false
             };
 
-            // Report Type Combo
-            var typeLabel = new Label
-            {
-                Text = "Report Type:",
-                AutoSize = true,
-                Location = new Point(10, 12)
-            };
+            // Report Type label + combo
+            var typeLabel = new Label { Text = "Report Type:", AutoSize = true, Margin = new Padding(6, 10, 6, 6) };
+            var comboSource = _viewModel.ReportTemplateDisplayNames != null && _viewModel.ReportTemplateDisplayNames.Count > 0
+                ? _viewModel.ReportTemplateDisplayNames.ToList()
+                : (_viewModel.ReportTemplates != null && _viewModel.ReportTemplates.Count > 0
+                    ? _viewModel.ReportTemplates.ToList()
+                    : ReportsViewModel.AvailableReportTypes.ToList());
             _reportTypeCombo = new ComboBox
             {
-                Location = new Point(90, 10),
-                Size = new Size(200, 24),
-                DataSource = ReportsViewModel.AvailableReportTypes.ToList(),
+                Size = new Size(220, 24),
+                DataSource = comboSource,
                 SelectedItem = _viewModel.SelectedReportType,
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 AccessibleName = "Report Type",
-                AccessibleDescription = "Select the type of report to generate (Budget Summary, Account Details, etc.)"
+                AccessibleDescription = "Select the type of report to generate (Budget Summary, Account Details, etc.)",
+                Margin = new Padding(0, 6, 12, 6)
             };
-            _reportTypeCombo.SelectedIndexChanged += (s, e) =>
+            _reportTypeCombo.SelectedIndexChanged += (s, e) => _viewModel.SelectedReportType = _reportTypeCombo.SelectedItem?.ToString() ?? "Budget Summary";
+
+            // Date pickers
+            var fromLabel = new Label { Text = "From:", AutoSize = true, Margin = new Padding(6, 10, 6, 6) };
+            _fromDatePicker = new DateTimePicker { Size = new Size(120, 24), Value = _viewModel.FromDate, Format = DateTimePickerFormat.Short, Margin = new Padding(0, 6, 12, 6) };
+            _fromDatePicker.ValueChanged += (s, e) => _viewModel.FromDate = _fromDatePicker.Value;
+
+            var toLabel = new Label { Text = "To:", AutoSize = true, Margin = new Padding(6, 10, 6, 6) };
+            _toDatePicker = new DateTimePicker { Size = new Size(120, 24), Value = _viewModel.ToDate, Format = DateTimePickerFormat.Short, Margin = new Padding(0, 6, 12, 6) };
+            _toDatePicker.ValueChanged += (s, e) => _viewModel.ToDate = _toDatePicker.Value;
+
+            // Fiscal year
+            var fiscalLabel = new Label { Text = "Fiscal Year:", AutoSize = true, Margin = new Padding(6, 10, 6, 6) };
+            _fiscalYearPicker = new NumericUpDown { Minimum = 2000, Maximum = 2100, Value = _viewModel.FromDate.Year, Size = new Size(80, 24), Margin = new Padding(0, 6, 12, 6) };
+            _fiscalYearPicker.ValueChanged += (s, e) => { if (_viewModel.Parameters == null) _viewModel.Parameters = new System.Collections.Generic.Dictionary<string, object>(); _viewModel.Parameters["FiscalYear"] = (int)_fiscalYearPicker.Value; };
+
+            // Buttons (generate / export / paging)
+            _generateButton = new Button { Text = "Generate", Size = new Size(100, 32), BackColor = Color.FromArgb(0, 120, 215), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(6) };
+            _exportPdfButton = new Button { Text = "Export PDF", Size = new Size(100, 32), BackColor = Color.FromArgb(230, 126, 34), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(6) };
+            _exportExcelButton = new Button { Text = "Export Excel", Size = new Size(110, 32), BackColor = Color.FromArgb(46, 204, 113), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(6) };
+            _printButton = new Button { Text = "Print", Size = new Size(80, 32), BackColor = Color.FromArgb(52, 152, 219), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(6) };
+            _zoomCombo = new ComboBox { Size = new Size(90, 24), DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(6) };
+            _findTextBox = new TextBox { Size = new Size(180, 24), Margin = new Padding(6) };
+            _findButton = new Button { Text = "Find", Size = new Size(70, 24), Margin = new Padding(6) };
+            _toggleParamsButton = new Button { Text = "Params", Size = new Size(80, 32), BackColor = Color.FromArgb(142, 68, 173), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(6) };
+            _prevPageButton = new Button { Text = "Prev Page", Size = new Size(90, 32), BackColor = Color.FromArgb(100, 100, 100), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(6) };
+            _nextPageButton = new Button { Text = "Next Page", Size = new Size(90, 32), BackColor = Color.FromArgb(100, 100, 100), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(6) };
+
+            // Status label (page-size control is placed in preview toolbar to avoid duplicate controls)
+            _statusLabel = new Label { Text = "Ready", AutoSize = true, ForeColor = Color.Green, Margin = new Padding(12, 12, 6, 6) };
+
+            // Wire up button actions (with report existence check before generate)
+            _prevPageButton.Click += (s, e) => _viewModel.PreviousPageCommand.Execute(null);
+            _nextPageButton.Click += (s, e) => _viewModel.NextPageCommand.Execute(null);
+
+            _exportPdfButton.Click += async (s, e) => await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.ExportToPdfCommand.ExecuteAsync(null), _cts, this, _logger, "Exporting to PDF");
+            _exportExcelButton.Click += async (s, e) => await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.ExportToExcelCommand.ExecuteAsync(null), _cts, this, _logger, "Exporting to Excel");
+            _printButton.Click += async (s, e) => await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.PrintCommand.ExecuteAsync(null), _cts, this, _logger, "Printing report");
+
+            // Zoom options
+            _zoomCombo.Items.AddRange(new object[] { "50%", "75%", "100%", "125%", "150%", "200%" });
+            _zoomCombo.SelectedItem = "100%";
+            _zoomCombo.SelectedIndexChanged += async (s, e) =>
             {
-                _viewModel.SelectedReportType = _reportTypeCombo.SelectedItem?.ToString() ?? "Budget Summary";
+                if (_zoomCombo?.SelectedItem != null)
+                {
+                    var txt = _zoomCombo.SelectedItem.ToString()?.TrimEnd('%');
+                    if (int.TryParse(txt, out var pct))
+                    {
+                        await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.SetZoomCommand.ExecuteAsync(pct), _cts, this, _logger, "Setting zoom");
+                    }
+                }
             };
 
-            // From Date Picker
-            var fromLabel = new Label
+            _findButton.Click += async (s, e) =>
             {
-                Text = "From:",
-                AutoSize = true,
-                Location = new Point(310, 12)
-            };
-            _fromDatePicker = new DateTimePicker
-            {
-                Location = new Point(345, 10),
-                Size = new Size(120, 24),
-                Value = _viewModel.FromDate,
-                Format = DateTimePickerFormat.Short,
-                AccessibleName = "From Date",
-                AccessibleDescription = "Select the start date for the report period"
-            };
-            _fromDatePicker.ValueChanged += (s, e) =>
-            {
-                _viewModel.FromDate = _fromDatePicker.Value;
+                if (_findTextBox != null)
+                {
+                    _viewModel.SearchText = _findTextBox.Text;
+                    await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.FindCommand.ExecuteAsync(null), _cts, this, _logger, "Searching report");
+                }
             };
 
-            // To Date Picker
-            var toLabel = new Label
-            {
-                Text = "To:",
-                AutoSize = true,
-                Location = new Point(475, 12)
-            };
-            _toDatePicker = new DateTimePicker
-            {
-                Location = new Point(495, 10),
-                Size = new Size(120, 24),
-                Value = _viewModel.ToDate,
-                Format = DateTimePickerFormat.Short,
-                AccessibleName = "To Date",
-                AccessibleDescription = "Select the end date for the report period"
-            };
-            _toDatePicker.ValueChanged += (s, e) =>
-            {
-                _viewModel.ToDate = _toDatePicker.Value;
-            };
+            _toggleParamsButton.Click += async (s, e) => await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.ToggleParametersPanelCommand.ExecuteAsync(null), _cts, this, _logger, "Toggling parameters panel");
 
-            // Generate Button
-            _generateButton = new Button
-            {
-                Text = "Generate",
-                Location = new Point(630, 10),
-                Size = new Size(90, 32),
-                BackColor = Color.FromArgb(0, 120, 215),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                AccessibleName = "Generate Report",
-                AccessibleDescription = "Generate the selected report with current parameters"
-            };
             _generateButton.Click += async (s, e) =>
             {
-                await Utilities.AsyncEventHelper.ExecuteAsync(
-                    async ct => await _viewModel.GenerateReportCommand.ExecuteAsync(null),
-                    _cts,
-                    this,
-                    _logger,
-                    "Generating report");
+                // Verify template exists before heavy generation to avoid BoldReports error dialogs
+                var path = _viewModel.GetReportPathIfExists();
+                if (string.IsNullOrEmpty(path))
+                {
+                    var expected = System.IO.Path.Combine(AppContext.BaseDirectory, "Reports", "<report>.rdlc");
+                    var msg = $"Report template not found for '{_viewModel.SelectedReportType}'.\n\nEnsure the correct RDLC/RDL file exists under: {expected}\n\nYou can place templates in the application's 'Reports' folder or add them to the project output.";
+                    _statusLabel.Text = $"Error: report template missing";
+                    _statusLabel.ForeColor = Color.Red;
+                    MessageBox.Show(msg, "Report Template Missing", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.GenerateReportCommand.ExecuteAsync(null), _cts, this, _logger, "Generating report");
             };
 
-            // Export PDF Button
-            _exportPdfButton = new Button
-            {
-                Text = "Export PDF",
-                Location = new Point(730, 10),
-                Size = new Size(90, 32),
-                BackColor = Color.FromArgb(230, 126, 34),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            _exportPdfButton.Click += async (s, e) =>
-            {
-                await Utilities.AsyncEventHelper.ExecuteAsync(
-                    async ct => await _viewModel.ExportToPdfCommand.ExecuteAsync(null),
-                    _cts,
-                    this,
-                    _logger,
-                    "Exporting to PDF");
-            };
+            // Add controls to toolbar flow in logical order
+            toolbarFlow.Controls.Add(typeLabel);
+            toolbarFlow.Controls.Add(_reportTypeCombo);
+            toolbarFlow.Controls.Add(fromLabel);
+            toolbarFlow.Controls.Add(_fromDatePicker);
+            toolbarFlow.Controls.Add(toLabel);
+            toolbarFlow.Controls.Add(_toDatePicker);
+            toolbarFlow.Controls.Add(fiscalLabel);
+            toolbarFlow.Controls.Add(_fiscalYearPicker);
+            toolbarFlow.Controls.Add(_generateButton);
+            toolbarFlow.Controls.Add(_exportPdfButton);
+            toolbarFlow.Controls.Add(_exportExcelButton);
+            toolbarFlow.Controls.Add(_printButton);
+            toolbarFlow.Controls.Add(_zoomCombo);
+            toolbarFlow.Controls.Add(_findTextBox);
+            toolbarFlow.Controls.Add(_findButton);
+            toolbarFlow.Controls.Add(_toggleParamsButton);
+            toolbarFlow.Controls.Add(_prevPageButton);
+            toolbarFlow.Controls.Add(_nextPageButton);
+            toolbarFlow.Controls.Add(_pageSizeControl);
+            toolbarFlow.Controls.Add(_statusLabel);
 
-            // Export Excel Button
-            _exportExcelButton = new Button
-            {
-                Text = "Export Excel",
-                Location = new Point(830, 10),
-                Size = new Size(100, 32),
-                BackColor = Color.FromArgb(46, 204, 113),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            _exportExcelButton.Click += async (s, e) =>
-            {
-                await Utilities.AsyncEventHelper.ExecuteAsync(
-                    async ct => await _viewModel.ExportToExcelCommand.ExecuteAsync(null),
-                    _cts,
-                    this,
-                    _logger,
-                    "Exporting to Excel");
-            };
-
-            // Status Label
-            _statusLabel = new Label
-            {
-                Text = "Ready",
-                AutoSize = true,
-                Location = new Point(10, 45),
-                ForeColor = Color.Green
-            };
-
-            toolbarPanel.Controls.AddRange(new Control[]
-            {
-                typeLabel, _reportTypeCombo,
-                fromLabel, _fromDatePicker,
-                toLabel, _toDatePicker,
-                _generateButton, _exportPdfButton, _exportExcelButton,
-                _statusLabel
-            });
-
-            Controls.Add(toolbarPanel);
+            Controls.Add(toolbarFlow);
 
             // === REPORT VIEWER PANEL (Main) ===
             var reportPanel = new Panel
@@ -246,10 +243,81 @@ public partial class ReportsForm : Form
             };
 
             reportPanel.Controls.Add(_elementHost);
-            Controls.Add(reportPanel);
+            // Build a split container so users can see the report and a lightweight preview grid
+            var split = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = (int)(Height * 0.65),
+                Panel1MinSize = 300,
+                Panel2MinSize = 150
+            };
+
+            split.Panel1.Controls.Add(_elementHost);
+
+            // Bottom panel: preview grid + paging controls
+            _previewGrid = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AccessibleName = "Report Preview",
+                AccessibleDescription = "Shows a small preview of the report data"
+            };
+
+            var previewToolbar = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 36,
+                Padding = new Padding(6)
+            };
+
+            _pageInfoLabel = new Label
+            {
+                Text = $"Page: {_viewModel.CurrentPage} / {_viewModel.PageSize}",
+                AutoSize = true,
+                Location = new Point(6, 8)
+            };
+
+            _pageSizeControl = new NumericUpDown
+            {
+                Minimum = 5,
+                Maximum = 500,
+                Value = _viewModel.PageSize,
+                Size = new Size(80, 24),
+                Location = new Point(120, 4),
+                AccessibleName = "Preview Page Size",
+                AccessibleDescription = "Number of rows to show in preview pages"
+            };
+            _pageSizeControl.ValueChanged += (s, e) =>
+            {
+                _viewModel.PageSize = (int)_pageSizeControl.Value;
+                _viewModel.CurrentPage = 1;
+                _ = _viewModel.LoadPreviewCommand.ExecuteAsync(null);
+            };
+
+            previewToolbar.Controls.Add(_pageInfoLabel);
+            previewToolbar.Controls.Add(_pageSizeControl);
+
+            split.Panel2.Controls.Add(_previewGrid);
+            split.Panel2.Controls.Add(previewToolbar);
+
+            Controls.Add(split);
 
             // Store reference to ReportViewer in ViewModel
             _viewModel.ReportViewer = _reportViewer;
+
+            // Initialize preview grid columns
+            if (_previewGrid != null)
+            {
+                _previewGrid.Columns.Clear();
+                _previewGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Name", HeaderText = "Name", DataPropertyName = "Name" });
+                _previewGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Value", HeaderText = "Value", DataPropertyName = "Value" });
+                _previewGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Category", HeaderText = "Category", DataPropertyName = "Category" });
+            }
 
             _logger.LogDebug("UI components initialized successfully");
         }
@@ -294,10 +362,49 @@ public partial class ReportsForm : Form
                     _statusLabel.ForeColor = string.IsNullOrEmpty(_viewModel.ErrorMessage) ? Color.Green : Color.Red;
                 }
             }
+                else if (e.PropertyName == nameof(ReportsViewModel.PreviewData) || e.PropertyName == nameof(ReportsViewModel.CurrentPage) || e.PropertyName == nameof(ReportsViewModel.PageSize))
+                {
+                    // Update preview grid and page info
+                    RefreshPreviewGrid();
+                }
         };
+
+            // Also populate initial preview if any
+            RefreshPreviewGrid();
 
         _logger.LogDebug("ViewModel binding established");
     }
+
+        /// <summary>
+        /// Refresh the preview grid from the ViewModel's PreviewData collection.
+        /// </summary>
+        private void RefreshPreviewGrid()
+        {
+            try
+            {
+                if (_previewGrid == null) return;
+
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(RefreshPreviewGrid));
+                    return;
+                }
+
+                var list = _viewModel.PreviewData?.ToList() ?? new System.Collections.Generic.List<ReportDataItem>();
+                var binding = new BindingSource();
+                binding.DataSource = list.Select(p => new { p.Name, p.Value, p.Category }).ToList();
+                _previewGrid.DataSource = binding;
+
+                if (_pageInfoLabel != null)
+                {
+                    _pageInfoLabel.Text = $"Page: {_viewModel.CurrentPage} | Page Size: {_viewModel.PageSize} | Rows: {list.Count}";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to refresh preview grid");
+            }
+        }
 
     protected override void Dispose(bool disposing)
     {

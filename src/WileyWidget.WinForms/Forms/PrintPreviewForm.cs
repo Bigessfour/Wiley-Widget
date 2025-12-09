@@ -21,10 +21,10 @@ namespace WileyWidget.WinForms.Forms
 
         public PrintPreviewForm(ILogger<PrintPreviewForm> logger, string pdfPath)
         {
+            InitializeComponent();
+
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _pdfPath = pdfPath ?? throw new ArgumentNullException(nameof(pdfPath));
-
-            InitializeComponent();
             _logger.LogInformation("PrintPreviewForm initialized for PDF: {Path}", pdfPath);
         }
 

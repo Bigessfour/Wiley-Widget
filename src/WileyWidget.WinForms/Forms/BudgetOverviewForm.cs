@@ -85,12 +85,13 @@ namespace WileyWidget.WinForms.Forms
 
         public BudgetOverviewForm(BudgetOverviewViewModel viewModel, ILogger<BudgetOverviewForm> logger)
         {
+            InitializeComponent();
+
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             try
             {
-                InitializeComponent();
                 SetupDataGridStyling();
                 SetupDataBindings();
                 _logger.LogInformation("BudgetOverviewForm initialized successfully");

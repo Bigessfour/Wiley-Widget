@@ -89,10 +89,19 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
+        /// <summary>Gets the command to load accounts.</summary>
         public IAsyncRelayCommand LoadAccountsCommand { get; }
+
+        /// <summary>Gets the command to filter accounts.</summary>
         public IAsyncRelayCommand FilterAccountsCommand { get; }
+
+        /// <summary>Gets the command to delete an account.</summary>
         public IAsyncRelayCommand DeleteAccountCommand { get; }
+
+        /// <summary>Gets the command to add a new account.</summary>
         public IAsyncRelayCommand AddAccountCommand { get; }
+
+        /// <summary>Gets the command to edit an account.</summary>
         public IAsyncRelayCommand EditAccountCommand { get; }
 
         private async Task LoadAccountsAsync(CancellationToken cancellationToken = default)

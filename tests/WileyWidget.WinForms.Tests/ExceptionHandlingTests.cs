@@ -20,14 +20,17 @@ namespace WileyWidget.WinForms.Tests
             var provider = services.BuildServiceProvider();
 
             var mockLogger = new Mock<ILogger<MainForm>>();
-            using var mainForm = new MainForm(provider, mockLogger.Object);
+            var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+            using var mainForm = new MainForm(provider, mockLogger.Object, config);
 
             // Use reflection to invoke the private generic ShowChildForm<TForm, TViewModel>()
             var showMethod = typeof(MainForm).GetMethod("ShowChildForm", BindingFlags.NonPublic | BindingFlags.Instance);
             var generic = showMethod.MakeGenericMethod(typeof(AccountsForm), typeof(AccountsViewModel));
 
             // Act
+#pragma warning disable CS8602 // Dereference of a possibly null reference
             Action act = () => generic.Invoke(mainForm, null);
+#pragma warning restore CS8602
 
             // Assert: reflection wraps thrown exceptions in TargetInvocationException; inner should indicate missing service
             act.Should().Throw<TargetInvocationException>().Where(ex => ex.InnerException is InvalidOperationException);
@@ -43,9 +46,10 @@ namespace WileyWidget.WinForms.Tests
             // Arrange
             var logger = new ThrowingLogger<MainViewModel>();
             var mockDashboardService = new Mock<WileyWidget.Services.Abstractions.IMainDashboardService>();
+            var mockAiLogging = new Mock<WileyWidget.Services.IAILoggingService>();
 
             // Act
-            Action act = () => new MainViewModel(logger, mockDashboardService.Object);
+            Action act = () => new MainViewModel(logger, mockDashboardService.Object, mockAiLogging.Object);
 
             // Assert
             act.Should().Throw<Exception>().WithMessage("logger fail");
@@ -53,7 +57,7 @@ namespace WileyWidget.WinForms.Tests
 
         private class ThrowingLogger<T> : ILogger<T>
         {
-            public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
             public bool IsEnabled(LogLevel logLevel) => true;
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {

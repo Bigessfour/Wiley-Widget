@@ -54,16 +54,14 @@ public partial class MainForm
             }
 
             // Instantiate DockingManager per official Syncfusion API
-            _dockingManager = new DockingManager(components)
-            {
-                HostControl = this,
-                EnableDocumentMode = true,
-                PersistState = true,
-                AnimateAutoHiddenWindow = true,
-                AutoHideTabFont = _dockAutoHideTabFont = new Font("Segoe UI", 9f),
-                DockTabFont = _dockTabFont = new Font("Segoe UI", 9f),
-                ShowCaption = true
-            };
+            _dockingManager = new DockingManager(components);
+            _dockingManager.HostControl = this;
+            _dockingManager.EnableDocumentMode = true;
+            _dockingManager.PersistState = true;
+            _dockingManager.AnimateAutoHiddenWindow = true;
+            _dockingManager.AutoHideTabFont = _dockAutoHideTabFont = new Font("Segoe UI", 9f);
+            _dockingManager.DockTabFont = _dockTabFont = new Font("Segoe UI", 9f);
+            _dockingManager.ShowCaption = true;
 
             // Subscribe to events for state tracking and logging
             _dockingManager.DockStateChanged += DockingManager_DockStateChanged;
@@ -119,7 +117,7 @@ public partial class MainForm
         _leftDockPanel = new Panel
         {
             Name = "LeftDockPanel",
-            BackColor = Color.FromArgb(245, 245, 250),
+            BackColor = Color.FromArgb(45, 45, 48),
             AutoScroll = true
         };
 
@@ -203,7 +201,7 @@ public partial class MainForm
             ColumnCount = 1,  // Single column for left dock
             RowCount = 5,
             Padding = new Padding(10),
-            BackColor = Color.FromArgb(245, 245, 250)
+            BackColor = Color.FromArgb(45, 45, 48)
         };
 
         // Add row styles
@@ -545,5 +543,20 @@ public partial class MainForm
 
         _centralDocumentPanel?.Dispose();
         _centralDocumentPanel = null;
+
+        // Dispose fonts used by DockingManager
+        try
+        {
+            _dockAutoHideTabFont?.Dispose();
+            _dockAutoHideTabFont = null;
+        }
+        catch { }
+
+        try
+        {
+            _dockTabFont?.Dispose();
+            _dockTabFont = null;
+        }
+        catch { }
     }
 }

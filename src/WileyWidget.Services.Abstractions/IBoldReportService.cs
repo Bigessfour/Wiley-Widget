@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WileyWidget.Services
@@ -10,14 +12,26 @@ namespace WileyWidget.Services
     /// </summary>
     public interface IBoldReportService
     {
-        Task LoadReportAsync(object reportViewer, string reportPath, Dictionary<string, object>? dataSources = null);
+        Task LoadReportAsync(object reportViewer, string reportPath, Dictionary<string, object>? dataSources = null, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
 
-        Task ExportToPdfAsync(object reportViewer, string filePath);
+        Task ExportToPdfAsync(object reportViewer, string filePath, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
 
-        Task ExportToExcelAsync(object reportViewer, string filePath);
+        Task ExportToExcelAsync(object reportViewer, string filePath, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
 
-        Task RefreshReportAsync(object reportViewer);
+        Task RefreshReportAsync(object reportViewer, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
 
-        Task SetReportParametersAsync(object reportViewer, Dictionary<string, object> parameters);
+        Task SetReportParametersAsync(object reportViewer, Dictionary<string, object> parameters, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Configure viewer properties via a best-effort reflection-based approach.
+        /// Options can include keys like "EnableCustomCode", "ValidateHyperlinks", "DisableExtensions", etc.
+        /// Implementations should attempt to set matching properties on the viewer when available.
+        /// </summary>
+        Task ConfigureViewerAsync(object reportViewer, Dictionary<string, object> options, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Print the current report using viewer's print method if available.
+        /// </summary>
+        Task PrintAsync(object reportViewer, CancellationToken cancellationToken = default);
     }
 }

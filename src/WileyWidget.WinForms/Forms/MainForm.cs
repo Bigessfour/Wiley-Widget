@@ -15,12 +15,13 @@ using SyncPdf = sync31pdf::Syncfusion.Pdf;
 using SyncPdfGraphics = sync31pdf::Syncfusion.Pdf.Graphics;
 using WileyWidget.WinForms.Controls;
 using Microsoft.Extensions.Configuration;
-using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms;
 using System.ComponentModel;
 using System.Collections;
 using System.Windows.Forms.Design;
 using System.Text.Json;
 using WileyWidget.Models;
+using Syncfusion.Windows.Forms;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -33,6 +34,7 @@ namespace WileyWidget.WinForms.Forms
         public const string HelpMenu = "Help";
         public const string AccountsMenu = "Accounts";
         public const string ChartsMenu = "Charts";
+            public const string BudgetMenu = "Budget";
         public const string BudgetOverviewMenu = "Budget Overview";
         public const string SettingsMenu = "Settings";
         public const string ExitMenu = "Exit";
@@ -80,19 +82,20 @@ namespace WileyWidget.WinForms.Forms
 
         public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, IConfiguration configuration, MainViewModel? viewModel = null)
         {
+            // CRITICAL: Assign fields BEFORE InitializeComponent() because InitializeComponent uses _configuration
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _viewModel = viewModel;
 
+            InitializeComponent();
+
             // Guard the UI initialization so form-level exceptions are logged with full stacks
             try
             {
-                // Apply Syncfusion theme globally before initializing components
+                // Apply Syncfusion theme globally after initializing components
                 var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
                 ApplySyncfusionTheme(themeName);
-
-                InitializeComponent();
                 Text = MainFormResources.FormTitle;
 
                 // Enable keyboard shortcuts (e.g., Ctrl+1 for AI panel)
@@ -148,7 +151,7 @@ namespace WileyWidget.WinForms.Forms
                         var appStateSvc = ServiceProviderExtensions.GetService<WileyWidget.Abstractions.IApplicationStateService>(_serviceProvider);
                         if (appStateSvc != null)
                         {
-                            var restored = await appStateSvc.RestoreStateAsync().ConfigureAwait(false);
+                            var restored = await appStateSvc.RestoreStateAsync();
                             if (restored != null)
                             {
                                 // Try multiple common shapes for the saved object
@@ -187,11 +190,8 @@ namespace WileyWidget.WinForms.Forms
                                     try
                                     {
                                         await _dashboardSvc.RefreshDashboardAsync();
-                                        if (_viewModel != null)
-                                        {
-                                            // Trigger ViewModel refresh to update UI
-                                            _viewModel.LoadDataCommand.Execute(null);
-                                        }
+                                        // Trigger ViewModel refresh to update UI
+                                        _viewModel?.LoadDataCommand.Execute(null);
                                     }
                                     catch (OperationCanceledException) { }
                                     catch (Exception ex)
@@ -224,12 +224,31 @@ namespace WileyWidget.WinForms.Forms
             // Update UI on any relevant property change
             if (InvokeRequired)
             {
-                Invoke(() => UpdateDashboardCards());
+                Invoke(() => HandlePropertyChange(e.PropertyName));
             }
             else
             {
-                UpdateDashboardCards();
+                HandlePropertyChange(e.PropertyName);
             }
+        }
+
+        private void HandlePropertyChange(string? propertyName)
+        {
+            // Handle IsLoading property to show/hide loading indicator
+            if (propertyName == nameof(MainViewModel.IsLoading))
+            {
+                if (_loadingBar != null && _viewModel != null)
+                {
+                    _loadingBar.Visible = _viewModel.IsLoading;
+                    if (_statusLabel != null)
+                    {
+                        _statusLabel.Text = _viewModel.IsLoading ? "Loading..." : "Ready";
+                    }
+                }
+            }
+
+            // Update dashboard cards for any property change
+            UpdateDashboardCards();
         }
 
         private void UpdateDashboardCards()
@@ -237,16 +256,10 @@ namespace WileyWidget.WinForms.Forms
             if (_viewModel == null) return;
 
             // Update Accounts card with real data
-            if (_accountsDescLabel != null)
-            {
-                _accountsDescLabel.Text = $"View and manage municipal accounts\n\n{_viewModel.ActiveAccountCount} active accounts\n{_viewModel.TotalDepartments} departments";
-            }
+            _accountsDescLabel?.Text = $"View and manage municipal accounts\n\n{_viewModel.ActiveAccountCount} active accounts\n{_viewModel.TotalDepartments} departments";
 
             // Update Charts card with real budget data
-            if (_chartsDescLabel != null)
-            {
-                _chartsDescLabel.Text = $"Budget analytics and visualizations\n\nBudget: {_viewModel.TotalBudget:C0}\nActual: {_viewModel.TotalActual:C0}";
-            }
+            _chartsDescLabel?.Text = $"Budget analytics and visualizations\n\nBudget: {_viewModel.TotalBudget:C0}\nActual: {_viewModel.TotalActual:C0}";
 
             // Update Settings card with last update time
             if (_settingsDescLabel != null)
@@ -256,10 +269,7 @@ namespace WileyWidget.WinForms.Forms
             }
 
             // Update Reports card
-            if (_reportsDescLabel != null)
-            {
-                _reportsDescLabel.Text = "Generate and view detailed reports\n\nBudget reports, audit logs\nand financial summaries";
-            }
+            _reportsDescLabel?.Text = "Generate and view detailed reports\n\nBudget reports, audit logs\nand financial summaries";
 
             // Update System Info card
             if (_infoDescLabel != null)
@@ -273,21 +283,8 @@ namespace WileyWidget.WinForms.Forms
             // Update status bar
             if (_statusLabel != null)
             {
-                if (_viewModel.IsLoading)
-                {
-                    _statusLabel.Text = "Loading data...";
-                    if (_loadingBar != null) _loadingBar.Visible = true;
-                }
-                else if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
-                {
-                    _statusLabel.Text = $"Error: {_viewModel.ErrorMessage}";
-                    if (_loadingBar != null) _loadingBar.Visible = false;
-                }
-                else
-                {
-                    _statusLabel.Text = $"Ready — Last updated: {_viewModel.LastUpdateTime ?? "N/A"}";
-                    if (_loadingBar != null) _loadingBar.Visible = false;
-                }
+                _statusLabel.Text = "Ready";
+                _loadingBar?.Visible = false;
             }
         }
 
@@ -305,10 +302,12 @@ namespace WileyWidget.WinForms.Forms
 
             // File menu items
             var accountsMenuItem = new ToolStripMenuItem(MainFormResources.AccountsMenu, null, (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>());
+            var customersMenuItem = new ToolStripMenuItem("Customers", null, (s, e) => ShowChildForm<CustomersForm, CustomersViewModel>());
             var chartsMenuItem = new ToolStripMenuItem(MainFormResources.ChartsMenu, null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>());
+            var budgetMenuItem = new ToolStripMenuItem(MainFormResources.BudgetMenu, null, (s, e) => ShowChildForm<BudgetViewFormEnhanced, WileyWidget.WinForms.ViewModels.BudgetViewModel>());
             var budgetOverviewMenuItem = new ToolStripMenuItem(MainFormResources.BudgetOverviewMenu, null, (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>());
             var exitItem = new ToolStripMenuItem(MainFormResources.ExitMenu, null, (s, e) => Application.Exit());
-            fileMenu.DropDownItems.AddRange(new ToolStripItem[] { accountsMenuItem, chartsMenuItem, budgetOverviewMenuItem, new ToolStripSeparator(), exitItem });
+            fileMenu.DropDownItems.AddRange(new ToolStripItem[] { accountsMenuItem, customersMenuItem, chartsMenuItem, budgetMenuItem, budgetOverviewMenuItem, new ToolStripSeparator(), exitItem });
 
             // View menu items
             var refreshItem = new ToolStripMenuItem(MainFormResources.RefreshMenu, null, (s, e) => RefreshDashboard());
@@ -329,7 +328,11 @@ namespace WileyWidget.WinForms.Forms
             // === Status Strip ===
             var statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
             _statusLabel = new ToolStripStatusLabel("Loading...") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
-            var connectionStatus = new ToolStripStatusLabel("🟢 Database Connected") { ForeColor = Color.Green };
+            var connectionStatus = new ToolStripStatusLabel("🟢 Database Connected");
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                connectionStatus.ForeColor = Color.Green;
+            }
             var versionLabel = new ToolStripStatusLabel(".NET 9 | WinForms") { Alignment = ToolStripItemAlignment.Right };
             statusStrip.Items.AddRange(new ToolStripItem[] { _statusLabel, connectionStatus, versionLabel });
 
@@ -339,8 +342,11 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
                 SplitterDistance = 700,  // Reduced from 850 to balance with wider AI panel
-                BackColor = Color.FromArgb(245, 245, 250)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                mainSplit.BackColor = Color.FromArgb(45, 45, 48);
+            }
 
             // === Left Panel: Dashboard Cards ===
             var dashboardPanel = new TableLayoutPanel
@@ -348,9 +354,12 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 3,
-                Padding = new Padding(10),
-                BackColor = Color.FromArgb(245, 245, 250)
+                Padding = new Padding(10)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                dashboardPanel.BackColor = Color.FromArgb(45, 45, 48);
+            }
             dashboardPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             dashboardPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
@@ -384,19 +393,25 @@ namespace WileyWidget.WinForms.Forms
             var activityPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
                 Padding = new Padding(10)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                activityPanel.BackColor = Color.White;
+            }
 
             var activityHeader = new Label
             {
                 Text = "📋 Recent Activity",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
                 Dock = DockStyle.Top,
                 Height = 35,
                 Padding = new Padding(5, 8, 0, 0)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                activityHeader.ForeColor = Color.FromArgb(33, 37, 41);
+            }
 
             var activityGrid = new SfDataGrid
             {
@@ -451,29 +466,38 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 80,
-                BackColor = Color.FromArgb(33, 37, 41),
                 Padding = new Padding(20, 0, 20, 0)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                headerPanel.BackColor = Color.FromArgb(33, 37, 41);
+            }
 
             var headerLabel = new Label
             {
                 Text = "🏛️ Wiley Widget Dashboard",
                 Font = new Font("Segoe UI", 24, FontStyle.Bold),
-                ForeColor = Color.White,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                headerLabel.ForeColor = Color.White;
+            }
 
             var dateTimeLabel = new Label
             {
                 Text = DateTime.Now.ToString("dddd, MMMM d, yyyy", CultureInfo.CurrentCulture),
                 Font = new Font("Segoe UI", 10),
-                ForeColor = Color.FromArgb(173, 181, 189),
                 AutoSize = true,
                 Anchor = AnchorStyles.Right | AnchorStyles.Top,
                 Location = new Point(headerPanel.Width - 200, 30)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                dateTimeLabel.ForeColor = Color.FromArgb(173, 181, 189);
+            }
 
             headerPanel.Controls.Add(dateTimeLabel);
             headerPanel.Controls.Add(headerLabel);
@@ -483,9 +507,12 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Top,
                 GripStyle = ToolStripGripStyle.Hidden,
-                BackColor = Color.FromArgb(248, 249, 250),
                 Padding = new Padding(10, 0, 0, 0)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                quickToolbar.BackColor = Color.FromArgb(248, 249, 250);
+            }
 
             quickToolbar.ShowItemToolTips = true;
 
@@ -493,6 +520,7 @@ namespace WileyWidget.WinForms.Forms
             _toolTip = new ToolTip { ShowAlways = true, AutoPopDelay = 8000, InitialDelay = 300, ReshowDelay = 100 };
 
             var quickAccountsBtn = new ToolStripButton("📊 Accounts", null, (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>());
+            var quickCustomersBtn = new ToolStripButton("👥 Customers", null, (s, e) => ShowChildForm<CustomersForm, CustomersViewModel>());
             var quickChartsBtn = new ToolStripButton("📈 Charts", null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>());
             var quickBudgetBtn = new ToolStripButton("💰 Budget", null, (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>());
             var quickReportsBtn = new ToolStripButton("📄 Reports", null, (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>());
@@ -504,6 +532,7 @@ namespace WileyWidget.WinForms.Forms
             quickToolbar.Items.AddRange(new ToolStripItem[]
             {
                 quickAccountsBtn,
+                quickCustomersBtn,
                 new ToolStripSeparator(),
                 quickChartsBtn,
                 new ToolStripSeparator(),
@@ -522,6 +551,7 @@ namespace WileyWidget.WinForms.Forms
 
             // Tooltips for toolbar items
             quickAccountsBtn.ToolTipText = "Open Accounts — View and manage municipal accounts (Alt+A)";
+            quickCustomersBtn.ToolTipText = "Open Customers — Manage utility customers (Alt+U)";
             quickChartsBtn.ToolTipText = "Open Charts — Budget analytics (Alt+C)";
             quickBudgetBtn.ToolTipText = "Open Budget Overview (Alt+B)";
             quickReportsBtn.ToolTipText = "Open Reports (Alt+R)";
@@ -552,9 +582,12 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Right,
                 Width = aiDefaultWidth,  // Configurable via appsettings.json
-                BackColor = Color.FromArgb(248, 249, 250),
                 Visible = defaultAIVisible  // Configurable - AI visible on launch by default
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                _aiChatPanel.BackColor = Color.FromArgb(248, 249, 250);
+            }
 
             try
             {
@@ -596,7 +629,7 @@ namespace WileyWidget.WinForms.Forms
             Size = new Size(1200, 800);
             MinimumSize = new Size(900, 650);
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(245, 245, 250);
+            BackColor = Color.FromArgb(45, 45, 48);
 
             ResumeLayout(false);
             PerformLayout();
@@ -771,42 +804,60 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// Apply Syncfusion visual style to this form and controls.
-        /// Note: In Syncfusion v31.2.16 for WinForms, theming is control-specific.
-        /// For comprehensive theming, consider Syncfusion.WinForms.Themes package.
+        /// Apply Syncfusion visual style to this form and controls using SkinManager.
+        /// Uses Syncfusion.Windows.Forms.SkinManager for comprehensive theming.
         /// </summary>
         private void ApplySyncfusionTheme(string themeName)
         {
             try
             {
-                // Apply visual style to form - basic color scheme based on theme name
-                // Note: Full theme support requires Syncfusion.WinForms.Themes package
-                // which provides ThemeSettings and comprehensive theming
+                // Load Office2019 theme assembly for SkinManager
+                SkinManager.LoadAssembly(typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly);
 
-                // For now, apply basic styling to form
-                switch (themeName)
+                // Use SkinManager.SetVisualStyle for proper theming
+                if (SkinManager.ContainsSkinManager)
                 {
-                    case "Office2016DarkGray":
-                    case "MaterialDark":
-                    case "HighContrastBlack":
-                        BackColor = Color.FromArgb(45, 45, 48);
-                        ForeColor = Color.White;
-                        break;
-                    case "MaterialLight":
-                    case "Office2019Colorful":
-                    case "Office2016Colorful":
-                    default:
-                        BackColor = Color.FromArgb(245, 245, 250);
-                        ForeColor = Color.FromArgb(33, 37, 41);
-                        break;
+                    SkinManager.SetVisualStyle(this, themeName);
+                    _logger.LogInformation("Applied SkinManager theme: {Theme}", themeName);
                 }
-
-                _logger.LogInformation("Applied Syncfusion visual style: {Theme}", themeName);
+                else
+                {
+                    _logger.LogWarning("SkinManager not available after loading assembly, applying manual theme colors for: {Theme}", themeName);
+                    ApplyManualThemeColors(themeName);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to apply Syncfusion theme {Theme}, using default", themeName);
+                _logger.LogWarning(ex, "Failed to apply SkinManager theme {Theme}, falling back to manual colors", themeName);
+                ApplyManualThemeColors(themeName);
             }
+        }
+
+        /// <summary>
+        /// Apply manual theme colors when SkinManager is unavailable
+        /// </summary>
+        private void ApplyManualThemeColors(string themeName)
+        {
+            // Fallback to manual theme colors if SkinManager fails
+            switch (themeName)
+            {
+                case "Office2019DarkGray":
+                case "Office2016DarkGray":
+                case "MaterialDark":
+                case "HighContrastBlack":
+                    BackColor = Color.FromArgb(45, 45, 48);
+                    ForeColor = Color.White;
+                    break;
+                case "MaterialLight":
+                case "Office2019Colorful":
+                case "Office2016Colorful":
+                default:
+                    BackColor = Color.FromArgb(45, 45, 48);
+                    ForeColor = Color.White;
+                    break;
+            }
+
+            _logger.LogInformation("Applied manual fallback theme colors for: {Theme}", themeName);
         }
 
         private static Panel CreateDashboardCard(string title, string description, Color accentColor, out Label? descriptionLabel)
@@ -815,38 +866,50 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 Margin = new Padding(10),
-                BackColor = Color.White,
                 Padding = new Padding(15)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                card.BackColor = Color.White;
+            }
 
             // Accent bar at top
             var accentBar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 5,
-                BackColor = accentColor
+                Height = 5
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                accentBar.BackColor = accentColor;
+            }
 
             var titleLabel = new Label
             {
                 Text = title,
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
                 AutoSize = false,
                 Dock = DockStyle.Top,
                 Height = 40,
                 Padding = new Padding(0, 10, 0, 0)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                titleLabel.ForeColor = Color.FromArgb(33, 37, 41);
+            }
 
             var descLabel = new Label
             {
                 Text = description,
                 Font = new Font("Segoe UI", 10),
-                ForeColor = Color.FromArgb(108, 117, 125),
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Padding = new Padding(0, 5, 0, 0)
             };
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                descLabel.ForeColor = Color.FromArgb(108, 117, 125);
+            }
 
             // Return reference for dynamic updates
             descriptionLabel = descLabel;
@@ -855,9 +918,12 @@ namespace WileyWidget.WinForms.Forms
             card.Controls.Add(titleLabel);
             card.Controls.Add(accentBar);
 
-            // Hover effect
-            card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(248, 249, 250);
-            card.MouseLeave += (s, e) => card.BackColor = Color.White;
+            // Hover effect (fallback when skin manager not present)
+            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+            {
+                card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(248, 249, 250);
+                card.MouseLeave += (s, e) => card.BackColor = Color.White;
+            }
 
             return card;
         }
@@ -872,21 +938,34 @@ namespace WileyWidget.WinForms.Forms
             {
                 c.Click += (s, e) => clickAction();
                 c.Cursor = Cursors.Hand;
-                c.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(248, 249, 250);
-                c.MouseLeave += (s, e) => card.BackColor = Color.White;
+                if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
+                {
+                    c.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(248, 249, 250);
+                    c.MouseLeave += (s, e) => card.BackColor = Color.White;
+                }
             }
         }
 
+        /// <summary>
+        /// Shows a child form as a modal dialog with dependency injection support.
+        /// Creates a new service scope for fresh instances of ViewModels and DbContexts.
+        /// </summary>
+        /// <typeparam name="TForm">The type of form to show.</typeparam>
+        /// <typeparam name="TViewModel">The type of ViewModel associated with the form.</typeparam>
         private void ShowChildForm<TForm, TViewModel>()
             where TForm : Form
             where TViewModel : class
         {
             try
             {
+                _logger.LogInformation("Showing child form {FormType}", typeof(TForm).Name);
+
                 // Create a new scope to get fresh DbContext + ViewModels for each dialog
                 using var scope = _serviceProvider.CreateScope();
                 var form = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TForm>(scope.ServiceProvider);
                 form.ShowDialog(this);
+
+                _logger.LogInformation("Child form {FormType} closed", typeof(TForm).Name);
             }
             catch (OperationCanceledException oce)
             {

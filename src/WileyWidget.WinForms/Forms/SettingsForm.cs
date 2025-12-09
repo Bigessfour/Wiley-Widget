@@ -2,7 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Services;
 using System.Globalization;
+using Syncfusion.Windows.Forms;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -24,6 +26,7 @@ namespace WileyWidget.WinForms.Forms
     {
         private readonly SettingsViewModel _vm;
         private readonly ILogger<SettingsForm> _logger;
+        private readonly IThemeManagerService _themeManager;
         private TabControl? _tabControl;
         private TextBox? _companyNameTextBox;
         private TextBox? _connectionStringTextBox;
@@ -32,16 +35,28 @@ namespace WileyWidget.WinForms.Forms
         private NumericUpDown? _autoSaveIntervalUpDown;
         private CheckBox? _enableLoggingCheckBox;
 
-        public SettingsForm(SettingsViewModel vm, ILogger<SettingsForm> logger)
+        public SettingsForm(SettingsViewModel vm, ILogger<SettingsForm> logger, IThemeManagerService themeManager)
         {
+            InitializeComponent();
+
             _vm = vm;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _themeManager = themeManager ?? throw new ArgumentNullException(nameof(themeManager));
 
             try
             {
-                InitializeComponent();
                 Text = SettingsFormResources.FormTitle;
                 _logger.LogInformation("SettingsForm initialized successfully");
+
+                // Apply theme using centralized service
+                try
+                {
+                    _themeManager.ApplyTheme(this);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Unable to apply theme to SettingsForm");
+                }
             }
             catch (Exception ex)
             {
@@ -123,10 +138,13 @@ namespace WileyWidget.WinForms.Forms
             var qbStatusLabel = new Label
             {
                 Text = "🟢 Connected",
-                ForeColor = Color.Green,
                 AutoSize = true,
                 Padding = new Padding(0, 5, 0, 0)
             };
+            if (!SkinManager.ContainsSkinManager)
+            {
+                qbStatusLabel.ForeColor = Color.Green;
+            }
             connectionLayout.Controls.Add(qbStatusLabel, 1, 1);
 
             // Test connection button
@@ -135,11 +153,14 @@ namespace WileyWidget.WinForms.Forms
                 Text = "Test Connection",
                 Width = 150,
                 Height = 30,
-                BackColor = Color.FromArgb(66, 133, 244),
-                ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand
             };
+            if (!SkinManager.ContainsSkinManager)
+            {
+                testConnectionBtn.BackColor = Color.FromArgb(66, 133, 244);
+                testConnectionBtn.ForeColor = Color.White;
+            }
             testConnectionBtn.Click += (s, e) => MessageBox.Show("Connection successful!", "Test Result", MessageBoxButtons.OK, MessageBoxIcon.Information);
             connectionLayout.Controls.Add(testConnectionBtn, 1, 2);
 
@@ -164,8 +185,13 @@ namespace WileyWidget.WinForms.Forms
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Width = 200
             };
-            _themeComboBox.Items.AddRange(new object[] { "FluentLight", "FluentDark", "System Default", "High Contrast" });
-            _themeComboBox.SelectedIndex = 0;
+            // Populate with available themes from ThemeManagerService
+            var availableThemes = _themeManager.GetAvailableThemes();
+            _themeComboBox.Items.AddRange(availableThemes.Cast<object>().ToArray());
+            // Select current theme
+            var currentTheme = _themeManager.GetCurrentTheme();
+            var currentIndex = availableThemes.ToList().IndexOf(currentTheme);
+            _themeComboBox.SelectedIndex = currentIndex >= 0 ? currentIndex : 0;
             _themeComboBox.SelectedIndexChanged += (s, e) =>
             {
                 try
@@ -173,10 +199,14 @@ namespace WileyWidget.WinForms.Forms
                     var selected = _themeComboBox.SelectedItem?.ToString();
                     if (!string.IsNullOrEmpty(selected))
                     {
-                        ApplySyncfusionTheme(selected);
+                        _themeManager.ApplyTheme(this, selected);
+                        _logger.LogInformation("User changed theme to: {ThemeName}", selected);
                     }
                 }
-                catch { /* best effort */ }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to apply selected theme");
+                }
             };
             appearanceLayout.Controls.Add(_themeComboBox, 1, 0);
 
@@ -203,7 +233,11 @@ namespace WileyWidget.WinForms.Forms
             // Connection Status
             qbLayout.Controls.Add(CreateLabel("Connection Status:"), 0, 0);
             var qbStatusPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-            var qbStatusIndicator = new Label { Text = "●", ForeColor = Color.Green, Font = new Font("Segoe UI", 14), AutoSize = true };
+            var qbStatusIndicator = new Label { Text = "●", Font = new Font("Segoe UI", 14), AutoSize = true };
+            if (!SkinManager.ContainsSkinManager)
+            {
+                qbStatusIndicator.ForeColor = Color.Green;
+            }
             var qbStatusText = new Label { Text = "Connected to QuickBooks Online", AutoSize = true, Padding = new Padding(5, 5, 0, 0) };
             qbStatusPanel.Controls.Add(qbStatusIndicator);
             qbStatusPanel.Controls.Add(qbStatusText);
@@ -238,11 +272,14 @@ namespace WileyWidget.WinForms.Forms
                 Text = "Sync Now",
                 Width = 100,
                 Height = 30,
-                BackColor = Color.FromArgb(66, 133, 244),
-                ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand
             };
+            if (!SkinManager.ContainsSkinManager)
+            {
+                qbSyncNowBtn.BackColor = Color.FromArgb(66, 133, 244);
+                qbSyncNowBtn.ForeColor = Color.White;
+            }
             qbSyncNowBtn.Click += (s, e) =>
             {
                 qbSyncNowBtn.Text = "Syncing...";
@@ -268,20 +305,26 @@ namespace WileyWidget.WinForms.Forms
                 Width = 100,
                 Height = 30,
                 FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.FromArgb(220, 53, 69),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(10, 0, 0, 0)
             };
+            if (!SkinManager.ContainsSkinManager)
+            {
+                qbDisconnectBtn.ForeColor = Color.FromArgb(220, 53, 69);
+            }
             qbDisconnectBtn.Click += (s, e) =>
             {
                 _logger.LogWarning("Disconnect from QuickBooks requested");
                 var proceed = true; // Assume yes
                 if (proceed)
                 {
-                    qbStatusIndicator.ForeColor = Color.Red;
+                    if (!SkinManager.ContainsSkinManager)
+                    {
+                        qbStatusIndicator.ForeColor = Color.Red;
+                        qbDisconnectBtn.ForeColor = Color.FromArgb(52, 168, 83);
+                    }
                     qbStatusText.Text = "Disconnected";
                     qbDisconnectBtn.Text = "Connect";
-                    qbDisconnectBtn.ForeColor = Color.FromArgb(52, 168, 83);
                     _logger.LogInformation("Disconnected from QuickBooks");
                 }
             };
@@ -351,9 +394,12 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Bottom,
                 Height = 60,
                 FlowDirection = FlowDirection.RightToLeft,
-                Padding = new Padding(10),
-                BackColor = Color.FromArgb(248, 249, 250)
+                Padding = new Padding(10)
             };
+            if (!SkinManager.ContainsSkinManager)
+            {
+                buttonPanel.BackColor = Color.FromArgb(248, 249, 250);
+            }
 
             var cancelBtn = new Button
             {
@@ -370,11 +416,14 @@ namespace WileyWidget.WinForms.Forms
                 Text = SettingsFormResources.SaveButton,
                 Width = 120,
                 Height = 35,
-                BackColor = Color.FromArgb(52, 168, 83),
-                ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand
             };
+            if (!SkinManager.ContainsSkinManager)
+            {
+                saveBtn.BackColor = Color.FromArgb(52, 168, 83);
+                saveBtn.ForeColor = Color.White;
+            }
             saveBtn.Click += async (s, e) =>
             {
                 try
@@ -404,9 +453,12 @@ namespace WileyWidget.WinForms.Forms
                 Width = 140,
                 Height = 35,
                 FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.FromArgb(220, 53, 69),
                 Cursor = Cursors.Hand
             };
+            if (!SkinManager.ContainsSkinManager)
+            {
+                resetBtn.ForeColor = Color.FromArgb(220, 53, 69);
+            }
             resetBtn.Click += (s, e) =>
             {
                 if (MessageBox.Show("Reset all settings to defaults?", "Confirm Reset", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
@@ -448,9 +500,54 @@ namespace WileyWidget.WinForms.Forms
         }
         private void ApplySyncfusionTheme(string themeName)
         {
-            // Theme application simplified - using standard WinForms approach
-            // In a full implementation, you would apply system-wide WinForms theming here
-            _logger?.LogInformation("Theme selection: {ThemeName}", themeName);
+            try
+            {
+                if (SkinManager.ContainsSkinManager)
+                {
+                    try
+                    {
+                        var sfTheme = themeName;
+                        if (string.IsNullOrEmpty(sfTheme))
+                        {
+                            sfTheme = SkinManager.ApplicationVisualTheme ?? "Office2019DarkGray";
+                        }
+                        SkinManager.SetVisualStyle(this, sfTheme);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to set visual style to {ThemeName}", themeName);
+                    }
+                }
+                else
+                {
+                    // Apply theme colors manually based on theme name
+                    switch (themeName)
+                    {
+                        case "Office2019DarkGray":
+                        case "Office2016DarkGray":
+                        case "MaterialDark":
+                        case "HighContrastBlack":
+                            BackColor = Color.FromArgb(45, 45, 48);
+                            ForeColor = Color.White;
+                            break;
+                        case "MaterialLight":
+                        case "Office2019Colorful":
+                        case "Office2016Colorful":
+                        default:
+                            BackColor = Color.FromArgb(45, 45, 48);
+                            ForeColor = Color.White;
+                            break;
+                    }
+
+                    _logger?.LogInformation("Applied theme manually: {ThemeName}", themeName);
+                }
+
+                _logger?.LogInformation("Applied theme: {ThemeName}", themeName);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to apply theme {ThemeName}", themeName);
+            }
         }
 
         protected override void Dispose(bool disposing)

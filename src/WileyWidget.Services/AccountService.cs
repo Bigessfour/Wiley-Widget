@@ -73,11 +73,11 @@ namespace WileyWidget.Services
                     var searchTerm = searchText.Trim();
                     accountsQuery = accountsQuery.Where(a =>
                         (a.Name != null && a.Name.Contains(searchTerm)) ||
-                        (a.AccountNumber_Value != null && a.AccountNumber_Value.Contains(searchTerm)));
+                        (a.AccountNumber != null && a.AccountNumber.Value.Contains(searchTerm)));
                 }
 
                 var accountsList = await accountsQuery
-                    .OrderBy(a => a.AccountNumber_Value)
+                    .OrderBy(a => a.AccountNumber != null ? a.AccountNumber.Value : string.Empty)
                     .ToListAsync(cancellationToken);
 
                 // Map domain entities to display DTOs
