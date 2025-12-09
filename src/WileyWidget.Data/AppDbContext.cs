@@ -70,6 +70,8 @@ namespace WileyWidget.Data
         public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
         public DbSet<TaxRevenueSummary> TaxRevenueSummaries { get; set; } = null!;
         public DbSet<ConversationHistory> ConversationHistories { get; set; } = null!;
+        public DbSet<AIContextEntity> AIContextEntities { get; set; } = null!;
+        public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -257,6 +259,79 @@ namespace WileyWidget.Data
                   .HasMaxLength(500)
                   .IsRequired();
             entity.Property(c => c.MessagesJson)
+                  .IsRequired();
+        });
+
+        // AIContextEntity configuration
+        modelBuilder.Entity<AIContextEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ConversationId)
+                  .HasDatabaseName("IX_AIContextEntities_ConversationId");
+            entity.HasIndex(e => new { e.EntityType, e.NormalizedValue })
+                  .HasDatabaseName("IX_AIContextEntities_Type_NormalizedValue");
+            entity.HasIndex(e => e.LastMentionedAt)
+                  .IsDescending()
+                  .HasDatabaseName("IX_AIContextEntities_LastMentionedAt");
+            entity.HasIndex(e => e.IsActive)
+                  .HasFilter("[IsActive] = 1")
+                  .HasDatabaseName("IX_AIContextEntities_IsActive_Filtered");
+            entity.Property(e => e.ConversationId)
+                  .HasMaxLength(450)
+                  .IsRequired();
+            entity.Property(e => e.EntityType)
+                  .HasMaxLength(100)
+                  .IsRequired();
+            entity.Property(e => e.EntityValue)
+                  .HasMaxLength(500)
+                  .IsRequired();
+            entity.Property(e => e.NormalizedValue)
+                  .HasMaxLength(500)
+                  .IsRequired();
+            entity.Property(e => e.Context)
+                  .HasMaxLength(2000);
+            entity.Property(e => e.Tags)
+                  .HasMaxLength(500);
+        });
+
+        // ActivityLog configuration
+        modelBuilder.Entity<ActivityLog>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.HasIndex(a => a.Timestamp)
+                  .IsDescending()
+                  .HasDatabaseName("IX_ActivityLogs_Timestamp");
+            entity.HasIndex(a => a.ActivityType)
+                  .HasDatabaseName("IX_ActivityLogs_ActivityType");
+            entity.HasIndex(a => a.User)
+                  .HasDatabaseName("IX_ActivityLogs_User");
+            entity.HasIndex(a => new { a.EntityType, a.EntityId })
+                  .HasDatabaseName("IX_ActivityLogs_Entity");
+            entity.HasIndex(a => a.IsArchived)
+                  .HasFilter("[IsArchived] = 0")
+                  .HasDatabaseName("IX_ActivityLogs_IsArchived_Filtered");
+            entity.Property(a => a.ActivityType)
+                  .HasMaxLength(100)
+                  .IsRequired();
+            entity.Property(a => a.Activity)
+                  .HasMaxLength(200)
+                  .IsRequired();
+            entity.Property(a => a.Details)
+                  .HasMaxLength(1000);
+            entity.Property(a => a.User)
+                  .HasMaxLength(100)
+                  .IsRequired();
+            entity.Property(a => a.EntityId)
+                  .HasMaxLength(100);
+            entity.Property(a => a.EntityType)
+                  .HasMaxLength(100);
+            entity.Property(a => a.Status)
+                  .HasMaxLength(50)
+                  .IsRequired();
+            entity.Property(a => a.Source)
+                  .HasMaxLength(200);
+            entity.Property(a => a.Severity)
+                  .HasMaxLength(50)
                   .IsRequired();
         });
 

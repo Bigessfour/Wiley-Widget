@@ -21,6 +21,8 @@ public partial class ChatWindow : Form
     private readonly ILogger<ChatWindow> _logger;
     private readonly IAIService _aiService;
     private readonly IConversationRepository _conversationRepository;
+    private readonly IAIContextExtractionService? _contextExtractionService;
+    private readonly IActivityLogRepository? _activityLogRepository;
     private AIChatControl? _chatControl;
     private List<ChatMessage>? _conversationHistory;
     private Label? _statusLabel;
@@ -38,6 +40,11 @@ public partial class ChatWindow : Form
         _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ChatWindow>>(serviceProvider);
         _aiService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIService>(serviceProvider);
         _conversationRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConversationRepository>(serviceProvider);
+        
+        // Optional services - may not be available in all configurations
+        _contextExtractionService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIContextExtractionService>(serviceProvider);
+        _activityLogRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IActivityLogRepository>(serviceProvider);
+        
         _logger.LogInformation("ChatWindow created");
     }
 
@@ -84,7 +91,11 @@ public partial class ChatWindow : Form
             var aiAssistantService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIAssistantService>(_serviceProvider);
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<AIChatControl>>(_serviceProvider);
 
-            _chatControl = new AIChatControl(aiAssistantService, logger, _aiService)
+            // Resolve optional personality and insights services
+            var personalityService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIPersonalityService>(_serviceProvider);
+            var insightsService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IFinancialInsightsService>(_serviceProvider);
+
+            _chatControl = new AIChatControl(aiAssistantService, logger, _aiService, personalityService, insightsService)
             {
                 Dock = DockStyle.Fill
             };
@@ -126,15 +137,23 @@ public partial class ChatWindow : Form
     /// <summary>
     /// Handle message sent from the chat control.
     /// Integrates with IAIService for full conversational flow.
+    /// Extracts context entities and logs activity.
     /// </summary>
     private async Task HandleMessageSentAsync(string userMessage)
     {
+        var startTime = DateTime.UtcNow;
         try
         {
             if (string.IsNullOrWhiteSpace(userMessage))
                 return;
 
             UpdateStatus("Processing message...");
+
+            // Ensure conversation ID exists
+            if (string.IsNullOrEmpty(_currentConversationId))
+            {
+                _currentConversationId = Guid.NewGuid().ToString();
+            }
 
             // Use the IAIService SendMessageAsync which handles conversation history and tool calls
             var response = await _aiService.SendMessageAsync(userMessage, _conversationHistory!);
@@ -143,6 +162,62 @@ public partial class ChatWindow : Form
             {
                 // AIChatControl already added the user message; only add the AI response here
                 _chatControl.Messages.Add(ChatMessage.CreateAIMessage(response.Content));
+            }
+
+            // Extract context entities from user message and AI response
+            if (_contextExtractionService != null && !string.IsNullOrEmpty(_currentConversationId))
+            {
+                try
+                {
+                    // Fire-and-forget background context extraction
+#pragma warning disable CS4014 // Because this call is not awaited, execution continues
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var conversationId = _currentConversationId;
+                            await _contextExtractionService.ExtractEntitiesAsync(userMessage, conversationId);
+                            if (response != null)
+                            {
+                                await _contextExtractionService.ExtractEntitiesAsync(response.Content, conversationId);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Background context extraction failed");
+                        }
+                    });
+#pragma warning restore CS4014
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to start context extraction task");
+                }
+            }
+
+            // Log activity
+            if (_activityLogRepository != null)
+            {
+                try
+                {
+                    var duration = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+                    await _activityLogRepository.LogActivityAsync(new ActivityLog
+                    {
+                        ActivityType = "ChatMessage",
+                        Activity = "AI Chat Interaction",
+                        Details = $"User: {userMessage.Substring(0, Math.Min(50, userMessage.Length))}...",
+                        User = Environment.UserName,
+                        Status = "Success",
+                        DurationMs = duration,
+                        EntityType = "Conversation",
+                        EntityId = _currentConversationId,
+                        Severity = "Info"
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to log chat activity");
+                }
             }
 
             // Signal the control that parent-side processing is finished so it can hide progress
@@ -172,6 +247,27 @@ public partial class ChatWindow : Form
         {
             _logger.LogError(ex, "Error handling message send");
             UpdateStatus($"Error: {ex.Message}");
+            
+            // Log error activity
+            if (_activityLogRepository != null)
+            {
+                try
+                {
+                    await _activityLogRepository.LogActivityAsync(new ActivityLog
+                    {
+                        ActivityType = "ChatError",
+                        Activity = "AI Chat Error",
+                        Details = $"Error: {ex.Message}",
+                        User = Environment.UserName,
+                        Status = "Failed",
+                        EntityType = "Conversation",
+                        EntityId = _currentConversationId,
+                        Severity = "Error"
+                    });
+                }
+                catch { /* Best effort logging */ }
+            }
+            
             MessageBox.Show(
                 $"Error processing message: {ex.Message}",
                 "Chat Error",

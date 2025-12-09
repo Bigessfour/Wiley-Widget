@@ -44,6 +44,9 @@ public class XAIService : IAIService, IDisposable
     private readonly SigNozTelemetryService? _telemetryService;
     // private readonly dynamic _telemetryClient; // Commented out until Azure is configured
     private readonly ResiliencePipeline<HttpResponseMessage> _httpPipeline;
+    private readonly IAIAssistantService? _assistantService;
+    private readonly IAIPersonalityService? _personalityService;
+    private readonly IFinancialInsightsService? _insightsService;
     private bool _disposed;
 
     /// <summary>
@@ -59,7 +62,10 @@ public class XAIService : IAIService, IDisposable
         IAILoggingService aiLoggingService,
         IMemoryCache memoryCache,
         ISecretVaultService? secretVault = null,
-        SigNozTelemetryService? telemetryService = null
+        SigNozTelemetryService? telemetryService = null,
+        IAIAssistantService? assistantService = null,
+        IAIPersonalityService? personalityService = null,
+        IFinancialInsightsService? insightsService = null
         // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
     {
@@ -69,6 +75,9 @@ public class XAIService : IAIService, IDisposable
         _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
         _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         _telemetryService = telemetryService;
+        _assistantService = assistantService;
+        _personalityService = personalityService;
+        _insightsService = insightsService;
     if (httpClientFactory is null) throw new ArgumentNullException(nameof(httpClientFactory));
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
@@ -343,6 +352,18 @@ public class XAIService : IAIService, IDisposable
             //     ["QuestionLength"] = question?.Length.ToString() ?? "0",
             //     ["ContextLength"] = context?.Length.ToString() ?? "0"
             // });
+
+            // Build system prompt with personality if available
+            string systemPrompt;
+            if (_personalityService != null)
+            {
+                systemPrompt = _personalityService.BuildSystemPrompt(systemContext, context);
+            }
+            else
+            {
+                systemPrompt = $"You are a helpful AI assistant for a municipal utility management application called Wiley Widget. System Context: {systemContext}. Context: {context}";
+            }
+
             var request = new
             {
                 messages = new[]
@@ -350,7 +371,7 @@ public class XAIService : IAIService, IDisposable
                     new
                     {
                         role = "system",
-                        content = $"You are a helpful AI assistant for a municipal utility management application called Wiley Widget. System Context: {systemContext}. Context: {context}"
+                        content = systemPrompt
                     },
                     new
                     {
@@ -360,7 +381,7 @@ public class XAIService : IAIService, IDisposable
                 },
                 model = model,
                 stream = false,
-                temperature = 0.7
+                temperature = _personalityService?.CurrentPersonality.Temperature ?? 0.7
             };
 
             // Execute HTTP request with Polly v8 resilience pipeline
@@ -1028,11 +1049,22 @@ public class XAIService : IAIService, IDisposable
             // Build messages array from conversation history
             var messages = new List<object>();
 
+            // Build system prompt with personality if available
+            string systemPrompt;
+            if (_personalityService != null)
+            {
+                systemPrompt = _personalityService.BuildSystemPrompt(systemContext, "Assist the user with their queries about budget management, utilities, and financial operations.");
+            }
+            else
+            {
+                systemPrompt = $"You are a helpful AI assistant for a municipal utility management application called Wiley Widget. System Context: {systemContext}. Assist the user with their queries about budget management, utilities, and financial operations.";
+            }
+
             // Add system message
             messages.Add(new
             {
                 role = "system",
-                content = $"You are a helpful AI assistant for a municipal utility management application called Wiley Widget. System Context: {systemContext}. Assist the user with their queries about budget management, utilities, and financial operations."
+                content = systemPrompt
             });
 
             // Add conversation history
@@ -1266,5 +1298,1112 @@ public class XAIService : IAIService, IDisposable
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Get tool definitions for xAI function calling integration.
+    /// These definitions follow the official xAI tool calling specification.
+    /// Includes both server-side tools (executed by xAI) and client-side tools (executed locally).
+    /// Reference: https://docs.x.ai/docs/guides/tools/overview
+    /// </summary>
+    public List<object> GetToolDefinitions()
+    {
+        var toolsEnabled = _configuration.GetValue<bool>("FeatureFlags:EnableXAIToolCalling", true);
+        if (!toolsEnabled)
+        {
+            _logger.LogDebug("xAI tool calling is disabled via configuration");
+            return new List<object>();
+        }
+
+        var tools = new List<object>();
+
+        // CLIENT-SIDE TOOLS: Executed locally by Wiley Widget
+        // These require client-side execution and results must be returned to xAI
+
+        // File operations
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "read_file",
+                description = "Read the contents of a file from the Wiley Widget workspace. Returns the full text content of the specified file. Use this to examine source code, configuration files, or documentation.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        file_path = new
+                        {
+                            type = "string",
+                            description = "The absolute or relative path to the file to read (e.g., 'src/MainForm.cs' or 'appsettings.json')"
+                        },
+                        start_line = new
+                        {
+                            type = "integer",
+                            description = "Optional: Starting line number (1-indexed) to read from. Omit to read entire file."
+                        },
+                        end_line = new
+                        {
+                            type = "integer",
+                            description = "Optional: Ending line number (1-indexed) to read to. Omit to read entire file."
+                        }
+                    },
+                    required = new[] { "file_path" }
+                }
+            }
+        });
+
+        // Code search
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "semantic_search",
+                description = "Perform a semantic search across the Wiley Widget codebase to find relevant code snippets, classes, methods, comments, or documentation. Uses AI-powered semantic understanding to find contextually relevant results.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        query = new
+                        {
+                            type = "string",
+                            description = "The search query - can be natural language (e.g., 'authentication logic') or specific code terms (e.g., 'MainForm initialization')"
+                        },
+                        max_results = new
+                        {
+                            type = "integer",
+                            description = "Maximum number of results to return (default: 10, max: 50)"
+                        }
+                    },
+                    required = new[] { "query" }
+                }
+            }
+        });
+
+        // Pattern search
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+                {  name = "grep_search",
+                description = "Search for a specific pattern or text string in files across the workspace. Returns matching lines with file paths and line numbers. Supports both literal text and regular expressions.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pattern = new
+                        {
+                            type = "string",
+                            description = "The text pattern or regex to search for (e.g., 'IAIService' or 'async.*Task')"
+                        },
+                        is_regex = new
+                        {
+                            type = "boolean",
+                            description = "Whether the pattern is a regular expression (default: false)"
+                        },
+                        include_pattern = new
+                        {
+                            type = "string",
+                            description = "Optional: Glob pattern to filter files (e.g., '**/*.cs' for C# files only)"
+                        }
+                    },
+                    required = new[] { "pattern" }
+                }
+            }
+        });
+
+        // Directory listing
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "list_directory",
+                description = "List files and subdirectories in a specified directory path within the workspace. Returns names and types (file/directory).",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        directory_path = new
+                        {
+                            type = "string",
+                            description = "The path to the directory to list (e.g., 'src' or 'src/WileyWidget.WinForms')"
+                        },
+                        recursive = new
+                        {
+                            type = "boolean",
+                            description = "Whether to list subdirectories recursively (default: false)"
+                        }
+                    },
+                    required = new[] { "directory_path" }
+                }
+            }
+        });
+
+        // Error diagnostics
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "get_errors",
+                description = "Get compilation errors, warnings, and lint issues from the workspace. Returns diagnostic information including file paths, line numbers, and error messages.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        file_path = new
+                        {
+                            type = "string",
+                            description = "Optional: Specific file path to get errors for. Omit to get all workspace errors."
+                        },
+                        severity = new
+                        {
+                            type = "string",
+                            description = "Optional: Filter by severity - 'error', 'warning', or 'info' (default: all)",
+                            @enum = new[] { "error", "warning", "info", "all" }
+                        }
+                    },
+                    required = new string[] { }
+                }
+            }
+        });
+
+        // Get recent file changes
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "get_git_changes",
+                description = "Get recent file changes from Git repository. Shows modified, added, and deleted files with their change status.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        include_staged = new
+                        {
+                            type = "boolean",
+                            description = "Include staged changes (default: true)"
+                        },
+                        include_unstaged = new
+                        {
+                            type = "boolean",
+                            description = "Include unstaged changes (default: true)"
+                        }
+                    },
+                    required = new string[] { }
+                }
+            }
+        });
+
+        // WILEY WIDGET BUSINESS LOGIC TOOLS: Query application data and operations
+        // These provide Grok with "vision" into the application state
+
+        // Get enterprise details
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "get_enterprise_details",
+                description = "Get detailed information about a specific enterprise including financial data, budget allocations, and cash flow status. Use this when user asks about a specific company, organization, or enterprise.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        enterprise_id = new
+                        {
+                            type = "integer",
+                            description = "Optional: Numeric enterprise ID. Use if known."
+                        },
+                        enterprise_name = new
+                        {
+                            type = "string",
+                            description = "Optional: Enterprise name for lookup. Supports partial matches."
+                        }
+                    },
+                    required = new string[] { }
+                }
+            }
+        });
+
+        // Run budget analysis
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "run_budget_analysis",
+                description = "Run a comprehensive budget analysis for a fiscal year. Returns budget vs actual spending, variances, trends, and fiscal health indicators. Use this when user asks about budget performance, spending analysis, or fiscal year review.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        fiscal_year = new
+                        {
+                            type = "integer",
+                            description = "Fiscal year to analyze (e.g., 2024). Defaults to current fiscal year if omitted."
+                        },
+                        department = new
+                        {
+                            type = "string",
+                            description = "Optional: Filter analysis to specific department (e.g., 'Operations', 'Finance')"
+                        }
+                    },
+                    required = new string[] { }
+                }
+            }
+        });
+
+        // Search audit trail
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "search_audit_trail",
+                description = "Search the audit log for recent system activities, user actions, data changes, and system events. Returns timestamped audit entries with details. Use this when user asks 'what changed?', 'who did X?', or 'recent activity'.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        entity_type = new
+                        {
+                            type = "string",
+                            description = "Optional: Filter by entity type - 'Budget', 'Enterprise', 'User', 'Account', etc."
+                        },
+                        action = new
+                        {
+                            type = "string",
+                            description = "Optional: Filter by action - 'Create', 'Update', 'Delete', 'View', 'Export', etc."
+                        },
+                        start_date = new
+                        {
+                            type = "string",
+                            description = "Optional: Start date for audit search (ISO 8601 format: YYYY-MM-DD)"
+                        },
+                        end_date = new
+                        {
+                            type = "string",
+                            description = "Optional: End date for audit search (ISO 8601 format: YYYY-MM-DD)"
+                        },
+                        max_results = new
+                        {
+                            type = "integer",
+                            description = "Maximum number of results to return (default: 20, max: 50)"
+                        }
+                    },
+                    required = new string[] { }
+                }
+            }
+        });
+
+        // List enterprises
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "list_enterprises",
+                description = "List all enterprises in the system with basic information and financial health indicators. Returns enterprise names, IDs, and cash flow status (positive/negative). Use this when user asks 'what enterprises do we have?', 'list all companies', or 'show organizations'.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        include_inactive = new
+                        {
+                            type = "boolean",
+                            description = "Include inactive/archived enterprises (default: false)"
+                        }
+                    },
+                    required = new string[] { }
+                }
+            }
+        });
+
+        // Get current UI state
+        tools.Add(new
+        {
+            type = "function",
+            function = new
+            {
+                name = "get_current_ui_state",
+                description = "Get the current operational state of the Wiley Widget application including active views, selected data, user context, and open forms. Returns real-time information about what the user is currently viewing. Use this when providing contextual help or when user asks 'what am I looking at?'",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        include_selections = new
+                        {
+                            type = "boolean",
+                            description = "Include currently selected items/records (default: true)"
+                        }
+                    },
+                    required = new string[] { }
+                }
+            }
+        });
+
+        _logger.LogInformation("✓ Generated {Count} client-side tool definitions for xAI integration", tools.Count);
+        return tools;
+    }
+
+    /// <summary>
+    /// Enhanced GetInsightsAsync with xAI agentic tool calling support.
+    /// Implements the official xAI tool calling pattern with automatic server-side execution
+    /// and client-side tool detection.
+    /// Reference: https://docs.x.ai/docs/guides/tools/overview
+    /// </summary>
+    /// <param name="context">Context for the AI query</param>
+    /// <param name="question">User question</param>
+    /// <param name="tools">Optional: Client-side tool definitions. If null, uses GetToolDefinitions()</param>
+    /// <param name="includeServerSideTools">Include xAI server-side tools (web_search, x_search, code_execution)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>AI response with tool call results integrated</returns>
+    public async Task<string> GetInsightsWithToolsAsync(
+        string context,
+        string question,
+        List<object>? tools = null,
+        bool includeServerSideTools = true,
+        CancellationToken cancellationToken = default)
+    {
+        var toolsEnabled = _configuration.GetValue<bool>("FeatureFlags:EnableXAIToolCalling", true);
+        if (!toolsEnabled)
+        {
+            _logger.LogDebug("xAI tool calling disabled - falling back to standard GetInsightsAsync");
+            return await GetInsightsAsync(context, question, cancellationToken);
+        }
+
+        // Start telemetry tracking
+        using var apiCallSpan = _telemetryService?.StartActivity("ai.xai.get_insights_with_tools",
+            ("ai.model", _configuration["XAI:Model"] ?? "grok-4-1-fast"),
+            ("ai.provider", "xAI"),
+            ("ai.tool_calling", "enabled"));
+
+        // Validate inputs
+        ValidateAndSanitizeInputs(ref context, ref question);
+
+        // Get tool definitions if not provided
+        tools ??= GetToolDefinitions();
+
+        // Add server-side tools if requested
+        var allTools = new List<object>(tools);
+        if (includeServerSideTools)
+        {
+            // Add xAI server-side tools following official API specification
+            allTools.Add(new { type = "web_search" });  // Real-time web search
+            allTools.Add(new { type = "x_search" });    // X (Twitter) search
+            // Note: code_execution available but not auto-enabled for security
+            _logger.LogDebug("Added xAI server-side tools: web_search, x_search");
+        }
+
+        var semaphoreEntered = false;
+        try
+        {
+            var acquired = await AcquireSemaphoreSafeAsync(_concurrencySemaphore, cancellationToken).ConfigureAwait(false);
+            if (!acquired)
+            {
+                _logger?.LogDebug("XAI tool calling request canceled before starting");
+                return string.Empty;
+            }
+            semaphoreEntered = true;
+
+            var model = _configuration["XAI:Model"] ?? "grok-4-1-fast";  // Recommended model for agentic tool calling
+            var systemContext = await _contextService.BuildCurrentSystemContextAsync(cancellationToken);
+
+            // Build agentic tool calling request following xAI specification
+            var request = new
+            {
+                messages = new[]
+                {
+                    new
+                    {
+                        role = "system",
+                        content = $"You are an AI assistant for Wiley Widget, a municipal utility management application. System Context: {systemContext}. Context: {context}"
+                    },
+                    new
+                    {
+                        role = "user",
+                        content = question
+                    }
+                },
+                model = model,
+                tools = allTools.ToArray(),
+                stream = false,  // Non-streaming for initial implementation (streaming recommended for production)
+                temperature = 0.7
+            };
+
+            _logger.LogInformation("Executing xAI agentic tool calling request with {ToolCount} tools", allTools.Count);
+            _aiLoggingService.LogQuery(question, $"{context} | {systemContext} | Tools: {allTools.Count}", model);
+
+            // Execute HTTP request with Polly resilience pipeline
+            var response = await _httpPipeline.ExecuteAsync(
+                async context => await _httpClient.PostAsJsonAsync("chat/completions", request, context.CancellationToken),
+                ResilienceContextPool.Shared.Get(cancellationToken));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var status = (int)response.StatusCode;
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                Log.Error("xAI tool calling API returned non-success status {Status}: {Body}", status, body);
+                _aiLoggingService.LogError(question, body ?? string.Empty, response.StatusCode.ToString());
+
+                return response.StatusCode switch
+                {
+                    HttpStatusCode.Forbidden => "AI service authentication failed. Please verify XAI_API_KEY.",
+                    HttpStatusCode.TooManyRequests => "AI service rate limit exceeded. Try again shortly.",
+                    HttpStatusCode.BadRequest when body?.Contains("tools") == true => "Tool calling not supported by selected model. Use grok-4-1-fast or grok-4-fast.",
+                    _ => $"AI service error ({status}). Please try again later."
+                };
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<XAIToolCallingResponse>(cancellationToken: cancellationToken);
+
+            if (result?.error != null)
+            {
+                Log.Error("xAI tool calling API error: {ErrorType} - {ErrorMessage}", result.error.type, result.error.message);
+                _aiLoggingService.LogError(question, result.error.message, result.error.type ?? "API Error");
+                return $"AI error: {result.error.message}";
+            }
+
+            if (result?.choices == null || result.choices.Length == 0)
+            {
+                Log.Warning("xAI tool calling API returned no choices");
+                return "No response from AI service";
+            }
+
+            var choice = result.choices[0];
+            var content = choice?.message?.content ?? "[No content]";
+
+            // Log tool call metrics following xAI response structure
+            if (result.usage?.server_side_tool_usage != null)
+            {
+                var toolUsage = JsonSerializer.Serialize(result.usage.server_side_tool_usage);
+                _logger.LogInformation("xAI server-side tool usage: {ToolUsage}", toolUsage);
+            }
+
+            // Check for client-side tool calls that need execution
+            if (choice?.message?.tool_calls != null && choice.message.tool_calls.Length > 0)
+            {
+                var clientToolCalls = choice.message.tool_calls.Where(tc => IsClientSideToolCall(tc)).ToArray();
+
+                if (clientToolCalls.Length > 0 && _assistantService != null)
+                {
+                    _logger.LogInformation("🔧 Executing {Count} client-side tool calls", clientToolCalls.Length);
+
+                    // Tool execution loop: Execute client tools and send results back to xAI
+                    // Max 5 rounds to prevent infinite loops
+                    const int maxToolRounds = 5;
+                    var currentMessages = new List<object>
+                    {
+                        new
+                        {
+                            role = "system",
+                            content = $"You are an AI assistant for Wiley Widget, a municipal utility management application. System Context: {systemContext}. Context: {context}"
+                        },
+                        new
+                        {
+                            role = "user",
+                            content = question
+                        },
+                        new
+                        {
+                            role = "assistant",
+                            content = content,
+                            tool_calls = choice.message.tool_calls.Select(tc => new
+                            {
+                                id = tc.id,
+                                type = tc.type,
+                                function = new
+                                {
+                                    name = tc.function?.name,
+                                    arguments = tc.function?.arguments
+                                }
+                            }).ToArray()
+                        }
+                    };
+
+                    for (int round = 0; round < maxToolRounds; round++)
+                    {
+                        _logger.LogDebug("Tool execution round {Round}/{Max}", round + 1, maxToolRounds);
+
+                        // Execute all client tool calls in parallel
+                        var toolExecutionTasks = clientToolCalls.Select(async tc =>
+                        {
+                            try
+                            {
+                                // Parse tool arguments from JSON string to Dictionary
+                                var args = new Dictionary<string, object>();
+                                if (!string.IsNullOrWhiteSpace(tc.function?.arguments))
+                                {
+                                    try
+                                    {
+                                        var jsonDoc = JsonDocument.Parse(tc.function.arguments);
+                                        args = JsonSerializer.Deserialize<Dictionary<string, object>>(tc.function.arguments) 
+                                            ?? new Dictionary<string, object>();
+                                    }
+                                    catch (JsonException ex)
+                                    {
+                                        _logger.LogWarning(ex, "Failed to parse tool arguments, using empty dictionary");
+                                    }
+                                }
+
+                                var toolCall = new ToolCall(
+                                    tc.id ?? Guid.NewGuid().ToString(),
+                                    tc.function?.name ?? "unknown",
+                                    args
+                                );
+
+                                _logger.LogDebug("Executing tool: {ToolName} (ID: {ToolId})", toolCall.Name, toolCall.Id);
+                                var toolResult = await _assistantService.ExecuteToolAsync(toolCall, cancellationToken);
+
+                                return new
+                                {
+                                    role = "tool",
+                                    tool_call_id = toolCall.Id,
+                                    content = !toolResult.IsError
+                                        ? (toolResult.Content ?? "Tool executed successfully")
+                                        : $"Error: {toolResult.ErrorMessage ?? "Tool execution failed"}"
+                                };
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Tool execution failed: {ToolName}", tc.function?.name);
+                                return new
+                                {
+                                    role = "tool",
+                                    tool_call_id = tc.id ?? "unknown",
+                                    content = $"Error executing tool: {ex.Message}"
+                                };
+                            }
+                        });
+
+                        var toolResults = await Task.WhenAll(toolExecutionTasks);
+
+                        // Add tool results to conversation
+                        foreach (var toolResult in toolResults)
+                        {
+                            currentMessages.Add(toolResult);
+                        }
+
+                        _logger.LogInformation("✓ Executed {Count} tools, sending results to xAI", toolResults.Length);
+
+                        // Send continuation request to xAI with tool results
+                        var continuationRequest = new
+                        {
+                            messages = currentMessages.ToArray(),
+                            model = model,
+                            tools = allTools.ToArray(),
+                            stream = false,
+                            temperature = 0.7
+                        };
+
+                        var continuationResponse = await _httpPipeline.ExecuteAsync(
+                            async context => await _httpClient.PostAsJsonAsync("chat/completions", continuationRequest, context.CancellationToken),
+                            ResilienceContextPool.Shared.Get(cancellationToken));
+
+                        if (!continuationResponse.IsSuccessStatusCode)
+                        {
+                            _logger.LogWarning("Tool continuation request failed: {Status}", continuationResponse.StatusCode);
+                            content += "\n\n[Tool execution completed but continuation request failed]";
+                            break;
+                        }
+
+                        var continuationResult = await continuationResponse.Content.ReadFromJsonAsync<XAIToolCallingResponse>(cancellationToken: cancellationToken);
+
+                        if (continuationResult?.choices == null || continuationResult.choices.Length == 0)
+                        {
+                            _logger.LogWarning("No continuation response from xAI");
+                            break;
+                        }
+
+                        var continuationChoice = continuationResult.choices[0];
+                        var continuationContent = continuationChoice?.message?.content ?? string.Empty;
+
+                        // Check if there are more tool calls to execute
+                        var moreToolCalls = continuationChoice?.message?.tool_calls?
+                            .Where(tc => IsClientSideToolCall(tc))
+                            .ToArray();
+
+                        if (moreToolCalls == null || moreToolCalls.Length == 0)
+                        {
+                            // No more tool calls - we have the final answer
+                            content = continuationContent;
+                            _logger.LogInformation("✓ Tool calling complete after {Rounds} rounds", round + 1);
+
+                            // Add final assistant message to history
+                            currentMessages.Add(new
+                            {
+                                role = "assistant",
+                                content = continuationContent
+                            });
+                            break;
+                        }
+
+                        // More tool calls needed - continue loop
+                        _logger.LogInformation("🔄 {Count} more tool calls requested by xAI", moreToolCalls.Length);
+                        clientToolCalls = moreToolCalls;
+
+                        // Add assistant message with new tool calls
+                        currentMessages.Add(new
+                        {
+                            role = "assistant",
+                            content = continuationContent,
+                            tool_calls = moreToolCalls.Select(tc => new
+                            {
+                                id = tc.id,
+                                type = tc.type,
+                                function = new
+                                {
+                                    name = tc.function?.name,
+                                    arguments = tc.function?.arguments
+                                }
+                            }).ToArray()
+                        });
+
+                        // Safety check: prevent infinite loops
+                        if (round >= maxToolRounds - 1)
+                        {
+                            _logger.LogWarning("⚠ Max tool execution rounds reached ({Max})", maxToolRounds);
+                            content += "\n\n[Tool execution stopped: maximum rounds reached]";
+                            break;
+                        }
+                    }
+                }
+                else if (clientToolCalls.Length > 0)
+                {
+                    _logger.LogWarning("⚠ Received {Count} client-side tool calls but IAIAssistantService not available", clientToolCalls.Length);
+                    content += $"\n\n[Tool calls pending: {string.Join(", ", clientToolCalls.Select(tc => tc.function?.name))} - execution service not configured]";
+                }
+            }
+
+            _aiLoggingService.LogResponse(question, content, 0, 0);
+            // Telemetry: Track response length via logging
+            _logger.LogDebug("xAI response length: {Length} characters", content.Length);
+
+            // Cache the response
+            var cacheKey = $"XAI_TOOLS:{context.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{question.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
+            _memoryCache.Set(cacheKey, content, TimeSpan.FromMinutes(10));
+
+            return content;
+        }
+        catch (HttpRequestException hrEx)
+        {
+            Log.Error(hrEx, "HTTP error during xAI tool calling request");
+            _aiLoggingService.LogError(question, hrEx.Message, "HttpRequestException");
+            return $"Network error: {hrEx.Message}. Please check your connection.";
+        }
+        catch (TaskCanceledException tcEx)
+        {
+            Log.Warning(tcEx, "xAI tool calling request timed out");
+            _aiLoggingService.LogError(question, "Request timeout", "TaskCanceledException");
+            return "Request timed out. Try a simpler query or check if xAI servers are accessible.";
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Unexpected error during xAI tool calling");
+            _telemetryService?.RecordException(ex, ("ai.operation", "get_insights_with_tools"));
+            _aiLoggingService.LogError(question, ex.Message, ex.GetType().Name);
+            return $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            if (semaphoreEntered)
+            {
+                _concurrencySemaphore?.Release();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Determine if a tool call is client-side (requires local execution) vs server-side (handled by xAI).
+    /// Reference: https://docs.x.ai/docs/guides/tools/overview#server-side-tool-call-and-client-side-tool-call
+    /// </summary>
+    private static bool IsClientSideToolCall(XAIToolCall? toolCall)
+    {
+        if (toolCall?.function?.name == null) return false;
+
+        // Server-side tools executed by xAI (no client action needed)
+        var serverSideTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "web_search", "web_search_with_snippets", "browse_page",           // WEB_SEARCH category
+            "x_user_search", "x_keyword_search", "x_semantic_search", "x_thread_fetch",  // X_SEARCH category
+            "code_execution",                                                   // CODE_EXECUTION category
+            "view_x_video", "view_image",                                     // Media understanding
+            "collections_search"                                               // COLLECTIONS_SEARCH
+        };
+
+        return !serverSideTools.Contains(toolCall.function.name);
+    }
+
+    // Response models for xAI tool calling API
+    private class XAIToolCallingResponse
+    {
+        public string? id { get; set; }
+        public string? @object { get; set; }
+        public long created { get; set; }
+        public string? model { get; set; }
+        public XAIChoice[]? choices { get; set; }
+        public XAIUsage? usage { get; set; }
+        public XAIResponse.XAIError? error { get; set; }  // Reference nested type from XAIResponse
+    }
+
+    private class XAIChoice
+    {
+        public int index { get; set; }
+        public XAIMessage? message { get; set; }
+        public string? finish_reason { get; set; }
+    }
+
+    private class XAIMessage
+    {
+        public string? role { get; set; }
+        public string? content { get; set; }
+        public XAIToolCall[]? tool_calls { get; set; }
+    }
+
+    private class XAIToolCall
+    {
+        public string? id { get; set; }
+        public string? type { get; set; }
+        public XAIFunction? function { get; set; }
+    }
+
+    private class XAIFunction
+    {
+        public string? name { get; set; }
+        public string? arguments { get; set; }
+    }
+
+    private class XAIUsage
+    {
+        public int prompt_tokens { get; set; }
+        public int completion_tokens { get; set; }
+        public int total_tokens { get; set; }
+        public int? reasoning_tokens { get; set; }
+        public int? cached_prompt_text_tokens { get; set; }
+        public Dictionary<string, int>? server_side_tool_usage { get; set; }
+    }
+
+    /// <summary>
+    /// Stream AI responses with real-time tool call notifications.
+    /// Implements xAI streaming API with Server-Sent Events (SSE) format.
+    /// Reference: https://docs.x.ai/docs/guides/streaming
+    /// </summary>
+    public async IAsyncEnumerable<StreamChunk> StreamInsightsAsync(
+        string context,
+        string question,
+        string? previousResponseId = null,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ValidateAndSanitizeInputs(ref context, ref question);
+
+        var model = _configuration["XAI:Model"] ?? "grok-4-1-fast";
+        var systemContext = await _contextService.BuildCurrentSystemContextAsync(cancellationToken);
+
+        var request = new
+        {
+            messages = new[]
+            {
+                new
+                {
+                    role = "system",
+                    content = $"You are an AI assistant for Wiley Widget. System Context: {systemContext}. Context: {context}"
+                },
+                new
+                {
+                    role = "user",
+                    content = question
+                }
+            },
+            model = model,
+            stream = true,  // Enable streaming
+            tools = GetToolDefinitions().ToArray(),
+            previous_response_id = previousResponseId
+        };
+
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new System.IO.StreamReader(stream);
+
+        string? responseId = null;
+        var contentBuilder = new StringBuilder();
+
+        while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+        {
+            var line = await reader.ReadLineAsync();
+            if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: ", StringComparison.Ordinal)) continue;
+
+            var jsonData = line.Substring(6); // Remove "data: " prefix
+            if (jsonData == "[DONE]")
+            {
+                yield return new StreamChunk("done", ResponseId: responseId);
+                break;
+            }
+
+            XAIStreamEvent? evt;
+            try
+            {
+                evt = JsonSerializer.Deserialize<XAIStreamEvent>(jsonData);
+            }
+            catch (JsonException)
+            {
+                continue; // Skip malformed chunks
+            }
+
+            if (evt?.id != null) responseId = evt.id;
+
+            var delta = evt?.choices?.FirstOrDefault()?.delta;
+            if (delta?.content != null)
+            {
+                contentBuilder.Append(delta.content);
+                yield return new StreamChunk("content_delta", Content: delta.content, ResponseId: responseId);
+            }
+
+            if (delta?.tool_calls != null)
+            {
+                foreach (var tc in delta.tool_calls)
+                {
+                    if (tc.function?.name != null)
+                    {
+                        // Parse tool arguments from JSON string
+                        var args = new Dictionary<string, object>();
+                        if (!string.IsNullOrWhiteSpace(tc.function.arguments))
+                        {
+                            try
+                            {
+                                args = JsonSerializer.Deserialize<Dictionary<string, object>>(tc.function.arguments)
+                                    ?? new Dictionary<string, object>();
+                            }
+                            catch (JsonException)
+                            {
+                                // Use empty dictionary if parsing fails
+                            }
+                        }
+
+                        var toolCall = new ToolCall(
+                            tc.id ?? Guid.NewGuid().ToString(),
+                            tc.function.name,
+                            args
+                        );
+                        yield return new StreamChunk("tool_call", ToolCall: toolCall, ResponseId: responseId);
+                    }
+                }
+            }
+        }
+
+        _aiLoggingService.LogResponse(question, contentBuilder.ToString(), 0, 0);
+    }
+
+    /// <summary>
+    /// Execute client-side tool call using IAIAssistantService integration.
+    /// </summary>
+    public async Task<ToolCallResult> ExecuteClientToolAsync(ToolCall toolCall, CancellationToken cancellationToken = default)
+    {
+        if (_assistantService == null)
+        {
+            _logger.LogWarning("IAIAssistantService not available - cannot execute client tool: {ToolName}", toolCall.Name);
+            return new ToolCallResult(
+                toolCall.Id,
+                "Tool execution service not configured",
+                IsError: true,
+                ErrorMessage: "IAIAssistantService not configured"
+            );
+        }
+
+        _logger.LogInformation("Executing client-side tool: {ToolName}", toolCall.Name);
+
+        try
+        {
+            return await _assistantService.ExecuteToolAsync(toolCall, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing client tool: {ToolName}", toolCall.Name);
+            return new ToolCallResult(
+                toolCall.Id,
+                string.Empty,
+                IsError: true,
+                ErrorMessage: $"Tool execution error: {ex.Message}"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Upload documents to xAI collections for RAG functionality.
+    /// Reference: https://docs.x.ai/docs/guides/tools/advanced-usage#collections-search
+    /// </summary>
+    public async Task<CollectionUploadResult> UploadToCollectionAsync(
+        string collectionName,
+        IEnumerable<CollectionDocument> documents,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+            throw new ArgumentException("Collection name cannot be empty", nameof(collectionName));
+
+        var docList = documents.ToList();
+        if (docList.Count == 0)
+            throw new ArgumentException("Must provide at least one document", nameof(documents));
+
+        _logger.LogInformation("Uploading {Count} documents to collection: {CollectionName}", docList.Count, collectionName);
+
+        try
+        {
+            var request = new
+            {
+                collection_name = collectionName,
+                documents = docList.Select(d => new
+                {
+                    id = d.Id,
+                    content = d.Content,
+                    metadata = d.Metadata ?? new Dictionary<string, string>()
+                }).ToArray()
+            };
+
+            var response = await _httpPipeline.ExecuteAsync(
+                async context => await _httpClient.PostAsJsonAsync("collections/upload", request, context.CancellationToken),
+                ResilienceContextPool.Shared.Get(cancellationToken));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Collection upload failed: {Status} - {Error}", response.StatusCode, errorBody);
+                return new CollectionUploadResult(
+                    collectionName,
+                    0,
+                    "failed",
+                    $"HTTP {(int)response.StatusCode}: {errorBody}"
+                );
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<CollectionUploadResponse>(cancellationToken: cancellationToken);
+            _logger.LogInformation("✓ Uploaded {Count} documents to collection: {CollectionId}", docList.Count, result?.collection_id);
+
+            return new CollectionUploadResult(
+                result?.collection_id ?? collectionName,
+                result?.uploaded_count ?? docList.Count,
+                "success"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading to collection: {CollectionName}", collectionName);
+            return new CollectionUploadResult(
+                collectionName,
+                0,
+                "error",
+                ex.Message
+            );
+        }
+    }
+
+    /// <summary>
+    /// Search xAI collections using natural language query.
+    /// </summary>
+    public async Task<CollectionSearchResult> SearchCollectionAsync(
+        string collectionName,
+        string query,
+        int maxResults = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+            throw new ArgumentException("Collection name cannot be empty", nameof(collectionName));
+        if (string.IsNullOrWhiteSpace(query))
+            throw new ArgumentException("Query cannot be empty", nameof(query));
+
+        _logger.LogInformation("Searching collection: {CollectionName} with query: {Query}", collectionName, query);
+
+        try
+        {
+            var request = new
+            {
+                collection_name = collectionName,
+                query = query,
+                max_results = maxResults
+            };
+
+            var response = await _httpPipeline.ExecuteAsync(
+                async context => await _httpClient.PostAsJsonAsync("collections/search", request, context.CancellationToken),
+                ResilienceContextPool.Shared.Get(cancellationToken));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Collection search returned {Status}", response.StatusCode);
+                return new CollectionSearchResult(query, Array.Empty<CollectionMatch>(), 0);
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<CollectionSearchResponse>(cancellationToken: cancellationToken);
+            var matches = result?.matches?.Select(m => new CollectionMatch(
+                m.document_id ?? string.Empty,
+                m.content ?? string.Empty,
+                m.score,
+                m.metadata
+            )).ToArray() ?? Array.Empty<CollectionMatch>();
+
+            _logger.LogInformation("✓ Found {Count} matches in collection: {CollectionName}", matches.Length, collectionName);
+            return new CollectionSearchResult(query, matches, matches.Length);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching collection: {CollectionName}", collectionName);
+            return new CollectionSearchResult(query, Array.Empty<CollectionMatch>(), 0);
+        }
+    }
+
+    // Response models for streaming and collections
+    private class XAIStreamEvent
+    {
+        public string? id { get; set; }
+        public XAIStreamChoice[]? choices { get; set; }
+    }
+
+    private class XAIStreamChoice
+    {
+        public XAIStreamDelta? delta { get; set; }
+    }
+
+    private class XAIStreamDelta
+    {
+        public string? content { get; set; }
+        public XAIToolCall[]? tool_calls { get; set; }
+    }
+
+    private class CollectionUploadResponse
+    {
+        public string? collection_id { get; set; }
+        public int uploaded_count { get; set; }
+    }
+
+    private class CollectionSearchResponse
+    {
+        public CollectionMatchResponse[]? matches { get; set; }
+    }
+
+    private class CollectionMatchResponse
+    {
+        public string? document_id { get; set; }
+        public string? content { get; set; }
+        public double score { get; set; }
+        public Dictionary<string, string>? metadata { get; set; }
     }
 }

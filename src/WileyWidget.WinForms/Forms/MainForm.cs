@@ -165,6 +165,12 @@ namespace WileyWidget.WinForms.Forms
                                     {
                                         _aiChatPanel!.Visible = b;
                                     }
+                                    // Also restore width if available
+                                    if (dict.Contains("AIChatWidth") && dict["AIChatWidth"] is int width && width > 0)
+                                    {
+                                        _aiChatPanel!.Width = width;
+                                        _logger.LogDebug("✓ Restored AI Chat width: {Width}", width);
+                                    }
                                 }
                                 else if (restored is JsonElement je && je.ValueKind == JsonValueKind.Object && je.TryGetProperty("IsAIChatVisible", out var prop))
                                 {
@@ -172,7 +178,18 @@ namespace WileyWidget.WinForms.Forms
                                     {
                                         _aiChatPanel!.Visible = prop.GetBoolean();
                                     }
+                                    // Also restore width if available
+                                    if (je.TryGetProperty("AIChatWidth", out var widthProp) && widthProp.ValueKind == JsonValueKind.Number)
+                                    {
+                                        var width = widthProp.GetInt32();
+                                        if (width > 0)
+                                        {
+                                            _aiChatPanel!.Width = width;
+                                            _logger.LogDebug("✓ Restored AI Chat width: {Width}", width);
+                                        }
+                                    }
                                 }
+                                _logger.LogInformation("✓ Application state restored successfully");
                             }
                         }
                     }
@@ -195,6 +212,15 @@ namespace WileyWidget.WinForms.Forms
                                         await _dashboardSvc.RefreshDashboardAsync();
                                         // Trigger ViewModel refresh to update UI
                                         _viewModel?.LoadDataCommand.Execute(null);
+                                        // Explicitly update dashboard cards after refresh
+                                        if (InvokeRequired)
+                                        {
+                                            Invoke(() => UpdateDashboardCards());
+                                        }
+                                        else
+                                        {
+                                            UpdateDashboardCards();
+                                        }
                                     }
                                     catch (OperationCanceledException) { }
                                     catch (Exception ex)
@@ -259,10 +285,16 @@ namespace WileyWidget.WinForms.Forms
             if (_viewModel == null) return;
 
             // Update Accounts card with real data
-            _accountsDescLabel?.Text = $"View and manage municipal accounts\n\n{_viewModel.ActiveAccountCount} active accounts\n{_viewModel.TotalDepartments} departments";
+            if (_accountsDescLabel != null)
+            {
+                _accountsDescLabel.Text = $"View and manage municipal accounts\n\n{_viewModel.ActiveAccountCount} active accounts\n{_viewModel.TotalDepartments} departments";
+            }
 
             // Update Charts card with real budget data
-            _chartsDescLabel?.Text = $"Budget analytics and visualizations\n\nBudget: {_viewModel.TotalBudget:C0}\nActual: {_viewModel.TotalActual:C0}";
+            if (_chartsDescLabel != null)
+            {
+                _chartsDescLabel.Text = $"Budget analytics and visualizations\n\nBudget: {_viewModel.TotalBudget:C0}\nActual: {_viewModel.TotalActual:C0}";
+            }
 
             // Update Settings card with last update time
             if (_settingsDescLabel != null)
@@ -271,8 +303,17 @@ namespace WileyWidget.WinForms.Forms
                 _settingsDescLabel.Text = $"Configure application preferences\n\nQuickBooks: Connected\n{updateInfo}";
             }
 
-            // Update Reports card
-            _reportsDescLabel?.Text = "Generate and view detailed reports\n\nBudget reports, audit logs\nand financial summaries";
+            // Update Reports card with dynamic data
+            if (_reportsDescLabel != null)
+            {
+                var reportInfo = _viewModel.RecentReportCount > 0
+                    ? $"{_viewModel.RecentReportCount} recent reports"
+                    : "No recent reports";
+                var lastReport = !string.IsNullOrEmpty(_viewModel.LastReportGenerated)
+                    ? $"Last: {_viewModel.LastReportGenerated}"
+                    : "No reports generated yet";
+                _reportsDescLabel.Text = $"Generate and view detailed reports\n\n{reportInfo}\n{lastReport}";
+            }
 
             // Update System Info card
             if (_infoDescLabel != null)
@@ -605,21 +646,58 @@ namespace WileyWidget.WinForms.Forms
                 var aiService = ServiceProviderExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IAIAssistantService>(_serviceProvider);
                 var aiLogger = ServiceProviderExtensions.GetRequiredService<ILogger<AIChatControl>>(_serviceProvider);
 
-                // Attempt to resolve optional conversational AI service for fallback responses
-                var conversationalAI = ServiceProviderExtensions.GetService<WileyWidget.Services.Abstractions.IAIService>(_serviceProvider);
+                // Attempt to resolve optional conversational AI service (XAIService) for fallback responses
+                WileyWidget.Services.Abstractions.IAIService? conversationalAI = null;
+                try
+                {
+                    conversationalAI = ServiceProviderExtensions.GetService<WileyWidget.Services.Abstractions.IAIService>(_serviceProvider);
+                    if (conversationalAI != null)
+                    {
+                        _logger.LogInformation("✓ XAI conversational AI service resolved successfully");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠ IAIService (XAI) not available - conversational AI fallback disabled. Check XAI_API_KEY environment variable.");
+                    }
+                }
+                catch (Exception aiEx)
+                {
+                    _logger.LogError(aiEx, "Failed to resolve IAIService - continuing without conversational AI fallback");
+                }
 
-                _aiChatControl = new AIChatControl(aiService, aiLogger, conversationalAI);
+                // Resolve personality and insights services (optional)
+                IAIPersonalityService? personalityService = null;
+                IFinancialInsightsService? insightsService = null;
+                try
+                {
+                    personalityService = _serviceProvider.GetService<IAIPersonalityService>();
+                    insightsService = _serviceProvider.GetService<IFinancialInsightsService>();
+                    if (personalityService != null)
+                    {
+                        _logger.LogInformation("✓ IAIPersonalityService resolved - personality-driven responses enabled");
+                    }
+                    if (insightsService != null)
+                    {
+                        _logger.LogInformation("✓ IFinancialInsightsService resolved - intelligent financial insights enabled");
+                    }
+                }
+                catch (Exception servicesEx)
+                {
+                    _logger.LogWarning(servicesEx, "Failed to resolve optional AI services - continuing with basic functionality");
+                }
+
+                _aiChatControl = new AIChatControl(aiService, aiLogger, conversationalAI, personalityService, insightsService);
 
                 _aiChatControl.Dock = DockStyle.Fill;
                 _aiChatPanel.Controls.Add(_aiChatControl);
 
                 if (conversationalAI != null)
                 {
-                    _logger.LogInformation("AIChatControl initialized with IAIAssistantService + conversational AI fallback (IAIService)");
+                    _logger.LogInformation("✓ AIChatControl initialized with IAIAssistantService + conversational AI fallback (IAIService)");
                 }
                 else
                 {
-                    _logger.LogInformation("AIChatControl initialized with IAIAssistantService (conversational AI fallback not available)");
+                    _logger.LogInformation("ℹ AIChatControl initialized with IAIAssistantService only (conversational AI fallback not available)");
                 }
             }
             catch (Exception ex)
@@ -692,8 +770,16 @@ namespace WileyWidget.WinForms.Forms
                     var appStateSvc = ServiceProviderExtensions.GetService<WileyWidget.Abstractions.IApplicationStateService>(_serviceProvider);
                     if (appStateSvc != null)
                     {
-                        var stateObj = new { IsAIChatVisible = _aiChatPanel.Visible };
+                        var stateObj = new
+                        {
+                            IsAIChatVisible = _aiChatPanel.Visible,
+                            AIChatWidth = _aiChatPanel.Width,
+                            AIChatMessageCount = _aiChatControl?.Messages?.Count ?? 0,
+                            Timestamp = DateTime.Now
+                        };
                         _ = appStateSvc.SaveStateAsync(stateObj);
+                        _logger.LogDebug("✓ AI Chat state persisted: visible={Visible}, width={Width}, messages={Count}",
+                            stateObj.IsAIChatVisible, stateObj.AIChatWidth, stateObj.AIChatMessageCount);
                     }
                 }
                 catch (Exception ex)

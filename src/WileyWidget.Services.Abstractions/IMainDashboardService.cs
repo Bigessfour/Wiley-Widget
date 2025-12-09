@@ -25,5 +25,7 @@ namespace WileyWidget.Services.Abstractions
         decimal Variance,
         int ActiveAccountCount,
         int TotalDepartments,
-        string LastUpdateTime);
+        string LastUpdateTime,
+        int RecentReportCount,
+        string? LastReportGenerated);
 }

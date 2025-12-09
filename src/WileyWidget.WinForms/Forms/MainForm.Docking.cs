@@ -26,6 +26,8 @@ public partial class MainForm
     private Panel? _leftDockPanel;
     private Panel? _rightDockPanel;
     private Panel? _centralDocumentPanel;
+    private Syncfusion.WinForms.DataGrid.SfDataGrid? _activityGrid;
+    private System.Windows.Forms.Timer? _activityRefreshTimer;
     private bool _useSyncfusionDocking = false;  // Feature flag - set true to enable
     private const string DockingLayoutFileName = "wiley_widget_docking_layout.xml";
     // Fonts used by DockingManager - keep references so we can dispose them
@@ -148,7 +150,8 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Create central document panel with AI chat as primary tab
+    /// Create central document panel with AI chat as primary tab.
+    /// Supports both standard panel mode and MDI container mode for multiple documents.
     /// </summary>
     private void CreateCentralDocumentPanel()
     {
@@ -161,7 +164,9 @@ public partial class MainForm
             BackColor = Color.White
         };
 
-        // Add AI Chat as primary document
+        // Add AI Chat as primary document in the central panel
+        // Note: When MDI mode is enabled, this panel can be replaced with MdiClient
+        // to support multiple document windows
         _centralDocumentPanel.Controls.Add(_aiChatControl);
         _aiChatControl.Dock = DockStyle.Fill;
 
@@ -173,7 +178,10 @@ public partial class MainForm
         Controls.Add(_centralDocumentPanel);
         _centralDocumentPanel.SendToBack();  // Ensure it's behind docked panels in z-order
 
-        _logger.LogDebug("Central document panel created with AI chat (using standard Fill docking, not DockingManager)");
+        // MDI Support: If MDI mode is active, this central panel coexists with MdiClient
+        // The MdiClient will be set as the form's MdiClient property and will handle
+        // child window management separately from the docking framework
+        _logger.LogDebug("Central document panel created with AI chat (standard Fill docking, MDI-compatible)");
     }
 
     /// <summary>
@@ -250,6 +258,7 @@ public partial class MainForm
 
     /// <summary>
     /// Create activity grid panel (extracted for reuse in docking)
+    /// Now loads data from ActivityLog database table for real-time activity tracking.
     /// </summary>
     private Panel CreateActivityGridPanel()
     {
@@ -270,7 +279,7 @@ public partial class MainForm
             Padding = new Padding(5, 8, 0, 0)
         };
 
-        var activityGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
+        _activityGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
         {
             Dock = DockStyle.Fill,
             AutoGenerateColumns = false,
@@ -281,12 +290,75 @@ public partial class MainForm
             AllowFiltering = true
         };
 
-        // Map to ActivityItem properties
-        activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 80 });
-        activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 150 });
-        activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 200 });
+        // Map to ActivityLog properties
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 80 });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 150 });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 200 });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User", Width = 100 });
 
-        // Typed sample ActivityItem fallback
+        // Load initial data from database
+        _ = LoadActivityDataAsync();
+
+        // Setup auto-refresh timer (every 30 seconds)
+        _activityRefreshTimer = new System.Windows.Forms.Timer
+        {
+            Interval = 30000 // 30 seconds
+        };
+        _activityRefreshTimer.Tick += async (s, e) => await LoadActivityDataAsync();
+        _activityRefreshTimer.Start();
+
+        activityPanel.Controls.Add(_activityGrid);
+        activityPanel.Controls.Add(activityHeader);
+
+        return activityPanel;
+    }
+
+    /// <summary>
+    /// Load activity data from database asynchronously.
+    /// </summary>
+    private async Task LoadActivityDataAsync()
+    {
+        try
+        {
+            var activityLogRepository = _serviceProvider.GetService<WileyWidget.Data.IActivityLogRepository>();
+            if (activityLogRepository == null)
+            {
+                _logger.LogWarning("ActivityLogRepository not available, using fallback data");
+                LoadFallbackActivityData();
+                return;
+            }
+
+            var activities = await activityLogRepository.GetRecentActivitiesAsync(skip: 0, take: 50);
+
+            if (_activityGrid != null && !_activityGrid.IsDisposed)
+            {
+                if (_activityGrid.InvokeRequired)
+                {
+                    _activityGrid.Invoke(() => _activityGrid.DataSource = activities);
+                }
+                else
+                {
+                    _activityGrid.DataSource = activities;
+                }
+            }
+
+            _logger.LogDebug("Loaded {Count} activities from database", activities.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading activity data from database");
+            LoadFallbackActivityData();
+        }
+    }
+
+    /// <summary>
+    /// Load fallback activity data when database is unavailable.
+    /// </summary>
+    private void LoadFallbackActivityData()
+    {
+        if (_activityGrid == null || _activityGrid.IsDisposed)
+            return;
+
         var activities = new[]
         {
             new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-5), Activity = "Account Updated", Details = "GL-1001", User = "System" },
@@ -295,12 +367,15 @@ public partial class MainForm
             new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddHours(-1), Activity = "User Login", Details = "Admin", User = "Admin" },
             new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddHours(-2), Activity = "Backup Complete", Details = "12.5 MB", User = "System" }
         };
-        activityGrid.DataSource = activities;
 
-        activityPanel.Controls.Add(activityGrid);
-        activityPanel.Controls.Add(activityHeader);
-
-        return activityPanel;
+        if (_activityGrid.InvokeRequired)
+        {
+            _activityGrid.Invoke(() => _activityGrid.DataSource = activities);
+        }
+        else
+        {
+            _activityGrid.DataSource = activities;
+        }
     }
 
     /// <summary>

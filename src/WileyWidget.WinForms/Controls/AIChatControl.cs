@@ -3,8 +3,10 @@ using Syncfusion.WinForms.Controls;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Http;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -150,8 +152,13 @@ public partial class AIChatControl : UserControl
     public event EventHandler<string>? MessageSent;
     private readonly IAIAssistantService _aiService;
     private readonly IAIService? _conversationalAIService;
+    private readonly IAIPersonalityService? _personalityService;
+    private readonly IFinancialInsightsService? _insightsService;
     private readonly ILogger<AIChatControl> _logger;
     private readonly SemaphoreSlim _executionSemaphore = new(1, 1);
+    private string? _lastResponseId; // Track conversation state for multi-turn dialogs
+    private bool _useStreaming = true; // Enable streaming by default
+    private bool _welcomeMessageShown = false;
 
     private RichTextBox? _messagesDisplay;
     private Panel? _inputPanel;
@@ -172,7 +179,12 @@ public partial class AIChatControl : UserControl
     /// Constructor with mandatory tool execution service and optional conversational AI service.
     /// If IAIService is available, provides fallback conversational responses when no tool is detected.
     /// </summary>
-    public AIChatControl(IAIAssistantService aiService, ILogger<AIChatControl> logger, IAIService? conversationalAIService = null)
+    public AIChatControl(
+        IAIAssistantService aiService, 
+        ILogger<AIChatControl> logger, 
+        IAIService? conversationalAIService = null,
+        IAIPersonalityService? personalityService = null,
+        IFinancialInsightsService? insightsService = null)
     {
         // Validate STA thread requirement for WinForms controls
         if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
@@ -185,9 +197,12 @@ public partial class AIChatControl : UserControl
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _conversationalAIService = conversationalAIService;
+        _personalityService = personalityService;
+        _insightsService = insightsService;
         Messages = new ObservableCollection<ChatMessage>();
 
         InitializeComponent();
+        ShowWelcomeMessage();
         _logger.LogInformation("AIChatControl initialized successfully{ConversationalAI}",
             _conversationalAIService != null ? " with conversational AI fallback enabled" : "");
     }
@@ -374,6 +389,53 @@ public partial class AIChatControl : UserControl
         _logger.LogInformation("Chat messages cleared");
     }
 
+    private void ShowWelcomeMessage()
+    {
+        if (_welcomeMessageShown)
+        {
+            return; // Already shown
+        }
+
+        try
+        {
+            // Get personality name from personality service or default to "Professional"
+            string personalityName = "Professional";
+            if (_personalityService != null)
+            {
+                // Try to get current personality from service
+                // Note: This assumes AIPersonalityService has a CurrentPersonality property
+                // If not available, we'll fall back to the default
+                personalityName = "Professional"; // Default fallback
+            }
+
+            // Get welcome message from helper
+            string welcomeMessage = ConversationalAIHelper.GetWelcomeMessage(personalityName);
+
+            // Add as AI message
+            var welcomeChatMessage = ChatMessage.CreateAIMessage(welcomeMessage);
+            Messages.Add(welcomeChatMessage);
+
+            // Display in RichTextBox if available
+            if (_messagesDisplay != null)
+            {
+                _messagesDisplay.SelectionColor = Color.FromArgb(0, 120, 212);
+                _messagesDisplay.SelectionFont = new Font(_messagesDisplay.Font, FontStyle.Bold);
+                _messagesDisplay.AppendText("🤖 AI Assistant: ");
+                _messagesDisplay.SelectionColor = Color.Black;
+                _messagesDisplay.SelectionFont = new Font(_messagesDisplay.Font, FontStyle.Regular);
+                _messagesDisplay.AppendText(welcomeMessage + Environment.NewLine + Environment.NewLine);
+            }
+
+            _welcomeMessageShown = true;
+            _logger.LogInformation("Welcome message displayed with {Personality} personality", personalityName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to display welcome message");
+            // Non-critical failure - continue without welcome message
+        }
+    }
+
     private void InputTextBox_KeyDown(object? sender, KeyEventArgs e)
     {
         if (e.KeyCode == Keys.Enter && !e.Shift && !e.Control)
@@ -500,25 +562,50 @@ public partial class AIChatControl : UserControl
                 // ENHANCEMENT: Use XAIService for conversational AI fallback
                 if (_conversationalAIService != null)
                 {
-                    _logger.LogInformation("No tool detected; attempting conversational AI response");
+                    _logger.LogInformation("No tool detected; attempting conversational AI response via XAI service");
                     try
                     {
                         responseMessage = await _conversationalAIService.GetInsightsAsync(
-                            context: "User querying codebase via AI Chat interface",
+                            context: "User querying codebase via AI Chat interface. Provide helpful, concise responses.",
                             question: input,
                             cancellationToken: CancellationToken.None);
-                        responseMessage = $"💭 Insights:\n{responseMessage}";
+
+                        if (string.IsNullOrWhiteSpace(responseMessage))
+                        {
+                            responseMessage = "ℹ️ No response from AI service. Try a tool command instead.";
+                            _logger.LogWarning("XAI service returned empty response");
+                        }
+                        else
+                        {
+                            responseMessage = $"💭 AI Insights:\n{responseMessage}";
+                            _logger.LogInformation("✓ Conversational AI response received ({Length} chars)", responseMessage.Length);
+                        }
+                    }
+                    catch (InvalidOperationException ioEx) when (ioEx.Message.Contains("API key"))
+                    {
+                        _logger.LogError(ioEx, "XAI API key not configured");
+                        responseMessage = ConversationalAIHelper.FormatFriendlyError(ioEx);
+                    }
+                    catch (TaskCanceledException tcEx)
+                    {
+                        _logger.LogWarning(tcEx, "XAI request timed out");
+                        responseMessage = ConversationalAIHelper.FormatFriendlyError(tcEx);
+                    }
+                    catch (HttpRequestException hrEx)
+                    {
+                        _logger.LogWarning(hrEx, "XAI API network error");
+                        responseMessage = ConversationalAIHelper.FormatFriendlyError(hrEx);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Conversational AI fallback failed; showing default help message");
-                        responseMessage = $"ℹ️ Conversational AI unavailable.\n\nAvailable tool commands:\n• read <file>\n• grep <pattern>\n• list <directory>\n• search <query>";
+                        responseMessage = ConversationalAIHelper.FormatFriendlyError(ex);
                     }
                 }
                 else
                 {
                     // No conversational AI available; show tool help
-                    responseMessage = "ℹ️ No tool detected.\n\nAvailable commands:\n• read <file>\n• grep <pattern>\n• list <directory>\n• search <query>";
+                    responseMessage = "ℹ️ No tool detected. Conversational AI not configured.\n\nAvailable commands:\n• read <file>\n• grep <pattern>\n• list <directory>\n• search <query>\n\nTo enable AI chat: Set XAI_API_KEY environment variable.";
                     _logger.LogDebug("Conversational AI not configured; showing help message");
                 }
             }
@@ -536,10 +623,11 @@ public partial class AIChatControl : UserControl
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending message");
+            string friendlyError = ConversationalAIHelper.FormatFriendlyError(ex);
             Messages.Add(new ChatMessage
             {
                 IsUser = false,
-                Message = $"❌ Error: {ex.Message}",
+                Message = friendlyError,
                 Timestamp = DateTime.Now
             });
         }

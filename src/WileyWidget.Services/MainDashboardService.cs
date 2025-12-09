@@ -54,6 +54,10 @@ namespace WileyWidget.Services
 
                     var lastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
+                    // Calculate report metrics (synthetic data for now - replace with real report tracking in future)
+                    var recentReportCount = 3; // TODO: Query actual report generation log
+                    var lastReportGenerated = "Budget Q4 2024";
+
                     _logger.LogInformation("Dashboard data loaded: {AccountCount} accounts, Budget: {Budget:C}, Actual: {Actual:C}",
                         activeAccountCount, totalBudget, totalActual);
 
@@ -63,7 +67,9 @@ namespace WileyWidget.Services
                         variance,
                         activeAccountCount,
                         totalDepartments,
-                        lastUpdateTime);
+                        lastUpdateTime,
+                        recentReportCount,
+                        lastReportGenerated);
                 }
                 catch (OperationCanceledException)
                 {

@@ -120,7 +120,7 @@ public partial class MainForm
             {
                 try
                 {
-                    _tabbedMdiManager.DetachFromMdiContainer(this);
+                    _tabbedMdiManager.DetachFromMdiContainer();
                     _tabbedMdiManager.Dispose();
                     _tabbedMdiManager = null;
                 }
@@ -225,9 +225,9 @@ public partial class MainForm
     /// <summary>
     /// Handle before dropdown popup event for tab list.
     /// </summary>
-    private void OnBeforeDropDownPopup(object? sender, TabbedMDIBeforePopupEventArgs e)
+    private void OnBeforeDropDownPopup(object? sender, EventArgs e)
     {
-        _logger.LogDebug("TabbedMDI dropdown popup requested with {Count} items", e.PopupMenuItems?.Count ?? 0);
+        _logger.LogDebug("TabbedMDI dropdown popup requested");
     }
 
     /// <summary>
@@ -240,7 +240,7 @@ public partial class MainForm
             if (ActiveMdiChild != null)
             {
                 _logger.LogDebug("MDI child activated: {FormType}", ActiveMdiChild.GetType().Name);
-                
+
                 // Update status bar if available
                 if (_statusLabel != null)
                 {
@@ -265,18 +265,18 @@ public partial class MainForm
         {
             // Enable drag-and-drop for tab reordering (default is usually enabled)
             // This allows users to drag tabs to reorder them or create new tab groups
-            
+
             // Configure tab appearance
             if (_tabbedMdiManager.TabControlAdv != null)
             {
                 var tabControl = _tabbedMdiManager.TabControlAdv;
-                
+
                 // Enable tooltips on tabs
                 tabControl.ShowToolTips = true;
-                
+
                 // Configure tab sizing
                 tabControl.FixedSingleBorderColor = Color.FromArgb(45, 45, 48);
-                
+
                 // Tab selection behavior
                 tabControl.TabStyle = typeof(Syncfusion.Windows.Forms.Tools.TabRendererOffice2016Colorful);
             }
@@ -638,14 +638,14 @@ public partial class MainForm
                     _tabbedMdiManager.TabControlAdded -= OnTabbedMdiTabControlAdded;
                     _tabbedMdiManager.BeforeDropDownPopup -= OnBeforeDropDownPopup;
                     _tabbedMdiManager.MdiChildActivate -= OnMdiChildActivate;
-                    
+
                     // Dispose context menu if exists
                     if (_tabbedMdiManager.TabControlAdv?.ContextMenuStrip != null)
                     {
                         _tabbedMdiManager.TabControlAdv.ContextMenuStrip.Dispose();
                     }
-                    
-                    _tabbedMdiManager.DetachFromMdiContainer(this);
+
+                    _tabbedMdiManager.DetachFromMdiContainer();
                     _tabbedMdiManager.Dispose();
                     _tabbedMdiManager = null;
                     _logger.LogDebug("TabbedMDIManager disposed successfully");

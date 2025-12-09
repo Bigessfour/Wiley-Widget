@@ -140,6 +140,14 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IAILoggingService, AILoggingService>();
             Debug.WriteLine("DI: Registered IAILoggingService -> AILoggingService (Singleton)");
 
+            // AI Personality Service for dynamic tone/personality configuration (Scoped)
+            services.AddScoped<IAIPersonalityService, AIPersonalityService>();
+            Debug.WriteLine("DI: Registered IAIPersonalityService -> AIPersonalityService (Scoped)");
+
+            // Financial Insights Service for intelligent budget analysis (Scoped)
+            services.AddScoped<IFinancialInsightsService, FinancialInsightsService>();
+            Debug.WriteLine("DI: Registered IFinancialInsightsService -> FinancialInsightsService (Scoped)");
+
             // AI Assistant Service for tool execution (Scoped for proper lifecycle)
             services.AddScoped<IAIAssistantService, AIAssistantService>();
             Debug.WriteLine("DI: Registered IAIAssistantService -> AIAssistantService (Scoped)");
@@ -148,10 +156,22 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IAIToolService, AIToolService>();
             Debug.WriteLine("DI: Registered IAIToolService -> AIToolService (Scoped)");
 
+            // AI Context Extraction Service for extracting entities from conversations (Scoped)
+            services.AddScoped<IAIContextExtractionService, AIContextExtractionService>();
+            Debug.WriteLine("DI: Registered IAIContextExtractionService -> AIContextExtractionService (Scoped)");
+
             // === AI CONVERSATION PERSISTENCE ===
             // Conversation repository for saving/loading chat history
             services.AddTransient<IConversationRepository, ConversationRepository>();
             Debug.WriteLine("DI: Registered IConversationRepository -> ConversationRepository (Transient)");
+
+            // AI context entity repository for tracking names, dates, events from conversations
+            services.AddTransient<IAIContextRepository, AIContextRepository>();
+            Debug.WriteLine("DI: Registered IAIContextRepository -> AIContextRepository (Transient)");
+
+            // Activity log repository for tracking user activities and system events
+            services.AddTransient<IActivityLogRepository, ActivityLogRepository>();
+            Debug.WriteLine("DI: Registered IActivityLogRepository -> ActivityLogRepository (Transient)");
 
             // === AI SERVICE VALIDATORS ===
             // Validators for AI inputs (injection prevention, constraint validation)

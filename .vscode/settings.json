@@ -61,7 +61,7 @@
       "env": {
         "MSSQL_CONNECTION_STRING": "${env:MSSQL_CONNECTION_STRING}"
       },
-      "disabled": true
+      "disabled": false
     },
     "syncfusion-winforms-assistant": {
       "command": "npx",

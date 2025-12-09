@@ -44,6 +44,12 @@ namespace WileyWidget.WinForms.ViewModels
         private string? lastUpdateTime;
 
         [ObservableProperty]
+        private int recentReportCount;
+
+        [ObservableProperty]
+        private string? lastReportGenerated;
+
+        [ObservableProperty]
         private bool isLoading;
 
         [ObservableProperty]
@@ -109,6 +115,8 @@ namespace WileyWidget.WinForms.ViewModels
                 ActiveAccountCount = data.ActiveAccountCount;
                 TotalDepartments = data.TotalDepartments;
                 LastUpdateTime = data.LastUpdateTime;
+                RecentReportCount = data.RecentReportCount;
+                LastReportGenerated = data.LastReportGenerated;
 
                 // Populate activity items collection (if any domain sources exist, use them; otherwise synthesize helpful recent events)
                 PopulateActivityItems(data);
