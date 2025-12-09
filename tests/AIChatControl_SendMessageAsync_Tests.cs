@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using System.Collections.ObjectModel;
+using System.Threading;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.Models;
@@ -11,7 +12,7 @@ namespace WileyWidget.Tests
 {
     /// <summary>
     /// Unit tests for AIChatControl.SendMessageAsync method with mocked dependencies.
-    /// 
+    ///
     /// TEST STRATEGY:
     /// ==============
     /// 1. Mock IAIAssistantService to isolate SendMessageAsync logic
@@ -20,6 +21,7 @@ namespace WileyWidget.Tests
     /// 4. Test error handling and edge cases
     /// 5. Verify proper async/await semantics
     /// </summary>
+    [Apartment(ApartmentState.STA)]
     [TestFixture]
     public class AIChatControl_SendMessageAsync_Tests
     {
@@ -304,6 +306,7 @@ namespace WileyWidget.Tests
     /// Integration tests for the full SendMessageAsync flow with minimal mocking.
     /// Tests the real AIChatControl against mock IAIAssistantService.
     /// </summary>
+    [Apartment(ApartmentState.STA)]
     [TestFixture]
     public class AIChatControl_SendMessageAsync_Integration_Tests
     {
@@ -319,7 +322,7 @@ namespace WileyWidget.Tests
             services.AddLogging(config => config.AddDebug());
             services.AddMemoryCache();
             services.AddSingleton(_mockAIService.Object);
-            services.AddScoped(sp => new AIChatControl(_mockAIService.Object, 
+            services.AddScoped(sp => new AIChatControl(_mockAIService.Object,
                 sp.GetRequiredService<ILogger<AIChatControl>>()));
 
             _serviceProvider = services.BuildServiceProvider();
