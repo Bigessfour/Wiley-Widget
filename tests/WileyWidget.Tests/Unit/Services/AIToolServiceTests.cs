@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using Xunit.Sdk;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
@@ -101,7 +102,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync(budgetEntries);
 
             // Act
-            var result = await _service.GetBudgetDataAsync(fiscalYear);
+            var result = await _service.GetBudgetDataAsync(fiscalYear, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(result);
@@ -139,7 +140,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync(budgetEntries);
 
             // Act
-            var result = await _service.GetBudgetDataAsync(fiscalYear, fundType);
+            var result = await _service.GetBudgetDataAsync(fiscalYear, fundType, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(result);
@@ -162,7 +163,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            var result = await _service.GetBudgetDataAsync(fiscalYear);
+            var result = await _service.GetBudgetDataAsync(fiscalYear, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(result);
@@ -196,7 +197,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync(account);
 
             // Act
-            var result = await _service.AnalyzeBudgetTrendsAsync(accountId, "monthly");
+            var result = await _service.AnalyzeBudgetTrendsAsync(accountId, "monthly", TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(result);
@@ -212,7 +213,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync((MunicipalAccount)null!);
 
             // Act
-            var result = await _service.AnalyzeBudgetTrendsAsync(accountId, "monthly");
+            var result = await _service.AnalyzeBudgetTrendsAsync(accountId, "monthly", TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(result);
@@ -232,7 +233,7 @@ namespace WileyWidget.Tests.Unit.Services
                 .ReturnsAsync(account);
 
             // Act
-            var result = await _service.AnalyzeBudgetTrendsAsync(accountId, period);
+            var result = await _service.AnalyzeBudgetTrendsAsync(accountId, period, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(result);
