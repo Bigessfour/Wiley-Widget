@@ -279,23 +279,35 @@ public partial class MainForm
             var tabCtrl = GetTabbedTabControl();
             if (tabCtrl == null) return;
 
-            var ctxProp = tabCtrl.GetType().GetProperty("ContextMenuStrip");
-            if (ctxProp != null && ctxProp.CanWrite)
-            {
-                try
-                {
-                    // Set to null explicitly to remove any placeholder association
-                    ctxProp.SetValue(tabCtrl, null);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Failed to clear TabControlAdv ContextMenuStrip via reflection");
-                }
-            }
+            ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuStrip");
+            ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuPlaceHolder");
+            ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuStripPlaceHolder");
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "ClearTabbedTabControlContextMenu encountered an error");
+        }
+    }
+
+    private void ResetTabControlContextMenuProperty(object tabControl, string propertyName)
+    {
+        if (tabControl == null) return;
+
+        var prop = tabControl.GetType().GetProperty(propertyName);
+        if (prop == null || !prop.CanWrite) return;
+
+        try
+        {
+            var existing = prop.GetValue(tabControl);
+            prop.SetValue(tabControl, null);
+            if (existing is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to reset {PropertyName} on TabControlAdv", propertyName);
         }
     }
 
@@ -908,19 +920,9 @@ public partial class MainForm
                     var tabCtrl = GetTabbedTabControl();
                     if (tabCtrl != null)
                     {
-                        var ctxProp = tabCtrl.GetType().GetProperty("ContextMenuStrip");
-                        if (ctxProp != null && ctxProp.CanWrite)
-                        {
-                            object? existing = null;
-                            try { existing = ctxProp.GetValue(tabCtrl); } catch { }
-
-                            try { ctxProp.SetValue(tabCtrl, null); } catch { }
-
-                            if (existing is IDisposable disp)
-                            {
-                                try { disp.Dispose(); } catch { }
-                            }
-                        }
+                        ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuStrip");
+                        ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuPlaceHolder");
+                        ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuStripPlaceHolder");
                     }
 
                     try

@@ -1,5 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
+using System.Reflection;
+using System.Linq;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Runtime.Serialization;
 using System;
@@ -144,7 +147,7 @@ public partial class MainForm
         _dockingManager.DockControl(_leftDockPanel, this, DockingStyle.Left, 250);
         _dockingManager.SetAutoHideMode(_leftDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_leftDockPanel, "📊 Dashboard");
-        _dockingManager.SetFloatingMode(_leftDockPanel, true);  // Enable floating windows
+        TrySetFloatingMode(_leftDockPanel, true);  // Enable floating windows
 
         _logger.LogDebug("Left dock panel created with dashboard cards");
     }
@@ -207,7 +210,7 @@ public partial class MainForm
         _dockingManager.DockControl(_rightDockPanel, this, DockingStyle.Right, 200);
         _dockingManager.SetAutoHideMode(_rightDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_rightDockPanel, "📋 Activity");
-        _dockingManager.SetFloatingMode(_rightDockPanel, true);  // Enable floating windows
+        TrySetFloatingMode(_rightDockPanel, true);  // Enable floating windows
 
         _logger.LogDebug("Right dock panel created with activity grid");
     }
@@ -320,7 +323,7 @@ public partial class MainForm
     {
         try
         {
-            var activityLogRepository = _serviceProvider.GetService<WileyWidget.Data.IActivityLogRepository>();
+            var activityLogRepository = ServiceProviderExtensions.GetService<WileyWidget.Data.IActivityLogRepository>(_serviceProvider);
             if (activityLogRepository == null)
             {
                 _logger.LogWarning("ActivityLogRepository not available, using fallback data");
@@ -427,6 +430,21 @@ public partial class MainForm
                 return;
             }
 
+            var layoutFileInfo = new FileInfo(layoutPath);
+            if (layoutFileInfo.Length == 0)
+            {
+                _logger.LogWarning("Docking layout file {Path} is empty - removing corrupt file", layoutPath);
+                try
+                {
+                    File.Delete(layoutPath);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogWarning(deleteEx, "Failed to delete empty docking layout file {Path}", layoutPath);
+                }
+                return;
+            }
+
             // Validate XML structure before loading to catch corruption early
             try
             {
@@ -519,26 +537,72 @@ public partial class MainForm
                 }
             }
 
+            var tempLayoutPath = layoutPath + ".tmp";
             // Use Syncfusion's AppStateSerializer for proper state persistence
             var serializer = new Syncfusion.Runtime.Serialization.AppStateSerializer(
-                Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, layoutPath);
+                Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, tempLayoutPath);
             _dockingManager.SaveDockState(serializer);
+
+            ReplaceDockingLayoutFile(tempLayoutPath, layoutPath);
 
             _logger.LogInformation("Docking layout saved to {Path}", layoutPath);
         }
         catch (UnauthorizedAccessException authEx)
         {
             _logger.LogError(authEx, "Permission denied saving docking layout to {Path}", layoutPath);
+            TryCleanupTempFile(layoutPath + ".tmp");
         }
         catch (IOException ioEx)
         {
             _logger.LogError(ioEx, "I/O error saving docking layout to {Path}", layoutPath);
+            TryCleanupTempFile(layoutPath + ".tmp");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save docking layout to {Path}", layoutPath);
+            TryCleanupTempFile(layoutPath + ".tmp");
         }
     }    /// <summary>
+
+    private static void ReplaceDockingLayoutFile(string tempPath, string finalPath)
+    {
+        if (string.IsNullOrEmpty(tempPath) || string.IsNullOrEmpty(finalPath))
+        {
+            return;
+        }
+
+        if (!File.Exists(tempPath))
+        {
+            TryCleanupTempFile(tempPath);
+            return;
+        }
+
+        try
+        {
+            if (File.Exists(finalPath))
+            {
+                File.Delete(finalPath);
+            }
+
+            File.Move(tempPath, finalPath, true);
+        }
+        finally
+        {
+            TryCleanupTempFile(tempPath);
+        }
+    }
+
+    private static void TryCleanupTempFile(string tempPath)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(tempPath) && File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+        catch { }
+    }
     /// Get docking layout file path in AppData
     /// </summary>
     private static string GetDockingLayoutPath()
@@ -647,7 +711,7 @@ public partial class MainForm
     {
         try
         {
-            var themeService = _serviceProvider.GetService<IThemeManagerService>();
+            var themeService = ServiceProviderExtensions.GetService<IThemeManagerService>(_serviceProvider);
             if (themeService == null)
             {
                 _logger.LogWarning("ThemeManagerService not available - using hardcoded panel colors");
@@ -902,10 +966,10 @@ public partial class MainForm
 
             _dockingManager.SetAutoHideMode(panel, true);
             _dockingManager.SetDockLabel(panel, displayLabel);
-            _dockingManager.SetFloatingMode(panel, true);
+            TrySetFloatingMode(panel, true);
 
             // Apply theme
-            var themeService = _serviceProvider.GetService<IThemeManagerService>();
+            var themeService = ServiceProviderExtensions.GetService<IThemeManagerService>(_serviceProvider);
             if (themeService != null)
             {
                 panel.BackColor = themeService.GetSemanticColor(SemanticColorType.Background);
@@ -1078,5 +1142,48 @@ public partial class MainForm
             _dockTabFont = null;
         }
         catch { }
+    }
+
+    private void TrySetFloatingMode(Control? panel, bool enable)
+    {
+        try
+        {
+            if (_dockingManager == null || panel == null) return;
+            var dmType = _dockingManager.GetType();
+            var mi = dmType.GetMethod("SetFloatingMode", new[] { typeof(Control), typeof(bool) });
+            if (mi != null)
+            {
+                mi.Invoke(_dockingManager, new object[] { panel, enable });
+                return;
+            }
+
+            var alt = dmType.GetMethod("EnableFloating", new[] { typeof(Control), typeof(bool) })
+                   ?? dmType.GetMethod("AllowFloating", new[] { typeof(Control), typeof(bool) })
+                   ?? dmType.GetMethod("SetAllowFloating", new[] { typeof(Control), typeof(bool) });
+
+            if (alt != null)
+            {
+                alt.Invoke(_dockingManager, new object[] { panel, enable });
+                return;
+            }
+
+            // Try any method with 'float' or 'floating' in name and 2 parameters
+            foreach (var candidate in dmType.GetMethods())
+            {
+                if (candidate.GetParameters().Length == 2 && (candidate.Name.IndexOf("float", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    try
+                    {
+                        candidate.Invoke(_dockingManager, new object[] { panel, enable });
+                        return;
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "TrySetFloatingMode reflection failed");
+        }
     }
 }
