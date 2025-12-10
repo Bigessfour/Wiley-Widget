@@ -1,17 +1,18 @@
-using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Themes;
-using WileyWidget.Services.Abstractions;
+using System.Windows.Forms;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Styles;
+using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Chart;
-using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Gauge;
-using Syncfusion.WinForms.Controls;
-using System.ComponentModel;
+using Syncfusion.Windows.Forms.Tools;
+using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -29,6 +30,10 @@ namespace WileyWidget.WinForms.Forms
         public const string LoadErrorMessage = "Error loading dashboard: {0}";
         public const string MetricsGridTitle = "Key Performance Metrics";
         public const string RevenueTrendTitle = "Revenue Trend";
+        public const string StatusReady = "Ready";
+        public const string StatusExported = "Dashboard exported";
+        public const string StatusRefreshed = "Dashboard refreshed";
+        public const string StatusAutoRefresh = "Auto-refresh: {0}";
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
@@ -42,19 +47,25 @@ namespace WileyWidget.WinForms.Forms
         private RadialGauge? _revenueGauge;
         private RadialGauge? _expensesGauge;
         private RadialGauge? _netPositionGauge;
+        private ToolStripEx? _toolbar;
+        private StatusBarAdv? _statusBar;
+        private StatusBarAdvPanel? _statusPanel;
+        private StatusBarAdvPanel? _countsPanel;
+        private StatusBarAdvPanel? _updatedPanel;
         private Label? _municipalityLabel;
         private Label? _fiscalYearLabel;
         private Label? _lastUpdatedLabel;
-        private Label? _loadingLabel;
-        private Label? _errorLabel;
         private System.Windows.Forms.Timer? _refreshTimer;
         private CheckBox? _autoRefreshCheckbox;
+
+        private const int RefreshIntervalMs = 30000;
 
         public DashboardForm(DashboardViewModel viewModel)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             InitializeComponent();
             SetupUI();
+            SfSkinManager.SetVisualStyle(this, VisualTheme.Office2019Colorful);
             ThemeColors.ApplyTheme(this);
             BindViewModel();
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
@@ -72,39 +83,29 @@ namespace WileyWidget.WinForms.Forms
 
         private void SetupUI()
         {
-            // Create main layout
             _mainLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 5,
+                RowCount = 6,
                 Padding = new Padding(10)
             };
 
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));  // Toolbar
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));  // Header info
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 200)); // KPI Gauges
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));   // Chart
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));   // Metrics Grid
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));  // Status
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));  // Toolbar
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));   // Header info
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 200));  // KPI Gauges
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));    // Chart
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));    // Metrics Grid
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // Status bar
 
-            // Toolbar
-            var toolStrip = new ToolStrip();
-            var loadButton = new ToolStripButton(DashboardResources.LoadButton, null, async (s, e) => await LoadDashboard()) { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard" };
-            var refreshButton = new ToolStripButton(DashboardResources.RefreshButton, null, async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null)) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh" };
-            var exportButton = new ToolStripButton(DashboardResources.ExportButton, null, async (s, e) => await ExportDashboard()) { Name = "Toolbar_ExportButton", AccessibleName = "Export" };
+            BuildToolbar();
 
-            // Auto-refresh checkbox
-            _autoRefreshCheckbox = new CheckBox { Name = "AutoRefreshCheckbox", Text = "Auto-refresh (30s)", Checked = true, Padding = new Padding(5, 0, 5, 0) };
-            _autoRefreshCheckbox.CheckedChanged += (s, e) => ToggleAutoRefresh(_autoRefreshCheckbox.Checked);
-            var autoRefreshHost = new ToolStripControlHost(_autoRefreshCheckbox);
-
-            toolStrip.Items.AddRange(new ToolStripItem[] { loadButton, refreshButton, new ToolStripSeparator(), exportButton, new ToolStripSeparator(), autoRefreshHost });
-            _mainLayout.Controls.Add(toolStrip, 0, 0);
-
-            // Initialize auto-refresh timer
-            _refreshTimer = new System.Windows.Forms.Timer { Interval = 30000 }; // 30 seconds
-            _refreshTimer.Tick += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+            _refreshTimer = new System.Windows.Forms.Timer { Interval = RefreshIntervalMs };
+            _refreshTimer.Tick += async (s, e) =>
+            {
+                await _viewModel.RefreshCommand.ExecuteAsync(null);
+                UpdateStatus(DashboardResources.StatusRefreshed);
+            };
             _refreshTimer.Start();
 
             // Header panel
@@ -244,39 +245,119 @@ namespace WileyWidget.WinForms.Forms
 
             _mainLayout.Controls.Add(metricsPanel, 0, 4);
 
-            // Status panel
-            var statusPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(5, 0, 5, 0) };
-            _loadingLabel = new Label
+            BuildStatusBar();
+            if (_statusBar != null)
             {
-                Text = "",
-                Visible = false,
-                ForeColor = ThemeColors.PrimaryAccent,
-                Dock = DockStyle.Left,
-                TextAlign = ContentAlignment.MiddleLeft,
-                AutoSize = true
-            };
-            _errorLabel = new Label
-            {
-                Text = "",
-                Visible = false,
-                ForeColor = ThemeColors.Error,
-                Dock = DockStyle.Left,
-                TextAlign = ContentAlignment.MiddleLeft,
-                AutoSize = true
-            };
-            var statusInfoLabel = new Label
-            {
-                Name = "StatusInfoLabel",
-                Text = "Ready",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = ThemeColors.Success
-            };
-
-            statusPanel.Controls.AddRange(new Control[] { _loadingLabel, _errorLabel, statusInfoLabel });
-            _mainLayout.Controls.Add(statusPanel, 0, 5);
+                _mainLayout.Controls.Add(_statusBar, 0, 5);
+            }
 
             Controls.Add(_mainLayout);
+        }
+
+        private void BuildToolbar()
+        {
+            _toolbar = new ToolStripEx
+            {
+                Dock = DockStyle.Fill,
+                GripStyle = ToolStripGripStyle.Hidden,
+                ImageScalingSize = new Size(20, 20),
+                Padding = new Padding(8, 4, 8, 4),
+                ThemeName = "Office2016Colorful",
+                Office12Mode = false
+            };
+
+            var loadButton = new ToolStripButton
+            {
+                Text = DashboardResources.LoadButton,
+                Name = "Toolbar_LoadButton",
+                AutoSize = false,
+                Width = 120,
+                DisplayStyle = ToolStripItemDisplayStyle.Text
+            };
+            loadButton.Click += async (s, e) => await LoadDashboard();
+
+            var refreshButton = new ToolStripButton
+            {
+                Text = DashboardResources.RefreshButton,
+                Name = "Toolbar_RefreshButton",
+                AutoSize = false,
+                Width = 100,
+                DisplayStyle = ToolStripItemDisplayStyle.Text
+            };
+            refreshButton.Click += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+
+            var exportButton = new ToolStripButton
+            {
+                Text = DashboardResources.ExportButton,
+                Name = "Toolbar_ExportButton",
+                AutoSize = false,
+                Width = 90,
+                DisplayStyle = ToolStripItemDisplayStyle.Text
+            };
+            exportButton.Click += async (s, e) => await ExportDashboard();
+
+            _autoRefreshCheckbox = new CheckBox
+            {
+                Name = "AutoRefreshCheckbox",
+                Text = "Auto-refresh (30s)",
+                Checked = true,
+                Padding = new Padding(5, 0, 5, 0),
+                AutoSize = true
+            };
+            _autoRefreshCheckbox.CheckedChanged += (s, e) =>
+            {
+                ToggleAutoRefresh(_autoRefreshCheckbox.Checked);
+                UpdateStatus(string.Format(CultureInfo.CurrentCulture, DashboardResources.StatusAutoRefresh, _autoRefreshCheckbox.Checked ? "On" : "Off"));
+            };
+            var autoRefreshHost = new ToolStripControlHost(_autoRefreshCheckbox)
+            {
+                Margin = new Padding(6, 0, 0, 0)
+            };
+
+            _toolbar.Items.Add(loadButton);
+            _toolbar.Items.Add(refreshButton);
+            _toolbar.Items.Add(new ToolStripSeparator());
+            _toolbar.Items.Add(exportButton);
+            _toolbar.Items.Add(new ToolStripSeparator());
+            _toolbar.Items.Add(autoRefreshHost);
+
+            _mainLayout?.Controls.Add(_toolbar, 0, 0);
+        }
+
+        private void BuildStatusBar()
+        {
+            _statusBar = new StatusBarAdv
+            {
+                Dock = DockStyle.Fill,
+                ShowPanels = true,
+                BeforeTouchSize = new Size(0, 28),
+                SizeGrip = false,
+                ThemeName = "Office2019Colorful"
+            };
+
+            _statusPanel = new StatusBarAdvPanel
+            {
+                Text = DashboardResources.StatusReady,
+                BorderStyle = BorderStyle.None,
+                Width = 450
+            };
+
+            _countsPanel = new StatusBarAdvPanel
+            {
+                Text = "0 metrics",
+                BorderStyle = BorderStyle.None,
+                Width = 220
+            };
+
+            _updatedPanel = new StatusBarAdvPanel
+            {
+                Text = "Updated: --",
+                BorderStyle = BorderStyle.None,
+                Width = 220,
+                Alignment = HorizontalAlignment.Left
+            };
+
+            _statusBar.Panels.AddRange(new[] { _statusPanel, _countsPanel, _updatedPanel });
         }
 
         private RadialGauge CreateGauge(string label, Color needleColor)
@@ -325,45 +406,41 @@ namespace WileyWidget.WinForms.Forms
                             _fiscalYearLabel.Text = $"{DashboardResources.FiscalYearLabel} {_viewModel.FiscalYear}";
                         break;
                     case nameof(_viewModel.LastUpdated):
+                        var lastUpdatedText = _viewModel.LastUpdated == default ? "--" : _viewModel.LastUpdated.ToString("g", CultureInfo.CurrentCulture);
                         if (_lastUpdatedLabel != null)
-                            _lastUpdatedLabel.Text = $"{DashboardResources.LastUpdatedLabel} {_viewModel.LastUpdated:g}";
+                            _lastUpdatedLabel.Text = $"{DashboardResources.LastUpdatedLabel} {lastUpdatedText}";
+                        if (_updatedPanel != null)
+                            _updatedPanel.Text = $"Updated: {lastUpdatedText}";
                         break;
                     case nameof(_viewModel.IsLoading):
-                        if (_loadingLabel != null)
-                        {
-                            _loadingLabel.Text = _viewModel.IsLoading ? DashboardResources.LoadingText : "";
-                            _loadingLabel.Visible = _viewModel.IsLoading;
-                        }
+                        UpdateStatus(_viewModel.IsLoading ? DashboardResources.LoadingText : DashboardResources.StatusReady);
                         break;
                     case nameof(_viewModel.ErrorMessage):
-                        if (_errorLabel != null)
+                        if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
                         {
-                            _errorLabel.Text = _viewModel.ErrorMessage ?? "";
-                            _errorLabel.Visible = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
+                            UpdateStatus(_viewModel.ErrorMessage);
                         }
                         break;
                     case nameof(_viewModel.Metrics):
                         if (_metricsGrid != null)
                             _metricsGrid.DataSource = _viewModel.Metrics;
+                        if (_countsPanel != null)
+                            _countsPanel.Text = $"{_viewModel.Metrics.Count} metrics";
                         break;
                     case nameof(_viewModel.TotalBudgetGauge):
-                        UpdateGaugeValueSafely(_budgetGauge, _viewModel.TotalBudgetGauge);
+                        AnimateGaugeValue(_budgetGauge, _viewModel.TotalBudgetGauge);
                         break;
                     case nameof(_viewModel.RevenueGauge):
-                        UpdateGaugeValueSafely(_revenueGauge, _viewModel.RevenueGauge);
+                        AnimateGaugeValue(_revenueGauge, _viewModel.RevenueGauge);
                         break;
                     case nameof(_viewModel.ExpensesGauge):
-                        UpdateGaugeValueSafely(_expensesGauge, _viewModel.ExpensesGauge);
+                        AnimateGaugeValue(_expensesGauge, _viewModel.ExpensesGauge);
                         break;
                     case nameof(_viewModel.NetPositionGauge):
-                        UpdateGaugeValueSafely(_netPositionGauge, _viewModel.NetPositionGauge);
+                        AnimateGaugeValue(_netPositionGauge, _viewModel.NetPositionGauge);
                         break;
                     case nameof(_viewModel.StatusText):
-                        var statusInfoLabel = Controls.Find("StatusInfoLabel", true).FirstOrDefault() as Label;
-                        if (statusInfoLabel != null)
-                        {
-                            statusInfoLabel.Text = _viewModel.StatusText;
-                        }
+                        UpdateStatus(_viewModel.StatusText);
                         break;
                     case nameof(_viewModel.MonthlyRevenueData):
                         UpdateRevenueChart();
@@ -390,43 +467,54 @@ namespace WileyWidget.WinForms.Forms
             _revenueChart.Refresh();
         }
 
-        private void UpdateGaugeValueSafely(RadialGauge? gauge, float value)
+        private void AnimateGaugeValue(RadialGauge? gauge, float value)
         {
-            if (gauge != null)
+            if (gauge == null)
             {
-                gauge.Value = Math.Max(gauge.MinimumValue, Math.Min(value, gauge.MaximumValue));
+                return;
             }
+
+            var target = Math.Max(gauge.MinimumValue, Math.Min(value, gauge.MaximumValue));
+            var start = gauge.Value;
+            var steps = 15;
+            var stepValue = (target - start) / steps;
+            var timer = new System.Windows.Forms.Timer { Interval = 16 };
+            var currentStep = 0;
+
+            timer.Tick += (s, e) =>
+            {
+                if (gauge.IsDisposed)
+                {
+                    timer.Stop();
+                    timer.Dispose();
+                    return;
+                }
+
+                currentStep++;
+                var next = start + (stepValue * currentStep);
+                gauge.Value = currentStep >= steps ? target : next;
+
+                if (currentStep >= steps)
+                {
+                    timer.Stop();
+                    timer.Dispose();
+                }
+            };
+
+            timer.Start();
         }
 
         private async Task LoadDashboard()
         {
             try
             {
-                if (_loadingLabel != null)
-                {
-                    _loadingLabel.Text = DashboardResources.LoadingText;
-                    _loadingLabel.Visible = true;
-                }
-
                 await _viewModel.LoadCommand.ExecuteAsync(null);
 
-                if (_loadingLabel != null)
-                {
-                    _loadingLabel.Visible = false;
-                }
+                UpdateStatus(DashboardResources.StatusReady);
             }
             catch (Exception ex)
             {
-                if (_loadingLabel != null)
-                {
-                    _loadingLabel.Visible = false;
-                }
-
-                if (_errorLabel != null)
-                {
-                    _errorLabel.Text = $"Error: {ex.Message}";
-                    _errorLabel.Visible = true;
-                }
+                UpdateStatus(string.Format(CultureInfo.CurrentCulture, DashboardResources.LoadErrorMessage, ex.Message));
 
                 MessageBox.Show(string.Format(CultureInfo.CurrentCulture, DashboardResources.LoadErrorMessage, ex.Message),
                     DashboardResources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -471,6 +559,8 @@ namespace WileyWidget.WinForms.Forms
 
                     MessageBox.Show($"Dashboard exported successfully to {saveDialog.FileName}",
                         "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    UpdateStatus(DashboardResources.StatusExported);
                 }
                 catch (Exception ex)
                 {
@@ -500,6 +590,14 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private void UpdateStatus(string text)
+        {
+            if (_statusPanel != null)
+            {
+                _statusPanel.Text = text;
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -511,6 +609,8 @@ namespace WileyWidget.WinForms.Forms
                 _revenueGauge?.Dispose();
                 _expensesGauge?.Dispose();
                 _netPositionGauge?.Dispose();
+                _toolbar?.Dispose();
+                _statusBar?.Dispose();
             }
             base.Dispose(disposing);
         }

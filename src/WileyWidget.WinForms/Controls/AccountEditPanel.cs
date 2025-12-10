@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.ListView;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Extensions;

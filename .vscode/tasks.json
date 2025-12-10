@@ -648,7 +648,7 @@
 		{
 			"label": "generate-ai-fetchable-manifest",
 			"type": "shell",
-			"command": "C:/Users/biges/AppData/Local/Microsoft/WindowsApps/python3.11.exe",
+			"command": "C:/Users/biges/AppData/Local/Programs/Python/Python314/python.exe",
 			"args": [
 				"${workspaceFolder}/scripts/tools/generate_repo_urls.py",
 				"-o",
@@ -1080,7 +1080,7 @@
 		{
 			"label": "scan:legacy-code-python",
 			"type": "shell",
-			"command": "python",
+			"command": "C:/Users/biges/AppData/Local/Programs/Python/Python314/python.exe",
 			"args": [
 				"${workspaceFolder}/tools/legacy_scanner.py",
 				"--root",
@@ -1101,7 +1101,7 @@
 		{
 			"label": "scan:legacy-code-python-verbose",
 			"type": "shell",
-			"command": "python",
+			"command": "C:/Users/biges/AppData/Local/Programs/Python/Python314/python.exe",
 			"args": [
 				"${workspaceFolder}/tools/legacy_scanner.py",
 				"--root",
@@ -1148,7 +1148,7 @@
 		{
 			"label": "scan:legacy-code-ci",
 			"type": "shell",
-			"command": "python",
+			"command": "C:/Users/biges/AppData/Local/Programs/Python/Python314/python.exe",
 			"args": [
 				"${workspaceFolder}/tools/legacy_scanner.py",
 				"--root",
@@ -1166,50 +1166,6 @@
 				"clear": true
 			},
 			"problemMatcher": []
-		},
-		{
-			"label": "XAML: Diagnose Silent XAML Failures (xaml-strict-validator)",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"${workspaceFolder}/scripts/tools/xaml-strict-validator.py",
-				"${workspaceFolder}/src/WileyWidget.WinUI/${input:xamlObjDir}"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": true,
-				"panel": "dedicated",
-				"showReuseMessage": false,
-				"clear": true
-			},
-			"problemMatcher": [
-				{
-					"owner": "xaml-validator",
-					"fileLocation": ["relative","${workspaceFolder}"],
-					"pattern": {
-						"regexp": "^FAIL\s+(.+?):(\\d+):(\\d+)\s+\[(WMC\\d+)\]\s+(.*)$",
-						"file": 1,
-						"line": 2,
-						"column": 3,
-						"severity": "error",
-						"code": 4,
-						"message": 5
-					}
-				},
-				{
-					"owner": "xaml-validator",
-					"fileLocation": ["relative","${workspaceFolder}"],
-					"pattern": {
-						"regexp": "^CRASH\s+(.+?):\\s+(.*)$",
-						"file": 1,
-						"message": 2,
-						"severity": "error"
-					}
-				}
-			],
-			"detail": "Run xaml-strict-validator when XamlCompiler.exe fails silently (MSB3073) to extract exact XAML errors"
 		}
 	],
 	"inputs": [

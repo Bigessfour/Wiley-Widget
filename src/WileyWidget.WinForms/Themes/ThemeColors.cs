@@ -112,7 +112,7 @@ namespace WileyWidget.WinForms.Themes
             try
             {
                 // Load the Office2019Theme assembly for extended theme support
-                SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             }
             catch (Exception ex)
             {

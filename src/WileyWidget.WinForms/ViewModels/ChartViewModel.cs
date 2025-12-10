@@ -1,18 +1,36 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.ViewModels
 {
-    public class ChartViewModel
+    public partial class ChartViewModel : ObservableObject
     {
-        public ObservableCollection<MonthlyRevenue> MonthlyRevenueData { get; set; } = new();
-        public ObservableCollection<(string Category, decimal Value)> PieChartData { get; set; } = new();
+        public ChartViewModel()
+        {
+            RefreshCommand = new AsyncRelayCommand(LoadChartDataAsync);
+        }
+
+        public ObservableCollection<MonthlyRevenue> MonthlyRevenueData { get; } = new();
+        public ObservableCollection<(string Category, decimal Value)> PieChartData { get; } = new();
+        public ObservableCollection<KeyValuePair<string, decimal>> ChartData { get; } = new();
+
+        [ObservableProperty]
+        private string? errorMessage;
+
+        public IAsyncRelayCommand RefreshCommand { get; }
 
         public async Task LoadChartDataAsync()
         {
-            // Populate MonthlyRevenueData and pie chart data for the view
-            await Task.Delay(100);
+            ErrorMessage = null;
+            ChartData.Clear();
+            MonthlyRevenueData.Clear();
+            PieChartData.Clear();
 
+            await Task.Delay(100).ConfigureAwait(false);
+
+            var random = new Random();
             var monthNames = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul" };
             for (int i = 0; i < monthNames.Length; i++)
             {
@@ -20,13 +38,19 @@ namespace WileyWidget.WinForms.ViewModels
                 {
                     Month = monthNames[i],
                     MonthNumber = i + 1,
-                    Amount = (decimal)(new Random().NextDouble() * 1000 + 1000)
+                    Amount = (decimal)(random.NextDouble() * 1000 + 1000)
                 });
             }
 
+            // Sample data for charts
             PieChartData.Add(("Category 1", 2m));
             PieChartData.Add(("Category 2", 4m));
             PieChartData.Add(("Category 3", 1m));
+
+            ChartData.Add(new KeyValuePair<string, decimal>("Admin", 120_000m));
+            ChartData.Add(new KeyValuePair<string, decimal>("Public Works", 95_500m));
+            ChartData.Add(new KeyValuePair<string, decimal>("Public Safety", 150_250m));
+            ChartData.Add(new KeyValuePair<string, decimal>("Parks", 62_700m));
         }
     }
 }

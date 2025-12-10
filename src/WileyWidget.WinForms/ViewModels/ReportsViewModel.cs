@@ -88,7 +88,7 @@ public partial class ReportsViewModel : ObservableObject
 
     /// <summary>
     /// Reference to the ReportViewer control (set by the Form).
-    /// Using object type to avoid WPF reference in ViewModel.
+    /// Using object type to avoid reference in ViewModel.
     /// </summary>
     public object? ReportViewer { get; set; }
 

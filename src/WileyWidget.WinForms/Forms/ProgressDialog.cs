@@ -1,5 +1,8 @@
+using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
+using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Themes;
 
@@ -25,14 +28,15 @@ namespace WileyWidget.WinForms.Forms
         private Label? _lblPercentage;
         private Syncfusion.WinForms.Controls.SfButton? _btnCancel;
         private TableLayoutPanel? _mainLayout;
-        
+
         private bool _cancelled = false;
 
-        public bool Cancelled => _cancelled;
+        public bool IsCancelled => _cancelled;
 
         /// <summary>
         /// Gets or sets the progress value (0-100).
         /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int ProgressValue
         {
             get => _progressBar?.Value ?? 0;
@@ -49,6 +53,7 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Gets or sets the status message displayed above the progress bar.
         /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string StatusMessage
         {
             get => _lblMessage?.Text ?? string.Empty;
@@ -64,6 +69,7 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Gets or sets whether the cancel button is visible.
         /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool ShowCancelButton
         {
             get => _btnCancel?.Visible ?? false;
@@ -91,11 +97,11 @@ namespace WileyWidget.WinForms.Forms
         public ProgressDialog(string title, string message, bool showCancelButton)
         {
             InitializeComponent();
-            
+
             Text = title ?? ProgressDialogResources.DefaultTitle;
             StatusMessage = message ?? ProgressDialogResources.DefaultMessage;
             ShowCancelButton = showCancelButton;
-            
+
             // Apply Syncfusion theme to form and all child controls
             ThemeColors.ApplyTheme(this);
         }
@@ -166,7 +172,7 @@ namespace WileyWidget.WinForms.Forms
             // Apply gradient colors for modern appearance
             _progressBar.ForeColor = ThemeColors.PrimaryAccent;
             _progressBar.BackColor = ThemeColors.Background;
-            
+
             _mainLayout.Controls.Add(_progressBar, 0, 2);
 
             // Percentage label
@@ -197,7 +203,7 @@ namespace WileyWidget.WinForms.Forms
             };
             _btnCancel.Click += BtnCancel_Click;
             _btnCancel.ThemeName = ThemeColors.DefaultTheme;
-            
+
             _mainLayout.Controls.Add(_btnCancel, 0, 5);
 
             Controls.Add(_mainLayout);
@@ -214,13 +220,13 @@ namespace WileyWidget.WinForms.Forms
         private void BtnCancel_Click(object? sender, EventArgs e)
         {
             _cancelled = true;
-            
+
             if (_btnCancel != null)
             {
                 _btnCancel.Enabled = false;
                 _btnCancel.Text = "Cancelling...";
             }
-            
+
             // Raise event for parent to handle cancellation
             OnCancelled(EventArgs.Empty);
         }
@@ -247,12 +253,12 @@ namespace WileyWidget.WinForms.Forms
             }
 
             ProgressValue = value;
-            
+
             if (message != null)
             {
                 StatusMessage = message;
             }
-            
+
             Application.DoEvents(); // Allow UI to update
         }
 
@@ -271,10 +277,10 @@ namespace WileyWidget.WinForms.Forms
             {
                 StatusMessage = completionMessage;
             }
-            
+
             ProgressValue = 100;
             Application.DoEvents();
-            
+
             // Close after brief delay to show 100%
             System.Threading.Thread.Sleep(300);
             DialogResult = DialogResult.OK;

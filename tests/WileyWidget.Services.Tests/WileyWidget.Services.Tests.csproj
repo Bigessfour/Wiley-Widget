@@ -25,7 +25,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <!-- Exclude presentation/ViewModel tests that require WinUI types from service test runs -->
+  <!-- Exclude presentation/ViewModel tests that rely on types not available in service test runs -->
   <ItemGroup>
     <Compile Remove="ViewModelTests\\**\\*.cs" />
     <Compile Remove="TestHelpers\\**\\*MockFactory*.cs" />

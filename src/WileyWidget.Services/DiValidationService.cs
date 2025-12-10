@@ -5,7 +5,6 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Services.Abstractions;
-using WileyWidget.Services.Abstractions;
 using WileyWidget.Abstractions;
 
 namespace WileyWidget.Services
@@ -38,11 +37,6 @@ namespace WileyWidget.Services
                 typeof(IAuditService),
                 typeof(ICacheService)
             };
-
-            // Add UI services if available (loaded at runtime)
-            TryAddType(types, "WileyWidget.WinUI.Services.INavigationService, WileyWidget.WinUI");
-            TryAddType(types, "WileyWidget.WinUI.Services.IDialogService, WileyWidget.WinUI");
-            TryAddType(types, "WileyWidget.WinUI.Services.IDialogTrackingService, WileyWidget.WinUI");
 
             return types.ToArray();
         }
@@ -240,18 +234,6 @@ namespace WileyWidget.Services
                 if (businessAssembly != null)
                 {
                     assemblies.Add(businessAssembly);
-                }
-            }
-            catch { /* Assembly not loaded */ }
-
-            // Add WinUI services assembly (UI-specific services)
-            try
-            {
-                var winuiServicesAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.GetName().Name == "WileyWidget.WinUI");
-                if (winuiServicesAssembly != null)
-                {
-                    assemblies.Add(winuiServicesAssembly);
                 }
             }
             catch { /* Assembly not loaded */ }

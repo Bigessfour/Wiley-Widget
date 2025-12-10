@@ -1,12 +1,17 @@
-using Microsoft.Extensions.DependencyInjection;
-using Syncfusion.WinForms.DataGrid;
-using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.Data;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using WileyWidget.WinForms.ViewModels;
+using System.Windows.Forms;
+using Syncfusion.Data;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.DataGrid;
+using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.DataGrid.Events;
+using Syncfusion.WinForms.Themes;
+using Syncfusion.Windows.Forms.Tools;
+using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -34,19 +39,22 @@ namespace WileyWidget.WinForms.Forms
     public partial class AccountsForm : Form
     {
         private readonly AccountsViewModel _viewModel;
+        private TableLayoutPanel? _mainLayout;
         private SfDataGrid? _dataGrid;
-        private ToolStrip? _toolStrip;
-        private StatusStrip? _statusStrip;
-        private ToolStripStatusLabel? _statusLabel;
-        private SfButton? _loadButton;
-        private SfButton? _filterButton;
+        private ToolStripEx? _toolbar;
+        private StatusBarAdv? _statusBar;
+        private StatusBarAdvPanel? _statusPanel;
+        private StatusBarAdvPanel? _totalsPanel;
+        private StatusBarAdvPanel? _selectionPanel;
+        private ToolStripButton? _editToggleButton;
 
         public AccountsForm(AccountsViewModel viewModel)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             InitializeComponent();
+            SfSkinManager.SetVisualStyle(this, VisualTheme.Office2019Colorful);
             ThemeColors.ApplyTheme(this);
-            SetupDataGrid();
+            BindViewModel();
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             LoadData();
 #pragma warning restore CS4014
@@ -61,75 +69,89 @@ namespace WileyWidget.WinForms.Forms
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 9F, FontStyle.Regular);
 
-            // Create toolbar with Syncfusion buttons
-            _toolStrip = new ToolStrip
+            _mainLayout = new TableLayoutPanel
             {
-                Name = "toolStripMain",
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3
+            };
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+
+            BuildToolbar();
+            SetupDataGrid();
+            BuildStatusBar();
+
+            if (_toolbar != null)
+            {
+                _mainLayout.Controls.Add(_toolbar, 0, 0);
+            }
+
+            if (_dataGrid != null)
+            {
+                _mainLayout.Controls.Add(_dataGrid, 0, 1);
+            }
+
+            if (_statusBar != null)
+            {
+                _mainLayout.Controls.Add(_statusBar, 0, 2);
+            }
+
+            Controls.Add(_mainLayout);
+        }
+
+        private void BuildToolbar()
+        {
+            _toolbar = new ToolStripEx
+            {
+                Dock = DockStyle.Fill,
                 GripStyle = ToolStripGripStyle.Hidden,
-                Padding = new Padding(8, 4, 8, 4)
+                ImageScalingSize = new Size(20, 20),
+                Padding = new Padding(8, 4, 8, 4),
+                ThemeName = "Office2016Colorful",
+                Office12Mode = false
             };
 
-            // Create button container panel for Syncfusion buttons
-            var buttonPanel = new Panel
+            var loadButton = new ToolStripButton
             {
-                Dock = DockStyle.Top,
-                Height = 48,
-                Padding = new Padding(8)
-            };
-
-            _loadButton = new SfButton
-            {
-                Name = "btnLoad",
                 Text = Resources.LoadAccountsButton,
-                Size = new Size(120, 32),
-                Location = new Point(8, 8),
-                AccessibleName = "Load accounts button",
-                AccessibleDescription = "Load municipal accounts from database",
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+                AutoSize = false,
+                Width = 130,
+                DisplayStyle = ToolStripItemDisplayStyle.Text
             };
-            _loadButton.Click += async (s, e) => await LoadData();
+            loadButton.Click += async (s, e) => await LoadData();
 
-            _filterButton = new SfButton
+            var filterButton = new ToolStripButton
             {
-                Name = "btnFilter",
                 Text = Resources.ApplyFiltersButton,
-                Size = new Size(120, 32),
-                Location = new Point(136, 8),
-                AccessibleName = "Apply filters button",
-                AccessibleDescription = "Apply filters to account list",
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+                AutoSize = false,
+                Width = 120,
+                DisplayStyle = ToolStripItemDisplayStyle.Text
             };
-            _filterButton.Click += async (s, e) => await _viewModel.FilterAccountsCommand.ExecuteAsync(null);
+            filterButton.Click += async (s, e) => await _viewModel.FilterAccountsCommand.ExecuteAsync(null);
 
-            buttonPanel.Controls.Add(_loadButton);
-            buttonPanel.Controls.Add(_filterButton);
-
-            // Create status strip
-            _statusStrip = new StatusStrip
+            _editToggleButton = new ToolStripButton
             {
-                Name = "statusStripMain",
-                Dock = DockStyle.Bottom
+                Text = "Allow Editing",
+                CheckOnClick = true,
+                Checked = true,
+                AutoSize = false,
+                Width = 120,
+                DisplayStyle = ToolStripItemDisplayStyle.Text
             };
-            _statusLabel = new ToolStripStatusLabel
+            _editToggleButton.Click += (s, e) =>
             {
-                Name = "statusLabel",
-                Spring = true,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            _statusStrip.Items.Add(_statusLabel);
-
-            // Bind status
-            _viewModel.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(_viewModel.IsLoading) && _statusLabel != null)
+                if (_dataGrid != null)
                 {
-                    _statusLabel.Text = _viewModel.IsLoading ? Resources.LoadingText : $"{_viewModel.ActiveAccountCount} accounts loaded. Total Balance: {_viewModel.TotalBalance:C}";
+                    _dataGrid.AllowEditing = _editToggleButton.Checked;
                 }
             };
 
-            Controls.Add(buttonPanel);
-            Controls.Add(_statusStrip);
+            _toolbar.Items.Add(loadButton);
+            _toolbar.Items.Add(filterButton);
+            _toolbar.Items.Add(new ToolStripSeparator());
+            _toolbar.Items.Add(_editToggleButton);
         }
 
         private void SetupDataGrid()
@@ -144,7 +166,9 @@ namespace WileyWidget.WinForms.Forms
                 AllowResizingColumns = true,
                 AllowSorting = true,
                 AllowFiltering = true,
+                AllowEditing = true,
                 SelectionMode = GridSelectionMode.Single,
+                NavigationMode = NavigationMode.Row,
                 RowHeight = 32,
                 HeaderRowHeight = 36
             };
@@ -243,7 +267,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowSorting = true,
                 AllowFiltering = true
             });
-            
+
             // Add summary row for balance totals
             var summaryRow = new GridTableSummaryRow
             {
@@ -267,10 +291,11 @@ namespace WileyWidget.WinForms.Forms
             });
             _dataGrid.TableSummaryRows.Add(summaryRow);
 
-            // Configure alternating row style via event handler
             _dataGrid.QueryRowStyle += DataGrid_QueryRowStyle;
-
-            Controls.Add(_dataGrid);
+            _dataGrid.QueryCellStyle += DataGrid_QueryCellStyle;
+            _dataGrid.SelectionChanged += DataGrid_SelectionChanged;
+            _dataGrid.CurrentCellEndEdit += (s, e) => UpdateStatusTotals();
+            _dataGrid.CellDoubleClick += DataGrid_CellDoubleClick;
         }
 
         private void DataGrid_QueryRowStyle(object? sender, Syncfusion.WinForms.DataGrid.Events.QueryRowStyleEventArgs e)
@@ -285,9 +310,46 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private void DataGrid_QueryCellStyle(object? sender, QueryCellStyleEventArgs e)
+        {
+            if (e.DataRow.RowData is MunicipalAccountDisplay account)
+            {
+                if (e.Column.MappingName == "Balance" && account.Balance < 0)
+                {
+                    e.Style.TextColor = Color.FromArgb(176, 0, 32);
+                }
+
+                if (e.Column.MappingName == "BudgetAmount" && account.BudgetAmount == 0)
+                {
+                    e.Style.TextColor = Color.FromArgb(112, 112, 112);
+                }
+            }
+        }
+
+        private void DataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (_selectionPanel == null || _dataGrid == null)
+            {
+                return;
+            }
+
+            var selectedAccount = _dataGrid.SelectedItem as MunicipalAccountDisplay;
+            _selectionPanel.Text = selectedAccount == null
+                ? "No selection"
+                : $"Selected: {selectedAccount.AccountNumber}";
+        }
+
+        private void DataGrid_CellDoubleClick(object? sender, CellClickEventArgs e)
+        {
+            if (_dataGrid?.SelectedItem is MunicipalAccountDisplay account)
+            {
+                ShowAccountDetails(account);
+            }
+        }
+
         private async Task LoadData()
         {
-            if (_dataGrid == null || _statusLabel == null)
+            if (_dataGrid == null)
                 return;
 
             try
@@ -295,7 +357,11 @@ namespace WileyWidget.WinForms.Forms
                 await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
                 var bindingSource = new BindingSource { DataSource = _viewModel.Accounts };
                 _dataGrid.DataSource = bindingSource;
-                _statusLabel.Text = $"{_viewModel.ActiveAccountCount} accounts loaded. Total Balance: {_viewModel.TotalBalance:C}";
+                UpdateStatusTotals();
+                if (_statusPanel != null)
+                {
+                    _statusPanel.Text = $"{_viewModel.ActiveAccountCount} accounts loaded";
+                }
             }
             catch (Exception ex)
             {
@@ -307,15 +373,96 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private void BuildStatusBar()
+        {
+            _statusBar = new StatusBarAdv
+            {
+                Dock = DockStyle.Fill,
+                ShowPanels = true,
+                BeforeTouchSize = new Size(0, 28),
+                SizeGrip = false,
+                ThemeName = "Office2019Colorful"
+            };
+
+            _statusPanel = new StatusBarAdvPanel
+            {
+                Text = Resources.LoadingText,
+                BorderStyle = BorderStyle.None,
+                Width = 420
+            };
+
+            _totalsPanel = new StatusBarAdvPanel
+            {
+                Text = "Totals: --",
+                BorderStyle = BorderStyle.None,
+                Width = 320
+            };
+
+            _selectionPanel = new StatusBarAdvPanel
+            {
+                Text = "No selection",
+                BorderStyle = BorderStyle.None,
+                Width = 220
+            };
+
+            _statusBar.Panels.AddRange(new[] { _statusPanel, _totalsPanel, _selectionPanel });
+        }
+
+        private void BindViewModel()
+        {
+            _viewModel.PropertyChanged += (s, e) =>
+            {
+                switch (e.PropertyName)
+                {
+                    case nameof(_viewModel.IsLoading):
+                        if (_statusPanel != null)
+                        {
+                            _statusPanel.Text = _viewModel.IsLoading ? Resources.LoadingText : Resources.FormTitle;
+                        }
+                        break;
+                    case nameof(_viewModel.ActiveAccountCount):
+                    case nameof(_viewModel.TotalBalance):
+                        UpdateStatusTotals();
+                        break;
+                }
+            };
+        }
+
+        private void UpdateStatusTotals()
+        {
+            if (_totalsPanel == null)
+            {
+                return;
+            }
+
+            _totalsPanel.Text = $"{_viewModel.ActiveAccountCount} accounts | Total: {_viewModel.TotalBalance:C}";
+            if (_statusPanel != null && !_viewModel.IsLoading)
+            {
+                _statusPanel.Text = $"{_viewModel.ActiveAccountCount} accounts loaded";
+            }
+        }
+
+        private void ShowAccountDetails(MunicipalAccountDisplay account)
+        {
+            var details = $"Account: {account.AccountNumber}\n" +
+                          $"Name: {account.Name}\n" +
+                          $"Type: {account.Type}\n" +
+                          $"Fund: {account.Fund}\n" +
+                          $"Department: {account.Department}\n" +
+                          $"Balance: {account.Balance:C}\n" +
+                          $"Budget: {account.BudgetAmount:C}\n" +
+                          $"Has Parent: {(account.HasParent ? "Yes" : "No")}";
+
+            MessageBox.Show(details, Resources.FormTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 _dataGrid?.Dispose();
-                _loadButton?.Dispose();
-                _filterButton?.Dispose();
-                _toolStrip?.Dispose();
-                _statusStrip?.Dispose();
+                _toolbar?.Dispose();
+                _statusBar?.Dispose();
             }
             base.Dispose(disposing);
         }

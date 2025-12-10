@@ -453,12 +453,17 @@ public async System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string?
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         await RefreshTokenIfNeededAsync();
-        var p = GetDataService();
+
+        // Prefer the injected API client so tests can mock QBO calls without network access.
+        var invoices = await _apiClient.GetInvoicesAsync().ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(enterprise))
-            return p.Ds.FindAll(new Invoice(), 1, 100).ToList();
-        var query = $"SELECT * FROM Invoice WHERE Metadata.CustomField['Enterprise'] = '{enterprise}'";
-        var qs = new QueryService<Invoice>(p.Ctx);
-        return qs.ExecuteIdsQuery(query).ToList();
+        {
+            return invoices;
+        }
+
+        return invoices
+            .Where(i => string.Equals(i?.CustomerRef?.name, enterprise, StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
     catch (Exception ex)
     {
@@ -574,7 +579,7 @@ public async System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync()
 /// <summary>
 /// Syncs budgets to QuickBooks Online via REST API.
 /// Uses IHttpClientFactory to create named 'QBO' client with proper authentication.
-/// On success, publishes Prism event to refresh UI (e.g., SfDataGrid in SettingsView).
+/// On success, publishes event to refresh UI (e.g., SfDataGrid in SettingsView).
 /// </summary>
 public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default)
 {

@@ -69,42 +69,6 @@
       "envFile": "${workspaceFolder}/.env"
     },
     {
-      "name": "WinUI: Launch (Debug)",
-      "type": "coreclr",
-      "request": "launch",
-      "program": "${workspaceFolder}/src/WileyWidget.WinUI/bin/Debug/net9.0-windows10.0.26100.0/win-x64/WileyWidget.WinUI.exe",
-      "args": [],
-      "cwd": "${workspaceFolder}",
-      "stopAtEntry": false,
-      "console": "internalConsole",
-      "preLaunchTask": "WileyWidget: Clean & Build",
-      "postDebugTask": "WileyWidget: Cleanup Processes",
-      "env": {
-        "DOTNET_ENVIRONMENT": "Development",
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "XAI_API_KEY": "${env:XAI_API_KEY}",
-        "QBO_CLIENT_ID": "${env:QBO_CLIENT_ID}",
-        "QBO_CLIENT_SECRET": "${env:QBO_CLIENT_SECRET}",
-        "QBO_REALM_ID": "${env:QBO_REALM_ID}",
-        "QBO_ENVIRONMENT": "sandbox"
-      },
-      "justMyCode": true,
-      "enableStepFiltering": true,
-      "symbolOptions": {
-        "searchMicrosoftSymbolServer": true,
-        "searchNugetOrgSymbolServer": true,
-        "moduleFilter": {
-          "mode": "loadAllButExcluded",
-          "excludedModules": [
-            "System.*",
-            "Microsoft.*",
-            "WindowsBase",
-            "Microsoft.UI.Xaml.*"
-          ]
-        }
-      }
-    },
-    {
       "name": "WileyWidget: Launch (Debug Startup) - OPTIMIZED",
       "type": "coreclr",
       "request": "launch",
@@ -214,7 +178,7 @@
           "System.ArgumentException": "always",
           "System.ObjectDisposedException": "always",
 
-          // WPF-specific exceptions - always break
+          // specific exceptions - always break
           "System.Windows.Markup.XamlParseException": "always",
           "System.Windows.Data.BindingFailedException": "always",
           "System.Windows.ResourceReferenceKeyNotFoundException": "always",
@@ -274,7 +238,7 @@
         "QBO_REALM_ID": "${env:QBO_REALM_ID}",
         "QBO_ENVIRONMENT": "sandbox",
         "WW_DEBUG_EXCEPTIONS": "1",
-        // Enhanced WPF debugging
+        // Enhanced debugging
         "ENABLE_XAML_DIAGNOSTICS_SOURCE_INFO": "1",
         "PresentationTraceSources.TraceLevel": "High",
         "PresentationTraceSources.DataBindingSource": "All"
@@ -325,10 +289,9 @@
         "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
         "DEBUG_XAML": "true",
         "ENABLE_XAML_DIAGNOSTICS": "true",
-        "WPF_TRACE_SETTINGS": "DataBinding:Warning,ResourceDictionary:Warning,DependencyProperty:Warning,Animation:Warning",
         "COREHOST_TRACE": "1",
-        "DEBUG_WPF_STARTUP": "true",
-        "WILEY_WIDGET_XAML_DEBUG": "true"
+        "DEBUG_STARTUP": "true",
+        "WILEY_WIDGET_DEBUG": "true"
       },
       "envFile": "${workspaceFolder}/.env"
     },
@@ -367,13 +330,12 @@
         "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
         "DEBUG_XAML": "true",
         "ENABLE_XAML_DIAGNOSTICS": "true",
-        "WPF_TRACE_SETTINGS": "DataBinding:All,ResourceDictionary:All,DependencyProperty:All,Animation:All,RoutingStrategy:All",
         "COREHOST_TRACE": "1",
-        "DEBUG_WPF_STARTUP": "true",
-        "WILEY_WIDGET_XAML_DEBUG": "true",
+        "DEBUG_STARTUP": "true",
+        "WILEY_WIDGET_DEBUG": "true",
         "XAML_DIAGNOSTICS_ENABLED": "true",
         "ENABLE_XAML_DEBUGGING": "true",
-        "WPF_DIAGNOSTICS": "true"
+        "DIAGNOSTICS": "true"
       },
       "envFile": "${workspaceFolder}/.env"
     },
@@ -412,10 +374,9 @@
         "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
         "DEBUG_XAML": "true",
         "ENABLE_XAML_DIAGNOSTICS": "true",
-        "WPF_TRACE_SETTINGS": "DataBinding:Warning,ResourceDictionary:Warning,DependencyProperty:Warning",
         "COREHOST_TRACE": "1",
-        "DEBUG_WPF_STARTUP": "true",
-        "WILEY_WIDGET_XAML_DEBUG": "true"
+        "DEBUG_STARTUP": "true",
+        "WILEY_WIDGET_DEBUG": "true"
       },
       "envFile": "${workspaceFolder}/.env"
     },
@@ -661,10 +622,10 @@
       "stopOnEntry": false
     },
     {
-      "name": "Debug WPF Threading Script",
+      "name": "Debug Threading Script",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/scripts/debug-wpf-thread.py",
+      "program": "${workspaceFolder}/scripts/debug-thread.py",
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "args": ["--verbose", "--timeout=90"],

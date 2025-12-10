@@ -115,6 +115,12 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private string statusText = "Ready";
 
+        // Legacy property aliases expected by some views
+        public decimal TotalBudget => TotalBudgeted;
+        public decimal TotalExpenditure => TotalExpenses;
+        public decimal RemainingBudget => TotalBudgeted - TotalActual;
+        public DateTime LastRefreshed => LastUpdated;
+
         #endregion
 
         #region Commands

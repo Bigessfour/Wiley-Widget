@@ -136,7 +136,7 @@ namespace WileyWidget.WinForms.ViewModels
 
         public async Task<bool> SaveCustomerAsync(UtilityCustomer customer)
         {
-            if (customer == null) throw new ArgumentNullException(nameof(customer));
+            ArgumentNullException.ThrowIfNull(customer);
 
             IsLoading = true;
             try

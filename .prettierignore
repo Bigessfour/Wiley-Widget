@@ -32,7 +32,6 @@ logs/
 *.bak
 *.backup*
 *_backup*
-*_wpftmp.csproj
 
 # Database files
 *.db

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Data;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Models;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -30,6 +31,24 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private AccountType? selectedAccountType;
+
+        public ObservableCollection<MunicipalFundType> AvailableFunds { get; } = new(new[]
+        {
+            MunicipalFundType.General,
+            MunicipalFundType.Enterprise,
+            MunicipalFundType.SpecialRevenue,
+            MunicipalFundType.CapitalProjects,
+            MunicipalFundType.DebtService
+        });
+
+        public ObservableCollection<AccountType> AvailableAccountTypes { get; } = new(new[]
+        {
+            AccountType.Asset,
+            AccountType.Liability,
+            AccountType.Equity,
+            AccountType.Revenue,
+            AccountType.Expense
+        });
 
         [ObservableProperty]
         private decimal totalBalance;
@@ -87,11 +106,11 @@ namespace WileyWidget.WinForms.ViewModels
                     {
                         Id = account.Id,
                         AccountNumber = account.AccountNumber?.Value ?? "N/A",
-                        Name = account.Name,
+                        AccountName = account.Name,
                         Description = account.FundDescription ?? string.Empty,
-                        Type = account.Type.ToString(),
-                        Fund = account.Fund.ToString(),
-                        Balance = account.Balance,
+                        AccountType = account.Type.ToString(),
+                        FundName = account.Fund.ToString(),
+                        CurrentBalance = account.Balance,
                         BudgetAmount = account.BudgetAmount,
                         Department = account.Department?.Name ?? "N/A",
                         IsActive = account.IsActive,
@@ -99,7 +118,7 @@ namespace WileyWidget.WinForms.ViewModels
                     });
                 }
 
-                TotalBalance = Accounts.Sum(a => a.Balance);
+                TotalBalance = Accounts.Sum(a => a.CurrentBalance);
                 ActiveAccountCount = Accounts.Count;
 
                 _logger.LogInformation("Municipal accounts loaded successfully: {Count} accounts, Total Balance: {Balance:C}",
@@ -123,21 +142,4 @@ namespace WileyWidget.WinForms.ViewModels
         }
     }
 
-    /// <summary>
-    /// Display model for municipal accounts
-    /// </summary>
-    public class MunicipalAccountDisplay
-    {
-        public int Id { get; set; }
-        public string AccountNumber { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string Fund { get; set; } = string.Empty;
-        public decimal Balance { get; set; }
-        public decimal BudgetAmount { get; set; }
-        public string Department { get; set; } = string.Empty;
-        public bool IsActive { get; set; }
-        public bool HasParent { get; set; }
-    }
 }

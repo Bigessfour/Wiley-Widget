@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace WileyWidget.Services.Threading;
 
 /// <summary>
-/// Implementation of IDispatcherHelper for WPF dispatcher operations
+/// Implementation of IDispatcherHelper for dispatcher operations
 /// </summary>
 public class DispatcherHelper : IDispatcherHelper
 {

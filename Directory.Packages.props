@@ -106,6 +106,10 @@
     <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="31.2.15" />
     <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="31.2.15" />
     <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="31.2.15" />
+    <!-- Bold Reports viewer (WPF) + licensing/runtime for hosting in WinForms -->
+    <PackageVersion Include="BoldReports.WPF" Version="12.1.14" />
+    <PackageVersion Include="BoldReports.Net.Core" Version="12.1.14" />
+    <PackageVersion Include="Bold.Licensing" Version="12.1.14" />
     <!-- Data handling packages -->
     <PackageVersion Include="CsvHelper" Version="33.0.1" />
     <!-- Other safe ones you probably have -->

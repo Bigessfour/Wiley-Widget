@@ -5,6 +5,8 @@ namespace WileyWidget.WinForms.Theming
     /// </summary>
     public enum AppTheme
     {
+        Light,
+        Dark,
         Office2019Colorful,
         Office2019Black,
         Office2019DarkGray,

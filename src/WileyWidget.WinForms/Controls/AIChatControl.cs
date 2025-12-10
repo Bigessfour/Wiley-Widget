@@ -64,7 +64,7 @@ namespace WileyWidget.WinForms.Controls;
 /// ChatMessage.cs properties:
 ///   - IsUser: bool (true for user messages, false for AI responses)
 ///   - Message: string (primary content)
-///   - Text: string (alias for Message, for WPF binding compatibility)
+///   - Text: string (alias for Message, for binding compatibility)
 ///   - Timestamp: DateTime (message creation time)
 ///   - Author: object? (optional metadata, used for Syncfusion Author)
 ///   - Metadata: IDictionary (arbitrary key-value pairs)

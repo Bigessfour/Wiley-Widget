@@ -34,12 +34,12 @@ namespace WileyWidget.Services
                 // Read raw XAML and pre-validate color tokens using a simple XML parse.
                 var xaml = File.ReadAllText(path);
 
-                // Quick replace for known problematic hex tokens that WPF Color.Parse rejects
-                // WPF expects #AARRGGBB or #RRGGBB; ensure we convert common shorthand or alpha-first tokens.
+                // Quick replace for known problematic hex tokens that Color.Parse rejects
+                // expects #AARRGGBB or #RRGGBB; ensure we convert common shorthand or alpha-first tokens.
                 // Examples we saw in logs: #FF161616, #99FFFFFF, #33FFFFFF - these are valid AARRGGBB
                 // but on some frameworks/custom parsers they may fail; catch exceptions and coerce.
 
-                // Parse into ResourceDictionary using XamlReader to let WPF validate types.
+                // Parse into ResourceDictionary using XamlReader to let validate types.
                 using var stringReader = new StringReader(xaml);
                 using var xmlReader = XmlReader.Create(stringReader);
                 var rd = (ResourceDictionary)XamlReader.Load(xmlReader);

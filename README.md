@@ -11,19 +11,9 @@
 **Last Updated:** November 25, 2025
 **Framework:** .NET 9.0
 **UI Framework:** Windows Forms + Syncfusion WinForms Controls
-**Architecture:** MVVM with Prism Framework
+**Architecture:** MVVM
 
 Fast, stable, zero XAML toolchain issues. Uses Syncfusion WinForms controls for grids, charts, and reporting.
-
-### Why we moved from WinUI 3
-
-After 6+ weeks battling silent XamlCompiler crashes ([Microsoft.UI.Xaml #10027](https://github.com/microsoft/microsoft-ui-xaml/issues/10027)) in the unpackaged Windows App SDK 1.6–1.8 ecosystem on .NET 9, we made the pragmatic call:
-
-- WinUI 3 unpackaged is not production-ready in 2025 for complex LOB apps with native dependencies (LiveCharts/SkiaSharp, Syncfusion, etc.)
-- WinForms + .NET 9 + Syncfusion gives us **5–10× faster load times**, rock-solid data binding, and immediate shipping velocity
-- The WinUI 3 experiment has been **removed** (no archive—preserved in Git history for reference)
-
-**We ship software, not toolchain drama.**
 
 ---
 
@@ -46,17 +36,7 @@ After 6+ weeks battling silent XamlCompiler crashes ([Microsoft.UI.Xaml #10027](
 
 ## 📋 Overview
 
-WileyWidget is a modern Windows desktop application built with **WinForms + .NET 9**, Syncfusion WinForms controls, and Prism framework, designed for budget management and financial data analysis. The application features a **pure Prism MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
-
-### Strategic Pivot: WinUI → WinForms (November 2025)
-
-After extensive testing with WinUI 3 (6+ weeks of XamlCompiler issues, unpackaged deployment complexity, and toolchain instability), we made the strategic decision to pivot to **WinForms for immediate production deployment**:
-
-- **WinForms delivers**: 5-10× faster startup, zero XAML toolchain issues, battle-tested stability
-- **Syncfusion WinForms**: Production-grade grids (SfDataGrid), charts (SfChart), and reporting with full .NET 9 support
-- **Legacy WinUI code**: Archived in `src/legacy/WileyWidget.WinUI` for potential future Syncfusion WinUI retry in 2026
-
-**Timeline**: WinForms v1.0 ships Q4 2025 | Syncfusion WinUI evaluation Q2 2026
+WileyWidget is a modern Windows desktop application built with **WinForms + .NET 9** and Syncfusion WinForms controls, designed for budget management and financial data analysis. The application features a **pure MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
 
 ### Recent Updates (November 2025)
 
@@ -68,7 +48,7 @@ After extensive testing with WinUI 3 (6+ weeks of XamlCompiler issues, unpackage
 
 **🔐 Platform & Security Upgrades:**
 
-- Upgraded Syncfusion WPF suite to 31.2.5 and BoldReports WPF to 11.1.18 for latest fixes
+- Upgraded Syncfusion suite to 31.2.5 and BoldReports WPF to 11.1.18 for latest fixes
 - Raised Microsoft.Extensions.Http.Resilience to 9.10.0 and Serilog.Sinks.File to 7.0.0
 - Adopted OpenTelemetry 1.13.x packages for runtime, hosting, and HTTP instrumentation parity
 - Bumped FluentValidation to 12.1.0 and QuickBooks SDK to 14.7.0.2
@@ -81,11 +61,11 @@ After extensive testing with WinUI 3 (6+ weeks of XamlCompiler issues, unpackage
 
 ### Key Capabilities
 
-- **Pure Prism MVVM Architecture**: Complete Prism framework integration with no mixed toolkits
+- **Pure MVVM Architecture**: Complete framework integration with no mixed toolkits
 - **Layered Architecture**: Separate Models, Data, Business, and UI layers for maintainability
-- **Dialog Management**: Prism dialog service for modal dialogs and user interactions
-- **Navigation**: Prism region-based navigation with view injection
-- **Modern UI**: Syncfusion WinUI themes with Windows 11 Fluent Design integration
+- **Dialog Management**: dialog service for modal dialogs and user interactions
+- **Navigation**: region-based navigation with view injection
+- **Modern UI**: Syncfusion WinForms themes with Windows 11 Fluent Design integration
 - **Secure Secret Management**: DPAPI-encrypted credential storage for API keys and licenses
 - **Comprehensive Testing**: Unit tests, integration tests, and UI tests with >70% coverage
 - **CI/CD Pipeline**: Local CI/CD with Trunk integration (90% success rate target)
@@ -94,7 +74,7 @@ After extensive testing with WinUI 3 (6+ weeks of XamlCompiler issues, unpackage
 ### Project Status
 
 **Current Phase:** Stable Release (v0.2.0)
-**Architecture:** ✅ Standardized on pure Prism patterns
+**Architecture:** ✅ Standardized on pure patterns
 **Code Quality:** ✅ 88 legacy files removed, 71% script reduction
 **Documentation:** ✅ Active technical docs, legacy docs removed
 **Build Status:** ✅ Automated CI/CD with Trunk quality gates
@@ -115,7 +95,7 @@ WileyWidget follows a clean, layered architecture with organized file structure 
 ```
 WileyWidget/
 ├── src/                          # Application entry point & startup
-│   ├── App.xaml.cs              # Prism application bootstrap
+│   ├── App.xaml.cs              # application bootstrap
 │   ├── Program.cs               # Entry point
 │   ├── Configuration/           # App configuration & options
 │   ├── Diagnostics/             # Diagnostics & monitoring
@@ -201,12 +181,12 @@ WileyWidget/
 │   │   │   ├── AboutViewModel.cs
 │   │   │   └── SplashScreenWindowViewModel.cs
 │   │   ├── Base/               # Base ViewModel classes
-│   │   ├── Messages/           # Prism event messages
+│   │   ├── Messages/           # event messages
 │   │   └── Shell/              # Shell-related ViewModels
-│   ├── Controls/               # Custom WPF controls
+│   ├── Controls/               # Custom controls
 │   ├── Converters/             # Value converters
 │   ├── Behaviors/              # Attached behaviors
-│   ├── Regions/                # Prism region adapters
+│   ├── Regions/                # region adapters
 │   └── Resources/              # XAML resources & themes
 │
 ├── WileyWidget.Models/         # Domain Models
@@ -265,7 +245,7 @@ All Views and ViewModels follow consistent namespace patterns:
 ✅ **Scalability**: Easy to add new views/viewmodels
 ✅ **Maintainability**: Clear separation of concerns
 ✅ **Discoverability**: New developers understand structure immediately
-✅ **Best Practices**: Follows WPF/Prism community standards
+✅ **Best Practices**: Follows community standards
 
 **Note:** For detailed reorganization history, see [`docs/FILE_ORGANIZATION_SUMMARY.md`](docs/FILE_ORGANIZATION_SUMMARY.md)
 
@@ -799,11 +779,13 @@ private bool ValidateEntropyIntegrity()
 If entropy tampering is detected:
 
 1. **Immediate Actions:**
+
    - Application automatically refuses to load secrets
    - Critical security event logged to system logs
    - User notified of security issue
 
 2. **Investigation Steps:**
+
    - Check Windows Event Viewer for security audit logs
    - Review file system access logs for `Secrets` folder
    - Verify user account integrity
@@ -919,7 +901,7 @@ This secure secret management system ensures WileyWidget can safely handle enter
 
 ### Why Layered Architecture?
 
-WileyWidget implements a **modern N-Tier layered architecture** with **Prism framework integration** following Microsoft's official guidance for enterprise .NET applications. This architectural pattern provides several critical benefits:
+WileyWidget implements a **modern N-Tier layered architecture** with **framework integration** following Microsoft's official guidance for enterprise .NET applications. This architectural pattern provides several critical benefits:
 
 #### **🎯 Separation of Concerns**
 
@@ -952,7 +934,7 @@ WileyWidget implements a **modern N-Tier layered architecture** with **Prism fra
 
 #### **Migration from Monolithic to Layered Architecture**
 
-Starting from a traditional WPF project structure, we systematically migrated to a layered architecture through three phases:
+Starting from a traditional project structure, we systematically migrated to a layered architecture through three phases:
 
 1. **Phase 1**: Extracted domain models into `WileyWidget.Models`
 2. **Phase 2**: Moved data access logic into `WileyWidget.Data`
@@ -960,7 +942,7 @@ Starting from a traditional WPF project structure, we systematically migrated to
 
 #### **Framework Strategy**
 
-- **Presentation**: .NET 9.0-windows (WPF) for modern Windows features
+- **Presentation**: .NET 9.0-windows for modern Windows features
 - **Business/Data/Domain**: .NET 8.0 for stability and LTS support
 - **Testing**: .NET 8.0 for compatibility with data/business layers
 
@@ -985,7 +967,7 @@ WileyWidget/
 │   ├── ViewModels/                      # MVVM view models
 │   ├── App.xaml                         # Application entry point
 │   ├── Program.cs                       # Startup logic
-│   └── WileyWidget.csproj               # WPF project file
+│   └── WileyWidget.csproj               # project file
 │
 ├── WileyWidget.Business/                 # 💼 BUSINESS LOGIC LAYER (.NET 8.0)
 │   ├── Services/                        # Application services
@@ -1077,20 +1059,20 @@ WileyWidget/
 
 #### **🖥️ Presentation Layer (WileyWidget)**
 
-**Purpose**: User interface and interaction logic with Prism framework
+**Purpose**: User interface and interaction logic with framework
 **Responsibilities**:
 
-- WPF UI with Syncfusion controls and Prism regions
-- Modular MVVM pattern implementation with Prism ViewModels
-- Prism dialog service for modal interactions
-- Navigation and state management with Prism navigation service
+- UI with Syncfusion controls and regions
+- Modular MVVM pattern implementation with ViewModels
+- dialog service for modal interactions
+- Navigation and state management with navigation service
 
 **Design Patterns**:
 
-- **Prism MVVM Pattern**: Enhanced MVVM with Prism base classes
-- **Command Pattern**: UI actions and commands with Prism DelegateCommand
+- **MVVM Pattern**: Enhanced MVVM with base classes
+- **Command Pattern**: UI actions and commands with DelegateCommand
 - **Observer Pattern**: Data binding and property change notifications
-- **Module Pattern**: Prism modules for application extensibility
+- **Module Pattern**: modules for application extensibility
 
 ---
 
@@ -1213,14 +1195,14 @@ WileyWidget/
 
 ### Technology Stack by Layer
 
-| Layer            | Framework    | ORM           | Testing               | UI                  | External APIs  | Resilience   |
-| ---------------- | ------------ | ------------- | --------------------- | ------------------- | -------------- | ------------ |
-| **Presentation** | .NET 9.0 WPF | -             | FlaUI                 | Syncfusion v31.1.17 | -              | -            |
-| **Business**     | .NET 8.0     | -             | xUnit, Moq            | -                   | QuickBooks API | Polly v8.6.4 |
-| **Data**         | .NET 8.0     | EF Core 9.0.8 | xUnit, TestContainers | -                   | SQL Server     | Polly v8.6.4 |
-| **Domain**       | .NET 8.0     | -             | xUnit                 | -                   | -              | -            |
+| Layer            | Framework | ORM           | Testing               | UI                  | External APIs  | Resilience   |
+| ---------------- | --------- | ------------- | --------------------- | ------------------- | -------------- | ------------ |
+| **Presentation** | .NET 9.0  | -             | FlaUI                 | Syncfusion v31.1.17 | -              | -            |
+| **Business**     | .NET 8.0  | -             | xUnit, Moq            | -                   | QuickBooks API | Polly v8.6.4 |
+| **Data**         | .NET 8.0  | EF Core 9.0.8 | xUnit, TestContainers | -                   | SQL Server     | Polly v8.6.4 |
+| **Domain**       | .NET 8.0  | -             | xUnit                 | -                   | -              | -            |
 
-**MVVM Framework:** Pure Prism v9.0 (DryIoc container)
+**MVVM Framework:** Pure (DryIoc container)
 **Theme System:** Syncfusion SfSkinManager (FluentDark/FluentLight)
 **CI/CD:** Local CI/CD + Trunk (90% success rate target)
 
@@ -1230,7 +1212,7 @@ This layered architecture ensures WileyWidget is maintainable, testable, and rea
 
 ## ⚙️ Bootstrapper Architecture (Phase 0-1 Complete - Nov 2025)
 
-WileyWidget's Prism bootstrapper has been refactored into a **clean partial class structure** with dead code eliminated and critical fixes implemented. The new architecture provides production-grade startup with comprehensive error handling and observability.
+WileyWidget's bootstrapper has been refactored into a **clean partial class structure** with dead code eliminated and critical fixes implemented. The new architecture provides production-grade startup with comprehensive error handling and observability.
 
 ### Partial Class Structure (6 Files, ~2,000 LOC)
 
@@ -1243,7 +1225,7 @@ The monolithic `App.xaml.cs` (1,835 LOC) has been split into 6 maintainable part
 - Public API fields (`ModuleOrder`, `ModuleRegionMap`)
 - App constructor and dialog cleanup methods
 
-#### **2. App.DependencyInjection.cs (749 LOC) - DI Container & Prism Config**
+#### **2. App.DependencyInjection.cs (749 LOC) - DI Container & Config**
 
 - `CreateContainerExtension`: DryIoc setup with custom rules
 - `RegisterTypes`: Critical service registrations
@@ -1262,8 +1244,8 @@ The monolithic `App.xaml.cs` (1,835 LOC) has been split into 6 maintainable part
 #### **3. App.Lifecycle.cs (656 LOC) - Application Lifecycle**
 
 - `OnStartup`: 4-phase startup sequence
-  - Phase 1: Validation, config, theme (before Prism)
-  - Phase 2-4: Prism bootstrap (container, modules, UI)
+  - Phase 1: Validation, config, theme (before bootstrap)
+  - Phase 2-4: bootstrap (container, modules, UI)
 - `OnInitialized`: Module and service initialization with retry logic
 - `OnExit`: Graceful shutdown and cleanup
 - `CreateShell`: Shell window creation
@@ -1278,7 +1260,7 @@ The monolithic `App.xaml.cs` (1,835 LOC) has been split into 6 maintainable part
 
 #### **5. App.Resources.cs - Resource & Theme Management**
 
-- `LoadApplicationResourcesSync`: Synchronous WPF resource loading (avoids deadlocks)
+- `LoadApplicationResourcesSync`: Synchronous resource loading (avoids deadlocks)
 - `VerifyAndApplyTheme`: Syncfusion theme application with fail-fast validation
 - Memory checks (128MB minimum) before theme application
 - Pack URI resolution and error handling
@@ -1286,7 +1268,7 @@ The monolithic `App.xaml.cs` (1,835 LOC) has been split into 6 maintainable part
 #### **6. App.ExceptionHandling.cs - Global Exception Handling**
 
 - `SetupGlobalExceptionHandling`: Wire up exception handlers
-- `DispatcherUnhandledException` handler for WPF UI thread errors
+- `DispatcherUnhandledException` handler for UI thread errors
 - EventAggregator subscriptions for navigation/general errors
 - `ShowEmergencyErrorDialog`: Last-resort error UI
 
@@ -1296,8 +1278,8 @@ The monolithic `App.xaml.cs` (1,835 LOC) has been split into 6 maintainable part
 
 ✅ **Deleted 11 modules** (87.5% reduction): DashboardModule, MunicipalAccountModule, PanelModule, ReportsModule, ToolsModule, ThrowingModule, UtilityCustomerModule, AIAssistModule, BudgetModule, EnterpriseModule, SettingsModule
 ✅ **Active modules**: CoreModule, QuickBooksModule (2 of original 16)
-✅ **Deleted files**: Bootstrapper.cs (825 LOC), App.Wpftmp.cs, CustomModuleManager.cs, PrismHttpClientFactory.cs
-✅ **Removed patterns**: IUnitOfWork (0 references), WPFTMP conditional compilation
+✅ **Deleted files**: Bootstrapper.cs (825 LOC), App.Tmp.cs, CustomModuleManager.cs, HttpClientFactory.cs
+✅ **Removed patterns**: IUnitOfWork (0 references), TMP conditional compilation
 ✅ **LOC reduction**: ~12,000+ lines removed
 
 #### **Phase 1: Critical Fixes**
@@ -1344,10 +1326,10 @@ protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
 │ - Environment validation (memory, dependencies)             │
 │ - License registration (static constructor)                 │
 │ - Resource loading (synchronous to avoid deadlocks)         │
-│ - Theme application (BEFORE Prism initialization)           │
+│ - Theme application (BEFORE initialization)           │
 │ - SigNoz telemetry initialization                           │
 ├─────────────────────────────────────────────────────────────┤
-│ PHASE 2: Prism Bootstrap (triggered by base.OnStartup)     │
+│ PHASE 2: Bootstrap (triggered by base.OnStartup)     │
 │ - CreateContainerExtension: DryIoc container setup          │
 │ - RegisterTypes: Critical service registrations             │
 │ - ConfigureModuleCatalog: Module registration               │
@@ -1369,9 +1351,9 @@ protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
 
 ### Key Architectural Decisions
 
-1. **Theme-First Initialization**: Syncfusion theme applied in Phase 1 (before Prism) to prevent region adapter registration failures
+1. **Theme-First Initialization**: Syncfusion theme applied in Phase 1 (before bootstrap) to prevent region adapter registration failures
 2. **Fail-Fast Pattern**: ConfigureRegionAdapterMappings throws InvalidOperationException if theme not applied
-3. **Synchronous Resource Loading**: Avoids WPF UI thread deadlocks during OnStartup
+3. **Synchronous Resource Loading**: Avoids UI thread deadlocks during OnStartup
 4. **Convention-Based DI**: Auto-discovery and registration of repositories, services, ViewModels
 5. **Lazy AI Services**: Fallback to NullAIService if XAI_API_KEY not configured
 6. **Config Caching**: Single BuildConfiguration() call cached for all consumers
@@ -1413,11 +1395,11 @@ protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
 
 ---
 
-## 🔧 Prism Framework Integration
+## 🔧 Framework Integration
 
-WileyWidget leverages the **Prism framework** for building modular, maintainable WPF applications. Prism provides a solid foundation for implementing the MVVM pattern, dependency injection, and modular application architecture.
+WileyWidget leverages the **framework** for building modular, maintainable applications. provides a solid foundation for implementing the MVVM pattern, dependency injection, and modular application architecture.
 
-### Key Prism Components
+### Key Components
 
 #### **📦 Module System**
 
@@ -1435,7 +1417,7 @@ DashboardModule, MunicipalAccountModule, PanelModule, ReportsModule, ToolsModule
 
 #### **🗣️ Dialog Service**
 
-- **Modal Dialogs**: Standardized dialog implementation via Prism.Dialogs
+- **Modal Dialogs**: Standardized dialog implementation via Dialogs
 - **ViewModel-First**: Dialogs driven by ViewModels, not Views
 - **Async Support**: Non-blocking dialog operations
 
@@ -1449,7 +1431,7 @@ DashboardModule, MunicipalAccountModule, PanelModule, ReportsModule, ToolsModule
 
 #### **🧭 Region Navigation**
 
-- **Region-Based Navigation**: Prism `IRegionManager` for view composition
+- **Region-Based Navigation**: `IRegionManager` for view composition
 - **View Injection**: Dynamic view loading and replacement into regions
 - **Navigation Parameters**: Type-safe parameter passing via `NavigationContext`
 - **Custom Region Behaviors**: NavigationLogging, AutoSave, NavigationHistory, AutoActivate, DelayedRegionCreation
@@ -1467,22 +1449,20 @@ _regionManager.RequestNavigate("MainRegion", "SettingsView",
 
 #### **🏗️ Application Bootstrapper (Refactored 2025-11-09)**
 
-- **DryIoc Container**: High-performance dependency injection container via Prism.Container.DryIoc
+- **DryIoc Container**: High-performance dependency injection container via DryIoc
 - **Partial Class Structure**: Split across 6 files (~2,000 LOC) for maintainability
-- **4-Phase Startup**: Validation → Prism Bootstrap → Module Init → UI Finalization
+- **4-Phase Startup**: Validation → Bootstrap → Module Init → UI Finalization
 - **Convention-Based Registration**: Auto-discovery of repositories, services, ViewModels
 
 **See**: [Bootstrapper Architecture](#%EF%B8%8F-bootstrapper-architecture-phase-0-1-complete---nov-2025) section above for detailed structure
 
-### Prism Configuration (Current Implementation)
+### Configuration (Current Implementation)
 
 ```csharp
 // App.DependencyInjection.cs - Partial class for DI configuration
-using Prism.Ioc;
-using Prism.Modularity;
-using Prism.Container.DryIoc;
+using Microsoft.Extensions.DependencyInjection;
 
-public partial class App : PrismApplication
+public partial class App : Application
 {
    protected override void RegisterTypes(IContainerRegistry containerRegistry)
    {
@@ -1528,13 +1508,13 @@ public partial class App : PrismApplication
 
 ## 🔧 NuGet Package Resolution System
 
-WileyWidget implements a comprehensive **three-layer defense-in-depth** approach to ensure reliable NuGet package resolution at build time and runtime, eliminating assembly loading errors commonly encountered in WPF applications.
+WileyWidget implements a comprehensive **three-layer defense-in-depth** approach to ensure reliable NuGet package resolution at build time and runtime, eliminating assembly loading errors commonly encountered in applications.
 
 ### Problem Statement
 
-WPF applications, especially those using the temporary markup compilation project (`*_wpftmp.csproj`), can face assembly resolution challenges:
+Applications, especially those using the temporary markup compilation project (`*_tmp.csproj`), can face assembly resolution challenges:
 
-- **Build-Time Issues**: wpftmp project unable to resolve NuGet package references
+- **Build-Time Issues**: tmp project unable to resolve NuGet package references
 - **Runtime Issues**: `FileNotFoundException` or `TypeLoadException` for NuGet assemblies
 - **Environment Variability**: Different resolution behavior across development machines
 
@@ -1555,16 +1535,16 @@ WPF applications, especially those using the temporary markup compilation projec
 
 <ItemGroup>
   <!-- GeneratePathProperty provides MSBuild variables for package paths -->
-  <PackageReference Include="Prism.Core" Version="9.0.537" GeneratePathProperty="true" />
-  <PackageReference Include="Prism.Wpf" Version="9.0.537" GeneratePathProperty="true" />
-  <PackageReference Include="Prism.DryIoc" Version="9.0.537" GeneratePathProperty="true" />
+  <PackageReference Include="Core" Version="9.0.537" GeneratePathProperty="true" />
+  <PackageReference Include="Presentation" Version="9.0.537" GeneratePathProperty="true" />
+  <PackageReference Include="DryIoc" Version="9.0.537" GeneratePathProperty="true" />
 </ItemGroup>
 ```
 
 **Benefits:**
 
 - ✅ All dependencies copied to `bin` folder during build
-- ✅ MSBuild path variables available: `$(PkgPrism_Core)`, `$(PkgPrism_Wpf)`, etc.
+- ✅ MSBuild path variables available: `$(PkgCore)`, `$(PkgPresentation)`, etc.
 - ✅ Consistent builds across environments
 
 #### **Layer 2: Runtime Assembly Resolution (AppDomain.AssemblyResolve)**
@@ -1576,7 +1556,7 @@ WPF applications, especially those using the temporary markup compilation projec
 private static readonly ConcurrentDictionary<string, Assembly?> _resolvedAssemblies = new();
 private static readonly HashSet<string> _knownPackagePrefixes = new()
 {
-    "Prism", "DryIoc", "Syncfusion", "Bold", "Serilog",
+    "DryIoc", "Syncfusion", "Bold", "Serilog",
     "Microsoft.Extensions", "Polly"
 };
 
@@ -1635,12 +1615,12 @@ private static Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args
 
 ```powershell
 # Check that NuGet assemblies are copied to bin folder
-Get-ChildItem -Path ".\bin\Debug\net9.0-windows10.0.19041.0\" -Filter "Prism.*.dll"
+Get-ChildItem -Path ".\bin\Debug\net9.0-windows10.0.19041.0\" -Filter "Core.*.dll"
 
 # Should see:
-# Prism.Core.dll
-# Prism.Wpf.dll
-# Prism.DryIoc.dll
+# Core.dll
+# Presentation.dll
+# DryIoc.dll
 # DryIoc.dll
 ```
 
@@ -1650,7 +1630,7 @@ The AssemblyResolve handler automatically logs to Serilog:
 
 ```csharp
 // Logs appear in application logs
-[INF] Assembly resolved from app directory: Prism.Core -> bin\Prism.Core.dll
+[INF] Assembly resolved from app directory: Core -> bin\Core.dll
 [WRN] Failed to resolve assembly: UnknownPackage (requested by MyAssembly)
 ```
 
@@ -1659,7 +1639,7 @@ The AssemblyResolve handler automatically logs to Serilog:
 | Issue                              | Cause                            | Solution                                                     |
 | ---------------------------------- | -------------------------------- | ------------------------------------------------------------ |
 | `FileNotFoundException` at runtime | Assembly not in bin folder       | Verify `CopyLocalLockFileAssemblies=true`                    |
-| wpftmp compilation errors          | Package references not available | Check `IncludePackageReferencesDuringMarkupCompilation=true` |
+| tmp compilation errors             | Package references not available | Check `IncludePackageReferencesDuringMarkupCompilation=true` |
 | Wrong assembly version loaded      | Multiple versions in probe paths | Use binding redirects in App.config                          |
 | StackOverflowException             | Recursive Assembly.Load() call   | Ensure using `LoadFrom()` not `Load()`                       |
 
@@ -1672,7 +1652,7 @@ The AssemblyResolve handler automatically logs to Serilog:
 
 ### Related Documentation
 
-- **Wpftmp Shim**: See `PrismWpftmpShim.cs` for design-time type resolution
+- **Tmp Shim**: See `TmpShim.cs` for design-time type resolution
 - **Microsoft Docs**: [Resolve Assembly Loads](https://learn.microsoft.com/en-us/dotnet/standard/assembly/resolve-loads)
 - **Best Practices**: [Assembly Loading Best Practices](https://learn.microsoft.com/en-us/dotnet/framework/deployment/best-practices-for-assembly-loading)
 
@@ -1683,18 +1663,21 @@ The AssemblyResolve handler automatically logs to Serilog:
 ### Core Functionality
 
 - **📊 Budget Management**
+
   - Multi-year budget tracking
   - Department-wise budget allocation
   - Budget variance analysis
   - Historical data comparison
 
 - **🎨 Modern UI**
+
   - Syncfusion DataGrid with advanced features
   - Interactive charts and visualizations
   - Fluent Design themes (Dark/Light)
   - Responsive layout with docking panels
 
 - **🔗 Enterprise Integration**
+
   - QuickBooks Online API integration
   - Secure OAuth2 authentication
   - Automated data synchronization
@@ -1740,8 +1723,8 @@ WileyWidget/
 ### **Code Standards**
 
 - **EF Core 9.0.8:** Use for all data operations with SQL Server Express
-- **Prism.Mvvm:** For ViewModel bindings and commands
-- **Syncfusion WPF 31.1.20:** For UI components and theming
+- **Mvvm:** For ViewModel bindings and commands
+- **Syncfusion 31.1.20:** For UI components and theming
 - **Serilog 4.3.0:** For structured logging with file and async sinks
 - **No nullable reference types:** Per project guidelines
 - **Repository Pattern:** For data access abstraction
@@ -1768,7 +1751,7 @@ WileyWidget implements a comprehensive, multi-layered testing strategy designed 
 | ---------------------- | ---------------------- | ---------------- | -------------- | --------------------- |
 | **Unit Tests**         | xUnit + Moq            | Business Logic   | CI/CD Pipeline | Logic & Algorithms    |
 | **Integration Tests**  | xUnit + TestContainers | Data Layer       | CI/CD Pipeline | Database Operations   |
-| **UI Tests**           | xUnit + FlaUI          | WPF Controls     | CI/CD Pipeline | User Interactions     |
+| **UI Tests**           | xUnit + FlaUI          | Controls         | CI/CD Pipeline | User Interactions     |
 | **Python Tests**       | pytest                 | System Resources | Development    | Memory & Performance  |
 | **PowerShell Scripts** | Pester-like            | Build Automation | CI/CD Pipeline | Deployment Validation |
 
@@ -1819,7 +1802,7 @@ WileyWidget implements a comprehensive, multi-layered testing strategy designed 
 
 ### **3. C# UI Testing (`WileyWidget.UiTests/`)**
 
-**Framework:** xUnit 2.9.2 with FlaUI 4.0.0 for WPF automation
+**Framework:** xUnit 2.9.2 with FlaUI 4.0.0 for automation
 **Target Files:** XAML views, User controls, Window interactions
 **Test Categories:** UI, Component, E2E
 
@@ -2043,7 +2026,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and standards.
 
 ## Featuress://github.com/Bigessfour/Wiley-Widget/actions/workflows/ci.yml/badge.svg)
 
-Single-user WPF application scaffold (NET 9) using Syncfusion WPF controls (pinned v30.2.7) with pragmatic tooling.
+Single-user application scaffold (NET 9) using Syncfusion controls (pinned v30.2.7) with pragmatic tooling.
 
 ## Current Status (v0.1.0)
 
@@ -2092,7 +2075,7 @@ Minimal enough that future-you won’t hate past-you.
 ## Features
 
 - Syncfusion DataGrid + Ribbon (add your license key)
-- MVVM (Prism.Mvvm)
+- MVVM
 - NUnit tests + coverage
 - CI & Release GitHub workflows
 - Central versioning (`Directory.Build.targets`)
@@ -2149,9 +2132,9 @@ The application uses local SQL Server Express for development and production:
 
 ```pwsh
 dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.Licensing --version 30.2.7
-dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.SfGrid.WPF --version 30.2.7
-dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.SfSkinManager.WPF --version 30.2.7
-dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.Tools.WPF --version 30.2.7
+dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.SfGrid.WinForms --version 30.2.7
+dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.SfSkinManager.WinForms --version 30.2.7
+dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.Tools.WinForms --version 30.2.7
 ```
 
 License placement (choose one):
@@ -2364,7 +2347,7 @@ Nullable reference types disabled intentionally for simpler interop & to reduce 
 
 ## UI Tests
 
-Basic FlaUI-based smoke test ensures the WPF app launches, main window title contains "Wiley" and a DataGrid control is present. Category: `UiSmokeTests`.
+Basic FlaUI-based smoke test ensures the app launches, main window title contains "Wiley" and a DataGrid control is present. Category: `UiSmokeTests`.
 
 Run only smoke UI tests:
 
@@ -2492,7 +2475,7 @@ Tokens are saved in `%AppData%/WileyWidget/settings.json` under:
 {
   "QboAccessToken": "...",
   "QboRefreshToken": "...",
-  "QboTokenExpiry": "2025-08-12T12:34:56.789Z",
+  "QboTokenExpiry": "2025-08-12T12:34:56.789Z"
 }
 ```
 
@@ -2644,9 +2627,10 @@ If issues persist, re-set the env var and restart your terminal:
 ### Cleanup & Architecture Reports
 
 - **[LEGACY_CLEANUP_REPORT.md](LEGACY_CLEANUP_REPORT.md)** - Comprehensive code cleanup report
+
   - 28 files deleted (themes, services, backups)
   - CommunityToolkit.Mvvm removed
-  - Pure Prism architecture established
+  - Pure architecture established
 
 - **[SCRIPTS_CLEANUP_REPORT.md](SCRIPTS_CLEANUP_REPORT.md)** - Scripts cleanup report
   - 60+ scripts deleted (71% reduction)
@@ -2656,7 +2640,7 @@ If issues persist, re-set the env var and restart your terminal:
 ### Technical Documentation
 
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture overview
-- **[PRISM_USAGE.md](docs/PRISM_USAGE.md)** - Prism framework patterns
+- **[USAGE.md](docs/USAGE.md)** - framework patterns
 - **[TESTING.md](docs/TESTING.md)** - Testing strategy and guides
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
 
@@ -2670,7 +2654,7 @@ If issues persist, re-set the env var and restart your terminal:
 ## 🎯 Recent Achievements (October 2025)
 
 ✅ **88 legacy files removed** - Cleaner, more maintainable codebase
-✅ **Pure Prism architecture** - No mixed MVVM toolkits
+✅ **Pure architecture** - No mixed MVVM toolkits
 ✅ **Single theme source** - Consistent UI theming
 ✅ **71% script reduction** - Essential automation only
 ✅ **Updated documentation** - Focused and relevant

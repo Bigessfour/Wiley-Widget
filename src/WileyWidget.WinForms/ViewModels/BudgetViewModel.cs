@@ -13,7 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
-using WileyWidget.Services.Export;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -25,8 +25,7 @@ namespace WileyWidget.WinForms.ViewModels
     {
         private readonly ILogger<BudgetViewModel> _logger;
         private readonly IBudgetRepository _budgetRepository;
-        private readonly IPdfExportService _pdfExportService;
-        private readonly IExcelExportService _excelExportService;
+        private readonly IReportExportService _reportExportService;
 
         [ObservableProperty]
         private ObservableCollection<BudgetEntry> budgetEntries = new();
@@ -130,7 +129,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>Gets the command to refresh analysis totals.</summary>
         public IAsyncRelayCommand RefreshAnalysisCommand { get; }
 
-        public BudgetViewModel(ILogger<BudgetViewModel>? logger, IBudgetRepository? budgetRepository, IPdfExportService? pdfExportService, IExcelExportService? excelExportService)
+        public BudgetViewModel(ILogger<BudgetViewModel>? logger, IBudgetRepository? budgetRepository, IReportExportService? reportExportService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
@@ -140,9 +139,8 @@ namespace WileyWidget.WinForms.ViewModels
             ImportFromCsvCommand = new AsyncRelayCommand<string>(ImportFromCsvAsync);
             ExportToCsvCommand = new AsyncRelayCommand<string>(ExportToCsvAsync);
 
-            // PDF/Excel export services - DI should provide implementations; tests must mock these
-            _pdfExportService = pdfExportService ?? throw new ArgumentNullException(nameof(pdfExportService));
-            _excelExportService = excelExportService ?? throw new ArgumentNullException(nameof(excelExportService));
+            // Export service - DI should provide implementations; tests must mock this
+            _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
 
             ExportToPdfCommand = new AsyncRelayCommand<string>(ExportToPdfAsync);
             ExportToExcelCommand = new AsyncRelayCommand<string>(ExportToExcelAsync);
@@ -437,7 +435,7 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
-                await _pdfExportService.ExportBudgetEntriesToPdfAsync(BudgetEntries.ToList(), filePath).ConfigureAwait(false);
+                await _reportExportService.ExportToPdfAsync(BudgetEntries.ToList(), filePath).ConfigureAwait(false);
                 _logger.LogInformation("Exported {Count} budget entries to PDF {File}", BudgetEntries.Count, filePath);
             }
             catch (Exception ex)
@@ -462,7 +460,7 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
-                await _excelExportService.ExportBudgetEntriesAsync(BudgetEntries.ToList(), filePath).ConfigureAwait(false);
+                await _reportExportService.ExportToExcelAsync(BudgetEntries.ToList(), filePath).ConfigureAwait(false);
                 _logger.LogInformation("Exported {Count} budget entries to Excel {File}", BudgetEntries.Count, filePath);
             }
             catch (Exception ex)

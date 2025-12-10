@@ -63,7 +63,7 @@ namespace WileyWidget.Services.UnitTests
             services.AddSingleton<ITelemetryService>(Mock.Of<ITelemetryService>());
             services.AddSingleton<IAuditService>(Mock.Of<IAuditService>());
             services.AddSingleton<ICacheService>(Mock.Of<ICacheService>());
-            // UI services removed - not available in test context without WinUI reference
+            // UI-layer services removed - not available in this non-UI test context
 
             var serviceProvider = services.BuildServiceProvider();
             var validator = new DiValidationService(serviceProvider, _mockLogger.Object);

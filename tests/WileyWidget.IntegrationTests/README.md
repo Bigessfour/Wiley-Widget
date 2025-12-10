@@ -99,17 +99,17 @@ Tests use `appsettings.test.json` for configuration:
 
 ## Benefits
 
-✅ **Real DI Container**: Tests actual service wiring, not mocked containers  
-✅ **Fast**: In-memory database, no external dependencies  
-✅ **Isolated**: Each test gets fresh database instance  
-✅ **Non-Whitewash**: Uses real service implementations (except expensive external calls)  
+✅ **Real DI Container**: Tests actual service wiring, not mocked containers
+✅ **Fast**: In-memory database, no external dependencies
+✅ **Isolated**: Each test gets fresh database instance
+✅ **Non-Whitewash**: Uses real service implementations (except expensive external calls)
 ✅ **Maintainable**: Follows same patterns as production code
 
 ## Anti-Patterns to Avoid
 
-❌ **Don't** create manual service instances outside the container  
-❌ **Don't** mock the entire service container  
-❌ **Don't** share database state between tests  
+❌ **Don't** create manual service instances outside the container
+❌ **Don't** mock the entire service container
+❌ **Don't** share database state between tests
 ❌ **Don't** make real API calls to external services
 
 ## Running Tests
@@ -137,4 +137,4 @@ dotnet test --logger "console;verbosity=detailed"
 
 - [Testing Strategy](../docs/testing/PHASE-4-TESTING-ROADMAP.md)
 - [Docker-Based Testing](../docs/testing/docker-based-testing.md)
-- [Production DI Setup](../src/WileyWidget.WinUI/Configuration/DependencyInjection.cs)
+- [Production DI Setup](../src/WileyWidget.WinForms/Configuration/DependencyInjection.cs)

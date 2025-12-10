@@ -9,7 +9,7 @@
     <NoWarn>NU1902;NU1903</NoWarn>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Enable WPF APIs (DispatcherPriority etc.) used by some abstractions -->
+    <!-- Enable APIs (DispatcherPriority etc.) used by some abstractions -->
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 

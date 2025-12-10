@@ -10,7 +10,7 @@ using System.ComponentModel;
 using System.Globalization;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
-using WileyWidget.ViewModels;
+using WileyWidget.WinForms.ViewModels;
 using CommunityToolkit.Mvvm.Input;
 
 namespace WileyWidget.WinForms.Controls

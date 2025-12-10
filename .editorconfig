@@ -339,7 +339,7 @@ dotnet_naming_symbols.method.applicable_kinds = method
 dotnet_naming_symbols.property.applicable_kinds = property
 dotnet_naming_symbols.field.applicable_kinds = field
 
-# XAML files - WPF UI
+# XAML files - UI
 [*.xaml]
 indent_style = space
 indent_size = 4

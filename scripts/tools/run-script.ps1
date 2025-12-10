@@ -29,7 +29,7 @@
     .\run-script.ps1 -ScriptPath "scripts\maintenance\cleanup-dotnet-processes.ps1" -Verbose
 
 .EXAMPLE
-    .\run-script.ps1 -ScriptPath "scripts\examples\csharp\20-prism-container-e2e-test.csx" -Arguments "--verbose"
+    .\run-script.ps1 -ScriptPath "scripts\examples\csharp\sample-test.csx" -Arguments "--verbose"
 
 .NOTES
     Author: Wiley Widget Development Team
